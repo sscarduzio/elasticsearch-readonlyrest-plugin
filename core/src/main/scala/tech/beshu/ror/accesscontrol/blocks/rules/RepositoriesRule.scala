@@ -80,7 +80,7 @@ class RepositoriesRule(val settings: Settings)
     } else {
       zeroKnowledgeMatchFilter.check(
         repositoriesToCheck,
-        MatcherWithWildcardsScalaAdapter.fromSetString[RepositoryName](allowedRepositories.map(_.value.value))
+        MatcherWithWildcardsScalaAdapter.create(allowedRepositories)
       ) match {
         case CheckResult.Ok(processedRepositories) if requestContext.isReadOnlyRequest =>
           Right(processedRepositories)

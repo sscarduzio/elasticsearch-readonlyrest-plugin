@@ -18,8 +18,6 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
-import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
@@ -44,13 +42,9 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
       .toSet
 
   override protected def repositoriesFrom(request: RestoreSnapshotRequest): Set[domain.RepositoryName] = Set {
-    NonEmptyString
+    RepositoryName
       .from(request.repository())
-      .map(RepositoryName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[CreateSnapshotRequest](msg),
-        identity
-      )
+      .getOrElse(throw RequestSeemsToBeInvalid[RestoreSnapshotRequest]("Repository name is empty"))
   }
 
   override protected def indicesFrom(request: RestoreSnapshotRequest): Set[domain.IndexName] =
@@ -109,7 +103,7 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
                      repository: RepositoryName,
                      indices: NonEmptyList[IndexName]) = {
     request.snapshot(SnapshotName.toString(snapshot))
-    request.repository(repository.value.value)
+    request.repository(RepositoryName.toString(repository))
     request.indices(indices.toList.map(_.value.value): _*)
   }
 }

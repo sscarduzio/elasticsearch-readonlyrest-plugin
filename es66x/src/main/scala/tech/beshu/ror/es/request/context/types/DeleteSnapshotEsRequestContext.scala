@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
@@ -41,13 +40,9 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
   }
 
   override protected def repositoriesFrom(request: DeleteSnapshotRequest): Set[RepositoryName] = Set {
-    NonEmptyString
+    RepositoryName
       .from(request.repository())
-      .map(RepositoryName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[CreateSnapshotRequest](msg),
-        identity
-      )
+      .getOrElse(throw RequestSeemsToBeInvalid[CreateSnapshotRequest]("Repository name is empty"))
   }
 
   override protected def indicesFrom(request: DeleteSnapshotRequest): Set[IndexName] = Set.empty
@@ -96,6 +91,6 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
                      snapshot: SnapshotName,
                      repository: RepositoryName) = {
     actionRequest.snapshot(SnapshotName.toString(snapshot))
-    actionRequest.repository(repository.value.value)
+    actionRequest.repository(RepositoryName.toString(repository))
   }
 }

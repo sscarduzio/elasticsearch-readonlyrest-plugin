@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
@@ -26,10 +25,10 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
-import tech.beshu.ror.utils.ScalaOps._
 
 class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
                                      esContext: EsContext,
@@ -44,13 +43,9 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
   }
 
   override protected def repositoriesFrom(request: CreateSnapshotRequest): Set[RepositoryName] = Set {
-    NonEmptyString
+    RepositoryName
       .from(request.repository())
-      .map(RepositoryName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[CreateSnapshotRequest](msg),
-        identity
-      )
+      .getOrElse(throw RequestSeemsToBeInvalid[CreateSnapshotRequest]("Repository name is empty"))
   }
 
   override protected def indicesFrom(request: CreateSnapshotRequest): Set[IndexName] = {
@@ -110,7 +105,7 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
                      repository: RepositoryName,
                      indices: UniqueNonEmptyList[IndexName]) = {
     actionRequest.snapshot(SnapshotName.toString(snapshot))
-    actionRequest.repository(repository.value.value)
+    actionRequest.repository(RepositoryName.toString(repository))
     actionRequest.indices(indices.toList.map(_.value.value).asJava)
   }
 

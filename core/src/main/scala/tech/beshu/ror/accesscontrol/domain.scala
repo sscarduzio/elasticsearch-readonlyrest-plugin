@@ -434,13 +434,37 @@ object domain {
     }
   }
 
-  final case class RepositoryName(value: NonEmptyString)
+  sealed trait RepositoryName
   object RepositoryName {
-    val all: RepositoryName = RepositoryName(NonEmptyString.unsafeFrom("_all"))
-    val wildcard: RepositoryName = RepositoryName(NonEmptyString.unsafeFrom("*"))
+    final case class Full private(value: NonEmptyString) extends RepositoryName
+    final case class Pattern private(value: NonEmptyString) extends RepositoryName
+    case object All extends RepositoryName
+    case object Wildcard extends RepositoryName
+
+    def all: RepositoryName = All
+    def wildcard: RepositoryName = Wildcard
+
+    def from(value: String): Option[RepositoryName] = {
+      NonEmptyString.unapply(value).map {
+        case Refined("_all") => All
+        case Refined("*") => Wildcard
+        case v if v.contains("*") => Pattern(NonEmptyString.unsafeFrom(v))
+        case v => Full(NonEmptyString.unsafeFrom(v))
+      }
+    }
+
+    def toString(snapshotName: RepositoryName): String = snapshotName match {
+      case Full(value) => value.value
+      case Pattern(value) => value.value
+      case All => "_all"
+      case Wildcard => "*"
+    }
 
     implicit val eqRepository: Eq[RepositoryName] = Eq.fromUniversalEquals
-    implicit val caseMappingEqualityRepositoryName: CaseMappingEquality[RepositoryName] = CaseMappingEquality.instance(_.value.value, identity)
+    implicit val caseMappingEqualityRepositoryName: CaseMappingEquality[RepositoryName] =  CaseMappingEquality.instance(
+      repositoryName => toString(repositoryName),
+      identity
+    )
   }
 
   sealed trait SnapshotName
@@ -450,8 +474,8 @@ object domain {
     case object All extends SnapshotName
     case object Wildcard extends SnapshotName
 
-    def all: SnapshotName = All
-    def wildcard: SnapshotName = Wildcard
+    def all: SnapshotName = SnapshotName.All
+    def wildcard: SnapshotName = SnapshotName.Wildcard
 
     def from(value: String): Option[SnapshotName] = {
       NonEmptyString.unapply(value).map {
@@ -462,18 +486,18 @@ object domain {
       }
     }
 
+    def toString(snapshotName: SnapshotName): String = snapshotName match {
+      case Full(value) => value.value
+      case Pattern(value) => value.value
+      case All => "_all"
+      case Wildcard => "*"
+    }
+
     implicit val eqRepository: Eq[SnapshotName] = Eq.fromUniversalEquals
     implicit val caseMappingEqualitySnapshotName: CaseMappingEquality[SnapshotName] = CaseMappingEquality.instance(
       snapshotName => toString(snapshotName),
       identity
     )
-
-    def toString(snapshotName: SnapshotName): String = snapshotName match {
-      case Full(value) => value.value
-      case Pattern(value) => value.value
-      case All => "*"
-      case Wildcard => "*"
-    }
   }
 
   sealed trait Template {
@@ -577,8 +601,6 @@ object domain {
 
     def findMostGenericTemplateNamePatten(in: NonEmptyList[TemplateNamePattern]): TemplateNamePattern = {
       def allTheSame(letters: List[Char]) = letters.size > 1 && letters.distinct.size == 1
-      import tech.beshu.ror.accesscontrol.show.logs._
-
       if (in.size > 1) {
         TemplateNamePattern
           .fromString {

@@ -17,23 +17,22 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
-import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.elasticsearch.action.admin.cluster.snapshots.get.{GetSnapshotsRequest, GetSnapshotsResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+
 import scala.collection.JavaConverters._
 
 class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
@@ -50,13 +49,9 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   }
 
   override protected def repositoriesFrom(request: GetSnapshotsRequest): Set[RepositoryName] = Set {
-    NonEmptyString
+    RepositoryName
       .from(request.repository())
-      .map(RepositoryName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[CreateSnapshotRequest](msg),
-        identity
-      )
+      .getOrElse(throw RequestSeemsToBeInvalid[GetSnapshotsRequest]("Repository name is empty"))
   }
 
   override protected def indicesFrom(request: GetSnapshotsRequest): Set[domain.IndexName] =
@@ -105,7 +100,7 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
                      snapshots: UniqueNonEmptyList[SnapshotName],
                      repository: RepositoryName) = {
     actionRequest.snapshots(snapshots.toList.map(SnapshotName.toString).toArray)
-    actionRequest.repository(repository.value.value)
+    actionRequest.repository(RepositoryName.toString(repository))
   }
 
   private def updateGetSnapshotResponse(response: GetSnapshotsResponse,

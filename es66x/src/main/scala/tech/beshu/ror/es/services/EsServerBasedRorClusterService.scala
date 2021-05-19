@@ -37,6 +37,7 @@ import tech.beshu.ror.es.RorClusterService._
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 
@@ -70,12 +71,12 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
   override def allTemplates: Set[Template] = legacyTemplates()
 
   override def allSnapshots: Map[RepositoryName, Set[SnapshotName.Full]] = {
-    val repositoriesMetadata: RepositoriesMetaData = clusterService.state().custom(RepositoriesMetaData.TYPE)
+    val repositoriesMetadata: RepositoriesMetaData = clusterService.state().metaData().custom(RepositoriesMetaData.TYPE)
     repositoriesMetadata
-      .repositories().asScala
+      .repositories().asSafeList
       .flatMap { repositoryMetadata =>
-        NonEmptyString.unapply(repositoryMetadata.name())
-          .map(RepositoryName.apply)
+        RepositoryName
+          .from(repositoryMetadata.name())
           .map { name => (name, snapshotsBy(name)) }
       }
       .toMap
@@ -85,8 +86,8 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
     snapshotsServiceSupplier.get() match {
       case Some(snapshotsService) =>
         snapshotsService
-          .getRepositoryData(repositoryName.value.value)
-          .getAllSnapshotIds.asScala
+          .getRepositoryData(RepositoryName.toString(repositoryName))
+          .getAllSnapshotIds.asSafeIterable
           .flatMap { sId =>
             SnapshotName
               .from(sId.getName)

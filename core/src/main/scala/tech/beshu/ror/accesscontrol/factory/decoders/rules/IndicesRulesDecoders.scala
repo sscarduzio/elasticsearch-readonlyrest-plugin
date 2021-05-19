@@ -124,10 +124,10 @@ object RepositoriesRuleDecoder
 private object RepositoriesDecodersHelper {
   private implicit val indexNameConvertible: Convertible[RepositoryName] = new Convertible[RepositoryName] {
     override def convert: String => Either[Convertible.ConvertError, RepositoryName] = str =>
-      NonEmptyString
-        .from(str)
-        .map(RepositoryName.apply)
-        .left.map(_ => Convertible.ConvertError("Repository name cannot be empty"))
+      RepositoryName.from(str) match {
+        case Some(value) => Right(value)
+        case None => Left(Convertible.ConvertError("Repository name cannot be empty"))
+      }
   }
   implicit val repositoryValueDecoder: Decoder[RuntimeMultiResolvableVariable[RepositoryName]] =
     DecoderHelpers
@@ -144,7 +144,7 @@ private object RepositoriesDecodersHelper {
                                                                       repository: RepositoryName): Boolean = {
     repositoriesVars
       .find {
-        case AlreadyResolved(indices) => indices.contains_(repository)
+        case AlreadyResolved(repositories) => repositories.contains_(repository)
         case ToBeResolved(_) => false
       }
       .isDefined

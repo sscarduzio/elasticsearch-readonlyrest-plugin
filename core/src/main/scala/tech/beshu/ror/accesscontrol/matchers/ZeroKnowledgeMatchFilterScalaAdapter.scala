@@ -37,10 +37,15 @@ class ZeroKnowledgeMatchFilterScalaAdapter {
 
   def alterRepositoriesIfNecessary(repositories: Set[RepositoryName], matcher: Matcher[RepositoryName]): AlterResult[RepositoryName] = {
     Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
-      repositories.map(_.value.value).asJava,
+      repositories
+        .collect {
+          case RepositoryName.Pattern(v) => v.value
+          case RepositoryName.Full(v) => v.value
+        }
+        .asJava,
       Matcher.asMatcherWithWildcards(matcher)
     )) match {
-      case Some(alteredRepositories) => AlterResult.Altered(alteredRepositories.asScala.map(str => RepositoryName(NonEmptyString.unsafeFrom(str))).toSet)
+      case Some(alteredRepositories) => AlterResult.Altered(alteredRepositories.asScala.flatMap(RepositoryName.from).toSet)
       case None => AlterResult.NotAltered
     }
   }

@@ -18,12 +18,11 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
-import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotsStatusRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
@@ -47,13 +46,9 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
       .toSet[SnapshotName]
 
   override protected def repositoriesFrom(request: SnapshotsStatusRequest): Set[RepositoryName] = Set {
-    NonEmptyString
+    RepositoryName
       .from(request.repository())
-      .map(RepositoryName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[CreateSnapshotRequest](msg),
-        identity
-      )
+      .getOrElse(throw RequestSeemsToBeInvalid[SnapshotsStatusRequest]("Repository name is empty"))
   }
 
   override protected def indicesFrom(request: SnapshotsStatusRequest): Set[IndexName] =
@@ -96,11 +91,18 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
   private def update(actionRequest: SnapshotsStatusRequest,
                      snapshots: NonEmptyList[SnapshotName],
                      repository: RepositoryName) = {
+    val allSnapshots = this.allSnapshots
+    val allowedRepositories = MatcherWithWildcardsScalaAdapter
+      .create(repository :: Nil)
+      .filter(allSnapshots.keys.toSet)
+    val allowedSnapshots = MatcherWithWildcardsScalaAdapter
+      .create(snapshots.toList)
+      .filter(allSnapshots.values.toSet.flatten.toSet)
     if (snapshotsFrom(actionRequest).isEmpty && snapshots.contains_(SnapshotName.all)) {
       // if empty, it's /_snapshot/_status request
     } else {
-      actionRequest.snapshots(snapshots.toList.map(SnapshotName.toString).toArray)
+      actionRequest.snapshots(allowedSnapshots.toList.map(SnapshotName.toString).toArray)
     }
-    actionRequest.repository(repository.value.value)
+    actionRequest.repository(RepositoryName.toString(allowedRepositories.head))
   }
 }
