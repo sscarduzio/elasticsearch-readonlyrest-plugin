@@ -98,7 +98,6 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
       .filter(allFullNameRepositories)
   }
 
-
   private def update(actionRequest: SnapshotsStatusRequest,
                      snapshots: NonEmptyList[SnapshotName.Full],
                      repository: RepositoryName.Full) = {
