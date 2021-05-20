@@ -29,9 +29,11 @@ import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+
 import scala.collection.JavaConverters._
 
 class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
@@ -43,17 +45,14 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   override protected def snapshotsFrom(request: GetSnapshotsRequest): Set[SnapshotName] = {
     request
       .snapshots().asSafeList
-      .flatMap { s =>
-        NonEmptyString.unapply(s).map(SnapshotName.apply)
-      }
+      .flatMap(SnapshotName.from)
       .toSet[SnapshotName]
   }
 
   override protected def repositoriesFrom(request: GetSnapshotsRequest): Set[RepositoryName] = Set {
-    request
-      .repository().safeNonEmpty
-      .map(RepositoryName.apply)
-      .getOrElse(RepositoryName.wildcard)
+    RepositoryName
+      .from(request.repository())
+      .getOrElse(throw RequestSeemsToBeInvalid[GetSnapshotsRequest]("Repository name is empty"))
   }
 
   override protected def indicesFrom(request: GetSnapshotsRequest): Set[domain.IndexName] =
@@ -101,8 +100,8 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   private def update(actionRequest: GetSnapshotsRequest,
                      snapshots: UniqueNonEmptyList[SnapshotName],
                      repository: RepositoryName) = {
-    actionRequest.snapshots(snapshots.toList.map(_.value.value).toArray)
-    actionRequest.repository(repository.value.value)
+    actionRequest.snapshots(snapshots.toList.map(SnapshotName.toString).toArray)
+    actionRequest.repository(RepositoryName.toString(repository))
   }
 
   private def updateGetSnapshotResponse(response: GetSnapshotsResponse,
