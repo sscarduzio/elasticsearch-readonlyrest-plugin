@@ -70,13 +70,17 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
 
   override def allTemplates: Set[Template] = legacyTemplates()
 
-  override def allSnapshots: Map[RepositoryName, Set[SnapshotName.Full]] = {
+  override def allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = {
     val repositoriesMetadata: RepositoriesMetaData = clusterService.state().metaData().custom(RepositoriesMetaData.TYPE)
     repositoriesMetadata
       .repositories().asSafeList
       .flatMap { repositoryMetadata =>
         RepositoryName
           .from(repositoryMetadata.name())
+          .flatMap {
+            case r: RepositoryName.Full => Some(r)
+            case _ => None
+          }
           .map { name => (name, snapshotsBy(name)) }
       }
       .toMap

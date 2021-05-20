@@ -462,7 +462,12 @@ object domain {
 
     implicit val eqRepository: Eq[RepositoryName] = Eq.fromUniversalEquals
     implicit val caseMappingEqualityRepositoryName: CaseMappingEquality[RepositoryName] =  CaseMappingEquality.instance(
-      repositoryName => toString(repositoryName),
+      {
+        case Full(value) => value.value
+        case Pattern(value) => value.value
+        case All => "*"
+        case Wildcard => "*"
+      },
       identity
     )
   }
@@ -495,7 +500,12 @@ object domain {
 
     implicit val eqRepository: Eq[SnapshotName] = Eq.fromUniversalEquals
     implicit val caseMappingEqualitySnapshotName: CaseMappingEquality[SnapshotName] = CaseMappingEquality.instance(
-      snapshotName => toString(snapshotName),
+      {
+        case Full(value) => value.value
+        case Pattern(value) => value.value
+        case All => "*"
+        case Wildcard => "*"
+      },
       identity
     )
   }

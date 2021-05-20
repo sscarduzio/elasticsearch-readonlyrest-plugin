@@ -29,10 +29,6 @@ import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 
-// curl -vk -u admin:container "http://localhost:9201/_snapshot/dev2-repo-1,dev2-repo-2/dev2-snap-1,dev1-snap-1/_status?pretty"
-// doesn't work.
-// repository = full name, only one
-// snapshot = full name, more than one
 class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
                                       esContext: EsContext,
                                       clusterService: RorClusterService,
@@ -69,14 +65,21 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
   }
 
   private def snapshotsFrom(blockContext: SnapshotRequestBlockContext) = {
-    NonEmptyList.fromList(blockContext.snapshots.toList) match {
+    NonEmptyList.fromList(fullNamedSnapshotsFrom(blockContext.snapshots).toList) match {
       case Some(list) => Right(list)
       case None => Left(())
     }
   }
 
+  private def fullNamedSnapshotsFrom(snapshots: Iterable[SnapshotName]): Set[SnapshotName.Full] = {
+    val allFullNameSnapshots: Set[SnapshotName.Full] = allSnapshots.values.toSet.flatten
+    MatcherWithWildcardsScalaAdapter
+      .create(snapshots)
+      .filter(allFullNameSnapshots)
+  }
+
   private def repositoryFrom(blockContext: SnapshotRequestBlockContext) = {
-    val repositories = blockContext.repositories.toList
+    val repositories = fullNamedRepositoriesFrom(blockContext.repositories).toList
     repositories match {
       case Nil =>
         Left(())
@@ -88,21 +91,18 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
     }
   }
 
+  private def fullNamedRepositoriesFrom(repositories: Iterable[RepositoryName]): Set[RepositoryName.Full] = {
+    val allFullNameRepositories: Set[RepositoryName.Full] = allSnapshots.keys.toSet
+    MatcherWithWildcardsScalaAdapter
+      .create(repositories)
+      .filter(allFullNameRepositories)
+  }
+
+
   private def update(actionRequest: SnapshotsStatusRequest,
-                     snapshots: NonEmptyList[SnapshotName],
-                     repository: RepositoryName) = {
-    val allSnapshots = this.allSnapshots
-    val allowedRepositories = MatcherWithWildcardsScalaAdapter
-      .create(repository :: Nil)
-      .filter(allSnapshots.keys.toSet)
-    val allowedSnapshots = MatcherWithWildcardsScalaAdapter
-      .create(snapshots.toList)
-      .filter(allSnapshots.values.toSet.flatten.toSet)
-    if (snapshotsFrom(actionRequest).isEmpty && snapshots.contains_(SnapshotName.all)) {
-      // if empty, it's /_snapshot/_status request
-    } else {
-      actionRequest.snapshots(allowedSnapshots.toList.map(SnapshotName.toString).toArray)
-    }
-    actionRequest.repository(RepositoryName.toString(allowedRepositories.head))
+                     snapshots: NonEmptyList[SnapshotName.Full],
+                     repository: RepositoryName.Full) = {
+    actionRequest.snapshots(snapshots.toList.map(SnapshotName.toString).toArray)
+    actionRequest.repository(RepositoryName.toString(repository))
   }
 }

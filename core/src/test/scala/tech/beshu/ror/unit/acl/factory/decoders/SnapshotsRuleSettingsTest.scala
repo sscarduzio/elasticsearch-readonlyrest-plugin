@@ -148,7 +148,7 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message(
-              "Setting up a rule (snapshots) that matches all the values is redundant - snapshot *"
+              "Setting up a rule (snapshots) that matches all the values is redundant - snapshot _all"
             )))
           }
         )
