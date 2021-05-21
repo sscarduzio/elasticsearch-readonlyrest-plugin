@@ -21,17 +21,15 @@ import java.util.function.Supplier
 
 import org.elasticsearch.common.component.AbstractLifecycleComponent
 import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.snapshots.SnapshotsService
 
-class SnapshotsServiceInterceptor(settings: Settings,
-                                  snapshotsService: SnapshotsService,
+class SnapshotsServiceInterceptor(snapshotsService: SnapshotsService,
                                   ignore: Unit) // hack!
-  extends AbstractLifecycleComponent(settings) {
+  extends AbstractLifecycleComponent {
 
   @Inject
-  def this(settings: Settings, snapshotsService: SnapshotsService) {
-    this(settings, snapshotsService, ())
+  def this(snapshotsService: SnapshotsService) {
+    this(snapshotsService, ())
   }
 
   SnapshotsServiceInterceptor.snapshotsServiceSupplier.update(snapshotsService)

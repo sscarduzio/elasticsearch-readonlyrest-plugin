@@ -24,22 +24,24 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
+import org.elasticsearch.action.support.PlainActionFuture
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.metadata.RepositoriesMetaData
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
+import org.elasticsearch.repositories.RepositoryData
 import org.elasticsearch.snapshots.SnapshotsService
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.es.utils.GenericResponseListener
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
-import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 
 class EsServerBasedRorClusterService(clusterService: ClusterService,
                                      snapshotsServiceSupplier: Supplier[Option[SnapshotsService]],
@@ -91,9 +93,11 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
   private def snapshotsBy(repositoryName: RepositoryName) = {
     snapshotsServiceSupplier.get() match {
       case Some(snapshotsService) =>
-        snapshotsService
-          .getRepositoryData(RepositoryName.toString(repositoryName))
-          .getAllSnapshotIds.asSafeIterable
+        val repositoryData: RepositoryData = PlainActionFuture.get { fut: PlainActionFuture[RepositoryData] =>
+          snapshotsService.getRepositoryData(RepositoryName.toString(repositoryName), fut)
+        }
+        repositoryData
+          .getSnapshotIds.asSafeIterable
           .flatMap { sId =>
             SnapshotName
               .from(sId.getName)

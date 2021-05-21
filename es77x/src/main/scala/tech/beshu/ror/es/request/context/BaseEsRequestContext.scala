@@ -35,7 +35,6 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.utils.RCUtils
 
 import scala.collection.JavaConverters._
-import scala.util.Try
 
 abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
                                                        clusterService: RorClusterService)

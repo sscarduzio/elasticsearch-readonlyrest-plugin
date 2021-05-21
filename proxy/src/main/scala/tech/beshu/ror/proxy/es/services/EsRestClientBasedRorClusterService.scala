@@ -9,6 +9,8 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.action.admin.cluster.repositories.get.GetRepositoriesRequest
+import org.elasticsearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
 import org.elasticsearch.action.admin.indices.template.get.{GetComponentTemplateAction, GetComposableIndexTemplateAction, GetIndexTemplatesRequest}
 import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchResponse}
@@ -66,6 +68,45 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       .runSyncUnsafe()
   }
 
+  override def allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = {
+    client
+      .getRepositories(new GetRepositoriesRequest())
+      .flatMap { repositoriesResponse =>
+        Task.gatherUnordered(
+          repositoriesResponse
+            .repositories().asSafeList
+            .flatMap(repositoryMetadata => RepositoryName.from(repositoryMetadata.name()))
+            .flatMap {
+              case r: RepositoryName.Full => Some(r)
+              case _ => None
+            }
+            .map { name => snapshotsBy(name).map((name, _)) }
+        )
+      }
+      .map(_.toMap)
+      .runSyncUnsafe()
+  }
+
+  private def snapshotsBy(repositoryName: RepositoryName) = {
+    client
+      .getSnapshots(new GetSnapshotsRequest(RepositoryName.toString(repositoryName)))
+      .map { resp =>
+        resp
+          .getSnapshots.asSafeList
+          .flatMap { sId =>
+            SnapshotName
+              .from(sId.snapshotId().getName)
+              .flatMap {
+                case SnapshotName.Wildcard => None
+                case SnapshotName.All => None
+                case SnapshotName.Pattern(_) => None
+                case f: SnapshotName.Full => Some(f)
+              }
+          }
+          .toSet
+      }
+  }
+
   private def legacyTemplates() = {
     client
       .getTemplate(new GetIndexTemplatesRequest())
@@ -77,7 +118,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
             indexPatterns <- UniqueNonEmptyList.fromList(
               template.patterns().asSafeList.flatMap(IndexPattern.fromString)
             )
-            aliases = template.aliases().asSafeValues.flatMap(a => IndexName.fromString(a.alias())).toSet
+            aliases = template.aliases().asSafeValues.flatMap(a => IndexName.fromString(a.alias()))
           } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)
         }
       }
@@ -206,5 +247,4 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       .toMap
   }
 
-  override def allSnapshots: Map[RepositoryName, Set[SnapshotName]] = ???
 }

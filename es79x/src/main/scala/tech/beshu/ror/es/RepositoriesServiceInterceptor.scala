@@ -21,32 +21,32 @@ import java.util.function.Supplier
 
 import org.elasticsearch.common.component.AbstractLifecycleComponent
 import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.snapshots.SnapshotsService
+import org.elasticsearch.repositories.RepositoriesService
 
-class SnapshotsServiceInterceptor(snapshotsService: SnapshotsService,
-                                  ignore: Unit) // hack!
+class RepositoriesServiceInterceptor(repositoriesService: RepositoriesService,
+                                     ignore: Unit) // hack!
   extends AbstractLifecycleComponent() {
 
   @Inject
-  def this(snapshotsService: SnapshotsService) {
-    this(snapshotsService, ())
+  def this(repositoriesService: RepositoriesService) {
+    this(repositoriesService, ())
   }
 
-  SnapshotsServiceInterceptor.snapshotsServiceSupplier.update(snapshotsService)
+  RepositoriesServiceInterceptor.repositoriesServiceSupplier.update(repositoriesService)
 
   override def doStart(): Unit = {}
   override def doStop(): Unit = {}
   override def doClose(): Unit = {}
 }
-object SnapshotsServiceInterceptor {
-  val snapshotsServiceSupplier: SnapshotsServiceSupplier = new SnapshotsServiceSupplier
+object RepositoriesServiceInterceptor {
+  val repositoriesServiceSupplier: RepositoriesServiceSupplier = new RepositoriesServiceSupplier
 }
 
-class SnapshotsServiceSupplier extends Supplier[Option[SnapshotsService]] {
-  private val snapshotsServiceAtomicReference = new AtomicReference(Option.empty[SnapshotsService])
-  override def get(): Option[SnapshotsService] = snapshotsServiceAtomicReference.get() match {
+class RepositoriesServiceSupplier extends Supplier[Option[RepositoriesService]] {
+  private val repositoriesServiceAtomicReference = new AtomicReference(Option.empty[RepositoriesService])
+  override def get(): Option[RepositoriesService] = repositoriesServiceAtomicReference.get() match {
     case Some(value) => Option(value)
     case None => Option.empty
   }
-  def update(service: SnapshotsService): Unit = snapshotsServiceAtomicReference.set(Some(service))
+  def update(service: RepositoriesService): Unit = repositoriesServiceAtomicReference.set(Some(service))
 }
