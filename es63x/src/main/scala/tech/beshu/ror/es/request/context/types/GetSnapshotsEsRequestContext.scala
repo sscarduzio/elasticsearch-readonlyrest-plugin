@@ -45,20 +45,14 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   override protected def snapshotsFrom(request: GetSnapshotsRequest): Set[SnapshotName] = {
     request
       .snapshots().asSafeList
-      .flatMap { s =>
-        NonEmptyString.unapply(s).map(SnapshotName.apply)
-      }
+      .flatMap(SnapshotName.from)
       .toSet[SnapshotName]
   }
 
   override protected def repositoriesFrom(request: GetSnapshotsRequest): Set[RepositoryName] = Set {
-    NonEmptyString
+    RepositoryName
       .from(request.repository())
-      .map(RepositoryName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[CreateSnapshotRequest](msg),
-        identity
-      )
+      .getOrElse(throw RequestSeemsToBeInvalid[GetSnapshotsRequest]("Repository name is empty"))
   }
 
   override protected def indicesFrom(request: GetSnapshotsRequest): Set[domain.IndexName] =
@@ -106,8 +100,8 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   private def update(actionRequest: GetSnapshotsRequest,
                      snapshots: UniqueNonEmptyList[SnapshotName],
                      repository: RepositoryName) = {
-    actionRequest.snapshots(snapshots.toList.map(_.value.value).toArray)
-    actionRequest.repository(repository.value.value)
+    actionRequest.snapshots(snapshots.toList.map(SnapshotName.toString).toArray)
+    actionRequest.repository(RepositoryName.toString(repository))
   }
 
   private def updateGetSnapshotResponse(response: GetSnapshotsResponse,

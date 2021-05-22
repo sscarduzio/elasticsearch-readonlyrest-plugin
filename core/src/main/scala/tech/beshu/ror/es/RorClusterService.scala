@@ -17,7 +17,6 @@
 package tech.beshu.ror.es
 
 import cats.data.NonEmptyList
-import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.domain._
@@ -31,6 +30,8 @@ trait RorClusterService {
   def allIndicesAndAliases: Map[IndexName, Set[AliasName]]
 
   def allTemplates: Set[Template]
+
+  def allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]]
 
   def verifyDocumentAccessibility(document: Document,
                                   filter: Filter,

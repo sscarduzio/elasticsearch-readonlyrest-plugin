@@ -18,7 +18,6 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.admin.cluster.repositories.verify.VerifyRepositoryRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
@@ -34,14 +33,10 @@ class VerifyRepositoryEsRequestContext(actionRequest: VerifyRepositoryRequest,
                                        override val threadPool: ThreadPool)
   extends BaseRepositoriesEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  override protected def repositoriesFrom(request: VerifyRepositoryRequest): Set[RepositoryName] = Set{
-    NonEmptyString
+  override protected def repositoriesFrom(request: VerifyRepositoryRequest): Set[RepositoryName] = Set {
+    RepositoryName
       .from(request.name())
-      .map(RepositoryName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[VerifyRepositoryRequest](msg),
-        identity
-      )
+      .getOrElse(throw RequestSeemsToBeInvalid[VerifyRepositoryRequest]("Repository name is empty"))
   }
 
   override protected def update(request: VerifyRepositoryRequest,
@@ -49,7 +44,7 @@ class VerifyRepositoryEsRequestContext(actionRequest: VerifyRepositoryRequest,
     if (repositories.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.toList.mkString(",")}]")
     }
-    request.name(repositories.head.value.value)
+    request.name(RepositoryName.toString(repositories.head))
     Modified
   }
 }

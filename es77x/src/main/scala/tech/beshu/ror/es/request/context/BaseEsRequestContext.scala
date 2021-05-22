@@ -35,7 +35,6 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.utils.RCUtils
 
 import scala.collection.JavaConverters._
-import scala.util.Try
 
 abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
                                                        clusterService: RorClusterService)
@@ -130,6 +129,8 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
       .toSet
 
   override lazy val allTemplates: Set[Template] = clusterService.allTemplates
+
+  override lazy val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = clusterService.allSnapshots
 
   override lazy val isReadOnlyRequest: Boolean = RCUtils.isReadRequest(action.value)
 

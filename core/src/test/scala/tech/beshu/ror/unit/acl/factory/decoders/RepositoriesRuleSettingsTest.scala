@@ -26,7 +26,6 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.utils.TestsUtils._
-import eu.timepit.refined.auto._
 
 class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[RepositoriesRule] {
 
@@ -45,7 +44,9 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
               |
               |""".stripMargin,
           assertion = rule => {
-            val repositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]] = NonEmptySet.one(AlreadyResolved(RepositoryName("repository1").nel))
+            val repositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]] = NonEmptySet.one(
+              AlreadyResolved(RepositoryName.from("repository1").get.nel)
+            )
             rule.settings.allowedRepositories should be(repositories)
           }
         )
@@ -82,8 +83,10 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
               |
               |""".stripMargin,
           assertion = rule => {
-            val indices: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]] =
-              NonEmptySet.of(AlreadyResolved(RepositoryName("repository1").nel), AlreadyResolved(RepositoryName("repository2").nel))
+            val indices: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]] = NonEmptySet.of(
+              AlreadyResolved(RepositoryName.from("repository1").get.nel),
+              AlreadyResolved(RepositoryName.from("repository2").get.nel)
+            )
             rule.settings.allowedRepositories should be(indices)
           }
         )
@@ -104,7 +107,7 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
           assertion = rule => {
             rule.settings.allowedRepositories.length == 2
 
-            rule.settings.allowedRepositories.head should be(AlreadyResolved(RepositoryName("repository1").nel))
+            rule.settings.allowedRepositories.head should be(AlreadyResolved(RepositoryName.from("repository1").get.nel))
             rule.settings.allowedRepositories.tail.head shouldBe a [ToBeResolved[_]]
           }
         )
@@ -146,7 +149,7 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message(
-              "Setting up a rule (repositories) that matches all the values is redundant - repository _all"
+              "Setting up a rule (repositories) that matches all the values is redundant - repository *"
             )))
           }
         )

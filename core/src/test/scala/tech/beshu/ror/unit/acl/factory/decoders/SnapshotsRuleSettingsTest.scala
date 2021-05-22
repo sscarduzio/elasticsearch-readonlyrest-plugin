@@ -26,7 +26,6 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.utils.TestsUtils._
-import eu.timepit.refined.auto._
 
 class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRule] {
 
@@ -45,7 +44,8 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
               |
               |""".stripMargin,
           assertion = rule => {
-            val indices: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]] = NonEmptySet.one(AlreadyResolved(SnapshotName("snapshot1").nel))
+            val indices: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]] =
+              NonEmptySet.one(AlreadyResolved(SnapshotName.from("snapshot1").get.nel))
             rule.settings.allowedSnapshots should be(indices)
           }
         )
@@ -82,8 +82,10 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
               |
               |""".stripMargin,
           assertion = rule => {
-            val indices: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]] =
-              NonEmptySet.of(AlreadyResolved(SnapshotName("snapshot1").nel), AlreadyResolved(SnapshotName("snapshot2").nel))
+            val indices: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]] = NonEmptySet.of(
+              AlreadyResolved(SnapshotName.from("snapshot1").get.nel),
+              AlreadyResolved(SnapshotName.from("snapshot2").get.nel)
+            )
             rule.settings.allowedSnapshots should be(indices)
           }
         )
@@ -104,7 +106,7 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
           assertion = rule => {
             rule.settings.allowedSnapshots.length == 2
 
-            rule.settings.allowedSnapshots.head should be(AlreadyResolved(SnapshotName("snapshot1").nel))
+            rule.settings.allowedSnapshots.head should be(AlreadyResolved(SnapshotName.from("snapshot1").get.nel))
             rule.settings.allowedSnapshots.tail.head shouldBe a [ToBeResolved[_]]
           }
         )

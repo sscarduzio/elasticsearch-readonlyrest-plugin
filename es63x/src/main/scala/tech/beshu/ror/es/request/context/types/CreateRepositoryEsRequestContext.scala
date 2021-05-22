@@ -35,13 +35,9 @@ class CreateRepositoryEsRequestContext(actionRequest: PutRepositoryRequest,
   extends BaseRepositoriesEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
   override protected def repositoriesFrom(request: PutRepositoryRequest): Set[RepositoryName] = Set {
-    NonEmptyString
+    RepositoryName
       .from(request.name())
-      .map(RepositoryName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[PutRepositoryRequest](msg),
-        identity
-      )
+      .getOrElse(throw RequestSeemsToBeInvalid[PutRepositoryRequest]("Repository name is empty"))
   }
 
   override protected def update(request: PutRepositoryRequest,
@@ -49,7 +45,7 @@ class CreateRepositoryEsRequestContext(actionRequest: PutRepositoryRequest,
     if (repositories.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.toList.mkString(",")}]")
     }
-    request.name(repositories.head.value.value)
+    request.name(RepositoryName.toString(repositories.head))
     Modified
   }
 }
