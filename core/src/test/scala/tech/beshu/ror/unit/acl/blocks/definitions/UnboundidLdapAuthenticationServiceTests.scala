@@ -26,7 +26,7 @@ import monix.execution.Scheduler.Implicits.global
 import monix.execution.exceptions.ExecutionRejectedException
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Inside}
+import org.scalatest.{Assertion, BeforeAndAfterAll, BeforeAndAfterEach, Inside}
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig._
@@ -63,20 +63,6 @@ class UnboundidLdapAuthenticationServiceTests
     super.beforeEach()
     ldap1ContainerWithToxiproxy.enableNetwork()
     ldap1ContainerWithToxiproxy.disableNetworkTimeout()
-  }
-
-  implicit class LdapAuthenticationServiceOps(authenticationService: LdapAuthenticationService) {
-    def assertSuccessfulAuthentication = {
-      authenticationService
-        .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
-        .runSyncUnsafe() should be(true)
-    }
-
-    def assertFailedAuthentication[T : ClassTag] = {
-      an [T] should be thrownBy authenticationService
-        .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
-        .runSyncUnsafe()
-    }
   }
 
   "An LdapAuthenticationService" should {
@@ -176,6 +162,20 @@ class UnboundidLdapAuthenticationServiceTests
       Thread.sleep(550)
       authenticationService.assertFailedAuthentication[LDAPSearchException]
       authenticationService.assertFailedAuthentication[ExecutionRejectedException]
+    }
+  }
+
+  implicit class LdapAuthenticationServiceOps(authenticationService: LdapAuthenticationService) {
+    def assertSuccessfulAuthentication: Assertion = {
+      authenticationService
+        .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
+        .runSyncUnsafe() should be(true)
+    }
+
+    def assertFailedAuthentication[T : ClassTag]: Assertion = {
+      an [T] should be thrownBy authenticationService
+        .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
+        .runSyncUnsafe()
     }
   }
 

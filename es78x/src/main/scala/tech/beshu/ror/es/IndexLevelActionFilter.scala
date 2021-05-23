@@ -25,6 +25,7 @@ import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.env.Environment
+import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
@@ -48,6 +49,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                              threadPool: ThreadPool,
                              env: Environment,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
+                             repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
                              esInitListener: EsInitListener)
                             (implicit envVarsProvider: EnvVarsProvider,
                              generator: UniqueIdentifierGenerator)
@@ -57,7 +59,9 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
 
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
-    new EsServerBasedRorClusterService(clusterService, client), clusterService.getSettings, threadPool
+    new EsServerBasedRorClusterService(clusterService, repositoriesServiceSupplier, client),
+    clusterService.getSettings,
+    threadPool
   )
 
   private val startingTaskCancellable = startRorInstance()
