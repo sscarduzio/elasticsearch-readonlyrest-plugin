@@ -18,9 +18,9 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.Inside
 import tech.beshu.ror.Constants.{ADMIN_ACTIONS, CLUSTER_ACTIONS, RO_ACTIONS, RW_ACTIONS}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
@@ -36,7 +36,6 @@ import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import eu.timepit.refined.auto._
 
 class KibanaAccessRuleTests extends AnyWordSpec with Inside with BlockContextAssertion {
 
@@ -276,7 +275,7 @@ class KibanaAccessRuleTests extends AnyWordSpec with Inside with BlockContextAss
   }
 
   private def settingsOf(access: KibanaAccess, kibanaIndex: IndexName = IndexName(".kibana")) = {
-    KibanaAccessRule.Settings(access, AlreadyResolved(kibanaIndex), RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")))
+    KibanaAccessRule.Settings(access, AlreadyResolved(Some(kibanaIndex)), RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")))
   }
 
   private def defaultOutputBlockContextAssertion(settings: KibanaAccessRule.Settings, indices: Set[IndexName]): BlockContext => Unit =

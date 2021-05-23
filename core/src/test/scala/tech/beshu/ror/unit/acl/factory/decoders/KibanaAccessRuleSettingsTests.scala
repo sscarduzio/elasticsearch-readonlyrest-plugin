@@ -43,7 +43,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RO)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
+            rule.settings.kibanaIndex should be(AlreadyResolved(None))
           }
         )
       }
@@ -61,7 +61,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RW)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
+            rule.settings.kibanaIndex should be(AlreadyResolved(None))
           }
         )
       }
@@ -79,7 +79,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.ROStrict)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
+            rule.settings.kibanaIndex should be(AlreadyResolved(None))
           }
         )
       }
@@ -97,7 +97,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Admin)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
+            rule.settings.kibanaIndex should be(AlreadyResolved(None))
           }
         )
       }
@@ -115,7 +115,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Unrestricted)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
+            rule.settings.kibanaIndex should be(AlreadyResolved(None))
           }
         )
       }
@@ -134,7 +134,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Admin)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana_admin")))
+            rule.settings.kibanaIndex should be(AlreadyResolved(Some(IndexName(".kibana_admin"))))
           }
         )
       }
