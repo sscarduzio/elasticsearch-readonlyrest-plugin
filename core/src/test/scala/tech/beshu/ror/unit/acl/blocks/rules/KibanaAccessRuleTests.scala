@@ -275,7 +275,7 @@ class KibanaAccessRuleTests extends AnyWordSpec with Inside with BlockContextAss
   }
 
   private def settingsOf(access: KibanaAccess, kibanaIndex: IndexName = IndexName(".kibana")) = {
-    KibanaAccessRule.Settings(access, AlreadyResolved(kibanaIndex), RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")))
+    KibanaAccessRule.Settings(access, AlreadyResolved(Some(kibanaIndex)), RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")))
   }
 
   private def defaultOutputBlockContextAssertion(settings: KibanaAccessRule.Settings, indices: Set[IndexName]): BlockContext => Unit =

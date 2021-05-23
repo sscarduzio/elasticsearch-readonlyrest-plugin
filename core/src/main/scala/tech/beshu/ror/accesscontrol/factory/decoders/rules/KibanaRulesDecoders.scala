@@ -71,34 +71,42 @@ object KibanaTemplateIndexRuleDecoder
 }
 
 class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorConfigurationIndex)
-  extends RuleBaseDecoderWithAssociatedFields[KibanaAccessRule, RuntimeSingleResolvableVariable[IndexName]] {
+  extends RuleBaseDecoderWithAssociatedFields[KibanaAccessRule, RuntimeSingleResolvableVariable[Option[IndexName]]] {
 
-  override def ruleDecoderCreator: RuntimeSingleResolvableVariable[IndexName] => Decoder[RuleWithVariableUsageDefinition[KibanaAccessRule]] =
+  override def ruleDecoderCreator: RuntimeSingleResolvableVariable[Option[IndexName]] => Decoder[RuleWithVariableUsageDefinition[KibanaAccessRule]] =
     kibanaIndexName =>
       DecoderHelpers
         .decodeStringLike
         .map(_.toLowerCase)
         .toSyncDecoder
         .emapE[KibanaAccess] {
-        case "ro" => Right(KibanaAccess.RO)
-        case "rw" => Right(KibanaAccess.RW)
-        case "ro_strict" => Right(KibanaAccess.ROStrict)
-        case "admin" => Right(KibanaAccess.Admin)
-        case "unrestricted" => Right(KibanaAccess.Unrestricted)
-        case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
-      }
+          case "ro" => Right(KibanaAccess.RO)
+          case "rw" => Right(KibanaAccess.RW)
+          case "ro_strict" => Right(KibanaAccess.ROStrict)
+          case "admin" => Right(KibanaAccess.Admin)
+          case "unrestricted" => Right(KibanaAccess.Unrestricted)
+          case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
+        }
         .map(KibanaAccessRule.Settings(_, kibanaIndexName, rorIndexNameConfiguration))
         .map(settings => RuleWithVariableUsageDefinition.create(new KibanaAccessRule(settings)))
         .decoder
 
   override val associatedFields: Set[String] = Set("kibana_index")
 
-  override val associatedFieldsDecoder: Decoder[RuntimeSingleResolvableVariable[IndexName]] =
-    Decoder.instance(_.downField("kibana_index").as[RuntimeSingleResolvableVariable[IndexName]]) or Decoder.const(AlreadyResolved(IndexName.kibana))
+  override val associatedFieldsDecoder: Decoder[RuntimeSingleResolvableVariable[Option[IndexName]]] =
+    kibanaIndexFieldDecoder or noKibanaIndexConfiguredDecoder
+
+  private lazy val kibanaIndexFieldDecoder: Decoder[RuntimeSingleResolvableVariable[Option[IndexName]]] =
+    Decoder
+      .instance(_.downField("kibana_index").as[RuntimeSingleResolvableVariable[IndexName]])
+      .map(_.map(Option(_)))
+
+  private lazy val noKibanaIndexConfiguredDecoder: Decoder[RuntimeSingleResolvableVariable[Option[IndexName]]] =
+    Decoder.const(AlreadyResolved(Option.empty[IndexName]))
 }
 
 private object KibanaRulesDecoderHelper {
-  private implicit val indexNameConvertible: Convertible[IndexName] = new Convertible[IndexName] {
+  implicit val indexNameConvertible: Convertible[IndexName] = new Convertible[IndexName] {
     override def convert: String => Either[Convertible.ConvertError, IndexName] = str => {
       NonEmptyString
         .from(str.replace(" ", "_"))

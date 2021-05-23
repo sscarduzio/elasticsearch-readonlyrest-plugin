@@ -65,11 +65,7 @@ class KibanaAccessRule(val settings: Settings)
   }
 
   private def processCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): RuleResult[B] = {
-    val kibanaIndex = settings
-      .kibanaIndex
-      .resolve(blockContext)
-      .getOrElse(IndexName.kibana)
-
+    val kibanaIndex = determineKibanaIndex(blockContext)
     // Save UI state in discover & Short urls
     kibanaIndexPattern(kibanaIndex) match {
       case None =>
@@ -80,6 +76,15 @@ class KibanaAccessRule(val settings: Settings)
         continueProcessing(blockContext, kibanaIndex)
     }
   }
+
+  private def determineKibanaIndex(blockContext: BlockContext) = {
+    tryToResolveKibanaIndexUsing(blockContext)
+      .orElse(blockContext.userMetadata.kibanaIndex)
+      .getOrElse(IndexName.kibana)
+  }
+
+  private def tryToResolveKibanaIndexUsing(blockContext: BlockContext) =
+    settings.kibanaIndex.resolve(blockContext).toOption.flatten
 
   private def continueProcessing[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                           kibanaIndex: IndexName): RuleResult[B] = {
@@ -172,7 +177,7 @@ object KibanaAccessRule {
   }
 
   final case class Settings(access: KibanaAccess,
-                            kibanaIndex: RuntimeSingleResolvableVariable[IndexName],
+                            kibanaIndex: RuntimeSingleResolvableVariable[Option[IndexName]],
                             rorIndex: RorConfigurationIndex)
 
   private object Matchers {
