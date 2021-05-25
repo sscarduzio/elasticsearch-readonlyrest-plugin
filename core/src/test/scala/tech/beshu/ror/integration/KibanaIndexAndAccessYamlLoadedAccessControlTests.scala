@@ -89,21 +89,6 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
       |    auth_key: user1:dev
       |    groups: [Administrators, Personal, Infosec]
       |
-      |  - name: "Read-Write access with RoR custom kibana index"
-      |    indices: [".kibana_ror_custom", ".reporting.kibana_ror_custom-*", "logstash*", "readonlyrest_audit-*"]
-      |    kibana_index: ".kibana_ror_custom"
-      |    kibana_access: rw
-      |    groups: ["RW_ror_custom"]
-      |
-      |  users:
-      |  - username: testuser_ro_master
-      |    auth_key: testuser_ro_master:XXXX
-      |    groups: ["RO_master"]
-      |
-      |  - username: testuser_ro_master_rw_custom
-      |    auth_key: testuser_ro_master_rw_custom:XXXX
-      |    groups: ["RO_master", "RW_ror_custom"]
-      |
       """.stripMargin
 
   "An ACL" when {
@@ -195,7 +180,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
 
         val result = acl.handleRegularRequest(loginRequest).runSyncUnsafe()
 
-        result.history should have size 5
+        result.history should have size 4
         inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
           block.name should be(Block.Name("ADMIN_GRP"))
           assertBlockContext(
