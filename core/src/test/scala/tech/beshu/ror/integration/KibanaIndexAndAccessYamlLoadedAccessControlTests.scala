@@ -89,6 +89,21 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
       |    auth_key: user1:dev
       |    groups: [Administrators, Personal, Infosec]
       |
+      |  - name: "Read-Write access with RoR custom kibana index"
+      |    indices: [".kibana_ror_custom", ".reporting.kibana_ror_custom-*", "logstash*", "readonlyrest_audit-*"]
+      |    kibana_index: ".kibana_ror_custom"
+      |    kibana_access: rw
+      |    groups: ["RW_ror_custom"]
+      |
+      |  users:
+      |  - username: testuser_ro_master
+      |    auth_key: testuser_ro_master:XXXX
+      |    groups: ["RO_master"]
+      |
+      |  - username: testuser_ro_master_rw_custom
+      |    auth_key: testuser_ro_master_rw_custom:XXXX
+      |    groups: ["RO_master", "RW_ror_custom"]
+      |
       """.stripMargin
 
   "An ACL" when {
@@ -143,26 +158,17 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           }
         }
       }
-      "test" in {
-        //elasticsearch_1  | {"type": "server", "timestamp": "2021-05-24T20:55:54,596Z", "level": "INFO",
-        // "component": "t.b.r.a.l.AccessControlLoggingDecorator", "cluster.name": "elasticsearch", "node.name":
-        // "n1_it", "message": "\u001B[36mALLOWED by { name: 'ADMIN_GRP', policy: ALLOW,
-        // rules: [groups,kibana_access,kibana_hide_apps,kibana_index] req={ ID:141488242-1210462311#439,
-        // TYP:RRUserMetadataRequest, CGR:N/A, USR:admin, BRS:true, KDX:.kibana_admins,
-        // ACT:cluster:ror/user_metadata/get, OA:172.25.0.3/32, XFF:null, DA:172.25.0.2/32, IDX:<N/A>,
-        // MET:GET, PTH:/_readonlyrest/metadata/current_user, CNT:<N/A>, HDR:Accept-Encoding=gzip,deflate,
-        // Accept=*/*, Authorization=<OMITTED>, Connection=close, Host=elasticsearch:9200,
-        // User-Agent=node-fetch/1.0 (+https://github.com/bitinn/node-fetch), content-length=0,
-        // HIS:[KIBANA_SERVER-> RULES:[auth_key->false]], [PERSONAL_GRP-> RULES:[groups->false]], [ADMIN_GRP-> RULES:[groups->true, kibana_access->true, kibana_hide_apps->true, kibana_index->true] RESOLVED:[user=admin;group=Administrators;av_groups=Administrators;kibana_idx=.kibana_admins]], [Infosec-> RULES:[groups->true, kibana_access->true, kibana_hide_apps->true, kibana_index->true] RESOLVED:[user=admin;group=Infosec;av_groups=Infosec;kibana_idx=.kibana_infosec]], [ReadonlyREST Enterprise instance #1-> RULES:[ror_kbn_auth->false]], }\u001B[0m", "cluster.uuid": "M04VN-tOTceOmEVFahfLyg", "node.id": "0PuukfbKRzGkTjthSEcNhQ"  }
+    }
+    "kibana index and kibana access rules are used (when current user metadata request was called first)" should {
+      "allow to proceed" in {
         val loginRequest = MockRequestContext.metadata.copy(
           headers = Set(basicAuthHeader("admin:dev"))
         )
 
         val loginResult = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
 
-        inside(loginResult.result) { case UserMetadataRequestResult.Allow(metadata, block) =>
-//          block.name should be(Block.Name("ADMIN_GRP"))
-          metadata should be (UserMetadata(
+        inside(loginResult.result) { case UserMetadataRequestResult.Allow(metadata, _) =>
+          metadata should be(UserMetadata(
             loggedUser = Some(DirectlyLoggedUser(User.Id("admin"))),
             currentGroup = Some(Group("Administrators")),
             availableGroups = UniqueList.of(Group("Administrators"), Group("Infosec")),
@@ -189,7 +195,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
 
         val result = acl.handleRegularRequest(loginRequest).runSyncUnsafe()
 
-        //        result.history should have size 5
+        result.history should have size 5
         inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
           block.name should be(Block.Name("ADMIN_GRP"))
           assertBlockContext(
