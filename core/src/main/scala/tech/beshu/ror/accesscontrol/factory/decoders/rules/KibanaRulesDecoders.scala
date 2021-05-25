@@ -25,13 +25,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.{KibanaAccessRule, KibanaHideAp
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.createSingleResolvableVariableFrom
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, KibanaApp, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.KibanaRulesDecoderHelper.kibanaIndexDecoder
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{RuleBaseDecoderWithAssociatedFields, RuleBaseDecoderWithoutAssociatedFields}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
@@ -71,38 +69,24 @@ object KibanaTemplateIndexRuleDecoder
 }
 
 class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorConfigurationIndex)
-  extends RuleBaseDecoderWithAssociatedFields[KibanaAccessRule, RuntimeSingleResolvableVariable[Option[IndexName]]] {
+  extends RuleBaseDecoderWithoutAssociatedFields[KibanaAccessRule] {
 
-  override def ruleDecoderCreator: RuntimeSingleResolvableVariable[Option[IndexName]] => Decoder[RuleWithVariableUsageDefinition[KibanaAccessRule]] =
-    kibanaIndexName =>
-      DecoderHelpers
-        .decodeStringLike
-        .map(_.toLowerCase)
-        .toSyncDecoder
-        .emapE[KibanaAccess] {
-          case "ro" => Right(KibanaAccess.RO)
-          case "rw" => Right(KibanaAccess.RW)
-          case "ro_strict" => Right(KibanaAccess.ROStrict)
-          case "admin" => Right(KibanaAccess.Admin)
-          case "unrestricted" => Right(KibanaAccess.Unrestricted)
-          case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
-        }
-        .map(KibanaAccessRule.Settings(_, kibanaIndexName, rorIndexNameConfiguration))
-        .map(settings => RuleWithVariableUsageDefinition.create(new KibanaAccessRule(settings)))
-        .decoder
-
-  override val associatedFields: Set[String] = Set("kibana_index")
-
-  override val associatedFieldsDecoder: Decoder[RuntimeSingleResolvableVariable[Option[IndexName]]] =
-    kibanaIndexFieldDecoder or noKibanaIndexConfiguredDecoder
-
-  private lazy val kibanaIndexFieldDecoder: Decoder[RuntimeSingleResolvableVariable[Option[IndexName]]] =
-    Decoder
-      .instance(_.downField("kibana_index").as[RuntimeSingleResolvableVariable[IndexName]])
-      .map(_.map(Option(_)))
-
-  private lazy val noKibanaIndexConfiguredDecoder: Decoder[RuntimeSingleResolvableVariable[Option[IndexName]]] =
-    Decoder.const(AlreadyResolved(Option.empty[IndexName]))
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[KibanaAccessRule]] =
+    DecoderHelpers
+      .decodeStringLike
+      .map(_.toLowerCase)
+      .toSyncDecoder
+      .emapE[KibanaAccess] {
+        case "ro" => Right(KibanaAccess.RO)
+        case "rw" => Right(KibanaAccess.RW)
+        case "ro_strict" => Right(KibanaAccess.ROStrict)
+        case "admin" => Right(KibanaAccess.Admin)
+        case "unrestricted" => Right(KibanaAccess.Unrestricted)
+        case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
+      }
+      .map(KibanaAccessRule.Settings(_, rorIndexNameConfiguration))
+      .map(settings => RuleWithVariableUsageDefinition.create(new KibanaAccessRule(settings)))
+      .decoder
 }
 
 private object KibanaRulesDecoderHelper {

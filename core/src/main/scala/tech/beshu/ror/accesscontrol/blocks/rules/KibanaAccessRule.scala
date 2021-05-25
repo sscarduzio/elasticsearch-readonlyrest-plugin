@@ -30,9 +30,9 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.IndexName.devNullKibana
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 
 import scala.util.Try
 
@@ -78,13 +78,8 @@ class KibanaAccessRule(val settings: Settings)
   }
 
   private def determineKibanaIndex(blockContext: BlockContext) = {
-    tryToResolveKibanaIndexUsing(blockContext)
-      .orElse(blockContext.userMetadata.kibanaIndex)
-      .getOrElse(IndexName.kibana)
+    blockContext.userMetadata.kibanaIndex.getOrElse(IndexName.kibana)
   }
-
-  private def tryToResolveKibanaIndexUsing(blockContext: BlockContext) =
-    settings.kibanaIndex.resolve(blockContext).toOption.flatten
 
   private def continueProcessing[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                           kibanaIndex: IndexName): RuleResult[B] = {
@@ -177,9 +172,7 @@ object KibanaAccessRule {
   }
 
   final case class Settings(access: KibanaAccess,
-                            kibanaIndex: RuntimeSingleResolvableVariable[Option[IndexName]],
                             rorIndex: RorConfigurationIndex)
-
   private object Matchers {
     val roMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.RO_ACTIONS)
     val rwMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.RW_ACTIONS)
