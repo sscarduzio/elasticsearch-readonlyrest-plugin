@@ -81,12 +81,12 @@ public class MatcherWithWildcards<T> {
         return showedLine.endsWith(caseMappingEquality.mapCases(pattern[pattern.length - 1]));
     }
 
-    public Set<T> filter(Set<T> haystack) {
+    public <S extends T> Set<S> filter(Set<S> haystack) {
         if (haystack == null) {
             return Collections.emptySet();
         }
-        Set<T> filtered = Sets.newHashSet();
-        for (T hs : haystack) {
+        Set<S> filtered = Sets.newHashSet();
+        for (S hs : haystack) {
             if (match(hs)) {
                 filtered.add(hs);
             }

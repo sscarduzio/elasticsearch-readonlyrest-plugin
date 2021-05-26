@@ -229,18 +229,21 @@ object LdapServicesDecoder {
       }
   }
 
-
   private lazy val circuitBreakerDecoder: Decoder[CircuitBreakerConfig] =
-    Decoder
+    SyncDecoderCreator
       .instance { c =>
         val circuitBreaker = c.downField("circuit_breaker")
         if (circuitBreaker.failed) {
           Right(DEFAULT_CIRCUIT_BREAKER_CONFIG)
         } else {
-          val decoder = Decoder.forProduct2("max_retries", "reset_duration")(CircuitBreakerConfig.apply)
-          decoder.tryDecode(circuitBreaker)
+          (for {
+            maxRetries <- circuitBreaker.downField("max_retries").as[Int Refined Positive]
+            resetDuration <- circuitBreaker.downField("reset_duration").as[FiniteDuration Refined Positive]
+          } yield CircuitBreakerConfig(maxRetries, resetDuration))
         }
       }
+      .withError(DefinitionsLevelCreationError(Message(s"At least proper values for max_retries and reset_duration are required for circuit breaker configuration")))
+      .decoder
 
   private lazy val connectionMethodDecoder: Decoder[ConnectionMethod] =
     SyncDecoderCreator

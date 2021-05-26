@@ -34,8 +34,8 @@ class RorRestChannel(underlying: RestChannel)
   }
 
   override def sendResponse(response: RestResponse): Unit = {
-    underlying.sendResponse(filterRestResponse(response))
     unregisterTask()
+    underlying.sendResponse(filterRestResponse(response))
   }
 
   private def unregisterTask(): Unit = {

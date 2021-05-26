@@ -17,7 +17,6 @@
 package tech.beshu.ror.integration.suites
 
 import org.junit.Assert.assertEquals
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.EsContainerCreator

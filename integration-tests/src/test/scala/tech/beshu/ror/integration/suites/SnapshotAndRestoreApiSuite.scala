@@ -541,6 +541,38 @@ trait SnapshotAndRestoreApiSuite
             result.snapshots.map(_ ("snapshot").str) should be (List(snapshotName1))
           }
         }
+        "user asks about all statuses" when {
+          "he has access to one of them" in {
+            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
+
+            val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2").force()
+
+            val snapshotName2 = SnapshotNameGenerator.next("dev1-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
+
+            val result = dev2SnapshotManager.getAllSnapshotStatuses()
+
+            result.responseCode should be(200)
+            result.snapshots.map(_ ("snapshot").str) should contain theSameElementsAs List(snapshotName1)
+          }
+          "he has access to all of them" in {
+            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
+
+            val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2").force()
+
+            val snapshotName2 = SnapshotNameGenerator.next("dev1-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
+
+            val result = adminSnapshotManager.getAllSnapshotStatuses()
+
+            result.responseCode should be(200)
+            result.snapshots.map(_ ("snapshot").str) should contain theSameElementsAs List(snapshotName1, snapshotName2)
+          }
+        }
       }
       "not allow him to do so" when {
         "user has no access to repository" in {

@@ -108,7 +108,7 @@ class SearchManager(client: RestClient,
     request
   }
 
-  private def createRenderTemplateRequest(query: String) = {
+  private def createRenderTemplateRequest(query : String) = {
     val request = new HttpGetWithEntity(client.from("_render/template"))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(query))

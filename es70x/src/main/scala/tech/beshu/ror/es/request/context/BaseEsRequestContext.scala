@@ -130,6 +130,8 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy val allTemplates: Set[Template] = clusterService.allTemplates
 
+  override lazy val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = clusterService.allSnapshots
+
   override lazy val isReadOnlyRequest: Boolean = RCUtils.isReadRequest(action.value)
 
   override lazy val isCompositeRequest: Boolean = esContext.actionRequest.isInstanceOf[CompositeIndicesRequest]
