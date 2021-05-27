@@ -16,15 +16,20 @@
  */
 package tech.beshu.ror.es.services
 
+import java.util.function.Supplier
+
 import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
+import org.elasticsearch.action.support.PlainActionFuture
 import org.elasticsearch.client.node.NodeClient
+import org.elasticsearch.cluster.metadata.RepositoriesMetadata
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
+import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -38,6 +43,7 @@ import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 
 class EsServerBasedRorClusterService(clusterService: ClusterService,
+                                     repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
                                      nodeClient: NodeClient)
   extends RorClusterService
     with Logging {
@@ -65,6 +71,47 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
 
   override def allTemplates: Set[Template] = {
     legacyTemplates() ++ indexTemplates() ++ componentTemplates()
+  }
+
+  override def allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = {
+    val repositoriesMetadata: RepositoriesMetadata = clusterService.state().metadata().custom(RepositoriesMetadata.TYPE)
+    repositoriesMetadata
+      .repositories().asSafeList
+      .flatMap { repositoryMetadata =>
+        RepositoryName
+          .from(repositoryMetadata.name())
+          .flatMap {
+            case r: RepositoryName.Full => Some(r)
+            case _ => None
+          }
+          .map { name => (name, snapshotsBy(name)) }
+      }
+      .toMap
+  }
+
+  private def snapshotsBy(repositoryName: RepositoryName) = {
+    repositoriesServiceSupplier.get() match {
+      case Some(repositoriesService) =>
+        val repositoryData: RepositoryData = PlainActionFuture.get { fut: PlainActionFuture[RepositoryData] =>
+          repositoriesService.getRepositoryData(RepositoryName.toString(repositoryName), fut)
+        }
+        repositoryData
+          .getSnapshotIds.asSafeIterable
+          .flatMap { sId =>
+            SnapshotName
+              .from(sId.getName)
+              .flatMap {
+                case SnapshotName.Wildcard => None
+                case SnapshotName.All => None
+                case SnapshotName.Pattern(_) => None
+                case f: SnapshotName.Full => Some(f)
+              }
+          }
+          .toSet
+      case None =>
+        logger.error("Cannot supply Snapshots Service. Please, report the issue!!!")
+        Set.empty[SnapshotName.Full]
+    }
   }
 
   private def legacyTemplates() = {

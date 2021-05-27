@@ -16,9 +16,8 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import cats.implicits._
 import cats.data.NonEmptyList
-import eu.timepit.refined.types.string.NonEmptyString
+import cats.implicits._
 import org.elasticsearch.action.admin.cluster.repositories.delete.DeleteRepositoryRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
@@ -35,13 +34,9 @@ class DeleteRepositoryEsRequestContext(actionRequest: DeleteRepositoryRequest,
   extends BaseRepositoriesEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
   override protected def repositoriesFrom(request: DeleteRepositoryRequest): Set[RepositoryName] = Set {
-    NonEmptyString
+    RepositoryName
       .from(request.name())
-      .map(RepositoryName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[DeleteRepositoryRequest](msg),
-        identity
-      )
+      .getOrElse(throw RequestSeemsToBeInvalid[DeleteRepositoryRequest]("Repository name is empty"))
   }
 
   override protected def update(request: DeleteRepositoryRequest,
@@ -49,7 +44,7 @@ class DeleteRepositoryEsRequestContext(actionRequest: DeleteRepositoryRequest,
     if (repositories.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.toList.mkString(",")}]")
     }
-    request.name(repositories.head.value.value)
+    request.name(RepositoryName.toString(repositories.head))
     Modified
   }
 }

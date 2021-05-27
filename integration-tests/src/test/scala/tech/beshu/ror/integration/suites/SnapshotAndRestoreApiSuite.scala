@@ -555,7 +555,7 @@ trait SnapshotAndRestoreApiSuite
             val result = dev2SnapshotManager.getAllSnapshotStatuses()
 
             result.responseCode should be(200)
-            result.snapshots.map(_ ("snapshot").str) should be(List(snapshotName1))
+            result.snapshots.map(_ ("snapshot").str) should contain theSameElementsAs List(snapshotName1)
           }
           "he has access to all of them" in {
             val repositoryName = RepositoryNameGenerator.next("dev2-repo")
@@ -570,7 +570,7 @@ trait SnapshotAndRestoreApiSuite
             val result = adminSnapshotManager.getAllSnapshotStatuses()
 
             result.responseCode should be(200)
-            result.snapshots.map(_ ("snapshot").str) should be(List(snapshotName1, snapshotName2))
+            result.snapshots.map(_ ("snapshot").str) should contain theSameElementsAs List(snapshotName1, snapshotName2)
           }
         }
       }

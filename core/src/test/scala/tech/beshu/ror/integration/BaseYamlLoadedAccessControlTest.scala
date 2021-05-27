@@ -30,8 +30,6 @@ import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvi
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
-import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.boot.RorMode
 
 trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
 

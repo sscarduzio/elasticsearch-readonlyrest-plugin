@@ -18,16 +18,15 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.Inside
 import tech.beshu.ror.Constants.{ADMIN_ACTIONS, CLUSTER_ACTIONS, RO_ACTIONS, RW_ACTIONS}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaAccessRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW, Unrestricted}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
@@ -36,7 +35,6 @@ import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import eu.timepit.refined.auto._
 
 class KibanaAccessRuleTests extends AnyWordSpec with Inside with BlockContextAssertion {
 
@@ -63,9 +61,9 @@ class KibanaAccessRuleTests extends AnyWordSpec with Inside with BlockContextAss
     "RW action is passed" in {
       RW_ACTIONS.asScala.map(str => Action(str.replace("*", "_")))
         .foreach { action =>
-          assertNotMatchRule(settingsOf(ROStrict), action, Set(IndexName(".kibana")))
-          assertNotMatchRule(settingsOf(RO), action, Set(IndexName(".kibana")))
-          assertMatchRule(settingsOf(RW), action, Set(IndexName(".kibana"))) {
+          assertNotMatchRule(settingsOf(ROStrict), action, indices = Set(IndexName(".kibana")))
+          assertNotMatchRule(settingsOf(RO), action, indices = Set(IndexName(".kibana")))
+          assertMatchRule(settingsOf(RW), action, indices = Set(IndexName(".kibana"))) {
             assertBlockContext(
               kibanaIndex = Some(IndexName(".kibana")),
               kibanaAccess = Some(RW),
@@ -76,40 +74,55 @@ class KibanaAccessRuleTests extends AnyWordSpec with Inside with BlockContextAss
     }
     "RO action is passed with other indices" in {
       RO_ACTIONS.asScala.map(Action.apply).foreach { action =>
-        assertMatchRule(settingsOf(ROStrict), action, Set(IndexName("xxx")))()
-        assertMatchRule(settingsOf(RO), action, Set(IndexName("xxx")))()
-        assertMatchRule(settingsOf(RW), action, Set(IndexName("xxx")))()
+        assertMatchRule(settingsOf(ROStrict), action, indices = Set(IndexName("xxx")))()
+        assertMatchRule(settingsOf(RO), action, indices = Set(IndexName("xxx")))()
+        assertMatchRule(settingsOf(RW), action, indices = Set(IndexName("xxx")))()
       }
     }
     "RW action is passed with other indices" in {
       RW_ACTIONS.asScala.map(Action.apply)
         .foreach { action =>
-          assertNotMatchRule(settingsOf(ROStrict), action, Set(IndexName("xxx")))
-          assertNotMatchRule(settingsOf(RO), action, Set(IndexName("xxx")))
-          assertNotMatchRule(settingsOf(RW), action, Set(IndexName("xxx")))
+          assertNotMatchRule(settingsOf(ROStrict), action, indices = Set(IndexName("xxx")))
+          assertNotMatchRule(settingsOf(RO), action, indices = Set(IndexName("xxx")))
+          assertNotMatchRule(settingsOf(RW), action, indices = Set(IndexName("xxx")))
         }
     }
     "RO action is passed with mixed indices" in {
       RO_ACTIONS.asScala.map(Action.apply).foreach { action =>
-        assertMatchRule(settingsOf(ROStrict), action, Set(IndexName("xxx"), IndexName(".kibana")))()
-        assertMatchRule(settingsOf(RO), action, Set(IndexName("xxx"), IndexName(".kibana")))()
-        assertMatchRule(settingsOf(RW), action, Set(IndexName("xxx"), IndexName(".kibana")))()
+        assertMatchRule(settingsOf(ROStrict), action, indices = Set(IndexName("xxx"), IndexName(".kibana")))()
+        assertMatchRule(settingsOf(RO), action, indices = Set(IndexName("xxx"), IndexName(".kibana")))()
+        assertMatchRule(settingsOf(RW), action, indices = Set(IndexName("xxx"), IndexName(".kibana")))()
       }
     }
     "RW action is passed with mixed indices" in {
       RW_ACTIONS.asScala.map(Action.apply)
         .foreach { action =>
-          assertNotMatchRule(settingsOf(ROStrict), action, Set(IndexName("xxx"), IndexName(".kibana")))
-          assertNotMatchRule(settingsOf(RO), action, Set(IndexName("xxx"), IndexName(".kibana")))
-          assertNotMatchRule(settingsOf(RW), action, Set(IndexName("xxx"), IndexName(".kibana")))
+          assertNotMatchRule(settingsOf(ROStrict), action, indices = Set(IndexName("xxx"), IndexName(".kibana")))
+          assertNotMatchRule(settingsOf(RO), action, indices = Set(IndexName("xxx"), IndexName(".kibana")))
+          assertNotMatchRule(settingsOf(RW), action, indices = Set(IndexName("xxx"), IndexName(".kibana")))
         }
     }
     "RW action is passed with custom kibana index" in {
       RW_ACTIONS.asScala.map(Action.apply)
         .foreach { action =>
-          assertNotMatchRule(settingsOf(ROStrict, IndexName(".custom_kibana")), action, Set(IndexName(".custom_kibana")))
-          assertNotMatchRule(settingsOf(RO, IndexName(".custom_kibana")), action, Set(IndexName(".custom_kibana")))
-          assertMatchRule(settingsOf(RW, IndexName(".custom_kibana")), action, Set(IndexName(".custom_kibana"))) {
+          assertNotMatchRule(
+            settingsOf(ROStrict),
+            action,
+            customKibanaIndex = Some(IndexName(".custom_kibana")),
+            indices = Set(IndexName(".custom_kibana"))
+          )
+          assertNotMatchRule(
+            settingsOf(RO),
+            action,
+            customKibanaIndex = Some(IndexName(".custom_kibana")),
+            indices = Set(IndexName(".custom_kibana"))
+          )
+          assertMatchRule(
+            settingsOf(RW),
+            action,
+            customKibanaIndex = Some(IndexName(".custom_kibana")),
+            indices = Set(IndexName(".custom_kibana"))
+          ) {
             assertBlockContext(
               kibanaIndex = Some(IndexName(".custom_kibana")),
               kibanaAccess = Some(RW),
@@ -196,8 +209,18 @@ class KibanaAccessRuleTests extends AnyWordSpec with Inside with BlockContextAss
       )
     }
     "RW can change cluster settings" in {
-      assertNotMatchRule(settingsOf(RO, IndexName(".kibana")), Action("cluster:admin/settings/update"), Set.empty, Some(UriPath("/_cluster/settings")))
-      assertMatchRule(settingsOf(RW, IndexName(".kibana")), Action("cluster:admin/settings/update"), Set.empty, Some(UriPath("/_cluster/settings"))) {
+      assertNotMatchRule(
+        settingsOf(RO),
+        Action("cluster:admin/settings/update"),
+        indices = Set.empty,
+        uriPath = Some(UriPath("/_cluster/settings"))
+      )
+      assertMatchRule(
+        settingsOf(RW),
+        Action("cluster:admin/settings/update"),
+        indices = Set.empty,
+        uriPath = Some(UriPath("/_cluster/settings"))
+      ) {
         assertBlockContext(
           kibanaIndex = None,
           kibanaAccess = Some(RW)
@@ -206,7 +229,12 @@ class KibanaAccessRuleTests extends AnyWordSpec with Inside with BlockContextAss
     }
     "X-Pack cluster settings update" in {
       def assertMatchClusterRule(access: KibanaAccess) = {
-        assertMatchRule(settingsOf(access, IndexName(".kibana")), Action("cluster:admin/xpack/ccr/auto_follow_pattern/resolve"), Set.empty, Some(UriPath("/_ccr/auto_follow"))) {
+        assertMatchRule(
+          settingsOf(access),
+          Action("cluster:admin/xpack/ccr/auto_follow_pattern/resolve"),
+          indices = Set.empty,
+          uriPath = Some(UriPath("/_ccr/auto_follow"))
+        ) {
           assertBlockContext(
             kibanaIndex = None,
             kibanaAccess = Some(access)
@@ -228,15 +256,15 @@ class KibanaAccessRuleTests extends AnyWordSpec with Inside with BlockContextAss
   }
 
   private def testNonStrictOperations(customKibanaIndex: IndexName, action: Action, uriPath: UriPath): Unit = {
-    assertNotMatchRule(settingsOf(ROStrict, customKibanaIndex), action, Set(customKibanaIndex), Some(uriPath))
-    assertMatchRule(settingsOf(RO, customKibanaIndex), action, Set(customKibanaIndex), Some(uriPath)) {
+    assertNotMatchRule(settingsOf(ROStrict), action, Some(customKibanaIndex), Set(customKibanaIndex), Some(uriPath))
+    assertMatchRule(settingsOf(RO), action, Some(customKibanaIndex), Set(customKibanaIndex), Some(uriPath)) {
       assertBlockContext(
         kibanaIndex = Some(customKibanaIndex),
         kibanaAccess = Some(RO),
         indices = Set(customKibanaIndex)
       )
     }
-    assertMatchRule(settingsOf(RW, customKibanaIndex), action, Set(customKibanaIndex), Some(uriPath)) {
+    assertMatchRule(settingsOf(RW), action, Some(customKibanaIndex), Set(customKibanaIndex), Some(uriPath)) {
       assertBlockContext(
         kibanaIndex = Some(customKibanaIndex),
         kibanaAccess = Some(RW),
@@ -245,15 +273,24 @@ class KibanaAccessRuleTests extends AnyWordSpec with Inside with BlockContextAss
     }
   }
 
-  private def assertMatchRule(settings: KibanaAccessRule.Settings, action: Action, indices: Set[IndexName] = Set.empty, uriPath: Option[UriPath] = None)
+  private def assertMatchRule(settings: KibanaAccessRule.Settings,
+                              action: Action,
+                              customKibanaIndex: Option[IndexName] = None,
+                              indices: Set[IndexName] = Set.empty,
+                              uriPath: Option[UriPath] = None)
                              (blockContextAssertion: BlockContext => Unit = defaultOutputBlockContextAssertion(settings, indices)) =
-    assertRule(settings, action, indices, uriPath, Some(blockContextAssertion))
+    assertRule(settings, action, customKibanaIndex, indices, uriPath, Some(blockContextAssertion))
 
-  private def assertNotMatchRule(settings: KibanaAccessRule.Settings, action: Action, indices: Set[IndexName] = Set.empty, uriPath: Option[UriPath] = None) =
-    assertRule(settings, action, indices, uriPath, blockContextAssertion = None)
+  private def assertNotMatchRule(settings: KibanaAccessRule.Settings,
+                                 action: Action,
+                                 customKibanaIndex: Option[IndexName] = None,
+                                 indices: Set[IndexName] = Set.empty,
+                                 uriPath: Option[UriPath] = None) =
+    assertRule(settings, action, customKibanaIndex, indices, uriPath, blockContextAssertion = None)
 
   private def assertRule(settings: KibanaAccessRule.Settings,
                          action: Action,
+                         kibanaIndex: Option[IndexName],
                          indices: Set[IndexName],
                          uriPath: Option[UriPath] = None,
                          blockContextAssertion: Option[BlockContext => Unit]) = {
@@ -263,7 +300,14 @@ class KibanaAccessRuleTests extends AnyWordSpec with Inside with BlockContextAss
       filteredIndices = indices,
       uriPath = uriPath.getOrElse(UriPath("/undefined"))
     )
-    val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty, indices, Set.empty)
+    val blockContext = GeneralIndexRequestBlockContext(
+      requestContext = requestContext,
+      userMetadata = kibanaIndex.foldLeft(UserMetadata.from(requestContext))(_.withKibanaIndex(_)),
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty,
+      filteredIndices = indices,
+      allAllowedIndices = Set.empty
+    )
     val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>
@@ -275,8 +319,8 @@ class KibanaAccessRuleTests extends AnyWordSpec with Inside with BlockContextAss
     }
   }
 
-  private def settingsOf(access: KibanaAccess, kibanaIndex: IndexName = IndexName(".kibana")) = {
-    KibanaAccessRule.Settings(access, AlreadyResolved(kibanaIndex), RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")))
+  private def settingsOf(access: KibanaAccess) = {
+    KibanaAccessRule.Settings(access, RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")))
   }
 
   private def defaultOutputBlockContextAssertion(settings: KibanaAccessRule.Settings, indices: Set[IndexName]): BlockContext => Unit =

@@ -78,7 +78,7 @@ class CacheableLdapAuthorizationServiceDecorator(underlying: LdapAuthorizationSe
     cacheableGroupsOf.call(id)
 }
 
-class CacheableLdapServiceDecorator(underlying: LdapAuthService,
+class CacheableLdapServiceDecorator(val underlying: LdapAuthService,
                                     ttl: FiniteDuration Refined Positive)
   extends LdapAuthService {
 
