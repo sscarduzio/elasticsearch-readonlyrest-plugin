@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.request
 
-import java.time.Instant
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -62,11 +61,12 @@ import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
-import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.types._
 import tech.beshu.ror.es.request.handler.{CurrentUserMetadataRequestHandler, RegularRequestHandler}
+import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
+import java.time.Instant
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 
