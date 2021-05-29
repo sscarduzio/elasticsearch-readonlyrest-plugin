@@ -344,7 +344,6 @@ object CrossClusterCallsSuite {
     documentManager.createDoc("etl_usage_2020-03-26", 1, ujson.read("""{"usage":"ROR"}"""))
     documentManager.createDoc("etl_usage_2020-03-27", 1, ujson.read("""{"usage":"ROR"}"""))
 
-
     documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-27",  ujson.read("""{"counter1":"50"}"""))
     documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-28",  ujson.read("""{"counter1":"50"}"""))
     documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-29",  ujson.read("""{"counter1":"50"}"""))

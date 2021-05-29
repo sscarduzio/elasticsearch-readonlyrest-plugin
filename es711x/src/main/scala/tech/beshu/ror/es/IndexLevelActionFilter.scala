@@ -20,7 +20,8 @@ import java.util.function.Supplier
 
 import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
+import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
+import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain, IndicesOptions}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.service.ClusterService
@@ -123,6 +124,20 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                             channel: RorRestChannel): Unit = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
+        import scala.collection.JavaConverters._
+        val client = remoteClusterService.getRemoteClusterClient(threadPool, "etl")
+        val resp = client.admin().indices().resolveIndex(
+          new ResolveIndexAction.Request(List("*").toArray),
+          new ActionListener[ResolveIndexAction.Response] {
+            override def onResponse(response: ResolveIndexAction.Response): Unit = {
+              response
+            }
+
+            override def onFailure(e: Exception): Unit = {
+              e
+            }
+          }
+        )
         aclAwareRequestFilter
           .handle(
             engine,
