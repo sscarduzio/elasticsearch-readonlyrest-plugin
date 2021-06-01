@@ -20,9 +20,10 @@ import eu.timepit.refined.auto._
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaAccessRule
-import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{KibanaAccess, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.utils.TestsUtils._
 
 class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAccessRule] with MockFactory {
 
@@ -42,7 +43,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RO)
-            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName(".readonlyrest")))
+            rule.settings.rorIndex should be(RorConfigurationIndex(indexName(".readonlyrest")))
           }
         )
       }
@@ -60,7 +61,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RW)
-            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName(".readonlyrest")))
+            rule.settings.rorIndex should be(RorConfigurationIndex(indexName(".readonlyrest")))
           }
         )
       }
@@ -78,7 +79,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.ROStrict)
-            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName(".readonlyrest")))
+            rule.settings.rorIndex should be(RorConfigurationIndex(indexName(".readonlyrest")))
           }
         )
       }
@@ -96,7 +97,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Admin)
-            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName(".readonlyrest")))
+            rule.settings.rorIndex should be(RorConfigurationIndex(indexName(".readonlyrest")))
           }
         )
       }
@@ -114,7 +115,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Unrestricted)
-            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName(".readonlyrest")))
+            rule.settings.rorIndex should be(RorConfigurationIndex(indexName(".readonlyrest")))
           }
         )
       }

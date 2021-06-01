@@ -52,6 +52,10 @@ object TestsUtils {
       NonEmptyString.unsafeFrom(value)
     )
 
+  def indexName(str: NonEmptyString): IndexName = IndexName.unsafeFromString(str.value)
+
+  def indexPattern(str: NonEmptyString): IndexPattern = IndexPattern(indexName(str))
+
   implicit def scalaFiniteDuration2JavaDuration(duration: FiniteDuration): Duration = Duration.ofMillis(duration.toMillis)
 
   trait BlockContextAssertion {

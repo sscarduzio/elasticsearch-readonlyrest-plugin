@@ -20,11 +20,13 @@ import java.time.{Clock, Instant}
 
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.auto._
+import monix.eval.Task
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain.ClusterAwareIndexName.{ClusterName, FullRemoteIndexWithAliases}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -94,6 +96,9 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
   extends RequestContext {
   override type BLOCK_CONTEXT = GeneralIndexRequestBlockContext
 
+  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]] = 
+    Task.now(Set.empty)
+
   override def initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, List.empty, filteredIndices, allAllowedIndices
   )
@@ -125,6 +130,9 @@ final case class MockFilterableMultiRequestContext(override val timestamp: Insta
   extends RequestContext {
   override type BLOCK_CONTEXT = FilterableMultiRequestBlockContext
 
+  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]] = 
+    Task.now(Set.empty)
+
   override def initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, List.empty, indexPacks, filter, fieldLevelSecurity, requestFieldsUsage
   )
@@ -153,6 +161,9 @@ final case class MockGeneralNonIndexRequestContext(override val timestamp: Insta
   extends RequestContext {
 
   override type BLOCK_CONTEXT = GeneralNonIndexRequestBlockContext
+
+  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]] = 
+    Task.now(Set.empty)
 
   override def initialBlockContext: GeneralNonIndexRequestBlockContext = GeneralNonIndexRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, List.empty
@@ -183,6 +194,9 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
   extends RequestContext {
   override type BLOCK_CONTEXT = FilterableRequestBlockContext
 
+  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]] = 
+    Task.now(Set.empty)
+
   override def initialBlockContext: FilterableRequestBlockContext = FilterableRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, List.empty, indices, allAllowedIndices, None
   )
@@ -210,6 +224,9 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant,
                                                 repositories: Set[RepositoryName])
   extends RequestContext {
   override type BLOCK_CONTEXT = RepositoryRequestBlockContext
+
+  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]] = 
+    Task.now(Set.empty)
 
   override def initialBlockContext: RepositoryRequestBlockContext = RepositoryRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, List.empty, repositories
@@ -239,6 +256,9 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant,
   extends RequestContext {
   override type BLOCK_CONTEXT = SnapshotRequestBlockContext
 
+  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]] = 
+    Task.now(Set.empty)
+
   override def initialBlockContext: SnapshotRequestBlockContext = SnapshotRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, List.empty, snapshots, Set.empty, Set.empty, Set.empty
   )
@@ -265,6 +285,9 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val hasRemoteClusters: Boolean = false)
   extends RequestContext {
   override type BLOCK_CONTEXT = CurrentUserMetadataRequestBlockContext
+
+  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]] = 
+    Task.now(Set.empty)
 
   override def initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
     this, UserMetadata.empty, Set.empty, List.empty
@@ -293,6 +316,9 @@ final case class MockTemplateRequestContext(override val timestamp: Instant,
                                             templateOperation: TemplateOperation)
   extends RequestContext {
   override type BLOCK_CONTEXT = TemplateRequestBlockContext
+
+  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]] = 
+    Task.now(Set.empty)
 
   override def initialBlockContext: TemplateRequestBlockContext = TemplateRequestBlockContext(
     this, UserMetadata.empty, Set.empty, List.empty, templateOperation, identity, Set.empty
@@ -328,5 +354,7 @@ object MockSimpleRequestContext {
     override val initialBlockContext: BC = blockContextCreator(this)
     override val isReadOnlyRequest: Boolean = isReadOnly
     override val action: Action = customAction
+    override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]] = 
+    Task.now(Set.empty)
   }
 }

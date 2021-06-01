@@ -20,8 +20,7 @@ import java.util.function.Supplier
 
 import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
-import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain, IndicesOptions}
+import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.service.ClusterService
@@ -31,17 +30,17 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
-import tech.beshu.ror.boot.{Engine, EsInitListener, Ror, RorInstance, RorMode}
-import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
+import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
+import tech.beshu.ror.boot._
 import tech.beshu.ror.es.request.AclAwareRequestFilter
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RorNotAvailableResponse._
-import tech.beshu.ror.utils.AccessControllerHelper._
+import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.RorInstanceSupplier
-import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 
 import scala.language.postfixOps
 
@@ -60,7 +59,8 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
 
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
-    new EsServerBasedRorClusterService(clusterService, repositoriesServiceSupplier, client),
+    // todo:
+    new EsServerBasedRorClusterService(clusterService, ???, repositoriesServiceSupplier, client, threadPool),
     clusterService.getSettings,
     threadPool
   )
@@ -124,20 +124,6 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                             channel: RorRestChannel): Unit = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
-        import scala.collection.JavaConverters._
-        val client = remoteClusterService.getRemoteClusterClient(threadPool, "etl")
-        val resp = client.admin().indices().resolveIndex(
-          new ResolveIndexAction.Request(List("*").toArray),
-          new ActionListener[ResolveIndexAction.Response] {
-            override def onResponse(response: ResolveIndexAction.Response): Unit = {
-              response
-            }
-
-            override def onFailure(e: Exception): Unit = {
-              e
-            }
-          }
-        )
         aclAwareRequestFilter
           .handle(
             engine,

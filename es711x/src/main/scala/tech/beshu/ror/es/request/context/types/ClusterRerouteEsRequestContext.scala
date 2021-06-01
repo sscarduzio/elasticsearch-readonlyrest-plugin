@@ -75,18 +75,18 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
   }
 
   private def setNonExistentIndexFor(command: AllocationCommand) = {
-    val randomIndex = IndexName.randomNonexistentIndex(indexFrom(command).map(_.value.value).getOrElse(""))
+    val randomIndex = IndexName.randomNonexistentIndex(indexFrom(command).map(_.stringify).getOrElse(""))
     command match {
       case c: CancelAllocationCommand =>
-        new CancelAllocationCommand(randomIndex.value.value, c.shardId(), c.node(), c.allowPrimary())
+        new CancelAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.allowPrimary())
       case c: MoveAllocationCommand =>
-        new MoveAllocationCommand(randomIndex.value.value, c.shardId(), c.fromNode(), c.toNode)
+        new MoveAllocationCommand(randomIndex.stringify, c.shardId(), c.fromNode(), c.toNode)
       case c: AllocateEmptyPrimaryAllocationCommand =>
-        new AllocateEmptyPrimaryAllocationCommand(randomIndex.value.value, c.shardId(), c.node(), c.acceptDataLoss())
+        new AllocateEmptyPrimaryAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.acceptDataLoss())
       case c: AllocateReplicaAllocationCommand =>
-        new AllocateReplicaAllocationCommand(randomIndex.value.value, c.shardId(), c.node())
+        new AllocateReplicaAllocationCommand(randomIndex.stringify, c.shardId(), c.node())
       case c: AllocateStalePrimaryAllocationCommand =>
-        new AllocateStalePrimaryAllocationCommand(randomIndex.value.value, c.shardId(), c.node(), c.acceptDataLoss())
+        new AllocateStalePrimaryAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.acceptDataLoss())
     }
   }
 }

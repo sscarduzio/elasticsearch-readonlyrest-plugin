@@ -65,7 +65,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
       aFactory
         .createCoreFrom(
           rorConfigFromUnsafe(yaml),
-          RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
+          RorConfigurationIndex(IndexName.unsafeFromString(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider
         )
@@ -86,7 +86,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
       aFactory
         .createCoreFrom(
           rorConfigFromUnsafe(yaml),
-          RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
+          RorConfigurationIndex(IndexName.unsafeFromString(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider
         )

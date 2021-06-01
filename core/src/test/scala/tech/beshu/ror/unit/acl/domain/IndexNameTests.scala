@@ -19,25 +19,25 @@ package tech.beshu.ror.unit.acl.domain
 import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.utils.TestsUtils._
 
 class IndexNameTests extends AnyWordSpec {
 
-  "IndexName.match" should {
+  "indexName.match" should {
     "follow given rules" in {
-      (IndexName("test*") matches IndexName("test*")) should be(true)
-      (IndexName("test*") matches IndexName("te*")) should be(false)
-      (IndexName("test*") matches IndexName("tests*")) should be(true)
-      (IndexName("test*") matches IndexName("test")) should be(true)
-      (IndexName("test*") matches IndexName("te")) should be(false)
-      (IndexName("test*") matches IndexName("tests")) should be(true)
+      (indexName("test*") matches indexName("test*")) should be(true)
+      (indexName("test*") matches indexName("te*")) should be(false)
+      (indexName("test*") matches indexName("tests*")) should be(true)
+      (indexName("test*") matches indexName("test")) should be(true)
+      (indexName("test*") matches indexName("te")) should be(false)
+      (indexName("test*") matches indexName("tests")) should be(true)
 
-      (IndexName("test") matches IndexName("test*")) should be(false)
-      (IndexName("test") matches IndexName("te*")) should be(false)
-      (IndexName("test") matches IndexName("tests*")) should be(false)
-      (IndexName("test") matches IndexName("test")) should be(true)
-      (IndexName("test") matches IndexName("te")) should be(false)
-      (IndexName("test") matches IndexName("tests")) should be(false)
+      (indexName("test") matches indexName("test*")) should be(false)
+      (indexName("test") matches indexName("te*")) should be(false)
+      (indexName("test") matches indexName("tests*")) should be(false)
+      (indexName("test") matches indexName("test")) should be(true)
+      (indexName("test") matches indexName("te")) should be(false)
+      (indexName("test") matches indexName("tests")) should be(false)
     }
   }
 }

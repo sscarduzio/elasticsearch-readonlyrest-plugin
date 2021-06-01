@@ -32,7 +32,7 @@ final case class RorIndexNameConfiguration(index: RorConfigurationIndex)
 
 object RorIndexNameConfiguration extends Logging {
 
-  private val defaultIndexName = IndexName.fromUnsafeString(".readonlyrest")
+  private val defaultIndexName = IndexName.unsafeFromString(".readonlyrest")
 
   def load(esConfigFolderPath: Path): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = {
     load(File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath))
@@ -49,8 +49,8 @@ object RorIndexNameConfiguration extends Logging {
       val oneLine = c.downField("readonlyrest.settings_index").as[Option[NonEmptyString]]
       val twoLines =  c.downField("readonlyrest").downField("settings_index").as[Option[NonEmptyString]]
       val customIndexName = (oneLine.toOption.flatten, twoLines.toOption.flatten) match {
-        case (Some(result), _) => IndexName(result)
-        case (_, Some(result)) => IndexName(result)
+        case (Some(result), _) => IndexName.unsafeFromString(result.value)
+        case (_, Some(result)) => IndexName.unsafeFromString(result.value)
         case (_, _) => defaultIndexName
       }
       Right(RorIndexNameConfiguration(RorConfigurationIndex(customIndexName)))

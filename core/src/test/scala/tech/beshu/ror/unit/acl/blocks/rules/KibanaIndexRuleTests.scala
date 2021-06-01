@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolv
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.unit.acl.blocks.rules.utils.IndexNameRuntimeResolvableVariable
+import tech.beshu.ror.utils.TestsUtils._
 
 class KibanaIndexRuleTests extends AnyWordSpec with MockFactory {
 
@@ -41,7 +42,7 @@ class KibanaIndexRuleTests extends AnyWordSpec with MockFactory {
         rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
           CurrentUserMetadataRequestBlockContext(
             requestContext,
-            UserMetadata.empty.withKibanaIndex(IndexName("kibana_index")),
+            UserMetadata.empty.withKibanaIndex(indexName("kibana_index")),
             Set.empty,
             List.empty)
         ))

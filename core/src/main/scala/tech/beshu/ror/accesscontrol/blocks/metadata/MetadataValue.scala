@@ -73,11 +73,11 @@ object MetadataValue {
   }
 
   private def foundKibanaIndex(userMetadata: UserMetadata) = {
-    userMetadata.kibanaIndex.map(i => (Constants.HEADER_KIBANA_INDEX, MetadataString(i.value.value))).toMap
+    userMetadata.kibanaIndex.map(i => (Constants.HEADER_KIBANA_INDEX, MetadataString(i.stringify))).toMap
   }
 
   private def foundKibanaTemplateIndex(userMetadata: UserMetadata) = {
-    userMetadata.kibanaTemplateIndex.map(i => (Constants.HEADER_KIBANA_TEMPLATE_INDEX, MetadataString(i.value.value))).toMap
+    userMetadata.kibanaTemplateIndex.map(i => (Constants.HEADER_KIBANA_TEMPLATE_INDEX, MetadataString(i.stringify))).toMap
   }
 
   private def currentGroup(userMetadata: UserMetadata) = {

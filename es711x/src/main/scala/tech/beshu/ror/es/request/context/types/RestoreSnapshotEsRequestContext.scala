@@ -104,6 +104,6 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
                      indices: NonEmptyList[IndexName]) = {
     request.snapshot(SnapshotName.toString(snapshot))
     request.repository(RepositoryName.toString(repository))
-    request.indices(indices.toList.map(_.value.value): _*)
+    request.indices(indices.toList.map(_.stringify): _*)
   }
 }

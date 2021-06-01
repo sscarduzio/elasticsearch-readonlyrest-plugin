@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.matchers
 
-import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
@@ -28,11 +27,11 @@ class ZeroKnowledgeIndexFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter)
   def check(indices: Set[IndexName], matcher: Matcher[IndexName]): CheckResult = {
     val processedIndices: java.util.Set[String] = scala.collection.mutable.Set.empty[String].asJava
     val result = underlying.alterIndicesIfNecessaryAndCheck(
-      indices.map(_.value.value).asJava,
+      indices.map(_.stringify).asJava,
       Matcher.asMatcherWithWildcards(matcher),
       processedIndices.addAll _
     )
-    if(result) CheckResult.Ok(processedIndices.asScala.map(str => IndexName(NonEmptyString.unsafeFrom(str))).toSet)
+    if(result) CheckResult.Ok(processedIndices.asScala.flatMap(IndexName.fromString).toSet)
     else CheckResult.Failed
   }
 }

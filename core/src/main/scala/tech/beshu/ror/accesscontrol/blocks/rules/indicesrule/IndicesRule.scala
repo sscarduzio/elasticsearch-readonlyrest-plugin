@@ -23,21 +23,20 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, HasIndexPacks, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBlockContextUpdater, CurrentUserMetadataRequestBlockContextUpdater, FilterableMultiRequestBlockContextUpdater, FilterableRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
-import tech.beshu.ror.accesscontrol.blocks.rules.{HeadersOrRule, Rule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.IndexNotFound
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain._
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.CanPass
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.CanPass.No.Reason
-import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
-import tech.beshu.ror.accesscontrol.matchers.{IndicesMatcher, MatcherWithWildcardsScalaAdapter, UniqueIdentifierGenerator, ZeroKnowledgeIndexFilterScalaAdapter}
+import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.{CanPass, _}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithIndexPacksUpdater, BlockContextWithIndicesUpdater}
 import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
+import tech.beshu.ror.accesscontrol.matchers.{IndicesMatcher, MatcherWithWildcardsScalaAdapter, UniqueIdentifierGenerator, ZeroKnowledgeIndexFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
@@ -162,6 +161,7 @@ class IndicesRule(override val settings: Settings,
                 narrowedIndices
             }
           }
+        requestContext.allRemoteIndicesAndAliases(???) // todo:
         // Run the remote algorithm (without knowing the remote list of indices)
         val allProcessedIndices = zKindexFilter.check(crossClusterIndices, indicesMatcher.availableIndicesMatcher) match {
           case CheckResult.Ok(processedIndices) => processedIndices ++ processedLocalIndices

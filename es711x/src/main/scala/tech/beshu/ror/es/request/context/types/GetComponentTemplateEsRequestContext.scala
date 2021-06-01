@@ -146,7 +146,7 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
     val aliasesStrings = basedOn.aliases.map(_.value.value)
     template
       .aliases().asSafeMap
-      .filter { case (name, _) => aliasesStrings.contains(name) }
+      .filter { case (name, _) => IndexName.fromString(name).exists(i => aliasesStrings.contains(i)) }
       .asJava
   }
 

@@ -140,7 +140,7 @@ private[types] object GetTemplatesEsRequestContext extends Logging {
       metadata.name(),
       metadata.order(),
       metadata.version(),
-      basedOn.patterns.toList.map(_.value.value).asJava,
+      basedOn.patterns.toList.map(_.value.stringify).asJava,
       metadata.settings(),
       metadata.mappings(),
       filterAliases(metadata, basedOn)
@@ -152,7 +152,7 @@ private[types] object GetTemplatesEsRequestContext extends Logging {
     val filteredAliasesMap =
       metadata
         .aliases().asSafeValues
-        .filter { a => aliasesStrings.contains(a.alias()) }
+        .filter { a => IndexName.fromString(a.alias()).exists(i => aliasesStrings.contains(i)) }
         .map(a => (a.alias(), a))
         .toMap
     new ImmutableOpenMap.Builder[String, AliasMetadata]()

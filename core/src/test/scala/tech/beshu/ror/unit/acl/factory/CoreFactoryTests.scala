@@ -494,7 +494,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
     factory
       .createCoreFrom(
         config,
-        RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
+        RorConfigurationIndex(IndexName.unsafeFromString(".readonlyrest")),
         clientsFactory,
         MockLdapConnectionPoolProvider
       )

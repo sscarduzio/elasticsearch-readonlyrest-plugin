@@ -22,20 +22,22 @@ import cats.implicits._
 import cats.{Monoid, Show}
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
+import monix.eval.Task
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.domain.ClusterAwareIndexName.{ClusterName, FullRemoteIndexWithAliases}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.language.implicitConversions
-import tech.beshu.ror.utils.ScalaOps._
 
 trait RequestContext {
 
@@ -68,6 +70,8 @@ trait RequestContext {
   def content: String
 
   def allIndicesAndAliases: Set[IndexWithAliases]
+
+  def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]]
 
   def allTemplates: Set[Template]
 

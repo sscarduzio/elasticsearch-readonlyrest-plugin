@@ -140,7 +140,7 @@ private[types] object GetComposableIndexTemplateEsRequestContext extends Logging
   private def filterMetadataData(composableIndexTemplate: ComposableIndexTemplate, basedOn: IndexTemplate) = {
     composableIndexTemplate.composedOf()
     new ComposableIndexTemplate(
-      basedOn.patterns.toList.map(_.value.value).asJava,
+      basedOn.patterns.toList.map(_.value.stringify).asJava,
       new metadata.Template(
         composableIndexTemplate.template().settings(),
         composableIndexTemplate.template().mappings(),
@@ -159,7 +159,7 @@ private[types] object GetComposableIndexTemplateEsRequestContext extends Logging
     val aliasesStrings = basedOn.aliases.map(_.value.value)
     template
       .aliases().asSafeMap
-      .filter { case (name, _) => aliasesStrings.contains(name) }
+      .filter { case (name, _) => IndexName.fromString(name).exists(i => aliasesStrings.contains(i)) }
       .asJava
   }
 

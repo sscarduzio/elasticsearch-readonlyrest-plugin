@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.matchers.{MatcherWithWildcardsScalaAdapter, 
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 import eu.timepit.refined.auto._
+import tech.beshu.ror.utils.TestsUtils._
 
 class ZeroKnowledgeIndexFilterTests extends AnyWordSpec {
 
@@ -32,26 +33,26 @@ class ZeroKnowledgeIndexFilterTests extends AnyWordSpec {
       val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[IndexName](Sets.newHashSet("a*"))
 
       val res1 = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
-        .check(Set(IndexName("*")), matcher)
-      res1 should be(CheckResult.Ok(Set(IndexName("a*"))))
+        .check(Set(indexName("*")), matcher)
+      res1 should be(CheckResult.Ok(Set(indexName("a*"))))
 
       val res2 = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
-        .check(Set(IndexName("b")), matcher)
+        .check(Set(indexName("b")), matcher)
       res2 should be(CheckResult.Failed)
     }
     "two elements are passed" in {
       val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[IndexName](Sets.newHashSet("a1*"))
 
       val res1 = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
-        .check(Set(IndexName("a*")), matcher)
-      res1 should be(CheckResult.Ok(Set(IndexName("a1*"))))
+        .check(Set(indexName("a*")), matcher)
+      res1 should be(CheckResult.Ok(Set(indexName("a1*"))))
     }
     "two patterns in matcher" in {
       val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[IndexName](Sets.newHashSet("b:*", "a*"))
 
       val res1 = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
-        .check(Set(IndexName("*")), matcher)
-      res1 should be(CheckResult.Ok(Set(IndexName("a*"))))
+        .check(Set(indexName("*")), matcher)
+      res1 should be(CheckResult.Ok(Set(indexName("a*"))))
     }
   }
 }
