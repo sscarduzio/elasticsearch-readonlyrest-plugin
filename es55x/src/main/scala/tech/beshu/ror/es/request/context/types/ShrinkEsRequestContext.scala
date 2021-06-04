@@ -27,6 +27,8 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 
+import scala.collection.JavaConverters._
+
 class ShrinkEsRequestContext(actionRequest: ShrinkRequest,
                              esContext: EsContext,
                              aclContext: AccessControlStaticContext,
@@ -35,7 +37,7 @@ class ShrinkEsRequestContext(actionRequest: ShrinkRequest,
   extends BaseIndicesEsRequestContext[ShrinkRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indicesFrom(request: ShrinkRequest): Set[IndexName] = {
-    (request.getSourceIndex :: request.getShrinkIndexRequest.index() :: Nil)
+    (request.getSourceIndex :: request.getShrinkIndexRequest.index() :: request.getShrinkIndexRequest.aliases().asScala.map(_.name()).toList)
       .flatMap(IndexName.fromString)
       .toSet
   }
