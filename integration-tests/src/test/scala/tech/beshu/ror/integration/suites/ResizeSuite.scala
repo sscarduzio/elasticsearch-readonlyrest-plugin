@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration.suites
 
+import org.apache.http.HttpStatus
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
@@ -35,37 +36,47 @@ trait ResizeSuite
   override implicit val rorConfigFileName = "/resize/readonlyrest.yml"
 
   private lazy val user1IndexManager = new IndexManager(basicAuthClient("dev1", "test"))
+  private lazy val user2IndexManager = new IndexManager(basicAuthClient("dev2", "test"))
+
 
   override def nodeDataInitializer = Some(ResizeSuite.nodeDataInitializer())
 
   "A resize request" should {
     "be able to proceed" when {
-      "user has permission to source index and dest index"  in {
-        val result = user1IndexManager.resize("test1_index", "test1_index_resized")
+      "user has permission to source index and dest index" when {
+        "wildcard is used" in {
+          val result = user2IndexManager.resize("test2_index", "test2_index_resized")
 
-        result.isSuccess should be(true)
+          result.responseCode should be(HttpStatus.SC_OK)
+        }
+
+        "wildcard is not used" in {
+          val result = user1IndexManager.resize("test1_index", "test1_index_resized")
+
+          result.responseCode should be(HttpStatus.SC_OK)
+        }
       }
     }
     "not be able to proceed" when {
       "user has no permission to source index and dest index which are present on ES"  in {
         val result = user1IndexManager.resize("test2_index", "test2_index_resized")
 
-        result.isForbidden should be(true)
+        result.responseCode should be(HttpStatus.SC_UNAUTHORIZED)
       }
       "user has no permission to source index and dest index which are absent on ES"  in {
         val result = user1IndexManager.resize("not_allowed_index", "not_allowed_index_resized")
 
-        result.isForbidden should be(true)
+        result.responseCode should be(HttpStatus.SC_UNAUTHORIZED)
       }
       "user has permission to source index and but no permission to dest index"  in {
         val result = user1IndexManager.resize("test1_index", "not_allowed_index_resized")
 
-        result.isForbidden should be(true)
+        result.responseCode should be(HttpStatus.SC_UNAUTHORIZED)
       }
       "user has permission to dest index and but no permission to source index"  in {
         val result = user1IndexManager.resize("not_allowed_index", "test1_index_resized")
 
-        result.isForbidden should be(true)
+        result.responseCode should be(HttpStatus.SC_UNAUTHORIZED)
       }
     }
   }
@@ -77,35 +88,35 @@ object ResizeSuite {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     val indexManager = new IndexManager(adminRestClient)
 
-    indexManager
-      .createIndex(
-        "test1_index",
-        settings = Some(ujson.read {
-          s"""
-             |{
-             |  "settings": {
-             |    "index": {
-             |      "number_of_shards": 3
-             |    }
-             |  }
-             |}
+    val shardSettings =
+      ujson.read {
+        s"""
+           |{
+           |  "settings": {
+           |    "index": {
+           |      "number_of_shards": 3
+           |    }
+           |  }
+           |}
           """.stripMargin
-        })
-      ).force()
+      }
+
+    val readOnlySetttings =
+      ujson.read {
+        s"""
+           |{
+           |  "settings": {
+           |    "index.blocks.write": true
+           |  }
+           |}
+          """.stripMargin
+      }
+
+    indexManager.createIndex("test1_index", settings = Some(shardSettings)).force()
+    indexManager.createIndex("test2_index", settings = Some(shardSettings)).force()
     documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
-    indexManager
-      .putSettings(
-        "test1_index",
-        settings = ujson.read {
-          s"""
-             |{
-             |  "settings": {
-             |    "index.blocks.write": true
-             |  }
-             |}
-          """.stripMargin
-        }
-      ).force()
+    indexManager.putSettings("test1_index", settings = readOnlySetttings).force()
+    indexManager.putSettings("test2_index", settings = readOnlySetttings).force()
   }
 }

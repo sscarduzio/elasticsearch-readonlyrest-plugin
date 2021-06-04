@@ -27,6 +27,8 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 
+import scala.collection.JavaConverters._
+
 class ResizeEsRequestContext(actionRequest: ResizeRequest,
                              esContext: EsContext,
                              aclContext: AccessControlStaticContext,
@@ -35,7 +37,7 @@ class ResizeEsRequestContext(actionRequest: ResizeRequest,
   extends BaseIndicesEsRequestContext[ResizeRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indicesFrom(request: ResizeRequest): Set[IndexName] = {
-    (request.getSourceIndex :: request.getTargetIndexRequest.index() :: Nil)
+    (request.getSourceIndex :: request.getTargetIndexRequest.index() :: request.getTargetIndexRequest.aliases().asScala.map(_.name()).toList)
       .flatMap(IndexName.fromString)
       .toSet
   }

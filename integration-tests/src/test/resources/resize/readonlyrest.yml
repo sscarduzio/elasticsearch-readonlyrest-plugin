@@ -16,3 +16,7 @@ readonlyrest:
     - name: "test1"
       indices: ["test1_index", "test1_index_resized"]
       auth_key: dev1:test
+
+    - name: "wildcard test"
+      indices: ["test2_*"]
+      auth_key: dev2:test

@@ -169,7 +169,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: ReindexRequest =>
         regularRequestHandler.handle(new ReindexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: ShrinkRequest =>
-        regularRequestHandler.handle(new ResizeEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new ShrinkEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: ClusterRerouteRequest =>
         regularRequestHandler.handle(new ClusterRerouteEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       // rest

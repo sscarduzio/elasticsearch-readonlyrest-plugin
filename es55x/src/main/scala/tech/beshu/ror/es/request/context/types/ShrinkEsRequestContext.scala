@@ -27,7 +27,7 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 
-class ResizeEsRequestContext(actionRequest: ShrinkRequest,
+class ShrinkEsRequestContext(actionRequest: ShrinkRequest,
                              esContext: EsContext,
                              aclContext: AccessControlStaticContext,
                              clusterService: RorClusterService,
