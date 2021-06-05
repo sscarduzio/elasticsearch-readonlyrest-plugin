@@ -191,7 +191,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
   }
 
   private def indexWithAliasesFrom(indexNameString: String, aliasMetadata: Set[AliasMetadata]) = {
-    IndexName
+    IndexName.Local
       .fromString(indexNameString)
       .map { index =>
         (index, aliasMetadata.flatMap(am => IndexName.fromString(am.alias())))

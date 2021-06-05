@@ -19,6 +19,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import java.time.Clock
 
 import cats.data.NonEmptyList
+import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
@@ -26,7 +27,7 @@ import org.scalatest.{BeforeAndAfterAll, Inside, Suite}
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.{CoreSettings, HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.boot.RorMode
@@ -50,7 +51,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
   protected implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
   protected def factory(propertiesProvider: TestsPropertiesProvider = TestsPropertiesProvider.default,
-                        rorMode: RorMode = RorMode.Plugin) = {
+                        rorMode: RorMode = RorMode.Plugin): RawRorConfigBasedCoreFactory = {
     implicit val _ = propertiesProvider
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
@@ -65,7 +66,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
       aFactory
         .createCoreFrom(
           rorConfigFromUnsafe(yaml),
-          RorConfigurationIndex(IndexName.unsafeFromString(".readonlyrest")),
+          RorConfigurationIndex(localIndexName(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider
         )
@@ -86,7 +87,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
       aFactory
         .createCoreFrom(
           rorConfigFromUnsafe(yaml),
-          RorConfigurationIndex(IndexName.unsafeFromString(".readonlyrest")),
+          RorConfigurationIndex(localIndexName(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider
         )

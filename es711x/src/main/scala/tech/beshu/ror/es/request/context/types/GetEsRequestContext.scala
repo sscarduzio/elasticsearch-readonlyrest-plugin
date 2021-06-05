@@ -43,7 +43,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
   override protected def indicesFrom(request: GetRequest): Set[IndexName] = {
-    val indexName = IndexName
+    val indexName = IndexName.Local
       .fromString(request.index())
       .getOrElse {
         throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid")

@@ -34,7 +34,7 @@ class IndexEsRequestContext(actionRequest: IndexRequest,
   extends BaseSingleIndexEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indexFrom(request: IndexRequest): IndexName = {
-    IndexName
+    IndexName.Local
       .fromString(request.index())
       .getOrElse {
         throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid")

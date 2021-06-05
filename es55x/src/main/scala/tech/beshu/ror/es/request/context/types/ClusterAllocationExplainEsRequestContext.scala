@@ -47,7 +47,7 @@ class ClusterAllocationExplainEsRequestContext(actionRequest: ClusterAllocationE
         }
         updateIndexIn(request, filteredIndices.head)
         Modified
-      case None if filteredIndices.exists(_ === IndexName.wildcard) =>
+      case None if filteredIndices.exists(_ === IndexName.Local.wildcard) =>
         Modified
       case None =>
         logger.error(s"[${id.show}] Cluster allocation explain request without index name is unavailable when block contains `indices` rule")

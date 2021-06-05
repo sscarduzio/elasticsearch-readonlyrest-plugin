@@ -48,7 +48,7 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
       logger.debug(s"[${id.show}] Discovered indices: ${indices.map(_.show).mkString(",")}")
       indices
     },
-    Set(IndexName.wildcard),
+    Set(IndexName.Local.wildcard),
   )
 
   override def modifyWhenIndexNotFound: ModificationResult = {

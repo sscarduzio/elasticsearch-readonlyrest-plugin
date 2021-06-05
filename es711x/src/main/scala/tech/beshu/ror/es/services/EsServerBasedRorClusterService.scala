@@ -35,8 +35,8 @@ import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
-import tech.beshu.ror.accesscontrol.domain.ClusterAwareIndexName.{ClusterName, FullRemoteIndexName}
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
+import tech.beshu.ror.accesscontrol.domain.IndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -69,8 +69,8 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .keysIt().asScala
       .flatMap { index =>
         val indexMetaData = indices.get(index)
-        IndexName
-          .fromString(indexMetaData.getIndex.getName)
+        IndexName.Local
+      .fromString(indexMetaData.getIndex.getName)
           .map { indexName =>
             val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.fromString)
             (indexName, aliases)
@@ -80,7 +80,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
   }
 
   // todo: refactoring
-  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Map[FullRemoteIndexName, Set[FullAliasName]]] = {
+  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Map[IndexName.Remote.Full, Set[FullAliasName]]] = {
     val remoteClusterFullNames =
       remoteClusterService
         .getRegisteredRemoteClusterNames.asSafeSet
@@ -113,14 +113,15 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
                 response
                   .getIndices.asSafeList
                   .flatMap { resolvedIndex =>
-                    IndexName.Full
-                      .fromString(resolvedIndex.getName)
+                    IndexName.Remote.Full
+                      // todo: is it ok?
+                      .fromString(s"${remoteClusterFullName.value}:${resolvedIndex.getName}")
                       .map { index =>
                         val aliases = resolvedIndex
                           .getAliases.asSafeList
-                          .flatMap(IndexName.Full.fromString)
+                          .flatMap(IndexName.Local.Full.fromString)
                           .toSet
-                        (FullRemoteIndexName(remoteClusterFullName, index), aliases)
+                        (index, aliases)
                       }
                   }
               }

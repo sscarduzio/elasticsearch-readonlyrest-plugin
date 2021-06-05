@@ -30,7 +30,7 @@ class IndicesListOps(val indices: List[IndexName]) extends AnyVal {
 //        indexName.value.value.replace(":", "_") // we don't want to call remote cluster
 //      )
       case Some(indexName) => indexName.randomNonexistentIndex()
-      case None => IndexName.randomNonexistentIndex()
+      case None => IndexName.Local.randomNonexistentIndex()
     }
   }
 

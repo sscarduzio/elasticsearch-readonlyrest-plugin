@@ -91,7 +91,7 @@ class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorConfigurationIndex)
 private object KibanaRulesDecoderHelper {
   implicit val indexNameConvertible: Convertible[IndexName] = new Convertible[IndexName] {
     override def convert: String => Either[Convertible.ConvertError, IndexName] = str => {
-      IndexName
+      IndexName.Local
         .fromString(str.replace(" ", "_"))
         .toRight(Convertible.ConvertError("Index name cannot be empty"))
     }

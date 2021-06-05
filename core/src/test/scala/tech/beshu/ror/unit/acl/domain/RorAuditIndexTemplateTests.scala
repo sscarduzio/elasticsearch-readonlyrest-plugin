@@ -54,28 +54,28 @@ class RorAuditIndexTemplateTests extends AnyWordSpec with Inside {
         template.conforms(index) should be(true)
       }
       "name has proper date format" in {
-        template.conforms(indexName(".ror_2020_01")) should be(true)
+        template.conforms(localIndexName(".ror_2020_01")) should be(true)
       }
       "name started the same as template" in {
-        template.conforms(indexName(".ror*")) should be(true)
+        template.conforms(localIndexName(".ror*")) should be(true)
       }
       "is wildcard" in {
-        template.conforms(indexName("*")) should be(true)
+        template.conforms(localIndexName("*")) should be(true)
       }
       "name is exactly the same as template (no date pattern used)" in {
         val noDatePatternTemplate = RorAuditIndexTemplate.from("'.ror'").right.get
-        noDatePatternTemplate.conforms(indexName(".ror")) should be(true)
+        noDatePatternTemplate.conforms(localIndexName(".ror")) should be(true)
       }
     }
     "not conform to index" which {
       "name contains wildcard, but the pattern doesn't apply" in {
-        template.conforms(indexName("ror*")) should be(false)
+        template.conforms(localIndexName("ror*")) should be(false)
       }
       "name is the same as fixed part of template" in {
-        template.conforms(indexName(".ror_")) should be(false)
+        template.conforms(localIndexName(".ror_")) should be(false)
       }
       "name totally differs" in {
-        template.conforms(indexName("other")) should be(false)
+        template.conforms(localIndexName("other")) should be(false)
       }
     }
   }

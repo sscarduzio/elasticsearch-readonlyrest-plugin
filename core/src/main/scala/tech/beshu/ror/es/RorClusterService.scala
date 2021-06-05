@@ -18,7 +18,7 @@ package tech.beshu.ror.es
 
 import cats.data.NonEmptyList
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.ClusterAwareIndexName.{ClusterName, FullRemoteIndexName}
+import tech.beshu.ror.accesscontrol.domain.IndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -30,7 +30,7 @@ trait RorClusterService {
 
   def allIndicesAndAliases: Map[IndexName, Set[AliasName]]
 
-  def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Map[FullRemoteIndexName, Set[FullAliasName]]]
+  def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Map[IndexName.Remote.Full, Set[FullAliasName]]]
 
   def allTemplates: Set[Template]
 
@@ -57,6 +57,6 @@ object RorClusterService {
   type Document = DocumentWithIndex
   type DocumentsAccessibilities = Map[DocumentWithIndex, DocumentAccessibility]
   type AliasName = IndexName
-  type FullAliasName = IndexName.Full
+  type FullAliasName = IndexName.Local.Full
   type IndexUuid = String
 }

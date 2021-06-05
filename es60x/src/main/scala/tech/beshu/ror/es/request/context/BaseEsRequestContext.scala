@@ -149,7 +149,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
   override val hasRemoteClusters: Boolean = esContext.crossClusterSearchEnabled
 
   protected def indicesOrWildcard(indices: Set[IndexName]): Set[IndexName] = {
-    if (indices.nonEmpty) indices else Set(IndexName.wildcard)
+    if (indices.nonEmpty) indices else Set(IndexName.Local.wildcard)
   }
 
   protected def repositoriesOrWildcard(repositories: Set[RepositoryName]): Set[RepositoryName] = {

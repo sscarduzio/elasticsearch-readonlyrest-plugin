@@ -161,7 +161,11 @@ class IndicesRule(override val settings: Settings,
                 narrowedIndices
             }
           }
-        requestContext.allRemoteIndicesAndAliases(???) // todo:
+//        requestContext
+//          .allRemoteIndicesAndAliases(???)
+//          .map {_.map(s =>
+//            s.index
+//          )}
         // Run the remote algorithm (without knowing the remote list of indices)
         val allProcessedIndices = zKindexFilter.check(crossClusterIndices, indicesMatcher.availableIndicesMatcher) match {
           case CheckResult.Ok(processedIndices) => processedIndices ++ processedLocalIndices
@@ -209,7 +213,7 @@ class IndicesRule(override val settings: Settings,
                                matcher: IndicesMatcher): CheckContinuation[Set[IndexName]] = {
     logger.debug(s"[${requestContext.id.show}] Checking - none or all indices ...")
     val allIndicesAndAliases = requestContext.allIndicesAndAliases.flatMap(_.all)
-    if (indices.isEmpty || indices.contains(IndexName.all) || indices.contains(IndexName.wildcard)) {
+    if (indices.isEmpty || indices.contains(IndexName.Local.all) || indices.contains(IndexName.Local.wildcard)) {
       val allowedIdxs = matcher.filterIndices(allIndicesAndAliases)
       stop(
         if (allowedIdxs.nonEmpty) CanPass.Yes(allowedIdxs)
@@ -347,7 +351,7 @@ class IndicesRule(override val settings: Settings,
   }
 
   private val matchAll = settings.allowedIndices.exists {
-    case AlreadyResolved(indices) if indices.contains_(IndexName.`wildcard`) => true
+    case AlreadyResolved(indices) if indices.contains_(IndexName.Local.`wildcard`) => true
     case _ => false
   }
 

@@ -100,7 +100,7 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
   }
 
   private def isAllowed(aliasOrIndex: String, allowedIndices: NonEmptyList[IndexName]) = {
-    val resolvedAliasOrIndexName = IndexName.unsafeFromString(aliasOrIndex)
+    val resolvedAliasOrIndexName = IndexName.Local.unsafeFromString(aliasOrIndex)
     allowedIndices.exists(_.matches(resolvedAliasOrIndexName))
   }
 

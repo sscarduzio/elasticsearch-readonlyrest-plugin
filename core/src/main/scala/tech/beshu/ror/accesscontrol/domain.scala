@@ -302,123 +302,167 @@ object domain {
     implicit val caseMappingEqualityAction: CaseMappingEquality[Action] = CaseMappingEquality.instance(_.value, identity)
   }
 
-  sealed trait ClusterAwareIndexName
-  object ClusterAwareIndexName {
-    final case class Local(indexName: IndexName) extends ClusterAwareIndexName
-    final case class Remote(clusterName: ClusterName, indexName: IndexName) extends ClusterAwareIndexName
+//  sealed trait ClusterAwareIndexName
+//  object ClusterAwareIndexName {
+//    final case class Local(indexName: IndexName) extends ClusterAwareIndexName
+//    final case class Remote(clusterName: ClusterName, indexName: IndexName) extends ClusterAwareIndexName
+//
+    final case class FullRemoteIndexWithAliases(index: IndexName.Remote.Full, aliases: Set[IndexName.Local.Full])
+//
+//    // todo:
+//    //    def fromString(value: String): Option[IndexName] = {
+//    //      val indexName = value.splitBy(":") match {
+//    //        case (indexNameStr, None) =>
+//    //          NonEmptyString
+//    //            .unapply(indexNameStr)
+//    //            .map {
+//    //              case str if str.contains("*") => IndexName.Local.Wildcard(str)
+//    //              case str => IndexName.Local.Full(str)
+//    //            }
+//    //        case (clusterNameStr, Some(indexNameStr)) =>
+//    //          for {
+//    //            remoteClusterName <- Remote.ClusterName.fromString(clusterNameStr)
+//    //            indexName <- NonEmptyString
+//    //              .unapply(indexNameStr)
+//    //              .map {
+//    //                case str if str.contains("*") => IndexName.Remote.Wildcard(remoteClusterName, str)
+//    //                case str => IndexName.Remote.Full(remoteClusterName, str)
+//    //              }
+//    //          } yield indexName
+//    //      }
+//    //      indexName match {
+//    //        case Some(i) if i == all => Some(wildcard)
+//    //        case i => i
+//    //      }
+//    //    }
+//  }
 
-    sealed trait ClusterName
-    object ClusterName {
-      final case class Full private(value: NonEmptyString) extends ClusterName
+  sealed trait IndexName
+  object IndexName {
+
+    sealed trait Local extends IndexName
+    object Local {
+      final case class Full private(name: NonEmptyString)
+        extends Local
       object Full {
         def fromString(value: String): Option[Full] =
           NonEmptyString.unapply(value).map(Full.apply)
       }
 
-      final case class Wildcard private(value: NonEmptyString) extends ClusterName
+      final case class Wildcard private(name: NonEmptyString)
+        extends Local
       object Wildcard {
         def fromString(value: String): Option[Wildcard] =
-          NonEmptyString.unapply(value).flatMap {
-            case str if str.contains("*") => Some(ClusterName.Wildcard(str))
-            case _ => None
-          }
+          NonEmptyString
+            .unapply(value)
+            .flatMap {
+              case str if str.contains("*") => Some(Wildcard(str))
+              case _ => None
+            }
       }
 
-      def fromString(value: String): Option[ClusterName] = {
-        Wildcard.fromString(value) orElse Full.fromString(value)
+      val wildcard: IndexName.Local = IndexName.Local.Wildcard("*")
+      val all: IndexName.Local = IndexName.Local.Full("_all")
+      val devNullKibana: IndexName.Local = IndexName.Local.Full(".kibana-devnull")
+      val kibana: IndexName.Local = IndexName.Local.Full(".kibana")
+
+      def fromString(value: String): Option[IndexName.Local] = {
+        Wildcard.fromString(value) orElse Full.fromString(value) match {
+          case Some(i) if i == all => Some(wildcard)
+          case i => i
+        }
       }
 
-      implicit val caseMappingEqualityAction: CaseMappingEquality[ClusterName] =
-        CaseMappingEquality.instance(
-          {
+      def randomNonexistentIndex(prefix: String = ""): IndexName.Local = fromString {
+        val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i}_").getOrElse("")}ROR_${Random.alphanumeric.take(10).mkString("")}"
+        if (prefix.contains("*")) s"$nonexistentIndex*"
+        else nonexistentIndex
+      } get
+
+    }
+
+    sealed trait Remote extends IndexName
+    object Remote {
+      sealed trait ClusterName
+      object ClusterName {
+        final case class Full private(value: NonEmptyString) extends ClusterName
+        object Full {
+          def fromString(value: String): Option[Full] =
+            NonEmptyString.unapply(value).map(Full.apply)
+        }
+
+        final case class Wildcard private(value: NonEmptyString) extends ClusterName
+        object Wildcard {
+          def fromString(value: String): Option[Wildcard] =
+            NonEmptyString.unapply(value).flatMap {
+              case str if str.contains("*") => Some(ClusterName.Wildcard(str))
+              case _ => None
+            }
+        }
+
+        def fromString(value: String): Option[ClusterName] = {
+          Wildcard.fromString(value) orElse Full.fromString(value)
+        }
+
+        implicit val caseMappingEqualityAction: CaseMappingEquality[ClusterName] =
+          CaseMappingEquality.instance(_.stringify, identity)
+
+        implicit class Stringify(val clusterName: ClusterName) extends AnyVal {
+          def stringify: String = clusterName match {
             case Full(value) => value
             case Wildcard(value) => value
-          },
-          identity
-        )
-    }
-
-    final case class FullRemoteIndexName(clusterName: ClusterName.Full, indexName: IndexName.Full)
-    final case class FullRemoteIndexWithAliases(index: FullRemoteIndexName, aliases: Set[IndexName.Full])
-
-    // todo:
-    //    def fromString(value: String): Option[IndexName] = {
-    //      val indexName = value.splitBy(":") match {
-    //        case (indexNameStr, None) =>
-    //          NonEmptyString
-    //            .unapply(indexNameStr)
-    //            .map {
-    //              case str if str.contains("*") => IndexName.Local.Wildcard(str)
-    //              case str => IndexName.Local.Full(str)
-    //            }
-    //        case (clusterNameStr, Some(indexNameStr)) =>
-    //          for {
-    //            remoteClusterName <- Remote.ClusterName.fromString(clusterNameStr)
-    //            indexName <- NonEmptyString
-    //              .unapply(indexNameStr)
-    //              .map {
-    //                case str if str.contains("*") => IndexName.Remote.Wildcard(remoteClusterName, str)
-    //                case str => IndexName.Remote.Full(remoteClusterName, str)
-    //              }
-    //          } yield indexName
-    //      }
-    //      indexName match {
-    //        case Some(i) if i == all => Some(wildcard)
-    //        case i => i
-    //      }
-    //    }
-  }
-
-  sealed trait IndexName
-  object IndexName {
-
-    final case class Full private(name: NonEmptyString)
-      extends IndexName
-    object Full {
-      def fromString(value: String): Option[Full] =
-        NonEmptyString.unapply(value).map(Full.apply)
-    }
-
-    final case class Wildcard private(name: NonEmptyString)
-      extends IndexName
-    object Wildcard {
-      def fromString(value: String): Option[Wildcard] =
-        NonEmptyString
-          .unapply(value)
-          .flatMap {
-            case str if str.contains("*") => Some(Wildcard(str))
-            case _ => None
           }
-    }
+        }
+      }
 
-    val wildcard: IndexName = IndexName.Wildcard("*")
-    val all: IndexName = IndexName.Full("_all")
-    val devNullKibana: IndexName = IndexName.Full(".kibana-devnull")
-    val kibana: IndexName = IndexName.Full(".kibana")
+      final case class Full private(name: NonEmptyString, cluster: ClusterName)
+        extends Remote
+      object Full {
+        def fromString(value: String): Option[Full] = {
+          value.splitBy(":") match {
+            case (_, None) =>
+              None
+            case (clusterPart, Some(indexNamePart)) =>
+              for {
+                cluster <- ClusterName.fromString(clusterPart)
+                index <- NonEmptyString.unapply(indexNamePart)
+              } yield Full(index, cluster)
+          }
+        }
+      }
+
+      final case class Wildcard private(name: NonEmptyString, cluster: ClusterName)
+        extends Remote
+      object Wildcard {
+        def fromString(value: String): Option[Wildcard] = {
+          value.splitBy(":") match {
+            case (_, None) =>
+              None
+            case (_, Some(indexNamePart)) if !indexNamePart.contains("*") =>
+              None
+            case (clusterPart, Some(indexNamePart)) =>
+              for {
+                cluster <- ClusterName.fromString(clusterPart)
+                index <- NonEmptyString.unapply(indexNamePart)
+              } yield Wildcard(index, cluster)
+          }
+        }
+      }
+
+      def fromString(value: String): Option[IndexName.Remote] = {
+        Wildcard.fromString(value) orElse Full.fromString(value)
+      }
+    }
 
     def fromString(value: String): Option[IndexName] = {
-      Wildcard.fromString(value) orElse Full.fromString(value) match {
-        case Some(i) if i == all => Some(wildcard)
-        case i => i
-      }
+      Remote.fromString(value) orElse Local.fromString(value)
     }
 
     def unsafeFromString(value: String): IndexName =
       fromString(value).getOrElse(throw new IllegalStateException(s"Cannot create an index name from '$value'"))
 
-    def randomNonexistentIndex(prefix: String = ""): IndexName = fromString {
-      val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i}_").getOrElse("")}ROR_${Random.alphanumeric.take(10).mkString("")}"
-      if (prefix.contains("*")) s"$nonexistentIndex*"
-      else nonexistentIndex
-    } get
-
-    implicit val caseMappingEqualityIndexName: CaseMappingEquality[IndexName] = CaseMappingEquality.instance(
-      {
-        case lf: IndexName.Full => lf.name.value
-        case lw: IndexName.Wildcard => lw.name.value
-      },
-      identity
-    )
+    implicit val caseMappingEqualityIndexName: CaseMappingEquality[IndexName] =
+      CaseMappingEquality.instance(_.stringify, identity)
 
     implicit val eqIndexName: Eq[IndexName] = Eq.fromUniversalEquals
 
@@ -426,33 +470,52 @@ object domain {
       private lazy val matcher = MatcherWithWildcardsScalaAdapter.create(indexName :: Nil)
 
       def matches(otherIndexName: IndexName): Boolean = indexName match {
-        case IndexName.Full(_) => indexName == otherIndexName
-        case IndexName.Wildcard(_) => matcher.`match`(otherIndexName)
+        case IndexName.Local.Full(_) => indexName == otherIndexName
+        case IndexName.Remote.Full(_, _) => indexName == otherIndexName
+        case IndexName.Local.Wildcard(_) => matcher.`match`(otherIndexName)
+        case IndexName.Remote.Wildcard(_, _) => matcher.`match`(otherIndexName)
       }
     }
 
     implicit class RandomNonexistentIndex(val base: IndexName) extends AnyVal {
       def randomNonexistentIndex(): IndexName = base match {
-        case Full(name) => IndexName.randomNonexistentIndex(name)
-        case Wildcard(name) => IndexName.randomNonexistentIndex(name)
+        case Local.Full(name) => IndexName.Local.randomNonexistentIndex(name)
+        case Local.Wildcard(name) => IndexName.Local.randomNonexistentIndex(name)
+        // todo: is it ok?
+        case Remote.Full(name, _) => IndexName.Local.randomNonexistentIndex(name)
+        case Remote.Wildcard(name, _) => IndexName.Local.randomNonexistentIndex(name)
       }
     }
 
     implicit class Stringify(val indexName: IndexName) extends AnyVal {
       def stringify: String = indexName match {
-        case Full(name) => name
-        case Wildcard(name) => name
+        case Local.Full(name) => name
+        case Local.Wildcard(name) => name
+        case Remote.Full(name, cluster) => s"${cluster.stringify}:$name"
+        case Remote.Wildcard(name, cluster) => s"${cluster.stringify}:$name"
       }
 
       def nonEmptyStringify: NonEmptyString = indexName match {
-        case Full(name) => name
-        case Wildcard(name) => name
+        case Local.Full(name) => name
+        case Local.Wildcard(name) => name
+        case Remote.Full(name, cluster) => NonEmptyString.unsafeFrom(s"${cluster.stringify}:$name")
+        case Remote.Wildcard(name, cluster) => NonEmptyString.unsafeFrom(s"${cluster.stringify}:$name")
+      }
+    }
+
+    implicit class OnlyIndexName(val remoteIndexName: IndexName.Remote) extends AnyVal {
+      def onlyIndexName: NonEmptyString = remoteIndexName match {
+        case Remote.Full(name, _) => name
+        case Remote.Wildcard(name, _) => name
       }
     }
 
     implicit class HasPrefix(val indexName: IndexName) extends AnyVal {
       def hasPrefix(prefix: String): Boolean = {
-        indexName.stringify.startsWith(prefix)
+        indexName match {
+          case local: Local => local.stringify.startsWith(prefix)
+          case remote: Remote => remote.onlyIndexName.startsWith(prefix)
+        }
       }
     }
 
@@ -470,14 +533,19 @@ object domain {
 
     implicit class HasWildcard(val indexName: IndexName) extends AnyVal {
       def hasWildcard: Boolean = indexName match {
-        case Full(_) => false
-        case Wildcard(_) => true
+        case Local.Full(_) => false
+        case Local.Wildcard(_) => true
+        case Remote.Full(_, _) => false
+        case Remote.Wildcard(_, _) => false
       }
     }
 
     // todo: to remove
     implicit class IsClusterIndex(val indexName: IndexName) extends AnyVal {
-      def isClusterIndex: Boolean = indexName.stringify.contains(":")
+      def isClusterIndex: Boolean = indexName match {
+        case _: Local => false
+        case _: Remote => true
+      }
     }
   }
 
@@ -549,10 +617,18 @@ object domain {
 
   final case class AliasPlaceholder private(alias: IndexName) extends AnyVal {
     def index(value: NonEmptyString): IndexName = alias match {
-      case IndexName.Full(name) =>
-        IndexName.Full(NonEmptyString.unsafeFrom(name.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)))
-      case IndexName.Wildcard(name) =>
-        IndexName.Wildcard(NonEmptyString.unsafeFrom(name.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)))
+      case IndexName.Local.Full(_) =>
+        val replaced = alias.stringify.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)
+        IndexName.Local.Full(NonEmptyString.unsafeFrom(replaced))
+      case IndexName.Local.Wildcard(_) =>
+        val replaced = alias.stringify.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)
+        IndexName.Local.Wildcard(NonEmptyString.unsafeFrom(replaced))
+      case i@IndexName.Remote.Full(_, _) =>
+        val replaced = i.onlyIndexName.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)
+        IndexName.Local.Full(NonEmptyString.unsafeFrom(replaced))
+      case i@IndexName.Remote.Wildcard(_, _) =>
+        val replaced = i.onlyIndexName.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)
+        IndexName.Local.Wildcard(NonEmptyString.unsafeFrom(replaced))
     }
   }
   object AliasPlaceholder {
@@ -560,10 +636,10 @@ object domain {
     private val escapedPlaceholder = placeholder.replaceAllLiterally("{", "\\{").replaceAllLiterally("}", "\\}")
 
     def from(alias: IndexName): Option[AliasPlaceholder] = alias match {
-      case IndexName.Full(name) if name.contains(placeholder) => Some(AliasPlaceholder(alias))
-      case IndexName.Full(_) => None
-      case IndexName.Wildcard(name) if name.contains(placeholder) => Some(AliasPlaceholder(alias))
-      case IndexName.Wildcard(_) => None
+      case IndexName.Local.Full(name) if name.contains(placeholder) => Some(AliasPlaceholder(alias))
+      case IndexName.Local.Full(_) => None
+      case IndexName.Local.Wildcard(name) if name.contains(placeholder) => Some(AliasPlaceholder(alias))
+      case IndexName.Local.Wildcard(_) => None
     }
   }
 
@@ -580,16 +656,16 @@ object domain {
   final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
                                             rawPattern: String) {
 
-    def indexName(instant: Instant): IndexName.Full = {
-      IndexName.Full(NonEmptyString.unsafeFrom(nameFormatter.format(instant)))
+    def indexName(instant: Instant): IndexName.Local.Full = {
+      IndexName.Local.Full(NonEmptyString.unsafeFrom(nameFormatter.format(instant)))
     }
 
-    def conforms(index: IndexName): Boolean = {
+    def conforms(index: IndexName.Local): Boolean = {
       index match {
-        case IndexName.Full(name) =>
+        case IndexName.Local.Full(name) =>
           Try(nameFormatter.parse(name.value.value)).isSuccess
-        case IndexName.Wildcard(_) =>
-          IndexName
+        case IndexName.Local.Wildcard(_) =>
+          IndexName.Local
             .fromString(rawPattern)
             .exists { i =>
               IndicesMatcher

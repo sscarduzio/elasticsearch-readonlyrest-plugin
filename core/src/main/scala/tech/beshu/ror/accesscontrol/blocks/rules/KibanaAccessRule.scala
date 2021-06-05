@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.KibanaAccessRule._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.IndexName.devNullKibana
+import tech.beshu.ror.accesscontrol.domain.IndexName.Local.devNullKibana
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
@@ -77,7 +77,7 @@ class KibanaAccessRule(val settings: Settings)
   }
 
   private def determineKibanaIndex(blockContext: BlockContext) = {
-    blockContext.userMetadata.kibanaIndex.getOrElse(IndexName.kibana)
+    blockContext.userMetadata.kibanaIndex.getOrElse(IndexName.Local.kibana)
   }
 
   private def continueProcessing[B <: BlockContext : BlockContextUpdater](blockContext: B,
