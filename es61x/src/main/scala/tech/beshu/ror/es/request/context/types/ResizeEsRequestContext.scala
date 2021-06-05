@@ -52,13 +52,7 @@ class ResizeEsRequestContext(actionRequest: ResizeRequest,
     if (isSourceIndexOnFilteredIndicesList && isTargetIndexOnFilteredIndicesList) {
       Modified
     } else {
-      if (!isSourceIndexOnFilteredIndicesList) {
-        logger.info(s"[${id.show}] Source index ResizeRequest forbidden")
-      }
-      if (!isTargetIndexOnFilteredIndicesList) {
-        logger.info(s"[${id.show}] Target index ResizeRequest forbidden")
-      }
-      ShouldBeInterrupted
+      throw new IllegalStateException("update method should not be called when not all indices are allowed")
     }
   }
 }

@@ -52,13 +52,7 @@ class ShrinkEsRequestContext(actionRequest: ShrinkRequest,
     if (isSourceIndexOnFilteredIndicesList && isTargetIndexOnFilteredIndicesList) {
       Modified
     } else {
-      if (!isSourceIndexOnFilteredIndicesList) {
-        logger.info(s"[${id.show}] Source index ShrinkRequest forbidden")
-      }
-      if (!isTargetIndexOnFilteredIndicesList) {
-        logger.info(s"[${id.show}] Target index ShrinkRequest forbidden")
-      }
-      ShouldBeInterrupted
+      throw new IllegalStateException("update method should not be called when not all indices are allowed")
     }
   }
 }
