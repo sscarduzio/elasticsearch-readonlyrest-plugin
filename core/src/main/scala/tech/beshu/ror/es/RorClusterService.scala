@@ -28,9 +28,9 @@ trait RorClusterService {
 
   def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid]
 
-  def allIndicesAndAliases: Map[IndexName, Set[AliasName]]
+  def allIndicesAndAliases: Map[IndexName.Local, Set[AliasName]]
 
-  def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Map[IndexName.Remote.Full, Set[FullAliasName]]]
+  def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Map[IndexName.Remote.Full, Set[FullRemoteAliasName]]]
 
   def allTemplates: Set[Template]
 
@@ -45,7 +45,7 @@ trait RorClusterService {
                                      id: RequestContext.Id): Task[DocumentsAccessibilities]
 
   def expandIndices(indices: Set[IndexName]): Set[IndexName] = {
-    val all = allIndicesAndAliases
+    val all: Set[IndexName] = allIndicesAndAliases
       .flatMap { case (indexName, aliases) => aliases + indexName }
       .toSet
     MatcherWithWildcardsScalaAdapter.create(indices).filter(all)
@@ -56,7 +56,8 @@ object RorClusterService {
   type IndexOrAlias = IndexName
   type Document = DocumentWithIndex
   type DocumentsAccessibilities = Map[DocumentWithIndex, DocumentAccessibility]
-  type AliasName = IndexName
+  type AliasName = IndexName.Local
   type FullAliasName = IndexName.Local.Full
+  type FullRemoteAliasName = IndexName.Remote.Full
   type IndexUuid = String
 }

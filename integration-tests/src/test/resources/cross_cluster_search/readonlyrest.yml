@@ -31,7 +31,7 @@ readonlyrest:
       type: forbid
       auth_key: test:test
       indices:
-        patterns: ["*-logs-smg-stats-*"]
+        patterns: ["*-logs-smg-stats-*", "*:*-logs-smg-stats-*"]
         must_involve_indices: true
 
     - name: "test user"

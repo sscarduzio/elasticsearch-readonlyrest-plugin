@@ -22,6 +22,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
@@ -37,6 +38,7 @@ import tech.beshu.ror.accesscontrol.matchers.RandomBasedUniqueIdentifierGenerato
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.accesscontrol.domain.IndexName.Remote
 import tech.beshu.ror.accesscontrol.domain.Template.{ComponentTemplate, IndexTemplate, LegacyTemplate}
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation._
 import tech.beshu.ror.accesscontrol.domain._
@@ -54,7 +56,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           configured = NonEmptySet.of(indexNameVar("test")),
           requestIndices = Set.empty,
           modifyRequestContext = _.copy(
-            allIndicesAndAliases = Set(IndexWithAliases(indexName("test"), Set.empty))
+            allIndicesAndAliases = Set(IndexWithAliases(localIndexName("test"), Set.empty))
           ),
           found = Set(indexName("test")),
         )
@@ -64,7 +66,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           configured = NonEmptySet.of(indexNameVar("test")),
           requestIndices = Set(indexName("_all")),
           modifyRequestContext = _.copy(
-            allIndicesAndAliases = Set(IndexWithAliases(indexName("test"), Set.empty))
+            allIndicesAndAliases = Set(IndexWithAliases(localIndexName("test"), Set.empty))
           ),
           found = Set(indexName("test"))
         )
@@ -74,7 +76,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           configured = NonEmptySet.of(indexNameVar("test")),
           requestIndices = Set(indexName("*")),
           modifyRequestContext = _.copy(
-            allIndicesAndAliases = Set(IndexWithAliases(indexName("test"), Set.empty))
+            allIndicesAndAliases = Set(IndexWithAliases(localIndexName("test"), Set.empty))
           ),
           found = Set(indexName("test"))
         )
@@ -91,7 +93,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           configured = NonEmptySet.of(indexNameVar("test")),
           requestIndices = Set(indexName("te*")),
           modifyRequestContext = _.copy(
-            allIndicesAndAliases = Set(IndexWithAliases(indexName("test"), Set.empty)),
+            allIndicesAndAliases = Set(IndexWithAliases(localIndexName("test"), Set.empty)),
           ),
           found = Set(indexName("test"))
         )
@@ -150,7 +152,9 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           configured = NonEmptySet.of(indexNameVar("test-index")),
           requestIndices = Set(indexName("test-alias")),
           modifyRequestContext = _.copy(
-            allIndicesAndAliases = Set(IndexWithAliases(indexName("test-index"), Set(indexName("test-alias"))))
+            allIndicesAndAliases = Set(
+              IndexWithAliases(localIndexName("test-index"), Set(localIndexName("test-alias")))
+            )
           ),
           found = Set(indexName("test-index"))
         )
@@ -160,7 +164,9 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           configured = NonEmptySet.of(indexNameVar("test-index")),
           requestIndices = Set(indexName("*-alias")),
           modifyRequestContext = _.copy(
-            allIndicesAndAliases = Set(IndexWithAliases(indexName("test-index"), Set(indexName("test-alias"))))
+            allIndicesAndAliases = Set(
+              IndexWithAliases(localIndexName("test-index"), Set(localIndexName("test-alias")))
+            )
           ),
           found = Set(indexName("test-index"))
         )
@@ -170,7 +176,9 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           configured = NonEmptySet.of(indexNameVar("*-index")),
           requestIndices = Set(indexName("test-alias")),
           modifyRequestContext = _.copy(
-            allIndicesAndAliases = Set(IndexWithAliases(indexName("test-index"), Set(indexName("test-alias"))))
+            allIndicesAndAliases = Set(
+              IndexWithAliases(localIndexName("test-index"), Set(localIndexName("test-alias")))
+            )
           ),
           found = Set(indexName("test-index"))
         )
@@ -181,10 +189,10 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           requestIndices = Set(indexName("test-alias")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set(
-              IndexWithAliases(indexName("test-index1"), Set(indexName("test-alias"))),
-              IndexWithAliases(indexName("test-index2"), Set(indexName("test-alias"))),
-              IndexWithAliases(indexName("test-index3"), Set(indexName("test-alias"))),
-              IndexWithAliases(indexName("test-index4"), Set(indexName("test-alias")))
+              IndexWithAliases(localIndexName("test-index1"), Set(localIndexName("test-alias"))),
+              IndexWithAliases(localIndexName("test-index2"), Set(localIndexName("test-alias"))),
+              IndexWithAliases(localIndexName("test-index3"), Set(localIndexName("test-alias"))),
+              IndexWithAliases(localIndexName("test-index4"), Set(localIndexName("test-alias")))
             )
           ),
           found = Set(indexName("test-index1"), indexName("test-index2"))
@@ -196,9 +204,9 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           requestIndices = Set(indexName("local_index*"), indexName("odd:test1_index*")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set(
-              IndexWithAliases(indexName("local_index1"), Set.empty),
-              IndexWithAliases(indexName("local_index2"), Set.empty),
-              IndexWithAliases(indexName("other"), Set.empty)
+              IndexWithAliases(localIndexName("local_index1"), Set.empty),
+              IndexWithAliases(localIndexName("local_index2"), Set.empty),
+              IndexWithAliases(localIndexName("other"), Set.empty)
             )
           ),
           found = Set(
@@ -277,8 +285,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           requestIndices = Set(indexName("test-alias")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set(
-              IndexWithAliases(indexName("test-index"), Set.empty),
-              IndexWithAliases(indexName("test-index2"), Set(indexName("test-alias")))
+              IndexWithAliases(localIndexName("test-index"), Set.empty),
+              IndexWithAliases(localIndexName("test-index2"), Set(localIndexName("test-alias")))
             )
           )
         )
@@ -289,8 +297,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           requestIndices = Set(indexName("*-alias")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set(
-              IndexWithAliases(indexName("test-index"), Set.empty),
-              IndexWithAliases(indexName("test-index2"), Set(indexName("test-alias")))
+              IndexWithAliases(localIndexName("test-index"), Set.empty),
+              IndexWithAliases(localIndexName("test-index2"), Set(localIndexName("test-alias")))
             )
           )
         )
@@ -301,14 +309,62 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           requestIndices = Set(indexName("test-index1")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set(
-              IndexWithAliases(indexName("test-index1"), Set(indexName("test12-alias"))),
-              IndexWithAliases(indexName("test-index2"), Set(indexName("test12-alias"))),
-              IndexWithAliases(indexName("test-index3"), Set(indexName("test34-alias"))),
-              IndexWithAliases(indexName("test-index4"), Set(indexName("test34-alias")))
+              IndexWithAliases(localIndexName("test-index1"), Set(localIndexName("test12-alias"))),
+              IndexWithAliases(localIndexName("test-index2"), Set(localIndexName("test12-alias"))),
+              IndexWithAliases(localIndexName("test-index3"), Set(localIndexName("test34-alias"))),
+              IndexWithAliases(localIndexName("test-index4"), Set(localIndexName("test34-alias")))
             )
           )
         )
       }
+    }
+  }
+
+  "An IndicesRule for request with remote indices" should {
+    "match" when {
+//      val userTestSearchManager = new SearchManager(basicAuthClient("test", "test"))
+//
+//      //      val result1 = userTestSearchManager.asyncSearch("*-logs-smg-stats-*")
+//      //      val result2 = userTestSearchManager.asyncSearch("*:*-logs-smg-stats-*")
+//      //      val result3 = userTestSearchManager.asyncSearch("*-logs-smg-*")
+//      val result4 = userTestSearchManager.asyncSearch("*:*-logs-smg-*")
+//
+//      //      if(result1.isSuccess) {
+//      //        println(s"R1: ${result1.responseJson.toString()}")
+//      //      }
+//      //      if(result2.isSuccess) {
+//      //        println(s"R2: ${result2.responseJson.toString()}")
+//      //      }
+//      //      if(result3.isSuccess) {
+//      //        println(s"R3: ${result3.responseJson.toString()}")
+//      //      }
+//      if(result4.isSuccess) {
+//        println(s"R4: ${result4.responseJson.toString()}")
+//      }
+
+//      documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-27",  ujson.read("""{"counter1":"50"}""")).force()
+//      documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-28",  ujson.read("""{"counter1":"50"}""")).force()
+//      documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-29",  ujson.read("""{"counter1":"50"}""")).force()
+      "test" in {
+        assertMatchRuleForIndexRequest(
+          configured = NonEmptySet.of(indexNameVar("*-logs-smg-stats-*"), indexNameVar("*:*-logs-smg-stats-*")),
+          requestIndices = Set(indexName("*:*-logs-smg-*")),
+          modifyRequestContext = _.copy(
+            allIndicesAndAliases = Set(IndexWithAliases(localIndexName("test"), Set.empty)),
+            allRemoteIndicesAndAliasesFunc = _ => {
+              Task.now(Set(
+                fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-27"),
+                fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-28"),
+                fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-29")
+              ))
+            }
+          ),
+          found = Set(indexName("test")),
+        )
+      }
+    }
+    "not match" when {
+
     }
   }
 
@@ -2176,11 +2232,11 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
         isReadOnlyRequest = true,
         hasRemoteClusters = true,
         allIndicesAndAliases = Set(
-          IndexWithAliases(indexName("test1"), Set.empty),
-          IndexWithAliases(indexName("test2"), Set.empty),
-          IndexWithAliases(indexName("test3"), Set.empty),
-          IndexWithAliases(indexName("test4"), Set.empty),
-          IndexWithAliases(indexName("test5"), Set.empty)
+          IndexWithAliases(localIndexName("test1"), Set.empty),
+          IndexWithAliases(localIndexName("test2"), Set.empty),
+          IndexWithAliases(localIndexName("test3"), Set.empty),
+          IndexWithAliases(localIndexName("test4"), Set.empty),
+          IndexWithAliases(localIndexName("test5"), Set.empty)
         )
       )
     val blockContext = GeneralIndexRequestBlockContext(
@@ -2237,11 +2293,11 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
         isReadOnlyRequest = true,
         method = Method("POST"),
         allIndicesAndAliases = Set(
-          IndexWithAliases(indexName("test1"), Set.empty),
-          IndexWithAliases(indexName("test2"), Set.empty),
-          IndexWithAliases(indexName("test3"), Set.empty),
-          IndexWithAliases(indexName("test4"), Set.empty),
-          IndexWithAliases(indexName("test5"), Set.empty)
+          IndexWithAliases(localIndexName("test1"), Set.empty),
+          IndexWithAliases(localIndexName("test2"), Set.empty),
+          IndexWithAliases(localIndexName("test3"), Set.empty),
+          IndexWithAliases(localIndexName("test4"), Set.empty),
+          IndexWithAliases(localIndexName("test5"), Set.empty)
         )
       )
     val blockContext = FilterableMultiRequestBlockContext(
@@ -2319,5 +2375,19 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
       ComponentTemplate(TemplateName("whatever3"), Set(indexName("alias"))),
     )
     blockContext.responseTemplateTransformation(controlTemplates) should be(controlTemplates)
+  }
+
+  private def fullRemoteIndexWithAliases(fullRemoteIndexName: String, remoteIndexAliases: String*) = {
+    def fullRemoteIndexNameFrom(value: String) = {
+      Remote.fromString(value) match {
+        case Some(remote: Remote.Full) => remote
+        case _ =>
+          throw new IllegalStateException(s"cannot create full remote index name from '$fullRemoteIndexName'")
+      }
+    }
+    FullRemoteIndexWithAliases(
+      fullRemoteIndexNameFrom(fullRemoteIndexName),
+      remoteIndexAliases.toSet.map(fullRemoteIndexNameFrom)
+    )
   }
 }

@@ -28,31 +28,32 @@ import tech.beshu.ror.utils.TestsUtils._
 
 class ZeroKnowledgeIndexFilterTests extends AnyWordSpec {
 
+  // todo: remove?
   "ZeroKnowledgeIndexFilter check" when {
     "one element is passed" in {
-      val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[IndexName](Sets.newHashSet("a*"))
+      val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[IndexName.Remote](Sets.newHashSet("a*"))
 
       val res1 = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
-        .check(Set(indexName("*")), matcher)
-      res1 should be(CheckResult.Ok(Set(indexName("a*"))))
+        .check(Set(remoteIndexName("*")), matcher)
+      res1 should be(CheckResult.Ok(Set(remoteIndexName("a*"))))
 
       val res2 = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
-        .check(Set(indexName("b")), matcher)
+        .check(Set(remoteIndexName("b")), matcher)
       res2 should be(CheckResult.Failed)
     }
     "two elements are passed" in {
-      val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[IndexName](Sets.newHashSet("a1*"))
+      val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[IndexName.Remote](Sets.newHashSet("a1*"))
 
       val res1 = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
-        .check(Set(indexName("a*")), matcher)
-      res1 should be(CheckResult.Ok(Set(indexName("a1*"))))
+        .check(Set(remoteIndexName("a*")), matcher)
+      res1 should be(CheckResult.Ok(Set(remoteIndexName("a1*"))))
     }
     "two patterns in matcher" in {
-      val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[IndexName](Sets.newHashSet("b:*", "a*"))
+      val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[IndexName.Remote](Sets.newHashSet("b:*", "a*"))
 
       val res1 = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
-        .check(Set(indexName("*")), matcher)
-      res1 should be(CheckResult.Ok(Set(indexName("a*"))))
+        .check(Set(remoteIndexName("*")), matcher)
+      res1 should be(CheckResult.Ok(Set(remoteIndexName("a*"))))
     }
   }
 }

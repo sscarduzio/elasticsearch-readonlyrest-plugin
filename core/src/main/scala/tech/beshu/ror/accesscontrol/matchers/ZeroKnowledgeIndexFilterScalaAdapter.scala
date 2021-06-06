@@ -22,16 +22,17 @@ import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 import scala.collection.JavaConverters._
 
+// todo: to remove?
 class ZeroKnowledgeIndexFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter) {
 
-  def check(indices: Set[IndexName], matcher: Matcher[IndexName]): CheckResult = {
+  def check(indices: Set[IndexName.Remote], matcher: Matcher[IndexName.Remote]): CheckResult = {
     val processedIndices: java.util.Set[String] = scala.collection.mutable.Set.empty[String].asJava
     val result = underlying.alterIndicesIfNecessaryAndCheck(
       indices.map(_.stringify).asJava,
       Matcher.asMatcherWithWildcards(matcher),
       processedIndices.addAll _
     )
-    if(result) CheckResult.Ok(processedIndices.asScala.flatMap(IndexName.fromString).toSet)
+    if(result) CheckResult.Ok(processedIndices.asScala.flatMap(IndexName.Remote.fromString).toSet)
     else CheckResult.Failed
   }
 }
@@ -39,7 +40,7 @@ class ZeroKnowledgeIndexFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter)
 object ZeroKnowledgeIndexFilterScalaAdapter {
   sealed trait CheckResult
   object CheckResult {
-    final case class Ok(processedIndices: Set[IndexName]) extends CheckResult
+    final case class Ok(processedIndices: Set[IndexName.Remote]) extends CheckResult
     case object Failed extends CheckResult
   }
 }

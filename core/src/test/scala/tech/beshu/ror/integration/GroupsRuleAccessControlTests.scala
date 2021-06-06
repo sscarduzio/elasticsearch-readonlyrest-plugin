@@ -199,7 +199,7 @@ class GroupsRuleAccessControlTests
               header("x-ror-current-group", "admin")
             ),
             filteredIndices = Set(indexName(".kibana")),
-            allIndicesAndAliases = Set(IndexWithAliases(indexName(".kibana"), Set.empty))
+            allIndicesAndAliases = Set(IndexWithAliases(localIndexName(".kibana"), Set.empty))
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 4
@@ -213,8 +213,8 @@ class GroupsRuleAccessControlTests
   }
 
   private def allIndicesAndAliasesInTheTestCase() = Set(
-    IndexWithAliases(indexName("g12_index"), Set.empty),
-    IndexWithAliases(indexName("g34_index"), Set.empty),
-    IndexWithAliases(indexName("g5_index"), Set.empty)
+    IndexWithAliases(localIndexName("g12_index"), Set.empty),
+    IndexWithAliases(localIndexName("g34_index"), Set.empty),
+    IndexWithAliases(localIndexName("g5_index"), Set.empty)
   )
 }

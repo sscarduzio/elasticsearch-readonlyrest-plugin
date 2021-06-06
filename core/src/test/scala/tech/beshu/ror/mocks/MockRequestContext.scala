@@ -92,12 +92,13 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val isAllowedForDLS: Boolean = true,
                                                 override val hasRemoteClusters: Boolean = false,
                                                 filteredIndices: Set[IndexName],
-                                                allAllowedIndices: Set[IndexName])
+                                                allAllowedIndices: Set[IndexName],
+                                                allRemoteIndicesAndAliasesFunc: ClusterName => Task[Set[FullRemoteIndexWithAliases]] = _ => Task.now(Set.empty))
   extends RequestContext {
   override type BLOCK_CONTEXT = GeneralIndexRequestBlockContext
 
-  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]] = 
-    Task.now(Set.empty)
+  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]] =
+    allRemoteIndicesAndAliasesFunc(remoteClusterName)
 
   override def initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, List.empty, filteredIndices, allAllowedIndices

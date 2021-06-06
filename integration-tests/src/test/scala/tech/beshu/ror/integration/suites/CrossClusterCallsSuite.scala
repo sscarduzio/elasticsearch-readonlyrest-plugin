@@ -140,20 +140,20 @@ trait CrossClusterCallsSuite
     "real example" in { // todo
       val userTestSearchManager = new SearchManager(basicAuthClient("test", "test"))
 
-//      val result1 = userTestSearchManager.asyncSearch("*-logs-smg-stats-*")
-//      val result2 = userTestSearchManager.asyncSearch("*:*-logs-smg-stats-*")
-//      val result3 = userTestSearchManager.asyncSearch("*-logs-smg-*")
+      val result1 = userTestSearchManager.asyncSearch("*-logs-smg-stats-*")
+      val result2 = userTestSearchManager.asyncSearch("*:*-logs-smg-stats-*")
+      val result3 = userTestSearchManager.asyncSearch("*-logs-smg-*")
       val result4 = userTestSearchManager.asyncSearch("*:*-logs-smg-*")
 
-//      if(result1.isSuccess) {
-//        println(s"R1: ${result1.responseJson.toString()}")
-//      }
-//      if(result2.isSuccess) {
-//        println(s"R2: ${result2.responseJson.toString()}")
-//      }
-//      if(result3.isSuccess) {
-//        println(s"R3: ${result3.responseJson.toString()}")
-//      }
+      if(result1.isSuccess) {
+        println(s"R1: ${result1.responseJson.toString()}")
+      }
+      if(result2.isSuccess) {
+        println(s"R2: ${result2.responseJson.toString()}")
+      }
+      if(result3.isSuccess) {
+        println(s"R3: ${result3.responseJson.toString()}")
+      }
       if(result4.isSuccess) {
         println(s"R4: ${result4.responseJson.toString()}")
       }

@@ -28,7 +28,9 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
+class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
+  with BaseYamlLoadedAccessControlTest with Inside {
+
   override protected def configYaml: String =
     """
       |readonlyrest:
@@ -60,8 +62,8 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec w
             headers = Set(header("X-Auth-Token", "user1-proxy-id")),
             filteredIndices = Set(indexName("g12_index")),
             allIndicesAndAliases = Set(
-              IndexWithAliases(indexName("g12_index"), Set.empty),
-              IndexWithAliases(indexName("g34_index"), Set.empty)
+              IndexWithAliases(localIndexName("g12_index"), Set.empty),
+              IndexWithAliases(localIndexName("g34_index"), Set.empty)
             )
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -76,8 +78,8 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec w
             headers = Set(header("X-Auth-Token", "User1-proxy-id")),
             filteredIndices = Set(indexName("g12_index")),
             allIndicesAndAliases = Set(
-              IndexWithAliases(indexName("g12_index"), Set.empty),
-              IndexWithAliases(indexName("g34_index"), Set.empty)
+              IndexWithAliases(localIndexName("g12_index"), Set.empty),
+              IndexWithAliases(localIndexName("g34_index"), Set.empty)
             )
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()

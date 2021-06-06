@@ -228,7 +228,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           val request = MockRequestContext.indices.copy(
             headers = Set(new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))),
             filteredIndices = Set(indexName("gj0")),
-            allIndicesAndAliases = Set(IndexWithAliases(indexName("gj0"), Set.empty))
+            allIndicesAndAliases = Set(IndexWithAliases(localIndexName("gj0"), Set.empty))
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()

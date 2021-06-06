@@ -56,6 +56,8 @@ object TestsUtils {
 
   def localIndexName(str: NonEmptyString): IndexName.Local = IndexName.Local.fromString(str.value.value).get
 
+  def remoteIndexName(str: NonEmptyString): IndexName.Remote = IndexName.Remote.fromString(str.value.value).get
+
   def indexPattern(str: NonEmptyString): IndexPattern = IndexPattern(indexName(str))
 
   implicit def scalaFiniteDuration2JavaDuration(duration: FiniteDuration): Duration = Duration.ofMillis(duration.toMillis)

@@ -51,7 +51,7 @@ import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
 class EsServerBasedRorClusterService(clusterService: ClusterService,
-                                     remoteClusterService: RemoteClusterService,
+                                     remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                                      repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
                                      nodeClient: NodeClient,
                                      threadPool: ThreadPool)
@@ -63,16 +63,16 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
     lookup.get(indexOrAlias.value.value).getIndices.asScala.map(_.getIndexUUID).toSet
   }
 
-  override def allIndicesAndAliases: Map[IndexName, Set[AliasName]] = {
+  override def allIndicesAndAliases: Map[IndexName.Local, Set[AliasName]] = {
     val indices = clusterService.state.metadata.getIndices
     indices
       .keysIt().asScala
       .flatMap { index =>
         val indexMetaData = indices.get(index)
         IndexName.Local
-      .fromString(indexMetaData.getIndex.getName)
+          .fromString(indexMetaData.getIndex.getName)
           .map { indexName =>
-            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.fromString)
+            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Local.fromString)
             (indexName, aliases)
           }
       }
@@ -80,7 +80,17 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
   }
 
   // todo: refactoring
-  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Map[IndexName.Remote.Full, Set[FullAliasName]]] = {
+  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Map[IndexName.Remote.Full, Set[FullRemoteAliasName]]] = {
+    remoteClusterServiceSupplier.get() match {
+      case Some(remoteClusterService) =>
+        test(remoteClusterName, remoteClusterService)
+      case None =>
+        Task.now(Map.empty)
+    }
+  }
+
+  // todo: change name
+  private def test(remoteClusterName: ClusterName, remoteClusterService: RemoteClusterService) = {
     val remoteClusterFullNames =
       remoteClusterService
         .getRegisteredRemoteClusterNames.asSafeSet
@@ -119,7 +129,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
                       .map { index =>
                         val aliases = resolvedIndex
                           .getAliases.asSafeList
-                          .flatMap(IndexName.Local.Full.fromString)
+                          .flatMap(alias => IndexName.Remote.Full.fromString(s"${remoteClusterFullName.value}:$alias"))
                           .toSet
                         (index, aliases)
                       }

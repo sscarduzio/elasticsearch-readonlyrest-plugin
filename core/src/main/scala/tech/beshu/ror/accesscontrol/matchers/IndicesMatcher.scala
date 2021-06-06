@@ -17,19 +17,20 @@
 package tech.beshu.ror.accesscontrol.matchers
 
 import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.utils.CaseMappingEquality
 
-class IndicesMatcher(indices: Set[IndexName]) {
-  val availableIndicesMatcher: Matcher[IndexName] = MatcherWithWildcardsScalaAdapter[IndexName](indices)
+class IndicesMatcher[T <: IndexName : CaseMappingEquality](indices: Set[T]) {
+  val availableIndicesMatcher: Matcher[T] = MatcherWithWildcardsScalaAdapter[T](indices)
 
-  def filterIndices(indices: Set[IndexName]): Set[IndexName] = availableIndicesMatcher.filter(indices)
+  def filterIndices(indices: Set[T]): Set[T] = availableIndicesMatcher.filter(indices)
 
-  def `match`(value: IndexName): Boolean = availableIndicesMatcher.`match`(value)
+  def `match`(value: T): Boolean = availableIndicesMatcher.`match`(value)
 
   def contains(str: String): Boolean = availableIndicesMatcher.contains(str)
 }
 
 object IndicesMatcher {
-  def create(indices: Set[IndexName]): IndicesMatcher = {
+  def create[T <: IndexName : CaseMappingEquality](indices: Set[T]): IndicesMatcher[T] = {
     new IndicesMatcher(indices)
   }
 }

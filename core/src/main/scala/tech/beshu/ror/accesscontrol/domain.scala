@@ -307,7 +307,7 @@ object domain {
 //    final case class Local(indexName: IndexName) extends ClusterAwareIndexName
 //    final case class Remote(clusterName: ClusterName, indexName: IndexName) extends ClusterAwareIndexName
 //
-    final case class FullRemoteIndexWithAliases(index: IndexName.Remote.Full, aliases: Set[IndexName.Local.Full])
+    final case class FullRemoteIndexWithAliases(index: IndexName.Remote.Full, aliases: Set[IndexName.Remote.Full])
 //
 //    // todo:
 //    //    def fromString(value: String): Option[IndexName] = {
@@ -379,6 +379,8 @@ object domain {
         else nonexistentIndex
       } get
 
+      implicit val caseMappingEqualityIndexName: CaseMappingEquality[IndexName.Local] =
+        CaseMappingEquality.instance(_.stringify, identity)
     }
 
     sealed trait Remote extends IndexName
@@ -452,6 +454,9 @@ object domain {
       def fromString(value: String): Option[IndexName.Remote] = {
         Wildcard.fromString(value) orElse Full.fromString(value)
       }
+
+      implicit val caseMappingEqualityIndexName: CaseMappingEquality[IndexName.Remote] =
+        CaseMappingEquality.instance(_.stringify, identity)
     }
 
     def fromString(value: String): Option[IndexName] = {
@@ -647,8 +652,8 @@ object domain {
     def unapply(alias: IndexName): Option[AliasPlaceholder] = AliasPlaceholder.from(alias)
   }
 
-  final case class IndexWithAliases(index: IndexName, aliases: Set[IndexName]) {
-    def all: Set[IndexName] = aliases + index
+  final case class IndexWithAliases(index: IndexName.Local, aliases: Set[IndexName.Local]) {
+    def all: Set[IndexName.Local] = aliases + index
   }
 
   final case class RorConfigurationIndex(index: IndexName) extends AnyVal
