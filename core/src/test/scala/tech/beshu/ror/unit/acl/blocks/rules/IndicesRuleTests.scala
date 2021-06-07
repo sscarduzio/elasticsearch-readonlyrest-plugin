@@ -347,7 +347,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
 //      documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-29",  ujson.read("""{"counter1":"50"}""")).force()
       "test" in {
         assertMatchRuleForIndexRequest(
-          configured = NonEmptySet.of(indexNameVar("*-logs-smg-stats-*"), indexNameVar("*:*-logs-smg-stats-*")),
+          configured = NonEmptySet.of(indexNameVar("*-logs-smg-stats-*")),//, indexNameVar("*:*-logs-smg-stats-*")),
           requestIndices = Set(indexName("*:*-logs-smg-*")),
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set(IndexWithAliases(localIndexName("test"), Set.empty)),
@@ -359,7 +359,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               ))
             }
           ),
-          found = Set(indexName("test")),
+          found = Set(indexName("*:*-logs-smg-stats-*")),
         )
       }
     }

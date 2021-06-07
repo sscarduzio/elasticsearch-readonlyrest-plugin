@@ -59,7 +59,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .flatMap { index =>
         val indexMetaData = indices.get(index)
         IndexName.Local
-      .fromString(indexMetaData.getIndex.getName)
+          .fromString(indexMetaData.getIndex.getName)
           .map { indexName =>
             val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.fromString)
             (indexName, aliases)

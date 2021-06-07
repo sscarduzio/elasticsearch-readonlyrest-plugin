@@ -92,7 +92,7 @@ object DocumentApiOps {
   }
 
   private def createIndexName(indexStr: String) = {
-    IndexName.Local
+    IndexName
       .fromString(indexStr)
       .getOrElse {
         throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid")

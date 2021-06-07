@@ -34,7 +34,7 @@ class DeleteDocumentEsRequestContext(actionRequest: DeleteRequest,
   extends BaseSingleIndexEsRequestContext[DeleteRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indexFrom(request: DeleteRequest): IndexName = {
-    IndexName.Local
+    IndexName
       .fromString(actionRequest.index())
       .getOrElse {
         throw RequestSeemsToBeInvalid[DeleteRequest]("Invalid index name")

@@ -170,8 +170,7 @@ class IndicesRule(override val settings: Settings,
       // Run the remote algorithm (without knowing the remote list of indices)
       val (remoteResolvedAllowedIndices, _) = splitIntoRemoteAndLocalIndices(resolvedAllowedIndices)
       val remoteIndicesMatcher = IndicesMatcher.create(remoteResolvedAllowedIndices)
-      val allProcessedIndices =
-      zKindexFilter.check(crossClusterIndices, remoteIndicesMatcher.availableIndicesMatcher) match {
+      val allProcessedIndices = zKindexFilter.check(crossClusterIndices, remoteIndicesMatcher.availableIndicesMatcher) match {
         case CheckResult.Ok(processedIndices) => processedIndices ++ processedLocalIndices
         case CheckResult.Failed => processedLocalIndices
       }

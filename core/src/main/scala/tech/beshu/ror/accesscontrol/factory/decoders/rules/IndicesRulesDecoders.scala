@@ -183,7 +183,7 @@ private object SnapshotDecodersHelper {
 private object IndicesDecodersHelper {
   private implicit val indexNameConvertible: Convertible[IndexName] = new Convertible[IndexName] {
     override def convert: String => Either[Convertible.ConvertError, IndexName] = str =>
-      IndexName.Local
+      IndexName
         .fromString(str)
         .toRight(Convertible.ConvertError("Index name cannot be empty"))
   }
