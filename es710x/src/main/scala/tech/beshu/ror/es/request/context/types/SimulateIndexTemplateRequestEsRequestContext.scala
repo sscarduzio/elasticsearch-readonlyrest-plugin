@@ -47,8 +47,7 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
 
   override protected def indicesFrom(request: SimulateIndexTemplateRequest): Set[IndexName] =
     Option(request.getIndexName)
-      .flatMap(NonEmptyString.unapply)
-      .map(domain.IndexName.apply)
+      .flatMap(IndexName.fromString)
       .toSet
 
   override protected def update(request: SimulateIndexTemplateRequest,
@@ -63,7 +62,7 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
   private def update(request: SimulateIndexTemplateRequest,
                      index: IndexName,
                      allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
-    request.indexName(index.value.value)
+    request.indexName(index.stringify)
     ModificationResult.UpdateResponse {
       case response: SimulateIndexTemplateResponse =>
         Task.now(SimulateIndexTemplateRequestEsRequestContext.filterAliasesAndIndexPatternsIn(response, allAllowedIndices.toList))
@@ -111,7 +110,7 @@ object SimulateIndexTemplateRequestEsRequestContext {
       .aliases().asSafeMap
       .flatMap { case (key, value) => IndexName.fromString(key).map((_, value)) }
       .filterKeys(_.isAllowedBy(allowedIndices.toSet))
-      .map { case (key, value) => (key.value.value, value) }
+      .map { case (key, value) => (key.stringify, value) }
       .asJava
     new EsMetadataTemplate(
       basedOn.settings(),

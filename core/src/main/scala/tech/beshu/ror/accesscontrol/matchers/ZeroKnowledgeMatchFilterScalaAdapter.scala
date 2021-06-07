@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.matchers
 
-import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult
 import tech.beshu.ror.utils.ZeroKnowledgeMatchFilter
@@ -27,10 +26,10 @@ class ZeroKnowledgeMatchFilterScalaAdapter {
 
   def alterIndicesIfNecessary(indices: Set[IndexName], matcher: Matcher[IndexName]): AlterResult[IndexName] = {
     Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
-      indices.map(_.value.value).asJava,
+      indices.map(_.stringify).asJava,
       Matcher.asMatcherWithWildcards(matcher)
     )) match {
-      case Some(alteredIndices) => AlterResult.Altered(alteredIndices.asScala.map(str => IndexName(NonEmptyString.unsafeFrom(str))).toSet)
+      case Some(alteredIndices) => AlterResult.Altered(alteredIndices.asScala.flatMap(IndexName.fromString).toSet)
       case None => AlterResult.NotAltered
     }
   }

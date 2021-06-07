@@ -44,7 +44,7 @@ class GetSettingsEsRequestContext(actionRequest: GetSettingsRequest,
   override protected def update(request: GetSettingsRequest,
                                 filteredIndices: NonEmptyList[IndexName],
                                 allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
-    request.indices(filteredIndices.toList.map(_.value.value): _*)
+    request.indices(filteredIndices.toList.map(_.stringify): _*)
     Modified
   }
 

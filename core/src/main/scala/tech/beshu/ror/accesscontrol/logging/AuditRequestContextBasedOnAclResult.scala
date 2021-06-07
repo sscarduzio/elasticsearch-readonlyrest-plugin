@@ -49,7 +49,7 @@ class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: Req
   override val timestamp: Instant = requestContext.timestamp
   override val id: String = requestContext.id.value
   override val correlationId: String = requestContext.correlationId.value.value
-  override val indices: Set[String] = requestContext.initialBlockContext.indices.map(_.value.value)
+  override val indices: Set[String] = requestContext.initialBlockContext.indices.map(_.stringify)
   override val action: String = requestContext.action.value
   override val headers: Map[String, String] = requestContext.headers.map(h => (h.name.value.value, h.value.value)).toMap
   override val requestHeaders: Headers = new Headers(

@@ -22,7 +22,10 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
+import monix.execution.CancelablePromise
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.action.ActionListener
+import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
 import org.elasticsearch.action.support.PlainActionFuture
 import org.elasticsearch.client.node.NodeClient
@@ -30,43 +33,115 @@ import org.elasticsearch.cluster.metadata.RepositoriesMetadata
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
+import org.elasticsearch.threadpool.ThreadPool
+import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
+import tech.beshu.ror.accesscontrol.domain.IndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.es.utils.GenericResponseListener
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
-import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
+import scala.util.{Failure, Success, Try}
 
 class EsServerBasedRorClusterService(clusterService: ClusterService,
+                                     remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                                      repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
-                                     nodeClient: NodeClient)
+                                     nodeClient: NodeClient,
+                                     threadPool: ThreadPool)
   extends RorClusterService
     with Logging {
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
     val lookup = clusterService.state.metadata.getIndicesLookup
-    lookup.get(indexOrAlias.value.value).getIndices.asScala.map(_.getIndexUUID).toSet
+    lookup.get(indexOrAlias.stringify).getIndices.asScala.map(_.getIndexUUID).toSet
   }
 
-  override def allIndicesAndAliases: Map[IndexName, Set[AliasName]] = {
+  override def allIndicesAndAliases: Map[IndexName.Local, Set[AliasName]] = {
     val indices = clusterService.state.metadata.getIndices
     indices
       .keysIt().asScala
       .flatMap { index =>
         val indexMetaData = indices.get(index)
-        IndexName
+        IndexName.Local
           .fromString(indexMetaData.getIndex.getName)
           .map { indexName =>
-            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.fromString)
+            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Local.fromString)
             (indexName, aliases)
           }
       }
       .toMap
+  }
+
+  // todo: refactoring
+  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Map[IndexName.Remote.Full, Set[FullRemoteAliasName]]] = {
+    remoteClusterServiceSupplier.get() match {
+      case Some(remoteClusterService) =>
+        test(remoteClusterName, remoteClusterService)
+      case None =>
+        Task.now(Map.empty)
+    }
+  }
+
+  // todo: change name
+  private def test(remoteClusterName: ClusterName, remoteClusterService: RemoteClusterService) = {
+    val remoteClusterFullNames =
+      remoteClusterService
+        .getRegisteredRemoteClusterNames.asSafeSet
+        .flatMap(ClusterName.Full.fromString)
+
+    val listOfTasks = MatcherWithWildcardsScalaAdapter
+      .create(Set(remoteClusterName))
+      .filter(remoteClusterFullNames)
+      .toList
+      .map { remoteClusterFullName =>
+        Try(remoteClusterService.getRemoteClusterClient(threadPool, remoteClusterFullName.value.value)) match {
+          case Failure(_) =>
+            // todo: log?
+            Task.now(List.empty)
+          case Success(client) =>
+            val promise = CancelablePromise[ResolveIndexAction.Response]()
+            client
+              .admin()
+              .indices()
+              .resolveIndex(
+                new ResolveIndexAction.Request(List("*").toArray),
+                new ActionListener[ResolveIndexAction.Response] {
+                  override def onResponse(response: ResolveIndexAction.Response): Unit = promise.trySuccess(response)
+                  override def onFailure(e: Exception): Unit = promise.tryFailure(e)
+                }
+              )
+            Task
+              .fromCancelablePromise(promise)
+              .map { response =>
+                response
+                  .getIndices.asSafeList
+                  .flatMap { resolvedIndex =>
+                    IndexName.Remote.Full
+                      // todo: is it ok?
+                      .fromString(s"${remoteClusterFullName.value}:${resolvedIndex.getName}")
+                      .map { index =>
+                        val aliases = resolvedIndex
+                          .getAliases.asSafeList
+                          .flatMap(alias => IndexName.Remote.Full.fromString(s"${remoteClusterFullName.value}:$alias"))
+                          .toSet
+                        (index, aliases)
+                      }
+                  }
+              }
+        }
+      }
+
+    // todo: if one breaks, all break
+    Task
+      .gatherUnordered(listOfTasks)
+      .map(_.flatten.toMap)
   }
 
   override def allTemplates: Set[Template] = {
@@ -203,7 +278,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .filter(QueryBuilders.idsQuery().addIds(document.documentId.value))
 
     nodeClient
-      .prepareSearch(document.index.value.value)
+      .prepareSearch(document.index.stringify)
       .setQuery(composedQuery)
   }
 

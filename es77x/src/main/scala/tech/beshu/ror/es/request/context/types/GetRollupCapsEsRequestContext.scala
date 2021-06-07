@@ -44,7 +44,7 @@ class GetRollupCapsEsRequestContext private(actionRequest: ActionRequest,
   }
 
   override protected def update(request: ActionRequest, index: IndexName): ModificationResult = {
-    on(request).set("indexPattern", index.value.value)
+    on(request).set("indexPattern", index.stringify)
     Modified
   }
 }

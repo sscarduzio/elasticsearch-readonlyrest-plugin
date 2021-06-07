@@ -43,11 +43,11 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
                                 filteredIndices: NonEmptyList[domain.IndexName],
                                 allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
     indicesFrom(request).toList match {
-      case Nil if filteredIndices.exists(_ === IndexName.wildcard) =>
+      case Nil if filteredIndices.exists(_ === IndexName.Local.wildcard) =>
         // hack: when empty indices list is replaced with wildcard index, returned result is wrong
         Modified
       case _ =>
-        request.indices(filteredIndices.toList.map(_.value.value): _*)
+        request.indices(filteredIndices.toList.map(_.stringify): _*)
         Modified
     }
   }

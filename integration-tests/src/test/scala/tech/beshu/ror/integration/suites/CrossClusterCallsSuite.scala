@@ -17,13 +17,12 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.CrossClusterCallsSuite.{localClusterNodeDataInitializer, remoteClusterNodeDataInitializer, remoteClusterSetup}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait CrossClusterCallsSuite
@@ -137,6 +136,30 @@ trait CrossClusterCallsSuite
         }
       }
     }
+
+    // todo:
+//    "real example" in { // todo
+//      val userTestSearchManager = new SearchManager(basicAuthClient("test", "test"))
+//
+//      val result1 = userTestSearchManager.asyncSearch("*-logs-smg-stats-*")
+//      val result2 = userTestSearchManager.asyncSearch("*:*-logs-smg-stats-*")
+//      val result3 = userTestSearchManager.asyncSearch("*-logs-smg-*")
+//      val result4 = userTestSearchManager.asyncSearch("*:*-logs-smg-*")
+//      val result5 = userTestSearchManager.asyncSearch("c02*")
+//
+//      if(result1.isSuccess) {
+//        println(s"R1: ${result1.responseJson.toString()}")
+//      }
+//      if(result2.isSuccess) {
+//        println(s"R2: ${result2.responseJson.toString()}")
+//      }
+//      if(result3.isSuccess) {
+//        println(s"R3: ${result3.responseJson.toString()}")
+//      }
+//      if(result4.isSuccess) {
+//        println(s"R4: ${result4.responseJson.toString()}")
+//      }
+//    }
   }
 
   "A cluster _msearch for a given index" should {
@@ -305,19 +328,30 @@ object CrossClusterCallsSuite {
 
   def localClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createFirstDoc("metrics_monitoring_2020-03-26", ujson.read("""{"counter1":"100"}"""))
-    documentManager.createFirstDoc("metrics_monitoring_2020-03-27",  ujson.read("""{"counter1":"50"}"""))
+    documentManager.createFirstDoc("metrics_monitoring_2020-03-26", ujson.read("""{"counter1":"100"}""")).force()
+    documentManager.createFirstDoc("metrics_monitoring_2020-03-27",  ujson.read("""{"counter1":"50"}""")).force()
+
+    documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-27",  ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-28",  ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-29",  ujson.read("""{"counter1":"50"}""")).force()
   }
 
   def remoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}"""))
-    documentManager.createDoc("test1_index", 2, ujson.read("""{"hello":"world"}"""))
-    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}"""))
-    documentManager.createDoc("test2_index", 2, ujson.read("""{"hello":"world"}"""))
+    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test1_index", 2, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test2_index", 2, ujson.read("""{"hello":"world"}""")).force()
 
-    documentManager.createDoc("etl_usage_2020-03-26", 1, ujson.read("""{"usage":"ROR"}"""))
-    documentManager.createDoc("etl_usage_2020-03-27", 1, ujson.read("""{"usage":"ROR"}"""))
+    documentManager.createDoc("etl_usage_2020-03-26", 1, ujson.read("""{"usage":"ROR"}""")).force()
+    documentManager.createDoc("etl_usage_2020-03-27", 1, ujson.read("""{"usage":"ROR"}""")).force()
+
+    documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-27",  ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-28",  ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-29",  ujson.read("""{"counter1":"50"}""")).force()
+
+    val indexManager = new IndexManager(adminRestClient)
+    indexManager.createAliasOf("c02-logs-smg-stats-*", "c02-logs-smg-stats").force()
   }
 
   def remoteClusterSetup(): SetupRemoteCluster = (remoteClusters: NonEmptyList[EsClusterContainer]) => {

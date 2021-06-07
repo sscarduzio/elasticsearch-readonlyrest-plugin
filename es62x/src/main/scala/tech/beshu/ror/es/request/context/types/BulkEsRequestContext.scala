@@ -103,8 +103,8 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
       logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.toList.mkString(",")}]")
     }
     request match {
-      case r: InstanceShardOperationRequest[_] => r.index(indices.head.value.value)
-      case r: ReplicatedWriteRequest[_] => r.index(indices.head.value.value)
+      case r: InstanceShardOperationRequest[_] => r.index(indices.head.stringify)
+      case r: ReplicatedWriteRequest[_] => r.index(indices.head.stringify)
       case unknown => throw new RequestSeemsToBeInvalid[BulkRequest](s"Cannot update indices of request ${unknown.getClass.getName}")
     }
   }

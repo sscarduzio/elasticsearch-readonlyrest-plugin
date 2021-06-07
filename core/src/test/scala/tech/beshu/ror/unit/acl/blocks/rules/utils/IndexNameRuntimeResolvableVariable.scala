@@ -21,12 +21,13 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.utils.TestsUtils._
 
 object IndexNameRuntimeResolvableVariable{
   def create(value: String): RuntimeSingleResolvableVariable[IndexName] = {
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
     RuntimeResolvableVariableCreator
-      .createSingleResolvableVariableFrom[IndexName](NonEmptyString.unsafeFrom(value))(AlwaysRightConvertible.from(IndexName.apply))
+      .createSingleResolvableVariableFrom[IndexName](NonEmptyString.unsafeFrom(value))(AlwaysRightConvertible.from(indexName))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))
   }

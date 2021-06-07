@@ -54,7 +54,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
       core <- factory
         .createCoreFrom(
           config,
-          RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
+          RorConfigurationIndex(IndexName.unsafeFromString(".readonlyrest")),
           MockHttpClientsFactory,
           ldapConnectionPoolProvider
         )

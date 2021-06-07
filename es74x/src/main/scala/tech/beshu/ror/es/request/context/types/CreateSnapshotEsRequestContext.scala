@@ -106,7 +106,7 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
                      indices: UniqueNonEmptyList[IndexName]) = {
     actionRequest.snapshot(SnapshotName.toString(snapshot))
     actionRequest.repository(RepositoryName.toString(repository))
-    actionRequest.indices(indices.toList.map(_.value.value).asJava)
+    actionRequest.indices(indices.toList.map(_.stringify).asJava)
   }
 
 }

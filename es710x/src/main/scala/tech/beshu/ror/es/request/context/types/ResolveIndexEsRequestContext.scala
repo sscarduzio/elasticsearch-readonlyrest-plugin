@@ -47,7 +47,7 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
   override protected def update(request: ResolveIndexAction.Request,
                                 filteredIndices: NonEmptyList[IndexName],
                                 allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
-    request.indices(filteredIndices.toList.map(_.value.value): _*)
+    request.indices(filteredIndices.toList.map(_.stringify): _*)
     ModificationResult.UpdateResponse(resp => Task.now(filterResponse(resp, allAllowedIndices)))
   }
 
@@ -100,7 +100,8 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
   }
 
   private def isAllowed(aliasOrIndex: String, allowedIndices: NonEmptyList[IndexName]) = {
-    val resolvedAliasOrIndexName = IndexName.fromUnsafeString(aliasOrIndex)
+    val resolvedAliasOrIndexName = IndexName.Local.fromString(aliasOrIndex)
+      .getOrElse(throw new IllegalStateException(s"Cannot create IndexName from $aliasOrIndex"))
     allowedIndices.exists(_.matches(resolvedAliasOrIndexName))
   }
 

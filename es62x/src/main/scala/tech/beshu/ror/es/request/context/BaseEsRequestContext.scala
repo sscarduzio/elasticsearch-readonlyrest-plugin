@@ -23,11 +23,13 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
+import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.CompositeIndicesRequest
 import org.elasticsearch.action.search.SearchRequest
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.domain.IndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -130,6 +132,14 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
       .map { case (indexName, aliases) => IndexWithAliases(indexName, aliases) }
       .toSet
 
+  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]] = {
+    clusterService
+      .allRemoteIndicesAndAliases(remoteClusterName)
+      .map {
+        _.map { case (indexName, aliases) => FullRemoteIndexWithAliases(indexName, aliases) }.toSet
+      }
+  }
+
   override lazy val allTemplates: Set[Template] = clusterService.allTemplates
 
   override lazy val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = clusterService.allSnapshots
@@ -150,7 +160,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
   override val hasRemoteClusters: Boolean = esContext.crossClusterSearchEnabled
 
   protected def indicesOrWildcard(indices: Set[IndexName]): Set[IndexName] = {
-    if (indices.nonEmpty) indices else Set(IndexName.wildcard)
+    if (indices.nonEmpty) indices else Set(IndexName.Local.wildcard)
   }
 
   protected def repositoriesOrWildcard(repositories: Set[RepositoryName]): Set[RepositoryName] = {

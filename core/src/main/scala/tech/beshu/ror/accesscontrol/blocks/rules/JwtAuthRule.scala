@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, NoImpersonationSupport, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality

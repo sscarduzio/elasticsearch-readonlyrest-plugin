@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaHideAppsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
@@ -92,10 +91,9 @@ class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorConfigurationIndex)
 private object KibanaRulesDecoderHelper {
   implicit val indexNameConvertible: Convertible[IndexName] = new Convertible[IndexName] {
     override def convert: String => Either[Convertible.ConvertError, IndexName] = str => {
-      NonEmptyString
-        .from(str.replace(" ", "_"))
-        .map(IndexName.apply)
-        .left.map(_ => Convertible.ConvertError("Index name cannot be empty"))
+      IndexName.Local
+        .fromString(str.replace(" ", "_"))
+        .toRight(Convertible.ConvertError("Index name cannot be empty"))
     }
   }
   implicit val kibanaIndexDecoder: Decoder[RuntimeSingleResolvableVariable[IndexName]] =

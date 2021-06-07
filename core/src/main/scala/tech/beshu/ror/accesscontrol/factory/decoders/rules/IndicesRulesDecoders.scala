@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import cats.data.NonEmptySet
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
@@ -184,10 +183,9 @@ private object SnapshotDecodersHelper {
 private object IndicesDecodersHelper {
   private implicit val indexNameConvertible: Convertible[IndexName] = new Convertible[IndexName] {
     override def convert: String => Either[Convertible.ConvertError, IndexName] = str =>
-      NonEmptyString
-        .from(str)
-        .map(IndexName.apply)
-        .left.map(_ => Convertible.ConvertError("Index name cannot be empty"))
+      IndexName
+        .fromString(str)
+        .toRight(Convertible.ConvertError("Index name cannot be empty"))
   }
   implicit val indexNameValueDecoder: Decoder[RuntimeMultiResolvableVariable[IndexName]] =
     DecoderHelpers

@@ -26,8 +26,8 @@ import org.elasticsearch.action.admin.indices.template.post.{SimulateIndexTempla
 import org.elasticsearch.cluster.metadata.{Template => EsMetadataTemplate}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{IndexName, IndexPattern, TemplateNamePattern}
-import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -40,15 +40,14 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
                                                    aclContext: AccessControlStaticContext,
                                                    clusterService: RorClusterService,
                                                    override val threadPool: ThreadPool)
-// note: it may seem that it's template request but it's not. It's rather related with index and that's why we treat it in this way
+  // note: it may seem that it's template request but it's not. It's rather related with index and that's why we treat it in this way
   extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override lazy val isReadOnlyRequest: Boolean = true
 
   override protected def indicesFrom(request: SimulateIndexTemplateRequest): Set[IndexName] =
     Option(request.getIndexName)
-      .flatMap(NonEmptyString.unapply)
-      .map(domain.IndexName.apply)
+      .flatMap(IndexName.fromString)
       .toSet
 
   override protected def update(request: SimulateIndexTemplateRequest,
@@ -63,7 +62,7 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
   private def update(request: SimulateIndexTemplateRequest,
                      index: IndexName,
                      allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
-    request.indexName(index.value.value)
+    request.indexName(index.stringify)
     ModificationResult.UpdateResponse {
       case response: SimulateIndexTemplateResponse =>
         Task.now(SimulateIndexTemplateRequestEsRequestContext.filterAliasesAndIndexPatternsIn(response, allAllowedIndices.toList))
@@ -111,7 +110,7 @@ object SimulateIndexTemplateRequestEsRequestContext {
       .aliases().asSafeMap
       .flatMap { case (key, value) => IndexName.fromString(key).map((_, value)) }
       .filterKeys(_.isAllowedBy(allowedIndices.toSet))
-      .map { case (key, value) => (key.value.value, value) }
+      .map { case (key, value) => (key.stringify, value) }
       .asJava
     new EsMetadataTemplate(
       basedOn.settings(),

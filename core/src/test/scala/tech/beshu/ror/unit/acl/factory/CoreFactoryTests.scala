@@ -19,15 +19,16 @@ package tech.beshu.ror.unit.acl.factory
 import java.time.Clock
 
 import cats.data.NonEmptyList
+import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
+import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.domain.{Header, IndexName, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{Header, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{BlocksLevelCreationError, DefinitionsLevelCreationError, RulesLevelCreationError}
@@ -494,7 +495,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
     factory
       .createCoreFrom(
         config,
-        RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
+        RorConfigurationIndex(localIndexName(".readonlyrest")),
         clientsFactory,
         MockLdapConnectionPoolProvider
       )

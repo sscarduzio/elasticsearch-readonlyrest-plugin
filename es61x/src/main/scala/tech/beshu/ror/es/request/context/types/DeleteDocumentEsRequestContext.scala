@@ -42,7 +42,7 @@ class DeleteDocumentEsRequestContext(actionRequest: DeleteRequest,
   }
 
   override protected def update(actionRequest: DeleteRequest, index: IndexName): ModificationResult = {
-    actionRequest.index(index.value.value)
+    actionRequest.index(index.stringify)
     Modified
   }
 }

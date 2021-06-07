@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.configuration.loader.distributed.internode.dto
 
-import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.generic.extras.ConfiguredJsonCodec
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
@@ -41,12 +40,12 @@ object LoadedConfigDTO {
   object IndexConfigDTO {
     def create(o: LoadedRorConfig.IndexConfig[String]): IndexConfigDTO =
       new IndexConfigDTO(
-        indexName = o.indexName.index.value.value,
+        indexName = o.indexName.index.stringify,
         value = o.value,
       )
 
     def fromDto(o: IndexConfigDTO): LoadedRorConfig.IndexConfig[String] = LoadedRorConfig.IndexConfig(
-      indexName = RorConfigurationIndex(IndexName(NonEmptyString.unsafeFrom(o.indexName))),
+      indexName = RorConfigurationIndex(IndexName.unsafeFromString(o.indexName)),
       value = o.value,
     )
     implicit class Ops(o: IndexConfigDTO) {

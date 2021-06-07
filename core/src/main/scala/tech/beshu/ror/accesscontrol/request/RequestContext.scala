@@ -22,20 +22,22 @@ import cats.implicits._
 import cats.{Monoid, Show}
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
+import monix.eval.Task
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.domain.IndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.language.implicitConversions
-import tech.beshu.ror.utils.ScalaOps._
 
 trait RequestContext {
 
@@ -68,6 +70,8 @@ trait RequestContext {
   def content: String
 
   def allIndicesAndAliases: Set[IndexWithAliases]
+
+  def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]]
 
   def allTemplates: Set[Template]
 
@@ -157,7 +161,7 @@ object RequestContext extends Logging {
 
 class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
 
-  type AliasName = IndexName
+  type LocalAliasName = IndexName.Local
 
   def impersonateAs: Option[User.Id] = {
     findHeader(Header.Name.impersonateAs)
@@ -219,11 +223,11 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
       }
   }
 
-  def indicesPerAliasMap: Map[AliasName, Set[IndexName]] = {
-    val mapMonoid = Monoid[Map[AliasName, Set[IndexName]]]
+  def indicesPerAliasMap: Map[LocalAliasName, Set[IndexName.Local]] = {
+    val mapMonoid = Monoid[Map[LocalAliasName, Set[IndexName.Local]]]
     requestContext
       .allIndicesAndAliases
-      .foldLeft(Map.empty[AliasName, Set[IndexName]]) {
+      .foldLeft(Map.empty[LocalAliasName, Set[IndexName.Local]]) {
         case (acc, indexWithAliases) =>
           val localIndicesPerAliasMap = indexWithAliases.aliases.map((_, Set(indexWithAliases.index))).toMap
           mapMonoid.combine(acc, localIndicesPerAliasMap)

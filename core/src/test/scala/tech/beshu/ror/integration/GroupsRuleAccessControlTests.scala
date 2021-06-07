@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.Forbidden
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, ForbiddenByMismatched}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, IndexWithAliases, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, IndexWithAliases, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.containers.LdapContainer
@@ -142,7 +142,7 @@ class GroupsRuleAccessControlTests
         "proxy auth user is correct one" in {
           val request = MockRequestContext.indices.copy(
             headers = Set(header("X-Auth-Token", "user1-proxy-id")),
-            filteredIndices = Set(IndexName("g12_index")),
+            filteredIndices = Set(indexName("g12_index")),
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -157,7 +157,7 @@ class GroupsRuleAccessControlTests
         "proxy auth user is unknown" in {
           val request = MockRequestContext.indices.copy(
             headers = Set(header("X-Auth-Token", "user1-invalid")),
-            filteredIndices = Set(IndexName("g12_index")),
+            filteredIndices = Set(indexName("g12_index")),
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -178,7 +178,7 @@ class GroupsRuleAccessControlTests
           ))
           val request = MockRequestContext.indices.copy(
             headers = Set(header("Authorization", s"Bearer ${jwt.stringify()}")),
-            filteredIndices = Set(IndexName("g*")),
+            filteredIndices = Set(indexName("g*")),
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -198,8 +198,8 @@ class GroupsRuleAccessControlTests
               basicAuthHeader("morgan:user1"),
               header("x-ror-current-group", "admin")
             ),
-            filteredIndices = Set(IndexName(".kibana")),
-            allIndicesAndAliases = Set(IndexWithAliases(IndexName(".kibana"), Set.empty))
+            filteredIndices = Set(indexName(".kibana")),
+            allIndicesAndAliases = Set(IndexWithAliases(localIndexName(".kibana"), Set.empty))
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 4
@@ -213,8 +213,8 @@ class GroupsRuleAccessControlTests
   }
 
   private def allIndicesAndAliasesInTheTestCase() = Set(
-    IndexWithAliases(IndexName("g12_index"), Set.empty),
-    IndexWithAliases(IndexName("g34_index"), Set.empty),
-    IndexWithAliases(IndexName("g5_index"), Set.empty)
+    IndexWithAliases(localIndexName("g12_index"), Set.empty),
+    IndexWithAliases(localIndexName("g34_index"), Set.empty),
+    IndexWithAliases(localIndexName("g5_index"), Set.empty)
   )
 }

@@ -320,11 +320,11 @@ object BlockContext {
           bc.templateOperation match {
             case TemplateOperation.GettingLegacyAndIndexTemplates(_, _) => Set.empty
             case TemplateOperation.GettingLegacyTemplates(_) => Set.empty
-            case TemplateOperation.AddingLegacyTemplate(_, patterns, aliases) => patterns.map(_.toIndexName).toSet ++ aliases
+            case TemplateOperation.AddingLegacyTemplate(_, patterns, aliases) => patterns.map(_.value).toSet ++ aliases
             case TemplateOperation.DeletingLegacyTemplates(_) => Set.empty
             case TemplateOperation.GettingIndexTemplates(_) => Set.empty
-            case TemplateOperation.AddingIndexTemplate(_, patterns, aliases) => patterns.map(_.toIndexName).toSet ++ aliases
-            case TemplateOperation.AddingIndexTemplateAndGetAllowedOnes(_, patterns, aliases, _) => patterns.map(_.toIndexName).toSet ++ aliases
+            case TemplateOperation.AddingIndexTemplate(_, patterns, aliases) => patterns.map(_.value).toSet ++ aliases
+            case TemplateOperation.AddingIndexTemplateAndGetAllowedOnes(_, patterns, aliases, _) => patterns.map(_.value).toSet ++ aliases
             case TemplateOperation.DeletingIndexTemplates(_) => Set.empty
             case TemplateOperation.GettingComponentTemplates(_) => Set.empty
             case TemplateOperation.AddingComponentTemplate(_, aliases) => aliases
@@ -424,9 +424,10 @@ object BlockContext {
     }
 
     def nonExistingIndicesFromInitialIndices(): Set[IndexName] = {
-      HasIndices[B].indices(blockContext).map(i => IndexName.randomNonexistentIndex(
-        i.value.value.replace(":", "_") // we don't want to call remote cluster
-      ))
+      HasIndices[B].indices(blockContext).map(_.randomNonexistentIndex())
+         // todo: should be moved
+//        i.value.value.replace(":", "_") // we don't want to call remote cluster
+//      ))
     }
   }
 

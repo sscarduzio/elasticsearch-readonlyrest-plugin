@@ -51,7 +51,7 @@ class EsIndexJsonContentService(client: NodeClient,
         .get(
           client
             .prepareGet()
-            .setIndex(index.value.value)
+            .setIndex(index.stringify)
             .setId(id)
             .request()
         )
@@ -82,7 +82,7 @@ class EsIndexJsonContentService(client: NodeClient,
         .index(
           client
             .prepareIndex()
-            .setIndex(index.value.value)
+            .setIndex(index.stringify)
             .setType("settings")
             .setId(id)
             .setSource(content, XContentType.JSON)

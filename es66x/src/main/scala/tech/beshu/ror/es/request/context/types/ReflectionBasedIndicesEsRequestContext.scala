@@ -58,7 +58,7 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
     ReflecUtils.setIndices(
       actionRequest,
       Sets.newHashSet("index", "indices", "setIndex", "setIndices"),
-      indices.toList.map(_.value.value).toSet.asJava
+      indices.toList.map(_.stringify).toSet.asJava
     )
   }
 }

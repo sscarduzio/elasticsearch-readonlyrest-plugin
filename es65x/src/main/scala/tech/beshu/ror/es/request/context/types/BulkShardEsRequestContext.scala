@@ -64,7 +64,7 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
       .foldLeft(Try(())) {
         case (Success(_), field) =>
           field.setAccessible(true)
-          Try(field.set(request.shardId(), new Index(singleIndex.value.value, uuid)))
+          Try(field.set(request.shardId(), new Index(singleIndex.stringify, uuid)))
         case (left, _) =>
           left
       }

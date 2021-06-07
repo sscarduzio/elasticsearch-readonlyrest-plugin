@@ -61,7 +61,7 @@ class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
         if (rest.nonEmpty) {
           logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${remaining.mkString(",")}]")
         }
-        request.index(index.value.value)
+        request.index(index.stringify)
         false
     }
   }

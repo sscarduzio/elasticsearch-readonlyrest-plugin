@@ -56,7 +56,7 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   }
 
   override protected def indicesFrom(request: GetSnapshotsRequest): Set[domain.IndexName] =
-    Set(IndexName.wildcard)
+    Set(IndexName.Local.wildcard)
 
   override protected def modifyRequest(blockContext: BlockContext.SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {
