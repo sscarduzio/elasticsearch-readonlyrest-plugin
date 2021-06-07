@@ -42,7 +42,7 @@ class IndexEsRequestContext(actionRequest: IndexRequest,
   }
 
   override protected def update(request: IndexRequest, index: IndexName): ModificationResult = {
-    request.index(index.value.value)
+    request.index(index.stringify)
     Modified
   }
 }

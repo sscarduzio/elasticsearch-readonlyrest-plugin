@@ -64,7 +64,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     sqlIndicesExtractResult match {
       case Right(sqlIndices) =>
-        val indicesStrings = indices.map(_.value.value).toList.toSet
+        val indicesStrings = indices.map(_.stringify).toList.toSet
         if (indicesStrings != sqlIndices.indices) {
           SqlRequestHelper.modifyIndicesOf(request, sqlIndices, indicesStrings) match {
             case Right(_) =>

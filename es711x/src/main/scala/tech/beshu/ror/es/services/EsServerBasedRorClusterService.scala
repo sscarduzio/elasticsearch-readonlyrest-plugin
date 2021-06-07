@@ -60,7 +60,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
     val lookup = clusterService.state.metadata.getIndicesLookup
-    lookup.get(indexOrAlias.value.value).getIndices.asScala.map(_.getIndexUUID).toSet
+    lookup.get(indexOrAlias.stringify).getIndices.asScala.map(_.getIndexUUID).toSet
   }
 
   override def allIndicesAndAliases: Map[IndexName.Local, Set[AliasName]] = {

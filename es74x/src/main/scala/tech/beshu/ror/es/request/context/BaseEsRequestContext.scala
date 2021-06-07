@@ -22,11 +22,13 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
+import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.CompositeIndicesRequest
 import org.elasticsearch.action.search.SearchRequest
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.domain.IndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -102,7 +104,6 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
       .flatMap(Address.from)
       .getOrElse(throw new IllegalArgumentException(s"Cannot create IP or hostname"))
 
-
   override lazy val method: Method = Method(restRequest.method().name())
 
   override lazy val uriPath: UriPath =
@@ -128,6 +129,14 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
       .allIndicesAndAliases
       .map { case (indexName, aliases) => IndexWithAliases(indexName, aliases) }
       .toSet
+
+  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]] = {
+    clusterService
+      .allRemoteIndicesAndAliases(remoteClusterName)
+      .map {
+        _.map { case (indexName, aliases) => FullRemoteIndexWithAliases(indexName, aliases) }.toSet
+      }
+  }
 
   override lazy val allTemplates: Set[Template] = clusterService.allTemplates
 

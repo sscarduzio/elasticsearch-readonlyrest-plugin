@@ -322,6 +322,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
 
   "An IndicesRule for request with remote indices" should {
     "match" when {
+      // todo:
 //      val userTestSearchManager = new SearchManager(basicAuthClient("test", "test"))
 //
 //      //      val result1 = userTestSearchManager.asyncSearch("*-logs-smg-stats-*")
@@ -345,23 +346,23 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
 //      documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-27",  ujson.read("""{"counter1":"50"}""")).force()
 //      documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-28",  ujson.read("""{"counter1":"50"}""")).force()
 //      documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-29",  ujson.read("""{"counter1":"50"}""")).force()
-      "test" in {
-        assertMatchRuleForIndexRequest(
-          configured = NonEmptySet.of(indexNameVar("*-logs-smg-stats-*")),//, indexNameVar("*:*-logs-smg-stats-*")),
-          requestIndices = Set(indexName("*:*-logs-smg-*")),
-          modifyRequestContext = _.copy(
-            allIndicesAndAliases = Set(IndexWithAliases(localIndexName("test"), Set.empty)),
-            allRemoteIndicesAndAliasesFunc = _ => {
-              Task.now(Set(
-                fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-27"),
-                fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-28"),
-                fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-29")
-              ))
-            }
-          ),
-          found = Set(indexName("*:*-logs-smg-stats-*")),
-        )
-      }
+//      "test" in {
+//        assertMatchRuleForIndexRequest(
+//          configured = NonEmptySet.of(indexNameVar("*-logs-smg-stats-*")),//, indexNameVar("*:*-logs-smg-stats-*")),
+//          requestIndices = Set(indexName("*:*-logs-smg-*")),
+//          modifyRequestContext = _.copy(
+//            allIndicesAndAliases = Set(IndexWithAliases(localIndexName("test"), Set.empty)),
+//            allRemoteIndicesAndAliasesFunc = _ => {
+//              Task.now(Set(
+//                fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-27"),
+//                fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-28"),
+//                fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-29")
+//              ))
+//            }
+//          ),
+//          found = Set(indexName("*:*-logs-smg-stats-*")),
+//        )
+//      }
     }
     "not match" when {
 

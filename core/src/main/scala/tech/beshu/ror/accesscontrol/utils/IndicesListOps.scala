@@ -27,7 +27,7 @@ class IndicesListOps(val indices: List[IndexName]) extends AnyVal {
     foundIndex match {
 //      case Some(indexName) if indexName.isClusterIndex => IndexName.randomNonexistentIndex(
         // todo:
-//        indexName.value.value.replace(":", "_") // we don't want to call remote cluster
+//          indexName.stringify.replace(":", "_") // we don't want to call remote cluster
 //      )
       case Some(indexName) => indexName.randomNonexistentIndex()
       case None => IndexName.Local.randomNonexistentIndex()

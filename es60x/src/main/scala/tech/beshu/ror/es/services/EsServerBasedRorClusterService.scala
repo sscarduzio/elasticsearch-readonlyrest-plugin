@@ -30,6 +30,7 @@ import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.snapshots.SnapshotsService
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
+import tech.beshu.ror.accesscontrol.domain.IndexName.Remote
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
@@ -49,10 +50,10 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
     val lookup = clusterService.state.metaData.getAliasAndIndexLookup
-    lookup.get(indexOrAlias.value.value).getIndices.asScala.map(_.getIndexUUID).toSet
+    lookup.get(indexOrAlias.stringify).getIndices.asScala.map(_.getIndexUUID).toSet
   }
 
-  override def allIndicesAndAliases: Map[IndexName, Set[AliasName]] = {
+  override def allIndicesAndAliases: Map[IndexName.Local, Set[AliasName]] = {
     val indices = clusterService.state.metaData.getIndices
     indices
       .keysIt().asScala
@@ -61,12 +62,14 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
         IndexName.Local
           .fromString(indexMetaData.getIndex.getName)
           .map { indexName =>
-            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.fromString)
+            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Local.fromString)
             (indexName, aliases)
           }
       }
       .toMap
   }
+
+  override def allRemoteIndicesAndAliases(remoteClusterName: Remote.ClusterName): Task[Map[Remote.Full, Set[FullRemoteAliasName]]] = ???
 
   override def allTemplates: Set[Template] = legacyTemplates()
 
@@ -166,7 +169,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .filter(QueryBuilders.idsQuery().addIds(document.documentId.value))
 
     nodeClient
-      .prepareSearch(document.index.value.value)
+      .prepareSearch(document.index.stringify)
       .setQuery(composedQuery)
   }
 

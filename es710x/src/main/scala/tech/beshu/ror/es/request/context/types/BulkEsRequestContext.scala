@@ -99,7 +99,7 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
     if (indices.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.toList.mkString(",")}]")
     }
-    request.index(indices.head.value.value)
+      request.index(indices.head.stringify)
   }
 
 }

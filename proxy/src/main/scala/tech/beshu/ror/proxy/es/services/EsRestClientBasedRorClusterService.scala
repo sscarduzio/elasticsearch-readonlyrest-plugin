@@ -20,6 +20,7 @@ import org.elasticsearch.cluster.metadata.{AliasMetadata, IndexMetadata}
 import org.elasticsearch.index.query.QueryBuilders
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
+import tech.beshu.ror.accesscontrol.domain.IndexName.Remote
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
@@ -38,14 +39,14 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
     client
-      .getIndex(new GetIndexRequest(indexOrAlias.value.value))
+      .getIndex(new GetIndexRequest(indexOrAlias.stringify))
       .map { response =>
-        Option(response.getSetting(indexOrAlias.value.value, IndexMetadata.INDEX_UUID_NA_VALUE)).toSet
+        Option(response.getSetting(indexOrAlias.stringify, IndexMetadata.INDEX_UUID_NA_VALUE)).toSet
       }
       .runSyncUnsafe()
   }
 
-  override def allIndicesAndAliases: Map[IndexName, Set[AliasName]] = {
+  override def allIndicesAndAliases: Map[IndexName.Local, Set[AliasName]] = {
     client
       .getAlias(new GetAliasesRequest())
       .map { response =>
@@ -58,6 +59,8 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       }
       .runSyncUnsafe()
   }
+
+  override def allRemoteIndicesAndAliases(remoteClusterName: Remote.ClusterName): Task[Map[Remote.Full, Set[FullRemoteAliasName]]] = ???
 
   override def allTemplates: Set[Template] = {
     Task
@@ -191,10 +194,10 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
   }
 
   private def indexWithAliasesFrom(indexNameString: String, aliasMetadata: Set[AliasMetadata]) = {
-    IndexName
+    IndexName.Local
       .fromString(indexNameString)
       .map { index =>
-        (index, aliasMetadata.flatMap(am => IndexName.fromString(am.alias())))
+        (index, aliasMetadata.flatMap(am => IndexName.Local.fromString(am.alias())))
       }
   }
 
@@ -211,7 +214,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       .filter(QueryBuilders.constantScoreQuery(wrappedQueryFromFilter))
       .filter(QueryBuilders.idsQuery().addIds(document.documentId.value))
 
-    val searchRequest = Requests.searchRequest(document.index.value.value)
+    val searchRequest = Requests.searchRequest(document.index.stringify)
     searchRequest.source().query(composedQuery)
     searchRequest
   }
@@ -246,5 +249,4 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       .zip(results)
       .toMap
   }
-
 }

@@ -148,11 +148,11 @@ private[types] object GetTemplatesEsRequestContext extends Logging {
   }
 
   private def filterAliases(metadata: IndexTemplateMetadata, template: LegacyTemplate) = {
-    val aliasesStrings = template.aliases.map(_.value.value)
+    val aliasesStrings = template.aliases.map(_.stringify)
     val filteredAliasesMap =
       metadata
         .aliases().asSafeValues
-        .filter { a => IndexName.fromString(a.alias()).exists(i => aliasesStrings.contains(i)) }
+        .filter { a => aliasesStrings.contains(a.alias()) }
         .map(a => (a.alias(), a))
         .toMap
     new ImmutableOpenMap.Builder[String, AliasMetadata]()

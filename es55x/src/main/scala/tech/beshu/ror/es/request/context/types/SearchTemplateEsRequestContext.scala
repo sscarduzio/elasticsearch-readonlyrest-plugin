@@ -51,7 +51,7 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
                                 filteredIndices: NonEmptyList[IndexName],
                                 allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
-    searchRequest.indices(filteredIndices.toList.map(_.value.value): _*)
+    searchRequest.indices(filteredIndices.toList.map(_.stringify): _*)
     Modified
   }
 

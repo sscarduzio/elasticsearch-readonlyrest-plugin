@@ -60,6 +60,6 @@ class ClusterAllocationExplainEsRequestContext(actionRequest: ClusterAllocationE
   }
 
   private def updateIndexIn(request: ClusterAllocationExplainRequest, indexName: IndexName) = {
-    request.setIndex(indexName.value.value)
+    request.setIndex(  indexName.stringify)
   }
 }

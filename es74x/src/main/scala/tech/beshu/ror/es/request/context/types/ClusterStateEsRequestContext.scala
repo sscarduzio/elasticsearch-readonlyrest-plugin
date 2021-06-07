@@ -47,7 +47,7 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
         // hack: when empty indices list is replaced with wildcard index, returned result is wrong
         Modified
       case _ =>
-        request.indices(filteredIndices.toList.map(_.value.value): _*)
+        request.indices(filteredIndices.toList.map(_.stringify): _*)
         Modified
     }
   }

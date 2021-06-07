@@ -35,12 +35,11 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithIndexPacksUpdater, BlockContextWithIndicesUpdater}
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
-import tech.beshu.ror.accesscontrol.matchers.{IndicesMatcher, MatcherWithWildcardsScalaAdapter, UniqueIdentifierGenerator, ZeroKnowledgeIndexFilterScalaAdapter}
+import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRemoteIndexFilterScalaAdapter.CheckResult
+import tech.beshu.ror.accesscontrol.matchers.{IndicesMatcher, MatcherWithWildcardsScalaAdapter, UniqueIdentifierGenerator, ZeroKnowledgeRemoteIndexFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 class IndicesRule(override val settings: Settings,
                   override val identifierGenerator: UniqueIdentifierGenerator)
@@ -53,7 +52,7 @@ class IndicesRule(override val settings: Settings,
 
   override val name: Rule.Name = IndicesRule.Name.name
 
-  private val zKindexFilter = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
+  private val zKindexFilter = new ZeroKnowledgeRemoteIndexFilterScalaAdapter()
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     BlockContextUpdater[B] match {
@@ -162,11 +161,7 @@ class IndicesRule(override val settings: Settings,
               narrowedIndices
           }
         }
-      //        requestContext
-      //          .allRemoteIndicesAndAliases(???)
-      //          .map {_.map(s =>
-      //            s.index
-      //          )}
+
       // Run the remote algorithm (without knowing the remote list of indices)
       val (remoteResolvedAllowedIndices, _) = splitIntoRemoteAndLocalIndices(resolvedAllowedIndices)
       val remoteIndicesMatcher = IndicesMatcher.create(remoteResolvedAllowedIndices)

@@ -143,10 +143,10 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
   }
 
   private def filterAliases(template: metadata.Template, basedOn: ComponentTemplate) = {
-    val aliasesStrings = basedOn.aliases.map(_.value.value)
+    val aliasesStrings = basedOn.aliases.map(_.stringify)
     template
       .aliases().asSafeMap
-      .filter { case (name, _) => IndexName.fromString(name).exists(i => aliasesStrings.contains(i)) }
+      .filter { case (name, _) => aliasesStrings.contains(name) }
       .asJava
   }
 

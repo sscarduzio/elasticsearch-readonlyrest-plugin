@@ -26,12 +26,11 @@ import org.elasticsearch.cluster.metadata
 import org.elasticsearch.cluster.metadata.ComposableIndexTemplate
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
-import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.domain.Template.IndexTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingIndexTemplates
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -156,10 +155,10 @@ private[types] object GetComposableIndexTemplateEsRequestContext extends Logging
   }
 
   private def filterAliases(template: metadata.Template, basedOn: IndexTemplate) = {
-    val aliasesStrings = basedOn.aliases.map(_.value.value)
+    val aliasesStrings = basedOn.aliases.map(_.stringify)
     template
       .aliases().asSafeMap
-      .filter { case (name, _) => IndexName.fromString(name).exists(i => aliasesStrings.contains(i)) }
+      .filter { case (name, _) => aliasesStrings.contains(name) }
       .asJava
   }
 

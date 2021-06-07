@@ -17,13 +17,14 @@
 package tech.beshu.ror.accesscontrol.matchers
 
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
+import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRemoteIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 import scala.collection.JavaConverters._
 
-// todo: to remove?
-class ZeroKnowledgeIndexFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter) {
+class ZeroKnowledgeRemoteIndexFilterScalaAdapter {
+
+  private val underlying = new ZeroKnowledgeIndexFilter(true)
 
   def check(indices: Set[IndexName.Remote], matcher: Matcher[IndexName.Remote]): CheckResult = {
     val processedIndices: java.util.Set[String] = scala.collection.mutable.Set.empty[String].asJava
@@ -37,7 +38,7 @@ class ZeroKnowledgeIndexFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter)
   }
 }
 
-object ZeroKnowledgeIndexFilterScalaAdapter {
+object ZeroKnowledgeRemoteIndexFilterScalaAdapter {
   sealed trait CheckResult
   object CheckResult {
     final case class Ok(processedIndices: Set[IndexName.Remote]) extends CheckResult
