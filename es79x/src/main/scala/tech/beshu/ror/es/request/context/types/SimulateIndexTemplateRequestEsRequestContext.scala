@@ -154,7 +154,7 @@ object SimulateIndexTemplateRequestEsRequestContext {
     }
 
     def overlappingTemplates(templates: Map[TemplateNamePattern, List[IndexPattern]]): TunedSimulateIndexTemplateResponse = {
-      val jTemplatesMap = templates.map { case (key, value) => (key.value.value, value.map(_.value.value).asJava) }.asJava
+      val jTemplatesMap = templates.map { case (key, value) => (key.value.value, value.map(_.value.stringify).asJava) }.asJava
       reflect.set(overlappingTemplatesFieldName, jTemplatesMap)
       this
     }

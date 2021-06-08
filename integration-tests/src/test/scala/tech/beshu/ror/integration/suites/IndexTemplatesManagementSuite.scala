@@ -17,7 +17,6 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
 import tech.beshu.ror.integration.utils.ESVersionSupport
