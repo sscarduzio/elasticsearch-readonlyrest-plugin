@@ -71,7 +71,7 @@ trait RequestContext {
 
   def allIndicesAndAliases: Set[IndexWithAliases]
 
-  def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]]
+  def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]]
 
   def allTemplates: Set[Template]
 
@@ -223,6 +223,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
       }
   }
 
+  // todo: remove?
   def indicesPerAliasMap: Map[LocalAliasName, Set[ClusterIndexName.Local]] = {
     val mapMonoid = Monoid[Map[LocalAliasName, Set[ClusterIndexName.Local]]]
     requestContext

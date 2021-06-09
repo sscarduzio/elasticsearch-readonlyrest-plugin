@@ -60,6 +60,8 @@ object TestsUtils {
 
   def indexName(str: NonEmptyString): IndexName = IndexName.fromString(str.value).get
 
+  def fullIndexName(str: NonEmptyString): IndexName.Full = IndexName.Full.fromString(str.value).get
+
   def indexPattern(str: NonEmptyString): IndexPattern = IndexPattern(clusterIndexName(str))
 
   implicit def scalaFiniteDuration2JavaDuration(duration: FiniteDuration): Duration = Duration.ofMillis(duration.toMillis)

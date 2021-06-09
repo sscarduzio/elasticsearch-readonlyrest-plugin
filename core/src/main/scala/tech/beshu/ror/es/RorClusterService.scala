@@ -30,7 +30,7 @@ trait RorClusterService {
 
   def allIndicesAndAliases: Map[ClusterIndexName.Local, Set[AliasName]]
 
-  def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]]
+  def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]]
 
   def allTemplates: Set[Template]
 

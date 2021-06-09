@@ -18,13 +18,14 @@ package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule
 
 import cats.Show
 import cats.data.NonEmptySet
+import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.matchers.{MatcherWithWildcardsScalaAdapter, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation._
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.matchers.{MatcherWithWildcardsScalaAdapter, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.implicits._
 import tech.beshu.ror.utils.ScalaOps._
@@ -39,7 +40,7 @@ private[indicesrule] trait AllTemplateIndices
 
   protected def identifierGenerator: UniqueIdentifierGenerator
 
-  protected def processTemplateRequest(blockContext: TemplateRequestBlockContext): RuleResult[TemplateRequestBlockContext] = {
+  protected def processTemplateRequest(blockContext: TemplateRequestBlockContext): Task[RuleResult[TemplateRequestBlockContext]] = Task.now {
     implicit val allowedIndices: AllowedIndices = new AllowedIndices(settings.allowedIndices, blockContext)
     logger.debug(
       s"""[${blockContext.requestContext.id.show}] Checking - indices and aliases in Template related request.

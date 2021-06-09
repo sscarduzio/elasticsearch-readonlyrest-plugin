@@ -17,15 +17,15 @@
 package tech.beshu.ror.es
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.IndexJsonContentService.{ReadError, WriteError}
 
 trait IndexJsonContentService {
 
   // todo: remove java types
-  def sourceOf(index: ClusterIndexName, id: String): Task[Either[ReadError, java.util.Map[String, _]]]
+  def sourceOf(index: IndexName.Full, id: String): Task[Either[ReadError, java.util.Map[String, _]]]
 
-  def saveContent(index: ClusterIndexName, id: String, content: java.util.Map[String, String]): Task[Either[WriteError, Unit]]
+  def saveContent(index: IndexName.Full, id: String, content: java.util.Map[String, String]): Task[Either[WriteError, Unit]]
 }
 
 object IndexJsonContentService {

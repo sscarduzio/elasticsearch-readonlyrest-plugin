@@ -306,7 +306,11 @@ object domain {
 
   final case class FullRemoteIndexWithAliases(clusterName: ClusterName.Full,
                                               index: IndexName.Full,
-                                              aliases: Set[IndexName.Full])
+                                              aliases: Set[IndexName.Full]) {
+    lazy val all: Set[ClusterIndexName.Remote] = {
+      aliases.map(ClusterIndexName.Remote(_, clusterName)) + ClusterIndexName.Remote(index, clusterName)
+    }
+  }
 
   sealed trait IndexName
   object IndexName {
@@ -371,7 +375,7 @@ object domain {
         CaseMappingEquality.instance(_.stringify, identity)
     }
 
-    final case class Remote private(value: IndexName, cluster: ClusterName) extends ClusterIndexName
+    final case class Remote(value: IndexName, cluster: ClusterName) extends ClusterIndexName
     object Remote {
       sealed trait ClusterName
       object ClusterName {

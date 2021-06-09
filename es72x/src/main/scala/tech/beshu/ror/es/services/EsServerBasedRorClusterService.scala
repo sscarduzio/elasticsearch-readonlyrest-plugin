@@ -30,7 +30,6 @@ import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.snapshots.SnapshotsService
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
@@ -69,7 +68,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .toMap
   }
 
-  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]] = ???
+  override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = ???
 
   override def allTemplates: Set[Template] = legacyTemplates()
 
