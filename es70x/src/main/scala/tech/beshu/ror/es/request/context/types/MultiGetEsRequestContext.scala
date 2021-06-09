@@ -85,8 +85,8 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
       .toList
   }
 
-  private def indicesFrom(item: MultiGetRequest.Item): Set[domain.IndexName] = {
-    val requestIndices = item.indices.flatMap(IndexName.fromString).toSet
+  private def indicesFrom(item: MultiGetRequest.Item): Set[domain.ClusterIndexName] = {
+    val requestIndices = item.indices.flatMap(ClusterIndexName.fromString).toSet
     indicesOrWildcard(requestIndices)
   }
 
@@ -100,7 +100,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     }
   }
 
-  private def updateItemWithIndices(item: MultiGetRequest.Item, indices: Set[IndexName]) = {
+  private def updateItemWithIndices(item: MultiGetRequest.Item, indices: Set[ClusterIndexName]) = {
     indices.toList match {
       case Nil => updateItemWithNonExistingIndex(item)
       case index :: rest =>

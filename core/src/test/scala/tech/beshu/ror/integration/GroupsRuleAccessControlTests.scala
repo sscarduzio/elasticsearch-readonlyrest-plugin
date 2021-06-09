@@ -142,7 +142,7 @@ class GroupsRuleAccessControlTests
         "proxy auth user is correct one" in {
           val request = MockRequestContext.indices.copy(
             headers = Set(header("X-Auth-Token", "user1-proxy-id")),
-            filteredIndices = Set(indexName("g12_index")),
+            filteredIndices = Set(clusterIndexName("g12_index")),
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -157,7 +157,7 @@ class GroupsRuleAccessControlTests
         "proxy auth user is unknown" in {
           val request = MockRequestContext.indices.copy(
             headers = Set(header("X-Auth-Token", "user1-invalid")),
-            filteredIndices = Set(indexName("g12_index")),
+            filteredIndices = Set(clusterIndexName("g12_index")),
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -178,7 +178,7 @@ class GroupsRuleAccessControlTests
           ))
           val request = MockRequestContext.indices.copy(
             headers = Set(header("Authorization", s"Bearer ${jwt.stringify()}")),
-            filteredIndices = Set(indexName("g*")),
+            filteredIndices = Set(clusterIndexName("g*")),
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -198,7 +198,7 @@ class GroupsRuleAccessControlTests
               basicAuthHeader("morgan:user1"),
               header("x-ror-current-group", "admin")
             ),
-            filteredIndices = Set(indexName(".kibana")),
+            filteredIndices = Set(clusterIndexName(".kibana")),
             allIndicesAndAliases = Set(IndexWithAliases(localIndexName(".kibana"), Set.empty))
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()

@@ -84,7 +84,7 @@ private[indicesrule] trait IndexTemplateIndices
 
   protected def addingIndexTemplate(newTemplateName: TemplateName,
                                     newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                    aliases: Set[IndexName])
+                                    aliases: Set[ClusterIndexName])
                                    (implicit blockContext: TemplateRequestBlockContext,
                                     allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
     resultBasedOnCondition(blockContext) {
@@ -94,7 +94,7 @@ private[indicesrule] trait IndexTemplateIndices
 
   protected def addingIndexTemplateAndGetAllowedOnes(newTemplateName: TemplateName,
                                                      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                                     aliases: Set[IndexName],
+                                                     aliases: Set[ClusterIndexName],
                                                      requestedTemplateNames: List[TemplateNamePattern])
                                                     (implicit blockContext: TemplateRequestBlockContext,
                                                      allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
@@ -116,7 +116,7 @@ private[indicesrule] trait IndexTemplateIndices
 
   private def processAddingIndexTemplate(newTemplateName: TemplateName,
                                            newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                           aliases: Set[IndexName])
+                                           aliases: Set[ClusterIndexName])
                                           (implicit blockContext: TemplateRequestBlockContext,
                                            allowedIndices: AllowedIndices): Boolean = {
     logger.debug(
@@ -185,7 +185,7 @@ private[indicesrule] trait IndexTemplateIndices
 
   private def canAddNewIndexTemplate(newTemplateName: TemplateName,
                                      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                     newTemplateAliases: Set[IndexName])
+                                     newTemplateAliases: Set[ClusterIndexName])
                                     (implicit blockContext: TemplateRequestBlockContext,
                                      allowedIndices: AllowedIndices) = {
     logger.debug(

@@ -27,7 +27,7 @@ import org.elasticsearch.cluster.metadata.{Template => EsMetadataTemplate}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.{IndexName, IndexPattern, TemplateNamePattern}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexPattern, TemplateNamePattern}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -45,14 +45,14 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
 
   override lazy val isReadOnlyRequest: Boolean = true
 
-  override protected def indicesFrom(request: SimulateIndexTemplateRequest): Set[IndexName] =
+  override protected def indicesFrom(request: SimulateIndexTemplateRequest): Set[ClusterIndexName] =
     Option(request.getIndexName)
-      .flatMap(IndexName.fromString)
+      .flatMap(ClusterIndexName.fromString)
       .toSet
 
   override protected def update(request: SimulateIndexTemplateRequest,
-                                filteredIndices: NonEmptyList[IndexName],
-                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (filteredIndices.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.toList.mkString(",")}]")
     }
@@ -60,8 +60,8 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
   }
 
   private def update(request: SimulateIndexTemplateRequest,
-                     index: IndexName,
-                     allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+                     index: ClusterIndexName,
+                     allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indexName(index.stringify)
     ModificationResult.UpdateResponse {
       case response: SimulateIndexTemplateResponse =>
@@ -75,13 +75,13 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
 object SimulateIndexTemplateRequestEsRequestContext {
 
   private[types] def filterAliasesAndIndexPatternsIn(response: SimulateIndexTemplateResponse,
-                                                     allowedIndices: List[IndexName]): SimulateIndexTemplateResponse = {
+                                                     allowedIndices: List[ClusterIndexName]): SimulateIndexTemplateResponse = {
     val tunedResponse = new TunedSimulateIndexTemplateResponse(response)
     val filterResponse = filterIndexTemplate(allowedIndices) andThen filterOverlappingTemplates(allowedIndices)
     filterResponse(tunedResponse).underlying
   }
 
-  private def filterIndexTemplate(allowedIndices: List[IndexName]) = (response: TunedSimulateIndexTemplateResponse) => {
+  private def filterIndexTemplate(allowedIndices: List[ClusterIndexName]) = (response: TunedSimulateIndexTemplateResponse) => {
     response
       .indexTemplateRequest()
       .map { template =>
@@ -96,7 +96,7 @@ object SimulateIndexTemplateRequestEsRequestContext {
       }
   }
 
-  private def filterOverlappingTemplates(allowedIndices: List[IndexName]) = (response: TunedSimulateIndexTemplateResponse) => {
+  private def filterOverlappingTemplates(allowedIndices: List[ClusterIndexName]) = (response: TunedSimulateIndexTemplateResponse) => {
     val filteredOverlappingTemplates = createOverlappingTemplatesWithFilteredIndexPatterns(
       basedOn = response.overlappingTemplates(),
       allowedIndices
@@ -105,10 +105,10 @@ object SimulateIndexTemplateRequestEsRequestContext {
   }
 
   private def createMetadataTemplateWithFilteredAliases(basedOn: EsMetadataTemplate,
-                                                        allowedIndices: List[IndexName]) = {
+                                                        allowedIndices: List[ClusterIndexName]) = {
     val filteredAliases = basedOn
       .aliases().asSafeMap
-      .flatMap { case (key, value) => IndexName.fromString(key).map((_, value)) }
+      .flatMap { case (key, value) => ClusterIndexName.fromString(key).map((_, value)) }
       .filterKeys(_.isAllowedBy(allowedIndices.toSet))
       .map { case (key, value) => (key.stringify, value) }
       .asJava
@@ -120,7 +120,7 @@ object SimulateIndexTemplateRequestEsRequestContext {
   }
 
   private def createOverlappingTemplatesWithFilteredIndexPatterns(basedOn: Map[TemplateNamePattern, List[IndexPattern]],
-                                                                  allowedIndices: List[IndexName]) = {
+                                                                  allowedIndices: List[ClusterIndexName]) = {
     basedOn.flatMap { case (templateName, patterns) =>
       val filteredPatterns = patterns.filter(_.isAllowedByAny(allowedIndices))
       filteredPatterns match {

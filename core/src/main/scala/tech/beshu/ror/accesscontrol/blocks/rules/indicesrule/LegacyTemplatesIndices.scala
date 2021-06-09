@@ -75,7 +75,7 @@ private[indicesrule] trait LegacyTemplatesIndices
 
   protected def addingLegacyTemplate(newTemplateName: TemplateName,
                                      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                     aliases: Set[IndexName])
+                                     aliases: Set[ClusterIndexName])
                                     (implicit blockContext: TemplateRequestBlockContext,
                                      allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
     logger.debug(
@@ -148,7 +148,7 @@ private[indicesrule] trait LegacyTemplatesIndices
 
   private def canAddNewLegacyTemplate(newTemplateName: TemplateName,
                                       newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                      newTemplateAliases: Set[IndexName])
+                                      newTemplateAliases: Set[ClusterIndexName])
                                      (implicit blockContext: TemplateRequestBlockContext,
                                       allowedIndices: AllowedIndices) = {
     logger.debug(

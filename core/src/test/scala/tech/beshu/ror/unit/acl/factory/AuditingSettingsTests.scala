@@ -23,7 +23,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{CoreSettings, RawRorConfigBasedCoreFactory}
@@ -61,7 +61,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorConfigurationIndex(indexName(".readonlyrest")),
+            RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
@@ -84,7 +84,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorConfigurationIndex(indexName(".readonlyrest")),
+            RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
@@ -109,7 +109,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorConfigurationIndex(indexName(".readonlyrest")),
+            RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
@@ -137,7 +137,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorConfigurationIndex(indexName(".readonlyrest")),
+            RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
@@ -165,7 +165,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorConfigurationIndex(indexName(".readonlyrest")),
+            RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
@@ -193,7 +193,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorConfigurationIndex(indexName(".readonlyrest")),
+            RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
@@ -223,7 +223,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorConfigurationIndex(indexName(".readonlyrest")),
+            RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
@@ -252,7 +252,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorConfigurationIndex(indexName(".readonlyrest")),
+            RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )

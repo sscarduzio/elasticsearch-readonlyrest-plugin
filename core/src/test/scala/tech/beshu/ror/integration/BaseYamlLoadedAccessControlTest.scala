@@ -19,6 +19,7 @@ package tech.beshu.ror.integration
 import java.time.Clock
 
 import cats.implicits._
+import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
@@ -54,7 +55,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
       core <- factory
         .createCoreFrom(
           config,
-          RorConfigurationIndex(IndexName.unsafeFromString(".readonlyrest")),
+          RorConfigurationIndex(IndexName.Full(".readonlyrest")),
           MockHttpClientsFactory,
           ldapConnectionPoolProvider
         )

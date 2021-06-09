@@ -21,7 +21,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
-import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateName, TemplateNamePattern, TemplateOperation, _}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, TemplateName, TemplateNamePattern, TemplateOperation, _}
 import tech.beshu.ror.implicits._
 import tech.beshu.ror.utils.ScalaOps._
 
@@ -52,7 +52,7 @@ private[indicesrule] trait ComponentTemplateIndices
   }
 
   protected def addingComponentTemplate(newTemplateName: TemplateName,
-                                        aliases: Set[IndexName])
+                                        aliases: Set[ClusterIndexName])
                                        (implicit blockContext: TemplateRequestBlockContext,
                                         allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
     logger.debug(
@@ -123,7 +123,7 @@ private[indicesrule] trait ComponentTemplateIndices
   }
 
   private def canAddNewComponentTemplate(newTemplateName: TemplateName,
-                                         newTemplateAliases: Set[IndexName])
+                                         newTemplateAliases: Set[ClusterIndexName])
                                         (implicit blockContext: TemplateRequestBlockContext,
                                          allowedIndices: AllowedIndices) = {
     logger.debug(

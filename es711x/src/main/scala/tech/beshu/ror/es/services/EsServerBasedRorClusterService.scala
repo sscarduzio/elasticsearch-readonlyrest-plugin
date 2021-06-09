@@ -36,7 +36,7 @@ import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
-import tech.beshu.ror.accesscontrol.domain.IndexName.Remote.ClusterName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -63,16 +63,16 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
     lookup.get(indexOrAlias.stringify).getIndices.asScala.map(_.getIndexUUID).toSet
   }
 
-  override def allIndicesAndAliases: Map[IndexName.Local, Set[AliasName]] = {
+  override def allIndicesAndAliases: Map[ClusterIndexName.Local, Set[AliasName]] = {
     val indices = clusterService.state.metadata.getIndices
     indices
       .keysIt().asScala
       .flatMap { index =>
         val indexMetaData = indices.get(index)
-        IndexName.Local
+        ClusterIndexName.Local
           .fromString(indexMetaData.getIndex.getName)
           .map { indexName =>
-            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Local.fromString)
+            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(ClusterIndexName.Local.fromString)
             (indexName, aliases)
           }
       }
@@ -80,12 +80,12 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
   }
 
   // todo: refactoring
-  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Map[IndexName.Remote.Full, Set[FullRemoteAliasName]]] = {
+  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]] = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
         test(remoteClusterName, remoteClusterService)
       case None =>
-        Task.now(Map.empty)
+        Task.now(Set.empty)
     }
   }
 
@@ -123,15 +123,14 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
                 response
                   .getIndices.asSafeList
                   .flatMap { resolvedIndex =>
-                    IndexName.Remote.Full
-                      // todo: is it ok?
-                      .fromString(s"${remoteClusterFullName.value}:${resolvedIndex.getName}")
+                    IndexName.Full
+                      .fromString(resolvedIndex.getName)
                       .map { index =>
                         val aliases = resolvedIndex
                           .getAliases.asSafeList
-                          .flatMap(alias => IndexName.Remote.Full.fromString(s"${remoteClusterFullName.value}:$alias"))
+                          .flatMap(IndexName.Full.fromString)
                           .toSet
-                        (index, aliases)
+                        FullRemoteIndexWithAliases(remoteClusterFullName, index, aliases)
                       }
                   }
               }
@@ -141,7 +140,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
     // todo: if one breaks, all break
     Task
       .gatherUnordered(listOfTasks)
-      .map(_.flatten.toMap)
+      .map(_.flatten.toSet)
   }
 
   override def allTemplates: Set[Template] = {
@@ -200,7 +199,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
           indexPatterns <- UniqueNonEmptyList.fromList(
             templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString).toList
           )
-          aliases = templateMetaData.aliases().asSafeValues.flatMap(a => IndexName.fromString(a.alias()))
+          aliases = templateMetaData.aliases().asSafeValues.flatMap(a => ClusterIndexName.fromString(a.alias()))
         } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)
       }
       .toSet
@@ -218,7 +217,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
             templateMetaData.indexPatterns().asScala.flatMap(IndexPattern.fromString).toList
           )
           aliases = templateMetaData.template().asSafeSet
-            .flatMap(_.aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet)
+            .flatMap(_.aliases().asSafeMap.values.flatMap(a => ClusterIndexName.fromString(a.alias())).toSet)
         } yield Template.IndexTemplate(templateName, indexPatterns, aliases)
       }
       .toSet
@@ -232,7 +231,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
         val templateMetaData = templates.get(templateNameString)
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          aliases = templateMetaData.template().aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet
+          aliases = templateMetaData.template().aliases().asSafeMap.values.flatMap(a => ClusterIndexName.fromString(a.alias())).toSet
         } yield Template.ComponentTemplate(templateName, aliases)
       }
       .toSet

@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.{CanPass, _}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithIndexPacksUpdater, BlockContextWithIndicesUpdater}
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRemoteIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.matchers.{IndicesMatcher, MatcherWithWildcardsScalaAdapter, UniqueIdentifierGenerator, ZeroKnowledgeRemoteIndexFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -125,14 +125,14 @@ class IndicesRule(override val settings: Settings,
   }
 
   private def processIndices(requestContext: RequestContext,
-                             resolvedAllowedIndices: Set[IndexName],
-                             indices: Set[IndexName]): ProcessResult[IndexName] = {
+                             resolvedAllowedIndices: Set[ClusterIndexName],
+                             indices: Set[ClusterIndexName]): ProcessResult[ClusterIndexName] = {
     val (crossClusterIndices, localIndices) = splitIntoRemoteAndLocalIndices(indices)
 
     // Scatter gather for local and remote indices barring algorithms
     if (crossClusterIndices.nonEmpty && requestContext.hasRemoteClusters) {
       // Run the local algorithm
-      val processedLocalIndices: Set[IndexName.Local] =
+      val processedLocalIndices: Set[ClusterIndexName.Local] =
         if (localIndices.isEmpty && crossClusterIndices.nonEmpty) {
           // Don't run locally if only have crossCluster, otherwise you'll resolve the equivalent of "*"
           localIndices
@@ -141,9 +141,9 @@ class IndicesRule(override val settings: Settings,
           val localIndicesMatcher = IndicesMatcher.create(localResolvedAllowedIndices)
           canPass(requestContext, localIndices, localIndicesMatcher) match {
             case CanPass.No(Some(Reason.IndexNotExist)) =>
-              Set.empty[IndexName.Local]
+              Set.empty[ClusterIndexName.Local]
             case CanPass.No(_) =>
-              Set.empty[IndexName.Local]
+              Set.empty[ClusterIndexName.Local]
             case CanPass.Yes(narrowedIndices) =>
               narrowedIndices
           }
@@ -173,28 +173,28 @@ class IndicesRule(override val settings: Settings,
     }
   }
 
-  private def splitIntoRemoteAndLocalIndices(indices: Set[IndexName]) = {
-    indices.foldLeft((Set.empty[IndexName.Remote], Set.empty[IndexName.Local])) {
+  private def splitIntoRemoteAndLocalIndices(indices: Set[ClusterIndexName]) = {
+    indices.foldLeft((Set.empty[ClusterIndexName.Remote], Set.empty[ClusterIndexName.Local])) {
       case ((remoteIndicesList, localIndicesList), currentIndex) =>
         currentIndex match {
-          case local: IndexName.Local =>
+          case local: ClusterIndexName.Local =>
             (remoteIndicesList, localIndicesList + local)
-          case remote: IndexName.Remote =>
+          case remote: ClusterIndexName.Remote =>
             (remoteIndicesList + remote, localIndicesList)
         }
     }
   }
 
   private def canPass(requestContext: RequestContext,
-                      indices: Set[IndexName.Local],
-                      matcher: IndicesMatcher[IndexName.Local]): CanPass[Set[IndexName.Local]] = {
+                      indices: Set[ClusterIndexName.Local],
+                      matcher: IndicesMatcher[ClusterIndexName.Local]): CanPass[Set[ClusterIndexName.Local]] = {
     if (requestContext.isReadOnlyRequest) canIndicesReadOnlyRequestPass(requestContext, indices, matcher)
     else canIndicesWriteRequestPass(requestContext, indices, matcher)
   }
 
   private def canIndicesReadOnlyRequestPass(requestContext: RequestContext,
-                                            indices: Set[IndexName.Local],
-                                            matcher: IndicesMatcher[IndexName.Local]): CanPass[Set[IndexName.Local]] = {
+                                            indices: Set[ClusterIndexName.Local],
+                                            matcher: IndicesMatcher[ClusterIndexName.Local]): CanPass[Set[ClusterIndexName.Local]] = {
     val result = for {
       _ <- noneOrAllIndices(requestContext, indices, matcher)
       _ <- allIndicesMatchedByWildcard(requestContext, indices, matcher)
@@ -204,24 +204,24 @@ class IndicesRule(override val settings: Settings,
   }
 
   private def noneOrAllIndices(requestContext: RequestContext,
-                               indices: Set[IndexName.Local],
-                               matcher: IndicesMatcher[IndexName.Local]): CheckContinuation[Set[IndexName.Local]] = {
+                               indices: Set[ClusterIndexName.Local],
+                               matcher: IndicesMatcher[ClusterIndexName.Local]): CheckContinuation[Set[ClusterIndexName.Local]] = {
     logger.debug(s"[${requestContext.id.show}] Checking - none or all indices ...")
     val allIndicesAndAliases = requestContext.allIndicesAndAliases.flatMap(_.all)
-    if (indices.isEmpty || indices.contains(IndexName.Local.all) || indices.contains(IndexName.Local.wildcard)) {
+    if (indices.isEmpty || indices.contains(ClusterIndexName.Local.all) || indices.contains(ClusterIndexName.Local.wildcard)) {
       val allowedIdxs = matcher.filterIndices(allIndicesAndAliases)
       stop(
         if (allowedIdxs.nonEmpty) CanPass.Yes(allowedIdxs)
         else CanPass.No(Reason.IndexNotExist)
       )
     } else {
-      continue[Set[IndexName.Local]]
+      continue[Set[ClusterIndexName.Local]]
     }
   }
 
   private def allIndicesMatchedByWildcard(requestContext: RequestContext,
-                                          indices: Set[IndexName.Local],
-                                          matcher: IndicesMatcher[IndexName.Local]): CheckContinuation[Set[IndexName.Local]] = {
+                                          indices: Set[ClusterIndexName.Local],
+                                          matcher: IndicesMatcher[ClusterIndexName.Local]): CheckContinuation[Set[ClusterIndexName.Local]] = {
     logger.debug(s"[${requestContext.id.show}] Checking if all indices are matched ...")
     indices.toList match {
       case index :: Nil if !index.hasWildcard =>
@@ -233,13 +233,13 @@ class IndicesRule(override val settings: Settings,
       case _ if indices.forall(i => !i.hasWildcard) && matcher.filterIndices(indices) === indices =>
         stop(CanPass.Yes(indices))
       case _ =>
-        continue[Set[IndexName.Local]]
+        continue[Set[ClusterIndexName.Local]]
     }
   }
 
   private def indicesAliases(requestContext: RequestContext,
-                             indices: Set[IndexName.Local],
-                             matcher: IndicesMatcher[IndexName.Local]): CheckContinuation[Set[IndexName.Local]] = {
+                             indices: Set[ClusterIndexName.Local],
+                             matcher: IndicesMatcher[ClusterIndexName.Local]): CheckContinuation[Set[ClusterIndexName.Local]] = {
     logger.debug(s"[${requestContext.id.show}] Checking - indices & aliases ...")
     val allowedRealIndices =
       filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured(requestContext, indices, matcher) ++
@@ -254,8 +254,8 @@ class IndicesRule(override val settings: Settings,
   }
 
   private def filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured(requestContext: RequestContext,
-                                                                           indices: Set[IndexName.Local],
-                                                                           matcher: IndicesMatcher[IndexName.Local]) = {
+                                                                           indices: Set[ClusterIndexName.Local],
+                                                                           matcher: IndicesMatcher[ClusterIndexName.Local]) = {
     val allIndices = requestContext.allIndicesAndAliases.map(_.index)
     val requestedIndicesNames = indices
     val requestedIndices = MatcherWithWildcardsScalaAdapter.create(requestedIndicesNames).filter(allIndices)
@@ -267,12 +267,12 @@ class IndicesRule(override val settings: Settings,
     // eg. alias A1 of index I1 can be defined with filtering, so result of /I1/_search will be different than
     // result of /A1/_search. It means that if indices are requested and aliases are configured, the result of
     // this kind of method will always be an empty set.
-    Set.empty[IndexName.Local]
+    Set.empty[ClusterIndexName.Local]
   }
 
   private def filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured(requestContext: RequestContext,
-                                                                           indices: Set[IndexName.Local],
-                                                                           matcher: IndicesMatcher[IndexName.Local]) = {
+                                                                           indices: Set[ClusterIndexName.Local],
+                                                                           matcher: IndicesMatcher[ClusterIndexName.Local]) = {
     val allAliases = requestContext.allIndicesAndAliases.flatMap(_.aliases)
     val requestedAliasesNames = indices
     val requestedAliases = MatcherWithWildcardsScalaAdapter.create(requestedAliasesNames).filter(allAliases)
@@ -281,8 +281,8 @@ class IndicesRule(override val settings: Settings,
   }
 
   private def filterAssumingThatAliasesAreRequestedAndIndicesAreConfigured(requestContext: RequestContext,
-                                                                           indices: Set[IndexName.Local],
-                                                                           matcher: IndicesMatcher[IndexName.Local]) = {
+                                                                           indices: Set[ClusterIndexName.Local],
+                                                                           matcher: IndicesMatcher[ClusterIndexName.Local]) = {
     val requestedAliasesNames = indices
     val allAliases = requestContext.allIndicesAndAliases.flatMap(_.aliases)
     val requestedAliases = MatcherWithWildcardsScalaAdapter.create(requestedAliasesNames).filter(allAliases)
@@ -293,8 +293,8 @@ class IndicesRule(override val settings: Settings,
   }
 
   private def canIndicesWriteRequestPass(requestContext: RequestContext,
-                                         indices: Set[IndexName.Local],
-                                         matcher: IndicesMatcher[IndexName.Local]): CanPass[Set[IndexName.Local]] = {
+                                         indices: Set[ClusterIndexName.Local],
+                                         matcher: IndicesMatcher[ClusterIndexName.Local]): CanPass[Set[ClusterIndexName.Local]] = {
     val result = for {
       _ <- generalWriteRequest(requestContext, indices, matcher)
     } yield ()
@@ -302,8 +302,8 @@ class IndicesRule(override val settings: Settings,
   }
 
   private def generalWriteRequest(requestContext: RequestContext,
-                                  indices: Set[IndexName.Local],
-                                  matcher: IndicesMatcher[IndexName.Local]): CheckContinuation[Set[IndexName.Local]] = {
+                                  indices: Set[ClusterIndexName.Local],
+                                  matcher: IndicesMatcher[ClusterIndexName.Local]): CheckContinuation[Set[ClusterIndexName.Local]] = {
     logger.debug(s"[${requestContext.id.show}] Checking - write request ...")
     // Write requests
     // Handle <no-index> (#TODO LEGACY)
@@ -346,7 +346,7 @@ class IndicesRule(override val settings: Settings,
   }
 
   private val matchAll = settings.allowedIndices.exists {
-    case AlreadyResolved(indices) if indices.contains_(IndexName.Local.`wildcard`) => true
+    case AlreadyResolved(indices) if indices.contains_(ClusterIndexName.Local.`wildcard`) => true
     case _ => false
   }
 
@@ -358,12 +358,12 @@ object IndicesRule {
     override val name = Rule.Name("indices")
   }
 
-  final case class Settings(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+  final case class Settings(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                             mustInvolveIndices: Boolean)
 
-  private sealed trait ProcessResult[+T <: IndexName]
+  private sealed trait ProcessResult[+T <: ClusterIndexName]
   private object ProcessResult {
-    final case class Ok[T <: IndexName](indices: Set[T]) extends ProcessResult[T]
+    final case class Ok[T <: ClusterIndexName](indices: Set[T]) extends ProcessResult[T]
     final case class Failed(cause: Option[Cause]) extends ProcessResult[Nothing]
   }
 

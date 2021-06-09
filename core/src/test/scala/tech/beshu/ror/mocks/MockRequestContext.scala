@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockCo
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.IndexName.Remote.ClusterName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.mocks.MockRequestContext.DefaultAction
@@ -91,8 +91,8 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
                                                 override val hasRemoteClusters: Boolean = false,
-                                                filteredIndices: Set[IndexName],
-                                                allAllowedIndices: Set[IndexName],
+                                                filteredIndices: Set[ClusterIndexName],
+                                                allAllowedIndices: Set[ClusterIndexName],
                                                 allRemoteIndicesAndAliasesFunc: ClusterName => Task[Set[FullRemoteIndexWithAliases]] = _ => Task.now(Set.empty))
   extends RequestContext {
   override type BLOCK_CONTEXT = GeneralIndexRequestBlockContext
@@ -190,8 +190,8 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
                                           override val isReadOnlyRequest: Boolean = true,
                                           override val isAllowedForDLS: Boolean = true,
                                           override val hasRemoteClusters: Boolean = false,
-                                          indices: Set[IndexName],
-                                          allAllowedIndices: Set[IndexName])
+                                          indices: Set[ClusterIndexName],
+                                          allAllowedIndices: Set[ClusterIndexName])
   extends RequestContext {
   override type BLOCK_CONTEXT = FilterableRequestBlockContext
 

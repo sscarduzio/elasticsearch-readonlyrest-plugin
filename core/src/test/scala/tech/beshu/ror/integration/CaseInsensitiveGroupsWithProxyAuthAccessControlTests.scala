@@ -60,7 +60,7 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
         "user i user1" in {
           val request = MockRequestContext.indices.copy(
             headers = Set(header("X-Auth-Token", "user1-proxy-id")),
-            filteredIndices = Set(indexName("g12_index")),
+            filteredIndices = Set(clusterIndexName("g12_index")),
             allIndicesAndAliases = Set(
               IndexWithAliases(localIndexName("g12_index"), Set.empty),
               IndexWithAliases(localIndexName("g34_index"), Set.empty)
@@ -76,7 +76,7 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
         "user i User1" in {
           val request = MockRequestContext.indices.copy(
             headers = Set(header("X-Auth-Token", "User1-proxy-id")),
-            filteredIndices = Set(indexName("g12_index")),
+            filteredIndices = Set(clusterIndexName("g12_index")),
             allIndicesAndAliases = Set(
               IndexWithAliases(localIndexName("g12_index"), Set.empty),
               IndexWithAliases(localIndexName("g34_index"), Set.empty)

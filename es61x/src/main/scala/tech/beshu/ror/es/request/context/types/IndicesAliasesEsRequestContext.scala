@@ -21,7 +21,7 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -40,16 +40,16 @@ class IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
   private lazy val originIndices = actionRequest
     .getAliasActions.asScala
     .flatMap { r =>
-      r.indices.asSafeSet.flatMap(IndexName.fromString) ++
-        r.aliases.asSafeList.flatMap(IndexName.fromString)
+      r.indices.asSafeSet.flatMap(ClusterIndexName.fromString) ++
+        r.aliases.asSafeList.flatMap(ClusterIndexName.fromString)
     }
     .toSet
 
-  override protected def indicesFrom(request: IndicesAliasesRequest): Set[IndexName] = originIndices
+  override protected def indicesFrom(request: IndicesAliasesRequest): Set[ClusterIndexName] = originIndices
 
   override protected def update(request: IndicesAliasesRequest,
-                                filteredIndices: NonEmptyList[IndexName],
-                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if(originIndices == filteredIndices.toList.toSet) {
       Modified
     } else {

@@ -25,19 +25,19 @@ class IndexNameTests extends AnyWordSpec {
 
   "indexName.match" should {
     "follow given rules" in {
-      (indexName("test*") matches indexName("test*")) should be(true)
-      (indexName("test*") matches indexName("te*")) should be(false)
-      (indexName("test*") matches indexName("tests*")) should be(true)
-      (indexName("test*") matches indexName("test")) should be(true)
-      (indexName("test*") matches indexName("te")) should be(false)
-      (indexName("test*") matches indexName("tests")) should be(true)
+      (clusterIndexName("test*") matches clusterIndexName("test*")) should be(true)
+      (clusterIndexName("test*") matches clusterIndexName("te*")) should be(false)
+      (clusterIndexName("test*") matches clusterIndexName("tests*")) should be(true)
+      (clusterIndexName("test*") matches clusterIndexName("test")) should be(true)
+      (clusterIndexName("test*") matches clusterIndexName("te")) should be(false)
+      (clusterIndexName("test*") matches clusterIndexName("tests")) should be(true)
 
-      (indexName("test") matches indexName("test*")) should be(false)
-      (indexName("test") matches indexName("te*")) should be(false)
-      (indexName("test") matches indexName("tests*")) should be(false)
-      (indexName("test") matches indexName("test")) should be(true)
-      (indexName("test") matches indexName("te")) should be(false)
-      (indexName("test") matches indexName("tests")) should be(false)
+      (clusterIndexName("test") matches clusterIndexName("test*")) should be(false)
+      (clusterIndexName("test") matches clusterIndexName("te*")) should be(false)
+      (clusterIndexName("test") matches clusterIndexName("tests*")) should be(false)
+      (clusterIndexName("test") matches clusterIndexName("test")) should be(true)
+      (clusterIndexName("test") matches clusterIndexName("te")) should be(false)
+      (clusterIndexName("test") matches clusterIndexName("tests")) should be(false)
     }
   }
 }

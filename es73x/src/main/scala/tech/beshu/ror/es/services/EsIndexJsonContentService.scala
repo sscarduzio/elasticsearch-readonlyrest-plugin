@@ -44,7 +44,7 @@ class EsIndexJsonContentService(client: NodeClient,
     this(client, ())
   }
 
-  override def sourceOf(index: domain.IndexName,
+  override def sourceOf(index: domain.ClusterIndexName,
                         id: String): Task[Either[ReadError, util.Map[String, AnyRef]]] = {
     Task(
       client
@@ -74,7 +74,7 @@ class EsIndexJsonContentService(client: NodeClient,
       }
   }
 
-  override def saveContent(index: domain.IndexName,
+  override def saveContent(index: domain.ClusterIndexName,
                            id: String,
                            content: util.Map[String, String]): Task[Either[WriteError, Unit]] = {
     Task(

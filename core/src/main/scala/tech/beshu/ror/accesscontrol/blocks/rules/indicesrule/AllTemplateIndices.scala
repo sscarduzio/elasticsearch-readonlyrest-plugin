@@ -98,7 +98,7 @@ private[indicesrule] trait AllTemplateIndices
     }
   }
 
-  private[indicesrule] def isAliasAllowed(alias: IndexName)
+  private[indicesrule] def isAliasAllowed(alias: ClusterIndexName)
                                          (implicit allowedIndices: AllowedIndices) = {
     alias.isAllowedBy(allowedIndices.resolved)
   }
@@ -111,9 +111,9 @@ private[indicesrule] trait AllTemplateIndices
     templateByName.filterKeys(filteredTemplateNames.contains).values.toSet.flatten
   }
 
-  private[indicesrule] class AllowedIndices(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+  private[indicesrule] class AllowedIndices(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                                             val blockContext: TemplateRequestBlockContext) {
-    val resolved: Set[IndexName] = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
+    val resolved: Set[ClusterIndexName] = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
   }
   private[indicesrule] object AllowedIndices {
     implicit def show: Show[AllowedIndices] = Show.show(_.resolved.map(_.show).mkStringOrEmptyString("", ",", ""))

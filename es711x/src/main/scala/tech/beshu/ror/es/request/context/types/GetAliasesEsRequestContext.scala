@@ -23,7 +23,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.AliasRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -112,19 +112,19 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
     }
   }
 
-  private def updateIndices(request: GetAliasesRequest, indices: NonEmptyList[IndexName]): Unit = {
+  private def updateIndices(request: GetAliasesRequest, indices: NonEmptyList[ClusterIndexName]): Unit = {
     actionRequest.indices(indices.map(_.stringify).toList: _*)
   }
 
-  private def updateAliases(request: GetAliasesRequest, aliases: NonEmptyList[IndexName]): Unit = {
+  private def updateAliases(request: GetAliasesRequest, aliases: NonEmptyList[ClusterIndexName]): Unit = {
     actionRequest.aliases(aliases.map(_.stringify).toList: _*)
   }
 
   private def indicesFrom(request: GetAliasesRequest) = {
-    indicesOrWildcard(request.indices().asSafeSet.flatMap(IndexName.fromString))
+    indicesOrWildcard(request.indices().asSafeSet.flatMap(ClusterIndexName.fromString))
   }
 
   private def aliasesFrom(request: GetAliasesRequest) = {
-    indicesOrWildcard(request.aliases().asSafeSet.flatMap(IndexName.fromString))
+    indicesOrWildcard(request.aliases().asSafeSet.flatMap(ClusterIndexName.fromString))
   }
 }
