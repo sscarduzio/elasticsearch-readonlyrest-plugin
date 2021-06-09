@@ -39,6 +39,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.domain.IndexName.Remote
+import tech.beshu.ror.accesscontrol.domain.IndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.Template.{ComponentTemplate, IndexTemplate, LegacyTemplate}
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation._
 import tech.beshu.ror.accesscontrol.domain._
@@ -322,50 +323,104 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
 
   "An IndicesRule for request with remote indices" should {
     "match" when {
-      // todo:
-//      val userTestSearchManager = new SearchManager(basicAuthClient("test", "test"))
-//
-//      //      val result1 = userTestSearchManager.asyncSearch("*-logs-smg-stats-*")
-//      //      val result2 = userTestSearchManager.asyncSearch("*:*-logs-smg-stats-*")
-//      //      val result3 = userTestSearchManager.asyncSearch("*-logs-smg-*")
-//      val result4 = userTestSearchManager.asyncSearch("*:*-logs-smg-*")
-//
-//      //      if(result1.isSuccess) {
-//      //        println(s"R1: ${result1.responseJson.toString()}")
-//      //      }
-//      //      if(result2.isSuccess) {
-//      //        println(s"R2: ${result2.responseJson.toString()}")
-//      //      }
-//      //      if(result3.isSuccess) {
-//      //        println(s"R3: ${result3.responseJson.toString()}")
-//      //      }
-//      if(result4.isSuccess) {
-//        println(s"R4: ${result4.responseJson.toString()}")
-//      }
-
-//      documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-27",  ujson.read("""{"counter1":"50"}""")).force()
-//      documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-28",  ujson.read("""{"counter1":"50"}""")).force()
-//      documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-29",  ujson.read("""{"counter1":"50"}""")).force()
-//      "test" in {
-//        assertMatchRuleForIndexRequest(
-//          configured = NonEmptySet.of(indexNameVar("*-logs-smg-stats-*")),//, indexNameVar("*:*-logs-smg-stats-*")),
-//          requestIndices = Set(indexName("*:*-logs-smg-*")),
-//          modifyRequestContext = _.copy(
-//            allIndicesAndAliases = Set(IndexWithAliases(localIndexName("test"), Set.empty)),
-//            allRemoteIndicesAndAliasesFunc = _ => {
-//              Task.now(Set(
-//                fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-27"),
-//                fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-28"),
-//                fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-29")
-//              ))
-//            }
-//          ),
-//          found = Set(indexName("*:*-logs-smg-stats-*")),
-//        )
-//      }
-    }
-    "not match" when {
-
+      "remote indices are used" when {
+        "requested index name with wildcard is the same as configured index name with wildcard" in {
+          assertMatchRuleForIndexRequest(
+            configured = NonEmptySet.of(indexNameVar("etl*:*-logs-smg-stats-*")),
+            requestIndices = Set(indexName("e*:*-logs-smg-stats-*")),
+            modifyRequestContext = _.copy(
+              allIndicesAndAliases = Set(IndexWithAliases(localIndexName("test"), Set.empty)),
+              allRemoteIndicesAndAliasesFunc = {
+                case ClusterName.Wildcard(name) if name.startsWith("e") =>
+                  Task.now(Set(
+                    fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-27"),
+                    fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-28"),
+                    fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-29")
+                  ))
+                case _ =>
+                  Task.now(Set(
+                    fullRemoteIndexWithAliases("c02-logs-smg-stats-2020-03-27"),
+                    fullRemoteIndexWithAliases("c02-logs-smg-stats-2020-03-28"),
+                    fullRemoteIndexWithAliases("c02-logs-smg-stats-2020-03-29")
+                  ))
+              }
+            ),
+            found = Set(indexName("etl*:*-logs-smg-stats-*")),
+          )
+        }
+        "requested index name with wildcard is more general version of the configured index name with wildcard" in {
+          assertMatchRuleForIndexRequest(
+            configured = NonEmptySet.of(indexNameVar("etl*:*-logs-smg-stats-*")),
+            requestIndices = Set(indexName("e*:*-logs-smg-*")),
+            modifyRequestContext = _.copy(
+              allIndicesAndAliases = Set(IndexWithAliases(localIndexName("test"), Set.empty)),
+              allRemoteIndicesAndAliasesFunc = {
+                case ClusterName.Wildcard(name) if name.startsWith("e") =>
+                  Task.now(Set(
+                    fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-27"),
+                    fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-28"),
+                    fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-29")
+                  ))
+                case _ =>
+                  Task.now(Set(
+                    fullRemoteIndexWithAliases("c02-logs-smg-stats-2020-03-27"),
+                    fullRemoteIndexWithAliases("c02-logs-smg-stats-2020-03-28"),
+                    fullRemoteIndexWithAliases("c02-logs-smg-stats-2020-03-29")
+                  ))
+              }
+            ),
+            found = Set(indexName("etl*:*-logs-smg-stats-*")),
+          )
+        }
+        "requested index name with wildcard is more specialized version of the configured index name with wildcard" in {
+          assertMatchRuleForIndexRequest(
+            configured = NonEmptySet.of(indexNameVar("etl*:*-logs-smg-stats-*")),
+            requestIndices = Set(indexName("e*:*-logs-smg-stats-2020*")),
+            modifyRequestContext = _.copy(
+              allIndicesAndAliases = Set(IndexWithAliases(localIndexName("test"), Set.empty)),
+              allRemoteIndicesAndAliasesFunc = {
+                case ClusterName.Wildcard(name) if name.startsWith("e") =>
+                  Task.now(Set(
+                    fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-27"),
+                    fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-28"),
+                    fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-29")
+                  ))
+                case _ =>
+                  Task.now(Set(
+                    fullRemoteIndexWithAliases("c02-logs-smg-stats-2020-03-27"),
+                    fullRemoteIndexWithAliases("c02-logs-smg-stats-2020-03-28"),
+                    fullRemoteIndexWithAliases("c02-logs-smg-stats-2020-03-29")
+                  ))
+              }
+            ),
+            found = Set(indexName("etl*:*-logs-smg-stats-2020*")),
+          )
+        }
+        "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" in {
+          assertMatchRuleForIndexRequest(
+            configured = NonEmptySet.of(indexNameVar("etl*:*-logs-smg-stats-*")),
+            requestIndices = Set(indexName("e*:c0*")),
+            modifyRequestContext = _.copy(
+              allIndicesAndAliases = Set(IndexWithAliases(localIndexName("test"), Set.empty)),
+              allRemoteIndicesAndAliasesFunc = {
+                case ClusterName.Wildcard(name) if name.startsWith("e") =>
+                  Task.now(Set(
+                    fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-27"),
+                    fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-28"),
+                    fullRemoteIndexWithAliases("c01-logs-smg-stats-2020-03-29")
+                  ))
+                case _ =>
+                  Task.now(Set(
+                    fullRemoteIndexWithAliases("c02-logs-smg-stats-2020-03-27"),
+                    fullRemoteIndexWithAliases("c02-logs-smg-stats-2020-03-28"),
+                    fullRemoteIndexWithAliases("c02-logs-smg-stats-2020-03-29")
+                  ))
+              }
+            ),
+            found = Set(indexName("etl*:c0*")),
+          )
+        }
+      }
     }
   }
 

@@ -425,9 +425,6 @@ object BlockContext {
 
     def nonExistingIndicesFromInitialIndices(): Set[IndexName] = {
       HasIndices[B].indices(blockContext).map(_.randomNonexistentIndex())
-         // todo: should be moved
-//        i.value.value.replace(":", "_") // we don't want to call remote cluster
-//      ))
     }
   }
 

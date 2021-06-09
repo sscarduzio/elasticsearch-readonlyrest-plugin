@@ -127,20 +127,7 @@ class IndicesRule(override val settings: Settings,
   private def processIndices(requestContext: RequestContext,
                              resolvedAllowedIndices: Set[IndexName],
                              indices: Set[IndexName]): ProcessResult[IndexName] = {
-
     val (crossClusterIndices, localIndices) = splitIntoRemoteAndLocalIndices(indices)
-    // todo: remove
-    //        if (!requestContext.hasRemoteClusters) {
-    //          // Only requested X-cluster when we don't have remote, will return empty.
-    //          val crossClusterIndices = indices.filter(_.isClusterIndex)
-    //          if (indices.nonEmpty && indices.size === crossClusterIndices.size) {
-    //            return ProcessResult.Ok(indices)
-    //          }
-    //          // If you requested local + X-cluster indices while we don't have remotes, it's like you asked for only local indices.
-    //          (Set.empty[IndexName], indices.filter(index => !index.isClusterIndex))
-    //        } else {
-    //          indices.partition(_.isClusterIndex)
-    //        }
 
     // Scatter gather for local and remote indices barring algorithms
     if (crossClusterIndices.nonEmpty && requestContext.hasRemoteClusters) {
@@ -197,10 +184,6 @@ class IndicesRule(override val settings: Settings,
         }
     }
   }
-
-  private def isSearchAction(requestContext: RequestContext): Boolean =
-    // todo: remove?
-    requestContext.isReadOnlyRequest && requestContext.action.isSearchAction
 
   private def canPass(requestContext: RequestContext,
                       indices: Set[IndexName.Local],
@@ -283,7 +266,7 @@ class IndicesRule(override val settings: Settings,
   private def filterAssumingThatIndicesAreRequestedAndAliasesAreConfigured() = {
     // eg. alias A1 of index I1 can be defined with filtering, so result of /I1/_search will be different than
     // result of /A1/_search. It means that if indices are requested and aliases are configured, the result of
-    // this kind of method will always be empty set.
+    // this kind of method will always be an empty set.
     Set.empty[IndexName.Local]
   }
 
