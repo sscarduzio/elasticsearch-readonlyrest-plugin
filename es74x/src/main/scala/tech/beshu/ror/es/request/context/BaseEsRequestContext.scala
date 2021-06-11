@@ -130,9 +130,8 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
       .map { case (indexName, aliases) => IndexWithAliases(indexName, aliases) }
       .toSet
 
-  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]] = {
-    clusterService.allRemoteIndicesAndAliases(remoteClusterName)
-  }
+  override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] =
+    clusterService.allRemoteIndicesAndAliases.memoize
 
   override lazy val allTemplates: Set[Template] = clusterService.allTemplates
 

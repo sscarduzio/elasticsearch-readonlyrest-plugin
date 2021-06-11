@@ -35,9 +35,9 @@ import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
@@ -79,62 +79,59 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
   }
 
   // todo: refactoring
-  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Set[FullRemoteIndexWithAliases]] = {
+  override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
-        test(remoteClusterName, remoteClusterService)
+        test(remoteClusterService)
       case None =>
         Task.now(Set.empty)
     }
   }
 
   // todo: change name
-  private def test(remoteClusterName: ClusterName, remoteClusterService: RemoteClusterService) = {
+  private def test(remoteClusterService: RemoteClusterService) = {
     val remoteClusterFullNames =
       remoteClusterService
         .getRegisteredRemoteClusterNames.asSafeSet
         .flatMap(ClusterName.Full.fromString)
 
-    val listOfTasks = MatcherWithWildcardsScalaAdapter
-      .create(Set(remoteClusterName))
-      .filter(remoteClusterFullNames)
-      .toList
-      .map { remoteClusterFullName =>
-        Try(remoteClusterService.getRemoteClusterClient(threadPool, remoteClusterFullName.value.value)) match {
-          case Failure(_) =>
-            // todo: log?
-            Task.now(List.empty)
-          case Success(client) =>
-            val promise = CancelablePromise[ResolveIndexAction.Response]()
-            client
-              .admin()
-              .indices()
-              .resolveIndex(
-                new ResolveIndexAction.Request(List("*").toArray),
-                new ActionListener[ResolveIndexAction.Response] {
-                  override def onResponse(response: ResolveIndexAction.Response): Unit = promise.trySuccess(response)
-                  override def onFailure(e: Exception): Unit = promise.tryFailure(e)
-                }
-              )
-            Task
-              .fromCancelablePromise(promise)
-              .map { response =>
-                response
-                  .getIndices.asSafeList
-                  .flatMap { resolvedIndex =>
-                    IndexName.Full
-                      .fromString(resolvedIndex.getName)
-                      .map { index =>
-                        val aliases = resolvedIndex
-                          .getAliases.asSafeList
-                          .flatMap(IndexName.Full.fromString)
-                          .toSet
-                        FullRemoteIndexWithAliases(remoteClusterFullName, index, aliases)
-                      }
-                  }
+    val listOfTasks = remoteClusterFullNames.map { remoteClusterFullName =>
+      Try(remoteClusterService.getRemoteClusterClient(threadPool, remoteClusterFullName.value.value)) match {
+        case Failure(_) =>
+          // todo: log?
+          Task.now(List.empty)
+        case Success(client) =>
+          val promise = CancelablePromise[ResolveIndexAction.Response]()
+          client
+            .admin()
+            .indices()
+            .resolveIndex(
+              new ResolveIndexAction.Request(List("*").toArray),
+              new ActionListener[ResolveIndexAction.Response] {
+                override def onResponse(response: ResolveIndexAction.Response): Unit = promise.trySuccess(response)
+
+                override def onFailure(e: Exception): Unit = promise.tryFailure(e)
               }
-        }
+            )
+          Task
+            .fromCancelablePromise(promise)
+            .map { response =>
+              response
+                .getIndices.asSafeList
+                .flatMap { resolvedIndex =>
+                  IndexName.Full
+                    .fromString(resolvedIndex.getName)
+                    .map { index =>
+                      val aliases = resolvedIndex
+                        .getAliases.asSafeList
+                        .flatMap(IndexName.Full.fromString)
+                        .toSet
+                      FullRemoteIndexWithAliases(remoteClusterFullName, index, aliases)
+                    }
+                }
+            }
       }
+    }
 
     // todo: if one breaks, all break
     Task

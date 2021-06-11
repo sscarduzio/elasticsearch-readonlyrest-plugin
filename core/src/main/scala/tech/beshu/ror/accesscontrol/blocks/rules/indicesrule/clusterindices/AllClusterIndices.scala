@@ -14,16 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule
+package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.clusterindices
 
-import cats.Monoid
-import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.IndexNotFound
-import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.BaseIndicesProcessor.IndicesManager
+import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule.ProcessResult
-import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.LocalIndicesProcessor.LocalIndicesManager
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.CanPass
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.CanPass.No.Reason
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
@@ -31,15 +28,15 @@ import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRemoteIndexFilterScala
 import tech.beshu.ror.accesscontrol.matchers.{IndicesMatcher, ZeroKnowledgeRemoteIndexFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-trait LocalIndicesProcessor extends BaseIndicesProcessor {
+trait AllClusterIndices extends BaseIndicesProcessor {
   this: IndicesRule =>
 
   private val zKindexFilter = new ZeroKnowledgeRemoteIndexFilterScalaAdapter()
 
   protected def processIndices(requestContext: RequestContext,
-                               resolvedAllowedIndices: Set[ClusterIndexName],
-                               indices: Set[ClusterIndexName]): Task[ProcessResult[ClusterIndexName]] = {
-    val (crossClusterIndices, localIndices) = splitIntoRemoteAndLocalIndices(indices)
+                               allAllowedIndices: Set[ClusterIndexName],
+                               requestedIndices: Set[ClusterIndexName]): Task[ProcessResult[ClusterIndexName]] = {
+    val (crossClusterIndices, localIndices) = splitIntoRemoteAndLocalIndices(requestedIndices)
 
     // Scatter gather for local and remote indices barring algorithms
     if (crossClusterIndices.nonEmpty && requestContext.hasRemoteClusters) {
@@ -49,7 +46,7 @@ trait LocalIndicesProcessor extends BaseIndicesProcessor {
           // Don't run locally if only have crossCluster, otherwise you'll resolve the equivalent of "*"
           Task.now(localIndices)
         } else {
-          val (_, localResolvedAllowedIndices) = splitIntoRemoteAndLocalIndices(resolvedAllowedIndices)
+          val (_, localResolvedAllowedIndices) = splitIntoRemoteAndLocalIndices(allAllowedIndices)
           implicit val localIndicesManager: LocalIndicesManager = new LocalIndicesManager(
             requestContext,
             IndicesMatcher.create(localResolvedAllowedIndices)
@@ -68,7 +65,7 @@ trait LocalIndicesProcessor extends BaseIndicesProcessor {
       processedLocalIndicesTask
         .map { processedLocalIndices =>
           // Run the remote algorithm (without knowing the remote list of indices)
-          val (remoteResolvedAllowedIndices, _) = splitIntoRemoteAndLocalIndices(resolvedAllowedIndices)
+          val (remoteResolvedAllowedIndices, _) = splitIntoRemoteAndLocalIndices(allAllowedIndices)
           val remoteIndicesMatcher = IndicesMatcher.create(remoteResolvedAllowedIndices)
           val allProcessedIndices = zKindexFilter.check(crossClusterIndices, remoteIndicesMatcher.availableIndicesMatcher) match {
             case CheckResult.Ok(processedIndices) => processedIndices ++ processedLocalIndices
@@ -79,7 +76,7 @@ trait LocalIndicesProcessor extends BaseIndicesProcessor {
           else ProcessResult.Failed(Some(IndexNotFound))
         }
     } else {
-      val (_, localResolvedAllowedIndices) = splitIntoRemoteAndLocalIndices(resolvedAllowedIndices)
+      val (_, localResolvedAllowedIndices) = splitIntoRemoteAndLocalIndices(allAllowedIndices)
       implicit val localIndicesManager: LocalIndicesManager = new LocalIndicesManager(
         requestContext,
         IndicesMatcher.create(localResolvedAllowedIndices)
@@ -108,36 +105,4 @@ trait LocalIndicesProcessor extends BaseIndicesProcessor {
     }
   }
 
-}
-
-object LocalIndicesProcessor {
-
-  class LocalIndicesManager(requestContext: RequestContext,
-                            override val matcher: IndicesMatcher[ClusterIndexName.Local])
-    extends IndicesManager[ClusterIndexName.Local] {
-
-    override def allIndicesAndAliases: Task[Set[ClusterIndexName.Local]] = Task.delay {
-      requestContext.allIndicesAndAliases.flatMap(_.all)
-    }
-
-    override def allIndices: Task[Set[ClusterIndexName.Local]] = Task.delay {
-      requestContext.allIndicesAndAliases.map(_.index)
-    }
-
-    override def allAliases: Task[Set[ClusterIndexName.Local]] = Task.delay {
-      requestContext.allIndicesAndAliases.flatMap(_.aliases)
-    }
-
-    override def indicesPerAliasMap: Task[Map[ClusterIndexName.Local, Set[ClusterIndexName.Local]]] = Task.delay {
-      val mapMonoid = Monoid[Map[ClusterIndexName.Local, Set[ClusterIndexName.Local]]]
-      requestContext
-        .allIndicesAndAliases
-        .foldLeft(Map.empty[ClusterIndexName.Local, Set[ClusterIndexName.Local]]) {
-          case (acc, indexWithAliases) =>
-            val localIndicesPerAliasMap = indexWithAliases.aliases.map((_, Set(indexWithAliases.index))).toMap
-            mapMonoid.combine(acc, localIndicesPerAliasMap)
-        }
-    }
-
-  }
 }

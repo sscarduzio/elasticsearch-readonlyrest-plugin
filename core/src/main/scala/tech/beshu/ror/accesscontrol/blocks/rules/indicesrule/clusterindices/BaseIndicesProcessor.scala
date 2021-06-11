@@ -14,12 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule
+package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.clusterindices
 
 import cats.data.EitherT
 import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.BaseIndicesProcessor.IndicesManager
+import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.clusterindices.BaseIndicesProcessor.IndicesManager
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.CanPass.No.Reason
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.IndicesCheckContinuation.{continue, stop}
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.{CanPass, CheckContinuation}
@@ -29,7 +30,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.CaseMappingEquality
 
 trait BaseIndicesProcessor {
-  this: IndicesRule =>
+  this: Logging =>
 
   protected def canPass[T <: ClusterIndexName : CaseMappingEquality](requestContext: RequestContext,
                                                                      indices: Set[T])
@@ -182,13 +183,9 @@ object BaseIndicesProcessor {
 
   trait IndicesManager[T <: ClusterIndexName] {
     def allIndicesAndAliases: Task[Set[T]]
-
     def allIndices: Task[Set[T]]
-
     def allAliases: Task[Set[T]]
-
     def indicesPerAliasMap: Task[Map[T, Set[T]]]
-
     def matcher: IndicesMatcher[T]
   }
 }

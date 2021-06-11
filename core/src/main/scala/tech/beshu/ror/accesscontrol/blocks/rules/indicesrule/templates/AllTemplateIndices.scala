@@ -14,20 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule
+package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.templates
 
+import cats.implicits._
 import cats.Show
 import cats.data.NonEmptySet
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation._
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, Template, TemplateNamePattern}
 import tech.beshu.ror.accesscontrol.matchers.{MatcherWithWildcardsScalaAdapter, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.implicits._
 import tech.beshu.ror.utils.ScalaOps._
 
 private[indicesrule] trait AllTemplateIndices
