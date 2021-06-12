@@ -124,20 +124,15 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                             listener: ActionListener[ActionResponse],
                             chain: ActionFilterChain[ActionRequest, ActionResponse],
                             channel: RorRestChannel): Unit = {
-    remoteClusterServiceSupplier.get() match {
-      case Some(remoteClusterService) =>
-        aclAwareRequestFilter
-          .handle(
-            engine,
-            EsContext(channel, task, action, request, listener, chain, remoteClusterService.isCrossClusterSearchEnabled)
-          )
-          .runAsync {
-            case Right(_) =>
-            case Left(ex) => listener.onFailure(new Exception(ex))
-          }
-      case None =>
-        listener.onFailure(new Exception("Cluster service not ready yet. Cannot continue"))
-    }
+    aclAwareRequestFilter
+      .handle(
+        engine,
+        EsContext(channel, task, action, request, listener, chain)
+      )
+      .runAsync {
+        case Right(_) =>
+        case Left(ex) => listener.onFailure(new Exception(ex))
+      }
   }
 
   private def startRorInstance() = {

@@ -16,9 +16,12 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.clusterindices
 
+import cats.implicits._
+import cats.Monoid
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.clusterindices.BaseIndicesProcessor.IndicesManager
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote
+import tech.beshu.ror.accesscontrol.domain.FullRemoteIndexWithAliases
 import tech.beshu.ror.accesscontrol.matchers.IndicesMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
@@ -35,5 +38,19 @@ class RemoteIndicesManager(requestContext: RequestContext,
   override def allAliases: Task[Set[Remote]] =
     requestContext.allRemoteIndicesAndAliases.map(_.flatMap(r => r.aliases.map(Remote(_, r.clusterName))))
 
-  override def indicesPerAliasMap: Task[Map[Remote, Set[Remote]]] = Task.now(Map.empty) // todo:
+  override def indicesPerAliasMap: Task[Map[Remote, Set[Remote]]] = {
+    val mapMonoid = Monoid[Map[Remote, Set[Remote]]]
+    requestContext
+      .allRemoteIndicesAndAliases
+        .map {
+          _.foldLeft(Map.empty[Remote, Set[Remote]]) {
+            case (acc, FullRemoteIndexWithAliases(clusterName, index, aliases)) =>
+              val localIndicesPerAliasMap = aliases
+                .map(Remote(_, clusterName))
+                .map((_, Set(Remote(index, clusterName))))
+                .toMap
+              mapMonoid.combine(acc, localIndicesPerAliasMap)
+          }
+        }
+  }
 }

@@ -16,72 +16,52 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.clusterindices
 
+import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.IndexNotFound
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule.ProcessResult
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.CanPass
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.CanPass.No.Reason
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
-import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRemoteIndexFilterScalaAdapter.CheckResult
-import tech.beshu.ror.accesscontrol.matchers.{IndicesMatcher, ZeroKnowledgeRemoteIndexFilterScalaAdapter}
+import tech.beshu.ror.accesscontrol.matchers.IndicesMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 trait AllClusterIndices extends BaseIndicesProcessor {
   this: IndicesRule =>
 
-  private val zKindexFilter = new ZeroKnowledgeRemoteIndexFilterScalaAdapter()
-
   protected def processIndices(requestContext: RequestContext,
                                allAllowedIndices: Set[ClusterIndexName],
                                requestedIndices: Set[ClusterIndexName]): Task[ProcessResult[ClusterIndexName]] = {
-    val (crossClusterIndices, localIndices) = splitIntoRemoteAndLocalIndices(requestedIndices)
+    val (allAllowedRemoteIndices, allAllowedLocalIndices) = splitIntoRemoteAndLocalIndices(allAllowedIndices)
+    val (requestedRemoteIndices, requestedLocalIndices) = splitIntoRemoteAndLocalIndices(requestedIndices)
 
-    // Scatter gather for local and remote indices barring algorithms
-    if (crossClusterIndices.nonEmpty && requestContext.hasRemoteClusters) {
-      // Run the local algorithm
-      val processedLocalIndicesTask =
-        if (localIndices.isEmpty && crossClusterIndices.nonEmpty) {
-          // Don't run locally if only have crossCluster, otherwise you'll resolve the equivalent of "*"
-          Task.now(localIndices)
-        } else {
-          val (_, localResolvedAllowedIndices) = splitIntoRemoteAndLocalIndices(allAllowedIndices)
-          implicit val localIndicesManager: LocalIndicesManager = new LocalIndicesManager(
-            requestContext,
-            IndicesMatcher.create(localResolvedAllowedIndices)
-          )
-          canPass(requestContext, localIndices)
-            .map {
-              case CanPass.No(Some(Reason.IndexNotExist)) =>
-                Set.empty[ClusterIndexName.Local]
-              case CanPass.No(_) =>
-                Set.empty[ClusterIndexName.Local]
-              case CanPass.Yes(narrowedIndices) =>
-                narrowedIndices
-            }
-        }
+    for {
+      localIndicesProcessingResult <- processLocalIndices(requestContext, allAllowedLocalIndices, requestedLocalIndices)
+      remoteIndicesProcessingResult <- processRemoteIndices(requestContext, allAllowedRemoteIndices, requestedRemoteIndices)
+    } yield {
+      (localIndicesProcessingResult, remoteIndicesProcessingResult) match {
+        case (ProcessResult.Ok(localIndices), ProcessResult.Ok(remoteIndices)) =>
+          ProcessResult.Ok(localIndices ++ remoteIndices)
+        case (ok@ProcessResult.Ok(_), ProcessResult.Failed(_)) =>
+          ok
+        case (ProcessResult.Failed(_), ok@ProcessResult.Ok(_)) =>
+          ok
+        case (ProcessResult.Failed(localIndicesCause), ProcessResult.Failed(remoteIndicesCause)) =>
+          ProcessResult.Failed(localIndicesCause.orElse(remoteIndicesCause))
+      }
+    }
+  }
 
-      processedLocalIndicesTask
-        .map { processedLocalIndices =>
-          // Run the remote algorithm (without knowing the remote list of indices)
-          val (remoteResolvedAllowedIndices, _) = splitIntoRemoteAndLocalIndices(allAllowedIndices)
-          val remoteIndicesMatcher = IndicesMatcher.create(remoteResolvedAllowedIndices)
-          val allProcessedIndices = zKindexFilter.check(crossClusterIndices, remoteIndicesMatcher.availableIndicesMatcher) match {
-            case CheckResult.Ok(processedIndices) => processedIndices ++ processedLocalIndices
-            case CheckResult.Failed => processedLocalIndices
-          }
-
-          if (allProcessedIndices.nonEmpty) ProcessResult.Ok(allProcessedIndices)
-          else ProcessResult.Failed(Some(IndexNotFound))
-        }
-    } else {
-      val (_, localResolvedAllowedIndices) = splitIntoRemoteAndLocalIndices(allAllowedIndices)
-      implicit val localIndicesManager: LocalIndicesManager = new LocalIndicesManager(
-        requestContext,
-        IndicesMatcher.create(localResolvedAllowedIndices)
-      )
-      canPass(requestContext, localIndices)
+  private def processLocalIndices(requestContext: RequestContext,
+                                  allAllowedIndices: Set[ClusterIndexName.Local],
+                                  requestedIndices: Set[ClusterIndexName.Local]): Task[ProcessResult[ClusterIndexName.Local]] = {
+    implicit val indicesManager: LocalIndicesManager = new LocalIndicesManager(
+      requestContext,
+      IndicesMatcher.create(allAllowedIndices)
+    )
+    logger.debug(s"[${requestContext.id.show}] Checking local indices:")
+    canPass(requestContext, requestedIndices)
       .map {
         case CanPass.Yes(narrowedIndices) =>
           ProcessResult.Ok(narrowedIndices)
@@ -90,6 +70,28 @@ trait AllClusterIndices extends BaseIndicesProcessor {
         case CanPass.No(_) =>
           ProcessResult.Failed(None)
       }
+  }
+
+  private def processRemoteIndices(requestContext: RequestContext,
+                                   allAllowedIndices: Set[ClusterIndexName.Remote],
+                                   requestedIndices: Set[ClusterIndexName.Remote]): Task[ProcessResult[ClusterIndexName.Remote]] = {
+    if(requestedIndices.isEmpty) {
+      Task.now(ProcessResult.Failed(None))
+    } else {
+      implicit val indicesManager: RemoteIndicesManager = new RemoteIndicesManager(
+        requestContext,
+        IndicesMatcher.create(allAllowedIndices)
+      )
+      logger.debug(s"[${requestContext.id.show}] Checking remote indices:")
+      canPass(requestContext, requestedIndices)
+        .map {
+          case CanPass.Yes(narrowedIndices) =>
+            ProcessResult.Ok(narrowedIndices)
+          case CanPass.No(Some(Reason.IndexNotExist)) =>
+            ProcessResult.Failed(Some(Cause.IndexNotFound))
+          case CanPass.No(_) =>
+            ProcessResult.Failed(None)
+        }
     }
   }
 

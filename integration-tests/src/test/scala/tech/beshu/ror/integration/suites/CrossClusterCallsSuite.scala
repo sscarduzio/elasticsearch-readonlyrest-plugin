@@ -288,7 +288,7 @@ trait CrossClusterCallsSuite
   "A _field_caps for a given index" should {
     "return 200 and allow user to see its content" when {
       "user has permission to do so" when {
-        "he queries local and remote indices"  in {
+        "he queries local and remote indices" in {
           val result = user3SearchManager.fieldCaps(
             indices = List("metrics*", "etl1:etl*"),
             fields = List("counter1", "usage")
@@ -296,7 +296,7 @@ trait CrossClusterCallsSuite
           result.responseCode should be(200)
           result.fields.keys.toSet should be (Set("counter1", "usage"))
         }
-        "he queries remote indices only"  in {
+        "he queries remote indices only" in {
           val result = user3SearchManager.fieldCaps(
             indices = List("etl1:etl*"),
             fields = List("counter1", "usage")

@@ -18,8 +18,8 @@ package tech.beshu.ror.accesscontrol.request
 
 import java.time.Instant
 
+import cats.Show
 import cats.implicits._
-import cats.{Monoid, Show}
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
@@ -28,7 +28,6 @@ import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
@@ -91,8 +90,6 @@ trait RequestContext {
   def isCompositeRequest: Boolean
 
   def isAllowedForDLS: Boolean
-
-  def hasRemoteClusters: Boolean
 
   def generalAuditEvents: JSONObject = new JSONObject()
 
@@ -220,18 +217,6 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
         } else {
           None
         }
-      }
-  }
-
-  // todo: remove?
-  def indicesPerAliasMap: Map[LocalAliasName, Set[ClusterIndexName.Local]] = {
-    val mapMonoid = Monoid[Map[LocalAliasName, Set[ClusterIndexName.Local]]]
-    requestContext
-      .allIndicesAndAliases
-      .foldLeft(Map.empty[LocalAliasName, Set[ClusterIndexName.Local]]) {
-        case (acc, indexWithAliases) =>
-          val localIndicesPerAliasMap = indexWithAliases.aliases.map((_, Set(indexWithAliases.index))).toMap
-          mapMonoid.combine(acc, localIndicesPerAliasMap)
       }
   }
 

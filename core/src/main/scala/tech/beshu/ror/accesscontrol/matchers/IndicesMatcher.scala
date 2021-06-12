@@ -35,7 +35,6 @@ object IndicesMatcher {
   }
 }
 
-// todo: to remove?
 class IndicesNamesMatcher[T <: IndexName : CaseMappingEquality](indices: Set[T]) {
   val availableIndicesMatcher: Matcher[T] = MatcherWithWildcardsScalaAdapter[T](indices)
 

@@ -227,8 +227,7 @@ object AclAwareRequestFilter {
                              actionType: String,
                              actionRequest: ActionRequest,
                              listener: ActionListener[ActionResponse],
-                             chain: ActionFilterChain[ActionRequest, ActionResponse],
-                             crossClusterSearchEnabled: Boolean) {
+                             chain: ActionFilterChain[ActionRequest, ActionResponse]) {
     lazy val requestId = s"${channel.request().hashCode()}-${actionRequest.hashCode()}#${task.getId}"
     val timestamp: Instant = Instant.now()
   }

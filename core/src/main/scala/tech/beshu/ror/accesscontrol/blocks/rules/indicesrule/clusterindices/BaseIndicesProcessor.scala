@@ -35,12 +35,14 @@ trait BaseIndicesProcessor {
   protected def canPass[T <: ClusterIndexName : CaseMappingEquality](requestContext: RequestContext,
                                                                      indices: Set[T])
                                                                     (implicit indicesManager: IndicesManager[T]): Task[CanPass[Set[T]]] = {
+    implicit val requestId: RequestContext.Id = requestContext.id
     if (requestContext.isReadOnlyRequest) canIndicesReadOnlyRequestPass(indices)
     else canIndicesWriteRequestPass(indices)
   }
 
   private def canIndicesReadOnlyRequestPass[T <: ClusterIndexName : CaseMappingEquality](indices: Set[T])
-                                                                                        (implicit indicesManager: IndicesManager[T]): Task[CanPass[Set[T]]] = {
+                                                                                        (implicit requestId: RequestContext.Id,
+                                                                                         indicesManager: IndicesManager[T]): Task[CanPass[Set[T]]] = {
     val result = for {
       _ <- EitherT(noneOrAllIndices(indices))
       _ <- EitherT(allIndicesMatchedByWildcard(indices))
@@ -50,12 +52,13 @@ trait BaseIndicesProcessor {
   }
 
   private def noneOrAllIndices[T <: ClusterIndexName : CaseMappingEquality](indices: Set[T])
-                                                                           (implicit indicesManager: IndicesManager[T]): Task[CheckContinuation[Set[T]]] = {
-    logger.debug(s"[{requestContext.id.show}] Checking - none or all indices ...") //todo: id
+                                                                           (implicit requestId: RequestContext.Id,
+                                                                            indicesManager: IndicesManager[T]): Task[CheckContinuation[Set[T]]] = {
+    logger.debug(s"[${requestId.show}] Checking - none or all indices ...")
     indicesManager
       .allIndicesAndAliases
       .map { allIndicesAndAliases =>
-        if (indices.isEmpty) { // || indices.contains(T.all) || indices.contains(T.wildcard)) { // todo:
+        if (indices.isEmpty || indices.exists(_.allIndicesRequested)) {
           val allowedIdxs = indicesManager.matcher.filterIndices(allIndicesAndAliases)
           stop(
             if (allowedIdxs.nonEmpty) CanPass.Yes(allowedIdxs)
@@ -68,8 +71,9 @@ trait BaseIndicesProcessor {
   }
 
   private def allIndicesMatchedByWildcard[T <: ClusterIndexName : CaseMappingEquality](indices: Set[T])
-                                                                                      (implicit indicesManager: IndicesManager[T]): Task[CheckContinuation[Set[T]]] = {
-    logger.debug(s"[{requestContext.id.show}] Checking if all indices are matched ...") // todo: id
+                                                                                      (implicit requestId: RequestContext.Id,
+                                                                                       indicesManager: IndicesManager[T]): Task[CheckContinuation[Set[T]]] = {
+    logger.debug(s"[${requestId.show}] Checking if all indices are matched ...")
     Task.now {
       indices.toList match {
         case index :: Nil if !index.hasWildcard =>
@@ -87,8 +91,9 @@ trait BaseIndicesProcessor {
   }
 
   private def indicesAliases[T <: ClusterIndexName : CaseMappingEquality](indices: Set[T])
-                                                                         (implicit indicesManager: IndicesManager[T]): Task[CheckContinuation[Set[T]]] = {
-    logger.debug(s"[{requestContext.id.show}] Checking - indices & aliases ...") // todo: id
+                                                                         (implicit requestId: RequestContext.Id,
+                                                                          indicesManager: IndicesManager[T]): Task[CheckContinuation[Set[T]]] = {
+    logger.debug(s"[${requestId.show}] Checking - indices & aliases ...")
     Task
       .sequence(
         filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured(indices) ::
@@ -152,7 +157,8 @@ trait BaseIndicesProcessor {
   }
 
   private def canIndicesWriteRequestPass[T <: ClusterIndexName : CaseMappingEquality](indices: Set[T])
-                                                                                     (implicit indicesManager: IndicesManager[T]): Task[CanPass[Set[T]]] = {
+                                                                                     (implicit requestId: RequestContext.Id,
+                                                                                      indicesManager: IndicesManager[T]): Task[CanPass[Set[T]]] = {
     val result = for {
       _ <- EitherT(generalWriteRequest(indices))
     } yield ()
@@ -160,15 +166,16 @@ trait BaseIndicesProcessor {
   }
 
   private def generalWriteRequest[T <: ClusterIndexName : CaseMappingEquality](indices: Set[T])
-                                                                              (implicit indicesManager: IndicesManager[T]): Task[CheckContinuation[Set[T]]] = Task.now {
-    logger.debug(s"[{requestContext.id.show}] Checking - write request ...") //todo: id
+                                                                              (implicit requestId: RequestContext.Id,
+                                                                               indicesManager: IndicesManager[T]): Task[CheckContinuation[Set[T]]] = Task.now {
+    logger.debug(s"[${requestId.show}] Checking - write request ...")
     // Write requests
-    logger.debug(s"[{requestContext.id.show}] Stage 7") //todo: id
+    logger.debug(s"[${requestId.show}] Stage 7")
     if (indices.isEmpty && indicesManager.matcher.contains("<no-index>")) {
       stop(CanPass.Yes(indices))
     } else {
       // Reject write if at least one requested index is not allowed by the rule conf
-      logger.debug(s"[{requestContext.id.show}] Stage 8") //todo: id
+      logger.debug(s"[${requestId.show}] Stage 8")
       stop {
         indices.find(index => !indicesManager.matcher.`match`(index)) match {
           case Some(_) => CanPass.No()

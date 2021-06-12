@@ -28,7 +28,6 @@ import org.elasticsearch.action.CompositeIndicesRequest
 import org.elasticsearch.action.search.SearchRequest
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -149,8 +148,6 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
       case _ => true
     }
   }
-
-  override val hasRemoteClusters: Boolean = esContext.crossClusterSearchEnabled
 
   protected def indicesOrWildcard(indices: Set[ClusterIndexName]): Set[ClusterIndexName] = {
     if (indices.nonEmpty) indices else Set(ClusterIndexName.Local.wildcard)

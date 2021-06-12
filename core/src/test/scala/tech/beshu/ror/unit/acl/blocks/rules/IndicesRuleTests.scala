@@ -207,12 +207,21 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               IndexWithAliases(localIndexName("local_index1"), Set.empty),
               IndexWithAliases(localIndexName("local_index2"), Set.empty),
               IndexWithAliases(localIndexName("other"), Set.empty)
-            )
+            ),
+            allRemoteIndicesAndAliases = Task.now(Set(
+              fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-27"),
+              fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-28"),
+              fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-29"),
+              fullRemoteIndexWithAliases("odd", "test1_index1"),
+              fullRemoteIndexWithAliases("odd", "test1_index2"),
+              fullRemoteIndexWithAliases("odd", "test2_index1"),
+            ))
           ),
           found = Set(
             clusterIndexName("local_index1"),
             clusterIndexName("local_index2"),
-            clusterIndexName("odd:test1_index*")
+            clusterIndexName("odd:test1_index1"),
+            clusterIndexName("odd:test1_index2")
           )
         )
       }
@@ -333,12 +342,17 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-29"),
+                fullRemoteIndexWithAliases("etl1", "other-index"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
               ))
             ),
-            found = Set(clusterIndexName("etl*:*-logs-smg-stats-*")),
+            found = Set(
+              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-27"),
+              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-28"),
+              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-29")
+            )
           )
         }
         "requested index name with wildcard is more general version of the configured index name with wildcard" in {
@@ -351,30 +365,41 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-29"),
+                fullRemoteIndexWithAliases("etl1", "other-index"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
               ))
             ),
-            found = Set(clusterIndexName("etl*:*-logs-smg-stats-*")),
+            found = Set(
+              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-27"),
+              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-28"),
+              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-29")
+            )
           )
         }
         "requested index name with wildcard is more specialized version of the configured index name with wildcard" in {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("etl*:*-logs-smg-stats-*")),
-            requestIndices = Set(clusterIndexName("e*:*-logs-smg-stats-2020*")),
+            requestIndices = Set(clusterIndexName("e*:*-logs-smg-stats-2020-03-2*")),
             modifyRequestContext = _.copy(
               allIndicesAndAliases = Set(IndexWithAliases(localIndexName("test"), Set.empty)),
               allRemoteIndicesAndAliases = Task.now(Set(
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-29"),
+                fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-30"),
+                fullRemoteIndexWithAliases("etl1", "other-index"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
               ))
             ),
-            found = Set(clusterIndexName("etl*:*-logs-smg-stats-2020*")),
+            found = Set(
+              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-27"),
+              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-28"),
+              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-29")
+            )
           )
         }
         "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" in {
@@ -387,14 +412,27 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-29"),
+                fullRemoteIndexWithAliases("etl1", "other-index"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
               ))
             ),
-            found = Set(clusterIndexName("etl*:c0*")),
+            found = Set(
+              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-27"),
+              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-28"),
+              clusterIndexName("etl1:c01-logs-smg-stats-2020-03-29")
+            )
           )
         }
+      }
+    }
+    "not match" when {
+      "not allowed cluster indices are being called" in {
+        assertNotMatchRuleForIndexRequest(
+          configured = NonEmptySet.of(indexNameVar("*-logs-smg-stats-*"), indexNameVar("etl*:*-logs-smg-stats-*")),
+          requestIndices = Set(clusterIndexName("pub*:*logs*")),
+        )
       }
     }
   }
@@ -2261,7 +2299,6 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
         filteredIndices = requestIndices,
         action = Action("indices:data/read/search"),
         isReadOnlyRequest = true,
-        hasRemoteClusters = true,
         allIndicesAndAliases = Set(
           IndexWithAliases(localIndexName("test1"), Set.empty),
           IndexWithAliases(localIndexName("test2"), Set.empty),

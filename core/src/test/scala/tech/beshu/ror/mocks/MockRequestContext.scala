@@ -90,7 +90,6 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
-                                                override val hasRemoteClusters: Boolean = false,
                                                 filteredIndices: Set[ClusterIndexName],
                                                 allAllowedIndices: Set[ClusterIndexName])
   extends RequestContext {
@@ -120,7 +119,6 @@ final case class MockFilterableMultiRequestContext(override val timestamp: Insta
                                                    override val isCompositeRequest: Boolean = false,
                                                    override val isReadOnlyRequest: Boolean = true,
                                                    override val isAllowedForDLS: Boolean = false,
-                                                   override val hasRemoteClusters: Boolean = false,
                                                    indexPacks: List[Indices],
                                                    filter: Option[Filter],
                                                    fieldLevelSecurity: Option[FieldLevelSecurity],
@@ -152,8 +150,7 @@ final case class MockGeneralNonIndexRequestContext(override val timestamp: Insta
                                                    override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                                    override val isCompositeRequest: Boolean = false,
                                                    override val isReadOnlyRequest: Boolean = true,
-                                                   override val isAllowedForDLS: Boolean = true,
-                                                   override val hasRemoteClusters: Boolean = false)
+                                                   override val isAllowedForDLS: Boolean = true)
   extends RequestContext {
 
   override type BLOCK_CONTEXT = GeneralNonIndexRequestBlockContext
@@ -182,7 +179,6 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
                                           override val isCompositeRequest: Boolean = false,
                                           override val isReadOnlyRequest: Boolean = true,
                                           override val isAllowedForDLS: Boolean = true,
-                                          override val hasRemoteClusters: Boolean = false,
                                           indices: Set[ClusterIndexName],
                                           allAllowedIndices: Set[ClusterIndexName])
   extends RequestContext {
@@ -212,7 +208,6 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
-                                                override val hasRemoteClusters: Boolean = false,
                                                 repositories: Set[RepositoryName])
   extends RequestContext {
   override type BLOCK_CONTEXT = RepositoryRequestBlockContext
@@ -241,7 +236,6 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant,
                                              override val isCompositeRequest: Boolean = false,
                                              override val isReadOnlyRequest: Boolean = true,
                                              override val isAllowedForDLS: Boolean = true,
-                                             override val hasRemoteClusters: Boolean = false,
                                              snapshots: Set[SnapshotName])
   extends RequestContext {
   override type BLOCK_CONTEXT = SnapshotRequestBlockContext
@@ -269,8 +263,7 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isReadOnlyRequest: Boolean = true,
-                                                override val isAllowedForDLS: Boolean = true,
-                                                override val hasRemoteClusters: Boolean = false)
+                                                override val isAllowedForDLS: Boolean = true)
   extends RequestContext {
   override type BLOCK_CONTEXT = CurrentUserMetadataRequestBlockContext
 
@@ -298,7 +291,6 @@ final case class MockTemplateRequestContext(override val timestamp: Instant,
                                             override val isCompositeRequest: Boolean = false,
                                             override val isReadOnlyRequest: Boolean = true,
                                             override val isAllowedForDLS: Boolean = true,
-                                            override val hasRemoteClusters: Boolean = false,
                                             templateOperation: TemplateOperation)
   extends RequestContext {
   override type BLOCK_CONTEXT = TemplateRequestBlockContext
@@ -325,8 +317,7 @@ abstract class MockSimpleRequestContext[BC <: BlockContext](override val timesta
                                                             override val allTemplates: Set[Template] = Set.empty,
                                                             override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                                             override val isCompositeRequest: Boolean = false,
-                                                            override val isAllowedForDLS: Boolean = true,
-                                                            override val hasRemoteClusters: Boolean = false)
+                                                            override val isAllowedForDLS: Boolean = true)
   extends RequestContext {
   override type BLOCK_CONTEXT = BC
 }

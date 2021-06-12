@@ -314,6 +314,10 @@ object domain {
 
   sealed trait IndexName
   object IndexName {
+
+    val wildcard: IndexName.Wildcard = IndexName.Wildcard("*")
+    val all: IndexName = IndexName.Full("_all")
+
     final case class Full(name: NonEmptyString)
       extends IndexName
     object Full {
@@ -352,17 +356,18 @@ object domain {
     final case class Local private(value: IndexName) extends ClusterIndexName
     object Local {
 
-      val wildcard: ClusterIndexName.Local = Local(IndexName.Wildcard("*"))
-      val all: ClusterIndexName.Local = Local(IndexName.Full("_all"))
+      val wildcard: ClusterIndexName.Local = Local(IndexName.wildcard)
       val devNullKibana: ClusterIndexName.Local = Local(IndexName.Full(".kibana-devnull"))
       val kibana: ClusterIndexName.Local = Local(IndexName.Full(".kibana"))
 
       def fromString(value: String): Option[ClusterIndexName.Local] = {
-        val indexName = IndexName.fromString(value).map(Local.apply)
-        indexName match {
-          case Some(i) if i == all => Some(wildcard)
-          case i => i
-        }
+        IndexName
+          .fromString(value)
+          .map {
+            case IndexName.all => IndexName.wildcard
+            case index => index
+          }
+          .map(Local.apply)
       }
 
       def randomNonexistentIndex(prefix: String = ""): ClusterIndexName.Local = fromString {
@@ -514,6 +519,15 @@ object domain {
         case Remote(IndexName.Wildcard(_), _) => true
       }
     }
+
+    implicit class AllIndicesRequested(val indexName: ClusterIndexName) extends AnyVal {
+      def allIndicesRequested: Boolean = indexName match {
+        case Local(IndexName.Full(_)) => false
+        case Local(i@IndexName.Wildcard(_)) => i == IndexName.wildcard || i == IndexName.all
+        case Remote(IndexName.Full(_), _) => false
+        case Remote(i@IndexName.Wildcard(_), _) => i == IndexName.wildcard || i == IndexName.all
+      }
+    }
   }
 
   final case class IndexPattern(value: ClusterIndexName) {
@@ -545,13 +559,12 @@ object domain {
       case Local(IndexName.Wildcard(_)) =>
         val replaced = alias.stringify.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)
         Local(IndexName.Wildcard(NonEmptyString.unsafeFrom(replaced)))
-      case i@Remote(IndexName.Full(_), _) =>
+      case i@Remote(IndexName.Full(_), clusterName) =>
         val replaced = i.onlyIndexName.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)
-        //todo: is it ok?
-        Local(IndexName.Full(NonEmptyString.unsafeFrom(replaced)))
-      case i@Remote(IndexName.Wildcard(_), _) =>
+        Remote(IndexName.Full(NonEmptyString.unsafeFrom(replaced)), clusterName)
+      case i@Remote(IndexName.Wildcard(_), clusterName) =>
         val replaced = i.onlyIndexName.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)
-        Local(IndexName.Wildcard(NonEmptyString.unsafeFrom(replaced)))
+        Remote(IndexName.Wildcard(NonEmptyString.unsafeFrom(replaced)), clusterName)
     }
   }
   object AliasPlaceholder {
@@ -563,7 +576,10 @@ object domain {
       case Local(IndexName.Full(_)) => None
       case Local(IndexName.Wildcard(name)) if name.contains(placeholder) => Some(AliasPlaceholder(alias))
       case Local(IndexName.Wildcard(_)) => None
-      // todo: exhaustivity check?
+      case Remote(IndexName.Full(name), _) if name.contains(placeholder) => Some(AliasPlaceholder(alias))
+      case Remote(IndexName.Full(_), _) => None
+      case Remote(IndexName.Wildcard(name), _) if name.contains(placeholder) => Some(AliasPlaceholder(alias))
+      case Remote(IndexName.Wildcard(_), _) => None
     }
   }
 
