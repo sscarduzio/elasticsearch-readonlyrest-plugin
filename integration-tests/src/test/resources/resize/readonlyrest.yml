@@ -14,7 +14,7 @@ readonlyrest:
       auth_key: admin:container
 
     - name: "test1"
-      indices: ["test1_index", "test1_index_resized"]
+      indices: ["test1_index", "test1_index_resized", "test1_index_allowed_alias"]
       auth_key: dev1:test
 
     - name: "wildcard test"

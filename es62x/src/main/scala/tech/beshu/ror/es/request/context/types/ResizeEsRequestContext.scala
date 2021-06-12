@@ -43,16 +43,11 @@ class ResizeEsRequestContext(actionRequest: ResizeRequest,
   }
 
   override protected def update(request: ResizeRequest, filteredIndices: NonEmptyList[IndexName], allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
-    val sourceIndex = IndexName.fromString(request.getSourceIndex)
-    val targetIndex = IndexName.fromString(request.getTargetIndexRequest.index())
-
-    val isSourceIndexOnFilteredIndicesList = sourceIndex.exists(filteredIndices.toList.contains(_))
-    val isTargetIndexOnFilteredIndicesList = targetIndex.exists(filteredIndices.toList.contains(_))
-
-    if (isSourceIndexOnFilteredIndicesList && isTargetIndexOnFilteredIndicesList) {
+    val notAllowedIndices = indicesFrom(actionRequest) -- filteredIndices.toList.toSet
+    if (notAllowedIndices.isEmpty) {
       Modified
     } else {
-      throw new IllegalStateException("update method should not be called when not all indices are allowed")
+      throw new IllegalStateException(s"Resize request is write request and such requests need all indices to be allowed. Not allowed indices=[${notAllowedIndices.map(_.value.value).mkString(",")}]")
     }
   }
 }

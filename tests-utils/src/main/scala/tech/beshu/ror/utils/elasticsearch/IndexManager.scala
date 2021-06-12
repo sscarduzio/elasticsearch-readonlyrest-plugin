@@ -119,8 +119,8 @@ class IndexManager(client: RestClient,
     call(createReindexRequest(source, destIndexName), new JsonResponse(_))
   }
 
-  def resize(source: String, target: String): JsonResponse = {
-    call(createResizeRequest(source, target), new JsonResponse(_))
+  def resize(source: String, target: String, aliases: List[String] = Nil): JsonResponse = {
+    call(createResizeRequest(source, target, aliases), new JsonResponse(_))
   }
 
   private def getAliasRequest(indexOpt: Option[String] = None,
@@ -236,8 +236,18 @@ class IndexManager(client: RestClient,
     new HttpGet(client.from(s"/_resolve/index/${indicesPatterns.mkString(",")}"))
   }
 
-  private def createResizeRequest(source: String, target: String): HttpPost = {
-    new HttpPost(client.from(s"/$source/_shrink/$target"))
+  private def createResizeRequest(source: String, target: String, aliases: List[String]): HttpPost = {
+    val parsedAliases = aliases.map(alias => s""""$alias": {}""").mkString(",")
+    val request = new HttpPost(client.from(s"/$source/_shrink/$target"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""
+         |{
+         |	"aliases": {
+         |		$parsedAliases
+         |	}
+         |}""".stripMargin))
+    request
   }
 
   private def createReindexRequest(source: ReindexSource, destIndexName: String): HttpPost = {

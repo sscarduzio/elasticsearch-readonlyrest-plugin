@@ -49,7 +49,7 @@ class ResizeEsRequestContext(actionRequest: ResizeRequest,
     val isSourceIndexOnFilteredIndicesList = sourceIndex.exists(filteredIndices.toList.contains(_))
     val isTargetIndexOnFilteredIndicesList = targetIndex.exists(filteredIndices.toList.contains(_))
 
-    if (isSourceIndexOnFilteredIndicesList && isTargetIndexOnFilteredIndicesList) {
+    if (indicesFrom(actionRequest).subsetOf(filteredIndices.toList.toSet)) {
       Modified
     } else {
       throw new IllegalStateException("update method should not be called when not all indices are allowed")
