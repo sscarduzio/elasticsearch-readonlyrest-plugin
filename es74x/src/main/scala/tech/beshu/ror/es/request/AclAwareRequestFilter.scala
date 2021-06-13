@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.es.request
 
-import java.time.Instant
-
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -40,6 +38,7 @@ import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
 import org.elasticsearch.action.admin.indices.rollover.RolloverRequest
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest
 import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
+import org.elasticsearch.action.admin.indices.shrink.ResizeRequest
 import org.elasticsearch.action.admin.indices.stats.IndicesStatsRequest
 import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest
 import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest
@@ -62,11 +61,12 @@ import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
-import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.types._
 import tech.beshu.ror.es.request.handler.{CurrentUserMetadataRequestHandler, RegularRequestHandler}
+import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
+import java.time.Instant
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 
@@ -171,6 +171,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: ReindexRequest =>
         regularRequestHandler.handle(new ReindexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      case request: ResizeRequest =>
+        regularRequestHandler.handle(new ResizeEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: ClusterRerouteRequest =>
         regularRequestHandler.handle(new ClusterRerouteEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: CompositeIndicesRequest =>
