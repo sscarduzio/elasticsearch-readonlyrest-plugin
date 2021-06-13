@@ -88,6 +88,37 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .toMap
   }
 
+  override def verifyDocumentAccessibility(document: Document,
+                                           filter: Filter,
+                                           id: RequestContext.Id): Task[DocumentAccessibility] = {
+    val listener = new GenericResponseListener[SearchResponse]
+    createSearchRequest(filter, document).execute(listener)
+
+    listener.result
+      .map(extractAccessibilityFrom)
+      .onErrorRecover {
+        case ex =>
+          logger.error(s"[${id.show}] Could not verify get request. Blocking document", ex)
+          Inaccessible
+      }
+  }
+
+  override def verifyDocumentsAccessibilities(documents: NonEmptyList[Document],
+                                              filter: Filter,
+                                              id: RequestContext.Id): Task[DocumentsAccessibilities] = {
+    val listener = new GenericResponseListener[MultiSearchResponse]
+    createMultiSearchRequest(filter, documents).execute(listener)
+
+    listener.result
+      .map(extractResultsFromSearchResponse)
+      .onErrorRecover {
+        case ex =>
+          logger.error(s"[${id.show}] Could not verify documents returned by multi get response. Blocking all returned documents", ex)
+          blockAllDocsReturned(documents)
+      }
+      .map(results => zip(results, documents))
+  }
+
   private def snapshotsBy(repositoryName: RepositoryName) = {
     snapshotsServiceSupplier.get() match {
       case Some(snapshotsService) =>
@@ -126,37 +157,6 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
         } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)
       }
       .toSet
-  }
-
-  override def verifyDocumentAccessibility(document: Document,
-                                           filter: Filter,
-                                           id: RequestContext.Id): Task[DocumentAccessibility] = {
-    val listener = new GenericResponseListener[SearchResponse]
-    createSearchRequest(filter, document).execute(listener)
-
-    listener.result
-      .map(extractAccessibilityFrom)
-      .onErrorRecover {
-        case ex =>
-          logger.error(s"[${id.show}] Could not verify get request. Blocking document", ex)
-          Inaccessible
-      }
-  }
-
-  override def verifyDocumentsAccessibilities(documents: NonEmptyList[Document],
-                                              filter: Filter,
-                                              id: RequestContext.Id): Task[DocumentsAccessibilities] = {
-    val listener = new GenericResponseListener[MultiSearchResponse]
-    createMultiSearchRequest(filter, documents).execute(listener)
-
-    listener.result
-      .map(extractResultsFromSearchResponse)
-      .onErrorRecover {
-        case ex =>
-          logger.error(s"[${id.show}] Could not verify documents returned by multi get response. Blocking all returned documents", ex)
-          blockAllDocsReturned(documents)
-      }
-      .map(results => zip(results, documents))
   }
 
   private def createSearchRequest(filter: Filter,

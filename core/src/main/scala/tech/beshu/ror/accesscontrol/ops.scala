@@ -43,6 +43,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableV
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, FilteredResponseFields, ResponseTransformation, RuleOrdering}
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, Strategy}
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
@@ -152,6 +153,7 @@ object show {
     implicit val kibanaAppShow: Show[KibanaApp] = Show.show(_.value.value)
     implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
     implicit val clusterIndexNameShow: Show[ClusterIndexName] = Show.show(_.stringify)
+    implicit val clusterNameFullShow: Show[ClusterName.Full] = Show.show(_.value.value)
     implicit val indexNameShow: Show[IndexName] = Show.show {
       case f@IndexName.Full(_) => f.show
       case IndexName.Wildcard(name) => name.value
