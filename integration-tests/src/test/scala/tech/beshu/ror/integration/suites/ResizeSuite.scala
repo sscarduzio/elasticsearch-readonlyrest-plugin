@@ -45,13 +45,13 @@ trait ResizeSuite
     "be able to proceed" when {
       "user has permission to source index and dest index" when {
         "wildcard is used" in {
-          val result = user2IndexManager.resize("test2_index", "test2_index_resized")
+          val result = user2IndexManager.resize(source="test2_index", target="test2_index_resized")
 
           result.responseCode should be(200)
         }
 
         "alias is used" in {
-          val result = user1IndexManager.resize("test1_index", "test1_index_resized", "test1_index_allowed_alias" :: Nil)
+          val result = user1IndexManager.resize(source="test1_index", target="test1_index_resized", aliases="test1_index_allowed_alias" :: Nil)
 
           result.responseCode should be(200)
         }
@@ -59,32 +59,32 @@ trait ResizeSuite
     }
     "not be able to proceed" when {
       "user has permission to source index and dest index but no permission to alias" in {
-        val result = user1IndexManager.resize("test1_index", "test1_index_resized", "test1_index_not_allowed_alias" :: Nil)
+        val result = user1IndexManager.resize(source="test1_index", target="test1_index_resized", aliases="test1_index_not_allowed_alias" :: Nil)
 
         result.responseCode should be(401)
       }
       "user has permission to source index and dest index but no permission to one alias" in {
-        val result = user1IndexManager.resize("test1_index", "test1_index_resized", "test1_index_not_allowed_alias" :: "test1_index_allowed_alias" :: Nil)
+        val result = user1IndexManager.resize(source="test1_index", target="test1_index_resized", aliases="test1_index_not_allowed_alias" :: "test1_index_allowed_alias" :: Nil)
 
         result.responseCode should be(401)
       }
       "user has no permission to source index and dest index which are present on ES"  in {
-        val result = user1IndexManager.resize("test2_index", "test2_index_resized")
+        val result = user1IndexManager.resize(source="test2_index", target="test2_index_resized")
 
         result.responseCode should be(401)
       }
       "user has no permission to source index and dest index which are absent on ES"  in {
-        val result = user1IndexManager.resize("not_allowed_index", "not_allowed_index_resized")
+        val result = user1IndexManager.resize(source="not_allowed_index", target="not_allowed_index_resized")
 
         result.responseCode should be(401)
       }
       "user has permission to source index but no permission to dest index"  in {
-        val result = user1IndexManager.resize("test1_index", "not_allowed_index_resized")
+        val result = user1IndexManager.resize(source="test1_index", target="not_allowed_index_resized")
 
         result.responseCode should be(401)
       }
       "user has permission to dest index and but no permission to source index"  in {
-        val result = user1IndexManager.resize("not_allowed_index", "test1_index_resized")
+        val result = user1IndexManager.resize(source="not_allowed_index", target="test1_index_resized")
 
         result.responseCode should be(401)
       }

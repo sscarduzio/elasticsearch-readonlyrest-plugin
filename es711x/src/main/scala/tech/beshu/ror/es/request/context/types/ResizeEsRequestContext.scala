@@ -47,7 +47,7 @@ class ResizeEsRequestContext(actionRequest: ResizeRequest,
     if (notAllowedIndices.isEmpty) {
       Modified
     } else {
-      throw new IllegalStateException(s"Resize request is write request and such requests need all indices to be allowed. Not allowed indices=[${notAllowedIndices.map(_.value.value).mkString(",")}]")
+      throw new IllegalStateException(s"Resize request is write request and such requests need all indices to be allowed. Not allowed indices=[${notAllowedIndices.map(_.show).mkString(",")}]")
     }
   }
 }
