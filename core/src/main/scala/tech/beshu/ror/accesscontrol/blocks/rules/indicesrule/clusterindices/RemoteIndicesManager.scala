@@ -33,10 +33,10 @@ class RemoteIndicesManager(requestContext: RequestContext,
     requestContext.allRemoteIndicesAndAliases.map(_.flatMap(_.all))
 
   override def allIndices: Task[Set[Remote]] =
-    requestContext.allRemoteIndicesAndAliases.map(_.map(r => Remote(r.index, r.clusterName)))
+    requestContext.allRemoteIndicesAndAliases.map(_.map(r => Remote(r.indexName, r.clusterName)))
 
   override def allAliases: Task[Set[Remote]] =
-    requestContext.allRemoteIndicesAndAliases.map(_.flatMap(r => r.aliases.map(Remote(_, r.clusterName))))
+    requestContext.allRemoteIndicesAndAliases.map(_.flatMap(r => r.aliasesNames.map(Remote(_, r.clusterName))))
 
   override def indicesPerAliasMap: Task[Map[Remote, Set[Remote]]] = {
     val mapMonoid = Monoid[Map[Remote, Set[Remote]]]

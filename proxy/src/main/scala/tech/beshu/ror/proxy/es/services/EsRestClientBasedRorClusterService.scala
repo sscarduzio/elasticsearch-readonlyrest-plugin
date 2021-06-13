@@ -45,7 +45,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       .runSyncUnsafe()
   }
 
-  override def allIndicesAndAliases: Map[ClusterIndexName.Local, Set[AliasName]] = {
+  override def allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
     client
       .getAlias(new GetAliasesRequest())
       .map { response =>
@@ -54,7 +54,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
           .flatMap { case (indexNameString, aliases) =>
             indexWithAliasesFrom(indexNameString, aliases.asScala.toSet)
           }
-          .toMap
+          .toSet
       }
       .runSyncUnsafe()
   }
@@ -193,10 +193,11 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
   }
 
   private def indexWithAliasesFrom(indexNameString: String, aliasMetadata: Set[AliasMetadata]) = {
-    ClusterIndexName.Local
+    IndexName.Full
       .fromString(indexNameString)
-      .map { index =>
-        (index, aliasMetadata.flatMap(am => ClusterIndexName.Local.fromString(am.alias())))
+      .map { indexName =>
+        val aliases = aliasMetadata.flatMap(am => IndexName.Full.fromString(am.alias()))
+        FullLocalIndexWithAliases(indexName, aliases)
       }
   }
 

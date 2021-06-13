@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.Forbidden
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, ForbiddenByMismatched}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{Group, IndexWithAliases, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, FullLocalIndexWithAliases, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.containers.LdapContainer
@@ -199,7 +199,7 @@ class GroupsRuleAccessControlTests
               header("x-ror-current-group", "admin")
             ),
             filteredIndices = Set(clusterIndexName(".kibana")),
-            allIndicesAndAliases = Set(IndexWithAliases(localIndexName(".kibana"), Set.empty))
+            allIndicesAndAliases = Set(FullLocalIndexWithAliases(fullIndexName(".kibana"), Set.empty))
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 4
@@ -213,8 +213,8 @@ class GroupsRuleAccessControlTests
   }
 
   private def allIndicesAndAliasesInTheTestCase() = Set(
-    IndexWithAliases(localIndexName("g12_index"), Set.empty),
-    IndexWithAliases(localIndexName("g34_index"), Set.empty),
-    IndexWithAliases(localIndexName("g5_index"), Set.empty)
+    FullLocalIndexWithAliases(fullIndexName("g12_index"), Set.empty),
+    FullLocalIndexWithAliases(fullIndexName("g34_index"), Set.empty),
+    FullLocalIndexWithAliases(fullIndexName("g5_index"), Set.empty)
   )
 }

@@ -52,7 +52,7 @@ class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
 
   private def removeOrAlter(request: TermVectorsRequest,
                             filteredIndices: Set[ClusterIndexName]): Boolean = {
-    val expandedIndicesOfRequest = clusterService.expandIndices(ClusterIndexName.fromString(request.index()).toSet)
+    val expandedIndicesOfRequest = clusterService.expandLocalIndices(ClusterIndexName.fromString(request.index()).toSet)
     val remaining = expandedIndicesOfRequest.intersect(filteredIndices).toList
     remaining match {
       case Nil =>

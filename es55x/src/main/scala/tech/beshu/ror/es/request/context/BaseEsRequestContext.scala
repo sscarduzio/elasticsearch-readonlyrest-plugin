@@ -29,7 +29,6 @@ import org.elasticsearch.action.CompositeIndicesRequest
 import org.elasticsearch.action.search.SearchRequest
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -125,11 +124,8 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy val content: String = if (restRequest.content == null) "" else restRequest.content().utf8ToString()
 
-  override lazy val allIndicesAndAliases: Set[IndexWithAliases] =
-    clusterService
-      .allIndicesAndAliases
-      .map { case (indexName, aliases) => IndexWithAliases(indexName, aliases) }
-      .toSet
+  override lazy val allIndicesAndAliases: Set[FullLocalIndexWithAliases] =
+    clusterService.allIndicesAndAliases
 
   override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] =
     clusterService.allRemoteIndicesAndAliases.memoize

@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.clusterindices
 
 import cats.implicits._
+import cats.kernel.Semigroup
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
@@ -26,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.CanPass.No.R
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.matchers.IndicesMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 trait AllClusterIndices extends BaseIndicesProcessor {
   this: IndicesRule =>
@@ -36,31 +38,31 @@ trait AllClusterIndices extends BaseIndicesProcessor {
     val (allAllowedRemoteIndices, allAllowedLocalIndices) = splitIntoRemoteAndLocalIndices(allAllowedIndices)
     val (requestedRemoteIndices, requestedLocalIndices) = splitIntoRemoteAndLocalIndices(requestedIndices)
 
-    for {
-      localIndicesProcessingResult <- processLocalIndices(requestContext, allAllowedLocalIndices, requestedLocalIndices)
-      remoteIndicesProcessingResult <- processRemoteIndices(requestContext, allAllowedRemoteIndices, requestedRemoteIndices)
-    } yield {
-      (localIndicesProcessingResult, remoteIndicesProcessingResult) match {
-        case (ProcessResult.Ok(localIndices), ProcessResult.Ok(remoteIndices)) =>
-          ProcessResult.Ok(localIndices ++ remoteIndices)
-        case (ok@ProcessResult.Ok(_), ProcessResult.Failed(_)) =>
-          ok
-        case (ProcessResult.Failed(_), ok@ProcessResult.Ok(_)) =>
-          ok
-        case (ProcessResult.Failed(localIndicesCause), ProcessResult.Failed(remoteIndicesCause)) =>
-          ProcessResult.Failed(localIndicesCause.orElse(remoteIndicesCause))
-      }
+    (UniqueNonEmptyList.fromSet(requestedLocalIndices), UniqueNonEmptyList.fromSet(requestedRemoteIndices)) match {
+      case (Some(nonEmptyRequestedLocalIndices), Some(nonEmptyRequestedRemoteIndices)) =>
+        import AllClusterIndices._
+        for {
+          localResult <- processLocalIndices(requestContext, allAllowedLocalIndices, nonEmptyRequestedLocalIndices)
+          remoteResult <- processRemoteIndices(requestContext, allAllowedRemoteIndices, nonEmptyRequestedRemoteIndices)
+        } yield Semigroup.combine(localResult, remoteResult)
+      case (Some(nonEmptyRequestedLocalIndices), None) =>
+        processLocalIndices(requestContext, allAllowedLocalIndices, nonEmptyRequestedLocalIndices)
+      case (None, Some(nonEmptyRequestedRemoteIndices)) =>
+        processRemoteIndices(requestContext, allAllowedRemoteIndices, nonEmptyRequestedRemoteIndices)
+      case (None, None) =>
+        if(requestContext.allIndicesAndAliases.nonEmpty) Task.now(ProcessResult.Ok(allAllowedIndices))
+        else Task.now(ProcessResult.Failed(Some(Cause.IndexNotFound)))
     }
   }
 
   private def processLocalIndices(requestContext: RequestContext,
                                   allAllowedIndices: Set[ClusterIndexName.Local],
-                                  requestedIndices: Set[ClusterIndexName.Local]): Task[ProcessResult[ClusterIndexName.Local]] = {
+                                  requestedIndices: UniqueNonEmptyList[ClusterIndexName.Local]): Task[ProcessResult[ClusterIndexName]] = {
     implicit val indicesManager: LocalIndicesManager = new LocalIndicesManager(
       requestContext,
       IndicesMatcher.create(allAllowedIndices)
     )
-    logger.debug(s"[${requestContext.id.show}] Checking local indices:")
+    logger.debug(s"[${requestContext.id.show}] Checking local indices (allowed: [${allAllowedIndices.map(_.show).mkString(",")}], requested: [${requestedIndices.map(_.show).mkString(",")}])")
     canPass(requestContext, requestedIndices)
       .map {
         case CanPass.Yes(narrowedIndices) =>
@@ -74,7 +76,7 @@ trait AllClusterIndices extends BaseIndicesProcessor {
 
   private def processRemoteIndices(requestContext: RequestContext,
                                    allAllowedIndices: Set[ClusterIndexName.Remote],
-                                   requestedIndices: Set[ClusterIndexName.Remote]): Task[ProcessResult[ClusterIndexName.Remote]] = {
+                                   requestedIndices: UniqueNonEmptyList[ClusterIndexName.Remote]): Task[ProcessResult[ClusterIndexName]] = {
     if(requestedIndices.isEmpty) {
       Task.now(ProcessResult.Failed(None))
     } else {
@@ -82,7 +84,7 @@ trait AllClusterIndices extends BaseIndicesProcessor {
         requestContext,
         IndicesMatcher.create(allAllowedIndices)
       )
-      logger.debug(s"[${requestContext.id.show}] Checking remote indices:")
+      logger.debug(s"[${requestContext.id.show}] Checking remote indices (allowed: [${allAllowedIndices.map(_.show).mkString(",")}], requested: [${requestedIndices.map(_.show).mkString(",")}])")
       canPass(requestContext, requestedIndices)
         .map {
           case CanPass.Yes(narrowedIndices) =>
@@ -107,4 +109,13 @@ trait AllClusterIndices extends BaseIndicesProcessor {
     }
   }
 
+}
+
+object AllClusterIndices {
+  implicit def processResultSemigroup: Semigroup[ProcessResult[ClusterIndexName]] = Semigroup.instance {
+    case (ProcessResult.Ok(set1), ProcessResult.Ok(set2)) => ProcessResult.Ok(set1 ++ set2)
+    case (ok@ProcessResult.Ok(_), ProcessResult.Failed(_)) => ok
+    case (ProcessResult.Failed(_), ok@ProcessResult.Ok(_)) => ok
+    case (failed@ProcessResult.Failed(_), ProcessResult.Failed(_)) => failed
+  }
 }

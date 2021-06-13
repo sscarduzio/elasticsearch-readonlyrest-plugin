@@ -68,7 +68,7 @@ trait RequestContext {
 
   def content: String
 
-  def allIndicesAndAliases: Set[IndexWithAliases]
+  def allIndicesAndAliases: Set[FullLocalIndexWithAliases]
 
   def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]]
 

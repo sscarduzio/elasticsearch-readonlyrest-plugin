@@ -126,11 +126,8 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy val content: String = if (restRequest.content == null) "" else restRequest.content().utf8ToString()
 
-  override lazy val allIndicesAndAliases: Set[IndexWithAliases] =
-    clusterService
-      .allIndicesAndAliases
-      .map { case (indexName, aliases) => IndexWithAliases(indexName, aliases) }
-      .toSet
+  override lazy val allIndicesAndAliases: Set[FullLocalIndexWithAliases] =
+    clusterService.allIndicesAndAliases
 
   override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] =
     clusterService.allRemoteIndicesAndAliases.memoize

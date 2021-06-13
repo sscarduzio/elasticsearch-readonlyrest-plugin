@@ -62,20 +62,20 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
     lookup.get(indexOrAlias.stringify).getIndices.asScala.map(_.getIndexUUID).toSet
   }
 
-  override def allIndicesAndAliases: Map[ClusterIndexName.Local, Set[AliasName]] = {
+  override def allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
     val indices = clusterService.state.metadata.getIndices
     indices
       .keysIt().asScala
       .flatMap { index =>
         val indexMetaData = indices.get(index)
-        ClusterIndexName.Local
+        IndexName.Full
           .fromString(indexMetaData.getIndex.getName)
           .map { indexName =>
-            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(ClusterIndexName.Local.fromString)
-            (indexName, aliases)
+            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Full.fromString)
+            FullLocalIndexWithAliases(indexName, aliases)
           }
       }
-      .toMap
+      .toSet
   }
 
   // todo: refactoring
@@ -90,6 +90,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
 
   // todo: change name
   private def test(remoteClusterService: RemoteClusterService) = {
+    logger.info("GETTING REMOTE INDEICeS") // todo: remove
     val remoteClusterFullNames =
       remoteClusterService
         .getRegisteredRemoteClusterNames.asSafeSet

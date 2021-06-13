@@ -304,14 +304,6 @@ object domain {
     implicit val caseMappingEqualityAction: CaseMappingEquality[Action] = CaseMappingEquality.instance(_.value, identity)
   }
 
-  final case class FullRemoteIndexWithAliases(clusterName: ClusterName.Full,
-                                              index: IndexName.Full,
-                                              aliases: Set[IndexName.Full]) {
-    lazy val all: Set[ClusterIndexName.Remote] = {
-      aliases.map(ClusterIndexName.Remote(_, clusterName)) + ClusterIndexName.Remote(index, clusterName)
-    }
-  }
-
   sealed trait IndexName
   object IndexName {
 
@@ -402,6 +394,8 @@ object domain {
         def fromString(value: String): Option[ClusterName] = {
           Wildcard.fromString(value) orElse Full.fromString(value)
         }
+
+        val wildcard: ClusterName.Wildcard = Wildcard("*")
 
         implicit val caseMappingEqualityAction: CaseMappingEquality[ClusterName] =
           CaseMappingEquality.instance(_.stringify, identity)
@@ -522,10 +516,10 @@ object domain {
 
     implicit class AllIndicesRequested(val indexName: ClusterIndexName) extends AnyVal {
       def allIndicesRequested: Boolean = indexName match {
-        case Local(IndexName.Full(_)) => false
-        case Local(i@IndexName.Wildcard(_)) => i == IndexName.wildcard || i == IndexName.all
-        case Remote(IndexName.Full(_), _) => false
-        case Remote(i@IndexName.Wildcard(_), _) => i == IndexName.wildcard || i == IndexName.all
+        case Local(IndexName.wildcard | IndexName.all) => true
+        case Local(IndexName.Full(_) | IndexName.Wildcard(_)) => false
+        case Remote(IndexName.wildcard | IndexName.all, ClusterName.wildcard) => true
+        case Remote(IndexName.Full(_) | IndexName.Wildcard(_), _) => false
       }
     }
   }
@@ -587,8 +581,19 @@ object domain {
     def unapply(alias: ClusterIndexName): Option[AliasPlaceholder] = AliasPlaceholder.from(alias)
   }
 
-  final case class IndexWithAliases(index: ClusterIndexName.Local, aliases: Set[ClusterIndexName.Local]) {
-    def all: Set[ClusterIndexName.Local] = aliases + index
+  final case class FullLocalIndexWithAliases(indexName: IndexName.Full,
+                                             aliasesNames: Set[IndexName.Full]) {
+    lazy val index: ClusterIndexName.Local = ClusterIndexName.Local(indexName)
+    lazy val aliases: Set[ClusterIndexName.Local] = aliasesNames.map(ClusterIndexName.Local.apply)
+    lazy val all: Set[ClusterIndexName.Local] = aliases + index
+  }
+
+  final case class FullRemoteIndexWithAliases(clusterName: ClusterName.Full,
+                                              indexName: IndexName.Full,
+                                              aliasesNames: Set[IndexName.Full]) {
+    lazy val index: ClusterIndexName.Remote = ClusterIndexName.Remote(indexName, clusterName)
+    lazy val aliases: Set[ClusterIndexName.Remote] = aliasesNames.map(ClusterIndexName.Remote(_, clusterName))
+    lazy val all: Set[ClusterIndexName.Remote] = aliases + index
   }
 
   final case class RorConfigurationIndex(index: IndexName.Full) extends AnyVal
