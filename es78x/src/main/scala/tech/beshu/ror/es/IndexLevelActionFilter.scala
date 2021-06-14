@@ -59,7 +59,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
 
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
-    new EsServerBasedRorClusterService(clusterService, repositoriesServiceSupplier, client),
+    new EsServerBasedRorClusterService(clusterService, remoteClusterServiceSupplier, repositoriesServiceSupplier, client, threadPool),
     clusterService.getSettings,
     threadPool
   )
