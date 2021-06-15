@@ -9,6 +9,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.action.admin.cluster.remote.RemoteInfoRequest
 import org.elasticsearch.action.admin.cluster.repositories.get.GetRepositoriesRequest
 import org.elasticsearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
@@ -19,17 +20,18 @@ import org.elasticsearch.client.indices.GetIndexRequest
 import org.elasticsearch.cluster.metadata.{AliasMetadata, IndexMetadata}
 import org.elasticsearch.index.query.QueryBuilders
 import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
-import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 
 // todo: we need to refactor ROR to be able to use here async API
 class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
@@ -59,7 +61,40 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       .runSyncUnsafe()
   }
 
-  override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = ???
+  override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = {
+    for {
+      remoteClusterFullNames <- getRegisteredRemoteClusterNames
+      indicesAndAliases <- Task
+        .gatherUnordered(
+          remoteClusterFullNames.map(getRemoteIndicesAndAliasesOf)
+        )
+        .map(_.flatten.toSet)
+    } yield indicesAndAliases
+  }
+
+  private def getRemoteIndicesAndAliasesOf(clusterName: ClusterName.Full) = {
+    client
+      .getIndex(new GetIndexRequest(s"${clusterName.value.value}:*"))
+      .map { response =>
+        response
+          .getAliases.asSafeMap
+          .flatMap { case (index, aliasesMetadata) =>
+            IndexName.Full
+              .fromString(index)
+              .map { indexName =>
+                val aliases = aliasesMetadata.asSafeList.map(_.alias()).flatMap(IndexName.Full.fromString).toSet
+                FullRemoteIndexWithAliases(clusterName, indexName, aliases)
+              }
+          }
+          .toSet
+      }
+  }
+
+  private def getRegisteredRemoteClusterNames = {
+    client
+      .remoteInfo(new RemoteInfoRequest())
+      .map(_.getInfos.asSafeList.map(_.getClusterAlias).flatMap(ClusterName.Full.fromString))
+  }
 
   override def allTemplates: Set[Template] = {
     Task

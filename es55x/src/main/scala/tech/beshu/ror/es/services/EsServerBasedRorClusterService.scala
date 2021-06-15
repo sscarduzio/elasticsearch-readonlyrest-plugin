@@ -22,17 +22,27 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
+import monix.execution.CancelablePromise
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.action.ActionListener
+import org.elasticsearch.action.admin.indices.get.{GetIndexRequest, GetIndexResponse}
+import org.elasticsearch.action.admin.indices.get.GetIndexRequest.Feature
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
+import org.elasticsearch.client.Client
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.metadata.RepositoriesMetaData
 import org.elasticsearch.cluster.service.ClusterService
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.snapshots.SnapshotsService
+import org.elasticsearch.threadpool.ThreadPool
+import org.elasticsearch.transport.{RemoteClusterService, TransportService}
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.es.{RemoteClusterAwareClient, RorClusterService}
 import tech.beshu.ror.es.RorClusterService._
 import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -41,9 +51,14 @@ import tech.beshu.ror.utils.ScalaOps._
 import scala.collection.JavaConverters._
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 
-class EsServerBasedRorClusterService(clusterService: ClusterService,
+import scala.util.{Failure, Success, Try}
+
+class EsServerBasedRorClusterService(settings: Settings,
+                                     clusterService: ClusterService,
+                                     remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                                      snapshotsServiceSupplier: Supplier[Option[SnapshotsService]],
-                                     nodeClient: NodeClient)
+                                     nodeClient: NodeClient,
+                                     threadPool: ThreadPool)
   extends RorClusterService
     with Logging {
 
@@ -68,7 +83,14 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .toSet
   }
 
-  override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = ???
+  override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = {
+    remoteClusterServiceSupplier.get() match {
+      case Some(remoteClusterService) =>
+        provideAllRemoteIndices(remoteClusterService)
+      case None =>
+        Task.now(Set.empty)
+    }
+  }
 
   override def allTemplates: Set[Template] = legacyTemplates()
 
@@ -117,6 +139,76 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
           blockAllDocsReturned(documents)
       }
       .map(results => zip(results, documents))
+  }
+
+  private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService): Task[Set[FullRemoteIndexWithAliases]] = {
+    Task
+      .gatherUnordered(
+        getRegisteredRemoteClusterNames(remoteClusterService)
+          .map(resolveAllRemoteIndices(_, remoteClusterService))
+      )
+      .map(_.flatten.toSet)
+  }
+
+  private def getRegisteredRemoteClusterNames(remoteClusterService: RemoteClusterService) = {
+    import org.joor.Reflect._
+    on(remoteClusterService)
+      .call("getRemoteClusterNames")
+      .get[java.util.Set[String]].asSafeSet
+      .flatMap(ClusterName.Full.fromString)
+  }
+
+  private def resolveAllRemoteIndices(remoteClusterName: ClusterName.Full,
+                                      remoteClusterService: RemoteClusterService) = {
+    Try(remoteClusterClientFor(remoteClusterName, remoteClusterService)) match {
+      case Failure(_) =>
+        logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
+        Task.now(List.empty)
+      case Success(client) =>
+        val promise = CancelablePromise[GetIndexResponse]()
+        client
+          .admin()
+          .indices()
+          .getIndex(
+            new GetIndexRequest().features(Feature.ALIASES),
+            new ActionListener[GetIndexResponse] {
+              override def onResponse(response: GetIndexResponse): Unit = promise.trySuccess(response)
+              override def onFailure(e: Exception): Unit = promise.tryFailure(e)
+            })
+        Task
+          .fromCancelablePromise(promise)
+          .map { response =>
+            response
+              .indices().asSafeList
+              .flatMap { index =>
+                val aliases = response.aliases().get(index).asSafeList.map(_.alias())
+                toFullRemoteIndexWithAliases(index, aliases, remoteClusterName)
+              }
+          }
+    }
+  }
+
+  private def toFullRemoteIndexWithAliases(indexName: String,
+                                           aliasesNames: List[String],
+                                           remoteClusterName: ClusterName.Full) = {
+    IndexName.Full
+      .fromString(indexName)
+      .map { index =>
+        val aliases = aliasesNames
+          .flatMap(IndexName.Full.fromString)
+          .toSet
+        FullRemoteIndexWithAliases(remoteClusterName, index, aliases)
+      }
+  }
+
+  private def remoteClusterClientFor(remoteClusterName: ClusterName.Full,
+                                     remoteClusterService: RemoteClusterService): Client = {
+    new RemoteClusterAwareClient(settings, threadPool, getTransportServerFrom(remoteClusterService), remoteClusterName.value.value)
+  }
+
+  private def getTransportServerFrom(remoteClusterService: RemoteClusterService) = {
+    import org.joor.Reflect._
+    on(remoteClusterService).get[TransportService]("transportService")
   }
 
   private def snapshotsBy(repositoryName: RepositoryName) = {

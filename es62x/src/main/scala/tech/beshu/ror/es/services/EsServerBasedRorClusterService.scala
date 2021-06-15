@@ -22,20 +22,27 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
+import monix.execution.CancelablePromise
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.action.ActionListener
+import org.elasticsearch.action.admin.indices.get.GetIndexRequest.Feature
+import org.elasticsearch.action.admin.indices.get.{GetIndexRequest, GetIndexResponse}
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
+import org.elasticsearch.client.Client
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.metadata.RepositoriesMetaData
 import org.elasticsearch.cluster.service.ClusterService
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.snapshots.SnapshotsService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.RemoteClusterService
+import org.elasticsearch.transport.{RemoteClusterService, TransportService}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.es.{RemoteClusterAwareClient, RorClusterService}
 import tech.beshu.ror.es.RorClusterService._
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.es.utils.GenericResponseListener
@@ -43,8 +50,10 @@ import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
+import scala.util.{Failure, Success, Try}
 
-class EsServerBasedRorClusterService(clusterService: ClusterService,
+class EsServerBasedRorClusterService(settings: Settings,
+                                     clusterService: ClusterService,
                                      remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                                      snapshotsServiceSupplier: Supplier[Option[SnapshotsService]],
                                      nodeClient: NodeClient,
@@ -150,51 +159,32 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
 
   private def resolveAllRemoteIndices(remoteClusterName: ClusterName.Full,
                                       remoteClusterService: RemoteClusterService) = {
-    ???
-//    val connection = remoteClusterService.getConnection("")
-//    connection.sendRequest(
-//      1L,
-//      TransportActionProxy.getProxyAction(GetIndexAction.NAME),
-//      TransportActionProxy.wrapRequest(connection.getNode, new GetIndexRequest().features(Feature.ALIASES)),
-//      TransportRequestOptions.EMPTY
-//    )
-//    val ts: TransportService = ???
-//    ts.sendRequest(
-//      connection,
-//      GetIndexAction.NAME,
-//      new GetIndexRequest().features(Feature.ALIASES),
-//      TransportRequestOptions.EMPTY,
-//      new TransportGetIndexAction(???,)
-//    )
-//    val client: TransportClient = ???
-//    client.
-
-//    Try(remoteClusterService.getRemoteClusterClient(threadPool, remoteClusterName.value.value)) match {
-//      case Failure(_) =>
-//        logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
-//        Task.now(List.empty)
-//      case Success(client) =>
-//        val promise = CancelablePromise[GetIndexResponse]()
-//        client
-//          .admin()
-//          .indices()
-//          .getIndex(
-//            new GetIndexRequest().features(Feature.ALIASES),
-//            new ActionListener[GetIndexResponse] {
-//              override def onResponse(response: GetIndexResponse): Unit = promise.trySuccess(response)
-//              override def onFailure(e: Exception): Unit = promise.tryFailure(e)
-//            })
-//        Task
-//          .fromCancelablePromise(promise)
-//          .map { response =>
-//            response
-//              .indices().asSafeList
-//              .flatMap { index =>
-//                val aliases = response.aliases().get(index).asSafeList.map(_.alias())
-//                toFullRemoteIndexWithAliases(index, aliases, remoteClusterName)
-//              }
-//          }
-//    }
+    Try(remoteClusterClientFor(remoteClusterName, remoteClusterService)) match {
+      case Failure(_) =>
+        logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
+        Task.now(List.empty)
+      case Success(client) =>
+        val promise = CancelablePromise[GetIndexResponse]()
+        client
+          .admin()
+          .indices()
+          .getIndex(
+            new GetIndexRequest().features(Feature.ALIASES),
+            new ActionListener[GetIndexResponse] {
+              override def onResponse(response: GetIndexResponse): Unit = promise.trySuccess(response)
+              override def onFailure(e: Exception): Unit = promise.tryFailure(e)
+            })
+        Task
+          .fromCancelablePromise(promise)
+          .map { response =>
+            response
+              .indices().asSafeList
+              .flatMap { index =>
+                val aliases = response.aliases().get(index).asSafeList.map(_.alias())
+                toFullRemoteIndexWithAliases(index, aliases, remoteClusterName)
+              }
+          }
+    }
   }
 
   private def toFullRemoteIndexWithAliases(indexName: String,
@@ -208,6 +198,16 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
           .toSet
         FullRemoteIndexWithAliases(remoteClusterName, index, aliases)
       }
+  }
+
+  private def remoteClusterClientFor(remoteClusterName: ClusterName.Full,
+                                     remoteClusterService: RemoteClusterService): Client = {
+    new RemoteClusterAwareClient(settings, threadPool, getTransportServerFrom(remoteClusterService), remoteClusterName.value.value)
+  }
+
+  private def getTransportServerFrom(remoteClusterService: RemoteClusterService) = {
+    import org.joor.Reflect._
+    on(remoteClusterService).get[TransportService]("transportService")
   }
 
   private def snapshotsBy(repositoryName: RepositoryName) = {
