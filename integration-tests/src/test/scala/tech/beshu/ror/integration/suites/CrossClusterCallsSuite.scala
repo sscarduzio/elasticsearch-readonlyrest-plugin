@@ -150,7 +150,7 @@ trait CrossClusterCallsSuite
           result.responseCode should be(200)
           result.searchHits.arr.size should be(2)
         }
-        "he queries remote index which is not forbidden in 'pub' remote cluster" in {
+        "he queries remote index which is not forbidden in 'pub' remote cluster" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
           val result = user4SearchManager.asyncSearch("pu*:*logs*")
           result.responseCode should be(200)
           result.searchHits.arr.size should be(3)
