@@ -186,37 +186,37 @@ trait CrossClusterCallsSuite
     "be forbidden" when {
       "we want to forbid certain names of indices for a given user" when {
         "local indices are used" when {
-          "requested index name with wildcard is the same as configured index name with wildcard" in {
+          "requested index name with wildcard is the same as configured index name with wildcard" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
             val result = user4SearchManager.asyncSearch("*-logs-smg-stats-*")
             result.responseCode should be(403)
           }
-          "requested index name with wildcard is more general version of the configured index name with wildcard" in {
+          "requested index name with wildcard is more general version of the configured index name with wildcard" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
             val result = user4SearchManager.asyncSearch("*-logs-smg-*")
             result.responseCode should be(403)
           }
-          "requested index name with wildcard is more specialized version of the configured index name with wildcard" in {
+          "requested index name with wildcard is more specialized version of the configured index name with wildcard" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy)in {
             val result = user4SearchManager.asyncSearch("*-logs-smg-stats-2020*")
             result.responseCode should be(403)
           }
-          "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" in {
+          "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
             val result = user4SearchManager.asyncSearch("c0*")
             result.responseCode should be(403)
           }
         }
         "remote indices are used" when {
-          "requested index name with wildcard is the same as configured index name with wildcard" in {
+          "requested index name with wildcard is the same as configured index name with wildcard" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
             val result = user4SearchManager.asyncSearch("e*:*-logs-smg-stats-*")
             result.responseCode should be(403)
           }
-          "requested index name with wildcard is more general version of the configured index name with wildcard" in {
+          "requested index name with wildcard is more general version of the configured index name with wildcard" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
             val result = user4SearchManager.asyncSearch("e*:*-logs-smg-*")
             result.responseCode should be(403)
           }
-          "requested index name with wildcard is more specialized version of the configured index name with wildcard" in {
+          "requested index name with wildcard is more specialized version of the configured index name with wildcard" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
             val result = user4SearchManager.asyncSearch("e*:*-logs-smg-stats-2020*")
             result.responseCode should be(403)
           }
-          "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" in {
+          "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
             val result = user4SearchManager.asyncSearch("e*:c0*")
             result.responseCode should be(403)
           }

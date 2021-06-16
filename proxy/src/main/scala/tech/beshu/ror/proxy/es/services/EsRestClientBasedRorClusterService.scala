@@ -5,6 +5,7 @@ package tech.beshu.ror.proxy.es.services
 
 import cats.data.NonEmptyList
 import cats.implicits._
+import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -68,26 +69,12 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
         .gatherUnordered(
           remoteClusterFullNames.map(getRemoteIndicesAndAliasesOf)
         )
-        .map(_.flatten.toSet)
+        .map(_.toSet)
     } yield indicesAndAliases
   }
 
-  private def getRemoteIndicesAndAliasesOf(clusterName: ClusterName.Full) = {
-    client
-      .getIndex(new GetIndexRequest(s"${clusterName.value.value}:*"))
-      .map { response =>
-        response
-          .getAliases.asSafeMap
-          .flatMap { case (index, aliasesMetadata) =>
-            IndexName.Full
-              .fromString(index)
-              .map { indexName =>
-                val aliases = aliasesMetadata.asSafeList.map(_.alias()).flatMap(IndexName.Full.fromString).toSet
-                FullRemoteIndexWithAliases(clusterName, indexName, aliases)
-              }
-          }
-          .toSet
-      }
+  private def getRemoteIndicesAndAliasesOf(clusterName: ClusterName.Full) = Task.now {
+    FullRemoteIndexWithAliases(clusterName, IndexName.Full("*"), Set.empty)
   }
 
   private def getRegisteredRemoteClusterNames = {
