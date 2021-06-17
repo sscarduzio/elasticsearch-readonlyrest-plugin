@@ -18,7 +18,7 @@ package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.HttpGet
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.elasticsearch.CatManager.{CatNodesResponse, CatResponse, CatShardsResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Arr, Value}
@@ -29,6 +29,8 @@ class CatManager(client: RestClient,
                  override val additionalHeaders: Map[String, String] = Map.empty,
                  esVersion: String)
   extends BaseManager(client) {
+
+  def main(): JsonResponse = call(new HttpGet(client.from("/")), new JsonResponse(_))
 
   def healthCheck(): JsonResponse = call(genericCatRequest("health"), new JsonResponse(_))
 

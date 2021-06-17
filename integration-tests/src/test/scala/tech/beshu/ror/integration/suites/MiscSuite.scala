@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
@@ -45,26 +44,35 @@ trait MiscSuite
     )
   )
 
-  private lazy val userClusterStateManager = new CatManager(
-    client = basicAuthClient("user1", "pass"),
-    additionalHeaders = Map("X-Forwarded-For" -> "es-pub7"),
-    esVersion = esVersionUsed
-  )
 
-  private lazy val dev1IndexManager = new IndexManager(basicAuthClient("admin", "container"))
+  private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"))
 
   "An x_forwarded_for" should {
     "block the request because hostname is not resolvable" in {
+      val userClusterStateManager = new CatManager(
+        client = basicAuthClient("user1", "pass"),
+        additionalHeaders = Map("X-Forwarded-For" -> "es-pub7"),
+        esVersion = esVersionUsed
+      )
       val response = userClusterStateManager.healthCheck()
 
       response.responseCode should be(401)
+    }
+    "allows the request when it doesn't contain x-forwarded-for header" in {
+      val userClusterStateManager = new CatManager(
+        client = basicAuthClient("admin", "admin123"),
+        esVersion = esVersionUsed
+      )
+      val response = userClusterStateManager.main()
+
+      response.responseCode should be(200)
     }
   }
   "Warning response header" should {
     "be exposed in ror response" excludeES(allEs5x, allEs6x, rorProxy) in {
       // headers are used only for deprecation. Deprecated features change among versions es8xx modules should use other method to test deprecation warnings
       // proxy cares warning printing it in logs, and it's not passed to ror.
-      val indexResponse = dev1IndexManager.createIndex(
+      val indexResponse = adminIndexManager.createIndex(
         indices = "typed_index",
         params = Map(
           "master_timeout" -> "30s",
