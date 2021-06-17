@@ -139,16 +139,19 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
   }
 
   private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService) = {
-    val remoteClusterFullNames =
-      remoteClusterService
-        .getRegisteredRemoteClusterNames.asSafeSet
-        .flatMap(ClusterName.Full.fromString)
-
     Task
       .gatherUnordered(
-        remoteClusterFullNames.map(resolveAllRemoteIndices(_, remoteClusterService))
+        getRegisteredRemoteClusterNames(remoteClusterService).map(resolveAllRemoteIndices(_, remoteClusterService))
       )
       .map(_.flatten.toSet)
+  }
+
+  private def getRegisteredRemoteClusterNames(remoteClusterService: RemoteClusterService) = {
+    import org.joor.Reflect._
+    on(remoteClusterService)
+      .call("getRemoteClusterNames")
+      .get[java.util.Set[String]].asSafeSet
+      .flatMap(ClusterName.Full.fromString)
   }
 
   private def resolveAllRemoteIndices(remoteClusterName: ClusterName.Full,
