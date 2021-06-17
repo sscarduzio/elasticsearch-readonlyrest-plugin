@@ -41,7 +41,7 @@ class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaInd
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.kibanaIndex should be(AlreadyResolved(indexName("some_kibana_index")))
+            rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName("some_kibana_index")))
           }
         )
       }

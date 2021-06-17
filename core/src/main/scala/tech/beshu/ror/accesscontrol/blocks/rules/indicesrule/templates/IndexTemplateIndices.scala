@@ -14,8 +14,9 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule
+package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.templates
 
+import cats.implicits._
 import cats.data.NonEmptyList
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
@@ -25,9 +26,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingIndexTemplateAndGetAllowedOnes, GettingIndexTemplates}
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.implicits._
-import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.utils.ScalaOps._
 
 private[indicesrule] trait IndexTemplateIndices
   extends Logging {
@@ -84,7 +85,7 @@ private[indicesrule] trait IndexTemplateIndices
 
   protected def addingIndexTemplate(newTemplateName: TemplateName,
                                     newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                    aliases: Set[IndexName])
+                                    aliases: Set[ClusterIndexName])
                                    (implicit blockContext: TemplateRequestBlockContext,
                                     allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
     resultBasedOnCondition(blockContext) {
@@ -94,7 +95,7 @@ private[indicesrule] trait IndexTemplateIndices
 
   protected def addingIndexTemplateAndGetAllowedOnes(newTemplateName: TemplateName,
                                                      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                                     aliases: Set[IndexName],
+                                                     aliases: Set[ClusterIndexName],
                                                      requestedTemplateNames: List[TemplateNamePattern])
                                                     (implicit blockContext: TemplateRequestBlockContext,
                                                      allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
@@ -116,7 +117,7 @@ private[indicesrule] trait IndexTemplateIndices
 
   private def processAddingIndexTemplate(newTemplateName: TemplateName,
                                            newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                           aliases: Set[IndexName])
+                                           aliases: Set[ClusterIndexName])
                                           (implicit blockContext: TemplateRequestBlockContext,
                                            allowedIndices: AllowedIndices): Boolean = {
     logger.debug(
@@ -185,7 +186,7 @@ private[indicesrule] trait IndexTemplateIndices
 
   private def canAddNewIndexTemplate(newTemplateName: TemplateName,
                                      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                     newTemplateAliases: Set[IndexName])
+                                     newTemplateAliases: Set[ClusterIndexName])
                                     (implicit blockContext: TemplateRequestBlockContext,
                                      allowedIndices: AllowedIndices) = {
     logger.debug(

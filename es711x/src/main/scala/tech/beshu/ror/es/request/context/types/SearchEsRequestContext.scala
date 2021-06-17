@@ -40,12 +40,12 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
 
   override protected def requestFieldsUsage: RequestFieldsUsage = actionRequest.checkFieldsUsage()
 
-  override protected def indicesFrom(request: SearchRequest): Set[IndexName] = {
-    request.indices.asSafeSet.flatMap(IndexName.fromString)
+  override protected def indicesFrom(request: SearchRequest): Set[ClusterIndexName] = {
+    request.indices.asSafeSet.flatMap(ClusterIndexName.fromString)
   }
 
   override protected def update(request: SearchRequest,
-                                indices: NonEmptyList[IndexName],
+                                indices: NonEmptyList[ClusterIndexName],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     request

@@ -18,9 +18,8 @@ package tech.beshu.ror.es
 
 import cats.data.NonEmptyList
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.IndexName.Remote.ClusterName
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService._
 
@@ -28,9 +27,9 @@ trait RorClusterService {
 
   def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid]
 
-  def allIndicesAndAliases: Map[IndexName.Local, Set[AliasName]]
+  def allIndicesAndAliases: Set[FullLocalIndexWithAliases]
 
-  def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Map[IndexName.Remote.Full, Set[FullRemoteAliasName]]]
+  def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]]
 
   def allTemplates: Set[Template]
 
@@ -44,20 +43,15 @@ trait RorClusterService {
                                      filter: Filter,
                                      id: RequestContext.Id): Task[DocumentsAccessibilities]
 
-  def expandIndices(indices: Set[IndexName]): Set[IndexName] = {
-    val all: Set[IndexName] = allIndicesAndAliases
-      .flatMap { case (indexName, aliases) => aliases + indexName }
-      .toSet
+  def expandLocalIndices(indices: Set[ClusterIndexName]): Set[ClusterIndexName] = {
+    val all: Set[ClusterIndexName] = allIndicesAndAliases.flatMap(_.all)
     MatcherWithWildcardsScalaAdapter.create(indices).filter(all)
   }
 }
 
 object RorClusterService {
-  type IndexOrAlias = IndexName
+  type IndexOrAlias = ClusterIndexName
   type Document = DocumentWithIndex
   type DocumentsAccessibilities = Map[DocumentWithIndex, DocumentAccessibility]
-  type AliasName = IndexName.Local
-  type FullAliasName = IndexName.Local.Full
-  type FullRemoteAliasName = IndexName.Remote.Full
   type IndexUuid = String
 }

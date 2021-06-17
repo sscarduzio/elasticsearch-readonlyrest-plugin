@@ -20,12 +20,11 @@ import cats.{Id, ~>}
 import io.circe.Json
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.configuration.ConfigLoading.LoadConfigAction
-import tech.beshu.ror.configuration.{ConfigLoading, RawRorConfig}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
 import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, LoadedRorConfig, Path}
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.configuration.{ConfigLoading, RawRorConfig}
 
 import scala.language.existentials
 
@@ -102,7 +101,7 @@ object LoadRawRorConfigTest {
   import eu.timepit.refined.auto._
   private val filePath = Path("unused_file_path")
   private val rawRorConfig = RawRorConfig(Json.False, "forced file config")
-  private val rorConfigurationIndex = RorConfigurationIndex(indexName("rorConfigurationIndex"))
+  private val rorConfigurationIndex = RorConfigurationIndex(IndexName.Full("rorConfigurationIndex"))
 
 }
 object IdCompiler {

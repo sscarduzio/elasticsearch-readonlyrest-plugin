@@ -19,11 +19,11 @@ package tech.beshu.ror.unit.acl.domain
 import java.time.Instant
 
 import eu.timepit.refined.auto._
+import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.Inside
-import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
+import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.utils.TestsUtils._
 
 class RorAuditIndexTemplateTests extends AnyWordSpec with Inside {
@@ -54,28 +54,28 @@ class RorAuditIndexTemplateTests extends AnyWordSpec with Inside {
         template.conforms(index) should be(true)
       }
       "name has proper date format" in {
-        template.conforms(localIndexName(".ror_2020_01")) should be(true)
+        template.conforms(indexName(".ror_2020_01")) should be(true)
       }
       "name started the same as template" in {
-        template.conforms(localIndexName(".ror*")) should be(true)
+        template.conforms(indexName(".ror*")) should be(true)
       }
       "is wildcard" in {
-        template.conforms(localIndexName("*")) should be(true)
+        template.conforms(indexName("*")) should be(true)
       }
       "name is exactly the same as template (no date pattern used)" in {
         val noDatePatternTemplate = RorAuditIndexTemplate.from("'.ror'").right.get
-        noDatePatternTemplate.conforms(localIndexName(".ror")) should be(true)
+        noDatePatternTemplate.conforms(indexName(".ror")) should be(true)
       }
     }
     "not conform to index" which {
       "name contains wildcard, but the pattern doesn't apply" in {
-        template.conforms(localIndexName("ror*")) should be(false)
+        template.conforms(indexName("ror*")) should be(false)
       }
       "name is the same as fixed part of template" in {
-        template.conforms(localIndexName(".ror_")) should be(false)
+        template.conforms(indexName(".ror_")) should be(false)
       }
       "name totally differs" in {
-        template.conforms(localIndexName("other")) should be(false)
+        template.conforms(indexName("other")) should be(false)
       }
     }
   }

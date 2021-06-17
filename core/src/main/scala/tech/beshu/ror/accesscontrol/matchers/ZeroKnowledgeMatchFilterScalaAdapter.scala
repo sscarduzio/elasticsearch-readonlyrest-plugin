@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.matchers
 
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult
 import tech.beshu.ror.utils.ZeroKnowledgeMatchFilter
 
@@ -24,12 +24,12 @@ import scala.collection.JavaConverters._
 
 class ZeroKnowledgeMatchFilterScalaAdapter {
 
-  def alterIndicesIfNecessary(indices: Set[IndexName], matcher: Matcher[IndexName]): AlterResult[IndexName] = {
+  def alterIndicesIfNecessary(indices: Set[ClusterIndexName], matcher: Matcher[ClusterIndexName]): AlterResult[ClusterIndexName] = {
     Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
       indices.map(_.stringify).asJava,
       Matcher.asMatcherWithWildcards(matcher)
     )) match {
-      case Some(alteredIndices) => AlterResult.Altered(alteredIndices.asScala.flatMap(IndexName.fromString).toSet)
+      case Some(alteredIndices) => AlterResult.Altered(alteredIndices.asScala.flatMap(ClusterIndexName.fromString).toSet)
       case None => AlterResult.NotAltered
     }
   }

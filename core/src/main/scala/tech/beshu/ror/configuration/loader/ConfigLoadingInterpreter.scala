@@ -30,6 +30,7 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.loader.LoadedRorConfig._
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.configuration.{ConfigLoading, EsConfig, IndexConfigManager}
 import tech.beshu.ror.providers.EnvVarsProvider
 

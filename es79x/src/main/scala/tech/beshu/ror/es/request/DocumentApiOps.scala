@@ -20,7 +20,7 @@ import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.index.get.GetResult
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
-import tech.beshu.ror.accesscontrol.domain.{DocumentId, DocumentWithIndex, IndexName}
+import tech.beshu.ror.accesscontrol.domain.{DocumentId, DocumentWithIndex, ClusterIndexName}
 import tech.beshu.ror.utils.ReflecUtils
 
 import scala.collection.JavaConverters._
@@ -109,7 +109,7 @@ object DocumentApiOps {
   }
 
   private def createIndexName(indexStr: String) = {
-    IndexName
+    ClusterIndexName
       .fromString(indexStr)
       .getOrElse {
         throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid")

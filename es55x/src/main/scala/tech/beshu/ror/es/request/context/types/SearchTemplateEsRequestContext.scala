@@ -22,7 +22,7 @@ import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect._
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
@@ -42,15 +42,15 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
 
   private lazy val searchRequest = searchRequestFrom(actionRequest)
 
-  override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[IndexName] = {
+  override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[ClusterIndexName] = {
     searchRequest
       .indices.asSafeSet
-      .flatMap(IndexName.fromString)
+      .flatMap(ClusterIndexName.fromString)
   }
 
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
-                                filteredIndices: NonEmptyList[IndexName],
-                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     searchRequest.indices(filteredIndices.toList.map(_.stringify): _*)
     Modified
   }

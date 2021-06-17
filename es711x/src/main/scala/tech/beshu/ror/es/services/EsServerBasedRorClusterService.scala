@@ -26,19 +26,20 @@ import monix.execution.CancelablePromise
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
+import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.ResolvedIndex
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
 import org.elasticsearch.action.support.PlainActionFuture
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.metadata.RepositoriesMetadata
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
+import tech.beshu.ror.accesscontrol.show.logs._
 import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
-import tech.beshu.ror.accesscontrol.domain.IndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
@@ -63,85 +64,29 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
     lookup.get(indexOrAlias.stringify).getIndices.asScala.map(_.getIndexUUID).toSet
   }
 
-  override def allIndicesAndAliases: Map[IndexName.Local, Set[AliasName]] = {
+  override def allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
     val indices = clusterService.state.metadata.getIndices
     indices
       .keysIt().asScala
       .flatMap { index =>
         val indexMetaData = indices.get(index)
-        IndexName.Local
+        IndexName.Full
           .fromString(indexMetaData.getIndex.getName)
           .map { indexName =>
-            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Local.fromString)
-            (indexName, aliases)
+            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Full.fromString)
+            FullLocalIndexWithAliases(indexName, aliases)
           }
       }
-      .toMap
+      .toSet
   }
 
-  // todo: refactoring
-  override def allRemoteIndicesAndAliases(remoteClusterName: ClusterName): Task[Map[IndexName.Remote.Full, Set[FullRemoteAliasName]]] = {
+  override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
-        test(remoteClusterName, remoteClusterService)
+        provideAllRemoteIndices(remoteClusterService)
       case None =>
-        Task.now(Map.empty)
+        Task.now(Set.empty)
     }
-  }
-
-  // todo: change name
-  private def test(remoteClusterName: ClusterName, remoteClusterService: RemoteClusterService) = {
-    val remoteClusterFullNames =
-      remoteClusterService
-        .getRegisteredRemoteClusterNames.asSafeSet
-        .flatMap(ClusterName.Full.fromString)
-
-    val listOfTasks = MatcherWithWildcardsScalaAdapter
-      .create(Set(remoteClusterName))
-      .filter(remoteClusterFullNames)
-      .toList
-      .map { remoteClusterFullName =>
-        Try(remoteClusterService.getRemoteClusterClient(threadPool, remoteClusterFullName.value.value)) match {
-          case Failure(_) =>
-            // todo: log?
-            Task.now(List.empty)
-          case Success(client) =>
-            val promise = CancelablePromise[ResolveIndexAction.Response]()
-            client
-              .admin()
-              .indices()
-              .resolveIndex(
-                new ResolveIndexAction.Request(List("*").toArray),
-                new ActionListener[ResolveIndexAction.Response] {
-                  override def onResponse(response: ResolveIndexAction.Response): Unit = promise.trySuccess(response)
-                  override def onFailure(e: Exception): Unit = promise.tryFailure(e)
-                }
-              )
-            Task
-              .fromCancelablePromise(promise)
-              .map { response =>
-                response
-                  .getIndices.asSafeList
-                  .flatMap { resolvedIndex =>
-                    IndexName.Remote.Full
-                      // todo: is it ok?
-                      .fromString(s"${remoteClusterFullName.value}:${resolvedIndex.getName}")
-                      .map { index =>
-                        val aliases = resolvedIndex
-                          .getAliases.asSafeList
-                          .flatMap(alias => IndexName.Remote.Full.fromString(s"${remoteClusterFullName.value}:$alias"))
-                          .toSet
-                        (index, aliases)
-                      }
-                  }
-              }
-        }
-      }
-
-    // todo: if one breaks, all break
-    Task
-      .gatherUnordered(listOfTasks)
-      .map(_.flatten.toMap)
   }
 
   override def allTemplates: Set[Template] = {
@@ -162,6 +107,93 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
           .map { name => (name, snapshotsBy(name)) }
       }
       .toMap
+  }
+
+  override def verifyDocumentAccessibility(document: Document,
+                                           filter: Filter,
+                                           id: RequestContext.Id): Task[DocumentAccessibility] = {
+    val listener = new GenericResponseListener[SearchResponse]
+    createSearchRequest(filter, document).execute(listener)
+
+    listener.result
+      .map(extractAccessibilityFrom)
+      .onErrorRecover {
+        case ex =>
+          logger.error(s"[${id.show}] Could not verify get request. Blocking document", ex)
+          Inaccessible
+      }
+  }
+
+  override def verifyDocumentsAccessibilities(documents: NonEmptyList[Document],
+                                              filter: Filter,
+                                              id: RequestContext.Id): Task[DocumentsAccessibilities] = {
+    val listener = new GenericResponseListener[MultiSearchResponse]
+    createMultiSearchRequest(filter, documents).execute(listener)
+
+    listener.result
+      .map(extractResultsFromSearchResponse)
+      .onErrorRecover {
+        case ex =>
+          logger.error(s"[${id.show}] Could not verify documents returned by multi get response. Blocking all returned documents", ex)
+          blockAllDocsReturned(documents)
+      }
+      .map(results => zip(results, documents))
+  }
+
+  private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService) = {
+    val remoteClusterFullNames =
+      remoteClusterService
+        .getRegisteredRemoteClusterNames.asSafeSet
+        .flatMap(ClusterName.Full.fromString)
+
+    Task
+      .gatherUnordered(
+        remoteClusterFullNames.map(resolveAllRemoteIndices(_, remoteClusterService))
+      )
+      .map(_.flatten.toSet)
+  }
+
+  private def resolveAllRemoteIndices(remoteClusterName: ClusterName.Full,
+                                      remoteClusterService: RemoteClusterService) = {
+    Try(remoteClusterService.getRemoteClusterClient(threadPool, remoteClusterName.value.value)) match {
+      case Failure(_) =>
+        logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
+        Task.now(List.empty)
+      case Success(client) =>
+        val promise = CancelablePromise[ResolveIndexAction.Response]()
+        client
+          .admin()
+          .indices()
+          .resolveIndex(
+            new ResolveIndexAction.Request(List("*").toArray),
+            new ActionListener[ResolveIndexAction.Response] {
+              override def onResponse(response: ResolveIndexAction.Response): Unit = promise.trySuccess(response)
+              override def onFailure(e: Exception): Unit = promise.tryFailure(e)
+            }
+          )
+        Task
+          .fromCancelablePromise(promise)
+          .map { response =>
+            response
+              .getIndices.asSafeList
+              .flatMap { resolvedIndex =>
+                toFullRemoteIndexWithAliases(resolvedIndex, remoteClusterName)
+              }
+          }
+    }
+  }
+
+  private def toFullRemoteIndexWithAliases(resolvedIndex: ResolvedIndex,
+                                           remoteClusterName: ClusterName.Full) = {
+    IndexName.Full
+      .fromString(resolvedIndex.getName)
+      .map { index =>
+        val aliases = resolvedIndex
+          .getAliases.asSafeList
+          .flatMap(IndexName.Full.fromString)
+          .toSet
+        FullRemoteIndexWithAliases(remoteClusterName, index, aliases)
+      }
   }
 
   private def snapshotsBy(repositoryName: RepositoryName) = {
@@ -200,7 +232,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
           indexPatterns <- UniqueNonEmptyList.fromList(
             templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString).toList
           )
-          aliases = templateMetaData.aliases().asSafeValues.flatMap(a => IndexName.fromString(a.alias()))
+          aliases = templateMetaData.aliases().asSafeValues.flatMap(a => ClusterIndexName.fromString(a.alias()))
         } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)
       }
       .toSet
@@ -218,7 +250,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
             templateMetaData.indexPatterns().asScala.flatMap(IndexPattern.fromString).toList
           )
           aliases = templateMetaData.template().asSafeSet
-            .flatMap(_.aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet)
+            .flatMap(_.aliases().asSafeMap.values.flatMap(a => ClusterIndexName.fromString(a.alias())).toSet)
         } yield Template.IndexTemplate(templateName, indexPatterns, aliases)
       }
       .toSet
@@ -232,41 +264,10 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
         val templateMetaData = templates.get(templateNameString)
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          aliases = templateMetaData.template().aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet
+          aliases = templateMetaData.template().aliases().asSafeMap.values.flatMap(a => ClusterIndexName.fromString(a.alias())).toSet
         } yield Template.ComponentTemplate(templateName, aliases)
       }
       .toSet
-  }
-
-  override def verifyDocumentAccessibility(document: Document,
-                                           filter: Filter,
-                                           id: RequestContext.Id): Task[DocumentAccessibility] = {
-    val listener = new GenericResponseListener[SearchResponse]
-    createSearchRequest(filter, document).execute(listener)
-
-    listener.result
-      .map(extractAccessibilityFrom)
-      .onErrorRecover {
-        case ex =>
-          logger.error(s"[${id.show}] Could not verify get request. Blocking document", ex)
-          Inaccessible
-      }
-  }
-
-  override def verifyDocumentsAccessibilities(documents: NonEmptyList[Document],
-                                              filter: Filter,
-                                              id: RequestContext.Id): Task[DocumentsAccessibilities] = {
-    val listener = new GenericResponseListener[MultiSearchResponse]
-    createMultiSearchRequest(filter, documents).execute(listener)
-
-    listener.result
-      .map(extractResultsFromSearchResponse)
-      .onErrorRecover {
-        case ex =>
-          logger.error(s"[${id.show}] Could not verify documents returned by multi get response. Blocking all returned documents", ex)
-          blockAllDocsReturned(documents)
-      }
-      .map(results => zip(results, documents))
   }
 
   private def createSearchRequest(filter: Filter,
