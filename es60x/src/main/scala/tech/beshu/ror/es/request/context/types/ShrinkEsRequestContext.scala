@@ -21,11 +21,11 @@ import cats.implicits._
 import org.elasticsearch.action.admin.indices.shrink.ShrinkRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
+import tech.beshu.ror.es.request.context.ModificationResult.Modified
 
 import scala.collection.JavaConverters._
 
@@ -36,13 +36,15 @@ class ShrinkEsRequestContext(actionRequest: ShrinkRequest,
                              override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ShrinkRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ShrinkRequest): Set[IndexName] = {
+  override protected def indicesFrom(request: ShrinkRequest): Set[ClusterIndexName] = {
     (request.getSourceIndex :: request.getShrinkIndexRequest.index() :: request.getShrinkIndexRequest.aliases().asScala.map(_.name()).toList)
-      .flatMap(IndexName.fromString)
+      .flatMap(ClusterIndexName.fromString)
       .toSet
   }
 
-  override protected def update(request: ShrinkRequest, filteredIndices: NonEmptyList[IndexName], allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+  override protected def update(request: ShrinkRequest,
+                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     val notAllowedIndices = indicesFrom(actionRequest) -- filteredIndices.toList.toSet
     if (notAllowedIndices.isEmpty) {
       Modified

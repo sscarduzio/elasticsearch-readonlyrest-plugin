@@ -171,7 +171,7 @@ private[types] object GetComposableIndexTemplateEsRequestContext extends Logging
         .fromList(composableIndexTemplate.indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
       aliases = Option(composableIndexTemplate.template())
-        .map(_.aliases().asSafeMap.keys.flatMap(IndexName.fromString).toSet)
+        .map(_.aliases().asSafeMap.keys.flatMap(ClusterIndexName.fromString).toSet)
         .getOrElse(Set.empty)
     } yield IndexTemplate(name, patterns, aliases)
   }

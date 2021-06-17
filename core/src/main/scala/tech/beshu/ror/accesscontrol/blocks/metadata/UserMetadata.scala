@@ -24,8 +24,8 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 final case class UserMetadata private(loggedUser: Option[LoggedUser],
                                       currentGroup: Option[Group],
                                       availableGroups: UniqueList[Group],
-                                      kibanaIndex: Option[IndexName],
-                                      kibanaTemplateIndex: Option[IndexName],
+                                      kibanaIndex: Option[ClusterIndexName],
+                                      kibanaTemplateIndex: Option[ClusterIndexName],
                                       hiddenKibanaApps: Set[KibanaApp],
                                       kibanaAccess: Option[KibanaAccess],
                                       userOrigin: Option[UserOrigin],
@@ -45,8 +45,8 @@ final case class UserMetadata private(loggedUser: Option[LoggedUser],
     availableGroups = groups,
     currentGroup = this.currentGroup.orElse(groups.headOption)
   )
-  def withKibanaIndex(index: IndexName): UserMetadata = this.copy(kibanaIndex = Some(index))
-  def withKibanaTemplateIndex(index: IndexName): UserMetadata = this.copy(kibanaTemplateIndex = Some(index))
+  def withKibanaIndex(index: ClusterIndexName): UserMetadata = this.copy(kibanaIndex = Some(index))
+  def withKibanaTemplateIndex(index: ClusterIndexName): UserMetadata = this.copy(kibanaTemplateIndex = Some(index))
   def addHiddenKibanaApp(app: KibanaApp): UserMetadata = this.copy(hiddenKibanaApps = this.hiddenKibanaApps + app)
   def withHiddenKibanaApps(apps: NonEmptySet[KibanaApp]): UserMetadata = this.copy(hiddenKibanaApps = this.hiddenKibanaApps ++ apps.toSortedSet)
   def withKibanaAccess(access: KibanaAccess): UserMetadata = this.copy(kibanaAccess = Some(access))

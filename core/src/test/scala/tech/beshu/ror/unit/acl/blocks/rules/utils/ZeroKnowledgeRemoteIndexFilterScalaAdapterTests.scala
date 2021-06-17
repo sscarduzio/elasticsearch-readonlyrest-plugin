@@ -21,7 +21,7 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRemoteIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.matchers.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeRemoteIndexFilterScalaAdapter}
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import eu.timepit.refined.auto._
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -29,7 +29,7 @@ class ZeroKnowledgeRemoteIndexFilterScalaAdapterTests extends AnyWordSpec {
 
   "ZeroKnowledgeIndexFilter check" when {
     "one element is passed" in {
-      val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[IndexName.Remote](Sets.newHashSet("*:a*"))
+      val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[ClusterIndexName.Remote](Sets.newHashSet("*:a*"))
 
       val res1 = new ZeroKnowledgeRemoteIndexFilterScalaAdapter()
         .check(Set(remoteIndexName("*:*")), matcher)
@@ -40,14 +40,14 @@ class ZeroKnowledgeRemoteIndexFilterScalaAdapterTests extends AnyWordSpec {
       res2 should be(CheckResult.Failed)
     }
     "two elements are passed" in {
-      val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[IndexName.Remote](Sets.newHashSet("r:a1*"))
+      val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[ClusterIndexName.Remote](Sets.newHashSet("r:a1*"))
 
       val res1 = new ZeroKnowledgeRemoteIndexFilterScalaAdapter()
         .check(Set(remoteIndexName("r:a*")), matcher)
       res1 should be(CheckResult.Ok(Set(remoteIndexName("r:a1*"))))
     }
     "two patterns in matcher" in {
-      val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[IndexName.Remote](Sets.newHashSet("b:*", "c:a*"))
+      val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[ClusterIndexName.Remote](Sets.newHashSet("b:*", "c:a*"))
 
       val res1 = new ZeroKnowledgeRemoteIndexFilterScalaAdapter()
         .check(Set(remoteIndexName("b:*")), matcher)

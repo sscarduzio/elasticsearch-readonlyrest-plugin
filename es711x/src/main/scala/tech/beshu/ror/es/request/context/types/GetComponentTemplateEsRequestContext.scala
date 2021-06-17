@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockCont
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.domain.Template.ComponentTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingComponentTemplates
-import tech.beshu.ror.accesscontrol.domain.{IndexName, Template, TemplateName, TemplateNamePattern}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, Template, TemplateName, TemplateNamePattern}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -156,7 +156,7 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
         .fromString(name)
         .toRight("Template name should be non-empty")
       aliases = Option(componentTemplate.template())
-        .map(_.aliases().asSafeMap.keys.flatMap(IndexName.fromString).toSet)
+        .map(_.aliases().asSafeMap.keys.flatMap(ClusterIndexName.fromString).toSet)
         .getOrElse(Set.empty)
     } yield ComponentTemplate(name, aliases)
   }

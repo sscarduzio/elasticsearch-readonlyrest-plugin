@@ -21,12 +21,11 @@ import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
 import tech.beshu.ror.configuration.loader.distributed.Summary.CurrentNodeHaveToProduceResult
 import tech.beshu.ror.configuration.loader.distributed.{NodesResponse, Summary}
-import tech.beshu.ror.utils.TestsUtils.indexName
 
 import scala.language.postfixOps
 
@@ -171,5 +170,5 @@ class SummaryTest extends AnyWordSpec {
     }
   }
 
-  private def configIndex(value: NonEmptyString) = RorConfigurationIndex(indexName(value))
+  private def configIndex(value: NonEmptyString) = RorConfigurationIndex(IndexName.Full(value))
 }

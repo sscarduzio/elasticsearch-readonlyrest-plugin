@@ -27,7 +27,7 @@ import org.scalatest.{BeforeAndAfterAll, Inside, Suite}
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.{CoreSettings, HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.boot.RorMode
@@ -66,7 +66,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
       aFactory
         .createCoreFrom(
           rorConfigFromUnsafe(yaml),
-          RorConfigurationIndex(localIndexName(".readonlyrest")),
+          RorConfigurationIndex(IndexName.Full(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider
         )
@@ -87,7 +87,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
       aFactory
         .createCoreFrom(
           rorConfigFromUnsafe(yaml),
-          RorConfigurationIndex(localIndexName(".readonlyrest")),
+          RorConfigurationIndex(IndexName.Full(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider
         )

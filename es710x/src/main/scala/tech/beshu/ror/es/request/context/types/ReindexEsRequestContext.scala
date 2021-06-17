@@ -23,7 +23,7 @@ import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -41,20 +41,20 @@ class ReindexEsRequestContext(actionRequest: ReindexRequest,
                               override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ReindexRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ReindexRequest): Set[IndexName] = {
+  override protected def indicesFrom(request: ReindexRequest): Set[ClusterIndexName] = {
     val searchRequestIndices = request.getSearchRequest.indices.asSafeSet
     val indexOfIndexRequest = request.getDestination.index()
 
     (searchRequestIndices + indexOfIndexRequest)
-      .flatMap(IndexName.fromString)
+      .flatMap(ClusterIndexName.fromString)
   }
 
-  override protected def update(request: ReindexRequest, filteredIndices: NonEmptyList[IndexName], allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
-    val searchRequestIndices = actionRequest.getSearchRequest.indices().asSafeSet.flatMap(IndexName.fromString)
+  override protected def update(request: ReindexRequest, filteredIndices: NonEmptyList[ClusterIndexName], allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+    val searchRequestIndices = actionRequest.getSearchRequest.indices().asSafeSet.flatMap(ClusterIndexName.fromString)
     val isSearchRequestComposedOnlyOfAllowedIndices = (searchRequestIndices -- filteredIndices.toList).isEmpty
 
     val indexOfIndexRequest = actionRequest.getDestination.index()
-    val isDestinationIndexOnFilteredIndicesList = IndexName.fromString(indexOfIndexRequest).exists(filteredIndices.toList.contains(_))
+    val isDestinationIndexOnFilteredIndicesList = ClusterIndexName.fromString(indexOfIndexRequest).exists(filteredIndices.toList.contains(_))
 
     if (isDestinationIndexOnFilteredIndicesList && isSearchRequestComposedOnlyOfAllowedIndices) {
       Modified

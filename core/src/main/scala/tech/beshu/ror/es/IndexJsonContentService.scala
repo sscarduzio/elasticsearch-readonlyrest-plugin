@@ -23,9 +23,9 @@ import tech.beshu.ror.es.IndexJsonContentService.{ReadError, WriteError}
 trait IndexJsonContentService {
 
   // todo: remove java types
-  def sourceOf(index: IndexName, id: String): Task[Either[ReadError, java.util.Map[String, _]]]
+  def sourceOf(index: IndexName.Full, id: String): Task[Either[ReadError, java.util.Map[String, _]]]
 
-  def saveContent(index: IndexName, id: String, content: java.util.Map[String, String]): Task[Either[WriteError, Unit]]
+  def saveContent(index: IndexName.Full, id: String, content: java.util.Map[String, String]): Task[Either[WriteError, Unit]]
 }
 
 object IndexJsonContentService {
