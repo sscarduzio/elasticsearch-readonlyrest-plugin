@@ -876,10 +876,12 @@ object domain {
     implicit val eqKibanaAccess: Eq[KibanaAccess] = Eq.fromUniversalEquals
   }
 
-  final case class UriPath(value: NonEmptyString) {
-    def isAuditEventPath: Boolean = UriPath.auditEventPath.value.value.startsWith(value.value)
+  final case class UriPath private(value: NonEmptyString) {
+    def isAuditEventPath: Boolean =
+      this != UriPath.slashPath && UriPath.auditEventPath.value.value.startsWith(value.value)
 
-    def isCurrentUserMetadataPath: Boolean = UriPath.currentUserMetadataPath.value.value.startsWith(value.value)
+    def isCurrentUserMetadataPath: Boolean =
+      this != UriPath.slashPath && UriPath.currentUserMetadataPath.value.value.startsWith(value.value)
 
     def isCatTemplatePath: Boolean = value.value.startsWith("/_cat/templates")
 
@@ -896,13 +898,19 @@ object domain {
   object UriPath {
     val currentUserMetadataPath = UriPath(NonEmptyString.unsafeFrom(Constants.CURRENT_USER_METADATA_PATH))
     val auditEventPath = UriPath(NonEmptyString.unsafeFrom(Constants.AUDIT_EVENT_COLLECTOR_PATH))
+    val slashPath = UriPath("/")
 
     implicit val eqUriPath: Eq[UriPath] = Eq.fromUniversalEquals
 
     def from(value: String): Option[UriPath] = {
       NonEmptyString
         .from(value).toOption
-        .map(UriPath.apply)
+        .map(UriPath.from)
+    }
+
+    def from(value: NonEmptyString): UriPath = {
+      if(value.startsWith("/")) new UriPath(value)
+      else new UriPath(NonEmptyString.unsafeFrom(s"/$value"))
     }
 
     object CatTemplatePath {
