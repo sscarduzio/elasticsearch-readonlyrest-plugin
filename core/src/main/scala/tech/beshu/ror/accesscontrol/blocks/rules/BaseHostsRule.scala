@@ -47,17 +47,17 @@ abstract class BaseHostsRule(resolver: HostnameResolver)
               case false =>
                 host
                   .resolve(blockContext).toOption
-                  .existsM(addresses => addresses.existsM(ipMatchesAddress(_, addressToCheck)))
+                  .existsM(addresses => addresses.existsM(ipMatchesAddress(_, addressToCheck, blockContext)))
             }
       }
   }
 
-  private def ipMatchesAddress(allowedHost: Address, address: Address) = {
+  private def ipMatchesAddress(allowedHost: Address, address: Address, blockContext: BlockContext) = {
     val result = for {
       allowedHostIps <- OptionT(resolveToIps(allowedHost))
       addressIps <- OptionT(resolveToIps(address))
       isMatching = addressIps.exists(ip => allowedHostIps.exists(_.contains(ip)))
-      _ = logger.debug(s"Address IPs [${address.show}] resolved to [${addressIps.show}], allowed addresses [${allowedHost.show}] resolved to [${allowedHostIps.show}], isMatching=$isMatching")
+      _ = logger.debug(s"[${blockContext.requestContext.id.show}] address IPs [${address.show}] resolved to [${addressIps.show}], allowed addresses [${allowedHost.show}] resolved to [${allowedHostIps.show}], isMatching=$isMatching")
     } yield isMatching
     result.value.map(_.getOrElse(false))
   }
