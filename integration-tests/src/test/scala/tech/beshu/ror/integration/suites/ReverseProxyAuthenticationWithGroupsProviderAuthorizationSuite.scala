@@ -19,9 +19,9 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.dependencies.wiremock
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManager}
+import tech.beshu.ror.utils.containers.dependencies.wiremock
+import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManager, RorApiManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 //TODO change test names. Current names are copies from old java integration tests
@@ -40,11 +40,19 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
     EsClusterSettings(
       name = "ROR1",
       dependentServicesContainers = List(
-        wiremock(name = "GROUPS1", mappings =
-          "/rev_proxy_groups_provider/wiremock_service1_cartman.json",
-          "/rev_proxy_groups_provider/wiremock_service1_morgan.json"),
-        wiremock(name = "GROUPS2", mappings =
-          "/rev_proxy_groups_provider/wiremock_service2.json")
+        wiremock(
+          name = "GROUPS1",
+          mappings =
+            "/rev_proxy_groups_provider/wiremock_service1_cartman.json",
+            "/rev_proxy_groups_provider/wiremock_service1_morgan.json",
+            "/rev_proxy_groups_provider/wiremock_service1_anyuser.json"
+        ),
+        wiremock(
+          name = "GROUPS2",
+          mappings =
+            "/rev_proxy_groups_provider/wiremock_service2_token.json",
+            "/rev_proxy_groups_provider/wiremock_service2_anytoken.json",
+        )
       ),
       nodeDataInitializer = ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite.nodeDataInitializer(),
       xPackSupport = false,
@@ -79,6 +87,19 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
     val result = indexManager.getIndex("facebook")
 
     result.responseCode should be(200)
+  }
+
+  "test" in { // todo:
+    val rorApiManager = new RorApiManager(
+      client = noBasicAuthClient,
+      additionalHeaders = Map("X-Auth-Token" -> "cartman")
+    )
+
+    val result1 = rorApiManager.fetchMetadata(preferredGroup = "group1")
+    result1.responseCode should be(200)
+
+    val result2 = rorApiManager.fetchMetadata(preferredGroup = "group2")
+    result2.responseCode should be(200)
   }
 }
 
