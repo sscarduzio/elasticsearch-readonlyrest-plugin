@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.domain.Address.{Ip, Name}
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.implicits.{addressShow, ipShow}
 import tech.beshu.ror.utils.TaskOps._
 
 import scala.util.Success
@@ -56,7 +56,9 @@ abstract class BaseHostsRule(resolver: HostnameResolver)
     val result = for {
       allowedHostIps <- OptionT(resolveToIps(allowedHost))
       addressIps <- OptionT(resolveToIps(address))
-    } yield addressIps.exists(ip => allowedHostIps.exists(_.contains(ip)))
+      isMatching = addressIps.exists(ip => allowedHostIps.exists(_.contains(ip)))
+      _ = logger.debug(s"Address IPs [${address.show}] resolved to [${addressIps.show}], allowed addresses [${allowedHost.show}] resolved to [${allowedHostIps.show}], isMatching=$isMatching")
+    } yield isMatching
     result.value.map(_.getOrElse(false))
   }
 
