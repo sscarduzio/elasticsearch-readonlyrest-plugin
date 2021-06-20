@@ -18,8 +18,8 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import org.elasticsearch.action.ActionResponse
-import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest}
+import org.elasticsearch.action.search.MultiSearchResponse
+import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndicesRequest}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
@@ -28,7 +28,8 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
-import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, ClusterIndexName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -38,13 +39,11 @@ import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeI
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.collection.JavaConverters._
-
-class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
-                                  esContext: EsContext,
-                                  aclContext: AccessControlStaticContext,
-                                  clusterService: RorClusterService,
-                                  override implicit val threadPool: ThreadPool)
+class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
+                                                  esContext: EsContext,
+                                                  aclContext: AccessControlStaticContext,
+                                                  clusterService: RorClusterService,
+                                                  override implicit val threadPool: ThreadPool)
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
@@ -53,15 +52,17 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     UserMetadata.from(this),
     Set.empty,
     List.empty,
-    indexPacksFrom(actionRequest),
+    indexPacksFrom(multiSearchTemplateRequest),
     None,
     None,
     requestFieldsUsage
   )
 
+  private lazy val multiSearchTemplateRequest = new ReflectionBasedMultiSearchTemplateRequest(actionRequest)
+
   override protected def modifyRequest(blockContext: FilterableMultiRequestBlockContext): ModificationResult = {
     val modifiedPacksOfIndices = blockContext.indexPacks
-    val requests = actionRequest.requests().asScala.toList
+    val requests = multiSearchTemplateRequest.requests
     if (requests.size == modifiedPacksOfIndices.size) {
       requests
         .zip(modifiedPacksOfIndices)
@@ -77,10 +78,10 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   }
 
   private def requestFieldsUsage: RequestFieldsUsage = {
-    NonEmptyList.fromList(actionRequest.requests().asScala.toList) match {
+    NonEmptyList.fromList(multiSearchTemplateRequest.requests) match {
       case Some(definedRequests) =>
         definedRequests
-          .map(_.checkFieldsUsage())
+          .map(_.getRequest.checkFieldsUsage())
           .combineAll
       case None =>
         NotUsingFields
@@ -106,24 +107,22 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   }
 
   override def modifyWhenIndexNotFound: ModificationResult = {
-    val requests = actionRequest.requests().asScala.toList
-    requests.foreach(updateRequestWithNonExistingIndex)
+    multiSearchTemplateRequest.requests.foreach(updateRequestWithNonExistingIndex)
     Modified
   }
 
-  private def indexPacksFrom(request: MultiSearchRequest): List[Indices] = {
+  private def indexPacksFrom(request: ReflectionBasedMultiSearchTemplateRequest): List[Indices] = {
     request
-      .requests().asScala
+      .requests
       .map { request => Indices.Found(indicesFrom(request)) }
-      .toList
   }
 
-  private def indicesFrom(request: SearchRequest) = {
-    val requestIndices = request.indices.asSafeSet.flatMap(ClusterIndexName.fromString)
+  private def indicesFrom(request: ReflectionBasedSearchTemplateRequest) = {
+    val requestIndices = request.getRequest.indices.asSafeSet.flatMap(ClusterIndexName.fromString)
     indicesOrWildcard(requestIndices)
   }
 
-  private def updateRequest(request: SearchRequest,
+  private def updateRequest(request: ReflectionBasedSearchTemplateRequest,
                             indexPack: Indices,
                             filter: Option[Filter],
                             fieldLevelSecurity: Option[FieldLevelSecurity]) = {
@@ -134,20 +133,38 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
         updateRequestWithNonExistingIndex(request)
     }
     request
+      .getRequest
       .applyFilterToQuery(filter)
       .applyFieldLevelSecurity(fieldLevelSecurity)
   }
 
-  private def updateRequestWithIndices(request: SearchRequest, indices: Set[ClusterIndexName]) = {
+  private def updateRequestWithIndices(request: ReflectionBasedSearchTemplateRequest,
+                                       indices: Set[ClusterIndexName]) = {
     indices.toList match {
       case Nil => updateRequestWithNonExistingIndex(request)
-      case nonEmptyIndicesList => request.indices(nonEmptyIndicesList.map(_.stringify): _*)
+      case nonEmptyIndicesList => request.getRequest.indices(nonEmptyIndicesList.map(_.stringify): _*)
     }
   }
 
-  private def updateRequestWithNonExistingIndex(request: SearchRequest): Unit = {
+  private def updateRequestWithNonExistingIndex(request: ReflectionBasedSearchTemplateRequest): Unit = {
     val originRequestIndices = indicesFrom(request).toList
     val notExistingIndex = originRequestIndices.randomNonexistentIndex()
-    request.indices(notExistingIndex.stringify)
+    request.getRequest.indices(notExistingIndex.stringify)
+  }
+
+}
+
+private class ReflectionBasedMultiSearchTemplateRequest(val actionRequest: ActionRequest)
+                                                       (implicit val requestContext: RequestContext.Id,
+                                                        threadPool: ThreadPool) {
+
+  import org.joor.Reflect.on
+
+  def requests: List[ReflectionBasedSearchTemplateRequest] = {
+    on(actionRequest)
+      .call("requests")
+      .get[java.util.List[ActionRequest]]
+      .asSafeList
+      .map(new ReflectionBasedSearchTemplateRequest(_))
   }
 }

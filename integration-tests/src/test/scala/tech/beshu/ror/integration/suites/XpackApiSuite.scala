@@ -129,6 +129,39 @@ trait XpackApiSuite
         result.searchHits.map(_ ("_index").str).distinct should be(List.empty)
         result.searchHits.map(_ ("_source")) should be(List.empty)
       }
+      "return filtered documents" in {
+        val searchManager = new SearchManager(basicAuthClient("dev7", "test"))
+        val result = searchManager.searchTemplate(
+          index = "test7_index",
+          query = ujson.read(
+            """
+               |{
+               |  "source": {
+               |    "query": {
+               |      "bool": {
+               |        "filter": [
+               |          {
+               |            "query_string": {
+               |              "query": "a1 OR a2 OR a3",
+               |              "fields": [
+               |                "content.app.keyword"
+               |              ],
+               |              "default_operator": "OR",
+               |              "analyze_wildcard": false
+               |            }
+               |          }
+               |        ]
+               |      }
+               |    }
+               |  }
+               |}""".stripMargin
+          )
+        )
+
+        result.responseCode shouldEqual 200
+        result.searchHits.map(_ ("_index").str).distinct should be(List("test7_index"))
+        result.searchHits.map(_ ("_source")) should be(List(ujson.read("""{"content":{ "app": "a1" }}""")))
+      }
     }
     "render template is used" should {
       "be allowed to be used for dev1" in {
@@ -854,6 +887,9 @@ object XpackApiSuite {
 
     documentManager.createDoc("test6_index_a", 1, ujson.read("""{"timestamp":"2020-01-01", "count": 10}""")).force()
     documentManager.createDoc("test6_index_b", 1, ujson.read("""{"timestamp":"2020-02-01", "count": 100}""")).force()
+
+    documentManager.createDoc("test7_index", 1, ujson.read("""{"content":{ "app": "a1" }}""")).force()
+    documentManager.createDoc("test7_index", 2, ujson.read("""{"content":{ "app": "a2" }}""")).force()
   }
 
   private def storeScriptTemplate(adminRestClient: RestClient): Unit = {

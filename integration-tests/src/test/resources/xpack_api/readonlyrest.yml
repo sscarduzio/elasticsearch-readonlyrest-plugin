@@ -61,3 +61,8 @@ readonlyrest:
       auth_key: dev5sql:test
       indices: ["bookstore"]
       filter: '{"query_string":{"query":"name:(Dune)"}}'
+
+    - name: "dev7"
+      auth_key: dev7:test
+      indices: ["test7_*"]
+      filter: '{ "match": { "content.app": { "query": "a1" } }}'
