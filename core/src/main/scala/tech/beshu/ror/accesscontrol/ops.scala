@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol
 
 import java.util.Base64
 import java.util.regex.{Pattern => RegexPattern}
-
 import cats.data.NonEmptyList
 import cats.implicits._
 import cats.{Order, Show}
@@ -43,6 +42,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableV
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, FilteredResponseFields, ResponseTransformation, RuleOrdering}
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
+import tech.beshu.ror.accesscontrol.domain.Address.Ip
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, Strategy}
@@ -145,6 +145,7 @@ object show {
       case Address.Ip(value) => value.toString
       case Address.Name(value) => value.toString
     }
+    implicit val ipShow: Show[Ip] = Show.show(_.value.toString())
     implicit val methodShow: Show[Method] = Show.show(_.m)
     implicit val jsonPathShow: Show[JsonPath] = Show.show(_.getPath)
     implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
