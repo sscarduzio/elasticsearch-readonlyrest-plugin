@@ -88,19 +88,6 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
 
     result.responseCode should be(200)
   }
-
-  "test" in { // todo:
-    val rorApiManager = new RorApiManager(
-      client = noBasicAuthClient,
-      additionalHeaders = Map("X-Auth-Token" -> "cartman")
-    )
-
-    val result1 = rorApiManager.fetchMetadata(preferredGroup = "group1")
-    result1.responseCode should be(200)
-
-    val result2 = rorApiManager.fetchMetadata(preferredGroup = "group2")
-    result2.responseCode should be(200)
-  }
 }
 
 object ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite {

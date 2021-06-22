@@ -30,7 +30,7 @@ abstract class BaseAuthorizationRule
   extends AuthorizationRule {
 
   protected def authorize[B <: BlockContext](blockContext: B,
-                                                user: LoggedUser): Task[AuthorizationResult]
+                                             user: LoggedUser): Task[AuthorizationResult]
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     blockContext.userMetadata.loggedUser match {
