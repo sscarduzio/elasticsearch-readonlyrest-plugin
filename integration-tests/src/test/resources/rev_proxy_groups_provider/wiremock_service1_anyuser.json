@@ -1,0 +1,11 @@
+{
+  "priority": 3,
+  "request": {
+    "method": "GET",
+    "urlPath": "/groups"
+  },
+  "response": {
+    "status": 200,
+    "body": "{ \"sth\": \"unknown\", \"groups\": [] }"
+  }
+}

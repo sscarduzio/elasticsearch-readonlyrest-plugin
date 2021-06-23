@@ -263,12 +263,13 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isReadOnlyRequest: Boolean = true,
-                                                override val isAllowedForDLS: Boolean = true)
+                                                override val isAllowedForDLS: Boolean = true,
+                                                currentGroup: Option[Group] = None)
   extends RequestContext {
   override type BLOCK_CONTEXT = CurrentUserMetadataRequestBlockContext
 
   override def initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
-    this, UserMetadata.empty, Set.empty, List.empty
+    this, UserMetadata.empty.copy(currentGroup = currentGroup), Set.empty, List.empty
   )
 }
 
