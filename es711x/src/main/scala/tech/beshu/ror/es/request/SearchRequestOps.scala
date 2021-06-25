@@ -38,8 +38,7 @@ object SearchRequestOps extends Logging {
 
     def applyFilterToQuery(filter: Option[Filter])
                           (implicit requestId: RequestContext.Id): SearchRequest = {
-      Option(request.source())
-        .flatMap(s => Option(s.query()))
+      Option(request.source().query())
         .wrapQueryBuilder(filter)
         .foreach { newQueryBuilder =>
           request.source().query(newQueryBuilder)
@@ -115,8 +114,7 @@ object SearchRequestOps extends Logging {
 
 
     private def checkQueryFields(): RequestFieldsUsage = {
-      Option(request.source())
-        .flatMap(s => Option(s.query()))
+      Option(request.source()).flatMap(s => Option(s.query()))
         .map(_.fieldsUsage)
         .getOrElse(RequestFieldsUsage.NotUsingFields)
     }

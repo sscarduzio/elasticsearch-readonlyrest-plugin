@@ -5,12 +5,12 @@
     "urlPath": "/groups",
     "queryParameters": {
       "user": {
-        "equalTo": "cartman"
+        "equalTo": "user5"
       }
     }
   },
   "response": {
     "status": 200,
-    "body": "{ \"sth\": \"unknown\", \"groups\": [ { \"name\": \"group1\" }, { \"name\": \"group2\" } ] }"
+    "body": "{ \"sth\": \"unknown\", \"groups\": [ { \"name\": \"service1_group1\" }, { \"name\": \"service1_group2\" } ] }"
   }
 }

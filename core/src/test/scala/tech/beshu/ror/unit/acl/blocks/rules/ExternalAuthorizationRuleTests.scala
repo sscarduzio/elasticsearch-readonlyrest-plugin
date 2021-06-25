@@ -58,6 +58,7 @@ class ExternalAuthorizationRuleTests
             settings = ExternalAuthorizationRule.Settings(
               service,
               UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
+              UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
               UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
             ),
             loggedUser = Some(User.Id("user2")),
@@ -79,6 +80,7 @@ class ExternalAuthorizationRuleTests
           assertMatchRule(
             settings = ExternalAuthorizationRule.Settings(
               service,
+              UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
               UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
               UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
             ),
@@ -102,6 +104,7 @@ class ExternalAuthorizationRuleTests
             settings = ExternalAuthorizationRule.Settings(
               service,
               UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
+              UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
               UniqueNonEmptyList.of(User.Id("*"))
             ),
             loggedUser = Some(User.Id("user2")),
@@ -122,6 +125,7 @@ class ExternalAuthorizationRuleTests
           settings = ExternalAuthorizationRule.Settings(
             mock[ExternalAuthorizationService],
             UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
+            UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
             UniqueNonEmptyList.of(User.Id("user1"))
           ),
           loggedUser = None,
@@ -132,6 +136,7 @@ class ExternalAuthorizationRuleTests
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
             mock[ExternalAuthorizationService],
+            UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
             UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
             UniqueNonEmptyList.of(User.Id("user1"))
           ),
@@ -149,6 +154,7 @@ class ExternalAuthorizationRuleTests
           settings = ExternalAuthorizationRule.Settings(
             service,
             UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
+            UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
             UniqueNonEmptyList.of(User.Id("*"))
           ),
           loggedUser = Some(User.Id("user2")),
@@ -165,6 +171,7 @@ class ExternalAuthorizationRuleTests
           settings = ExternalAuthorizationRule.Settings(
             service,
             UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
+            UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
             UniqueNonEmptyList.of(User.Id("*"))
           ),
           loggedUser = Some(User.Id("user2")),
@@ -180,6 +187,7 @@ class ExternalAuthorizationRuleTests
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
             service,
+            UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
             UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
             UniqueNonEmptyList.of(User.Id("*"))
           ),
