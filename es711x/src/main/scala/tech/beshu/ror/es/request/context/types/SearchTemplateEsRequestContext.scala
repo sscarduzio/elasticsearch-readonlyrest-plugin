@@ -41,10 +41,7 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
     actionRequest, esContext, aclContext, clusterService, threadPool
   ) {
 
-  private lazy val searchTemplateRequest = {
-//    implicit val theadPoolImplicit: ThreadPool = threadPool // todo:
-    new ReflectionBasedSearchTemplateRequest(actionRequest)
-  }
+  private lazy val searchTemplateRequest = new ReflectionBasedSearchTemplateRequest(actionRequest)
   private lazy val searchRequest = searchTemplateRequest.getRequest
 
   override protected def requestFieldsUsage: FieldLevelSecurity.RequestFieldsUsage =

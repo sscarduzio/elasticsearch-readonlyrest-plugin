@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration.suites.fields.sourcefiltering
 
-import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON

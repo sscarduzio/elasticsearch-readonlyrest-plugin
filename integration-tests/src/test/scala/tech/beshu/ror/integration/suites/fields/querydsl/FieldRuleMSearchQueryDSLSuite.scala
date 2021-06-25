@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration.suites.fields.querydsl
 
-import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.utils.containers.EsContainerCreator
 
 trait FieldRuleMSearchQueryDSLSuite extends FieldRuleQueryDSLSuite {

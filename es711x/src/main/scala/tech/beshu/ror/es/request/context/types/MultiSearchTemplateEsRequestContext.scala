@@ -117,41 +117,52 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
       .map { request => Indices.Found(indicesFrom(request)) }
   }
 
+  private def updateRequest(request: ReflectionBasedSearchTemplateRequest,
+                            indexPack: Indices,
+                            filter: Option[Filter],
+                            fieldLevelSecurity: Option[FieldLevelSecurity]): Unit = {
+    val nonEmptyIndicesList = indexPack match {
+      case Indices.Found(indices) =>
+        NonEmptyList
+          .fromList(indices.toList)
+          .getOrElse(NonEmptyList.one(randomNonexistentIndex(request)))
+      case Indices.Found(_) | Indices.NotFound =>
+        NonEmptyList.one(randomNonexistentIndex(request))
+    }
+    request.setRequest(
+      request.getRequest, nonEmptyIndicesList, filter, fieldLevelSecurity
+    )
+  }
+
+  private def updateRequestWithNonExistingIndex(request: ReflectionBasedSearchTemplateRequest): Unit = {
+    request.setRequest(
+      request.getRequest, NonEmptyList.one(randomNonexistentIndex(request)), None, None
+    )
+  }
+
+  private def randomNonexistentIndex(request: ReflectionBasedSearchTemplateRequest) =
+    indicesFrom(request).toList.randomNonexistentIndex()
+
   private def indicesFrom(request: ReflectionBasedSearchTemplateRequest) = {
     val requestIndices = request.getRequest.indices.asSafeSet.flatMap(ClusterIndexName.fromString)
     indicesOrWildcard(requestIndices)
   }
+}
 
-  private def updateRequest(request: ReflectionBasedSearchTemplateRequest,
-                            indexPack: Indices,
-                            filter: Option[Filter],
-                            fieldLevelSecurity: Option[FieldLevelSecurity]) = {
-    indexPack match {
-      case Indices.Found(indices) =>
-        updateRequestWithIndices(request, indices)
-      case Indices.NotFound =>
-        updateRequestWithNonExistingIndex(request)
-    }
-    request
-      .getRequest
-      .applyFilterToQuery(filter)
-      .applyFieldLevelSecurity(fieldLevelSecurity)
-  }
-
-  private def updateRequestWithIndices(request: ReflectionBasedSearchTemplateRequest,
-                                       indices: Set[ClusterIndexName]) = {
-    indices.toList match {
-      case Nil => updateRequestWithNonExistingIndex(request)
-      case nonEmptyIndicesList => request.getRequest.indices(nonEmptyIndicesList.map(_.stringify): _*)
+object MultiSearchTemplateEsRequestContext {
+  def unapply(arg: ReflectionBasedActionRequest): Option[MultiSearchTemplateEsRequestContext] = {
+    if (arg.esContext.actionRequest.getClass.getSimpleName.startsWith("MultiSearchTemplateRequest")) {
+      Some(new MultiSearchTemplateEsRequestContext(
+        arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
+        arg.esContext,
+        arg.aclContext,
+        arg.clusterService,
+        arg.threadPool
+      ))
+    } else {
+      None
     }
   }
-
-  private def updateRequestWithNonExistingIndex(request: ReflectionBasedSearchTemplateRequest): Unit = {
-    val originRequestIndices = indicesFrom(request).toList
-    val notExistingIndex = originRequestIndices.randomNonexistentIndex()
-    request.getRequest.indices(notExistingIndex.stringify)
-  }
-
 }
 
 private class ReflectionBasedMultiSearchTemplateRequest(val actionRequest: ActionRequest)

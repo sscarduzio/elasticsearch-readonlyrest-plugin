@@ -38,7 +38,8 @@ object SearchRequestOps extends Logging {
 
     def applyFilterToQuery(filter: Option[Filter])
                           (implicit requestId: RequestContext.Id): SearchRequest = {
-      Option(request.source().query())
+      Option(request.source())
+        .flatMap(s => Option(s.query()))
         .wrapQueryBuilder(filter)
         .foreach { newQueryBuilder =>
           request.source().query(newQueryBuilder)
@@ -97,7 +98,7 @@ object SearchRequestOps extends Logging {
     }
 
     def checkFieldsUsage(): RequestFieldsUsage = {
-      Option(request.source().scriptFields()) match {
+      Option(request.source()).flatMap(s => Option(s.scriptFields())) match {
         case Some(scriptFields) if scriptFields.size() > 0 =>
           RequestFieldsUsage.CannotExtractFields
         case _ =>
@@ -114,7 +115,8 @@ object SearchRequestOps extends Logging {
 
 
     private def checkQueryFields(): RequestFieldsUsage = {
-      Option(request.source().query())
+      Option(request.source())
+        .flatMap(s => Option(s.query()))
         .map(_.fieldsUsage)
         .getOrElse(RequestFieldsUsage.NotUsingFields)
     }
