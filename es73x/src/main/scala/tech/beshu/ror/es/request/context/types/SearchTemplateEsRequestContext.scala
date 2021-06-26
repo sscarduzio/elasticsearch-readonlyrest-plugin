@@ -132,7 +132,7 @@ final class ReflectionBasedSearchTemplateRequest(actionRequest: ActionRequest)
                                       fieldLevelSecurity: Option[FieldLevelSecurity])
                                      (implicit threadPool: ThreadPool,
                                       requestId: RequestContext.Id)
-    extends SearchRequest(request) {
+    extends zSearchRequest(request) {
 
     override def source(sourceBuilder: SearchSourceBuilder): SearchRequest = {
       super

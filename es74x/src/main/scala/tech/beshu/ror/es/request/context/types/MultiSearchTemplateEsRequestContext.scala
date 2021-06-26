@@ -18,10 +18,13 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import org.elasticsearch.action.search.MultiSearchResponse
-import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndicesRequest}
+import monix.eval.Task
+import monix.execution.CancelablePromise
+import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest}
+import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse, CompositeIndicesRequest}
+import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControlStaticContext
+import org.joor.Reflect.{on, onClass}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -31,6 +34,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBl
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
+import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.SearchHitOps._
@@ -43,6 +47,7 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
                                                   esContext: EsContext,
                                                   aclContext: AccessControlStaticContext,
                                                   clusterService: RorClusterService,
+                                                  nodeClient: NodeClient,
                                                   override implicit val threadPool: ThreadPool)
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
@@ -69,11 +74,41 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
         .foreach { case (request, pack) =>
           updateRequest(request, pack, blockContext.filter, blockContext.fieldLevelSecurity)
         }
-      ModificationResult.UpdateResponse.using(filterFieldsFromResponse(blockContext.fieldLevelSecurity))
+      ModificationResult.UpdateResponse(
+        callSearchOnceAgain(modifiedPacksOfIndices, blockContext.filter, blockContext.fieldLevelSecurity)
+      )
     } else {
       logger.error(s"[${id.show}] Cannot alter MultiSearchRequest request, because origin request contained different number of" +
         s" inner requests, than altered one. This can be security issue. So, it's better for forbid the request")
       ShouldBeInterrupted
+    }
+  }
+
+  /*
+ * this is a hack, because in old version there is no way to extend ES SearchRequest and provide different behaviour
+ * of `source(...)` method. We have to do that, because in method `convert` of `TransportSearchTemplateAction` search
+ * source is created from params and script and applied to current search request. In the next step we have to apply
+ * out filter and field level security. It is easy to overcome in new ES versions, but in old ones, due to mentioned
+ * final modifier, we are forced to do it in the other way - by calling search again when we get the response. This
+ * solution is obviously less efficient, but at least it works.
+ */
+  private def callSearchOnceAgain(indices: List[Indices],
+                                  filter: Option[domain.Filter],
+                                  fieldLevelSecurity: Option[domain.FieldLevelSecurity]): ActionResponse => Task[ActionResponse] = {
+    multiSearchTemplateResponse => {
+      val updatedSearchRequests = multiSearchTemplateRequest
+        .requests
+        .map(_
+          .getRequest
+          .applyFilterToQuery(filter)
+          .applyFieldLevelSecurity(fieldLevelSecurity)
+        )
+      mSearch(updatedSearchRequests)
+        .map { multiSearchResponse =>
+          val reflectionBasedSearchTemplateResponse = new ReflectionBasedMultiSearchTemplateResponse(multiSearchTemplateResponse)
+          reflectionBasedSearchTemplateResponse.updateUsing(multiSearchResponse)
+          filterFieldsFromResponse(fieldLevelSecurity)(reflectionBasedSearchTemplateResponse)
+        }
     }
   }
 
@@ -89,20 +124,23 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
   }
 
   private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
-                                      (actionResponse: ActionResponse): ActionResponse = {
-    (actionResponse, fieldLevelSecurity) match {
-      case (response: MultiSearchResponse, Some(FieldLevelSecurity(restrictions, _: BasedOnBlockContextOnly))) =>
-        response.getResponses
-          .filterNot(_.isFailure)
-          .flatMap(_.getResponse.getHits.getHits)
-          .foreach { hit =>
-            hit
-              .filterSourceFieldsUsing(restrictions)
-              .filterDocumentFieldsUsing(restrictions)
-          }
-        response
+                                      (response: ReflectionBasedMultiSearchTemplateResponse): ActionResponse = {
+    (response.getResponses, fieldLevelSecurity) match {
+      case (responses, Some(FieldLevelSecurity(restrictions, _: BasedOnBlockContextOnly))) =>
+        responses.map(_.map(_.getResponse)).foreach {
+          case Right(Some(r)) =>
+            r.getHits
+              .getHits
+              .foreach { hit =>
+                hit
+                  .filterSourceFieldsUsing(restrictions)
+                  .filterDocumentFieldsUsing(restrictions)
+              }
+          case _ =>
+        }
+        response.actionResponse
       case _ =>
-        actionResponse
+        response.actionResponse
     }
   }
 
@@ -129,15 +167,11 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
       case Indices.Found(_) | Indices.NotFound =>
         NonEmptyList.one(randomNonexistentIndex(request))
     }
-    request.setRequest(
-      request.getRequest, nonEmptyIndicesList, filter, fieldLevelSecurity
-    )
+    request.getRequest.indices(nonEmptyIndicesList.toList.map(_.stringify): _*)
   }
 
   private def updateRequestWithNonExistingIndex(request: ReflectionBasedSearchTemplateRequest): Unit = {
-    request.setRequest(
-      request.getRequest, NonEmptyList.one(randomNonexistentIndex(request)), None, None
-    )
+    request.getRequest.indices(randomNonexistentIndex(request).stringify)
   }
 
   private def randomNonexistentIndex(request: ReflectionBasedSearchTemplateRequest) =
@@ -146,6 +180,19 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
   private def indicesFrom(request: ReflectionBasedSearchTemplateRequest) = {
     val requestIndices = request.getRequest.indices.asSafeSet.flatMap(ClusterIndexName.fromString)
     indicesOrWildcard(requestIndices)
+  }
+
+  private def mSearch(requests: List[SearchRequest]): Task[MultiSearchResponse] = {
+    val promise = CancelablePromise[MultiSearchResponse]()
+    val multiSearchRequest = new MultiSearchRequest()
+    requests.foreach(multiSearchRequest.add)
+    // todo:
+    //multiSearchRequest.indicesOptions(request.indicesOptions)
+    nodeClient.multiSearch(multiSearchRequest, new ActionListener[MultiSearchResponse]() {
+      override def onResponse(response: MultiSearchResponse): Unit = promise.trySuccess(response)
+      override def onFailure(e: Exception): Unit = promise.tryFailure(e)
+    })
+    Task.fromCancelablePromise(promise)
   }
 }
 
@@ -157,6 +204,7 @@ object MultiSearchTemplateEsRequestContext {
         arg.esContext,
         arg.aclContext,
         arg.clusterService,
+        arg.nodeClient,
         arg.threadPool
       ))
     } else {
@@ -178,4 +226,47 @@ private class ReflectionBasedMultiSearchTemplateRequest(val actionRequest: Actio
       .asSafeList
       .map(new ReflectionBasedSearchTemplateRequest(_))
   }
+}
+
+private class ReflectionBasedMultiSearchTemplateResponse(val actionResponse: ActionResponse) {
+
+  import org.joor.Reflect.on
+
+  def getResponses: List[Either[Throwable, ReflectionBasedSearchTemplateResponse]] = {
+    on(actionResponse)
+      .call("getResponses")
+      .get[Array[AnyRef]]
+      .asSafeList
+      .map(itemToEither)
+  }
+
+  def updateUsing(multiSearchResponse: MultiSearchResponse): Unit = {
+    getResponses
+      .zip(multiSearchResponse.getResponses)
+      .foreach {
+        case (Right(_), currentSearchResponse) if currentSearchResponse.isFailure =>
+          Left(currentSearchResponse.getFailure)
+        case (Right(prevSearchTemplateResponse), currentSearchResponse) =>
+          Right(prevSearchTemplateResponse.setResponse(currentSearchResponse.getResponse))
+        case (Left(ex), _) =>
+          Left(ex)
+      }
+  }
+
+  private def itemToEither(item: AnyRef) = {
+    ReflectionBasedItem.createFrom(item).getResponse
+  }
+}
+
+private class ReflectionBasedItem private(value: AnyRef) {
+
+  def getResponse: Either[Throwable, ReflectionBasedSearchTemplateResponse] = {
+    Option(on(value).call("getResponse").get[ActionResponse]) match {
+      case Some(response) => Right(new ReflectionBasedSearchTemplateResponse(response))
+      case None => Left(on(value).call("getFailure").get[Throwable])
+    }
+  }
+}
+private object ReflectionBasedItem {
+  def createFrom(value: AnyRef): ReflectionBasedItem = new ReflectionBasedItem(value)
 }
