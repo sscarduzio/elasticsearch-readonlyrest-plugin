@@ -134,7 +134,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     }
     request
       .applyFilterToQuery(filter)
-      .applyFieldLevelSecurity(fieldLevelSecurity, threadPool, id)
+      .applyFieldLevelSecurity(fieldLevelSecurity)
   }
 
   private def updateRequestWithIndices(request: SearchRequest, indices: Set[ClusterIndexName]) = {

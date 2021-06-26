@@ -44,7 +44,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
                                   esContext: EsContext,
                                   aclContext: AccessControlStaticContext,
                                   clusterService: RorClusterService,
-                                  override val threadPool: ThreadPool)
+                                  override implicit val threadPool: ThreadPool)
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
@@ -135,7 +135,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     }
     request
       .applyFilterToQuery(filter)
-      .applyFieldLevelSecurity(fieldLevelSecurity, threadPool, id)
+      .applyFieldLevelSecurity(fieldLevelSecurity)
   }
 
   private def updateRequestWithIndices(request: SearchRequest, indices: Set[ClusterIndexName]) = {

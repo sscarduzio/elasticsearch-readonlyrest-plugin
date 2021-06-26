@@ -194,6 +194,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool) match {
           case SqlIndicesEsRequestContext(r) => regularRequestHandler.handle(r)
           case SearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
+          case MultiSearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
           case _ =>
             logger.error(s"Found an child request of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.getSimpleName}")
             regularRequestHandler.handle(new DummyCompositeIndicesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))

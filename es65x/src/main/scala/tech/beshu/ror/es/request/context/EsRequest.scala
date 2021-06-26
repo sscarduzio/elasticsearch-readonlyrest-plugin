@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import scala.util.Try
 
 trait EsRequest[B <: BlockContext] extends Logging {
-  def threadPool: ThreadPool
+  implicit def threadPool: ThreadPool
 
   final def modifyUsing(blockContext: B): ModificationResult = {
     modifyCommonParts(blockContext)

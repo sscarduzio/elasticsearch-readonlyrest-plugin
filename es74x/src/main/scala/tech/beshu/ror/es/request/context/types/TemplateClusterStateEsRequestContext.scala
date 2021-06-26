@@ -102,8 +102,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
   private def modifyLegacyTemplatesOfResponse(response: ClusterStateResponse,
                                               allowedTemplates: Set[TemplateNamePattern],
                                               transformation: TemplatesTransformation) = {
-    implicit val idImplicit: RequestContext.Id = id
-    val oldMetadata = response.getState.metaData()
+        val oldMetadata = response.getState.metadata()
     val filteredTemplates = GetTemplatesEsRequestContext
       .filter(
         oldMetadata.templates().valuesIt().asScala.toList,
