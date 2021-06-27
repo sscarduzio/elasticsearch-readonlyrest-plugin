@@ -134,12 +134,13 @@ final class ReflectionBasedSearchTemplateRequest(actionRequest: ActionRequest)
                                       requestId: RequestContext.Id)
     extends SearchRequest(request) {
 
+    this.indices(indices.toList.map(_.stringify): _*)
+
     override def source(sourceBuilder: SearchSourceBuilder): SearchRequest = {
       super
         .source(sourceBuilder)
         .applyFilterToQuery(filter)
         .applyFieldLevelSecurity(fieldLevelSecurity)
-        .indices(indices.toList.map(_.stringify): _*)
     }
   }
 }

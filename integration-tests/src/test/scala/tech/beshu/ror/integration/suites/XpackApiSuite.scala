@@ -129,7 +129,7 @@ trait XpackApiSuite
         result.searchHits.map(_ ("_index").str).distinct should be(List.empty)
         result.searchHits.map(_ ("_source")) should be(List.empty)
       }
-      "return filtered documents" in {
+      "return filtered documents" excludeES (rorProxy) in {
         val searchManager = new SearchManager(basicAuthClient("dev7", "test"))
         val result = searchManager.searchTemplate(
           index = "test7_index",
@@ -206,7 +206,7 @@ trait XpackApiSuite
         firstQueryResponse("hits")("hits").arr.map(_ ("_index").str).distinct should be(List.empty)
         firstQueryResponse("hits")("hits").arr.map(_ ("_source")) should be(List.empty)
       }
-      "return filtered documents" in {
+      "return filtered documents" excludeES (rorProxy) in {
         val searchManager = new SearchManager(basicAuthClient("dev7", "test"))
         val result = searchManager.mSearchTemplate(
           ujson.read("""{"index":"test7_index"}"""),

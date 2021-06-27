@@ -21,10 +21,11 @@ import cats.implicits._
 import monix.eval.Task
 import monix.execution.CancelablePromise
 import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest}
+import org.elasticsearch.action.support.IndicesOptions
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse, CompositeIndicesRequest}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.threadpool.ThreadPool
-import org.joor.Reflect.{on, onClass}
+import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -186,8 +187,7 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
     val promise = CancelablePromise[MultiSearchResponse]()
     val multiSearchRequest = new MultiSearchRequest()
     requests.foreach(multiSearchRequest.add)
-    // todo:
-    //multiSearchRequest.indicesOptions(request.indicesOptions)
+    multiSearchRequest.indicesOptions(multiSearchTemplateRequest.indicesOptions())
     nodeClient.multiSearch(multiSearchRequest, new ActionListener[MultiSearchResponse]() {
       override def onResponse(response: MultiSearchResponse): Unit = promise.trySuccess(response)
       override def onFailure(e: Exception): Unit = promise.tryFailure(e)
@@ -225,6 +225,12 @@ private class ReflectionBasedMultiSearchTemplateRequest(val actionRequest: Actio
       .get[java.util.List[ActionRequest]]
       .asSafeList
       .map(new ReflectionBasedSearchTemplateRequest(_))
+  }
+
+  def indicesOptions(): IndicesOptions = {
+    on(actionRequest)
+      .call("indicesOptions")
+      .get[IndicesOptions]
   }
 }
 
