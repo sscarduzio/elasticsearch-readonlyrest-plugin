@@ -100,8 +100,8 @@ class RegularRequestHandler(engine: Engine,
         onForbidden(NonEmptyList.one(OperationNotAllowed))
       case CustomResponse(response) =>
         respond(response)
-      case UpdateResponse(updateFunc) =>
-        proceed(new UpdateResponseListener(updateFunc))
+      case UpdateResponse(updateResponseFunc) =>
+        proceed(listener = new UpdateResponseListener(updateResponseFunc))
     }
   }
 
@@ -203,8 +203,8 @@ class RegularRequestHandler(engine: Engine,
         onForbidden(NonEmptyList.one(OperationNotAllowed))
       case CustomResponse(response) =>
         respond(response)
-      case UpdateResponse(updateFunc) =>
-        proceed(new UpdateResponseListener(updateFunc))
+      case UpdateResponse(updateResponseFunc) =>
+        proceed(listener = new UpdateResponseListener(updateResponseFunc))
     }
   }
 

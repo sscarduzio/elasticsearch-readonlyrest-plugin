@@ -70,6 +70,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
       threadPool
     ),
     clusterService.getSettings,
+    client,
     threadPool
   )
 

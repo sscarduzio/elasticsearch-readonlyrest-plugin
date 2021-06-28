@@ -36,7 +36,7 @@ class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
                                              esContext: EsContext,
                                              aclContext: AccessControlStaticContext,
                                              clusterService: RorClusterService,
-                                             override val threadPool: ThreadPool)
+                                             override implicit val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   private lazy val searchRequest = searchRequestFrom(actionRequest)
@@ -55,7 +55,7 @@ class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     searchRequest
       .applyFilterToQuery(filter)
-      .applyFieldLevelSecurity(fieldLevelSecurity, threadPool, id)
+      .applyFieldLevelSecurity(fieldLevelSecurity)
       .indices(indices.toList.map(_.stringify): _*)
 
     ModificationResult.UpdateResponse.using(filterFieldsFromResponse(fieldLevelSecurity))

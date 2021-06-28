@@ -64,13 +64,16 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.types._
 import tech.beshu.ror.es.request.handler.{CurrentUserMetadataRequestHandler, RegularRequestHandler}
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
-
 import java.time.Instant
+
+import org.elasticsearch.client.node.NodeClient
+
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 
 class AclAwareRequestFilter(clusterService: RorClusterService,
                             settings: Settings,
+                            nodeClient: NodeClient,
                             threadPool: ThreadPool)
                            (implicit generator: UniqueIdentifierGenerator,
                             scheduler: Scheduler)
@@ -174,8 +177,9 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new ClusterRerouteEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       // rest
       case _ =>
-        ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool) match {
+        ReflectionBasedActionRequest(esContext, aclContext, clusterService, nodeClient, threadPool) match {
           case SearchTemplateEsRequestContext(request) => regularRequestHandler.handle(request)
+          case MultiSearchTemplateEsRequestContext(request) => regularRequestHandler.handle(request)
           case ReflectionBasedIndicesEsRequestContext(request) => regularRequestHandler.handle(request)
           case _ =>
             regularRequestHandler.handle {

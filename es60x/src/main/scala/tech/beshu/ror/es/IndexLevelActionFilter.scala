@@ -76,6 +76,7 @@ class IndexLevelActionFilter(settings: Settings,
       threadPool
     ),
     settings,
+    client,
     threadPool
   )
 

@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import cats.syntax.show._
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
-import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
+import org.elasticsearch.index.query.{AbstractQueryBuilder, QueryBuilder, QueryBuilders}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField
@@ -36,20 +36,35 @@ object SearchRequestOps extends Logging {
 
   implicit class FilterOps(val request: SearchRequest) extends AnyVal {
 
-    def applyFilterToQuery(filter: Option[Filter]): SearchRequest = {
+    def applyFilterToQuery(filter: Option[Filter])
+                          (implicit requestId: RequestContext.Id): SearchRequest = {
+      Option(request.source().query())
+        .wrapQueryBuilder(filter)
+        .foreach { newQueryBuilder =>
+          request.source().query(newQueryBuilder)
+        }
+      request
+    }
+  }
+
+  implicit class QueryBuilderOps(val builder: Option[QueryBuilder]) extends AnyVal {
+
+    def wrapQueryBuilder(filter: Option[Filter])
+                        (implicit requestId: RequestContext.Id): Option[QueryBuilder] = {
       filter match {
         case Some(definedFilter) =>
           val filterQuery = QueryBuilders.wrapperQuery(definedFilter.value.value)
-          val modifiedQuery = provideNewQueryWithAppliedFilter(request, filterQuery)
-          request.source().query(modifiedQuery)
+          val modifiedQuery: AbstractQueryBuilder[_] = provideNewQueryWithAppliedFilter(builder, filterQuery)
+          Some(modifiedQuery)
         case None =>
-          logger.debug(s"No filter applied to query.")
+          logger.debug(s"[${requestId.show}] No filter applied to query.")
+          builder
       }
-      request
     }
 
-    private def provideNewQueryWithAppliedFilter(request: SearchRequest, filterQuery: QueryBuilder) = {
-      Option(request.source().query()) match {
+    private def provideNewQueryWithAppliedFilter(queryBuilder: Option[QueryBuilder],
+                                                 filterQuery: QueryBuilder) = {
+      queryBuilder match {
         case Some(requestedQuery) =>
           QueryBuilders.boolQuery()
             .must(requestedQuery)
@@ -62,8 +77,8 @@ object SearchRequestOps extends Logging {
 
   implicit class FieldsOps(val request: SearchRequest) extends AnyVal {
 
-    def applyFieldLevelSecurity(fieldLevelSecurity: Option[FieldLevelSecurity],
-                                threadPool: ThreadPool,
+    def applyFieldLevelSecurity(fieldLevelSecurity: Option[FieldLevelSecurity])
+                               (implicit threadPool: ThreadPool,
                                 requestId: RequestContext.Id): SearchRequest = {
       fieldLevelSecurity match {
         case Some(definedFields) =>
@@ -82,7 +97,7 @@ object SearchRequestOps extends Logging {
     }
 
     def checkFieldsUsage(): RequestFieldsUsage = {
-      Option(request.source().scriptFields()) match {
+      Option(request.source()).flatMap(s => Option(s.scriptFields())) match {
         case Some(scriptFields) if scriptFields.size() > 0 =>
           RequestFieldsUsage.CannotExtractFields
         case _ =>
@@ -99,7 +114,7 @@ object SearchRequestOps extends Logging {
 
 
     private def checkQueryFields(): RequestFieldsUsage = {
-      Option(request.source().query())
+      Option(request.source()).flatMap(s => Option(s.query()))
         .map(_.fieldsUsage)
         .getOrElse(RequestFieldsUsage.NotUsingFields)
     }

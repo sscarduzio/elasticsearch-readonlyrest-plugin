@@ -35,7 +35,7 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
                              esContext: EsContext,
                              aclContext: AccessControlStaticContext,
                              clusterService: RorClusterService,
-                             override val threadPool: ThreadPool)
+                             override implicit val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def requestFieldsUsage: RequestFieldsUsage = actionRequest.checkFieldsUsage()
@@ -50,7 +50,7 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     request
       .applyFilterToQuery(filter)
-      .applyFieldLevelSecurity(fieldLevelSecurity, threadPool, id)
+      .applyFieldLevelSecurity(fieldLevelSecurity)
       .indices(indices.toList.map(_.stringify): _*)
 
     ModificationResult.UpdateResponse.using(filterFieldsFromResponse(fieldLevelSecurity))
@@ -60,7 +60,7 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
                                       (actionResponse: ActionResponse): ActionResponse = {
 
     (actionResponse, fieldLevelSecurity) match {
-      case (response: SearchResponse, Some(FieldLevelSecurity(restrictions, _: BasedOnBlockContextOnly)))  =>
+      case (response: SearchResponse, Some(FieldLevelSecurity(restrictions, _: BasedOnBlockContextOnly))) =>
         response.getHits.getHits
           .foreach { hit =>
             hit

@@ -83,7 +83,6 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
   private def updateResponse(using: TemplateRequestBlockContext) = {
     ModificationResult.UpdateResponse {
       case r: GetIndexTemplatesResponse =>
-        implicit val _ = id
         Task.now(new GetIndexTemplatesResponse(
           GetTemplatesEsRequestContext
             .filter(

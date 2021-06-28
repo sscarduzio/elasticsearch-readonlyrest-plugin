@@ -65,13 +65,16 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.types._
 import tech.beshu.ror.es.request.handler.{CurrentUserMetadataRequestHandler, RegularRequestHandler}
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
-
 import java.time.Instant
+
+import org.elasticsearch.client.node.NodeClient
+
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 
 class AclAwareRequestFilter(clusterService: RorClusterService,
                             settings: Settings,
+                            nodeClient: NodeClient,
                             threadPool: ThreadPool)
                            (implicit generator: UniqueIdentifierGenerator,
                             scheduler: Scheduler)
@@ -176,16 +179,17 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: ClusterRerouteRequest =>
         regularRequestHandler.handle(new ClusterRerouteEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: CompositeIndicesRequest =>
-        ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool) match {
+        ReflectionBasedActionRequest(esContext, aclContext, clusterService, nodeClient, threadPool) match {
           case SqlIndicesEsRequestContext(r) => regularRequestHandler.handle(r)
           case SearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
+          case MultiSearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
           case _ =>
             logger.error(s"Found an child request of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.getSimpleName}")
             regularRequestHandler.handle(new DummyCompositeIndicesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
         }
       // rest
       case _ =>
-        ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool) match {
+        ReflectionBasedActionRequest(esContext, aclContext, clusterService, nodeClient, threadPool) match {
           case PutRollupJobEsRequestContext(request) => regularRequestHandler.handle(request)
           case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)
           case ReflectionBasedIndicesEsRequestContext(request) => regularRequestHandler.handle(request)

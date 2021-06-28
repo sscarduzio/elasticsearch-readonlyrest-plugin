@@ -87,7 +87,6 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
   private def updateResponse(using: TemplateRequestBlockContext) = {
     ModificationResult.UpdateResponse {
       case r: GetComposableIndexTemplateAction.Response =>
-        implicit val _ = id
         Task.now(new GetComposableIndexTemplateAction.Response(
           GetComposableIndexTemplateEsRequestContext
             .filter(
