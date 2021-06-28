@@ -21,7 +21,7 @@ import cats.implicits._
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -33,12 +33,12 @@ abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest
                                                                    override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[R](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: R): Set[IndexName] = Set(indexFrom(request))
+  override protected def indicesFrom(request: R): Set[ClusterIndexName] = Set(indexFrom(request))
 
 
   override protected def update(request: R,
-                                filteredIndices: NonEmptyList[IndexName],
-                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (filteredIndices.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.toList.mkString(",")}]")
     }
@@ -46,7 +46,7 @@ abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest
   }
 
 
-  protected def indexFrom(request: R): IndexName
+  protected def indexFrom(request: R): ClusterIndexName
 
-  protected def update(request: R, index: IndexName): ModificationResult
+  protected def update(request: R, index: ClusterIndexName): ModificationResult
 }

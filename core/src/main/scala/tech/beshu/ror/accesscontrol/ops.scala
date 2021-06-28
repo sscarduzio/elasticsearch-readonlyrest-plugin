@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol
 
 import java.util.Base64
 import java.util.regex.{Pattern => RegexPattern}
-
 import cats.data.NonEmptyList
 import cats.implicits._
 import cats.{Order, Show}
@@ -43,13 +42,15 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableV
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, FilteredResponseFields, ResponseTransformation, RuleOrdering}
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
+import tech.beshu.ror.accesscontrol.domain.Address.Ip
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, Strategy}
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{Blacklist, Whitelist}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.domain.{SnapshotName, _}
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
@@ -98,8 +99,8 @@ object orders {
   implicit val documentFieldOrder: Order[DocumentField] = Order.by(_.value)
   implicit val actionOrder: Order[Action] = Order.by(_.value)
   implicit val authKeyOrder: Order[PlainTextSecret] = Order.by(_.value)
-  implicit val indexOrder: Order[IndexName] = Order.by(_.value)
-  implicit val userDefOrder: Order[UserDef] = Order.by(_.id.value.patterns.toList)
+  implicit val indexOrder: Order[ClusterIndexName] = Order.by(_.stringify)
+  implicit val userDefOrder: Order[UserDef] = Order.by(_.id.toString)
   implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
   implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)
   implicit val ruleWithVariableUsageDefinitionOrder: Order[RuleWithVariableUsageDefinition[Rule]] = Order.by(_.rule)
@@ -109,8 +110,18 @@ object orders {
     case ForbiddenByMismatched.Cause.ImpersonationNotAllowed => 2
     case ForbiddenByMismatched.Cause.ImpersonationNotSupported => 3
   }
-  implicit val repositoryOrder: Order[RepositoryName] = Order.by(_.value.value)
-  implicit val snapshotOrder: Order[SnapshotName] = Order.by(_.value.value)
+  implicit val repositoryOrder: Order[RepositoryName] =  Order.by {
+    case RepositoryName.Full(value) => value.value
+    case RepositoryName.Pattern(value) => value.value
+    case RepositoryName.All => "_all"
+    case RepositoryName.Wildcard => "*"
+  }
+  implicit val snapshotOrder: Order[SnapshotName] = Order.by {
+    case SnapshotName.Full(value) => value.value
+    case SnapshotName.Pattern(value) => value.value
+    case SnapshotName.All => "_all"
+    case SnapshotName.Wildcard => "*"
+  }
 
   implicit def accessOrder[T: Order]: Order[AccessRequirement[T]] = Order.from {
     case (MustBeAbsent(v1), MustBeAbsent(v2)) => v1.compare(v2)
@@ -134,6 +145,7 @@ object show {
       case Address.Ip(value) => value.toString
       case Address.Name(value) => value.toString
     }
+    implicit val ipShow: Show[Ip] = Show.show(_.value.toString())
     implicit val methodShow: Show[Method] = Show.show(_.m)
     implicit val jsonPathShow: Show[JsonPath] = Show.show(_.getPath)
     implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
@@ -141,8 +153,14 @@ object show {
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
     implicit val kibanaAppShow: Show[KibanaApp] = Show.show(_.value.value)
     implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
-    implicit val indexNameShow: Show[IndexName] = Show.show(_.value.value)
-    implicit val indexPatternShow: Show[IndexPattern] = Show.show(_.value.value)
+    implicit val clusterIndexNameShow: Show[ClusterIndexName] = Show.show(_.stringify)
+    implicit val clusterNameFullShow: Show[ClusterName.Full] = Show.show(_.value.value)
+    implicit val indexNameShow: Show[IndexName] = Show.show {
+      case f@IndexName.Full(_) => f.show
+      case IndexName.Wildcard(name) => name.value
+    }
+    implicit val fullIndexNameShow: Show[IndexName.Full] = Show.show(_.name.value)
+    implicit val indexPatternShow: Show[IndexPattern] = Show.show(_.value.show)
     implicit val aliasPlaceholderShow: Show[AliasPlaceholder] = Show.show(_.alias.show)
     implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value)
     implicit val groupShow: Show[Group] = Show.show(_.value.value)
@@ -154,6 +172,7 @@ object show {
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
     implicit val templateNameShow: Show[TemplateName] = Show.show(_.value.value)
     implicit val templateNamePatternShow: Show[TemplateNamePattern] = Show.show(_.value.value)
+    implicit val snapshotNameShow: Show[SnapshotName] = Show.show(v => SnapshotName.toString(v))
     implicit def ruleNameShow[T <: RuleName[_]]: Show[T] = Show.show(_.name.value)
 
     implicit def nonEmptyList[T : Show]: Show[NonEmptyList[T]] = Show[List[T]].contramap(_.toList)
@@ -368,7 +387,7 @@ object headerValues {
   }
 
   implicit val userIdHeaderValue: ToHeaderValue[User.Id] = ToHeaderValue(_.value)
-  implicit val indexNameHeaderValue: ToHeaderValue[IndexName] = ToHeaderValue(_.value)
+  implicit val indexNameHeaderValue: ToHeaderValue[ClusterIndexName] = ToHeaderValue(_.nonEmptyStringify)
 
   implicit val transientFieldsToHeaderValue: ToHeaderValue[FieldsRestrictions] = ToHeaderValue { fieldsRestrictions =>
     import upickle.default

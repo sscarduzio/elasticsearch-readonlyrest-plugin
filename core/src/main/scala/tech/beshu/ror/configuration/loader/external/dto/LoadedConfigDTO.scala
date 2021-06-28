@@ -28,7 +28,7 @@ object LoadedConfigDTO {
   def create(o: LoadedRorConfig[String]): LoadedConfigDTO = o match {
     case LoadedRorConfig.FileConfig(value) => FILE_CONFIG(value)
     case LoadedRorConfig.ForcedFileConfig(value) => FORCED_FILE_CONFIG(value)
-    case LoadedRorConfig.IndexConfig(indexName, value) => INDEX_CONFIG(indexName.index.value.value, value)
+    case LoadedRorConfig.IndexConfig(indexName, value) => INDEX_CONFIG(indexName.index.name.value, value)
   }
   final case class FILE_CONFIG(raw: String) extends LoadedConfigDTO
   final case class FORCED_FILE_CONFIG(raw: String) extends LoadedConfigDTO

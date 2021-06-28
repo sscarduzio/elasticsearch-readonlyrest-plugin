@@ -19,14 +19,14 @@ package tech.beshu.ror.es.request.context
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.ActionResponse
+import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 
 import scala.util.Try
 
 trait EsRequest[B <: BlockContext] extends Logging {
-  def threadPool: ThreadPool
+  implicit def threadPool: ThreadPool
 
   final def modifyUsing(blockContext: B): ModificationResult = {
     modifyCommonParts(blockContext)
@@ -64,6 +64,7 @@ object ModificationResult {
   case object Modified extends ModificationResult
   case object CannotModify extends ModificationResult
   case object ShouldBeInterrupted extends ModificationResult
+  final case class NewRequestReference(request: ActionRequest) extends ModificationResult
   final case class CustomResponse(response: ActionResponse) extends ModificationResult
   final case class UpdateResponse(update: ActionResponse => Task[ActionResponse]) extends ModificationResult
 

@@ -20,6 +20,7 @@ import java.time.{Clock, Instant}
 
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.auto._
+import monix.eval.Task
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
@@ -82,21 +83,21 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val uriPath: UriPath = UriPath("_search"),
                                                 override val contentLength: Information = Bytes(0),
                                                 override val content: String = "",
-                                                override val allIndicesAndAliases: Set[IndexWithAliases] = Set.empty,
+                                                override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
+                                                override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
                                                 override val allTemplates: Set[Template] = Set.empty,
+                                                override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
-                                                override val hasRemoteClusters: Boolean = false,
-                                                filteredIndices: Set[IndexName],
-                                                allAllowedIndices: Set[IndexName])
+                                                filteredIndices: Set[ClusterIndexName],
+                                                allAllowedIndices: Set[ClusterIndexName])
   extends RequestContext {
   override type BLOCK_CONTEXT = GeneralIndexRequestBlockContext
 
   override def initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, List.empty, filteredIndices, allAllowedIndices
   )
-
 }
 
 final case class MockFilterableMultiRequestContext(override val timestamp: Instant,
@@ -111,12 +112,13 @@ final case class MockFilterableMultiRequestContext(override val timestamp: Insta
                                                    override val uriPath: UriPath = UriPath.currentUserMetadataPath,
                                                    override val contentLength: Information = Bytes(0),
                                                    override val content: String = "",
-                                                   override val allIndicesAndAliases: Set[IndexWithAliases] = Set.empty,
+                                                   override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
+                                                   override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
                                                    override val allTemplates: Set[Template] = Set.empty,
+                                                   override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                                    override val isCompositeRequest: Boolean = false,
                                                    override val isReadOnlyRequest: Boolean = true,
                                                    override val isAllowedForDLS: Boolean = false,
-                                                   override val hasRemoteClusters: Boolean = false,
                                                    indexPacks: List[Indices],
                                                    filter: Option[Filter],
                                                    fieldLevelSecurity: Option[FieldLevelSecurity],
@@ -142,12 +144,13 @@ final case class MockGeneralNonIndexRequestContext(override val timestamp: Insta
                                                    override val uriPath: UriPath = UriPath.currentUserMetadataPath,
                                                    override val contentLength: Information = Bytes(0),
                                                    override val content: String = "",
-                                                   override val allIndicesAndAliases: Set[IndexWithAliases] = Set.empty,
+                                                   override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
+                                                   override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
                                                    override val allTemplates: Set[Template] = Set.empty,
+                                                   override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                                    override val isCompositeRequest: Boolean = false,
                                                    override val isReadOnlyRequest: Boolean = true,
-                                                   override val isAllowedForDLS: Boolean = true,
-                                                   override val hasRemoteClusters: Boolean = false)
+                                                   override val isAllowedForDLS: Boolean = true)
   extends RequestContext {
 
   override type BLOCK_CONTEXT = GeneralNonIndexRequestBlockContext
@@ -169,14 +172,15 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
                                           override val uriPath: UriPath = UriPath.currentUserMetadataPath,
                                           override val contentLength: Information = Bytes(0),
                                           override val content: String = "",
-                                          override val allIndicesAndAliases: Set[IndexWithAliases] = Set.empty,
+                                          override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
+                                          override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
                                           override val allTemplates: Set[Template] = Set.empty,
+                                          override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                           override val isCompositeRequest: Boolean = false,
                                           override val isReadOnlyRequest: Boolean = true,
                                           override val isAllowedForDLS: Boolean = true,
-                                          override val hasRemoteClusters: Boolean = false,
-                                          indices: Set[IndexName],
-                                          allAllowedIndices: Set[IndexName])
+                                          indices: Set[ClusterIndexName],
+                                          allAllowedIndices: Set[ClusterIndexName])
   extends RequestContext {
   override type BLOCK_CONTEXT = FilterableRequestBlockContext
 
@@ -189,7 +193,7 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant,
                                                 override val taskId: Long = 0L,
                                                 override val id: RequestContext.Id = RequestContext.Id("mock"),
                                                 override val `type`: Type = Type("default-type"),
-                                                override val action: Action = DefaultAction,
+                                                override val action: Action = Action.rorUserMetadataAction,
                                                 override val headers: Set[Header] = Set.empty,
                                                 override val remoteAddress: Option[Address] = Address.from("localhost"),
                                                 override val localAddress: Address = Address.from("localhost").get,
@@ -197,12 +201,13 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant,
                                                 override val uriPath: UriPath = UriPath.currentUserMetadataPath,
                                                 override val contentLength: Information = Bytes(0),
                                                 override val content: String = "",
-                                                override val allIndicesAndAliases: Set[IndexWithAliases] = Set.empty,
+                                                override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
                                                 override val allTemplates: Set[Template] = Set.empty,
+                                                override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
+                                                override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
-                                                override val hasRemoteClusters: Boolean = false,
                                                 repositories: Set[RepositoryName])
   extends RequestContext {
   override type BLOCK_CONTEXT = RepositoryRequestBlockContext
@@ -224,12 +229,13 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant,
                                              override val uriPath: UriPath = UriPath.currentUserMetadataPath,
                                              override val contentLength: Information = Bytes(0),
                                              override val content: String = "",
-                                             override val allIndicesAndAliases: Set[IndexWithAliases] = Set.empty,
+                                             override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
                                              override val allTemplates: Set[Template] = Set.empty,
+                                             override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
+                                             override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
                                              override val isCompositeRequest: Boolean = false,
                                              override val isReadOnlyRequest: Boolean = true,
                                              override val isAllowedForDLS: Boolean = true,
-                                             override val hasRemoteClusters: Boolean = false,
                                              snapshots: Set[SnapshotName])
   extends RequestContext {
   override type BLOCK_CONTEXT = SnapshotRequestBlockContext
@@ -251,17 +257,19 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val uriPath: UriPath = UriPath.currentUserMetadataPath,
                                                 override val contentLength: Information = Bytes(0),
                                                 override val content: String = "",
-                                                override val allIndicesAndAliases: Set[IndexWithAliases] = Set.empty,
+                                                override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
+                                                override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
                                                 override val allTemplates: Set[Template] = Set.empty,
+                                                override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
-                                                override val hasRemoteClusters: Boolean = false)
+                                                currentGroup: Option[Group] = None)
   extends RequestContext {
   override type BLOCK_CONTEXT = CurrentUserMetadataRequestBlockContext
 
   override def initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
-    this, UserMetadata.empty, Set.empty, List.empty
+    this, UserMetadata.empty.copy(currentGroup = currentGroup), Set.empty, List.empty
   )
 }
 
@@ -277,12 +285,13 @@ final case class MockTemplateRequestContext(override val timestamp: Instant,
                                             override val uriPath: UriPath = UriPath.from("/_template").get,
                                             override val contentLength: Information = Bytes(0),
                                             override val content: String = "",
-                                            override val allIndicesAndAliases: Set[IndexWithAliases] = Set.empty,
+                                            override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
+                                            override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
                                             override val allTemplates: Set[Template] = Set.empty,
+                                            override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                             override val isCompositeRequest: Boolean = false,
                                             override val isReadOnlyRequest: Boolean = true,
                                             override val isAllowedForDLS: Boolean = true,
-                                            override val hasRemoteClusters: Boolean = false,
                                             templateOperation: TemplateOperation)
   extends RequestContext {
   override type BLOCK_CONTEXT = TemplateRequestBlockContext
@@ -304,11 +313,12 @@ abstract class MockSimpleRequestContext[BC <: BlockContext](override val timesta
                                                             override val uriPath: UriPath = UriPath("PATH"),
                                                             override val contentLength: Information = Bytes(0),
                                                             override val content: String = "",
-                                                            override val allIndicesAndAliases: Set[IndexWithAliases] = Set.empty,
+                                                            override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
+                                                            override val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = Task.now(Set.empty),
                                                             override val allTemplates: Set[Template] = Set.empty,
+                                                            override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                                             override val isCompositeRequest: Boolean = false,
-                                                            override val isAllowedForDLS: Boolean = true,
-                                                            override val hasRemoteClusters: Boolean = false)
+                                                            override val isAllowedForDLS: Boolean = true)
   extends RequestContext {
   override type BLOCK_CONTEXT = BC
 }

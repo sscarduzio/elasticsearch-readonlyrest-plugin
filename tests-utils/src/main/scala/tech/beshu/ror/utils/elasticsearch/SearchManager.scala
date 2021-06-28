@@ -57,11 +57,16 @@ class SearchManager(client: RestClient,
 
   def mSearch(line: String, lines: String*): MSearchResult = {
     val payload = (lines.toSeq :+ "\n").foldLeft(line) { case (acc, elem) => s"$acc\n$elem" }
-    call(createMSearchRequest(payload), new MSearchResult(_))
+    call(createMultiSearchRequest(payload), new MSearchResult(_))
   }
 
   def searchTemplate(index: String, query: JSON): SearchResult = {
     call(createSearchTemplateRequest(index, query), new SearchResult(_))
+  }
+
+  def mSearchTemplate(line: JSON, lines: JSON*): MSearchResult = {
+    val payload = (lines.map(ujson.write(_)) :+ "\n").foldLeft(ujson.write(line)) { case (acc, elem) => s"$acc\n$elem" }
+    call(createMultiSearchTemplateRequest(payload), new MSearchResult(_))
   }
 
   def fieldCaps(indices: List[String], fields: List[String]): FieldCapsResult = {
@@ -101,14 +106,14 @@ class SearchManager(client: RestClient,
     ))
   }
 
-  private def createMSearchRequest(payload: String) = {
+  private def createMultiSearchRequest(payload: String) = {
     val request = new HttpPost(client.from("/_msearch"))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(payload))
     request
   }
 
-  private def createRenderTemplateRequest(query: String) = {
+  private def createRenderTemplateRequest(query : String) = {
     val request = new HttpGetWithEntity(client.from("_render/template"))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(query))
@@ -119,6 +124,13 @@ class SearchManager(client: RestClient,
     val request = new HttpGetWithEntity(client.from(s"/$index/_search/template"))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(query)))
+    request
+  }
+
+  private def createMultiSearchTemplateRequest(payload: String) = {
+    val request = new HttpGetWithEntity(client.from(s"/_msearch/template"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(payload))
     request
   }
 

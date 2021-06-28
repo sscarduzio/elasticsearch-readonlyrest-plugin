@@ -26,6 +26,7 @@ import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.env.Environment
+import org.elasticsearch.snapshots.SnapshotsService
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
@@ -49,6 +50,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                              threadPool: ThreadPool,
                              env: Environment,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
+                             snapshotsServiceSupplier: Supplier[Option[SnapshotsService]],
                              emptyClusterStateResponse:  ClusterStateResponse,
                              esInitListener: EsInitListener)
                             (implicit generator: UniqueIdentifierGenerator,
@@ -59,7 +61,10 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
 
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
-    new EsServerBasedRorClusterService(clusterService, client), clusterService.getSettings, threadPool
+    new EsServerBasedRorClusterService(clusterService, remoteClusterServiceSupplier, snapshotsServiceSupplier, client, threadPool),
+    clusterService.getSettings,
+    client,
+    threadPool
   )
 
   private val startingTaskCancellable = startRorInstance()
@@ -119,20 +124,15 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                             listener: ActionListener[ActionResponse],
                             chain: ActionFilterChain[ActionRequest, ActionResponse],
                             channel: RorRestChannel): Unit = {
-    remoteClusterServiceSupplier.get() match {
-      case Some(remoteClusterService) =>
-        aclAwareRequestFilter
-          .handle(
-            engine,
-            EsContext(channel, task, action, request, listener, chain, remoteClusterService.isCrossClusterSearchEnabled)
-          )
-          .runAsync {
-            case Right(_) =>
-            case Left(ex) => listener.onFailure(new Exception(ex))
-          }
-      case None =>
-        listener.onFailure(new Exception("Cluster service not ready yet. Cannot continue"))
-    }
+    aclAwareRequestFilter
+      .handle(
+        engine,
+        EsContext(channel, task, action, request, listener, chain)
+      )
+      .runAsync {
+        case Right(_) =>
+        case Left(ex) => listener.onFailure(new Exception(ex))
+      }
   }
 
   private def startRorInstance() = {

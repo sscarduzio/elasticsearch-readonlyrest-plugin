@@ -16,104 +16,97 @@
  */
 package tech.beshu.ror.es.services
 
+import java.util.function.Supplier
+
 import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
+import monix.execution.CancelablePromise
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.action.ActionListener
+import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
+import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.ResolvedIndex
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
+import org.elasticsearch.action.support.PlainActionFuture
 import org.elasticsearch.client.node.NodeClient
+import tech.beshu.ror.accesscontrol.show.logs._
+import org.elasticsearch.cluster.metadata.RepositoriesMetadata
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
+import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
+import org.elasticsearch.threadpool.ThreadPool
+import org.elasticsearch.transport.RemoteClusterService
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.es.utils.GenericResponseListener
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
-import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
+import scala.util.{Failure, Success, Try}
 
 class EsServerBasedRorClusterService(clusterService: ClusterService,
-                                     nodeClient: NodeClient)
+                                     remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
+                                     repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
+                                     nodeClient: NodeClient,
+                                     threadPool: ThreadPool)
   extends RorClusterService
     with Logging {
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
     val lookup = clusterService.state.metadata.getIndicesLookup
-    lookup.get(indexOrAlias.value.value).getIndices.asScala.map(_.getIndexUUID).toSet
+    lookup.get(indexOrAlias.stringify).getIndices.asScala.map(_.getIndexUUID).toSet
   }
 
-  override def allIndicesAndAliases: Map[IndexName, Set[AliasName]] = {
+  override def allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
     val indices = clusterService.state.metadata.getIndices
     indices
       .keysIt().asScala
       .flatMap { index =>
         val indexMetaData = indices.get(index)
-        IndexName
+        IndexName.Full
           .fromString(indexMetaData.getIndex.getName)
           .map { indexName =>
-            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.fromString)
-            (indexName, aliases)
+            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Full.fromString)
+            FullLocalIndexWithAliases(indexName, aliases)
           }
       }
-      .toMap
+      .toSet
+  }
+
+  override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = {
+    remoteClusterServiceSupplier.get() match {
+      case Some(remoteClusterService) =>
+        provideAllRemoteIndices(remoteClusterService)
+      case None =>
+        Task.now(Set.empty)
+    }
   }
 
   override def allTemplates: Set[Template] = {
     legacyTemplates() ++ indexTemplates() ++ componentTemplates()
   }
 
-  private def legacyTemplates() = {
-    val templates = clusterService.state.metadata().templates()
-    templates
-      .keysIt().asScala
-      .flatMap { templateNameString =>
-        val templateMetaData = templates.get(templateNameString)
-        for {
-          templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          indexPatterns <- UniqueNonEmptyList.fromList(
-            templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString).toList
-          )
-          aliases = templateMetaData.aliases().asSafeValues.flatMap(a => IndexName.fromString(a.alias()))
-        } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)
+  override def allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = {
+    val repositoriesMetadata: RepositoriesMetadata = clusterService.state().metadata().custom(RepositoriesMetadata.TYPE)
+    repositoriesMetadata
+      .repositories().asSafeList
+      .flatMap { repositoryMetadata =>
+        RepositoryName
+          .from(repositoryMetadata.name())
+          .flatMap {
+            case r: RepositoryName.Full => Some(r)
+            case _ => None
+          }
+          .map { name => (name, snapshotsBy(name)) }
       }
-      .toSet
-  }
-
-  private def indexTemplates() = {
-    val templates = clusterService.state.metadata().templatesV2()
-    templates
-      .keySet().asScala
-      .flatMap { templateNameString =>
-        val templateMetaData = templates.get(templateNameString)
-        for {
-          templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          indexPatterns <- UniqueNonEmptyList.fromList(
-            templateMetaData.indexPatterns().asScala.flatMap(IndexPattern.fromString).toList
-          )
-          aliases = templateMetaData.template().asSafeSet
-            .flatMap(_.aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet)
-        } yield Template.IndexTemplate(templateName, indexPatterns, aliases)
-      }
-      .toSet
-  }
-
-  private def componentTemplates() = {
-    val templates = clusterService.state.metadata().componentTemplates()
-    templates
-      .keySet().asScala
-      .flatMap { templateNameString =>
-        val templateMetaData = templates.get(templateNameString)
-        for {
-          templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          aliases = templateMetaData.template().aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet
-        } yield Template.ComponentTemplate(templateName, aliases)
-      }
-      .toSet
+      .toMap
   }
 
   override def verifyDocumentAccessibility(document: Document,
@@ -147,6 +140,136 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .map(results => zip(results, documents))
   }
 
+  private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService) = {
+    val remoteClusterFullNames =
+      remoteClusterService
+        .getRegisteredRemoteClusterNames.asSafeSet
+        .flatMap(ClusterName.Full.fromString)
+
+    Task
+      .gatherUnordered(
+        remoteClusterFullNames.map(resolveAllRemoteIndices(_, remoteClusterService))
+      )
+      .map(_.flatten.toSet)
+  }
+
+  private def resolveAllRemoteIndices(remoteClusterName: ClusterName.Full,
+                                      remoteClusterService: RemoteClusterService) = {
+    Try(remoteClusterService.getRemoteClusterClient(threadPool, remoteClusterName.value.value)) match {
+      case Failure(_) =>
+        logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
+        Task.now(List.empty)
+      case Success(client) =>
+        val promise = CancelablePromise[ResolveIndexAction.Response]()
+        client
+          .admin()
+          .indices()
+          .resolveIndex(
+            new ResolveIndexAction.Request(List("*").toArray),
+            new ActionListener[ResolveIndexAction.Response] {
+              override def onResponse(response: ResolveIndexAction.Response): Unit = promise.trySuccess(response)
+              override def onFailure(e: Exception): Unit = promise.tryFailure(e)
+            }
+          )
+        Task
+          .fromCancelablePromise(promise)
+          .map { response =>
+            response
+              .getIndices.asSafeList
+              .flatMap { resolvedIndex =>
+                toFullRemoteIndexWithAliases(resolvedIndex, remoteClusterName)
+              }
+          }
+    }
+  }
+
+  private def toFullRemoteIndexWithAliases(resolvedIndex: ResolvedIndex,
+                                           remoteClusterName: ClusterName.Full) = {
+    IndexName.Full
+      .fromString(resolvedIndex.getName)
+      .map { index =>
+        val aliases = resolvedIndex
+          .getAliases.asSafeList
+          .flatMap(IndexName.Full.fromString)
+          .toSet
+        FullRemoteIndexWithAliases(remoteClusterName, index, aliases)
+      }
+  }
+
+  private def snapshotsBy(repositoryName: RepositoryName) = {
+    repositoriesServiceSupplier.get() match {
+      case Some(repositoriesService) =>
+        val repositoryData: RepositoryData = PlainActionFuture.get { fut: PlainActionFuture[RepositoryData] =>
+          repositoriesService.getRepositoryData(RepositoryName.toString(repositoryName), fut)
+        }
+        repositoryData
+          .getSnapshotIds.asSafeIterable
+          .flatMap { sId =>
+            SnapshotName
+              .from(sId.getName)
+              .flatMap {
+                case SnapshotName.Wildcard => None
+                case SnapshotName.All => None
+                case SnapshotName.Pattern(_) => None
+                case f: SnapshotName.Full => Some(f)
+              }
+          }
+          .toSet
+      case None =>
+        logger.error("Cannot supply Snapshots Service. Please, report the issue!!!")
+        Set.empty[SnapshotName.Full]
+    }
+  }
+
+  private def legacyTemplates() = {
+    val templates = clusterService.state.metadata().templates()
+    templates
+      .keysIt().asScala
+      .flatMap { templateNameString =>
+        val templateMetaData = templates.get(templateNameString)
+        for {
+          templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
+          indexPatterns <- UniqueNonEmptyList.fromList(
+            templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString).toList
+          )
+          aliases = templateMetaData.aliases().asSafeValues.flatMap(a => ClusterIndexName.fromString(a.alias()))
+        } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)
+      }
+      .toSet
+  }
+
+  private def indexTemplates() = {
+    val templates = clusterService.state.metadata().templatesV2()
+    templates
+      .keySet().asScala
+      .flatMap { templateNameString =>
+        val templateMetaData = templates.get(templateNameString)
+        for {
+          templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
+          indexPatterns <- UniqueNonEmptyList.fromList(
+            templateMetaData.indexPatterns().asScala.flatMap(IndexPattern.fromString).toList
+          )
+          aliases = templateMetaData.template().asSafeSet
+            .flatMap(_.aliases().asSafeMap.values.flatMap(a => ClusterIndexName.fromString(a.alias())).toSet)
+        } yield Template.IndexTemplate(templateName, indexPatterns, aliases)
+      }
+      .toSet
+  }
+
+  private def componentTemplates() = {
+    val templates = clusterService.state.metadata().componentTemplates()
+    templates
+      .keySet().asScala
+      .flatMap { templateNameString =>
+        val templateMetaData = templates.get(templateNameString)
+        for {
+          templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
+          aliases = templateMetaData.template().aliases().asSafeMap.values.flatMap(a => ClusterIndexName.fromString(a.alias())).toSet
+        } yield Template.ComponentTemplate(templateName, aliases)
+      }
+      .toSet
+  }
+
   private def createSearchRequest(filter: Filter,
                                   document: Document): SearchRequestBuilder = {
     val wrappedQueryFromFilter = QueryBuilders.wrapperQuery(filter.value.value)
@@ -156,7 +279,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .filter(QueryBuilders.idsQuery().addIds(document.documentId.value))
 
     nodeClient
-      .prepareSearch(document.index.value.value)
+      .prepareSearch(document.index.stringify)
       .setQuery(composedQuery)
   }
 
@@ -195,4 +318,5 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .zip(results)
       .toMap
   }
+
 }

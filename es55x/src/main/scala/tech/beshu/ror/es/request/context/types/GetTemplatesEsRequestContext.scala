@@ -85,7 +85,6 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
   private def updateResponse(using: TemplateRequestBlockContext) = {
     ModificationResult.UpdateResponse {
       case r: GetIndexTemplatesResponse =>
-        implicit val _ = id
         Task.now(newGetIndexTemplatesResponse(
           GetTemplatesEsRequestContext
             .filter(
@@ -153,7 +152,7 @@ private[types] object GetTemplatesEsRequestContext extends Logging {
           case _ =>
             logger.warn(s"""[${requestContextId.show}] More than one template index pattern was returned [${basedOn.patterns.show}]. The first one was used""")
         }
-        basedOn.patterns.head.value.value
+        basedOn.patterns.head.value.stringify
       },
       metadata.settings(),
       metadata.mappings(),
@@ -163,7 +162,7 @@ private[types] object GetTemplatesEsRequestContext extends Logging {
   }
 
   private def filterAliases(metadata: IndexTemplateMetaData, template: LegacyTemplate) = {
-    val aliasesStrings = template.aliases.map(_.value.value)
+    val aliasesStrings = template.aliases.map(_.stringify)
     val filteredAliasesMap =
       metadata
         .aliases().asSafeValues
@@ -183,7 +182,7 @@ private[types] object GetTemplatesEsRequestContext extends Logging {
       patterns <- UniqueNonEmptyList
         .fromList(IndexPattern.fromString(metadata.template()).toList)
         .toRight("Template indices pattern list should not be empty")
-      aliases = metadata.aliases().asSafeKeys.flatMap(IndexName.fromString)
+      aliases = metadata.aliases().asSafeKeys.flatMap(ClusterIndexName.fromString)
     } yield LegacyTemplate(name, patterns, aliases)
   }
 }

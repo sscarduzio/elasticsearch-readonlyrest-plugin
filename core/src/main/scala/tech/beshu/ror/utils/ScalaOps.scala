@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.utils
 
+import java.util
 import java.util.Base64
 
 import cats.data.{EitherT, NonEmptyList, NonEmptySet}
@@ -26,12 +27,12 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
 
-import scala.collection.JavaConverters._
 import scala.collection.SortedSet
 import scala.concurrent.duration._
 import scala.language.{higherKinds, implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 import scala.util.Try
+import scala.collection.JavaConverters._
 
 object ScalaOps {
 
@@ -73,6 +74,10 @@ object ScalaOps {
     }
     def unsafeToNonEmptySet: NonEmptySet[T] =
       toNonEmptySet.getOrElse(throw new IllegalArgumentException(s"Cannot convert $value to non empty set"))
+  }
+
+  implicit class CollectionOps[T: ClassTag](value: util.Collection[T]) {
+    def asSafeIterable: Iterable[T] = Option(value).map(_.asScala).getOrElse(Iterable.empty)
   }
 
   implicit class ToSetOps[T](val value: T) extends AnyVal {

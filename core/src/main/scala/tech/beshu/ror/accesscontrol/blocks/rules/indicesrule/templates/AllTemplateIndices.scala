@@ -14,19 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule
+package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.templates
 
+import cats.implicits._
 import cats.Show
 import cats.data.NonEmptySet
+import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.matchers.{MatcherWithWildcardsScalaAdapter, UniqueIdentifierGenerator}
+import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation._
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, Template, TemplateNamePattern}
+import tech.beshu.ror.accesscontrol.matchers.{MatcherWithWildcardsScalaAdapter, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.implicits._
 import tech.beshu.ror.utils.ScalaOps._
 
 private[indicesrule] trait AllTemplateIndices
@@ -39,7 +42,7 @@ private[indicesrule] trait AllTemplateIndices
 
   protected def identifierGenerator: UniqueIdentifierGenerator
 
-  protected def processTemplateRequest(blockContext: TemplateRequestBlockContext): RuleResult[TemplateRequestBlockContext] = {
+  protected def processTemplateRequest(blockContext: TemplateRequestBlockContext): Task[RuleResult[TemplateRequestBlockContext]] = Task.now {
     implicit val allowedIndices: AllowedIndices = new AllowedIndices(settings.allowedIndices, blockContext)
     logger.debug(
       s"""[${blockContext.requestContext.id.show}] Checking - indices and aliases in Template related request.
@@ -98,7 +101,7 @@ private[indicesrule] trait AllTemplateIndices
     }
   }
 
-  private[indicesrule] def isAliasAllowed(alias: IndexName)
+  private[indicesrule] def isAliasAllowed(alias: ClusterIndexName)
                                          (implicit allowedIndices: AllowedIndices) = {
     alias.isAllowedBy(allowedIndices.resolved)
   }
@@ -111,9 +114,9 @@ private[indicesrule] trait AllTemplateIndices
     templateByName.filterKeys(filteredTemplateNames.contains).values.toSet.flatten
   }
 
-  private[indicesrule] class AllowedIndices(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+  private[indicesrule] class AllowedIndices(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                                             val blockContext: TemplateRequestBlockContext) {
-    val resolved: Set[IndexName] = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
+    val resolved: Set[ClusterIndexName] = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
   }
   private[indicesrule] object AllowedIndices {
     implicit def show: Show[AllowedIndices] = Show.show(_.resolved.map(_.show).mkStringOrEmptyString("", ",", ""))

@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{IndexName, User}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.unit.acl.blocks.BlockTests.{notPassingRule, passingRule, throwingRule}
 import tech.beshu.ror.utils.TestsUtils._
@@ -135,7 +135,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside {
         _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1"))))
 
       def withIndices: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext =
-        _.withIndices(Set(IndexName("idx1")), Set(IndexName("idx*")))
+        _.withIndices(Set(clusterIndexName("idx1")), Set(clusterIndexName("idx*")))
 
       val blockName = Block.Name("test_block")
       val block = new Block(
@@ -164,8 +164,8 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside {
               .empty
               .withLoggedUser(DirectlyLoggedUser(User.Id("user1")))
           )
-          blockContext.filteredIndices should be(Set(IndexName("idx1")))
-          blockContext.allAllowedIndices should be(Set(IndexName("idx*")))
+          blockContext.filteredIndices should be(Set(clusterIndexName("idx1")))
+          blockContext.allAllowedIndices should be(Set(clusterIndexName("idx*")))
           blockContext.responseHeaders should be(Set.empty)
       }
     }

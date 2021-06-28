@@ -16,41 +16,50 @@
  */
 package tech.beshu.ror.accesscontrol.matchers
 
-import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.utils.ZeroKnowledgeMatchFilter
 
 import scala.collection.JavaConverters._
 
 class ZeroKnowledgeMatchFilterScalaAdapter {
 
-  def alterIndicesIfNecessary(indices: Set[IndexName], matcher: Matcher[IndexName]): AlterResult[IndexName] = {
+  def alterIndicesIfNecessary(indices: Set[ClusterIndexName], matcher: Matcher[ClusterIndexName]): AlterResult[ClusterIndexName] = {
     Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
-      indices.map(_.value.value).asJava,
+      indices.map(_.stringify).asJava,
       Matcher.asMatcherWithWildcards(matcher)
     )) match {
-      case Some(alteredIndices) => AlterResult.Altered(alteredIndices.asScala.map(str => IndexName(NonEmptyString.unsafeFrom(str))).toSet)
+      case Some(alteredIndices) => AlterResult.Altered(alteredIndices.asScala.flatMap(ClusterIndexName.fromString).toSet)
       case None => AlterResult.NotAltered
     }
   }
 
   def alterRepositoriesIfNecessary(repositories: Set[RepositoryName], matcher: Matcher[RepositoryName]): AlterResult[RepositoryName] = {
     Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
-      repositories.map(_.value.value).asJava,
+      repositories
+        .collect {
+          case RepositoryName.Pattern(v) => v.value
+          case RepositoryName.Full(v) => v.value
+        }
+        .asJava,
       Matcher.asMatcherWithWildcards(matcher)
     )) match {
-      case Some(alteredRepositories) => AlterResult.Altered(alteredRepositories.asScala.map(str => RepositoryName(NonEmptyString.unsafeFrom(str))).toSet)
+      case Some(alteredRepositories) => AlterResult.Altered(alteredRepositories.asScala.flatMap(RepositoryName.from).toSet)
       case None => AlterResult.NotAltered
     }
   }
 
   def alterSnapshotsIfNecessary(snapshots: Set[SnapshotName], matcher: Matcher[SnapshotName]): AlterResult[SnapshotName] = {
     Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
-      snapshots.map(_.value.value).asJava,
+      snapshots
+        .collect {
+          case SnapshotName.Pattern(v) => v.value
+          case SnapshotName.Full(v) => v.value
+        }
+        .asJava,
       Matcher.asMatcherWithWildcards(matcher)
     )) match {
-      case Some(alteredSnapshots) => AlterResult.Altered(alteredSnapshots.asScala.map(str => SnapshotName(NonEmptyString.unsafeFrom(str))).toSet)
+      case Some(alteredSnapshots) => AlterResult.Altered(alteredSnapshots.asScala.flatMap(SnapshotName.from).toSet)
       case None => AlterResult.NotAltered
     }
   }

@@ -50,7 +50,6 @@ object VariableContext {
     implicit val groupsRule: VariableUsage[GroupsRule] = UsingVariable[GroupsRule](rule => rule.settings.groups.toNonEmptyList)
     implicit val hostsRule: VariableUsage[HostsRule] = UsingVariable[HostsRule](rule => rule.settings.allowedHosts.toNonEmptyList)
     implicit val indicesRule: VariableUsage[IndicesRule] = UsingVariable[IndicesRule](rule => rule.settings.allowedIndices.toNonEmptyList)
-    implicit val kibanaAccessRule: VariableUsage[KibanaAccessRule] = UsingVariable[KibanaAccessRule](rule => NonEmptyList.one(rule.settings.kibanaIndex))
     implicit val kibanaIndexRule: VariableUsage[KibanaIndexRule] = UsingVariable[KibanaIndexRule](rule => NonEmptyList.one(rule.settings.kibanaIndex))
     implicit val kibanaTemplateIndexRule: VariableUsage[KibanaTemplateIndexRule] = UsingVariable[KibanaTemplateIndexRule](rule => NonEmptyList.one(rule.settings.kibanaTemplateIndex))
     implicit val localHostsRule: VariableUsage[LocalHostsRule] = UsingVariable[LocalHostsRule](rule => rule.settings.allowedAddresses.toNonEmptyList)
@@ -61,7 +60,7 @@ object VariableContext {
     implicit val xForwarderForRule: VariableUsage[XForwardedForRule] = UsingVariable[XForwardedForRule](rule => rule.settings.allowedAddresses.toNonEmptyList)
     implicit val responseFieldsRule: VariableUsage[ResponseFieldsRule] = UsingVariable[ResponseFieldsRule](rule => rule.settings.responseFields.toNonEmptyList)
 
-
+    implicit val kibanaAccessRule: VariableUsage[KibanaAccessRule] = NotUsingVariable
     implicit val actionsRule: VariableUsage[ActionsRule] = NotUsingVariable
     implicit val apiKeyRule: VariableUsage[ApiKeysRule] = NotUsingVariable
     implicit val authKeySha1Rule: VariableUsage[AuthKeySha1Rule] = NotUsingVariable

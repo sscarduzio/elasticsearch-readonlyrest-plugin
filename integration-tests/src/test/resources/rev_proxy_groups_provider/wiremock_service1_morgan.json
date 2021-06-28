@@ -1,4 +1,5 @@
 {
+  "priority": 2,
   "request": {
     "method": "GET",
     "urlPath": "/groups",

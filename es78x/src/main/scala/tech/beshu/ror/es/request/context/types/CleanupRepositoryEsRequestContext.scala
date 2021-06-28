@@ -16,12 +16,10 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import cats.implicits._
 import cats.data.NonEmptyList
-import eu.timepit.refined.types.string.NonEmptyString
+import cats.implicits._
 import org.elasticsearch.action.admin.cluster.repositories.cleanup.CleanupRepositoryRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -36,13 +34,9 @@ class CleanupRepositoryEsRequestContext(actionRequest: CleanupRepositoryRequest,
   extends BaseRepositoriesEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
   override protected def repositoriesFrom(request: CleanupRepositoryRequest): Set[RepositoryName] = Set {
-    NonEmptyString
+    RepositoryName
       .from(request.name())
-      .map(RepositoryName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[CleanupRepositoryRequest](msg),
-        identity
-      )
+      .getOrElse(throw RequestSeemsToBeInvalid[CleanupRepositoryRequest]("Repository name is empty"))
   }
 
   override protected def update(request: CleanupRepositoryRequest,
@@ -50,7 +44,7 @@ class CleanupRepositoryEsRequestContext(actionRequest: CleanupRepositoryRequest,
     if (repositories.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.toList.mkString(",")}]")
     }
-    request.name(repositories.head.value.value)
+    request.name(RepositoryName.toString(repositories.head))
     Modified
   }
 }

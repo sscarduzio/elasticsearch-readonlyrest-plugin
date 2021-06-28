@@ -25,7 +25,7 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
 import org.joor.Reflect._
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 
 class PutRollupJobEsRequestContext private(actionRequest: ActionRequest,
@@ -39,14 +39,14 @@ class PutRollupJobEsRequestContext private(actionRequest: ActionRequest,
     val config = on(actionRequest).call("getConfig").get[AnyRef]()
     val indexPattern = on(config).call("getIndexPattern").get[String]()
     val rollupIndex = on(config).call("getRollupIndex").get[String]()
-    (IndexName.fromString(indexPattern) :: IndexName.fromString(rollupIndex) :: Nil).flatten.toSet
+    (ClusterIndexName.fromString(indexPattern) :: ClusterIndexName.fromString(rollupIndex) :: Nil).flatten.toSet
   }
 
-  override protected def indicesFrom(request: ActionRequest): Set[domain.IndexName] = originIndices
+  override protected def indicesFrom(request: ActionRequest): Set[domain.ClusterIndexName] = originIndices
 
   override protected def update(request: ActionRequest,
-                                filteredIndices: NonEmptyList[domain.IndexName],
-                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+                                filteredIndices: NonEmptyList[domain.ClusterIndexName],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if(originIndices == filteredIndices.toList.toSet) {
       Modified
     } else {

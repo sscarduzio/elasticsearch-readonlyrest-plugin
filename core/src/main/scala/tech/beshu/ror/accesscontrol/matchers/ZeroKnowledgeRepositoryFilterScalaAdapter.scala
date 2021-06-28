@@ -16,23 +16,27 @@
  */
 package tech.beshu.ror.accesscontrol.matchers
 
-import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRepositoryFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
+import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRepositoryFilterScalaAdapter.CheckResult
 import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 import scala.collection.JavaConverters._
 
 class ZeroKnowledgeRepositoryFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter) {
 
-  def check(indices: Set[RepositoryName], matcher: Matcher[RepositoryName]): CheckResult = {
+  def check(repositories: Set[RepositoryName], matcher: Matcher[RepositoryName]): CheckResult = {
     val processedRepositories: java.util.Set[String] = scala.collection.mutable.Set.empty[String].asJava
     val result = underlying.alterIndicesIfNecessaryAndCheck(
-      indices.map(_.value.value).asJava,
+      repositories
+        .collect {
+          case RepositoryName.Pattern(v) => v.value
+          case RepositoryName.Full(v) => v.value
+        }
+        .asJava,
       Matcher.asMatcherWithWildcards(matcher),
       processedRepositories.addAll _
     )
-    if(result) CheckResult.Ok(processedRepositories.asScala.map(str => RepositoryName(NonEmptyString.unsafeFrom(str))).toSet)
+    if(result) CheckResult.Ok(processedRepositories.asScala.flatMap(RepositoryName.from).toSet)
     else CheckResult.Failed
   }
 }

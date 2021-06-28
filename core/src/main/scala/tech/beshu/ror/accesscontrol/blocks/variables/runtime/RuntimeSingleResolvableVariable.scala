@@ -24,7 +24,11 @@ import cats.syntax.traverse._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.{Convertible, Unresolvable}
 
-sealed trait RuntimeSingleResolvableVariable[T] extends RuntimeResolvableVariable[T]
+import scala.language.{higherKinds, implicitConversions}
+
+sealed trait RuntimeSingleResolvableVariable[T] extends RuntimeResolvableVariable[T] {
+  def map[S](f: T => S): RuntimeSingleResolvableVariable[S]
+}
 
 object RuntimeSingleResolvableVariable {
 
@@ -33,12 +37,14 @@ object RuntimeSingleResolvableVariable {
 
     override def resolve(blockContext: BlockContext): Either[Unresolvable, T] =
       Right(value)
+
+    override def map[S](f: T => S): RuntimeSingleResolvableVariable[S] = AlreadyResolved(f(value))
   }
 
   final case class ToBeResolved[T: Convertible](values: NonEmptyList[SingleExtractable])
     extends RuntimeSingleResolvableVariable[T] {
 
-    override def resolve(blockContext: BlockContext): Either[Unresolvable, T]= {
+    override def resolve(blockContext: BlockContext): Either[Unresolvable, T] = {
       values
         .map { extractable =>
           extractable
@@ -51,6 +57,13 @@ object RuntimeSingleResolvableVariable {
           implicitly[Convertible[T]].convert(result)
             .left.map(error => RuntimeResolvableVariable.Unresolvable.CannotInstantiateResolvedValue(error.msg))
         }
+    }
+
+    override def map[S](f: T => S): RuntimeSingleResolvableVariable[S] = ToBeResolved(values)(bConvertible(f))
+
+    private def bConvertible[A: Convertible, B](f: A => B) = new Convertible[B] {
+      override def convert: String => Either[Convertible.ConvertError, B] = str =>
+        implicitly[Convertible[A]].convert(str).map(f)
     }
   }
 

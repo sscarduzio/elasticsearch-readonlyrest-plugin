@@ -20,7 +20,7 @@ import cats.implicits._
 import cats.data.NonEmptyList
 import org.elasticsearch.action.admin.cluster.state.ClusterStateRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -35,19 +35,19 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
                                    override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ClusterStateRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ClusterStateRequest): Set[domain.IndexName] = {
-    request.indices.asSafeSet.flatMap(IndexName.fromString)
+  override protected def indicesFrom(request: ClusterStateRequest): Set[domain.ClusterIndexName] = {
+    request.indices.asSafeSet.flatMap(ClusterIndexName.fromString)
   }
 
   override protected def update(request: ClusterStateRequest,
-                                filteredIndices: NonEmptyList[IndexName],
-                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     indicesFrom(request).toList match {
-      case Nil if filteredIndices.exists(_ === IndexName.wildcard) =>
+      case Nil if filteredIndices.exists(_ === ClusterIndexName.Local.wildcard) =>
         // hack: when empty indices list is replaced with wildcard index, returned result is wrong
         Modified
       case _ =>
-        request.indices(filteredIndices.toList.map(_.value.value): _*)
+        request.indices(filteredIndices.toList.map(_.stringify): _*)
         Modified
     }
   }

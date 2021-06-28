@@ -16,14 +16,13 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
+import eu.timepit.refined.auto._
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaAccessRule
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import eu.timepit.refined.auto._
 
 class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAccessRule] with MockFactory {
 
@@ -43,7 +42,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RO)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
+            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
           }
         )
       }
@@ -61,7 +60,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RW)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
+            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
           }
         )
       }
@@ -79,7 +78,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.ROStrict)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
+            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
           }
         )
       }
@@ -97,7 +96,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Admin)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
+            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
           }
         )
       }
@@ -115,46 +114,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Unrestricted)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
-          }
-        )
-      }
-      "some access is defined with changed default kibana index" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    kibana_access: admin
-              |    kibana_index: ".kibana_admin"
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.access should be(KibanaAccess.Admin)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana_admin")))
-          }
-        )
-      }
-      "some access is defined with changed default kibana index to variable" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    auth_key: admin:pass
-              |    kibana_access: admin
-              |    kibana_index: .kibana_@{user}
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.access should be(KibanaAccess.Admin)
-            rule.settings.kibanaIndex shouldBe a [ToBeResolved[_]]
+            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
           }
         )
       }

@@ -25,9 +25,10 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaTemplateIndexRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.unit.acl.blocks.rules.utils.IndexNameRuntimeResolvableVariable
+import tech.beshu.ror.utils.TestsUtils._
 
 class KibanaTemplateIndexRuleTests
   extends AnyWordSpec
@@ -44,7 +45,7 @@ class KibanaTemplateIndexRuleTests
         rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
           CurrentUserMetadataRequestBlockContext(
             requestContext,
-            UserMetadata.empty.withKibanaTemplateIndex(IndexName("kibana_template_index")),
+            UserMetadata.empty.withKibanaTemplateIndex(clusterIndexName("kibana_template_index")),
             Set.empty,
             List.empty)
         ))
@@ -60,6 +61,6 @@ class KibanaTemplateIndexRuleTests
     }
   }
 
-  private def indexNameValueFrom(value: String): RuntimeSingleResolvableVariable[IndexName] =
+  private def indexNameValueFrom(value: String): RuntimeSingleResolvableVariable[ClusterIndexName] =
     IndexNameRuntimeResolvableVariable.create(value)
 }

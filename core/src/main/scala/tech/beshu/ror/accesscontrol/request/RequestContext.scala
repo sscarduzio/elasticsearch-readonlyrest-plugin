@@ -18,10 +18,11 @@ package tech.beshu.ror.accesscontrol.request
 
 import java.time.Instant
 
+import cats.Show
 import cats.implicits._
-import cats.{Monoid, Show}
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
+import monix.eval.Task
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
@@ -32,10 +33,10 @@ import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.language.implicitConversions
-import tech.beshu.ror.utils.ScalaOps._
 
 trait RequestContext {
 
@@ -67,9 +68,13 @@ trait RequestContext {
 
   def content: String
 
-  def allIndicesAndAliases: Set[IndexWithAliases]
+  def allIndicesAndAliases: Set[FullLocalIndexWithAliases]
+
+  def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]]
 
   def allTemplates: Set[Template]
+
+  def allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]]
 
   lazy val legacyTemplates: Set[Template.LegacyTemplate] =
     allTemplates.collect { case t: Template.LegacyTemplate => t }
@@ -85,8 +90,6 @@ trait RequestContext {
   def isCompositeRequest: Boolean
 
   def isAllowedForDLS: Boolean
-
-  def hasRemoteClusters: Boolean
 
   def generalAuditEvents: JSONObject = new JSONObject()
 
@@ -108,7 +111,7 @@ object RequestContext extends Logging {
   }
 
   def show[B <: BlockContext](loggedUser: Option[LoggedUser],
-                              kibanaIndex: Option[IndexName],
+                              kibanaIndex: Option[ClusterIndexName],
                               history: Vector[Block.History[B]])
                              (implicit headerShow: Show[Header]): Show[RequestContext.Aux[B]] =
     Show.show { r =>
@@ -155,7 +158,7 @@ object RequestContext extends Logging {
 
 class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
 
-  type AliasName = IndexName
+  type LocalAliasName = ClusterIndexName.Local
 
   def impersonateAs: Option[User.Id] = {
     findHeader(Header.Name.impersonateAs)
@@ -214,17 +217,6 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
         } else {
           None
         }
-      }
-  }
-
-  def indicesPerAliasMap: Map[AliasName, Set[IndexName]] = {
-    val mapMonoid = Monoid[Map[AliasName, Set[IndexName]]]
-    requestContext
-      .allIndicesAndAliases
-      .foldLeft(Map.empty[AliasName, Set[IndexName]]) {
-        case (acc, indexWithAliases) =>
-          val localIndicesPerAliasMap = indexWithAliases.aliases.map((_, Set(indexWithAliases.index))).toMap
-          mapMonoid.combine(acc, localIndicesPerAliasMap)
       }
   }
 

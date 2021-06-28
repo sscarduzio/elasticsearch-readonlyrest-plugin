@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaHideAppsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
@@ -25,13 +24,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.{KibanaAccessRule, KibanaHideAp
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.createSingleResolvableVariableFrom
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, KibanaApp, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaAccess, KibanaApp, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.KibanaRulesDecoderHelper.kibanaIndexDecoder
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{RuleBaseDecoderWithAssociatedFields, RuleBaseDecoderWithoutAssociatedFields}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
@@ -71,15 +68,14 @@ object KibanaTemplateIndexRuleDecoder
 }
 
 class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorConfigurationIndex)
-  extends RuleBaseDecoderWithAssociatedFields[KibanaAccessRule, RuntimeSingleResolvableVariable[IndexName]] {
+  extends RuleBaseDecoderWithoutAssociatedFields[KibanaAccessRule] {
 
-  override def ruleDecoderCreator: RuntimeSingleResolvableVariable[IndexName] => Decoder[RuleWithVariableUsageDefinition[KibanaAccessRule]] =
-    kibanaIndexName =>
-      DecoderHelpers
-        .decodeStringLike
-        .map(_.toLowerCase)
-        .toSyncDecoder
-        .emapE[KibanaAccess] {
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[KibanaAccessRule]] =
+    DecoderHelpers
+      .decodeStringLike
+      .map(_.toLowerCase)
+      .toSyncDecoder
+      .emapE[KibanaAccess] {
         case "ro" => Right(KibanaAccess.RO)
         case "rw" => Right(KibanaAccess.RW)
         case "ro_strict" => Right(KibanaAccess.ROStrict)
@@ -87,29 +83,23 @@ class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorConfigurationIndex)
         case "unrestricted" => Right(KibanaAccess.Unrestricted)
         case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
       }
-        .map(KibanaAccessRule.Settings(_, kibanaIndexName, rorIndexNameConfiguration))
-        .map(settings => RuleWithVariableUsageDefinition.create(new KibanaAccessRule(settings)))
-        .decoder
-
-  override val associatedFields: Set[String] = Set("kibana_index")
-
-  override val associatedFieldsDecoder: Decoder[RuntimeSingleResolvableVariable[IndexName]] =
-    Decoder.instance(_.downField("kibana_index").as[RuntimeSingleResolvableVariable[IndexName]]) or Decoder.const(AlreadyResolved(IndexName.kibana))
+      .map(KibanaAccessRule.Settings(_, rorIndexNameConfiguration))
+      .map(settings => RuleWithVariableUsageDefinition.create(new KibanaAccessRule(settings)))
+      .decoder
 }
 
 private object KibanaRulesDecoderHelper {
-  private implicit val indexNameConvertible: Convertible[IndexName] = new Convertible[IndexName] {
-    override def convert: String => Either[Convertible.ConvertError, IndexName] = str => {
-      NonEmptyString
-        .from(str.replace(" ", "_"))
-        .map(IndexName.apply)
-        .left.map(_ => Convertible.ConvertError("Index name cannot be empty"))
+  implicit val indexNameConvertible: Convertible[ClusterIndexName] = new Convertible[ClusterIndexName] {
+    override def convert: String => Either[Convertible.ConvertError, ClusterIndexName] = str => {
+      ClusterIndexName.Local
+        .fromString(str.replace(" ", "_"))
+        .toRight(Convertible.ConvertError("Index name cannot be empty"))
     }
   }
-  implicit val kibanaIndexDecoder: Decoder[RuntimeSingleResolvableVariable[IndexName]] =
+  implicit val kibanaIndexDecoder: Decoder[RuntimeSingleResolvableVariable[ClusterIndexName]] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
-      .map(createSingleResolvableVariableFrom[IndexName])
+      .map(createSingleResolvableVariableFrom[ClusterIndexName])
       .toSyncDecoder
       .emapE {
         case Right(index) => Right(index)

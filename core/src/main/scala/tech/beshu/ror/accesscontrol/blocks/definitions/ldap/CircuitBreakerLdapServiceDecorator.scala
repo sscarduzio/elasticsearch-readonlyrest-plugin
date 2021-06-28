@@ -70,7 +70,7 @@ class CircuitBreakerLdapAuthorizationServiceDecorator(underlying: LdapAuthorizat
 }
 
 class CircuitBreakerLdapServiceDecorator(underlying: LdapAuthService,
-                                         circuitBreakerConfig: CircuitBreakerConfig)
+                                         val circuitBreakerConfig: CircuitBreakerConfig)
   extends LdapAuthService {
 
   private val circuitBreaker = {

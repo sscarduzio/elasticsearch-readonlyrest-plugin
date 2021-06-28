@@ -201,7 +201,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           ))
           val request = MockRequestContext.indices.copy(
             headers = Set(new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))),
-            filteredIndices = Set(IndexName("gj1"))
+            filteredIndices = Set(clusterIndexName("gj1"))
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -215,7 +215,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user3")))
                 .withJwtToken(JwtTokenPayload(jwt.defaultClaims()))
             )
-            blockContext.filteredIndices should be(Set(IndexName("gj1")))
+            blockContext.filteredIndices should be(Set(clusterIndexName("gj1")))
             blockContext.responseHeaders should be(Set.empty)
           }
         }
@@ -227,8 +227,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val request = MockRequestContext.indices.copy(
             headers = Set(new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))),
-            filteredIndices = Set(IndexName("gj0")),
-            allIndicesAndAliases = Set(IndexWithAliases(IndexName("gj0"), Set.empty))
+            filteredIndices = Set(clusterIndexName("gj0")),
+            allIndicesAndAliases = Set(FullLocalIndexWithAliases(fullIndexName("gj0"), Set.empty))
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -242,7 +242,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user4")))
                 .withJwtToken(JwtTokenPayload(jwt.defaultClaims()))
             )
-            blockContext.filteredIndices should be(Set(IndexName("gj0")))
+            blockContext.filteredIndices should be(Set(clusterIndexName("gj0")))
             blockContext.responseHeaders should be(Set.empty)
           }
         }

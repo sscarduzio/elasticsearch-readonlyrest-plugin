@@ -21,7 +21,7 @@ import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect._
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -34,13 +34,13 @@ class GetRollupIndexCapsEsRequestContext private(actionRequest: ActionRequest,
                                                  override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ActionRequest): Set[IndexName] = {
+  override protected def indicesFrom(request: ActionRequest): Set[ClusterIndexName] = {
     val indicesName = on(request).call("indices").get[Array[String]]()
-    indicesName.flatMap(IndexName.fromString).toSet
+    indicesName.flatMap(ClusterIndexName.fromString).toSet
   }
 
-  override protected def update(request: ActionRequest, filteredIndices: NonEmptyList[IndexName], allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
-    on(request).call("indices", filteredIndices.map(_.value.value).toList.toArray)
+  override protected def update(request: ActionRequest, filteredIndices: NonEmptyList[ClusterIndexName], allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+    on(request).call("indices", filteredIndices.map(_.stringify).toList.toArray)
     Modified
   }
 }

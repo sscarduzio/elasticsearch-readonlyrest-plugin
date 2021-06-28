@@ -22,7 +22,7 @@ import com.google.common.collect.Sets
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -34,16 +34,16 @@ import tech.beshu.ror.utils.ScalaOps._
 import scala.collection.JavaConverters._
 
 class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionRequest,
-                                                     indices: Set[IndexName],
+                                                     indices: Set[ClusterIndexName],
                                                      esContext: EsContext,
                                                      aclContext: AccessControlStaticContext,
                                                      clusterService: RorClusterService,
                                                      override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ActionRequest): Set[IndexName] = indices
+  override protected def indicesFrom(request: ActionRequest): Set[ClusterIndexName] = indices
 
-  override protected def update(request: ActionRequest, filteredIndices: NonEmptyList[IndexName], allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+  override protected def update(request: ActionRequest, filteredIndices: NonEmptyList[ClusterIndexName], allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (tryUpdate(actionRequest, filteredIndices)) Modified
     else {
       logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. We're using reflection to modify the request indices and it fails. Please, report the issue.")
@@ -51,12 +51,12 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
     }
   }
 
-  private def tryUpdate(actionRequest: ActionRequest, indices: NonEmptyList[IndexName]) = {
+  private def tryUpdate(actionRequest: ActionRequest, indices: NonEmptyList[ClusterIndexName]) = {
     // Optimistic reflection attempt
     ReflecUtils.setIndices(
       actionRequest,
       Sets.newHashSet("index", "indices", "setIndex", "setIndices"),
-      indices.toList.map(_.value.value).toSet.asJava
+      indices.toList.map(_.stringify).toSet.asJava
     )
   }
 }
@@ -73,7 +73,7 @@ object ReflectionBasedIndicesEsRequestContext {
       .orElse(getIndicesUsingReflection(request, methodName = "getIndices"))
       .orElse(getIndicesUsingReflection(request, methodName = "index"))
       .orElse(getIndicesUsingReflection(request, methodName = "getIndex"))
-      .map(indices => indices.toList.toSet.flatMap(IndexName.fromString))
+      .map(indices => indices.toList.toSet.flatMap(ClusterIndexName.fromString))
   }
 
   private def getIndicesUsingReflection(request: ActionRequest, methodName: String) = {

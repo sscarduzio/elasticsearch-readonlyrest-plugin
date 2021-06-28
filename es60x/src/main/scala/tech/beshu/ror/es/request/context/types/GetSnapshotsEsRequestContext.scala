@@ -17,23 +17,22 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
-import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.elasticsearch.action.admin.cluster.snapshots.get.{GetSnapshotsRequest, GetSnapshotsResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+
 import scala.collection.JavaConverters._
 
 class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
@@ -45,24 +44,18 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   override protected def snapshotsFrom(request: GetSnapshotsRequest): Set[SnapshotName] = {
     request
       .snapshots().asSafeList
-      .flatMap { s =>
-        NonEmptyString.unapply(s).map(SnapshotName.apply)
-      }
+      .flatMap(SnapshotName.from)
       .toSet[SnapshotName]
   }
 
   override protected def repositoriesFrom(request: GetSnapshotsRequest): Set[RepositoryName] = Set {
-    NonEmptyString
+    RepositoryName
       .from(request.repository())
-      .map(RepositoryName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[CreateSnapshotRequest](msg),
-        identity
-      )
+      .getOrElse(throw RequestSeemsToBeInvalid[GetSnapshotsRequest]("Repository name is empty"))
   }
 
-  override protected def indicesFrom(request: GetSnapshotsRequest): Set[domain.IndexName] =
-    Set(IndexName.wildcard)
+  override protected def indicesFrom(request: GetSnapshotsRequest): Set[domain.ClusterIndexName] =
+    Set(ClusterIndexName.Local.wildcard)
 
   override protected def modifyRequest(blockContext: BlockContext.SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {
@@ -106,18 +99,18 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   private def update(actionRequest: GetSnapshotsRequest,
                      snapshots: UniqueNonEmptyList[SnapshotName],
                      repository: RepositoryName) = {
-    actionRequest.snapshots(snapshots.toList.map(_.value.value).toArray)
-    actionRequest.repository(repository.value.value)
+    actionRequest.snapshots(snapshots.toList.map(SnapshotName.toString).toArray)
+    actionRequest.repository(RepositoryName.toString(repository))
   }
 
   private def updateGetSnapshotResponse(response: GetSnapshotsResponse,
-                                        allAllowedIndices: Set[IndexName]): GetSnapshotsResponse = {
+                                        allAllowedIndices: Set[ClusterIndexName]): GetSnapshotsResponse = {
     val matcher = MatcherWithWildcardsScalaAdapter.create(allAllowedIndices)
     response
       .getSnapshots.asSafeList
       .foreach { snapshot =>
-        val snapshotIndices = snapshot.indices().asSafeList.flatMap(IndexName.fromString).toSet
-        val filteredSnapshotIndices = matcher.filter(snapshotIndices).map(_.value.value).toList.asJava
+        val snapshotIndices = snapshot.indices().asSafeList.flatMap(ClusterIndexName.fromString).toSet
+        val filteredSnapshotIndices = matcher.filter(snapshotIndices).map(_.stringify).toList.asJava
         on(snapshot).set("indices", filteredSnapshotIndices)
         snapshot
       }

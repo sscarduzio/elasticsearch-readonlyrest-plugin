@@ -122,6 +122,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         threadPool,
         environment,
         TransportServiceInterceptor.remoteClusterServiceSupplier,
+        SnapshotsServiceInterceptor.snapshotsServiceSupplier,
         esInitListener
       )
     }
@@ -129,7 +130,10 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   override def getGuiceServiceClasses: util.Collection[Class[_ <: LifecycleComponent]] = {
-    List[Class[_ <: LifecycleComponent]](classOf[TransportServiceInterceptor]).asJava
+    List[Class[_ <: LifecycleComponent]](
+      classOf[TransportServiceInterceptor],
+      classOf[SnapshotsServiceInterceptor]
+    ).asJava
   }
 
   override def getActionFilters: util.List[ActionFilter] = {

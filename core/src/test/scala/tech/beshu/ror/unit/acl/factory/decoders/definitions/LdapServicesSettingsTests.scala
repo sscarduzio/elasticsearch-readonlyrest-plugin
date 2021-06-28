@@ -17,17 +17,20 @@
 package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
+import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers._
+import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{CacheableLdapServiceDecorator, LdapAuthService, LdapAuthenticationService, LdapService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{CacheableLdapServiceDecorator, CircuitBreakerLdapServiceDecorator, LdapAuthService, LdapAuthenticationService, LdapService}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
 import tech.beshu.ror.utils.containers.{LdapContainer, LdapWithDnsContainer}
 
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider)
@@ -50,6 +53,13 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
 
   override val container: MultipleContainers = MultipleContainers(containerLdap1, containerLdap2, ldapWithDnsContainer)
 
+  private def getUnderlyingFieldFromCacheableLdapServiceDecorator(cacheableLdapServiceDecorator: CacheableLdapServiceDecorator) = {
+    val reflectUniverse = scala.reflect.runtime.universe
+    val mirror = reflectUniverse.runtimeMirror(getClass.getClassLoader)
+    val ldapServiceInstanceMirror = mirror.reflect(cacheableLdapServiceDecorator)
+    val underlyingField = reflectUniverse.typeOf[CacheableLdapServiceDecorator].decl(reflectUniverse.TermName("underlying")).asTerm.accessed.asTerm
+    ldapServiceInstanceMirror.reflectField(underlyingField).get
+  }
 
   "An LdapService" should {
     "be able to be loaded from config" when {
@@ -77,7 +87,10 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
           assertion = { definitions =>
             definitions.items should have size 1
             val ldapService = definitions.items.head
-            ldapService shouldBe a[LdapAuthService]
+            ldapService shouldBe a[CacheableLdapServiceDecorator]
+            val ldapServiceUnderlying = getUnderlyingFieldFromCacheableLdapServiceDecorator(ldapService.asInstanceOf[CacheableLdapServiceDecorator])
+            ldapServiceUnderlying shouldBe a[CircuitBreakerLdapServiceDecorator]
+            ldapServiceUnderlying.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
             ldapService.id should be(LdapService.Name("ldap1"))
           }
         )
@@ -103,14 +116,16 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    request_timeout_in_sec: 10                                # default 1
                |    cache_ttl_in_sec: 60                                      # default 0 - cache disabled
                |    circuit_breaker:
-               |      max_retries: 2
+               |      max_retries: 3
                |      reset_duration: 2
            """.stripMargin,
           assertion = { definitions =>
             definitions.items should have size 1
             val ldapService = definitions.items.head
             ldapService shouldBe a[CacheableLdapServiceDecorator]
-            //TODO: Check if returned CacheableLdapServiceDecorator has underlying CircuitBreaker decorator
+            val ldapServiceUnderlying = getUnderlyingFieldFromCacheableLdapServiceDecorator(ldapService.asInstanceOf[CacheableLdapServiceDecorator])
+            ldapServiceUnderlying shouldBe a[CircuitBreakerLdapServiceDecorator]
+            ldapServiceUnderlying.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(3), Refined.unsafeApply(2 seconds))
             ldapService.id should be(LdapService.Name("ldap1"))
           }
         )
@@ -372,6 +387,24 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
       }
     }
     "not be able to be loaded from config" when {
+      "circuit breaker config is malformed" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${containerLdap1.ldapHost}
+               |    port: ${containerLdap1.ldapSSLPort}
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
+               |    circuit_breaker:
+               |      max_retries: 1
+           """.stripMargin,
+          assertion = { error =>
+            error should be(AclCreationError.DefinitionsLevelCreationError(Message("At least proper values for max_retries and reset_duration are required for circuit breaker configuration")))
+          }
+        )
+      }
       "no LDAP service is defined" in {
         assertDecodingFailure(
           yaml =

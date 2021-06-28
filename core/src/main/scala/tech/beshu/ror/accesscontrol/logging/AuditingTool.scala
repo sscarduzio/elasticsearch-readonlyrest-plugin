@@ -41,7 +41,7 @@ class AuditingTool(settings: Settings,
       .map {
         case Some(entry) =>
           auditSink.submit(
-            settings.rorAuditIndexTemplate.indexName(Instant.now(clock)).value.value,
+            settings.rorAuditIndexTemplate.indexName(Instant.now(clock)).name.value,
             response.requestContext.id.value,
             entry.toString
           )

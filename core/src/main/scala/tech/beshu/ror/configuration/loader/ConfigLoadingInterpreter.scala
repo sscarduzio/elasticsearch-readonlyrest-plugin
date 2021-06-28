@@ -30,6 +30,7 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.loader.LoadedRorConfig._
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.configuration.{ConfigLoading, EsConfig, IndexConfigManager}
 import tech.beshu.ror.providers.EnvVarsProvider
 
@@ -38,7 +39,7 @@ import language.postfixOps
 object ConfigLoadingInterpreter extends Logging {
 
   def create(indexConfigManager: IndexConfigManager, inIndexLoadingDelay: LoadingDelay)
-            (implicit envVarsProvider: EnvVarsProvider): (LoadConfigAction ~> Task) = new (LoadConfigAction ~> Task) {
+            (implicit envVarsProvider: EnvVarsProvider): LoadConfigAction ~> Task = new (LoadConfigAction ~> Task) {
     override def apply[A](fa: LoadConfigAction[A]): Task[A] = fa match {
       case ConfigLoading.LoadConfigAction.LoadEsConfig(esConfigPath) =>
         logger.info(s"Loading Elasticsearch settings from file: $esConfigPath")
@@ -55,7 +56,7 @@ object ConfigLoadingInterpreter extends Logging {
         EitherT(FileConfigLoader.create(path).load())
           .bimap(convertFileError, ForcedFileConfig(_))
           .leftMap { error =>
-            logger.error(s"Loading ReadonlyREST from file failed: ${error}")
+            logger.error(s"Loading ReadonlyREST from file failed: $error")
             error
           }.value
       case ConfigLoading.LoadConfigAction.LoadRorConfigFromFile(path) =>
@@ -63,12 +64,12 @@ object ConfigLoadingInterpreter extends Logging {
         EitherT(FileConfigLoader.create(path).load())
           .bimap(convertFileError, FileConfig(_))
           .leftMap { error =>
-            logger.error(s"Loading ReadonlyREST from file failed: ${error}")
+            logger.error(s"Loading ReadonlyREST from file failed: $error")
             error
           }
           .value
       case ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(configIndex) =>
-        logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index (${configIndex.index.value}) ...")
+        logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index (${configIndex.index.show}) ...")
         loadFromIndex(indexConfigManager, configIndex, inIndexLoadingDelay)
           .map { rawRorConfig =>
             logger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw config from index: ${rawRorConfig.raw}")

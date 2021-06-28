@@ -18,6 +18,7 @@ package tech.beshu.ror.es
 
 import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.index.reindex.BulkByScrollTask
 import org.elasticsearch.rest.{AbstractRestChannel, RestChannel, RestResponse}
 import org.elasticsearch.tasks.Task
 
@@ -40,7 +41,13 @@ class RorRestChannel(underlying: RestChannel)
   private def unregisterTask(): Unit = {
     maybeTask.get().foreach { task =>
       TransportServiceInterceptor.taskManagerSupplier.get() match {
-        case Some(taskManager) => taskManager.unregister(task)
+        case Some(taskManager) =>
+          Option(task.getStatus) match {
+            case Some(_: BulkByScrollTask.Status) =>
+            // hack:  for some reason we should not unregister this type of task because Kibana 7.12.x are not able
+            //        to do its migrations
+            case Some(_) | None => taskManager.unregister(task)
+          }
         case None => logger.error(s"Cannot unregister task: ${task.getId}; ${task.getDescription}")
       }
     }

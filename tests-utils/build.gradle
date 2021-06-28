@@ -39,7 +39,7 @@ dependencies {
     compile group: 'io.jsonwebtoken',                name: 'jjwt-api',                      version: '0.11.2'
     compile group: 'io.jsonwebtoken',                name: 'jjwt-impl',                     version: '0.11.2'
     compile group: 'io.jsonwebtoken',                name: 'jjwt-orgjson',                  version: '0.11.2'
-    compile group: 'com.jayway.jsonpath',            name: 'json-path',                     version: '2.2.0'
+    compile group: 'com.jayway.jsonpath',            name: 'json-path',                     version: '2.5.0'
     compile group: 'io.monix',                       name: 'monix_2.12',                    version: '3.0.0-RC3'
     compile group: 'com.lihaoyi',                    name: 'os-lib_2.12',                   version: '0.7.0'
     compile group: 'org.scala-lang',                 name: 'scala-library',                 version: '2.12.4'

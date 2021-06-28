@@ -23,7 +23,7 @@ import org.elasticsearch.index.Index
 import org.elasticsearch.threadpool.ThreadPool
 import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -40,13 +40,13 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
                                 override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[BulkShardRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: BulkShardRequest): Set[IndexName] = {
-    request.indices().asSafeSet.flatMap(IndexName.fromString)
+  override protected def indicesFrom(request: BulkShardRequest): Set[ClusterIndexName] = {
+    request.indices().asSafeSet.flatMap(ClusterIndexName.fromString)
   }
 
   override protected def update(request: BulkShardRequest,
-                                filteredIndices: NonEmptyList[IndexName],
-                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     tryUpdate(request, filteredIndices) match {
       case Success(_) =>
         Modified
@@ -56,7 +56,7 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
     }
   }
 
-  private def tryUpdate(request: BulkShardRequest, indices: NonEmptyList[IndexName]) = {
+  private def tryUpdate(request: BulkShardRequest, indices: NonEmptyList[ClusterIndexName]) = {
     val singleIndex = indices.head
     val uuid = clusterService.indexOrAliasUuids(singleIndex).toList.head
     ReflectionUtils
@@ -64,7 +64,7 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
       .foldLeft(Try(())) {
         case (Success(_), field) =>
           field.setAccessible(true)
-          Try(field.set(request.shardId(), new Index(singleIndex.value.value, uuid)))
+          Try(field.set(request.shardId(), new Index(singleIndex.stringify, uuid)))
         case (left, _) =>
           left
       }

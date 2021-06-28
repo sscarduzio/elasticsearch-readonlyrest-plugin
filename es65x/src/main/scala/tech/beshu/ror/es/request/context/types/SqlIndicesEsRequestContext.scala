@@ -23,7 +23,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
-import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, ClusterIndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -47,10 +47,10 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
       throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.getName}")
   }
 
-  override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[IndexName] = {
-    sqlIndicesExtractResult.map(_.indices.flatMap(IndexName.fromString)) match {
+  override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[ClusterIndexName] = {
+    sqlIndicesExtractResult.map(_.indices.flatMap(ClusterIndexName.fromString)) match {
       case Right(indices) => indices
-      case Left(_) => Set(IndexName.wildcard)
+      case Left(_) => Set(ClusterIndexName.Local.wildcard)
     }
   }
 
@@ -59,12 +59,12 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
       it can be handled just as in GET/MGET (see e.g. GetEsRequestContext) using ModificationResult.UpdateResponse.
     **/
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
-                                indices: NonEmptyList[IndexName],
+                                indices: NonEmptyList[ClusterIndexName],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     sqlIndicesExtractResult match {
       case Right(sqlIndices) =>
-        val indicesStrings = indices.map(_.value.value).toList.toSet
+        val indicesStrings = indices.map(_.stringify).toList.toSet
         if (indicesStrings != sqlIndices.indices) {
           SqlRequestHelper.modifyIndicesOf(request, sqlIndices, indicesStrings) match {
             case Right(_) =>

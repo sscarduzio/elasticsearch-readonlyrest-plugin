@@ -18,12 +18,11 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
-import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotsStatusRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
@@ -39,23 +38,17 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
   override protected def snapshotsFrom(request: SnapshotsStatusRequest): Set[SnapshotName] =
     request
       .snapshots().asSafeList
-      .flatMap { s =>
-        NonEmptyString.unapply(s).map(SnapshotName.apply)
-      }
+      .flatMap(SnapshotName.from)
       .toSet[SnapshotName]
 
   override protected def repositoriesFrom(request: SnapshotsStatusRequest): Set[RepositoryName] = Set {
-    NonEmptyString
+    RepositoryName
       .from(request.repository())
-      .map(RepositoryName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[CreateSnapshotRequest](msg),
-        identity
-      )
+      .getOrElse(throw RequestSeemsToBeInvalid[SnapshotsStatusRequest]("Repository name is empty"))
   }
 
-  override protected def indicesFrom(request: SnapshotsStatusRequest): Set[IndexName] =
-    Set(IndexName.wildcard)
+  override protected def indicesFrom(request: SnapshotsStatusRequest): Set[ClusterIndexName] =
+    Set(ClusterIndexName.Local.wildcard)
 
   override protected def modifyRequest(blockContext: SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {
@@ -72,14 +65,21 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
   }
 
   private def snapshotsFrom(blockContext: SnapshotRequestBlockContext) = {
-    NonEmptyList.fromList(blockContext.snapshots.toList) match {
+    NonEmptyList.fromList(fullNamedSnapshotsFrom(blockContext.snapshots).toList) match {
       case Some(list) => Right(list)
       case None => Left(())
     }
   }
 
+  private def fullNamedSnapshotsFrom(snapshots: Iterable[SnapshotName]): Set[SnapshotName.Full] = {
+    val allFullNameSnapshots: Set[SnapshotName.Full] = allSnapshots.values.toSet.flatten
+    MatcherWithWildcardsScalaAdapter
+      .create(snapshots)
+      .filter(allFullNameSnapshots)
+  }
+
   private def repositoryFrom(blockContext: SnapshotRequestBlockContext) = {
-    val repositories = blockContext.repositories.toList
+    val repositories = fullNamedRepositoriesFrom(blockContext.repositories).toList
     repositories match {
       case Nil =>
         Left(())
@@ -91,10 +91,17 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
     }
   }
 
+  private def fullNamedRepositoriesFrom(repositories: Iterable[RepositoryName]): Set[RepositoryName.Full] = {
+    val allFullNameRepositories: Set[RepositoryName.Full] = allSnapshots.keys.toSet
+    MatcherWithWildcardsScalaAdapter
+      .create(repositories)
+      .filter(allFullNameRepositories)
+  }
+
   private def update(actionRequest: SnapshotsStatusRequest,
-                     snapshots: NonEmptyList[SnapshotName],
-                     repository: RepositoryName) = {
-    actionRequest.snapshots(snapshots.toList.map(_.value.value).toArray)
-    actionRequest.repository(repository.value.value)
+                     snapshots: NonEmptyList[SnapshotName.Full],
+                     repository: RepositoryName.Full) = {
+    actionRequest.snapshots(snapshots.toList.map(SnapshotName.toString).toArray)
+    actionRequest.repository(RepositoryName.toString(repository))
   }
 }

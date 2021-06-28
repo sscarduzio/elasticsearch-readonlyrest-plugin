@@ -99,7 +99,10 @@ class ReadonlyRestPlugin(s: Settings,
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
 
   override def getGuiceServiceClasses: util.Collection[Class[_ <: LifecycleComponent]] = {
-    List[Class[_ <: LifecycleComponent]](classOf[TransportServiceInterceptor]).asJava
+    List[Class[_ <: LifecycleComponent]](
+      classOf[TransportServiceInterceptor],
+      classOf[SnapshotsServiceInterceptor]
+    ).asJava
   }
 
   override def getActionFilters: util.List[Class[_ <: ActionFilter]] = {

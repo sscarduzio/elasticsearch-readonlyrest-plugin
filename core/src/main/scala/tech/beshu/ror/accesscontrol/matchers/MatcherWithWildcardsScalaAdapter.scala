@@ -25,9 +25,9 @@ import scala.collection.JavaConverters._
 trait Matcher[A] {
   def underlying: MatcherWithWildcards[A]
 
-  def filter(items: Set[A]): Set[A]
+  def filter[B <: A](items: Set[B]): Set[B]
 
-  def `match`(value: A): Boolean
+  def `match`[B <: A](value: B): Boolean
 
   def contains(str: String): Boolean
 }
@@ -41,14 +41,14 @@ object Matcher {
 class MatcherWithWildcardsScalaAdapter[A](override val underlying: MatcherWithWildcards[A])
   extends Matcher[A] {
 
-  override def filter(items: Set[A]): Set[A] = {
+  override def filter[B <: A](items: Set[B]): Set[B] = {
     underlying
       .filter(items.asJava)
       .asScala
       .toSet
   }
 
-  override def `match`(value: A): Boolean = {
+  override def `match`[B <: A](value: B): Boolean = {
     underlying.`match`(value)
   }
 

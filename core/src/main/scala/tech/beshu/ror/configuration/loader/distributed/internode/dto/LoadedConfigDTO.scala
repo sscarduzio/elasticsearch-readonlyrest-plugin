@@ -41,12 +41,12 @@ object LoadedConfigDTO {
   object IndexConfigDTO {
     def create(o: LoadedRorConfig.IndexConfig[String]): IndexConfigDTO =
       new IndexConfigDTO(
-        indexName = o.indexName.index.value.value,
+        indexName = o.indexName.index.name.value,
         value = o.value,
       )
 
     def fromDto(o: IndexConfigDTO): LoadedRorConfig.IndexConfig[String] = LoadedRorConfig.IndexConfig(
-      indexName = RorConfigurationIndex(IndexName(NonEmptyString.unsafeFrom(o.indexName))),
+      indexName = RorConfigurationIndex(IndexName.Full(NonEmptyString.unsafeFrom(o.indexName))),
       value = o.value,
     )
     implicit class Ops(o: IndexConfigDTO) {

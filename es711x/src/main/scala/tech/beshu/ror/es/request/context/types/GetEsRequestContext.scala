@@ -25,7 +25,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, ClusterIndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi
@@ -42,8 +42,8 @@ class GetEsRequestContext(actionRequest: GetRequest,
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
-  override protected def indicesFrom(request: GetRequest): Set[IndexName] = {
-    val indexName = IndexName
+  override protected def indicesFrom(request: GetRequest): Set[ClusterIndexName] = {
+    val indexName = ClusterIndexName
       .fromString(request.index())
       .getOrElse {
         throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid")
@@ -52,11 +52,11 @@ class GetEsRequestContext(actionRequest: GetRequest,
   }
 
   override protected def update(request: GetRequest,
-                                indices: NonEmptyList[IndexName],
+                                indices: NonEmptyList[ClusterIndexName],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     val indexName = indices.head
-    request.index(indexName.value.value)
+    request.index(indexName.stringify)
     ModificationResult.UpdateResponse(updateFunction(filter, fieldLevelSecurity))
   }
 

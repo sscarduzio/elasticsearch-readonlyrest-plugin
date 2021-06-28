@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -34,14 +34,14 @@ class IndicesShardStoresEsRequestContext(actionRequest: IndicesShardStoresReques
                                          override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[IndicesShardStoresRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: IndicesShardStoresRequest): Set[IndexName] = {
-    request.indices.asSafeSet.flatMap(IndexName.fromString)
+  override protected def indicesFrom(request: IndicesShardStoresRequest): Set[ClusterIndexName] = {
+    request.indices.asSafeSet.flatMap(ClusterIndexName.fromString)
   }
 
   override protected def update(request: IndicesShardStoresRequest,
-                                filteredIndices: NonEmptyList[IndexName],
-                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
-    actionRequest.indices(filteredIndices.toList.map(_.value.value): _*)
+                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+    actionRequest.indices(filteredIndices.toList.map(_.stringify): _*)
     Modified
   }
 }

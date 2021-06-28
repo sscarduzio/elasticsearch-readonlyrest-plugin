@@ -17,12 +17,10 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
-import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
@@ -35,26 +33,18 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
   extends BaseSnapshotEsRequestContext[DeleteSnapshotRequest](actionRequest, esContext, clusterService, threadPool) {
 
   override protected def snapshotsFrom(request: DeleteSnapshotRequest): Set[SnapshotName] = Set {
-    NonEmptyString
+    SnapshotName
       .from(request.snapshot())
-      .map(SnapshotName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[DeleteSnapshotRequest](msg),
-        identity
-      )
+      .getOrElse(throw RequestSeemsToBeInvalid[DeleteSnapshotRequest]("Snapshot name is empty"))
   }
 
   override protected def repositoriesFrom(request: DeleteSnapshotRequest): Set[RepositoryName] = Set {
-    NonEmptyString
+    RepositoryName
       .from(request.repository())
-      .map(RepositoryName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[CreateSnapshotRequest](msg),
-        identity
-      )
+      .getOrElse(throw RequestSeemsToBeInvalid[DeleteSnapshotRequest]("Repository name is empty"))
   }
 
-  override protected def indicesFrom(request: DeleteSnapshotRequest): Set[IndexName] = Set.empty
+  override protected def indicesFrom(request: DeleteSnapshotRequest): Set[ClusterIndexName] = Set.empty
 
   override protected def modifyRequest(blockContext: SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {
@@ -99,7 +89,7 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
   private def update(actionRequest: DeleteSnapshotRequest,
                      snapshot: SnapshotName,
                      repository: RepositoryName) = {
-    actionRequest.snapshot(snapshot.value.value)
-    actionRequest.repository(repository.value.value)
+    actionRequest.snapshot(SnapshotName.toString(snapshot))
+    actionRequest.repository(RepositoryName.toString(repository))
   }
 }

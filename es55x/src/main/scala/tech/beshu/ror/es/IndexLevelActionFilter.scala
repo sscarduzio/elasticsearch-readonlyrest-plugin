@@ -67,7 +67,17 @@ class IndexLevelActionFilter(settings: Settings,
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
 
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
-    new EsServerBasedRorClusterService(clusterService, client), settings, threadPool
+    new EsServerBasedRorClusterService(
+      settings,
+      clusterService,
+      TransportServiceInterceptor.remoteClusterServiceSupplier,
+      SnapshotsServiceInterceptor.snapshotsServiceSupplier,
+      client,
+      threadPool
+    ),
+    settings,
+    client,
+    threadPool
   )
 
   private val startingTaskCancellable = startRorInstance()
@@ -127,20 +137,15 @@ class IndexLevelActionFilter(settings: Settings,
                             listener: ActionListener[ActionResponse],
                             chain: ActionFilterChain[ActionRequest, ActionResponse],
                             channel: RorRestChannel): Unit = {
-    TransportServiceInterceptor.remoteClusterServiceSupplier.get() match {
-      case Some(remoteClusterService) =>
-        aclAwareRequestFilter
-          .handle(
-            engine,
-            EsContext(channel, task, action, request, listener, chain, remoteClusterService.isCrossClusterSearchEnabled)
-          )
-          .runAsync {
-            case Right(_) =>
-            case Left(ex) => listener.onFailure(new Exception(ex))
-          }
-      case None =>
-        listener.onFailure(new Exception("Cluster service not ready yet. Cannot continue"))
-    }
+    aclAwareRequestFilter
+      .handle(
+        engine,
+        EsContext(channel, task, action, request, listener, chain)
+      )
+      .runAsync {
+        case Right(_) =>
+        case Left(ex) => listener.onFailure(new Exception(ex))
+      }
   }
 
   private def startRorInstance() = doPrivileged {

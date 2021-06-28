@@ -18,14 +18,12 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
-import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
@@ -39,23 +37,18 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
   extends BaseSnapshotEsRequestContext[RestoreSnapshotRequest](actionRequest, esContext, clusterService, threadPool) {
 
   override protected def snapshotsFrom(request: RestoreSnapshotRequest): Set[domain.SnapshotName] =
-    NonEmptyString
+    SnapshotName
       .from(request.snapshot())
-      .map(SnapshotName.apply)
-      .toOption.toSet
+      .toSet
 
   override protected def repositoriesFrom(request: RestoreSnapshotRequest): Set[domain.RepositoryName] = Set {
-    NonEmptyString
+    RepositoryName
       .from(request.repository())
-      .map(RepositoryName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[CreateSnapshotRequest](msg),
-        identity
-      )
+      .getOrElse(throw RequestSeemsToBeInvalid[RestoreSnapshotRequest]("Repository name is empty"))
   }
 
-  override protected def indicesFrom(request: RestoreSnapshotRequest): Set[domain.IndexName] =
-    indicesOrWildcard(request.indices.asSafeSet.flatMap(IndexName.fromString))
+  override protected def indicesFrom(request: RestoreSnapshotRequest): Set[domain.ClusterIndexName] =
+    indicesOrWildcard(request.indices.asSafeSet.flatMap(ClusterIndexName.fromString))
 
   override protected def modifyRequest(blockContext: BlockContext.SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {
@@ -108,9 +101,9 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
   private def update(request: RestoreSnapshotRequest,
                      snapshot: SnapshotName,
                      repository: RepositoryName,
-                     indices: NonEmptyList[IndexName]) = {
-    request.snapshot(snapshot.value.value)
-    request.repository(repository.value.value)
-    request.indices(indices.toList.map(_.value.value): _*)
+                     indices: NonEmptyList[ClusterIndexName]) = {
+    request.snapshot(SnapshotName.toString(snapshot))
+    request.repository(RepositoryName.toString(repository))
+    request.indices(indices.toList.map(_.stringify): _*)
   }
 }

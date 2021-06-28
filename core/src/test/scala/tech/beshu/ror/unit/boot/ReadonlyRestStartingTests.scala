@@ -29,7 +29,7 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.Inside
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{CoreFactory, CoreSettings}
@@ -43,6 +43,7 @@ import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesP
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{getResourceContent, getResourcePath, rorConfigFromResource}
 import eu.timepit.refined.auto._
+import tech.beshu.ror.utils.TestsUtils._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -59,7 +60,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
       "index is not available but file config is provided" in {
         val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         (mockedIndexJsonContentManager.sourceOf _)
-          .expects(IndexName(".readonlyrest"), "1")
+          .expects(fullIndexName(".readonlyrest"), "1")
           .repeated(5)
           .returns(Task.now(Left(CannotReachContentSource)))
 
@@ -300,7 +301,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
       "index config doesn't exist and file config is malformed" in {
         val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         (mockedIndexJsonContentManager.sourceOf _)
-          .expects(IndexName(".readonlyrest"), "1")
+          .expects(fullIndexName(".readonlyrest"), "1")
           .repeated(5)
           .returns(Task.now(Left(ContentNotFound)))
 
@@ -319,7 +320,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
       "index config doesn't exist and file config cannot be loaded" in {
         val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         (mockedIndexJsonContentManager.sourceOf _)
-          .expects(IndexName(".readonlyrest"), "1")
+          .expects(fullIndexName(".readonlyrest"), "1")
           .repeated(5)
           .returns(Task.now(Left(ContentNotFound)))
 
@@ -536,7 +537,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
                                                       resourceFileName: String,
                                                       repeatedCount: Int = 1) = {
     (mockedManager.sourceOf _)
-      .expects(IndexName(".readonlyrest"), "1")
+      .expects(fullIndexName(".readonlyrest"), "1")
       .repeated(repeatedCount)
       .returns(Task.now(Right(
         Map("settings" -> getResourceContent(resourceFileName).asInstanceOf[Any]).asJava
@@ -548,7 +549,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
                                                   resourceFileName: String,
                                                   saveResult: Task[Either[WriteError, Unit]] = Task.now(Right(()))) = {
     (mockedManager.saveContent _)
-      .expects(IndexName(".readonlyrest"), "1", Map("settings" -> getResourceContent(resourceFileName)).asJava)
+      .expects(fullIndexName(".readonlyrest"), "1", Map("settings" -> getResourceContent(resourceFileName)).asJava)
       .once()
       .returns(saveResult)
     mockedManager

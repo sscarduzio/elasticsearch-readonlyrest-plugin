@@ -85,8 +85,8 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
       .toList
   }
 
-  private def indicesFrom(item: MultiGetRequest.Item): Set[domain.IndexName] = {
-    val requestIndices = item.indices.flatMap(IndexName.fromString).toSet
+  private def indicesFrom(item: MultiGetRequest.Item): Set[domain.ClusterIndexName] = {
+    val requestIndices = item.indices.flatMap(ClusterIndexName.fromString).toSet
     indicesOrWildcard(requestIndices)
   }
 
@@ -100,21 +100,21 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     }
   }
 
-  private def updateItemWithIndices(item: MultiGetRequest.Item, indices: Set[IndexName]) = {
+  private def updateItemWithIndices(item: MultiGetRequest.Item, indices: Set[ClusterIndexName]) = {
     indices.toList match {
       case Nil => updateItemWithNonExistingIndex(item)
       case index :: rest =>
         if (rest.nonEmpty) {
           logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.toList.mkString(",")}]")
         }
-        item.index(index.value.value)
+        item.index(index.stringify)
     }
   }
 
   private def updateItemWithNonExistingIndex(item: MultiGetRequest.Item): Unit = {
     val originRequestIndices = indicesFrom(item).toList
     val notExistingIndex = originRequestIndices.randomNonexistentIndex()
-    item.index(notExistingIndex.value.value)
+    item.index(notExistingIndex.stringify)
   }
 
   private def updateFunction(filter: Option[Filter],

@@ -16,18 +16,19 @@
  */
 package tech.beshu.ror.es.request.context
 
-import java.net.InetSocketAddress
 import java.time.Instant
 
 import cats.data.NonEmptyList
 import cats.implicits._
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
+import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.CompositeIndicesRequest
 import org.elasticsearch.action.search.SearchRequest
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -36,7 +37,6 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.utils.RCUtils
 
 import scala.collection.JavaConverters._
-import scala.util.Try
 
 abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
                                                        clusterService: RorClusterService)
@@ -50,7 +50,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override val taskId: Long = esContext.task.getId
 
-  override lazy val id: RequestContext.Id = RequestContext.Id(esContext.requestId)
+  override lazy implicit val id: RequestContext.Id = RequestContext.Id(esContext.requestId)
 
   override lazy val action: Action = Action(esContext.actionType)
 
@@ -124,13 +124,15 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy val content: String = if (restRequest.content == null) "" else restRequest.content().utf8ToString()
 
-  override lazy val allIndicesAndAliases: Set[IndexWithAliases] =
-    clusterService
-      .allIndicesAndAliases
-      .map { case (indexName, aliases) => IndexWithAliases(indexName, aliases) }
-      .toSet
+  override lazy val allIndicesAndAliases: Set[FullLocalIndexWithAliases] =
+    clusterService.allIndicesAndAliases
+
+  override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] =
+    clusterService.allRemoteIndicesAndAliases.memoize
 
   override lazy val allTemplates: Set[Template] = clusterService.allTemplates
+
+  override lazy val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = clusterService.allSnapshots
 
   override lazy val isReadOnlyRequest: Boolean = RCUtils.isReadRequest(action.value)
 
@@ -145,10 +147,8 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
-  override val hasRemoteClusters: Boolean = esContext.crossClusterSearchEnabled
-
-  protected def indicesOrWildcard(indices: Set[IndexName]): Set[IndexName] = {
-    if (indices.nonEmpty) indices else Set(IndexName.wildcard)
+  protected def indicesOrWildcard(indices: Set[ClusterIndexName]): Set[ClusterIndexName] = {
+    if (indices.nonEmpty) indices else Set(ClusterIndexName.Local.wildcard)
   }
 
   protected def repositoriesOrWildcard(repositories: Set[RepositoryName]): Set[RepositoryName] = {

@@ -19,25 +19,25 @@ package tech.beshu.ror.unit.acl.domain
 import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.utils.TestsUtils._
 
 class IndexNameTests extends AnyWordSpec {
 
-  "IndexName.match" should {
+  "indexName.match" should {
     "follow given rules" in {
-      (IndexName("test*") matches IndexName("test*")) should be(true)
-      (IndexName("test*") matches IndexName("te*")) should be(false)
-      (IndexName("test*") matches IndexName("tests*")) should be(true)
-      (IndexName("test*") matches IndexName("test")) should be(true)
-      (IndexName("test*") matches IndexName("te")) should be(false)
-      (IndexName("test*") matches IndexName("tests")) should be(true)
+      (clusterIndexName("test*") matches clusterIndexName("test*")) should be(true)
+      (clusterIndexName("test*") matches clusterIndexName("te*")) should be(false)
+      (clusterIndexName("test*") matches clusterIndexName("tests*")) should be(true)
+      (clusterIndexName("test*") matches clusterIndexName("test")) should be(true)
+      (clusterIndexName("test*") matches clusterIndexName("te")) should be(false)
+      (clusterIndexName("test*") matches clusterIndexName("tests")) should be(true)
 
-      (IndexName("test") matches IndexName("test*")) should be(false)
-      (IndexName("test") matches IndexName("te*")) should be(false)
-      (IndexName("test") matches IndexName("tests*")) should be(false)
-      (IndexName("test") matches IndexName("test")) should be(true)
-      (IndexName("test") matches IndexName("te")) should be(false)
-      (IndexName("test") matches IndexName("tests")) should be(false)
+      (clusterIndexName("test") matches clusterIndexName("test*")) should be(false)
+      (clusterIndexName("test") matches clusterIndexName("te*")) should be(false)
+      (clusterIndexName("test") matches clusterIndexName("tests*")) should be(false)
+      (clusterIndexName("test") matches clusterIndexName("test")) should be(true)
+      (clusterIndexName("test") matches clusterIndexName("te")) should be(false)
+      (clusterIndexName("test") matches clusterIndexName("tests")) should be(false)
     }
   }
 }

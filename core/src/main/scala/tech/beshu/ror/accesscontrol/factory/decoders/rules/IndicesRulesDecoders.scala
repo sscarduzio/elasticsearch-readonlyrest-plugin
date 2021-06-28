@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import cats.data.NonEmptySet
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
@@ -26,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.{RepositoriesRule, SnapshotsRul
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.IndicesDecodersHelper._
@@ -50,7 +49,7 @@ object IndicesRuleDecoders
 
   private lazy val indicesRuleSimpleDecoder: Decoder[RuleWithVariableUsageDefinition[IndicesRule]] =
     DecoderHelpers
-      .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[IndexName]]
+      .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]]
       .map(indices =>
         RuleWithVariableUsageDefinition.create(
           new IndicesRule(
@@ -63,7 +62,7 @@ object IndicesRuleDecoders
   private lazy val indicesRuleExtendedDecoder: Decoder[RuleWithVariableUsageDefinition[IndicesRule]] = {
     Decoder.instance { c =>
       for {
-        indices <- c.downField("patterns").as[NonEmptySet[RuntimeMultiResolvableVariable[IndexName]]]
+        indices <- c.downField("patterns").as[NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]]]
         mustInvolveIndices <- c.downFields("must_involve_indices").as[Option[Boolean]]
       } yield {
         RuleWithVariableUsageDefinition.create(
@@ -76,8 +75,8 @@ object IndicesRuleDecoders
     }
   }
 
-  private implicit lazy val indexNameVariablesDecoder: Decoder[NonEmptySet[RuntimeMultiResolvableVariable[IndexName]]] = {
-    DecoderHelpers.decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[IndexName]]
+  private implicit lazy val indexNameVariablesDecoder: Decoder[NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]]] = {
+    DecoderHelpers.decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]]
   }
 }
 
@@ -89,9 +88,9 @@ object SnapshotsRuleDecoder
       .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]]
       .toSyncDecoder
       .emapE { snapshots =>
-        if (SnapshotDecodersHelper.checkIfAlreadyResolvedSnapshotVariableContains(snapshots, SnapshotName.all))
+        if (SnapshotDecodersHelper.checkIfAlreadyResolvedSnapshotVariableContains(snapshots, SnapshotName.All))
           Left(RulesLevelCreationError(Message(s"Setting up a rule (${SnapshotsRule.Name.show}) that matches all the values is redundant - snapshot ${SnapshotName.all.show}")))
-        else if (SnapshotDecodersHelper.checkIfAlreadyResolvedSnapshotVariableContains(snapshots, SnapshotName.wildcard))
+        else if (SnapshotDecodersHelper.checkIfAlreadyResolvedSnapshotVariableContains(snapshots, SnapshotName.Wildcard))
           Left(RulesLevelCreationError(Message(s"Setting up a rule (${SnapshotsRule.Name.show}) that matches all the values is redundant - snapshot ${SnapshotName.wildcard.show}")))
         else
           Right(snapshots)
@@ -124,10 +123,10 @@ object RepositoriesRuleDecoder
 private object RepositoriesDecodersHelper {
   private implicit val indexNameConvertible: Convertible[RepositoryName] = new Convertible[RepositoryName] {
     override def convert: String => Either[Convertible.ConvertError, RepositoryName] = str =>
-      NonEmptyString
-        .from(str)
-        .map(RepositoryName.apply)
-        .left.map(_ => Convertible.ConvertError("Repository name cannot be empty"))
+      RepositoryName.from(str) match {
+        case Some(value) => Right(value)
+        case None => Left(Convertible.ConvertError("Repository name cannot be empty"))
+      }
   }
   implicit val repositoryValueDecoder: Decoder[RuntimeMultiResolvableVariable[RepositoryName]] =
     DecoderHelpers
@@ -144,7 +143,7 @@ private object RepositoriesDecodersHelper {
                                                                       repository: RepositoryName): Boolean = {
     repositoriesVars
       .find {
-        case AlreadyResolved(indices) => indices.contains_(repository)
+        case AlreadyResolved(repositories) => repositories.contains_(repository)
         case ToBeResolved(_) => false
       }
       .isDefined
@@ -154,10 +153,10 @@ private object RepositoriesDecodersHelper {
 private object SnapshotDecodersHelper {
   private implicit val snapshotNameConvertible: Convertible[SnapshotName] = new Convertible[SnapshotName] {
     override def convert: String => Either[Convertible.ConvertError, SnapshotName] = str =>
-      NonEmptyString
-        .from(str)
-        .map(SnapshotName.apply)
-        .left.map(_ => Convertible.ConvertError("Snapshot name cannot be empty"))
+      SnapshotName.from(str) match {
+        case Some(value) => Right(value)
+        case None => Left(Convertible.ConvertError("Snapshot name cannot be empty"))
+      }
   }
   implicit val snapshotNameValueDecoder: Decoder[RuntimeMultiResolvableVariable[SnapshotName]] =
     DecoderHelpers
@@ -182,26 +181,25 @@ private object SnapshotDecodersHelper {
 }
 
 private object IndicesDecodersHelper {
-  private implicit val indexNameConvertible: Convertible[IndexName] = new Convertible[IndexName] {
-    override def convert: String => Either[Convertible.ConvertError, IndexName] = str =>
-      NonEmptyString
-        .from(str)
-        .map(IndexName.apply)
-        .left.map(_ => Convertible.ConvertError("Index name cannot be empty"))
+  private implicit val indexNameConvertible: Convertible[ClusterIndexName] = new Convertible[ClusterIndexName] {
+    override def convert: String => Either[Convertible.ConvertError, ClusterIndexName] = str =>
+      ClusterIndexName
+        .fromString(str)
+        .toRight(Convertible.ConvertError("Index name cannot be empty"))
   }
-  implicit val indexNameValueDecoder: Decoder[RuntimeMultiResolvableVariable[IndexName]] =
+  implicit val indexNameValueDecoder: Decoder[RuntimeMultiResolvableVariable[ClusterIndexName]] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .toSyncDecoder
       .emapE { str =>
         RuntimeResolvableVariableCreator
-          .createMultiResolvableVariableFrom[IndexName](str)
+          .createMultiResolvableVariableFrom[ClusterIndexName](str)
           .left.map(error => RulesLevelCreationError(Message(error.show)))
       }
       .decoder
 
-  private[rules] def checkIfAlreadyResolvedIndexVariableContains(indicesVars: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
-                                                                 indexName: IndexName): Boolean = {
+  private[rules] def checkIfAlreadyResolvedIndexVariableContains(indicesVars: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
+                                                                 indexName: ClusterIndexName): Boolean = {
     indicesVars
       .find {
         case AlreadyResolved(indices) => indices.contains_(indexName)

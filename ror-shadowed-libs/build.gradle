@@ -24,6 +24,7 @@ buildscript {
     }
 
     dependencies {
+        classpath group: 'org.owasp',                                    name: 'dependency-check-gradle',  version: '6.1.6'
         classpath 'com.github.jengelman.gradle.plugins:shadow:4.0.4'
     }
 }
@@ -37,6 +38,7 @@ repositories {
 apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'java'
 apply plugin: 'maven'
+apply plugin: 'org.owasp.dependencycheck'
 
 configurations {
     shadowCompile
@@ -49,11 +51,14 @@ compileJava {
 }
 
 dependencies {
-    shadowCompile group: 'com.fasterxml.jackson.dataformat',      name: 'jackson-dataformat-yaml',                version: '2.9.10'
-    shadowCompile group: 'com.fasterxml.jackson.core',            name: 'jackson-databind',                       version: '2.9.10.7'
+    shadowCompile group: 'com.fasterxml.jackson.dataformat',      name: 'jackson-dataformat-yaml',                version: '2.12.3'
+    shadowCompile group: 'com.fasterxml.jackson.core',            name: 'jackson-databind',                       version: '2.12.3'
     shadowCompile group: 'com.jayway.jsonpath',                   name: 'json-path',                              version: '2.2.0'
-    // because of https://bitbucket.org/asomov/snakeyaml/issues/462/memory-leak
-    shadowCompile group: 'org.yaml',                              name: 'snakeyaml',                              version: '1.17'
+    shadowCompile(group: 'net.minidev',                           name: 'json-smart'){
+        version {
+            strictly '2.4.7'
+        }
+    }
 }
 
 shadowJar {
