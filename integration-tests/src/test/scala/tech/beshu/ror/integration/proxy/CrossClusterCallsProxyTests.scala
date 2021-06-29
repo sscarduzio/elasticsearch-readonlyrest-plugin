@@ -19,4 +19,5 @@ package tech.beshu.ror.integration.proxy
 import tech.beshu.ror.integration.suites.CrossClusterCallsSuite
 import tech.beshu.ror.integration.utils.ProxyTestSupport
 
-class CrossClusterCallsProxyTests extends CrossClusterCallsSuite with ProxyTestSupport
+// todo: CCS hasn't been working well with ROR proxy yet
+//class CrossClusterCallsProxyTests extends CrossClusterCallsSuite with ProxyTestSupport

@@ -19,6 +19,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import java.time.Clock
 
 import cats.data.NonEmptyList
+import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
@@ -50,7 +51,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
   protected implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
   protected def factory(propertiesProvider: TestsPropertiesProvider = TestsPropertiesProvider.default,
-                        rorMode: RorMode = RorMode.Plugin) = {
+                        rorMode: RorMode = RorMode.Plugin): RawRorConfigBasedCoreFactory = {
     implicit val _ = propertiesProvider
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
@@ -65,7 +66,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
       aFactory
         .createCoreFrom(
           rorConfigFromUnsafe(yaml),
-          RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
+          RorConfigurationIndex(IndexName.Full(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider
         )
@@ -86,7 +87,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
       aFactory
         .createCoreFrom(
           rorConfigFromUnsafe(yaml),
-          RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
+          RorConfigurationIndex(IndexName.Full(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider
         )

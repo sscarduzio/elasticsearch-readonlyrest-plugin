@@ -8,7 +8,7 @@
 |---|---|
 | [![Build Status Develop](https://dev.azure.com/beshu-tech/ReadonlyREST%20for%20Elasticsearch/_apis/build/status/ror?branchName=develop)](https://dev.azure.com/scarduzio/ROR/_build/latest?definitionId=1&branchName=develop) | [![Build Status Master](https://dev.azure.com/beshu-tech/ReadonlyREST%20for%20Elasticsearch/_apis/build/status/ror?branchName=master)](https://dev.azure.com/scarduzio/ROR/_build/latest?definitionId=1&branchName=master) |
 ## Supporters 
-Thanks **@Id57, Jeff Saxe, GoodMirek** for donating!
+Thanks **Jeff Saxe** for donating!
 
 [![Patreon](http://i.imgur.com/Fw6Kft4.png)](https://www.patreon.com/readonlyrest) [![Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/sscarduzio/donate) 
 

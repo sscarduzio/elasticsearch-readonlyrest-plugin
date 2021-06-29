@@ -31,27 +31,27 @@ import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 
-class SearchEsRequestContext(actionRequest: SearchRequest,
+    class SearchEsRequestContext(actionRequest: SearchRequest,
                              esContext: EsContext,
                              aclContext: AccessControlStaticContext,
                              clusterService: RorClusterService,
-                             override val threadPool: ThreadPool)
+                             override implicit val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def requestFieldsUsage: RequestFieldsUsage = actionRequest.checkFieldsUsage()
 
-  override protected def indicesFrom(request: SearchRequest): Set[IndexName] = {
-    request.indices.asSafeSet.flatMap(IndexName.fromString)
+  override protected def indicesFrom(request: SearchRequest): Set[ClusterIndexName] = {
+    request.indices.asSafeSet.flatMap(ClusterIndexName.fromString)
   }
 
   override protected def update(request: SearchRequest,
-                                indices: NonEmptyList[IndexName],
+                                indices: NonEmptyList[ClusterIndexName],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     request
       .applyFilterToQuery(filter)
-      .applyFieldLevelSecurity(fieldLevelSecurity, threadPool, id)
-      .indices(indices.toList.map(_.value.value): _*)
+      .applyFieldLevelSecurity(fieldLevelSecurity)
+      .indices(indices.toList.map(_.stringify): _*)
 
     ModificationResult.UpdateResponse.using(filterFieldsFromResponse(fieldLevelSecurity))
   }

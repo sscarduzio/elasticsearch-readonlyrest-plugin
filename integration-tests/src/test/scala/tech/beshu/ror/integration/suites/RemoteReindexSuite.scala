@@ -17,6 +17,7 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
+import org.apache.http.HttpStatus
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -74,36 +75,36 @@ trait RemoteReindexSuite
       "request specifies source and dest index that are allowed on both source and dest ES" in {
         val result = destEsIndexManager.reindex(createReindexSource("test1_index", "dev1"), "test1_index_reindexed")
 
-        result.isSuccess should be(true)
+        result.responseCode should be(200)
       }
     }
     "be blocked by dest ES" when {
       "request specifies source index that is allowed, but dest that isn't allowed" in {
         val result = destEsIndexManager.reindex(createReindexSource("test1_index", "dev1"), "not_allowed_index")
 
-        result.isForbidden should be(true)
+        result.responseCode should be(401)
       }
       "request specifies source index that isn't allowed, but dest that is allowed" in {
         val result = destEsIndexManager.reindex(createReindexSource("not_allowed_index", "dev1"), "test1_index_reindexed")
 
-        result.isForbidden should be(true)
+        result.responseCode should be(401)
       }
       "request specifies both source index and dest index that are not allowed" in {
         val result = destEsIndexManager.reindex(createReindexSource("not_allowed_index", "dev1"), "not_allowed_index_reindexed")
 
-        result.isForbidden should be(true)
+        result.responseCode should be(401)
       }
     }
     "be blocked by source ES" when {
       "request specifies source index that is allowed on dest ES, but is not allowed on source ES" in {
         val result = destEsIndexManager.reindex(createReindexSource("test1_index", "dev3"), "test1_index_reindexed")
 
-        result.isForbidden should be(true)
+        result.responseCode should be(401)
       }
       "request specifies index which is allowed, but is not present in source ES" in {
         val result = destEsIndexManager.reindex(createReindexSource("test2_index", "dev4"), "test2_index_reindexed")
 
-        result.isNotFound should be(true)
+        result.responseCode should be(404)
       }
     }
   }

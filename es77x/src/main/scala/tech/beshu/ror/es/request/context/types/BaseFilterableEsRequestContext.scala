@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, ClusterIndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
@@ -49,7 +49,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
       logger.debug(s"[${id.show}] Discovered indices: ${indices.map(_.show).mkString(",")}")
       indices
     },
-    Set(IndexName.wildcard),
+    Set(ClusterIndexName.Local.wildcard),
     None,
     None,
     requestFieldsUsage
@@ -83,10 +83,10 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
     }
   }
 
-  protected def indicesFrom(request: R): Set[IndexName]
+  protected def indicesFrom(request: R): Set[ClusterIndexName]
 
   protected def update(request: R,
-                       indices: NonEmptyList[IndexName],
+                       indices: NonEmptyList[ClusterIndexName],
                        filter: Option[Filter],
                        fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult
 

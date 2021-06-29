@@ -25,7 +25,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingIndexTemplateAndGetAllowedOnes, GettingIndexTemplates}
-import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateNamePattern, TemplateOperation}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, TemplateNamePattern, TemplateOperation}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
@@ -129,7 +129,7 @@ abstract class SimulateTemplateRequestEsRequestContext[O <: TemplateOperation](a
   extends BaseTemplatesEsRequestContext[SimulateTemplateAction.Request, O](actionRequest, esContext, clusterService, threadPool) {
 
   protected def updateResponse(allowedTemplates: List[TemplateNamePattern],
-                               allowedIndices: List[IndexName]): ModificationResult.UpdateResponse = {
+                               allowedIndices: List[ClusterIndexName]): ModificationResult.UpdateResponse = {
     ModificationResult.UpdateResponse {
       case response: SimulateIndexTemplateResponse =>
         Task.now(filterTemplatesIn(response, allowedTemplates, allowedIndices))
@@ -140,7 +140,7 @@ abstract class SimulateTemplateRequestEsRequestContext[O <: TemplateOperation](a
 
   private def filterTemplatesIn(response: SimulateIndexTemplateResponse,
                                 allowedTemplates: List[TemplateNamePattern],
-                                allowedIndices: List[IndexName]): SimulateIndexTemplateResponse = {
+                                allowedIndices: List[ClusterIndexName]): SimulateIndexTemplateResponse = {
     val tunedResponse = new TunedSimulateIndexTemplateResponse(response)
     val filterResponse = filterOverlappingTemplates(allowedTemplates) andThen filterAliasesAndIndexPatternsIn(allowedIndices)
     filterResponse(tunedResponse).underlying
@@ -153,7 +153,7 @@ abstract class SimulateTemplateRequestEsRequestContext[O <: TemplateOperation](a
     response.overlappingTemplates(filteredOverlappingTemplates)
   }
 
-  private def filterAliasesAndIndexPatternsIn(allowedIndices: List[IndexName]) = (response: TunedSimulateIndexTemplateResponse) => {
+  private def filterAliasesAndIndexPatternsIn(allowedIndices: List[ClusterIndexName]) = (response: TunedSimulateIndexTemplateResponse) => {
     new TunedSimulateIndexTemplateResponse(
       SimulateIndexTemplateRequestEsRequestContext.filterAliasesAndIndexPatternsIn(response.underlying, allowedIndices)
     )

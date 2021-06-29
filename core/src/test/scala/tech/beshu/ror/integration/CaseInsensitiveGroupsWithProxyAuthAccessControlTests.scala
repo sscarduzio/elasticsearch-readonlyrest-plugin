@@ -17,19 +17,20 @@
 package tech.beshu.ror.integration
 
 import eu.timepit.refined.auto._
-import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.Allow
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, IndexWithAliases, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, FullLocalIndexWithAliases, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
+class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
+  with BaseYamlLoadedAccessControlTest with Inside {
+
   override protected def configYaml: String =
     """
       |readonlyrest:
@@ -59,10 +60,10 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec w
         "user i user1" in {
           val request = MockRequestContext.indices.copy(
             headers = Set(header("X-Auth-Token", "user1-proxy-id")),
-            filteredIndices = Set(IndexName("g12_index")),
+            filteredIndices = Set(clusterIndexName("g12_index")),
             allIndicesAndAliases = Set(
-              IndexWithAliases(IndexName("g12_index"), Set.empty),
-              IndexWithAliases(IndexName("g34_index"), Set.empty)
+              FullLocalIndexWithAliases(fullIndexName("g12_index"), Set.empty),
+              FullLocalIndexWithAliases(fullIndexName("g34_index"), Set.empty)
             )
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -75,10 +76,10 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec w
         "user i User1" in {
           val request = MockRequestContext.indices.copy(
             headers = Set(header("X-Auth-Token", "User1-proxy-id")),
-            filteredIndices = Set(IndexName("g12_index")),
+            filteredIndices = Set(clusterIndexName("g12_index")),
             allIndicesAndAliases = Set(
-              IndexWithAliases(IndexName("g12_index"), Set.empty),
-              IndexWithAliases(IndexName("g34_index"), Set.empty)
+              FullLocalIndexWithAliases(fullIndexName("g12_index"), Set.empty),
+              FullLocalIndexWithAliases(fullIndexName("g34_index"), Set.empty)
             )
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()

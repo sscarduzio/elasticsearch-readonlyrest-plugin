@@ -24,7 +24,7 @@ import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -54,8 +54,8 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
       .getOrElse(throw RequestSeemsToBeInvalid[GetSnapshotsRequest]("Repository name is empty"))
   }
 
-  override protected def indicesFrom(request: GetSnapshotsRequest): Set[domain.IndexName] =
-    Set(IndexName.wildcard)
+  override protected def indicesFrom(request: GetSnapshotsRequest): Set[domain.ClusterIndexName] =
+    Set(ClusterIndexName.Local.wildcard)
 
   override protected def modifyRequest(blockContext: BlockContext.SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {
@@ -104,13 +104,13 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   }
 
   private def updateGetSnapshotResponse(response: GetSnapshotsResponse,
-                                        allAllowedIndices: Set[IndexName]): GetSnapshotsResponse = {
+                                        allAllowedIndices: Set[ClusterIndexName]): GetSnapshotsResponse = {
     val matcher = MatcherWithWildcardsScalaAdapter.create(allAllowedIndices)
     response
       .getSnapshots.asSafeList
       .foreach { snapshot =>
-        val snapshotIndices = snapshot.indices().asSafeList.flatMap(IndexName.fromString).toSet
-        val filteredSnapshotIndices = matcher.filter(snapshotIndices).map(_.value.value).toList.asJava
+        val snapshotIndices = snapshot.indices().asSafeList.flatMap(ClusterIndexName.fromString).toSet
+        val filteredSnapshotIndices = matcher.filter(snapshotIndices).map(_.stringify).toList.asJava
         on(snapshot).set("indices", filteredSnapshotIndices)
         snapshot
       }

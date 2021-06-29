@@ -23,7 +23,7 @@ import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{ResolvedAlias, ResolvedIndex}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect._
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -40,14 +40,14 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
                                    override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ResolveIndexAction.Request](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ResolveIndexAction.Request): Set[domain.IndexName] = indicesOrWildcard {
-    request.indices().asSafeList.flatMap(IndexName.fromString).toSet
+  override protected def indicesFrom(request: ResolveIndexAction.Request): Set[domain.ClusterIndexName] = indicesOrWildcard {
+    request.indices().asSafeList.flatMap(ClusterIndexName.fromString).toSet
   }
 
   override protected def update(request: ResolveIndexAction.Request,
-                                filteredIndices: NonEmptyList[IndexName],
-                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
-    request.indices(filteredIndices.toList.map(_.value.value): _*)
+                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+    request.indices(filteredIndices.toList.map(_.stringify): _*)
     ModificationResult.UpdateResponse(resp => Task.now(filterResponse(resp, allAllowedIndices)))
   }
 
@@ -57,7 +57,7 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
     Modified
   }
 
-  private def filterResponse(response: ActionResponse, indices: NonEmptyList[IndexName]): ActionResponse = {
+  private def filterResponse(response: ActionResponse, indices: NonEmptyList[ClusterIndexName]): ActionResponse = {
     response match {
       case r: ResolveIndexAction.Response =>
         new ResolveIndexAction.Response(
@@ -69,7 +69,7 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
     }
   }
 
-  private def secureResolvedIndex(resolvedIndex: ResolvedIndex, allowedIndices: NonEmptyList[IndexName]) = {
+  private def secureResolvedIndex(resolvedIndex: ResolvedIndex, allowedIndices: NonEmptyList[ClusterIndexName]) = {
     if (isAllowed(resolvedIndex.getName, allowedIndices)) {
       val allowedResolvedAliases = resolvedIndex
         .getAliases.asSafeList
@@ -85,7 +85,7 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
     }
   }
 
-  private def secureResolvedAlias(resolvedAlias: ResolvedAlias, allowedIndices: NonEmptyList[IndexName]) = {
+  private def secureResolvedAlias(resolvedAlias: ResolvedAlias, allowedIndices: NonEmptyList[ClusterIndexName]) = {
     if (isAllowed(resolvedAlias.getName, allowedIndices)) {
       val allowedResolvedIndices = resolvedAlias
         .getIndices.asSafeList
@@ -99,8 +99,9 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
     }
   }
 
-  private def isAllowed(aliasOrIndex: String, allowedIndices: NonEmptyList[IndexName]) = {
-    val resolvedAliasOrIndexName = IndexName.fromUnsafeString(aliasOrIndex)
+  private def isAllowed(aliasOrIndex: String, allowedIndices: NonEmptyList[ClusterIndexName]) = {
+    val resolvedAliasOrIndexName = ClusterIndexName.Local.fromString(aliasOrIndex)
+      .getOrElse(throw new IllegalStateException(s"Cannot create IndexName from $aliasOrIndex"))
     allowedIndices.exists(_.matches(resolvedAliasOrIndexName))
   }
 

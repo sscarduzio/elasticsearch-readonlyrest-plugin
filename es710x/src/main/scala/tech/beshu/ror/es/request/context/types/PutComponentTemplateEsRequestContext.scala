@@ -20,7 +20,7 @@ import org.elasticsearch.action.admin.indices.template.put.PutComponentTemplateA
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.AddingComponentTemplate
-import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, TemplateName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
@@ -41,7 +41,7 @@ class PutComponentTemplateEsRequestContext(actionRequest: PutComponentTemplateAc
       name <- TemplateName
         .fromString(request.name())
         .toRight("Template name should be non-empty")
-      aliases = request.componentTemplate().template().aliases().asSafeMap.keys.flatMap(IndexName.fromString).toSet
+      aliases = request.componentTemplate().template().aliases().asSafeMap.keys.flatMap(ClusterIndexName.fromString).toSet
     } yield AddingComponentTemplate(name, aliases)
 
     templateOperation match {

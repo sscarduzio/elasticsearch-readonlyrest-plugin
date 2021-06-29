@@ -24,8 +24,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
-import tech.beshu.ror.configuration.loader.distributed.{NodesResponse, Summary}
 import tech.beshu.ror.configuration.loader.distributed.Summary.CurrentNodeHaveToProduceResult
+import tech.beshu.ror.configuration.loader.distributed.{NodesResponse, Summary}
 
 import scala.language.postfixOps
 
@@ -170,5 +170,5 @@ class SummaryTest extends AnyWordSpec {
     }
   }
 
-  private def configIndex(value: NonEmptyString) = RorConfigurationIndex(IndexName(value))
+  private def configIndex(value: NonEmptyString) = RorConfigurationIndex(IndexName.Full(value))
 }

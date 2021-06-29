@@ -22,6 +22,7 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
+import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.CompositeIndicesRequest
 import org.elasticsearch.action.search.SearchRequest
@@ -48,7 +49,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override val taskId: Long = esContext.task.getId
 
-  override lazy val id: RequestContext.Id = RequestContext.Id(esContext.requestId)
+  override lazy implicit val id: RequestContext.Id = RequestContext.Id(esContext.requestId)
 
   override lazy val action: Action = Action(esContext.actionType)
 
@@ -122,11 +123,10 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy val content: String = Option(restRequest.content()).map(_.utf8ToString()).getOrElse("")
 
-  override lazy val allIndicesAndAliases: Set[IndexWithAliases] =
-    clusterService
-      .allIndicesAndAliases
-      .map { case (indexName, aliases) => IndexWithAliases(indexName, aliases) }
-      .toSet
+  override lazy val allIndicesAndAliases: Set[FullLocalIndexWithAliases] =
+    clusterService.allIndicesAndAliases
+
+  override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = clusterService.allRemoteIndicesAndAliases
 
   override lazy val allTemplates: Set[Template] = clusterService.allTemplates
 
@@ -145,10 +145,8 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
-  override val hasRemoteClusters: Boolean = esContext.crossClusterSearchEnabled
-
-  protected def indicesOrWildcard(indices: Set[IndexName]): Set[IndexName] = {
-    if (indices.nonEmpty) indices else Set(IndexName.wildcard)
+  protected def indicesOrWildcard(indices: Set[ClusterIndexName]): Set[ClusterIndexName] = {
+    if (indices.nonEmpty) indices else Set(ClusterIndexName.Local.wildcard)
   }
 
   protected def repositoriesOrWildcard(repositories: Set[RepositoryName]): Set[RepositoryName] = {

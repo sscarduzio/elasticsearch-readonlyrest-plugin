@@ -24,7 +24,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -73,8 +73,8 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
       .toList
   }
 
-  private def indicesFrom(request: DocWriteRequest[_]): Set[domain.IndexName] = {
-    val requestIndices = request.indices.flatMap(IndexName.fromString).toSet
+  private def indicesFrom(request: DocWriteRequest[_]): Set[domain.ClusterIndexName] = {
+    val requestIndices = request.indices.flatMap(ClusterIndexName.fromString).toSet
     indicesOrWildcard(requestIndices)
   }
 
@@ -95,11 +95,11 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
     }
   }
 
-  private def updateRequestWithIndices(request: DocWriteRequest[_], indices: NonEmptyList[IndexName]) = {
+  private def updateRequestWithIndices(request: DocWriteRequest[_], indices: NonEmptyList[ClusterIndexName]) = {
     if (indices.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.toList.mkString(",")}]")
     }
-    request.index(indices.head.value.value)
+      request.index(indices.head.stringify)
   }
 
 }

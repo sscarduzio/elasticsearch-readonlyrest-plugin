@@ -21,7 +21,7 @@ import cats.implicits._
 import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
@@ -46,7 +46,7 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
       .getOrElse(throw RequestSeemsToBeInvalid[DeleteSnapshotRequest]("Repository name is empty"))
   }
 
-  override protected def indicesFrom(request: DeleteSnapshotRequest): Set[IndexName] = Set.empty
+  override protected def indicesFrom(request: DeleteSnapshotRequest): Set[ClusterIndexName] = Set.empty
 
   override protected def modifyRequest(blockContext: SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {

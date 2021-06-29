@@ -19,7 +19,7 @@ package tech.beshu.ror.es.request.context.types
 import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, CompositeIndicesRequest}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -33,9 +33,9 @@ class DummyCompositeIndicesEsRequestContext(actionRequest: ActionRequest with Co
                                             override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ActionRequest with CompositeIndicesRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[domain.IndexName] = Set.empty
+  override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[domain.ClusterIndexName] = Set.empty
 
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
-                                filteredIndices: NonEmptyList[domain.IndexName],
-                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = Modified
+                                filteredIndices: NonEmptyList[domain.ClusterIndexName],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = Modified
 }

@@ -42,7 +42,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RO)
-            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName(".readonlyrest")))
+            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
           }
         )
       }
@@ -60,7 +60,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RW)
-            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName(".readonlyrest")))
+            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
           }
         )
       }
@@ -78,7 +78,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.ROStrict)
-            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName(".readonlyrest")))
+            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
           }
         )
       }
@@ -96,7 +96,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Admin)
-            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName(".readonlyrest")))
+            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
           }
         )
       }
@@ -114,7 +114,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Unrestricted)
-            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName(".readonlyrest")))
+            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
           }
         )
       }

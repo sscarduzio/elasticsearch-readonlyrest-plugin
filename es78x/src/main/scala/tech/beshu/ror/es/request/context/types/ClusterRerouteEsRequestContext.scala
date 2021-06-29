@@ -21,7 +21,7 @@ import cats.implicits._
 import org.elasticsearch.action.admin.cluster.reroute.ClusterRerouteRequest
 import org.elasticsearch.cluster.routing.allocation.command._
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -37,7 +37,7 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
                                      override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ClusterRerouteRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ClusterRerouteRequest): Set[domain.IndexName] = {
+  override protected def indicesFrom(request: ClusterRerouteRequest): Set[domain.ClusterIndexName] = {
     request
       .getCommands.commands().asScala
       .flatMap(indexFrom)
@@ -45,8 +45,8 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
   }
 
   override protected def update(request: ClusterRerouteRequest,
-                                filteredIndices: NonEmptyList[IndexName],
-                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     val modifiedCommands = request
       .getCommands.commands().asScala
       .map(modifiedCommand(_, filteredIndices))
@@ -54,7 +54,7 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
     Modified
   }
 
-  private def modifiedCommand(command: AllocationCommand, allowedIndices: NonEmptyList[domain.IndexName]) = {
+  private def modifiedCommand(command: AllocationCommand, allowedIndices: NonEmptyList[domain.ClusterIndexName]) = {
     val indexFromCommand = indexFrom(command)
     indexFromCommand match {
       case None => command
@@ -71,22 +71,24 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
       case c: AllocateReplicaAllocationCommand => c.index()
       case c: AllocateStalePrimaryAllocationCommand => c.index()
     }
-    IndexName.fromString(indexNameStr)
+    ClusterIndexName.fromString(indexNameStr)
   }
 
   private def setNonExistentIndexFor(command: AllocationCommand) = {
-    val randomIndex = IndexName.randomNonexistentIndex(indexFrom(command).map(_.value.value).getOrElse(""))
+    val randomIndex = indexFrom(command)
+        .map(_.randomNonexistentIndex())
+        .getOrElse(ClusterIndexName.Local.randomNonexistentIndex())
     command match {
       case c: CancelAllocationCommand =>
-        new CancelAllocationCommand(randomIndex.value.value, c.shardId(), c.node(), c.allowPrimary())
+        new CancelAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.allowPrimary())
       case c: MoveAllocationCommand =>
-        new MoveAllocationCommand(randomIndex.value.value, c.shardId(), c.fromNode(), c.toNode)
+        new MoveAllocationCommand(randomIndex.stringify, c.shardId(), c.fromNode(), c.toNode)
       case c: AllocateEmptyPrimaryAllocationCommand =>
-        new AllocateEmptyPrimaryAllocationCommand(randomIndex.value.value, c.shardId(), c.node(), c.acceptDataLoss())
+        new AllocateEmptyPrimaryAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.acceptDataLoss())
       case c: AllocateReplicaAllocationCommand =>
-        new AllocateReplicaAllocationCommand(randomIndex.value.value, c.shardId(), c.node())
+        new AllocateReplicaAllocationCommand(randomIndex.stringify, c.shardId(), c.node())
       case c: AllocateStalePrimaryAllocationCommand =>
-        new AllocateStalePrimaryAllocationCommand(randomIndex.value.value, c.shardId(), c.node(), c.acceptDataLoss())
+        new AllocateStalePrimaryAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.acceptDataLoss())
     }
   }
 }

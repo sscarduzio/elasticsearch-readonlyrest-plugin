@@ -25,9 +25,8 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaAccessRule._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.IndexName.devNullKibana
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local.devNullKibana
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
@@ -78,11 +77,11 @@ class KibanaAccessRule(val settings: Settings)
   }
 
   private def determineKibanaIndex(blockContext: BlockContext) = {
-    blockContext.userMetadata.kibanaIndex.getOrElse(IndexName.kibana)
+    blockContext.userMetadata.kibanaIndex.getOrElse(ClusterIndexName.Local.kibana)
   }
 
   private def continueProcessing[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                          kibanaIndex: IndexName): RuleResult[B] = {
+                                                                          kibanaIndex: ClusterIndexName): RuleResult[B] = {
     val requestContext = blockContext.requestContext
     if (kibanaCanBeModified && isTargetingKibana(requestContext, kibanaIndex)) {
       if (Matchers.roMatcher.`match`(requestContext.action) ||
@@ -103,13 +102,16 @@ class KibanaAccessRule(val settings: Settings)
   }
 
   private def isReadonlyrestAdmin(requestContext: RequestContext) = {
-    val originRequestIndices = requestContext.initialBlockContext.indices
+    val originRequestIndices = requestContext.initialBlockContext.indices.map {
+      case ClusterIndexName.Local(value) => value
+      case ClusterIndexName.Remote(value, _) => value
+    }
     (originRequestIndices.isEmpty || originRequestIndices.contains(settings.rorIndex.index)) &&
       settings.access === KibanaAccess.Admin &&
       Matchers.adminMatcher.`match`(requestContext.action)
   }
 
-  private def isRoNonStrictCase(requestContext: RequestContext, kibanaIndex: IndexName, nonStrictAllowedPaths: Pattern) = {
+  private def isRoNonStrictCase(requestContext: RequestContext, kibanaIndex: ClusterIndexName, nonStrictAllowedPaths: Pattern) = {
     isTargetingKibana(requestContext, kibanaIndex) &&
       settings.access =!= ROStrict &&
       !kibanaCanBeModified &&
@@ -130,21 +132,21 @@ class KibanaAccessRule(val settings: Settings)
     }
   }
 
-  private def isTargetingKibana(requestContext: RequestContext, kibanaIndex: IndexName) = {
+  private def isTargetingKibana(requestContext: RequestContext, kibanaIndex: ClusterIndexName) = {
     requestContext.initialBlockContext.indices.toList match {
       case head :: Nil => head === kibanaIndex
       case _ => false
     }
   }
 
-  private def kibanaIndexPattern(kibanaIndex: IndexName) = {
+  private def kibanaIndexPattern(kibanaIndex: ClusterIndexName) = {
     Try(Pattern.compile(
       "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/_template/.*|^/@kibana_index/doc/telemetry.*|^/@kibana_index/(_update/index-pattern.*|_update/url.*)|^/@kibana_index/_create/(url:.*)"
-        .replace("@kibana_index", kibanaIndex.value.value)
+        .replace("@kibana_index", kibanaIndex.stringify)
     )).toOption
   }
 
-  private def modifyMatched[B <: BlockContext : BlockContextUpdater](blockContext: B, kibanaIndex: Option[IndexName] = None) = {
+  private def modifyMatched[B <: BlockContext : BlockContextUpdater](blockContext: B, kibanaIndex: Option[ClusterIndexName] = None) = {
     def applyKibanaAccess = (bc: B) => {
       bc.withUserMetadata(_.withKibanaAccess(settings.access))
     }

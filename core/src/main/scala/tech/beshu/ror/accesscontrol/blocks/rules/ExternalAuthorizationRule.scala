@@ -45,21 +45,28 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
     settings
       .service
       .grantsFor(user)
-      .map { userGroups =>
-        UniqueNonEmptyList.fromSortedSet(settings.permittedGroups.intersect(userGroups)) match {
-          case None =>
-            Unauthorized
-          case Some(determinedAvailableGroups) =>
-            currentGroup match {
-              case Some(group) if !determinedAvailableGroups.contains(group) =>
-                Unauthorized
-              case Some(_) | None =>
-                Authorized(determinedAvailableGroups)
-            }
-        }
+      .map(groups => UniqueNonEmptyList.fromSortedSet(groups))
+      .map {
+        case None =>
+          Unauthorized
+        case Some(ldapGroups) =>
+          UniqueNonEmptyList.fromSortedSet(settings.permittedGroups.intersect(ldapGroups)) match {
+            case None =>
+              Unauthorized
+            case Some(availableGroups) =>
+              currentGroup match {
+                case Some(group) if !availableGroups.contains(group) =>
+                  Unauthorized
+                case Some(_) | None =>
+                  Authorized(allExternalServiceGroupsIntersection(ldapGroups))
+              }
+          }
       }
   }
 
+  private def allExternalServiceGroupsIntersection(availableGroups: UniqueNonEmptyList[Group]) = {
+    UniqueNonEmptyList.unsafeFromSortedSet(settings.allExternalServiceGroups.intersect(availableGroups)) // it is safe here
+  }
 }
 
 object ExternalAuthorizationRule {
@@ -70,6 +77,7 @@ object ExternalAuthorizationRule {
 
   final case class Settings(service: ExternalAuthorizationService,
                             permittedGroups: UniqueNonEmptyList[Group],
+                            allExternalServiceGroups: UniqueNonEmptyList[Group],
                             users: UniqueNonEmptyList[User.Id])
 
 }

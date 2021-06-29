@@ -20,7 +20,7 @@ import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest}
@@ -40,12 +40,12 @@ abstract class BaseSnapshotEsRequestContext[T <: ActionRequest](actionRequest: T
     snapshotsOrWildcard(snapshotsFrom(actionRequest)),
     repositoriesOrWildcard(repositoriesFrom(actionRequest)),
     indicesFrom(actionRequest),
-    Set(IndexName.wildcard)
+    Set(ClusterIndexName.Local.wildcard)
   )
 
   protected def snapshotsFrom(request: T): Set[SnapshotName]
 
   protected def repositoriesFrom(request: T): Set[RepositoryName]
 
-  protected def indicesFrom(request: T): Set[IndexName]
+  protected def indicesFrom(request: T): Set[ClusterIndexName]
 }

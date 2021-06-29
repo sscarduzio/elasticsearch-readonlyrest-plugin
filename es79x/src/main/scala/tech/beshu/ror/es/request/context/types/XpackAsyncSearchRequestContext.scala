@@ -21,7 +21,7 @@ import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, IndexName}
+import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, ClusterIndexName}
 import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -36,27 +36,27 @@ class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
                                              esContext: EsContext,
                                              aclContext: AccessControlStaticContext,
                                              clusterService: RorClusterService,
-                                             override val threadPool: ThreadPool)
+                                             override implicit val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   private lazy val searchRequest = searchRequestFrom(actionRequest)
 
   override protected def requestFieldsUsage: RequestFieldsUsage = searchRequest.checkFieldsUsage()
 
-  override protected def indicesFrom(request: ActionRequest): Set[domain.IndexName] = {
+  override protected def indicesFrom(request: ActionRequest): Set[domain.ClusterIndexName] = {
     searchRequest
       .indices.asSafeSet
-      .flatMap(IndexName.fromString)
+      .flatMap(ClusterIndexName.fromString)
   }
 
   override protected def update(request: ActionRequest,
-                                indices: NonEmptyList[domain.IndexName],
+                                indices: NonEmptyList[domain.ClusterIndexName],
                                 filter: Option[domain.Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     searchRequest
       .applyFilterToQuery(filter)
-      .applyFieldLevelSecurity(fieldLevelSecurity, threadPool, id)
-      .indices(indices.toList.map(_.value.value): _*)
+      .applyFieldLevelSecurity(fieldLevelSecurity)
+      .indices(indices.toList.map(_.stringify): _*)
 
     ModificationResult.UpdateResponse.using(filterFieldsFromResponse(fieldLevelSecurity))
   }

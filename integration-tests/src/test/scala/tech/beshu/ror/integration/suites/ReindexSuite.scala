@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration.suites
 
+import org.apache.http.HttpStatus
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
@@ -43,29 +44,29 @@ trait ReindexSuite
       "user has permission to source index and dest index"  in {
         val result = user1IndexManager.reindex(ReindexSource.Local("test1_index"), "test1_index_reindexed")
 
-        result.isSuccess should be(true)
+        result.responseCode should be(200)
       }
     }
     "not be able to proceed" when {
       "user has no permission to source index and dest index which are present on ES"  in {
         val result = user1IndexManager.reindex(ReindexSource.Local("test2_index"), "test2_index_reindexed")
 
-        result.isForbidden should be(true)
+        result.responseCode should be(401)
       }
       "user has no permission to source index and dest index which are absent on ES"  in {
         val result = user1IndexManager.reindex(ReindexSource.Local("not_allowed_index"), "not_allowed_index_reindexed")
 
-        result.isForbidden should be(true)
+        result.responseCode should be(401)
       }
       "user has permission to source index and but no permission to dest index"  in {
         val result = user1IndexManager.reindex(ReindexSource.Local("test1_index"), "not_allowed_index_reindexed")
 
-        result.isForbidden should be(true)
+        result.responseCode should be(401)
       }
       "user has permission to dest index and but no permission to source index"  in {
         val result = user1IndexManager.reindex(ReindexSource.Local("not_allowed_index"), "test1_index_reindexed")
 
-        result.isForbidden should be(true)
+        result.responseCode should be(401)
       }
     }
   }

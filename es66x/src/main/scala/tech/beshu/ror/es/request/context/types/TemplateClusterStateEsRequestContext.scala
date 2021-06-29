@@ -27,11 +27,10 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
-import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingLegacyTemplates
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, TemplatePath}
 import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern, UriPath}
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -102,8 +101,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
   private def modifyLegacyTemplatesOfResponse(response: ClusterStateResponse,
                                               allowedTemplates: Set[TemplateNamePattern],
                                               transformation: TemplatesTransformation) = {
-    implicit val idImplicit: RequestContext.Id = id
-    val oldMetadata = response.getState.metaData()
+        val oldMetadata = response.getState.metaData()
     val filteredTemplates = GetTemplatesEsRequestContext
       .filter(
         oldMetadata.templates().valuesIt().asScala.toList,

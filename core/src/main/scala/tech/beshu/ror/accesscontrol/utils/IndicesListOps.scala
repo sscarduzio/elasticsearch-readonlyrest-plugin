@@ -16,25 +16,22 @@
  */
 package tech.beshu.ror.accesscontrol.utils
 
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 
 import scala.language.implicitConversions
 
-class IndicesListOps(val indices: List[IndexName]) extends AnyVal {
+class IndicesListOps(val indices: List[ClusterIndexName]) extends AnyVal {
 
-  def randomNonexistentIndex(): IndexName = {
+  def randomNonexistentIndex(): ClusterIndexName = {
     val foundIndex = indices.find(_.hasWildcard) orElse indices.headOption
     foundIndex match {
-      case Some(indexName) if indexName.isClusterIndex => IndexName.randomNonexistentIndex(
-        indexName.value.value.replace(":", "_") // we don't want to call remote cluster
-      )
-      case Some(indexName) => IndexName.randomNonexistentIndex(indexName.value.value)
-      case None => IndexName.randomNonexistentIndex()
+      case Some(indexName) => indexName.randomNonexistentIndex()
+      case None => ClusterIndexName.Local.randomNonexistentIndex()
     }
   }
 
 }
 
 object IndicesListOps {
-  implicit def toOps(indices: List[IndexName]): IndicesListOps = new IndicesListOps(indices)
+  implicit def toOps(indices: List[ClusterIndexName]): IndicesListOps = new IndicesListOps(indices)
 }

@@ -30,17 +30,17 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
-import tech.beshu.ror.boot.{Engine, EsInitListener, Ror, RorInstance, RorMode}
-import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
+import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
+import tech.beshu.ror.boot._
 import tech.beshu.ror.es.request.AclAwareRequestFilter
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RorNotAvailableResponse._
-import tech.beshu.ror.utils.AccessControllerHelper._
+import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.RorInstanceSupplier
-import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 
 import scala.language.postfixOps
 
@@ -59,7 +59,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
 
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
-    new EsServerBasedRorClusterService(clusterService, repositoriesServiceSupplier, client),
+    new EsServerBasedRorClusterService(clusterService, remoteClusterServiceSupplier, repositoriesServiceSupplier, client, threadPool),
     clusterService.getSettings,
     threadPool
   )
@@ -121,20 +121,15 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                             listener: ActionListener[ActionResponse],
                             chain: ActionFilterChain[ActionRequest, ActionResponse],
                             channel: RorRestChannel): Unit = {
-    remoteClusterServiceSupplier.get() match {
-      case Some(remoteClusterService) =>
-        aclAwareRequestFilter
-          .handle(
-            engine,
-            EsContext(channel, task, action, request, listener, chain, remoteClusterService.isCrossClusterSearchEnabled)
-          )
-          .runAsync {
-            case Right(_) =>
-            case Left(ex) => listener.onFailure(new Exception(ex))
-          }
-      case None =>
-        listener.onFailure(new Exception("Cluster service not ready yet. Cannot continue"))
-    }
+    aclAwareRequestFilter
+      .handle(
+        engine,
+        EsContext(channel, task, action, request, listener, chain)
+      )
+      .runAsync {
+        case Right(_) =>
+        case Left(ex) => listener.onFailure(new Exception(ex))
+      }
   }
 
   private def startRorInstance() = {

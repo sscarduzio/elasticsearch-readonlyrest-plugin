@@ -57,6 +57,6 @@ trait FieldRuleMGetApiSourceFilteringSuite
   }
 
   override protected def sourceOfFirstDoc(result: MGetResult): Option[JSON] = {
-    result.docs(0).obj.get("_source")
+    result.docs.head.obj.get("_source")
   }
 }

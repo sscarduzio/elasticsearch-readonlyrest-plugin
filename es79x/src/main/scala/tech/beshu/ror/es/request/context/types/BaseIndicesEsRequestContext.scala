@@ -23,7 +23,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult.ShouldBeInterrupted
@@ -48,7 +48,7 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
       logger.debug(s"[${id.show}] Discovered indices: ${indices.map(_.show).mkString(",")}")
       indices
     },
-    Set(IndexName.wildcard)
+    Set(ClusterIndexName.Local.wildcard)
   )
 
   override def modifyWhenIndexNotFound: ModificationResult = {
@@ -81,10 +81,10 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
     }
   }
 
-  protected def indicesFrom(request: R): Set[IndexName]
+  protected def indicesFrom(request: R): Set[ClusterIndexName]
 
   protected def update(request: R,
-                       filteredIndices: NonEmptyList[IndexName],
-                       allAllowedIndices: NonEmptyList[IndexName]): ModificationResult
+                       filteredIndices: NonEmptyList[ClusterIndexName],
+                       allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult
 
 }

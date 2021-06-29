@@ -20,7 +20,7 @@ import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect._
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
@@ -34,17 +34,17 @@ class GetRollupCapsEsRequestContext private(actionRequest: ActionRequest,
                                            override val threadPool: ThreadPool)
   extends BaseSingleIndexEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indexFrom(request: ActionRequest): IndexName = {
+  override protected def indexFrom(request: ActionRequest): ClusterIndexName = {
     val indexStr = on(request).call("getIndexPattern").get[String]()
-    IndexName.fromString(indexStr) match {
+    ClusterIndexName.fromString(indexStr) match {
       case Some(index) => index
       case None =>
         throw new RequestSeemsToBeInvalid[ActionRequest]("Cannot get non-empty index pattern from GetRollupCapsAction$Request")
     }
   }
 
-  override protected def update(request: ActionRequest, index: IndexName): ModificationResult = {
-    on(request).set("indexPattern", index.value.value)
+  override protected def update(request: ActionRequest, index: ClusterIndexName): ModificationResult = {
+    on(request).set("indexPattern", index.stringify)
     Modified
   }
 }

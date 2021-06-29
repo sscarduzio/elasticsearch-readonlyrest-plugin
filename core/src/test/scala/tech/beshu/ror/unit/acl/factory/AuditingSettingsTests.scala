@@ -17,11 +17,12 @@
 package tech.beshu.ror.unit.acl.factory
 
 import java.time.{Clock, ZoneId, ZonedDateTime}
+
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -60,7 +61,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
+            RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
@@ -83,7 +84,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
+            RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
@@ -108,14 +109,14 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
+            RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
-          auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(IndexName("readonlyrest_audit-2018-12-31"))
+          auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[DefaultAuditLogSerializer]
         }
       }
@@ -136,14 +137,14 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
+            RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
-          auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(IndexName("custom_template_20181231"))
+          auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("custom_template_20181231"))
           auditingSettings.logSerializer shouldBe a[DefaultAuditLogSerializer]
         }
       }
@@ -164,14 +165,14 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
+            RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
-          auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(IndexName("readonlyrest_audit-2018-12-31"))
+          auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[QueryAuditLogSerializer]
         }
       }
@@ -192,14 +193,14 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
+            RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
-          auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(IndexName("readonlyrest_audit-2018-12-31"))
+          auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[DeprecatedAuditLogSerializerAdapter[_]]
         }
       }
@@ -222,7 +223,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
+            RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
@@ -251,7 +252,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
+            RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )

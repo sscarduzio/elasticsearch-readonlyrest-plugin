@@ -16,31 +16,32 @@
  */
 package tech.beshu.ror.accesscontrol.matchers
 
-import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRemoteIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 import scala.collection.JavaConverters._
 
-class ZeroKnowledgeIndexFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter) {
+class ZeroKnowledgeRemoteIndexFilterScalaAdapter {
 
-  def check(indices: Set[IndexName], matcher: Matcher[IndexName]): CheckResult = {
+  private val underlying = new ZeroKnowledgeIndexFilter(true)
+
+  def check(indices: Set[ClusterIndexName.Remote], matcher: Matcher[ClusterIndexName.Remote]): CheckResult = {
     val processedIndices: java.util.Set[String] = scala.collection.mutable.Set.empty[String].asJava
     val result = underlying.alterIndicesIfNecessaryAndCheck(
-      indices.map(_.value.value).asJava,
+      indices.map(_.stringify).asJava,
       Matcher.asMatcherWithWildcards(matcher),
       processedIndices.addAll _
     )
-    if(result) CheckResult.Ok(processedIndices.asScala.map(str => IndexName(NonEmptyString.unsafeFrom(str))).toSet)
+    if(result) CheckResult.Ok(processedIndices.asScala.flatMap(ClusterIndexName.Remote.fromString).toSet)
     else CheckResult.Failed
   }
 }
 
-object ZeroKnowledgeIndexFilterScalaAdapter {
+object ZeroKnowledgeRemoteIndexFilterScalaAdapter {
   sealed trait CheckResult
   object CheckResult {
-    final case class Ok(processedIndices: Set[IndexName]) extends CheckResult
+    final case class Ok(processedIndices: Set[ClusterIndexName.Remote]) extends CheckResult
     case object Failed extends CheckResult
   }
 }

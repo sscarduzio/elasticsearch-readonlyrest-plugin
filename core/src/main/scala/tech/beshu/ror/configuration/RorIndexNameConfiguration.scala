@@ -20,6 +20,7 @@ import java.io.{File => JFile}
 import java.nio.file.Path
 
 import better.files.File
+import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import monix.eval.Task
@@ -32,7 +33,7 @@ final case class RorIndexNameConfiguration(index: RorConfigurationIndex)
 
 object RorIndexNameConfiguration extends Logging {
 
-  private val defaultIndexName = IndexName.fromUnsafeString(".readonlyrest")
+  private val defaultIndexName = IndexName.Full(".readonlyrest")
 
   def load(esConfigFolderPath: Path): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = {
     load(File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath))
@@ -49,8 +50,8 @@ object RorIndexNameConfiguration extends Logging {
       val oneLine = c.downField("readonlyrest.settings_index").as[Option[NonEmptyString]]
       val twoLines =  c.downField("readonlyrest").downField("settings_index").as[Option[NonEmptyString]]
       val customIndexName = (oneLine.toOption.flatten, twoLines.toOption.flatten) match {
-        case (Some(result), _) => IndexName(result)
-        case (_, Some(result)) => IndexName(result)
+        case (Some(result), _) => IndexName.Full(result)
+        case (_, Some(result)) => IndexName.Full(result)
         case (_, _) => defaultIndexName
       }
       Right(RorIndexNameConfiguration(RorConfigurationIndex(customIndexName)))

@@ -18,8 +18,7 @@ package tech.beshu.ror.accesscontrol.matchers
 
 import cats.implicits._
 import com.google.common.base.Strings
-import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 
 class ScalaMatcherWithWildcards[PATTERN: StringTNaturalTransformation](patterns: Set[PATTERN]) {
 
@@ -65,7 +64,10 @@ class ScalaMatcherWithWildcards[PATTERN: StringTNaturalTransformation](patterns:
 final case class StringTNaturalTransformation[T](fromString: String => T, toAString: T => String)
 object StringTNaturalTransformation {
   object instances {
-    implicit val stringIndexNameNT: StringTNaturalTransformation[IndexName] =
-      StringTNaturalTransformation[IndexName](str => IndexName(NonEmptyString.unsafeFrom(str)), _.value.value)
+    implicit val stringIndexNameNT: StringTNaturalTransformation[ClusterIndexName] =
+      StringTNaturalTransformation[ClusterIndexName](
+        str => ClusterIndexName.fromString(str).getOrElse(throw new IllegalStateException(s"'$str' cannot be converted to IndexName")),
+        _.stringify
+      )
   }
 }

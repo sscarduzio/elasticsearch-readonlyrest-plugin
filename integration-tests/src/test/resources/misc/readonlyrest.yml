@@ -15,6 +15,19 @@ readonlyrest:
       x_forwarded_for:
         - es-pub7
       type: allow
+      auth_key: "user1:pass"
+
+    - name: Do not allow to use admin users via kibana
+      type: forbid
+      groups:
+      - 'admin'
+      x_forwarded_for:
+      - '0.0.0.0/0'
+
+    - name: Allow admins to write everywhere
+      verbosity: error
+      groups:
+        - 'admin'
 
     - name: "Access for data of selected users"
       filter: '{"bool": { "must": { "terms": { "user_id": [@{jwt:user_id_list}] }}}}'
@@ -26,3 +39,9 @@ readonlyrest:
       signature_algo: "RSA"
       signature_key: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAr28z/VXGJq+fQNQENs0NPjcbJPh/w/ytVpFGa9lVtLaRXc3XFJ1UnaGxR+i+zv+qET4feOKQFGldHjchbpHAijdRm/lqf3aB+GH8PfhdTRYZIGSXhFRV2FcMdj3OMi24GoIDOLLtc7PJ2briwdR2qcss+TTCJ/x9q0ztiZoZlT3JGdqb3Ck5cTPSeSDMOi9e0zdbTVXAMW2YgE+3E7uGzxX9p+Cgb1CNAPepHIdD7WKWCWLcAOE0PgWqEZBVGhrnMxKUOeRzE8GA5rUPOGJI02vTYNs6dXd+oTwNa8qYV0lSx4Y3s+jKRGEFNDIelIrYt3hdXeNrtIXluEwHGp/KzwIDAQAB"
       user_claim: "userId"
+
+  users:
+    - username: admin
+      auth_key: admin:admin123
+      groups:
+        - 'admin'

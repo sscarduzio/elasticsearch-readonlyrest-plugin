@@ -86,7 +86,6 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
   private def updateResponse(using: TemplateRequestBlockContext) = {
     ModificationResult.UpdateResponse {
       case r: GetComposableIndexTemplateAction.Response =>
-        implicit val _ = id
         Task.now(new GetComposableIndexTemplateAction.Response(
           GetComposableIndexTemplateEsRequestContext
             .filter(
@@ -138,7 +137,7 @@ private[types] object GetComposableIndexTemplateEsRequestContext extends Logging
 
   private def filterMetadataData(composableIndexTemplate: ComposableIndexTemplate, basedOn: IndexTemplate) = {
     new ComposableIndexTemplate(
-      basedOn.patterns.toList.map(_.value.value).asJava,
+      basedOn.patterns.toList.map(_.value.stringify).asJava,
       new metadata.Template(
         composableIndexTemplate.template().settings(),
         composableIndexTemplate.template().mappings(),
@@ -152,7 +151,7 @@ private[types] object GetComposableIndexTemplateEsRequestContext extends Logging
   }
 
   private def filterAliases(template: metadata.Template, basedOn: IndexTemplate) = {
-    val aliasesStrings = basedOn.aliases.map(_.value.value)
+    val aliasesStrings = basedOn.aliases.map(_.stringify)
     template
       .aliases().asSafeMap
       .filter { case (name, _) => aliasesStrings.contains(name) }
@@ -168,7 +167,7 @@ private[types] object GetComposableIndexTemplateEsRequestContext extends Logging
         .fromList(composableIndexTemplate.indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
       aliases = Option(composableIndexTemplate.template())
-        .map(_.aliases().asSafeMap.keys.flatMap(IndexName.fromString).toSet)
+        .map(_.aliases().asSafeMap.keys.flatMap(ClusterIndexName.fromString).toSet)
         .getOrElse(Set.empty)
     } yield IndexTemplate(name, patterns, aliases)
   }

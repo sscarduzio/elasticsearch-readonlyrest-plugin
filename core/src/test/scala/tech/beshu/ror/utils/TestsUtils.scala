@@ -52,6 +52,18 @@ object TestsUtils {
       NonEmptyString.unsafeFrom(value)
     )
 
+  def clusterIndexName(str: NonEmptyString): ClusterIndexName = ClusterIndexName.unsafeFromString(str.value)
+
+  def localIndexName(str: NonEmptyString): ClusterIndexName.Local = ClusterIndexName.Local.fromString(str.value.value).get
+
+  def remoteIndexName(str: NonEmptyString): ClusterIndexName.Remote = ClusterIndexName.Remote.fromString(str.value.value).get
+
+  def indexName(str: NonEmptyString): IndexName = IndexName.fromString(str.value).get
+
+  def fullIndexName(str: NonEmptyString): IndexName.Full = IndexName.Full.fromString(str.value).get
+
+  def indexPattern(str: NonEmptyString): IndexPattern = IndexPattern(clusterIndexName(str))
+
   implicit def scalaFiniteDuration2JavaDuration(duration: FiniteDuration): Duration = Duration.ofMillis(duration.toMillis)
 
   trait BlockContextAssertion {
@@ -79,15 +91,15 @@ object TestsUtils {
     def assertBlockContext(loggedUser: Option[LoggedUser] = None,
                            currentGroup: Option[Group] = None,
                            availableGroups: UniqueList[Group] = UniqueList.empty,
-                           kibanaIndex: Option[IndexName] = None,
-                           kibanaTemplateIndex: Option[IndexName] = None,
+                           kibanaIndex: Option[ClusterIndexName] = None,
+                           kibanaTemplateIndex: Option[ClusterIndexName] = None,
                            hiddenKibanaApps: Set[KibanaApp] = Set.empty,
                            kibanaAccess: Option[KibanaAccess] = None,
                            userOrigin: Option[UserOrigin] = None,
                            jwt: Option[JwtTokenPayload] = None,
                            responseHeaders: Set[Header] = Set.empty,
-                           indices: Set[IndexName] = Set.empty,
-                           aliases: Set[IndexName] = Set.empty,
+                           indices: Set[ClusterIndexName] = Set.empty,
+                           aliases: Set[ClusterIndexName] = Set.empty,
                            repositories: Set[RepositoryName] = Set.empty,
                            snapshots: Set[SnapshotName] = Set.empty,
                            templates: Set[TemplateOperation] = Set.empty)

@@ -84,7 +84,6 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
   private def updateResponse(using: TemplateRequestBlockContext) = {
     ModificationResult.UpdateResponse {
       case r: GetIndexTemplatesResponse =>
-        implicit val _ = id
         Task.now(newGetIndexTemplatesResponse(
           GetTemplatesEsRequestContext
             .filter(
@@ -145,7 +144,7 @@ private[types] object GetTemplatesEsRequestContext extends Logging {
       metadata.name(),
       metadata.order(),
       metadata.version(),
-      basedOn.patterns.toList.map(_.value.value).asJava,
+      basedOn.patterns.toList.map(_.value.stringify).asJava,
       metadata.settings(),
       metadata.mappings(),
       filterAliases(metadata, basedOn),
@@ -154,7 +153,7 @@ private[types] object GetTemplatesEsRequestContext extends Logging {
   }
 
   private def filterAliases(metadata: IndexTemplateMetaData, template: LegacyTemplate) = {
-    val aliasesStrings = template.aliases.map(_.value.value)
+    val aliasesStrings = template.aliases.map(_.stringify)
     val filteredAliasesMap =
       metadata
         .aliases().asSafeValues
@@ -174,7 +173,7 @@ private[types] object GetTemplatesEsRequestContext extends Logging {
       patterns <- UniqueNonEmptyList
         .fromList(metadata.patterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
-      aliases = metadata.aliases().asSafeKeys.flatMap(IndexName.fromString)
+      aliases = metadata.aliases().asSafeKeys.flatMap(ClusterIndexName.fromString)
     } yield LegacyTemplate(name, patterns, aliases)
   }
 }

@@ -22,17 +22,26 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
+import monix.execution.CancelablePromise
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.action.ActionListener
+import org.elasticsearch.action.admin.indices.get.GetIndexRequest.Feature
+import org.elasticsearch.action.admin.indices.get.{GetIndexRequest, GetIndexResponse}
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
+import org.elasticsearch.client.Client
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.metadata.RepositoriesMetaData
 import org.elasticsearch.cluster.service.ClusterService
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.snapshots.SnapshotsService
+import org.elasticsearch.threadpool.ThreadPool
+import org.elasticsearch.transport.{RemoteClusterService, TransportService}
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.es.{RemoteClusterAwareClient, RorClusterService}
 import tech.beshu.ror.es.RorClusterService._
 import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -40,32 +49,47 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import scala.collection.JavaConverters._
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.accesscontrol.show.logs._
 
-class EsServerBasedRorClusterService(clusterService: ClusterService,
+import scala.util.{Failure, Success, Try}
+
+class EsServerBasedRorClusterService(settings: Settings,
+                                     clusterService: ClusterService,
+                                     remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                                      snapshotsServiceSupplier: Supplier[Option[SnapshotsService]],
-                                     nodeClient: NodeClient)
+                                     nodeClient: NodeClient,
+                                     threadPool: ThreadPool)
   extends RorClusterService
     with Logging {
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
     val lookup = clusterService.state.metaData.getAliasAndIndexLookup
-    lookup.get(indexOrAlias.value.value).getIndices.asScala.map(_.getIndexUUID).toSet
+    lookup.get(indexOrAlias.stringify).getIndices.asScala.map(_.getIndexUUID).toSet
   }
 
-  override def allIndicesAndAliases: Map[IndexName, Set[AliasName]] = {
-    val indices = clusterService.state.metaData.getIndices
+  override def allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
+    val indices = clusterService.state.metaData().getIndices
     indices
       .keysIt().asScala
       .flatMap { index =>
         val indexMetaData = indices.get(index)
-        IndexName
+        IndexName.Full
           .fromString(indexMetaData.getIndex.getName)
           .map { indexName =>
-            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.fromString)
-            (indexName, aliases)
+            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Full.fromString)
+            FullLocalIndexWithAliases(indexName, aliases)
           }
       }
-      .toMap
+      .toSet
+  }
+
+  override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = {
+    remoteClusterServiceSupplier.get() match {
+      case Some(remoteClusterService) =>
+        provideAllRemoteIndices(remoteClusterService)
+      case None =>
+        Task.now(Set.empty)
+    }
   }
 
   override def allTemplates: Set[Template] = legacyTemplates()
@@ -84,6 +108,107 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
           .map { name => (name, snapshotsBy(name)) }
       }
       .toMap
+  }
+
+  override def verifyDocumentAccessibility(document: Document,
+                                           filter: Filter,
+                                           id: RequestContext.Id): Task[DocumentAccessibility] = {
+    val listener = new GenericResponseListener[SearchResponse]
+    createSearchRequest(filter, document).execute(listener)
+
+    listener.result
+      .map(extractAccessibilityFrom)
+      .onErrorRecover {
+        case ex =>
+          logger.error(s"[${id.show}] Could not verify get request. Blocking document", ex)
+          Inaccessible
+      }
+  }
+
+  override def verifyDocumentsAccessibilities(documents: NonEmptyList[Document],
+                                              filter: Filter,
+                                              id: RequestContext.Id): Task[DocumentsAccessibilities] = {
+    val listener = new GenericResponseListener[MultiSearchResponse]
+    createMultiSearchRequest(filter, documents).execute(listener)
+
+    listener.result
+      .map(extractResultsFromSearchResponse)
+      .onErrorRecover {
+        case ex =>
+          logger.error(s"[${id.show}] Could not verify documents returned by multi get response. Blocking all returned documents", ex)
+          blockAllDocsReturned(documents)
+      }
+      .map(results => zip(results, documents))
+  }
+
+  private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService): Task[Set[FullRemoteIndexWithAliases]] = {
+    Task
+      .gatherUnordered(
+        getRegisteredRemoteClusterNames(remoteClusterService)
+          .map(resolveAllRemoteIndices(_, remoteClusterService))
+      )
+      .map(_.flatten.toSet)
+  }
+
+  private def getRegisteredRemoteClusterNames(remoteClusterService: RemoteClusterService) = {
+    import org.joor.Reflect._
+    on(remoteClusterService)
+      .call("getRemoteClusterNames")
+      .get[java.util.Set[String]].asSafeSet
+      .flatMap(ClusterName.Full.fromString)
+  }
+
+  private def resolveAllRemoteIndices(remoteClusterName: ClusterName.Full,
+                                      remoteClusterService: RemoteClusterService) = {
+    Try(remoteClusterClientFor(remoteClusterName, remoteClusterService)) match {
+      case Failure(_) =>
+        logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
+        Task.now(List.empty)
+      case Success(client) =>
+        val promise = CancelablePromise[GetIndexResponse]()
+        client
+          .admin()
+          .indices()
+          .getIndex(
+            new GetIndexRequest().features(Feature.ALIASES),
+            new ActionListener[GetIndexResponse] {
+              override def onResponse(response: GetIndexResponse): Unit = promise.trySuccess(response)
+              override def onFailure(e: Exception): Unit = promise.tryFailure(e)
+            })
+        Task
+          .fromCancelablePromise(promise)
+          .map { response =>
+            response
+              .indices().asSafeList
+              .flatMap { index =>
+                val aliases = response.aliases().get(index).asSafeList.map(_.alias())
+                toFullRemoteIndexWithAliases(index, aliases, remoteClusterName)
+              }
+          }
+    }
+  }
+
+  private def toFullRemoteIndexWithAliases(indexName: String,
+                                           aliasesNames: List[String],
+                                           remoteClusterName: ClusterName.Full) = {
+    IndexName.Full
+      .fromString(indexName)
+      .map { index =>
+        val aliases = aliasesNames
+          .flatMap(IndexName.Full.fromString)
+          .toSet
+        FullRemoteIndexWithAliases(remoteClusterName, index, aliases)
+      }
+  }
+
+  private def remoteClusterClientFor(remoteClusterName: ClusterName.Full,
+                                     remoteClusterService: RemoteClusterService): Client = {
+    new RemoteClusterAwareClient(settings, threadPool, getTransportServerFrom(remoteClusterService), remoteClusterName.value.value)
+  }
+
+  private def getTransportServerFrom(remoteClusterService: RemoteClusterService) = {
+    import org.joor.Reflect._
+    on(remoteClusterService).get[TransportService]("transportService")
   }
 
   private def snapshotsBy(repositoryName: RepositoryName) = {
@@ -120,41 +245,10 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
           indexPatterns <- UniqueNonEmptyList.fromList(
             templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString).toList
           )
-          aliases = templateMetaData.aliases().asSafeValues.flatMap(a => IndexName.fromString(a.alias()))
+          aliases = templateMetaData.aliases().asSafeValues.flatMap(a => ClusterIndexName.fromString(a.alias()))
         } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)
       }
       .toSet
-  }
-
-  override def verifyDocumentAccessibility(document: Document,
-                                           filter: Filter,
-                                           id: RequestContext.Id): Task[DocumentAccessibility] = {
-    val listener = new GenericResponseListener[SearchResponse]
-    createSearchRequest(filter, document).execute(listener)
-
-    listener.result
-      .map(extractAccessibilityFrom)
-      .onErrorRecover {
-        case ex =>
-          logger.error(s"[${id.show}] Could not verify get request. Blocking document", ex)
-          Inaccessible
-      }
-  }
-
-  override def verifyDocumentsAccessibilities(documents: NonEmptyList[Document],
-                                              filter: Filter,
-                                              id: RequestContext.Id): Task[DocumentsAccessibilities] = {
-    val listener = new GenericResponseListener[MultiSearchResponse]
-    createMultiSearchRequest(filter, documents).execute(listener)
-
-    listener.result
-      .map(extractResultsFromSearchResponse)
-      .onErrorRecover {
-        case ex =>
-          logger.error(s"[${id.show}] Could not verify documents returned by multi get response. Blocking all returned documents", ex)
-          blockAllDocsReturned(documents)
-      }
-      .map(results => zip(results, documents))
   }
 
   private def createSearchRequest(filter: Filter,
@@ -166,7 +260,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .filter(QueryBuilders.idsQuery().addIds(document.documentId.value))
 
     nodeClient
-      .prepareSearch(document.index.value.value)
+      .prepareSearch(document.index.stringify)
       .setQuery(composedQuery)
   }
 

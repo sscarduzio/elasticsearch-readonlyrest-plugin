@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
 import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.utils.TestsUtils._
 
 class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
   with BaseYamlLoadedAccessControlTest
@@ -97,7 +98,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
         val request = MockRequestContext.indices.copy(
           headers = Set(basicAuthHeader("john:dev")),
           action = Action("indices:monitor/*"),
-          filteredIndices = Set(IndexName(".readonlyrest"))
+          filteredIndices = Set(clusterIndexName(".readonlyrest"))
         )
 
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -107,9 +108,9 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           block.name should be(Block.Name("Template Tenancy"))
           assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
-            kibanaIndex = Some(IndexName(".kibana_template")),
+            kibanaIndex = Some(clusterIndexName(".kibana_template")),
             kibanaAccess = Some(KibanaAccess.Admin),
-            indices = Set(IndexName(".readonlyrest")),
+            indices = Set(clusterIndexName(".readonlyrest")),
           ) {
             blockContext
           }
@@ -123,7 +124,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           uriPath = UriPath("/.kibana_ror_custom/_doc/dashboard:d3d40550-b889-11eb-a1e1-914af9365d47"),
           method = Method("PUT"),
           action = Action("indices:data/write/index"),
-          filteredIndices = Set(IndexName(".kibana_ror_custom"))
+          filteredIndices = Set(clusterIndexName(".kibana_ror_custom"))
         )
 
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -135,9 +136,9 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             loggedUser = Some(DirectlyLoggedUser(User.Id("testuser_ro_master_rw_custom"))),
             currentGroup = Some(Group("RW_ror_custom")),
             availableGroups = UniqueList.of(Group("RW_ror_custom")),
-            kibanaIndex = Some(IndexName(".kibana_ror_custom")),
+            kibanaIndex = Some(clusterIndexName(".kibana_ror_custom")),
             kibanaAccess = Some(KibanaAccess.RW),
-            indices = Set(IndexName(".kibana_ror_custom")),
+            indices = Set(clusterIndexName(".kibana_ror_custom")),
           ) {
             blockContext
           }
@@ -157,7 +158,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             loggedUser = Some(DirectlyLoggedUser(User.Id("admin"))),
             currentGroup = Some(Group("Administrators")),
             availableGroups = UniqueList.of(Group("Administrators"), Group("Infosec")),
-            kibanaIndex = Some(IndexName(".kibana_admins")),
+            kibanaIndex = Some(clusterIndexName(".kibana_admins")),
             kibanaTemplateIndex = None,
             hiddenKibanaApps = Set(KibanaApp("Enterprise Search|Overview"), KibanaApp("Observability")),
             kibanaAccess = Some(KibanaAccess.Admin),
@@ -175,7 +176,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           method = Method("PUT"),
           action = Action("indices:data/write/index"),
           isReadOnlyRequest = false,
-          filteredIndices = Set(IndexName(".kibana_admins"))
+          filteredIndices = Set(clusterIndexName(".kibana_admins"))
         )
 
         val result = acl.handleRegularRequest(loginRequest).runSyncUnsafe()
@@ -187,9 +188,9 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             loggedUser = Some(DirectlyLoggedUser(User.Id("admin"))),
             currentGroup = Some(Group("Administrators")),
             availableGroups = UniqueList.of(Group("Administrators")),
-            kibanaIndex = Some(IndexName(".kibana_admins")),
+            kibanaIndex = Some(clusterIndexName(".kibana_admins")),
             kibanaAccess = Some(KibanaAccess.Admin),
-            indices = Set(IndexName(".kibana_admins")),
+            indices = Set(clusterIndexName(".kibana_admins")),
             hiddenKibanaApps = Set(KibanaApp("Observability"), KibanaApp("Enterprise Search|Overview"))
           ) {
             blockContext

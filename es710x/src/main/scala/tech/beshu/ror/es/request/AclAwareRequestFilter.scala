@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.es.request
 
-import java.time.Instant
-
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -41,6 +39,7 @@ import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.rollover.RolloverRequest
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest
 import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
+import org.elasticsearch.action.admin.indices.shrink.ResizeRequest
 import org.elasticsearch.action.admin.indices.stats.IndicesStatsRequest
 import org.elasticsearch.action.admin.indices.template.delete.{DeleteComponentTemplateAction, DeleteComposableIndexTemplateAction, DeleteIndexTemplateRequest}
 import org.elasticsearch.action.admin.indices.template.get.{GetComponentTemplateAction, GetComposableIndexTemplateAction, GetIndexTemplatesRequest}
@@ -69,6 +68,7 @@ import tech.beshu.ror.es.request.context.types._
 import tech.beshu.ror.es.request.handler.{CurrentUserMetadataRequestHandler, RegularRequestHandler}
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
+import java.time.Instant
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 
@@ -191,12 +191,15 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: ReindexRequest =>
         regularRequestHandler.handle(new ReindexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      case request: ResizeRequest =>
+        regularRequestHandler.handle(new ResizeEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: ClusterRerouteRequest =>
         regularRequestHandler.handle(new ClusterRerouteEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: CompositeIndicesRequest =>
         ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool) match {
           case SqlIndicesEsRequestContext(r) => regularRequestHandler.handle(r)
           case SearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
+          case MultiSearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
           case _ =>
             logger.error(s"Found an child request of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.getSimpleName}")
             regularRequestHandler.handle(new DummyCompositeIndicesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
@@ -227,8 +230,7 @@ object AclAwareRequestFilter {
                              actionType: String,
                              actionRequest: ActionRequest,
                              listener: ActionListener[ActionResponse],
-                             chain: ActionFilterChain[ActionRequest, ActionResponse],
-                             crossClusterSearchEnabled: Boolean) {
+                             chain: ActionFilterChain[ActionRequest, ActionResponse]) {
     lazy val requestId = s"${channel.request().hashCode()}-${actionRequest.hashCode()}#${task.getId}"
     val timestamp: Instant = Instant.now()
   }
