@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import cats.implicits._
 import cats.data.NonEmptyList
+import cats.implicits._
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
@@ -30,7 +30,7 @@ import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 
-class  IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
+class IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
                                      esContext: EsContext,
                                      aclContext: AccessControlStaticContext,
                                      clusterService: RorClusterService,
@@ -48,8 +48,9 @@ class  IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
   override protected def indicesFrom(request: IndicesAliasesRequest): Set[ClusterIndexName] = originIndices
 
   override protected def update(request: IndicesAliasesRequest,
-                                filteredIndices: NonEmptyList[ClusterIndexName], allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    if(originIndices == filteredIndices.toList.toSet) {
+                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+    if (originIndices == filteredIndices.toList.toSet) {
       Modified
     } else {
       logger.error(s"[${id.show}] Write request with indices requires the same set of indices after filtering as at the beginning. Please report the issue.")

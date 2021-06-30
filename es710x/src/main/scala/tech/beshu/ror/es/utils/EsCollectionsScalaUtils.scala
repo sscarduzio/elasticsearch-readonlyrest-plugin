@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.utils
 
-import org.elasticsearch.cluster.metadata.AliasMetadata
 import org.elasticsearch.common.collect.ImmutableOpenMap
 
 import scala.collection.JavaConverters._
