@@ -305,9 +305,9 @@ object IndexManager {
   }
 
   class AliasesResponse(response: HttpResponse) extends JsonResponse(response) {
-    lazy val aliasesOfIndices: Map[String, List[String]] =
+    lazy val aliasesOfIndices: Map[String, Set[String]] =
       responseJson.obj.toMap.map { case (indexName, json) =>
-        val aliases = json("aliases").obj.keys.toList
+        val aliases = json("aliases").obj.keys.toSet
         (indexName, aliases)
       }
   }

@@ -30,7 +30,7 @@ import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 
-class IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
+class  IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
                                      esContext: EsContext,
                                      aclContext: AccessControlStaticContext,
                                      clusterService: RorClusterService,

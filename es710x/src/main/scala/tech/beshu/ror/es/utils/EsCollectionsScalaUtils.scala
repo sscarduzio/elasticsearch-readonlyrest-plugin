@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.es.utils
 
+import org.elasticsearch.cluster.metadata.AliasMetadata
 import org.elasticsearch.common.collect.ImmutableOpenMap
+
 import scala.collection.JavaConverters._
 
 object EsCollectionsScalaUtils {
@@ -24,6 +26,31 @@ object EsCollectionsScalaUtils {
   implicit class ImmutableOpenMapOps[K, V](val value: ImmutableOpenMap[K, V]) extends AnyVal {
 
     def asSafeKeys: Set[K] = Option(value).map(_.keysIt().asScala.toSet).getOrElse(Set.empty)
+
     def asSafeValues: Set[V] = Option(value).map(_.valuesIt().asScala.toSet).getOrElse(Set.empty)
+
+    def asSafeEntriesList: List[(K, V)] =
+      Option(value) match {
+        case Some(map) =>
+          map
+            .keysIt().asScala
+            .map { key =>
+              (key, map.get(key))
+            }
+            .toList
+        case None =>
+          List.empty
+      }
+  }
+
+  object ImmutableOpenMapOps {
+    def from[K, V](map: Map[K, V]): ImmutableOpenMap[K, V] = {
+      new ImmutableOpenMap.Builder[K, V]()
+        .putAll(map.asJava)
+        .build()
+    }
+
+    def empty[K, V]: ImmutableOpenMap[K, V] =
+      from(Map.empty)
   }
 }

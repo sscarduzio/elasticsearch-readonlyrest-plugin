@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration.suites.base
 
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupport
@@ -138,40 +137,43 @@ trait BaseIndexApiSuite
           val aliasResponse = dev1IndexManager.getAliases
 
           aliasResponse.responseCode should be(200)
-          aliasResponse.responseJson.obj.size should be(1)
-          val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
-          aliasesJson.size should be(1)
-          aliasesJson.contains("index1_alias") should be(true)
+          aliasResponse.aliasesOfIndices should be (Map(
+            "index1" -> Set("index1_alias")
+          ))
         }
         "/[index]/_alias API is used" when {
           "index full name is passed" in {
             val aliasResponse = dev1IndexManager.getAlias("index1")
 
             aliasResponse.responseCode should be(200)
-            aliasResponse.responseJson.obj.size should be(1)
-            val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
-            aliasesJson.size should be(1)
-            aliasesJson.contains("index1_alias") should be(true)
+            aliasResponse.aliasesOfIndices should be (Map(
+              "index1" -> Set("index1_alias")
+            ))
           }
           "index name has wildcard" in {
             val aliasResponse = dev1IndexManager.getAlias("index*")
 
             aliasResponse.responseCode should be(200)
-            aliasResponse.responseJson.obj.size should be(1)
-
-            val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
-            aliasesJson.size should be(1)
-            aliasesJson.contains("index1_alias") should be(true)
+            aliasResponse.aliasesOfIndices should be (Map(
+              "index1" -> Set("index1_alias")
+            ))
           }
           "one of passed indices doesn't exist" in {
             val aliasResponse = dev1IndexManager.getAlias(indices = "index1", "nonexistent")
 
             aliasResponse.responseCode should be(200)
-            aliasResponse.responseJson.obj.size should be(1)
+            aliasResponse.aliasesOfIndices should be (Map(
+              "index1" -> Set("index1_alias")
+            ))
+          }
+          "index has no aliases" in {
+            val aliasResponse = dev7IndexManager.getAlias("index7*")
 
-            val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
-            aliasesJson.size should be(1)
-            aliasesJson.contains("index1_alias") should be(true)
+            aliasResponse.responseCode should be(200)
+            aliasResponse.aliasesOfIndices should be (Map(
+              "index7-000001" -> Set("index7"),
+              "index7-000002" -> Set.empty
+            ))
           }
         }
         "/[index]/_alias/[alias] API is used" when {
@@ -179,19 +181,17 @@ trait BaseIndexApiSuite
             val aliasResponse = dev1IndexManager.getAliasByName("index1", "index1_alias")
 
             aliasResponse.responseCode should be(200)
-            aliasResponse.responseJson.obj.size should be(1)
-            val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
-            aliasesJson.size should be(1)
-            aliasesJson.contains("index1_alias") should be(true)
+            aliasResponse.aliasesOfIndices should be (Map(
+              "index1" -> Set("index1_alias")
+            ))
           }
           "alias name has wildcard" in {
             val aliasResponse = dev1IndexManager.getAliasByName("index1", "index1*")
 
             aliasResponse.responseCode should be(200)
-            aliasResponse.responseJson.obj.size should be(1)
-            val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
-            aliasesJson.size should be(1)
-            aliasesJson.contains("index1_alias") should be(true)
+            aliasResponse.aliasesOfIndices should be (Map(
+              "index1" -> Set("index1_alias")
+            ))
           }
         }
       }
@@ -201,7 +201,7 @@ trait BaseIndexApiSuite
             val aliasResponse = dev1IndexManager.getAlias("nonexistent*")
 
             aliasResponse.responseCode should be(200)
-            aliasResponse.responseJson.obj.size should be(0)
+            aliasResponse.aliasesOfIndices should be (Map.empty)
           }
         }
         "the alias name with wildcard is used" when {
@@ -209,7 +209,7 @@ trait BaseIndexApiSuite
             val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent*")
 
             aliasResponse.responseCode should be(200)
-            aliasResponse.responseJson.obj.size should be(0)
+            aliasResponse.aliasesOfIndices should be (Map.empty)
           }
         }
       }
