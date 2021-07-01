@@ -43,6 +43,7 @@ import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.{CaseMappingEquality, StringCaseMapping}
 
 import scala.collection.JavaConverters._
+import scala.language.postfixOps
 
 class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
                                  esContext: EsContext,

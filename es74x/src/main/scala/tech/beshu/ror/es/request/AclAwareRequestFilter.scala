@@ -71,6 +71,7 @@ import org.elasticsearch.client.node.NodeClient
 
 import scala.language.postfixOps
 import scala.reflect.ClassTag
+import org.elasticsearch.action.admin.indices.get.GetIndexRequest
 
 class AclAwareRequestFilter(clusterService: RorClusterService,
                             settings: Settings,
@@ -135,6 +136,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: IndicesAliasesRequest =>
         regularRequestHandler.handle(new IndicesAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       // indices
+      case request: GetIndexRequest =>
+        regularRequestHandler.handle(new GetIndexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: BulkShardRequest =>
         regularRequestHandler.handle(new BulkShardEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: IndexRequest =>

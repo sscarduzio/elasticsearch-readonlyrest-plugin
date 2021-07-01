@@ -49,23 +49,26 @@ trait BaseIndexApiSuite
             val indexResponse = dev1IndexManager.getIndex("index1")
 
             indexResponse.responseCode should be(200)
-            indexResponse.responseJson.obj.size should be(1)
-            indexResponse.responseJson("index1")
+            indexResponse.indicesAndAliases should be (Map(
+              "index1" -> Set("index1_alias")
+            ))
           }
           "its alias is called" in {
             val indexResponse = dev1IndexManager.getIndex("index1_alias")
 
             indexResponse.responseCode should be(200)
-            indexResponse.responseJson.obj.size should be(1)
-            indexResponse.responseJson("index1")
+            indexResponse.indicesAndAliases should be (Map(
+              "index1" -> Set("index1_alias")
+            ))
           }
           "the index name with wildcard is used" when {
             "there is a matching index" in {
               val indexResponse = dev1IndexManager.getIndex("index*")
 
               indexResponse.responseCode should be(200)
-              indexResponse.responseJson.obj.size should be(1)
-              indexResponse.responseJson("index1")
+              indexResponse.indicesAndAliases should be (Map(
+                "index1" -> Set("index1_alias")
+              ))
             }
           }
           "the alias name with wildcard is used" when {
@@ -73,16 +76,18 @@ trait BaseIndexApiSuite
               val indexResponse = dev1IndexManager.getIndex("index1_a*")
 
               indexResponse.responseCode should be(200)
-              indexResponse.responseJson.obj.size should be(1)
-              indexResponse.responseJson("index1")
+              indexResponse.indicesAndAliases should be (Map(
+                "index1" -> Set("index1_alias")
+              ))
             }
           }
           "one of called indices doesn't exist" in {
             val indexResponse = dev1IndexManager.getIndex("index1", "index3")
 
             indexResponse.responseCode should be(200)
-            indexResponse.responseJson.obj.size should be(1)
-            indexResponse.responseJson("index1")
+            indexResponse.indicesAndAliases should be (Map(
+              "index1" -> Set("index1_alias")
+            ))
           }
         }
         "he has access to its alias" when {
@@ -90,8 +95,9 @@ trait BaseIndexApiSuite
             val indexResponse = dev2IndexManager.getIndex("index2_alias")
 
             indexResponse.responseCode should be(200)
-            indexResponse.responseJson.obj.size should be(1)
-            indexResponse.responseJson("index2")
+            indexResponse.indicesAndAliases should be (Map(
+              "index2" -> Set("index2_alias")
+            ))
           }
         }
       }
@@ -101,7 +107,7 @@ trait BaseIndexApiSuite
             val indexResponse = dev1IndexManager.getIndex("my_index*")
 
             indexResponse.responseCode should be(200)
-            indexResponse.responseJson.obj.size should be(0)
+            indexResponse.indicesAndAliases should be (Map.empty)
           }
         }
         "the alias name with wildcard is used" when {
@@ -109,7 +115,7 @@ trait BaseIndexApiSuite
             val indexResponse = dev1IndexManager.getIndex("my_index1_a*")
 
             indexResponse.responseCode should be(200)
-            indexResponse.responseJson.obj.size should be(0)
+            indexResponse.indicesAndAliases should be (Map.empty)
           }
         }
       }
@@ -129,6 +135,15 @@ trait BaseIndexApiSuite
 
           indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }
+      }
+      "filter out one not allowed alias" in {
+        val indexResponse = dev7IndexManager.getIndex("index7*")
+
+        indexResponse.responseCode should be(200)
+        indexResponse.indicesAndAliases should be (Map(
+          "index7-000001" -> Set("index7"),
+          "index7-000002" -> Set.empty
+        ))
       }
     }
     "Get index alias API is used" should {
@@ -166,7 +181,7 @@ trait BaseIndexApiSuite
               "index1" -> Set("index1_alias")
             ))
           }
-          "index has no aliases" in {
+          "one index has no aliases" in {
             val aliasResponse = dev7IndexManager.getAlias("index7*")
 
             aliasResponse.responseCode should be(200)
