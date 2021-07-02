@@ -217,7 +217,8 @@ class IndexManager(client: RestClient,
 
   private def updateAliasesRequest(actions: NonEmptyList[AliasAction]) = {
     def actionStrings = actions.map {
-      case AliasAction.Add(index, alias) => s"""{ "add": { "index": "$index", "alias": "$alias" } }"""
+      case AliasAction.Add(index, alias, None) => s"""{ "add": { "index": "$index", "alias": "$alias" } }"""
+      case AliasAction.Add(index, alias, Some(filter)) => s"""{ "add": { "index": "$index", "alias": "$alias", "filter": ${ujson.write(filter)} } }"""
       case AliasAction.Delete(index, alias) => s"""{ "remove": { "index": "$index", "alias": "$alias" } }"""
     }
 
@@ -300,7 +301,7 @@ object IndexManager {
 
   sealed trait AliasAction
   object AliasAction {
-    final case class Add(index: String, alias: String) extends AliasAction
+    final case class Add(index: String, alias: String, filter: Option[JSON] = None) extends AliasAction
     final case class Delete(index: String, alias: String) extends AliasAction
   }
 

@@ -10,25 +10,20 @@ readonlyrest:
   access_control_rules:
 
   - name: "::INITIALIZER::"
-    methods: [GET]
     auth_key: admin:container
 
   - name: "::GETTER::"
-    methods: [GET]
     auth_key: "unrestricted:dev"
 
   - name: "::RESTRICTED TO ALIAS::"
-    methods: [GET]
     indices: ["public*"]
     auth_key: "restricted:dev"
 
   - name: "::PERFMON - RESTRICTED TO ALIAS::"
-    methods: [GET]
     indices: ["perfmon*"]
     auth_key: "perfmon:dev"
 
   - name: "::PERFMON - RESTRICTED TO INDEX::"
-    methods: [GET]
     indices: ["bla*"]
     auth_key: "perfmon:dev"
 
