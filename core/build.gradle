@@ -30,7 +30,7 @@ buildscript {
     }
 
     dependencies {
-        classpath group: 'org.owasp',                                    name: 'dependency-check-gradle',  version: '6.1.6'
+        classpath group: 'org.owasp',                                    name: 'dependency-check-gradle',  version: '6.2.2'
         classpath group: 'com.star-zero.gradle',                         name: 'githook',                  version: '1.2.1'
         classpath group: 'gradle.plugin.com.github.maiflai',             name: 'gradle-scalatest',         version: '0.24'
         classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins',  name: 'license-gradle-plugin',    version: '0.15.0'
