@@ -123,6 +123,10 @@ class IndexManager(client: RestClient,
     call(createResizeRequest(source, target, aliases), new JsonResponse(_))
   }
 
+  def closeIndex(indexName: String): JsonResponse = {
+    call(createCloseIndexRequest(indexName), new JsonResponse(_))
+  }
+
   private def getAliasRequest(indexOpt: Option[String] = None,
                               aliasOpt: Option[String] = None) = {
     val path = indexOpt match {
@@ -285,6 +289,10 @@ class IndexManager(client: RestClient,
         |	}
         |}""".stripMargin))
     request
+  }
+
+  private def createCloseIndexRequest(indexName: String) = {
+    new HttpPost(client.from(s"/$indexName/_close"))
   }
 }
 

@@ -63,8 +63,16 @@ class DocumentManager(restClient: RestClient, esVersion: String)
     call(createInsertDocRequest(createDocPathWithDefaultType(index, s"$id", Some(`type`)), content, waitForRefresh = true), new JsonResponse(_))
   }
 
+  def createDoc(index: String, `type`: String, id: String, content: JSON): JsonResponse = {
+    call(createInsertDocRequest(createDocPathWithDefaultType(index, s"$id", Some(`type`)), content, waitForRefresh = true), new JsonResponse(_))
+  }
+
   def deleteDoc(index: String, id: Int): JsonResponse = {
     call(createDeleteDocRequest(createDocPathWithDefaultType(index, s"$id"), waitForRefresh = true), new JsonResponse(_))
+  }
+
+  def deleteByQuery(index: String, query: JSON): JsonResponse = {
+    call(createDeleteByQueryRequest(index, query), new JsonResponse(_))
   }
 
   def bulk(line: String, lines: String*): JsonResponse = {
@@ -109,6 +117,13 @@ class DocumentManager(restClient: RestClient, esVersion: String)
 
   private def createDeleteDocRequest(docPath: String, waitForRefresh: Boolean) = {
     new HttpDelete(restClient.from(docPath, waitForRefreshParam(waitForRefresh).asJava))
+  }
+
+  private def createDeleteByQueryRequest(index: String, query: JSON) = {
+    val request = new HttpPost(restClient.from(s"$index/_delete_by_query"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(ujson.write(query)))
+    request
   }
 
   private def waitForRefreshParam(waitForRefresh: Boolean) = {
