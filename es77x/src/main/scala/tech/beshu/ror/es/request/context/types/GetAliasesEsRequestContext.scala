@@ -30,19 +30,15 @@ import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, RandomIndexBasedOnBlockContextIndices}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
-import tech.beshu.ror.accesscontrol.matchers.Matcher.Conversion
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted, UpdateResponse}
+import tech.beshu.ror.es.request.context.types.utils.FilterableAliasesMap._
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.{CaseMappingEquality, StringCaseMapping}
-
-import scala.collection.JavaConverters._
 
 class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
                                  esContext: EsContext,
@@ -139,29 +135,12 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
                                     response: ActionResponse): Task[ActionResponse] = {
     val aliases: ImmutableOpenMap[String, JList[AliasMetaData]] = response match {
       case aliasesResponse: GetAliasesResponse =>
-        ImmutableOpenMapOps.from {
-          filterResponseAliases(
-            aliasesResponse.getAliases.asSafeEntriesList,
-            allowedAliases
-          ) toMap
-        }
+        aliasesResponse.getAliases.filterOutNotAllowedAliases(allowedAliases)
       case other =>
         logger.error(s"${id.show} Unexpected response type - expected: [${classOf[GetAliasesResponse].getSimpleName}], was: [${other.getClass.getSimpleName}]")
         ImmutableOpenMapOps.empty[String, JList[AliasMetaData]]
     }
     Task.now(new GetAliasesResponse(aliases))
-  }
-
-  private def filterResponseAliases(responseIndicesNadAliases: List[(String, java.util.List[AliasMetaData])],
-                                    allowedAliases: NonEmptyList[ClusterIndexName]) = {
-    implicit val mapping: CaseMappingEquality[String] = StringCaseMapping.caseSensitiveEquality
-    implicit val conversion = Conversion.from[AliasMetaData, String](_.alias())
-    val matcher = MatcherWithWildcardsScalaAdapter.create(allowedAliases.toList.map(_.stringify))
-    responseIndicesNadAliases
-      .map { case (indexName, aliasesList) =>
-        val filteredAliases = matcher.filter(aliasesList.asSafeList.toSet)
-        (indexName, filteredAliases.toList.asJava)
-      }
   }
 
   private def indicesFrom(request: GetAliasesRequest) = {
