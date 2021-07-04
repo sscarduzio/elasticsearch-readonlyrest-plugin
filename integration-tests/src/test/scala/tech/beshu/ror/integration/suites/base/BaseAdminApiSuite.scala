@@ -240,7 +240,7 @@ trait BaseAdminApiSuite
       s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest.yml"))}"}"""
     )
     val indexManager = new IndexManager(ror2_1Node.adminClient)
-    indexManager.removeIndex(readonlyrestIndexName).force()
+    indexManager.removeIndex(readonlyrestIndexName)
 
     ror1WithIndexConfigAdminActionManager.actionPost(
       "_readonlyrest/admin/config",
@@ -251,18 +251,24 @@ trait BaseAdminApiSuite
   protected def nodeDataInitializer(): ElasticsearchNodeDataInitializer = {
     (esVersion: String, adminRestClient: RestClient) => {
       val documentManager = new DocumentManager(adminRestClient, esVersion)
-      documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}"""))
-      documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}"""))
+      documentManager
+        .createDoc("test1_index", 1, ujson.read("""{"hello":"world"}"""))
+        .force()
+      documentManager
+        .createDoc("test2_index", 1, ujson.read("""{"hello":"world"}"""))
+        .force()
       insertInIndexConfig(documentManager, "/admin_api/readonlyrest_index.yml")
     }
   }
 
   private def insertInIndexConfig(documentManager: DocumentManager, resourceFilePath: String): Unit = {
-    documentManager.createDoc(
-      readonlyrestIndexName,
-      "settings",
-      id = 1,
-      ujson.read(s"""{"settings": "${escapeJava(getResourceContent(resourceFilePath))}"}""")
-    )
+    documentManager
+      .createDoc(
+        readonlyrestIndexName,
+        "settings",
+        id = 1,
+        ujson.read(s"""{"settings": "${escapeJava(getResourceContent(resourceFilePath))}"}""")
+      )
+      .force()
   }
 }
