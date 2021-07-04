@@ -226,8 +226,8 @@ trait IndexAliasesManagementSuite
   }
 
   override protected def beforeEach(): Unit = {
-    adminIndexManager.removeAllIndices.force()
-    adminIndexManager.removeAllAliases
+    adminIndexManager.removeAllIndices().force()
+    adminIndexManager.removeAllAliases()
   }
 
   private def exampleDocument = ujson.read("""{"hello":"world"}""")
