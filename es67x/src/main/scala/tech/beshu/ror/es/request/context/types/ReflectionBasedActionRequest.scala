@@ -14,29 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es.request.context.types
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'core'
-include 'es55x'
-include 'es60x'
-include 'es61x'
-include 'es62x'
-include 'es63x'
-include 'es65x'
-include 'es66x'
-include 'es67x'
-include 'es70x'
-include 'es72x'
-include 'es73x'
-include 'es74x'
-include 'es77x'
-include 'es78x'
-include 'es79x'
-include 'es710x'
-include 'es711x'
-include 'proxy'
-include 'tests-utils'
-include 'integration-tests'
-include 'eshome'
+import org.elasticsearch.client.node.NodeClient
+import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
+import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
+
+final case class ReflectionBasedActionRequest(esContext: EsContext,
+                                              aclContext: AccessControlStaticContext,
+                                              clusterService: RorClusterService,
+                                              nodeClient: NodeClient,
+                                              threadPool: ThreadPool)

@@ -18,12 +18,9 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import java.util.{List => JList}
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.indices.get.{GetIndexRequest, GetIndexResponse}
-import org.elasticsearch.cluster.metadata.AliasMetaData
-import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
@@ -31,6 +28,7 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.es.request.context.types.utils.FilterableAliasesMap._
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.ImmutableOpenMapOps
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.language.postfixOps
@@ -60,34 +58,22 @@ class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
                             allAllowedAliases: NonEmptyList[ClusterIndexName]): Task[ActionResponse] = {
     response match {
       case getIndexResponse: GetIndexResponse =>
-        val reflectionBasedGetIndexResponse = new ReflectionBasedGetIndexResponse(getIndexResponse)
-        reflectionBasedGetIndexResponse.setAliases(
-          getIndexResponse.aliases().filterOutNotAllowedAliases(allowedAliases = allAllowedAliases)
-        )
-        Task.now(reflectionBasedGetIndexResponse.underlying)
+        Task.now(new GetIndexResponse(
+          getIndexResponse.indices(),
+          getIndexResponse.mappings(),
+          getIndexResponse.aliases().filterOutNotAllowedAliases(allowedAliases = allAllowedAliases),
+          getIndexResponse.settings(),
+          getIndexResponse.defaultSettings()
+        ))
       case other =>
         logger.error(s"${id.show} Unexpected response type - expected: [${classOf[GetIndexResponse].getSimpleName}], was: [${other.getClass.getSimpleName}]")
-        Task.now(ReflectionBasedGetIndexResponse.createEmpty())
+        Task.now(new GetIndexResponse(
+          Array.empty,
+          ImmutableOpenMapOps.empty,
+          ImmutableOpenMapOps.empty,
+          ImmutableOpenMapOps.empty,
+          ImmutableOpenMapOps.empty
+        ))
     }
-  }
-}
-
-private class ReflectionBasedGetIndexResponse(val underlying: GetIndexResponse) {
-
-  import org.joor.Reflect.on
-
-  def getAliases: ImmutableOpenMap[String, JList[AliasMetaData]] = underlying.getAliases
-
-  def setAliases(aliases: ImmutableOpenMap[String, JList[AliasMetaData]]): Unit = {
-    on(underlying).set("aliases", aliases)
-  }
-}
-private object ReflectionBasedGetIndexResponse {
-  import org.joor.Reflect.onClass
-
-  def createEmpty(): GetIndexResponse = {
-    onClass(classOf[GetIndexResponse])
-      .create()
-      .get[GetIndexResponse]()
   }
 }
