@@ -60,7 +60,7 @@ object DynamicVariablesSuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     documentManager
-      .createDoc(".kibana_simone", "documents", 1, ujson.read("""{"title": ".kibana_simone"}"""))
+      .createDoc(".kibana_simone", "documents", "doc-asd", ujson.read("""{"title": ".kibana_simone"}"""))
       .force()
   }
 }
