@@ -65,8 +65,10 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.types._
 import tech.beshu.ror.es.request.handler.{CurrentUserMetadataRequestHandler, RegularRequestHandler}
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
-
 import java.time.Instant
+
+import org.elasticsearch.action.admin.indices.get.GetIndexRequest
+
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 
@@ -132,6 +134,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: IndicesAliasesRequest =>
         regularRequestHandler.handle(new IndicesAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       // indices
+      case request: GetIndexRequest =>
+        regularRequestHandler.handle(new GetIndexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: BulkShardRequest =>
         regularRequestHandler.handle(new BulkShardEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: IndexRequest =>

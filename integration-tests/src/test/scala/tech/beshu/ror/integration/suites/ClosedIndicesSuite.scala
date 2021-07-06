@@ -20,7 +20,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.EsContainerCreator
-import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, IndexManager, IndexManagerJ, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 
@@ -71,19 +71,18 @@ trait ClosedIndicesSuite
   }
 
   override val nodeDataInitializer = Some {
-    (_, adminRestClient: RestClient) => {
-      val documentManager = new DocumentManagerJ(adminRestClient)
-      documentManager.insertDocAndWaitForRefresh(
-        "/intentp1_a1/documents/doc-a1",
-        """{"title": "a1"}"""
-      )
-      documentManager.insertDocAndWaitForRefresh(
-        "/intentp1_a2/documents/doc-a2",
-        """{"title": "a2"}"""
-      )
+    (esVersion, adminRestClient: RestClient) => {
+      val indexManager = new IndexManager(adminRestClient)
+      val documentManager = new DocumentManager(adminRestClient, esVersion)
 
-      val indexManager = new IndexManagerJ(adminRestClient)
-      indexManager.close("/intentp1_a2")
+      documentManager
+        .createDoc("intentp1_a1", "documents", "doc-a1", ujson.read("""{"title": "a1"}"""))
+          .force()
+      documentManager
+        .createDoc("intentp1_a2", "documents", "doc-a2", ujson.read("""{"title": "a2"}"""))
+        .force()
+
+      indexManager.closeIndex("intentp1_a2").force()
     }
   }
 

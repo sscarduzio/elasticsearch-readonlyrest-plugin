@@ -20,7 +20,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, IndexManagerJ, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 //TODO change test names. Current names are copies from old java integration tests
@@ -93,14 +93,11 @@ trait MSearchTEST1Suite
 }
 
 object MSearchTEST1Suite {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManagerJ(adminRestClient)
-    val indexManager = new IndexManagerJ(adminRestClient)
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
+    val indexManager = new IndexManager(adminRestClient)
 
-    indexManager.create("empty_index")
-    documentManager.insertDocAndWaitForRefresh(
-      "/.kibana/documents/doc1",
-      """{"id": "asd123"}"""
-    )
+    indexManager.createIndex("empty_index").force()
+    documentManager.createDoc(".kibana", "documents", 1, ujson.read("""{"id": "asd123"}""")).force()
   }
 }

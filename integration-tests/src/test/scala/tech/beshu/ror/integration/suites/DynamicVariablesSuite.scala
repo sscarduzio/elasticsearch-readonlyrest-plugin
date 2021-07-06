@@ -19,8 +19,8 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ContainerSpecification, ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
+import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait DynamicVariablesSuite
@@ -57,8 +57,10 @@ trait DynamicVariablesSuite
 }
 
 object DynamicVariablesSuite {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManagerJ(adminRestClient)
-    documentManager.insertDocAndWaitForRefresh("/.kibana_simone/documents/doc-asd", """{"title": ".kibana_simone"}""")
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
+    documentManager
+      .createDoc(".kibana_simone", "documents", "doc-asd", ujson.read("""{"title": ".kibana_simone"}"""))
+      .force()
   }
 }

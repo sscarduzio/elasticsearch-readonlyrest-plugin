@@ -16,22 +16,31 @@
  */
 package tech.beshu.ror.es.request.context.types
 
+import java.util.{List => JList}
+
 import cats.data.NonEmptyList
 import cats.implicits._
-import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
+import monix.eval.Task
+import org.elasticsearch.action.ActionResponse
+import org.elasticsearch.action.admin.indices.alias.get.{GetAliasesRequest, GetAliasesResponse}
+import org.elasticsearch.cluster.metadata.AliasMetadata
+import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.AliasRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, RandomIndexBasedOnBlockContextIndices}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
+import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted, UpdateResponse}
+import tech.beshu.ror.es.request.context.types.utils.FilterableAliasesMap._
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RandomIndexBasedOnBlockContextIndices
-import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
+
+import scala.language.postfixOps
 
 class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
                                  esContext: EsContext,
@@ -67,7 +76,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
       case Some((indices, aliases)) =>
         updateIndices(actionRequest, indices)
         updateAliases(actionRequest, aliases)
-        Modified
+        UpdateResponse(updateAliasesResponse(aliases, _))
       case None =>
         logger.error(s"[${id.show}] At least one alias and one index has to be allowed. " +
           s"Found allowed indices: [${blockContext.indices.map(_.show).mkString(",")}]." +
@@ -113,11 +122,27 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
   }
 
   private def updateIndices(request: GetAliasesRequest, indices: NonEmptyList[ClusterIndexName]): Unit = {
-    actionRequest.indices(indices.map(_.stringify).toList: _*)
+    request.indices(indices.map(_.stringify).toList: _*)
   }
 
   private def updateAliases(request: GetAliasesRequest, aliases: NonEmptyList[ClusterIndexName]): Unit = {
-    actionRequest.aliases(aliases.map(_.stringify).toList: _*)
+    if (isRequestedEmptyAliasesSet(request)) {
+      // we don't need to do anything
+    } else {
+      request.aliases(aliases.map(_.stringify).toList: _*)
+    }
+  }
+
+  private def updateAliasesResponse(allowedAliases: NonEmptyList[ClusterIndexName],
+                                    response: ActionResponse): Task[ActionResponse] = {
+    val aliases: ImmutableOpenMap[String, JList[AliasMetadata]] = response match {
+      case aliasesResponse: GetAliasesResponse =>
+        aliasesResponse.getAliases.filterOutNotAllowedAliases(allowedAliases)
+      case other =>
+        logger.error(s"${id.show} Unexpected response type - expected: [${classOf[GetAliasesResponse].getSimpleName}], was: [${other.getClass.getSimpleName}]")
+        ImmutableOpenMapOps.empty[String, JList[AliasMetadata]]
+    }
+    Task.now(new GetAliasesResponse(aliases))
   }
 
   private def indicesFrom(request: GetAliasesRequest) = {
@@ -125,6 +150,12 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
   }
 
   private def aliasesFrom(request: GetAliasesRequest) = {
-    indicesOrWildcard(request.aliases().asSafeSet.flatMap(ClusterIndexName.fromString))
+    indicesOrWildcard(rawRequestAliasesSet(request).flatMap(ClusterIndexName.fromString))
   }
+
+  private def isRequestedEmptyAliasesSet(request: GetAliasesRequest) = {
+    rawRequestAliasesSet(request).isEmpty
+  }
+
+  private def rawRequestAliasesSet(request: GetAliasesRequest) = request.aliases().asSafeSet
 }

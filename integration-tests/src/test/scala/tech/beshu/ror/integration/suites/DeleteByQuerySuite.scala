@@ -20,7 +20,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DeleteByQueryManagerJ, ElasticsearchTweetsInitializer}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, ElasticsearchTweetsInitializer}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait DeleteByQuerySuite
@@ -29,26 +29,26 @@ trait DeleteByQuerySuite
     with Matchers {
   this: EsContainerCreator =>
 
-  private val matchAllQuery = """{"query" : {"match_all" : {}}}""".stripMargin
+  private val matchAllQuery = ujson.read("""{"query" : {"match_all" : {}}}""".stripMargin)
 
   override implicit val rorConfigFileName = "/delete_by_query/readonlyrest.yml"
 
   override def nodeDataInitializer = Some(DeleteByQuerySuite.nodeDataInitializer())
 
-  private lazy val blueTeamDeleteByQueryManager = new DeleteByQueryManagerJ(basicAuthClient("blue", "dev"))
-  private lazy val redTeamDeleteByQueryManager = new DeleteByQueryManagerJ(basicAuthClient("red", "dev"))
+  private lazy val blueTeamDeleteByQueryManager = new DocumentManager(basicAuthClient("blue", "dev"), esVersionUsed)
+  private lazy val redTeamDeleteByQueryManager = new DocumentManager(basicAuthClient("red", "dev"), esVersionUsed)
 
   "Delete by query" should {
     "be allowed" when {
       "is executed by blue client" in {
-        val response = blueTeamDeleteByQueryManager.delete("twitter", matchAllQuery)
-        response.getResponseCode shouldBe 200
+        val response = blueTeamDeleteByQueryManager.deleteByQuery("twitter", matchAllQuery)
+        response.responseCode shouldBe 200
       }
     }
     "not be allowed" when {
       "is executed by red client" in {
-        val response = redTeamDeleteByQueryManager.delete("facebook", matchAllQuery)
-        response.getResponseCode shouldBe 401
+        val response = redTeamDeleteByQueryManager.deleteByQuery("facebook", matchAllQuery)
+        response.responseCode shouldBe 401
       }
     }
   }

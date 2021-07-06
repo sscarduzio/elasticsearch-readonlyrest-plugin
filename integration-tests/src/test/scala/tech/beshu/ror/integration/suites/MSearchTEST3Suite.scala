@@ -20,7 +20,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 //TODO change test names. Current names are copies from old java integration tests
@@ -54,16 +54,14 @@ trait MSearchTEST3Suite
 }
 
 object MSearchTEST3Suite {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManagerJ(adminRestClient)
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
 
-    documentManager.insertDocAndWaitForRefresh(
-      "/monit_private_hammercloud_2/documents/docHC2",
-      """{"id": "docHC2"}"""
-    )
-    documentManager.insertDocAndWaitForRefresh(
-      "monit_private_openshift/documents/docOS",
-      """{"id": "docOS"}"""
-    )
+    documentManager
+      .createDoc("monit_private_hammercloud_2", "documents", 1, ujson.read("""{"id": "docHC2"}"""))
+      .force()
+    documentManager
+      .createDoc("monit_private_openshift", "documents", 1, ujson.read("""{"id": "docHC2"}"""))
+      .force()
   }
 }
