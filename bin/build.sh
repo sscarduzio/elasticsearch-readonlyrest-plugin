@@ -126,7 +126,7 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
 
     #es711
     ./gradlew --stacktrace es711x:ror '-PesVersion=7.13.3'
-    ./gradlew --stacktrace es711x:ror '-PesVersion=7.13.3'
+    ./gradlew --stacktrace es711x:ror '-PesVersion=7.13.2'
     ./gradlew --stacktrace es711x:ror '-PesVersion=7.13.1'
     ./gradlew --stacktrace es711x:ror '-PesVersion=7.13.0'
     ./gradlew --stacktrace es711x:ror '-PesVersion=7.12.1'
