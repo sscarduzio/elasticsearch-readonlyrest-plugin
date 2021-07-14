@@ -21,6 +21,7 @@ import java.util.function.Consumer
 import org.elasticsearch.common.xcontent.XContentBuilder
 import org.elasticsearch.rest.{RestChannel, RestStatus}
 
+// todo: can we remove it?
 object ErrorContentBuilderHelper {
 
   def createErrorResponse(channel: RestChannel,
