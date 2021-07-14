@@ -76,7 +76,7 @@ class RestRRAuditEventAction()
     } else {
       new JSONObject()
     }
-  }.toEither.left.map(_ => new AuditEventBadRequest())
+  }.toEither.left.map(_ => new AuditEventBadRequest)
 
   private class AuditEventBadRequest extends ElasticsearchException("Content malformed") {
     override def status(): RestStatus = RestStatus.BAD_REQUEST

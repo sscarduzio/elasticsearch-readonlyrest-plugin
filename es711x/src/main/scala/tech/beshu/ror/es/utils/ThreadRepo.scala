@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.utils
 
-import org.elasticsearch.tasks.Task
 import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.exceptions.SecurityPermissionException
 
@@ -27,7 +26,7 @@ object ThreadRepo {
     threadLocalChannel.set(restChannel)
   }
 
-  def getRorRestChannelFor(task: Task): Option[RorRestChannel] = {
+  def getRorRestChannel: Option[RorRestChannel] = {
     val channel = threadLocalChannel.get
     if (channel != null) threadLocalChannel.remove()
     val reqNull =

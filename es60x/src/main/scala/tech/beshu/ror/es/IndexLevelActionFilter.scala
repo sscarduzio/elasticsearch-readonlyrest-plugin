@@ -30,9 +30,9 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance, RorMode}
-import tech.beshu.ror.es.request.AclAwareRequestFilter
-import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.RorNotAvailableResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
+import tech.beshu.ror.es.handler.request.AclAwareRequestFilter
+import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.request.RorNotAvailableResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException

@@ -30,6 +30,7 @@ import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.Resolve
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
 import org.elasticsearch.action.support.PlainActionFuture
 import org.elasticsearch.client.node.NodeClient
+import tech.beshu.ror.accesscontrol.show.logs._
 import org.elasticsearch.cluster.metadata.RepositoriesMetadata
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
@@ -49,6 +50,9 @@ import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
+import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
+
 import scala.util.{Failure, Success, Try}
 
 class EsServerBasedRorClusterService(clusterService: ClusterService,
@@ -318,4 +322,5 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .zip(results)
       .toMap
   }
+
 }

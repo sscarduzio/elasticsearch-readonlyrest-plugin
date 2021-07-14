@@ -136,7 +136,6 @@ private[types] object GetComposableIndexTemplateEsRequestContext extends Logging
   }
 
   private def filterMetadataData(composableIndexTemplate: ComposableIndexTemplate, basedOn: IndexTemplate) = {
-    composableIndexTemplate.composedOf()
     new ComposableIndexTemplate(
       basedOn.patterns.toList.map(_.value.stringify).asJava,
       new metadata.Template(

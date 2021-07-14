@@ -15,9 +15,9 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance, RorMode, StartingFailure}
-import tech.beshu.ror.es.request.AclAwareRequestFilter
-import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.RorNotAvailableResponse.createRorNotReadyYetResponse
+import tech.beshu.ror.es.handler.request.AclAwareRequestFilter
+import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.request.RorNotAvailableResponse.createRorNotReadyYetResponse
 import tech.beshu.ror.exceptions.SecurityPermissionException
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter.ThreadRepoChannelRenewalOnChainProceed
