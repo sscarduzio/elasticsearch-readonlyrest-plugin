@@ -16,16 +16,16 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-import cats.implicits._
 import cats.data.NonEmptyList
+import cats.implicits._
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
+import org.joor.Reflect._
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import org.joor.Reflect._
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 
 class PutRollupJobEsRequestContext private(actionRequest: ActionRequest,
@@ -42,10 +42,10 @@ class PutRollupJobEsRequestContext private(actionRequest: ActionRequest,
     (ClusterIndexName.fromString(indexPattern) :: ClusterIndexName.fromString(rollupIndex) :: Nil).flatten.toSet
   }
 
-  override protected def indicesFrom(request: ActionRequest): Set[domain.ClusterIndexName] = originIndices
+  override protected def indicesFrom(request: ActionRequest): Set[ClusterIndexName] = originIndices
 
   override protected def update(request: ActionRequest,
-                                filteredIndices: NonEmptyList[domain.ClusterIndexName],
+                                filteredIndices: NonEmptyList[ClusterIndexName],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if(originIndices == filteredIndices.toList.toSet) {
       Modified

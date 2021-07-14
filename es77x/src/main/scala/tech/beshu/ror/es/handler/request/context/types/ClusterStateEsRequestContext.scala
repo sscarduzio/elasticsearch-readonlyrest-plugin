@@ -16,14 +16,14 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-import cats.implicits._
 import cats.data.NonEmptyList
+import cats.implicits._
 import org.elasticsearch.action.admin.cluster.state.ClusterStateRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
-import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.utils.ScalaOps._
@@ -35,7 +35,7 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
                                    override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ClusterStateRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ClusterStateRequest): Set[domain.ClusterIndexName] = {
+  override protected def indicesFrom(request: ClusterStateRequest): Set[ClusterIndexName] = {
     request.indices.asSafeSet.flatMap(ClusterIndexName.fromString)
   }
 

@@ -16,15 +16,16 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
+
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 
 class CurrentUserMetadataEsRequestContext(actionRequest: RRUserMetadataRequest,
                                           esContext: EsContext,

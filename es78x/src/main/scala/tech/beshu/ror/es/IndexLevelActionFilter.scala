@@ -32,9 +32,9 @@ import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot._
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.request.RorNotAvailableResponse._
+import tech.beshu.ror.es.handler.AclAwareRequestFilter
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.response.RorNotAvailableResponse._
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
@@ -83,7 +83,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                                                                            listener: ActionListener[Response],
                                                                            chain: ActionFilterChain[Request, Response]): Unit = {
     doPrivileged {
-      ThreadRepo.getRorRestChannelFor(task) match {
+      ThreadRepo.getRorRestChannel match {
         case None =>
           chain.proceed(task, action, request, listener)
         case Some(_) if action.startsWith("internal:") =>
@@ -91,7 +91,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
         case Some(channel) =>
           rorInstanceState.get() match {
             case RorInstanceStartingState.Starting =>
-              channel.sendResponse(createRorNotReadyYetResponse(channel))
+              listener.onFailure(createRorNotReadyYetResponse())
             case RorInstanceStartingState.Started(instance) =>
               instance.engine match {
                 case Some(engine) =>
@@ -105,10 +105,10 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                     channel
                   )
                 case None =>
-                  channel.sendResponse(createRorNotReadyYetResponse(channel))
+                  listener.onFailure(createRorNotReadyYetResponse())
               }
             case RorInstanceStartingState.NotStarted(_) =>
-              channel.sendResponse(createRorStartingFailureResponse(channel))
+              listener.onFailure(createRorStartingFailureResponse())
           }
       }
     }

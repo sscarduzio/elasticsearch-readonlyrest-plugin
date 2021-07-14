@@ -117,4 +117,3 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
     response
   }
 }
-

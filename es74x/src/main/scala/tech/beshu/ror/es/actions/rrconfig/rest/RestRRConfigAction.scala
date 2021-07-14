@@ -46,10 +46,12 @@ class RestRRConfigAction(controller: RestController,
     val requestConfig = NodeConfigRequest(
       timeout = Timeout(timeout.nanos())
     )
-    channel => {
-      val localNodeId = NodeId(client.getLocalNodeId)
-      client.execute(new RRConfigActionType, new RRConfigsRequest(requestConfig, nodes.toArray: _*), new RestRRConfigActionResponseBuilder(localNodeId, channel))
-    }
+    channel =>
+      client.execute(
+        new RRConfigActionType,
+        new RRConfigsRequest(requestConfig, nodes.toArray: _*),
+        new RestRRConfigActionResponseBuilder(NodeId(client.getLocalNodeId), channel)
+      )
   }
 
   private def getTimeout(request: RestRequest, default: TimeValue) =

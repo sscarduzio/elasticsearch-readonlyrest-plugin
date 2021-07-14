@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.es.handler
 
+import java.time.{Duration, Instant}
+
 import cats.data.NonEmptyList
 import cats.implicits._
 import monix.eval.Task
@@ -30,11 +32,11 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater._
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, FilteredResponseFields, ResponseTransformation}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.request.ForbiddenResponse
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.RegularRequestHandler.{ForbiddenBlockMatch, ForbiddenCause, OperationNotAllowed, _}
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.{EsRequest, ModificationResult}
-import tech.beshu.ror.es.handler.RegularRequestHandler.{ForbiddenBlockMatch, ForbiddenCause, OperationNotAllowed, fromMismatchedCause}
+import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.utils.ThreadContextOps._
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.LoggerOps._
@@ -100,13 +102,13 @@ class RegularRequestHandler(engine: Engine,
         onForbidden(NonEmptyList.one(OperationNotAllowed))
       case CustomResponse(response) =>
         respond(response)
-      case UpdateResponse(updateResponseFunc) =>
-        proceed(listener = new UpdateResponseListener(updateResponseFunc))
+      case UpdateResponse(updateFunc) =>
+        proceed(new UpdateResponseListener(updateFunc))
     }
   }
 
   private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {
-    esContext.channel.sendResponse(ForbiddenResponse.create(esContext.channel, causes.toList, engine.context))
+    esContext.listener.onFailure(ForbiddenResponse.create(causes.toList, engine.context))
   }
 
   private def onIndexNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
@@ -203,8 +205,8 @@ class RegularRequestHandler(engine: Engine,
         onForbidden(NonEmptyList.one(OperationNotAllowed))
       case CustomResponse(response) =>
         respond(response)
-      case UpdateResponse(updateResponseFunc) =>
-        proceed(listener = new UpdateResponseListener(updateResponseFunc))
+      case UpdateResponse(updateFunc) =>
+        proceed(new UpdateResponseListener(updateFunc))
     }
   }
 
@@ -215,11 +217,18 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
-  private def proceed(listener: ActionListener[ActionResponse] = esContext.listener): Unit =
+  private def proceed(listener: ActionListener[ActionResponse] = esContext.listener): Unit = {
+    logRequestProcessingTime()
     esContext.chain.proceed(esContext.task, esContext.actionType, esContext.actionRequest, listener)
+  }
 
   private def respond(response: ActionResponse): Unit = {
+    logRequestProcessingTime()
     esContext.listener.onResponse(response)
+  }
+
+  private def logRequestProcessingTime(): Unit = {
+    logger.debug(s"[${esContext.requestId}] Request processing time: ${Duration.between(esContext.timestamp, Instant.now()).toMillis}ms")
   }
 
   private class UpdateResponseListener(update: ActionResponse => Task[ActionResponse]) extends ActionListener[ActionResponse] {

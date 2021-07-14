@@ -22,7 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockCont
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest}
 
 abstract class BaseSnapshotEsRequestContext[T <: ActionRequest](actionRequest: T,

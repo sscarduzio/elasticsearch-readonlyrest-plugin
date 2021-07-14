@@ -16,10 +16,8 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-import cats.implicits._
 import cats.data.NonEmptyList
-import org.elasticsearch.action.index.IndexRequest
-import org.elasticsearch.action.search.SearchRequest
+import cats.implicits._
 import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
@@ -27,12 +25,8 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import tech.beshu.ror.es.handler.request.context.ModificationResult.{CannotModify, Modified, ShouldBeInterrupted}
-import tech.beshu.ror.utils.LoggerOps._
-import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
+import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.utils.ScalaOps._
-
-import scala.util.{Failure, Success, Try}
 
 class ReindexEsRequestContext(actionRequest: ReindexRequest,
                               esContext: EsContext,
@@ -49,7 +43,9 @@ class ReindexEsRequestContext(actionRequest: ReindexRequest,
       .flatMap(ClusterIndexName.fromString)
   }
 
-  override protected def update(request: ReindexRequest, filteredIndices: NonEmptyList[ClusterIndexName], allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+  override protected def update(request: ReindexRequest,
+                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     val searchRequestIndices = actionRequest.getSearchRequest.indices().asSafeSet.flatMap(ClusterIndexName.fromString)
     val isSearchRequestComposedOnlyOfAllowedIndices = (searchRequestIndices -- filteredIndices.toList).isEmpty
 

@@ -31,6 +31,7 @@ import tech.beshu.ror.es.handler.request.queries.QueryFieldsUsage.instances._
 import tech.beshu.ror.es.handler.request.queries.QueryFieldsUsage.{Ops => QueryFieldsUsageOps}
 import tech.beshu.ror.es.handler.request.queries.QueryWithModifiableFields.instances._
 import tech.beshu.ror.es.handler.request.queries.QueryWithModifiableFields.{Ops => QueryWithModifiableFieldsOps}
+import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
 
 object SearchRequestOps extends Logging {
 

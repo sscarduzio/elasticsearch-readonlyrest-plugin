@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, TemplatePat
 import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern, UriPath}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 
@@ -101,7 +101,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
   private def modifyLegacyTemplatesOfResponse(response: ClusterStateResponse,
                                               allowedTemplates: Set[TemplateNamePattern],
                                               transformation: TemplatesTransformation) = {
-        val oldMetadata = response.getState.metaData()
+    val oldMetadata = response.getState.metaData()
     val filteredTemplates = GetTemplatesEsRequestContext
       .filter(
         oldMetadata.templates().valuesIt().asScala.toList,

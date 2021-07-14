@@ -137,7 +137,6 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .map(results => zip(results, documents))
   }
 
-
   private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService) = {
     val remoteClusterFullNames =
       remoteClusterService

@@ -23,12 +23,13 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
-import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, ClusterIndexName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter}
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.request.{FLSContextHeaderHandler, RequestSeemsToBeInvalid}
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CannotModify, Modified}
+import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
 import tech.beshu.ror.es.utils.SqlRequestHelper
 
 class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
@@ -44,7 +45,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
     case result@Right(_) => result
     case result@Left(SqlRequestHelper.IndicesError.ParsingException) => result
     case Left(SqlRequestHelper.IndicesError.UnexpectedException(ex)) =>
-      throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.getName}")
+      throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.getName}", ex)
   }
 
   override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[ClusterIndexName] = {
@@ -57,7 +58,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
   /** fixme: filter is not applied.
       If there is no way to apply filter to request (see e.g. SearchEsRequestContext),
       it can be handled just as in GET/MGET (see e.g. GetEsRequestContext) using ModificationResult.UpdateResponse.
-    **/
+   **/
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
                                 indices: NonEmptyList[ClusterIndexName],
                                 filter: Option[Filter],

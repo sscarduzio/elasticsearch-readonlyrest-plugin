@@ -20,11 +20,9 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.EsContainerCreator
-import tech.beshu.ror.utils.elasticsearch.{RorApiManager, SearchManagerJ}
+import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, RorApiManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import ujson.Str
-
-import scala.collection.JavaConverters._
 
 //TODO change test names. Current names are copies from old java integration tests
 trait LocalGroupsSuite
@@ -34,34 +32,41 @@ trait LocalGroupsSuite
     with CustomScalaTestMatchers {
   this: EsContainerCreator =>
 
-  private val matchingEndpoint = "/_cluster/state"
-
   override implicit val rorConfigFileName = "/local_groups/readonlyrest.yml"
 
   "good credentials but with non matching preferred group are sent" in {
-    val searchManager = new SearchManagerJ(
+    val clusterManager = new ClusterManager(
       basicAuthClient("user", "passwd"),
-      Map("x-ror-current-group" -> "group_extra").asJava)
+      esVersion = esVersionUsed,
+      additionalHeaders =  Map("x-ror-current-group" -> "group_extra")
+    )
 
-    val response = searchManager.search(matchingEndpoint)
+    val response = clusterManager.state()
 
-    response.getResponseCode should be(401)
+    response.responseCode should be(401)
   }
 
   "bad credentials, good rule" in {
-    val searchManager = new SearchManagerJ(basicAuthClient("user", "wrong"))
+    val clusterManager = new ClusterManager(
+      basicAuthClient("user", "wrong"),
+      esVersion = esVersionUsed,
+      additionalHeaders =  Map("x-ror-current-group" -> "group_extra")
+    )
 
-    val response = searchManager.search(matchingEndpoint)
+    val response = clusterManager.state()
 
-    response.getResponseCode should be(401)
+    response.responseCode should be(401)
   }
 
   "bad credentials, bad rule" in {
-    val searchManager = new SearchManagerJ(basicAuthClient("user", "wrong"))
+    val catManager = new CatManager(
+      basicAuthClient("user", "wrong"),
+      esVersion = esVersionUsed
+    )
 
-    val response = searchManager.search("/_cat/indices")
+    val response = catManager.indices()
 
-    response.getResponseCode should be(401)
+    response.responseCode should be(401)
   }
 
   "identify retrieval" in {

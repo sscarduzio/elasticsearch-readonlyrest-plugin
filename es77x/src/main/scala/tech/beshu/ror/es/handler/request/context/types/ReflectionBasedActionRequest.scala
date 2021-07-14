@@ -19,7 +19,7 @@ package tech.beshu.ror.es.handler.request.context.types
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 
 final case class ReflectionBasedActionRequest(esContext: EsContext,
                                               aclContext: AccessControlStaticContext,

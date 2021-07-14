@@ -23,7 +23,7 @@ import org.joor.Reflect._
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 
@@ -42,7 +42,7 @@ class GetRollupIndexCapsEsRequestContext private(actionRequest: ActionRequest,
   override protected def update(request: ActionRequest,
                                 filteredIndices: NonEmptyList[ClusterIndexName],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    on(request).call("indices", filteredIndices.toList.map(_.stringify).toList.toArray)
+    on(request).call("indices", filteredIndices.map(_.stringify).toList.toArray)
     Modified
   }
 }

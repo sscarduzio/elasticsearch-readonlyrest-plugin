@@ -25,12 +25,12 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, ClusterIndexName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter}
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.request.DocumentApiOps.GetApi
-import tech.beshu.ror.es.handler.request.DocumentApiOps.GetApi._
-import tech.beshu.ror.es.handler.request.RequestSeemsToBeInvalid
+import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi
+import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi._
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 
 class GetEsRequestContext(actionRequest: GetRequest,
@@ -56,7 +56,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     val indexName = indices.head
-    request.index(  indexName.stringify)
+    request.index(indexName.stringify)
     ModificationResult.UpdateResponse(updateFunction(filter, fieldLevelSecurity))
   }
 

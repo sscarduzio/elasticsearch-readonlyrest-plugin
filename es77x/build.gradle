@@ -135,6 +135,7 @@ task generateVersionsFile() {
     outputs.upToDateWhen { false }
     doFirst {
         def resourcesDir = sourceSets.main.output.resourcesDir
+        
         resourcesDir.mkdirs()
         def contents = "es_version=$esVersion\nplugin_version=$pluginVersion"
         new File(resourcesDir, "ror-build-info.properties").text = contents

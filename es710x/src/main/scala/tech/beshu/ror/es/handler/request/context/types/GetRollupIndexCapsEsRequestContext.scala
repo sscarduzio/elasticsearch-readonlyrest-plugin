@@ -39,7 +39,9 @@ class GetRollupIndexCapsEsRequestContext private(actionRequest: ActionRequest,
     indicesName.flatMap(ClusterIndexName.fromString).toSet
   }
 
-  override protected def update(request: ActionRequest, filteredIndices: NonEmptyList[ClusterIndexName], allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+  override protected def update(request: ActionRequest,
+                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     on(request).call("indices", filteredIndices.map(_.stringify).toList.toArray)
     Modified
   }

@@ -22,8 +22,8 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.request.RequestSeemsToBeInvalid
+import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -108,5 +108,4 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
     actionRequest.repository(RepositoryName.toString(repository))
     actionRequest.indices(indices.toList.map(_.stringify).asJava)
   }
-
 }

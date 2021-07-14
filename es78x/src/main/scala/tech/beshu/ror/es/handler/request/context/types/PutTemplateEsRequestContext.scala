@@ -22,8 +22,8 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockCont
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.AddingLegacyTemplate
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexPattern, TemplateName}
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.request.RequestSeemsToBeInvalid
+import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.utils.ScalaOps._

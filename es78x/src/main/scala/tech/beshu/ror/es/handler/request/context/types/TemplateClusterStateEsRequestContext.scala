@@ -31,9 +31,8 @@ import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{GettingIndexTemplates, GettingLegacyAndIndexTemplates, GettingLegacyTemplates}
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, TemplatePath}
 import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern, UriPath}
-import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 
@@ -115,7 +114,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
   private def modifyLegacyTemplatesOfResponse(response: ClusterStateResponse,
                                               allowedTemplates: Set[TemplateNamePattern],
                                               transformation: TemplatesTransformation) = {
-        val oldMetadata = response.getState.metadata()
+    val oldMetadata = response.getState.metadata()
     val filteredTemplates = GetTemplatesEsRequestContext
       .filter(
         oldMetadata.templates().valuesIt().asScala.toList,
@@ -154,7 +153,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
   private def modifyIndexTemplatesOfResponse(response: ClusterStateResponse,
                                              allowedTemplates: Set[TemplateNamePattern],
                                              transformation: TemplatesTransformation) = {
-        val oldMetadata = response.getState.metadata()
+    val oldMetadata = response.getState.metadata()
 
     val filteredTemplatesV2 =
       GetComposableIndexTemplateEsRequestContext

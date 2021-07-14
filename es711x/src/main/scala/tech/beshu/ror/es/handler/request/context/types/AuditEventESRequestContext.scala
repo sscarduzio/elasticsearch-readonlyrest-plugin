@@ -44,3 +44,4 @@ class AuditEventESRequestContext(actionRequest: RRAuditEventRequest,
 
   override protected def modifyRequest(blockContext: GeneralNonIndexRequestBlockContext): ModificationResult = Modified
 }
+

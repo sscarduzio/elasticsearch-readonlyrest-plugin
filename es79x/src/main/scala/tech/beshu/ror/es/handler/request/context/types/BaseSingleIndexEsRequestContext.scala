@@ -44,7 +44,6 @@ abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest
     update(request, filteredIndices.head)
   }
 
-
   protected def indexFrom(request: R): ClusterIndexName
 
   protected def update(request: R, index: ClusterIndexName): ModificationResult

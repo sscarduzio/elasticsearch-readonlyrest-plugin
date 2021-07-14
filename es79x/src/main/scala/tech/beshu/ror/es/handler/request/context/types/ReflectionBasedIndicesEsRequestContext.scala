@@ -43,7 +43,9 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
 
   override protected def indicesFrom(request: ActionRequest): Set[ClusterIndexName] = indices
 
-  override protected def update(request: ActionRequest, filteredIndices: NonEmptyList[ClusterIndexName], allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+  override protected def update(request: ActionRequest,
+                                filteredIndices: NonEmptyList[ClusterIndexName],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     if (tryUpdate(actionRequest, filteredIndices)) Modified
     else {
       logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. We're using reflection to modify the request indices and it fails. Please, report the issue.")
