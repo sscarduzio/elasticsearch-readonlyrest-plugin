@@ -91,7 +91,12 @@ class TransportRRConfigAction(actionName: String,
   override def newNodeRequest(request: RRConfigsRequest): RRConfigRequest =
     new RRConfigRequest(request.getNodeConfigRequest)
 
-  private def loadConfig() = RawRorConfigLoadingAction.load(env.configFile(), indexContentProvider)
+  override def newNodeResponse(): RRConfig =
+    new RRConfig()
+
+  private def loadConfig() =
+    RawRorConfigLoadingAction
+      .load(env.configFile(), indexContentProvider)
       .map(_.map(_.map(_.raw)))
 
   override def nodeOperation(request: RRConfigRequest): RRConfig = {
@@ -104,8 +109,4 @@ class TransportRRConfigAction(actionName: String,
 
   private def toFiniteDuration(timeout: Timeout): FiniteDuration = timeout.nanos nanos
 
-  override def newNodeResponse(): RRConfig = new RRConfig()
 }
-
-
-

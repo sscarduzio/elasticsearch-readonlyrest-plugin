@@ -63,7 +63,6 @@ trait QueryAuditLogSerializerSuite
         val result = user1MetadataManager.fetchMetadata()
 
         assertEquals(403, result.responseCode)
-        result.responseJson.obj.size should be(1)
 
         val auditEntries = auditIndexManager.getEntries.jsons
         auditEntries.size shouldBe 1

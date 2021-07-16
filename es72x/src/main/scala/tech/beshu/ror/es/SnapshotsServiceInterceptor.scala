@@ -25,7 +25,7 @@ import org.elasticsearch.snapshots.SnapshotsService
 
 class SnapshotsServiceInterceptor(snapshotsService: SnapshotsService,
                                   ignore: Unit) // hack!
-  extends AbstractLifecycleComponent {
+  extends AbstractLifecycleComponent() {
 
   @Inject
   def this(snapshotsService: SnapshotsService) {

@@ -81,6 +81,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
         SslContext sslCtx = SslContextBuilder.forClient()
                 .trustManager(usedTrustManager)
                 .build();
+
         ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter() {
           @Override
           public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress, SocketAddress localAddress, ChannelPromise promise) throws Exception {

@@ -45,7 +45,6 @@ class TransportServiceInterceptor(transportService: TransportService,
 object TransportServiceInterceptor {
   val remoteClusterServiceSupplier: RemoteClusterServiceSupplier = new RemoteClusterServiceSupplier
   val taskManagerSupplier: TaskManagerSupplier = new TaskManagerSupplier
-
 }
 
 class RemoteClusterServiceSupplier extends Supplier[Option[RemoteClusterService]] {
@@ -56,7 +55,6 @@ class RemoteClusterServiceSupplier extends Supplier[Option[RemoteClusterService]
   }
   def update(service: RemoteClusterService): Unit = remoteClusterServiceAtomicReference.set(Some(service))
 }
-
 
 class TaskManagerSupplier extends Supplier[Option[TaskManager]] {
   private val taskManagerAtomicReference = new AtomicReference(Option.empty[TaskManager])

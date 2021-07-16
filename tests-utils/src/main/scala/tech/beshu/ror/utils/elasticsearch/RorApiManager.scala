@@ -18,7 +18,7 @@ package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.client.methods.{HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 class RorApiManager(client: RestClient,
@@ -33,8 +33,8 @@ class RorApiManager(client: RestClient,
     call(createUserMetadataRequest(Some(preferredGroup)), new JsonResponse(_))
   }
 
-  def sendAuditEvent(payload: JSON): SimpleResponse = {
-    call(createSendAuditEventRequest(payload), new SimpleResponse(_))
+  def sendAuditEvent(payload: JSON): JsonResponse = {
+    call(createSendAuditEventRequest(payload), new JsonResponse(_))
   }
 
   private def createUserMetadataRequest(preferredGroup: Option[String]) = {

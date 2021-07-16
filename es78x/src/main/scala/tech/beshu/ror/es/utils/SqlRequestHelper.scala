@@ -55,7 +55,6 @@ object ExtractedIndices {
 }
 
 object SqlRequestHelper {
-
   sealed trait ModificationError
   object ModificationError {
     final case class UnexpectedException(ex: Throwable) extends ModificationError

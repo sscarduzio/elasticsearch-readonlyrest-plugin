@@ -88,7 +88,14 @@ class TransportRRConfigAction(actionName: String,
     new RRConfigsResponse(clusterService.getClusterName, responses, failures)
   }
 
-  private def loadConfig() = RawRorConfigLoadingAction.load(env.configFile(), indexContentProvider)
+  override def newNodeRequest(nodeId: String, request: RRConfigsRequest): RRConfigRequest =
+    new RRConfigRequest(nodeId, request.getNodeConfigRequest)
+
+  override def newNodeResponse(): RRConfig = new RRConfig()
+
+  private def loadConfig() =
+    RawRorConfigLoadingAction
+      .load(env.configFile(), indexContentProvider)
       .map(_.map(_.map(_.raw)))
 
   override def nodeOperation(request: RRConfigRequest): RRConfig = {
@@ -101,10 +108,4 @@ class TransportRRConfigAction(actionName: String,
 
   private def toFiniteDuration(timeout: Timeout): FiniteDuration = timeout.nanos nanos
 
-  override def newNodeResponse(): RRConfig = new RRConfig()
-
-  override def newNodeRequest(nodeId: String, request: RRConfigsRequest): RRConfigRequest = new RRConfigRequest(nodeId, request.getNodeConfigRequest)
 }
-
-
-

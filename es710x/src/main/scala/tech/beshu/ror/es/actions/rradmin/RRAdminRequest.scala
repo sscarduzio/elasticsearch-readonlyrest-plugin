@@ -22,6 +22,7 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.adminapi.AdminRestApi
 
 import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
+
 class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
 
   def this() = {

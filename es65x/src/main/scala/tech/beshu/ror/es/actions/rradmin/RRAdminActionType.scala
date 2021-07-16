@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.actions.rradmin
 
 import tech.beshu.ror.accesscontrol.domain
-import org.elasticsearch.action.Action
+import org.elasticsearch.action.{Action, ActionRequestBuilder}
 import org.elasticsearch.client.ElasticsearchClient
 import tech.beshu.ror.adminapi.AdminRestApi
 
@@ -33,3 +33,6 @@ object RRAdminActionType {
   val name = domain.Action.rorOldConfigAction.value
   val instance = new RRAdminActionType()
 }
+
+class RRAdminRequestBuilder(client: ElasticsearchClient, action: RRAdminActionType)
+  extends ActionRequestBuilder[RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder](client, action, new RRAdminRequest)

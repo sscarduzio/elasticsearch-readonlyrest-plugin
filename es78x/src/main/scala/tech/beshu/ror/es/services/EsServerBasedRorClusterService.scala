@@ -79,7 +79,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       }
       .toSet
   }
- 
+
   override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
@@ -318,4 +318,5 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .zip(results)
       .toMap
   }
+
 }

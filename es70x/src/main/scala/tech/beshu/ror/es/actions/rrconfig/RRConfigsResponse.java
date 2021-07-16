@@ -25,29 +25,29 @@ import org.elasticsearch.common.io.stream.StreamOutput;
 import java.io.IOException;
 import java.util.List;
 
-public class RRConfigsResponse
-        extends BaseNodesResponse<RRConfig>{
-    protected RRConfigsResponse() {
-        super();
-    }
+public class RRConfigsResponse extends BaseNodesResponse<RRConfig> {
 
-    public RRConfigsResponse(ClusterName clusterName, List<RRConfig> nodes, List<FailedNodeException> failures) {
-        super(clusterName, nodes, failures);
-    }
+  protected RRConfigsResponse() {
+    super();
+  }
 
-    @Override
-    protected List<RRConfig> readNodesFrom(StreamInput in) throws IOException {
-        return in.readList(RRConfigReader::read);
-    }
+  public RRConfigsResponse(ClusterName clusterName, List<RRConfig> nodes, List<FailedNodeException> failures) {
+    super(clusterName, nodes, failures);
+  }
 
-    @Override
-    public void readFrom(StreamInput in) throws IOException {
-        super.readFrom(in);
-    }
+  @Override
+  protected List<RRConfig> readNodesFrom(StreamInput in) throws IOException {
+    return in.readList(RRConfigReader::read);
+  }
 
-    @Override
-    protected void writeNodesTo(StreamOutput out, List<RRConfig> nodes) throws IOException {
-        out.writeList(nodes);
-    }
+  @Override
+  public void readFrom(StreamInput in) throws IOException {
+    super.readFrom(in);
+  }
+
+  @Override
+  protected void writeNodesTo(StreamOutput out, List<RRConfig> nodes) throws IOException {
+    out.writeList(nodes);
+  }
 
 }

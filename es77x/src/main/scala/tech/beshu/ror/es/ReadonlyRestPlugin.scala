@@ -94,7 +94,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
-  private implicit val generator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator
+  private implicit val uniqueIdentifierGenerator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator
 
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds

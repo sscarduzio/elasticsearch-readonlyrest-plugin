@@ -31,7 +31,7 @@ import scala.collection.JavaConverters._
 
 final class RestRRConfigActionResponseBuilder(localNode: NodeId, channel: RestChannel)
   extends RestBuilderListener[RRConfigsResponse](channel) {
-  
+
   override def buildResponse(response: RRConfigsResponse, builder: XContentBuilder): RestResponse = {
     val nodeResponse = createNodesResponse(response)
     new BytesRestResponse(RestStatus.OK, nodeResponse.toJson)

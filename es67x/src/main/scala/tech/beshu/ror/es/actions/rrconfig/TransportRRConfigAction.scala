@@ -29,7 +29,7 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.env.Environment
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
-import tech.beshu.ror.configuration.loader.distributed.{RawRorConfigLoadingAction, NodeConfig, Timeout}
+import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, RawRorConfigLoadingAction, Timeout}
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.services.EsIndexJsonContentService
 import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
@@ -98,7 +98,14 @@ class TransportRRConfigAction(setting: Settings,
     new RRConfigsResponse(clusterService.getClusterName, responses, failures)
   }
 
-  private def loadConfig() = RawRorConfigLoadingAction.load(env.configFile(), indexContentProvider)
+  override def newNodeResponse(): RRConfig = new RRConfig()
+
+  override def newNodeRequest(nodeId: String, request: RRConfigsRequest): RRConfigRequest =
+    new RRConfigRequest(nodeId, request.getNodeConfigRequest)
+
+  private def loadConfig() =
+    RawRorConfigLoadingAction
+      .load(env.configFile(), indexContentProvider)
       .map(_.map(_.map(_.raw)))
 
   override def nodeOperation(request: RRConfigRequest): RRConfig = {
@@ -111,10 +118,4 @@ class TransportRRConfigAction(setting: Settings,
 
   private def toFiniteDuration(timeout: Timeout): FiniteDuration = timeout.nanos nanos
 
-  override def newNodeResponse(): RRConfig = new RRConfig()
-
-  override def newNodeRequest(nodeId: String, request: RRConfigsRequest): RRConfigRequest = new RRConfigRequest(nodeId, request.getNodeConfigRequest)
 }
-
-
-

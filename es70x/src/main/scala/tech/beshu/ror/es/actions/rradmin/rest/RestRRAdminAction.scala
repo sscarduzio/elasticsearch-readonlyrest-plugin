@@ -33,11 +33,15 @@ class RestRRAdminAction(settings: Settings, controller: RestController)
   register("GET", Constants.PROVIDE_INDEX_CONFIG_PATH)
   register("POST", Constants.UPDATE_INDEX_CONFIG_PATH)
   register("GET", Constants.PROVIDE_FILE_CONFIG_PATH)
-  
+
   override val getName: String = "ror-admin-handler"
 
-  override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = (channel: RestChannel) => {
-    client.execute(new RRAdminActionType, new RRAdminRequest(request), new RestToXContentListener[RRAdminResponse](channel))
+  override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = new RestChannelConsumer {
+    private val rorAdminRequest = RRAdminRequest.createFrom(request)
+
+    override def accept(channel: RestChannel): Unit = {
+      client.execute(new RRAdminActionType, rorAdminRequest, new RestToXContentListener[RRAdminResponse](channel))
+    }
   }
 
   private def register(method: String, path: String): Unit = {

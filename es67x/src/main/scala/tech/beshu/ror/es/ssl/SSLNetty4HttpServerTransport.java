@@ -17,9 +17,6 @@
 
 package tech.beshu.ror.es.ssl;
 
-/**
- * Created by sscarduzio on 28/11/2016.
- */
 
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
@@ -73,7 +70,6 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
       logger.warn(cause.getMessage() + " connecting from: " + ctx.channel().remoteAddress());
     }
     else {
-      cause.printStackTrace();
       super.exceptionCaught(ctx, cause);
     }
     ctx.channel().flush().close();

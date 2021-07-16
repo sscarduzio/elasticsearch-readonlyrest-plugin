@@ -254,6 +254,22 @@ trait EnabledAuditingToolsSuite
 
         val response = rorApiManager.sendAuditEvent(ujson.read("""[]"""))
         response.responseCode shouldBe 400
+        response.responseJson should be (ujson.read(
+          """
+            |{
+            |  "error":{
+            |    "root_cause":[
+            |      {
+            |        "type":"audit_event_bad_request",
+            |        "reason":"Content malformed"
+            |      }
+            |    ],
+            |    "type":"audit_event_bad_request",
+            |    "reason":"Content malformed"
+            |  },
+            |  "status":400
+            |}
+          """.stripMargin))
 
         eventually {
           val entriesResult = adminAuditIndexManager.getEntries
@@ -265,6 +281,22 @@ trait EnabledAuditingToolsSuite
 
         val response = rorApiManager.sendAuditEvent(ujson.read(s"""{ "event": "${Stream.continually("!").take(5000).mkString}" }"""))
         response.responseCode shouldBe 413
+        response.responseJson should be (ujson.read(
+          """
+            |{
+            |  "error":{
+            |    "root_cause":[
+            |      {
+            |        "type":"audit_event_request_payload_too_large",
+            |        "reason":"Max request content allowed = 40.0KB"
+            |      }
+            |    ],
+            |    "type":"audit_event_request_payload_too_large",
+            |    "reason":"Max request content allowed = 40.0KB"
+            |  },
+            |  "status":413
+            |}
+          """.stripMargin))
 
         eventually {
           val entriesResult = adminAuditIndexManager.getEntries

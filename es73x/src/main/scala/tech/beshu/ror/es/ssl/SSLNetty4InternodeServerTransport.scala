@@ -16,9 +16,8 @@
  */
 package tech.beshu.ror.es.ssl
 
-import java.io.{ByteArrayInputStream, InputStream}
+import java.io.InputStream
 import java.net.SocketAddress
-import java.nio.charset.StandardCharsets
 
 import io.netty.buffer.ByteBufAllocator
 import io.netty.channel._
@@ -61,7 +60,6 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
       val sslCtx = SslContextBuilder.forClient()
         .trustManager(usedTrustManager)
         .build()
-
       ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter {
         override def connect(ctx: ChannelHandlerContext, remoteAddress: SocketAddress, localAddress: SocketAddress, promise: ChannelPromise): Unit = {
           val sslEngine = sslCtx.newEngine(ctx.alloc())

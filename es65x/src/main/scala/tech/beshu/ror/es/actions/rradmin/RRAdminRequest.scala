@@ -16,19 +16,27 @@
  */
 package tech.beshu.ror.es.actions.rradmin
 
-import org.elasticsearch.action.ActionRequest
+import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
 import tech.beshu.ror.Constants
 import tech.beshu.ror.adminapi.AdminRestApi
+
 import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
 
-class RRAdminRequest(request: RestRequest) extends ActionRequest {
+class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
 
   def this() {
     this(null)
   }
 
-  lazy val getAdminRequest: AdminRestApi.AdminRequest = {
+  val getAdminRequest: AdminRestApi.AdminRequest = request
+
+  override def validate(): ActionRequestValidationException = null
+}
+
+object RRAdminRequest {
+
+  def createFrom(request: RestRequest): RRAdminRequest = {
     val requestType = (request.uri(), request.method()) match {
       case (uri, method) if Constants.FORCE_RELOAD_CONFIG_PATH.startsWith(uri) && method == POST =>
         AdminRestApi.AdminRequest.Type.ForceReload
@@ -41,8 +49,8 @@ class RRAdminRequest(request: RestRequest) extends ActionRequest {
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }
-    new AdminRestApi.AdminRequest(requestType, request.method.name, request.path, request.content.utf8ToString)
+    new RRAdminRequest(
+      new AdminRestApi.AdminRequest(requestType, request.method.name, request.path, request.content.utf8ToString)
+    )
   }
-
-  override def validate() = null
 }

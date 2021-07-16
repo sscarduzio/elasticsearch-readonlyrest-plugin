@@ -17,9 +17,7 @@
 
 package tech.beshu.ror.es.ssl;
 
-/**
- * Created by sscarduzio on 28/11/2016.
- */
+
 
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;

@@ -26,7 +26,7 @@ class TransportRRAuditEventAction(transportService: TransportService,
                                   actionFilters: ActionFilters,
                                   constructorDiscriminator: Unit)
   extends TransportAction[RRAuditEventRequest, RRAuditEventResponse](
-    RRAuditEventActionType.name,  actionFilters, transportService.getTaskManager
+    RRAuditEventActionType.name, actionFilters, transportService.getTaskManager
   ) {
 
   @Inject

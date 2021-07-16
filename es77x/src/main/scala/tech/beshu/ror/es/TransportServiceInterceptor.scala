@@ -45,6 +45,7 @@ class TransportServiceInterceptor(transportService: TransportService,
 object TransportServiceInterceptor {
   val remoteClusterServiceSupplier: RemoteClusterServiceSupplier = new RemoteClusterServiceSupplier
   val taskManagerSupplier: TaskManagerSupplier = new TaskManagerSupplier
+
 }
 
 class RemoteClusterServiceSupplier extends Supplier[Option[RemoteClusterService]] {

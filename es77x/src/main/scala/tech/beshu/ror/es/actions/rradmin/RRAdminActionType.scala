@@ -17,8 +17,8 @@
 package tech.beshu.ror.es.actions.rradmin
 
 import org.elasticsearch.action.ActionType
-import tech.beshu.ror.accesscontrol.domain
 import org.elasticsearch.common.io.stream.Writeable
+import tech.beshu.ror.accesscontrol.domain
 
 class RRAdminActionType extends ActionType[RRAdminResponse](
   RRAdminActionType.name,

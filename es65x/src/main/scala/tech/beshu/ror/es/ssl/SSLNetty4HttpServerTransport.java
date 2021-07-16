@@ -31,7 +31,6 @@ import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
-import org.elasticsearch.env.Environment;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
 import scala.collection.JavaConverters$;
@@ -53,10 +52,10 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
   public SSLNetty4HttpServerTransport(Settings settings,
                                       NetworkService networkService,
-                                      BigArrays bigArrays, ThreadPool threadPool,
+                                      BigArrays bigArrays,
+                                      ThreadPool threadPool,
                                       NamedXContentRegistry xContentRegistry,
                                       Dispatcher dispatcher,
-                                      Environment environment,
                                       ExternalSslConfiguration ssl) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
     this.ssl = ssl;
@@ -70,7 +69,6 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
       logger.warn(cause.getMessage() + " connecting from: " + ctx.channel().remoteAddress());
     }
     else {
-      cause.printStackTrace();
       super.exceptionCaught(ctx, cause);
     }
     ctx.channel().flush().close();

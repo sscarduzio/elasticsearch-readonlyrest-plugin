@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.actions.rrconfig
 
-import tech.beshu.ror.accesscontrol.domain
 import org.elasticsearch.action.Action
 import org.elasticsearch.common.io.stream.Writeable
 import tech.beshu.ror.accesscontrol.domain

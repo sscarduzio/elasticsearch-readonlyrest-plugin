@@ -170,7 +170,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
             new ActionListener[GetIndexResponse] {
               override def onResponse(response: GetIndexResponse): Unit = promise.trySuccess(response)
               override def onFailure(e: Exception): Unit = promise.tryFailure(e)
-          })
+            })
         Task
           .fromCancelablePromise(promise)
           .map { response =>

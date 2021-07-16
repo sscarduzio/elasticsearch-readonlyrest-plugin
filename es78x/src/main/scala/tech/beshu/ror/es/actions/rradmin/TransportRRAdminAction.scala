@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.actions.rradmin
 
 import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.support.{ActionFilters, TransportAction}
+import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.env.Environment
 import org.elasticsearch.tasks.Task
@@ -31,8 +31,8 @@ class TransportRRAdminAction(transportService: TransportService,
                              env: Environment,
                              indexContentProvider: EsIndexJsonContentService,
                              ignore: Unit) // hack!
-  extends TransportAction[RRAdminRequest, RRAdminResponse](
-    RRAdminActionType.name, actionFilters, transportService.getTaskManager
+  extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
+    RRAdminActionType.name, transportService, actionFilters, RRAdminActionType.exceptionReader
   ) {
 
   @Inject

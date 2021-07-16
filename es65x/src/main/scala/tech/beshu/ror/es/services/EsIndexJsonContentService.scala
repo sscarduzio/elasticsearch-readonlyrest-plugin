@@ -27,7 +27,6 @@ import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.{Inject, Singleton}
 import org.elasticsearch.common.xcontent.XContentType
-import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.boot.RorSchedulers
@@ -52,7 +51,7 @@ class EsIndexJsonContentService(client: NodeClient,
         .get(
           client
             .prepareGet()
-              .setIndex(index.name.value)
+            .setIndex(index.name.value)
             .setId(id)
             .request()
         )
