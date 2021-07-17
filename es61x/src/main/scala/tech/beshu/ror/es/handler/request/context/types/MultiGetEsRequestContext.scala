@@ -31,10 +31,10 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.request.DocumentApiOps.GetApi
-import tech.beshu.ror.es.handler.request.DocumentApiOps.GetApi._
-import tech.beshu.ror.es.handler.request.DocumentApiOps.MultiGetApi._
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi
+import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi._
+import tech.beshu.ror.es.handler.response.DocumentApiOps.MultiGetApi._
 import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 

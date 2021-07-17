@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.utils.RCUtils
 
 import scala.collection.JavaConverters._
@@ -73,7 +73,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
           .map(Header.fromAuthorizationValue)
           .toList
           .map(_.map(_.toList))
-          .traverse(identity)
+          .sequence
           .map(_.flatten)
         headersFromAuthorizationHeaderValues match {
           case Left(error) => throw new IllegalArgumentException(error.show)
@@ -111,7 +111,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
       .from(restRequest.path())
       .getOrElse(UriPath(NonEmptyString.unsafeFrom("/")))
 
-  override lazy val contentLength: Information = Bytes(if (restRequest.content == null) 0 else restRequest.content().length())
+  override lazy val contentLength: Information = Bytes(Option(restRequest.content()).map(_.length()).getOrElse(0))
 
   override lazy val `type`: Type = Type {
     val requestClazz = esContext.actionRequest.getClass
@@ -122,12 +122,12 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
-  override lazy val content: String = if (restRequest.content == null) "" else restRequest.content().utf8ToString()
+  override lazy val content: String = Option(restRequest.content()).map(_.utf8ToString()).getOrElse("")
 
   override lazy val allIndicesAndAliases: Set[FullLocalIndexWithAliases] =
     clusterService.allIndicesAndAliases
 
-  override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] =
+  override lazy val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] =
     clusterService.allRemoteIndicesAndAliases.memoize
 
   override lazy val allTemplates: Set[Template] = clusterService.allTemplates

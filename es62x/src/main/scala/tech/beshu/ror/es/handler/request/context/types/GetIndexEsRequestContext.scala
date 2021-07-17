@@ -16,10 +16,9 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-import java.util.{List => JList}
-
 import cats.data.NonEmptyList
 import cats.implicits._
+import java.util.{List => JList}
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.indices.get.{GetIndexRequest, GetIndexResponse}
@@ -29,7 +28,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap._
 import tech.beshu.ror.utils.ScalaOps._

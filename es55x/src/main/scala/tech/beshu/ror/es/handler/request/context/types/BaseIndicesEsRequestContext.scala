@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
@@ -48,7 +48,7 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
       logger.debug(s"[${id.show}] Discovered indices: ${indices.map(_.show).mkString(",")}")
       indices
     },
-    Set(ClusterIndexName.Local.wildcard),
+    Set(ClusterIndexName.Local.wildcard)
   )
 
   override def modifyWhenIndexNotFound: ModificationResult = {

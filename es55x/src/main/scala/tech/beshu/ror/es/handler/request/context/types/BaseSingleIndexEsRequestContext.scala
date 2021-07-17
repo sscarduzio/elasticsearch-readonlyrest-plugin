@@ -23,7 +23,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 
 abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest: R,
@@ -35,7 +35,6 @@ abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest
 
   override protected def indicesFrom(request: R): Set[ClusterIndexName] = Set(indexFrom(request))
 
-
   override protected def update(request: R,
                                 filteredIndices: NonEmptyList[ClusterIndexName],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
@@ -44,7 +43,6 @@ abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest
     }
     update(request, filteredIndices.head)
   }
-
 
   protected def indexFrom(request: R): ClusterIndexName
 

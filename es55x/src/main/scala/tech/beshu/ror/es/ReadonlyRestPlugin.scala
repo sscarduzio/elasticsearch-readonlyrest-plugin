@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es
 
+import java.nio.file.Path
 import java.util
 import java.util.function.{Supplier, UnaryOperator}
 
@@ -91,6 +92,7 @@ class ReadonlyRestPlugin(s: Settings,
   }
 
   private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+
   private val environment = new Environment(s)
   private val timeout: FiniteDuration = 10 seconds
   private val sslConfig = RorSsl

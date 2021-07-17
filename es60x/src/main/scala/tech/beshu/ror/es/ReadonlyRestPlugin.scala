@@ -87,8 +87,9 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     Netty4Utils.setAvailableProcessors(EsExecutors.PROCESSORS_SETTING.get(s))
   }
 
+  private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+
   private val environment = new Environment(s, p)
-  implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   private val timeout: FiniteDuration = 10 seconds
   private val sslConfig = RorSsl
     .load(environment.configFile)

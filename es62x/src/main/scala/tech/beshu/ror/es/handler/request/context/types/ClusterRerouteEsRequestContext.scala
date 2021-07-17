@@ -21,10 +21,10 @@ import cats.implicits._
 import org.elasticsearch.action.admin.cluster.reroute.ClusterRerouteRequest
 import org.elasticsearch.cluster.routing.allocation.command._
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
-import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 
@@ -37,7 +37,7 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
                                      override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ClusterRerouteRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ClusterRerouteRequest): Set[domain.ClusterIndexName] = {
+  override protected def indicesFrom(request: ClusterRerouteRequest): Set[ClusterIndexName] = {
     request
       .getCommands.commands().asScala
       .flatMap(indexFrom)
@@ -54,7 +54,7 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
     Modified
   }
 
-  private def modifiedCommand(command: AllocationCommand, allowedIndices: NonEmptyList[domain.ClusterIndexName]) = {
+  private def modifiedCommand(command: AllocationCommand, allowedIndices: NonEmptyList[ClusterIndexName]) = {
     val indexFromCommand = indexFrom(command)
     indexFromCommand match {
       case None => command
@@ -75,7 +75,7 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
   }
 
   private def setNonExistentIndexFor(command: AllocationCommand) = {
-      val randomIndex = indexFrom(command)
+    val randomIndex = indexFrom(command)
         .map(_.randomNonexistentIndex())
         .getOrElse(ClusterIndexName.Local.randomNonexistentIndex())
     command match {

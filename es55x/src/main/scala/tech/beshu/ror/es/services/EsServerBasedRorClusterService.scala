@@ -25,8 +25,8 @@ import monix.eval.Task
 import monix.execution.CancelablePromise
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.admin.indices.get.{GetIndexRequest, GetIndexResponse}
 import org.elasticsearch.action.admin.indices.get.GetIndexRequest.Feature
+import org.elasticsearch.action.admin.indices.get.{GetIndexRequest, GetIndexResponse}
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
 import org.elasticsearch.client.Client
 import org.elasticsearch.client.node.NodeClient
@@ -40,17 +40,16 @@ import org.elasticsearch.transport.{RemoteClusterService, TransportService}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.{RemoteClusterAwareClient, RorClusterService}
 import tech.beshu.ror.es.RorClusterService._
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.es.utils.GenericResponseListener
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
-import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
-
 import scala.util.{Failure, Success, Try}
 
 class EsServerBasedRorClusterService(settings: Settings,
@@ -141,11 +140,10 @@ class EsServerBasedRorClusterService(settings: Settings,
       .map(results => zip(results, documents))
   }
 
-  private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService): Task[Set[FullRemoteIndexWithAliases]] = {
+  private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService) = {
     Task
       .gatherUnordered(
-        getRegisteredRemoteClusterNames(remoteClusterService)
-          .map(resolveAllRemoteIndices(_, remoteClusterService))
+        getRegisteredRemoteClusterNames(remoteClusterService).map(resolveAllRemoteIndices(_, remoteClusterService))
       )
       .map(_.flatten.toSet)
   }

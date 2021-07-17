@@ -29,9 +29,9 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataValue, UserMetadata
 import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.EsRequest
-import tech.beshu.ror.es.handler.request.{ForbiddenResponse, RorNotAvailableResponse}
+import tech.beshu.ror.es.handler.response.{ForbiddenResponse, RorNotAvailableResponse}
 import tech.beshu.ror.utils.LoggerOps._
 
 import scala.collection.JavaConverters._
@@ -72,11 +72,11 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   }
 
   private def onForbidden(): Unit = {
-    esContext.channel.sendResponse(ForbiddenResponse.create(esContext.channel, Nil, engine.context))
+    esContext.listener.onFailure(ForbiddenResponse.create(Nil, engine.context))
   }
 
   private def onPassThrough(): Unit =
-    esContext.channel.sendResponse(RorNotAvailableResponse.createRorNotEnabledResponse(esContext.channel))
+    esContext.listener.onFailure(RorNotAvailableResponse.createRorNotEnabledResponse())
 }
 
 private class RRMetadataResponse(userMetadata: UserMetadata,
