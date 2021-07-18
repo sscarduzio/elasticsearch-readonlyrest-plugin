@@ -25,7 +25,8 @@ import tech.beshu.ror.utils.misc.Version
 import scala.collection.JavaConverters._
 
 class ClusterManager(client: RestClient,
-                     esVersion: String)
+                     esVersion: String,
+                     override val additionalHeaders: Map[String, String] = Map.empty)
   extends BaseManager(client)  {
 
   def allocationExplain(): JsonResponse = allocationExplain(None)

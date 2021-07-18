@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.es.actions.rradmin
 
-import tech.beshu.ror.accesscontrol.domain
 import org.elasticsearch.action.Action
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.adminapi.AdminRestApi
 
 class RRAdminActionType extends Action[RRAdminResponse](RRAdminActionType.name) {

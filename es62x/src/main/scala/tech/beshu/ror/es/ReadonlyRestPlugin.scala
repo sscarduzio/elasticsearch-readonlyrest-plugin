@@ -57,21 +57,21 @@ import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.boot.EsInitListener
-import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.configuration.RorSsl
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
-import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, TransportRRAuditEventAction}
-import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
-import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
-import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
-import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
+import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, TransportRRAuditEventAction}
+import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
+import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
+import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -95,6 +95,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   doPrivileged {
     Netty4Utils.setAvailableProcessors(EsExecutors.PROCESSORS_SETTING.get(s))
   }
+
   private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   private implicit val uniqueIdentifierGenerator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator
 
@@ -105,7 +106,9 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
   private val emptyClusterState = new ClusterStateResponse(
-    ClusterName.CLUSTER_NAME_SETTING.get(s), ClusterState.EMPTY_STATE,serializeFullClusterState(ClusterState.EMPTY_STATE, Version.CURRENT).length
+    ClusterName.CLUSTER_NAME_SETTING.get(s),
+    ClusterState.EMPTY_STATE,
+    serializeFullClusterState(ClusterState.EMPTY_STATE, Version.CURRENT).length
   )
   private val esInitListener = new EsInitListener
 
@@ -129,7 +132,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         TransportServiceInterceptor.remoteClusterServiceSupplier,
         SnapshotsServiceInterceptor.snapshotsServiceSupplier,
         emptyClusterState,
-        esInitListener,
+        esInitListener
       )
     }
     List.empty[AnyRef].asJava

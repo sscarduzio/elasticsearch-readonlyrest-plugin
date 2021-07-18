@@ -41,12 +41,12 @@ import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
-import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
-import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.accesscontrol.show.logs._
 
 import scala.util.{Failure, Success, Try}
@@ -141,8 +141,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
   private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService) = {
     Task
       .gatherUnordered(
-        getRegisteredRemoteClusterNames(remoteClusterService)
-          .map(resolveAllRemoteIndices(_, remoteClusterService))
+        getRegisteredRemoteClusterNames(remoteClusterService).map(resolveAllRemoteIndices(_, remoteClusterService))
       )
       .map(_.flatten.toSet)
   }

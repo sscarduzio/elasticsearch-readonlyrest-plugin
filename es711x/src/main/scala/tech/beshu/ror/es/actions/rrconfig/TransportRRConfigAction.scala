@@ -99,7 +99,9 @@ class TransportRRConfigAction(actionName: String,
   override def newNodeResponse(in: StreamInput): RRConfig =
     new RRConfig(in)
 
-  private def loadConfig() = RawRorConfigLoadingAction.load(env.configFile(), indexContentProvider)
+  private def loadConfig() =
+    RawRorConfigLoadingAction
+      .load(env.configFile(), indexContentProvider)
       .map(_.map(_.map(_.raw)))
 
   override def nodeOperation(request: RRConfigRequest): RRConfig = {

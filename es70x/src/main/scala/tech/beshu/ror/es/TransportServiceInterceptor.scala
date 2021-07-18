@@ -56,7 +56,6 @@ class RemoteClusterServiceSupplier extends Supplier[Option[RemoteClusterService]
   def update(service: RemoteClusterService): Unit = remoteClusterServiceAtomicReference.set(Some(service))
 }
 
-
 class TaskManagerSupplier extends Supplier[Option[TaskManager]] {
   private val taskManagerAtomicReference = new AtomicReference(Option.empty[TaskManager])
   override def get(): Option[TaskManager] = taskManagerAtomicReference.get() match {

@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.actions.rrmetadata
 
-import tech.beshu.ror.accesscontrol.domain
 import org.elasticsearch.action.Action
 import tech.beshu.ror.accesscontrol.domain
 

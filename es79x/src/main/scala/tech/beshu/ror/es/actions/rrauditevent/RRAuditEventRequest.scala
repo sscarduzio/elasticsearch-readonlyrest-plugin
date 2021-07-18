@@ -17,11 +17,7 @@
 package tech.beshu.ror.es.actions.rrauditevent
 
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
-import org.elasticsearch.common.xcontent.XContentHelper
-import org.elasticsearch.rest.RestRequest
 import org.json.JSONObject
-
-import scala.util.Try
 
 class RRAuditEventRequest(val auditEvents: JSONObject) extends ActionRequest {
   override def validate(): ActionRequestValidationException = null

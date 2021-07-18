@@ -17,8 +17,8 @@
 package tech.beshu.ror.es.actions.rrmetadata
 
 import org.elasticsearch.action.ActionType
-import tech.beshu.ror.accesscontrol.domain
 import org.elasticsearch.common.io.stream.Writeable
+import tech.beshu.ror.accesscontrol.domain
 
 class RRUserMetadataActionType extends ActionType[RRUserMetadataResponse](
   RRUserMetadataActionType.name, RRUserMetadataActionType.exceptionReader

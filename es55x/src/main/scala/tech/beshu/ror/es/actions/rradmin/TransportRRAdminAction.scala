@@ -16,9 +16,6 @@
  */
 package tech.beshu.ror.es.actions.rradmin
 
-import monix.execution.Scheduler
-import monix.execution.schedulers.CanBlock
-import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
@@ -27,16 +24,8 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.env.Environment
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
-import tech.beshu.ror.adminapi.AdminRestApi
-import tech.beshu.ror.boot.RorSchedulers
-import tech.beshu.ror.configuration.loader.FileConfigLoader
-import tech.beshu.ror.configuration.{IndexConfigManager, RorIndexNameConfiguration}
-import tech.beshu.ror.utils.RorInstanceSupplier
 import tech.beshu.ror.es.services.EsIndexJsonContentService
-import tech.beshu.ror.utils.AccessControllerHelper._
-import tech.beshu.ror.providers.JvmPropertiesProvider
 
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class TransportRRAdminAction(settings: Settings,
@@ -62,31 +51,9 @@ class TransportRRAdminAction(settings: Settings,
     this(settings, threadPool, transportService, actionFilters, indexNameExpressionResolver, env, indexContentProvider, ())
   }
 
-  private implicit val adminRestApiScheduler: Scheduler = RorSchedulers.adminRestApiScheduler
-
-  private val rorIndexNameConfig = RorIndexNameConfiguration
-    .load(env.configFile)
-    .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
-    .runSyncUnsafe(10 seconds)(adminRestApiScheduler, CanBlock.permit)
-
-  private val indexConfigManager = new IndexConfigManager(indexContentProvider)
-  private val fileConfigLoader = new FileConfigLoader(env.configFile(), JvmPropertiesProvider)
+  private val handler = new RRAdminActionHandler(indexContentProvider, env.configFile())
 
   override def doExecute(request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
-    getApi match {
-      case Some(api) => doPrivileged {
-        api
-          .call(request.getAdminRequest)
-          .runAsync { response =>
-            listener.onResponse(new RRAdminResponse(response))
-          }
-      }
-      case None =>
-        listener.onResponse(new RRAdminResponse(AdminRestApi.AdminResponse.notAvailable))
-    }
+    handler.handle(request, listener)
   }
-
-  private def getApi =
-    RorInstanceSupplier.get()
-      .map(instance => new AdminRestApi(instance, indexConfigManager, fileConfigLoader, rorIndexNameConfig.index))
 }

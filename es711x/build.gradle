@@ -58,10 +58,9 @@ dependencies {
         // because of https://github.com/elastic/elasticsearch/issues/68889 (for ES 7.11.0)
         exclude group: 'org.elasticsearch', module: 'elasticsearch-plugin-classloader'
     }
-//    compileClasspath    group: 'org.codelibs.elasticsearch.lib',    name: 'plugin-classloader',         version: esVersion // fixme: not available yet
     compileClasspath    group: 'org.locationtech.spatial4j',        name: 'spatial4j',                  version: '0.7'
     compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',    version: esVersion
-    compile             group: 'org.apache.logging.log4j',          name: 'log4j-core',                 version: '2.11.0'
+    compile             group: 'org.apache.logging.log4j',          name: 'log4j-core',                 version: '2.11.1'
 }
 
 license {

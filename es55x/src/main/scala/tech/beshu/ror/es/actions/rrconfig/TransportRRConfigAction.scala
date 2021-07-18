@@ -63,6 +63,11 @@ class TransportRRConfigAction(setting: Settings,
     nodeResponseClass
   ) {
 
+  import tech.beshu.ror.boot.RorSchedulers.Implicits.adminApiScheduler
+
+  implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+  implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
+
   @Inject
   def this(setting: Settings,
            actionName: String,
@@ -89,16 +94,18 @@ class TransportRRConfigAction(setting: Settings,
       ()
     )
 
-  import tech.beshu.ror.boot.RorSchedulers.Implicits.adminApiScheduler
-
-  private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
-  private implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
-
   override def newResponse(request: RRConfigsRequest, responses: util.List[RRConfig], failures: util.List[FailedNodeException]): RRConfigsResponse = {
     new RRConfigsResponse(clusterService.getClusterName, responses, failures)
   }
 
-  private def loadConfig() = RawRorConfigLoadingAction.load(env.configFile(), indexContentProvider)
+  override def newNodeResponse(): RRConfig = new RRConfig()
+
+  override def newNodeRequest(nodeId: String, request: RRConfigsRequest): RRConfigRequest =
+    new RRConfigRequest(nodeId, request.getNodeConfigRequest)
+
+  private def loadConfig() =
+    RawRorConfigLoadingAction
+      .load(env.configFile(), indexContentProvider)
       .map(_.map(_.map(_.raw)))
 
   override def nodeOperation(request: RRConfigRequest): RRConfig = {
@@ -111,10 +118,4 @@ class TransportRRConfigAction(setting: Settings,
 
   private def toFiniteDuration(timeout: Timeout): FiniteDuration = timeout.nanos nanos
 
-  override def newNodeResponse(): RRConfig = new RRConfig()
-
-  override def newNodeRequest(nodeId: String, request: RRConfigsRequest): RRConfigRequest = new RRConfigRequest(nodeId, request.getNodeConfigRequest)
 }
-
-
-

@@ -44,7 +44,7 @@ class SSLNetty4HttpServerTransport(settings: Settings,
                                    dispatcher: HttpServerTransport.Dispatcher,
                                    ssl: ExternalSslConfiguration,
                                    clusterSettings: ClusterSettings,
-                                  sharedGroupFactory: SharedGroupFactory)
+                                   sharedGroupFactory: SharedGroupFactory)
   extends Netty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, clusterSettings, sharedGroupFactory)
     with Logging {
 

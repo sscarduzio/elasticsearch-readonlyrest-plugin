@@ -17,10 +17,6 @@
 
 package tech.beshu.ror.es.ssl;
 
-/**
- * Created by sscarduzio on 28/11/2016.
- */
-
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
@@ -65,22 +61,19 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     this.ssl = ssl;
   }
 
-  @Override
   protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
     if (!this.lifecycle.started()) {
       return;
     }
     if (cause.getCause() instanceof NotSslRecordException) {
-      logger.warn(cause.getMessage());
+      logger.warn(cause.getMessage() + " connecting from: " + ctx.channel().remoteAddress());
     }
     else {
-      cause.printStackTrace();
       super.exceptionCaught(ctx, cause);
     }
     ctx.channel().flush().close();
   }
 
-  @Override
   public ChannelHandler configureServerChannelHandler() {
     return new SSLHandler(this);
   }
@@ -104,14 +97,13 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     }
 
     private class SSLContextCreatorImpl implements SSLCertParser.SSLContextCreator {
-
       @Override
       public void mkSSLContext(InputStream certChain, InputStream privateKey) {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null);
 
-          logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
+          logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider().name());
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);
 
           if(ssl.allowedCiphers().size() > 0) {
@@ -141,9 +133,10 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
           }
 
           context = Optional.of(sslCtxBuilder.build());
+
         } catch (Exception e) {
           context = Optional.empty();
-          logger.error("Failed to load SSL CertChain & private key from Keystore! "
+          logger.error("Failed to load SSL HTTP CertChain & private key from Keystore! "
               + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
         }
       }

@@ -14,7 +14,6 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-
 buildscript {
     ext {
         publishedPluginVersion = rootProject.properties['pluginVersion']
@@ -57,7 +56,7 @@ dependencies {
     compile             group: 'org.elasticsearch',                 name: 'elasticsearch' ,             version: esVersion
     compileClasspath    group: 'org.codelibs.elasticsearch.lib',    name: 'plugin-classloader',         version: esVersion
     compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',    version: esVersion
-    compile             group: 'org.apache.logging.log4j',          name: 'log4j-core',                 version: '2.11.0'
+    compile             group: 'org.apache.logging.log4j',          name: 'log4j-core',                 version: '2.11.1'
 }
 
 license {

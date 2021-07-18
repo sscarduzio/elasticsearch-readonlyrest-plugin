@@ -22,7 +22,6 @@ import org.elasticsearch.common.io.stream.Writeable
 import tech.beshu.ror.accesscontrol.domain
 
 class RRConfigActionType extends Action[RRConfigsRequest, RRConfigsResponse, RRConfigActionType.RequestBuilder](RRConfigActionType.name) {
-
   override def newResponse(): RRConfigsResponse = new RRConfigsResponse
 
   override def newRequestBuilder(client: ElasticsearchClient): RRConfigActionType.RequestBuilder =
@@ -30,7 +29,6 @@ class RRConfigActionType extends Action[RRConfigsRequest, RRConfigsResponse, RRC
 }
 
 object RRConfigActionType {
-
   class RequestBuilder(client: ElasticsearchClient, rRConfigAction: RRConfigActionType, request: RRConfigsRequest)
     extends ActionRequestBuilder[RRConfigsRequest, RRConfigsResponse, RequestBuilder](client, rRConfigAction, request)
 

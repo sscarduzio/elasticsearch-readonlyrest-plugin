@@ -21,7 +21,11 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.ssl.*;
+import io.netty.handler.ssl.ClientAuth;
+import io.netty.handler.ssl.NotSslRecordException;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.SslHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.network.NetworkService;
@@ -34,7 +38,6 @@ import scala.collection.JavaConverters$;
 import tech.beshu.ror.configuration.SslConfiguration;
 import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration;
 import tech.beshu.ror.utils.SSLCertParser;
-import tech.beshu.ror.utils.SSLCertParser$;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLHandshakeException;
@@ -57,7 +60,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
                                       ExternalSslConfiguration ssl) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
     this.ssl = ssl;
-    SSLCertParser$.MODULE$.run(new SSLContextCreatorImpl(ssl), ssl);
+    SSLCertParser.run(new SSLContextCreatorImpl(ssl), ssl);
   }
 
   protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
@@ -65,17 +68,14 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
       return;
     }
     if (cause.getCause() instanceof NotSslRecordException || cause.getCause() instanceof SSLHandshakeException) {
-      logger.warn(cause.getMessage());
+      logger.warn(cause.getMessage() + " connecting from: " + ctx.channel().remoteAddress());
     }
-
     else {
-      cause.printStackTrace();
       super.exceptionCaught(ctx, cause);
     }
     ctx.channel().flush().close();
   }
 
-  @Override
   public ChannelHandler configureServerChannelHandler() {
       return new SSLHandler(this);
   }

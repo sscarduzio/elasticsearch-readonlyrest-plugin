@@ -16,17 +16,17 @@
  */
 package tech.beshu.ror.es.actions.rrauditevent.rest
 
+import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.common.xcontent.{XContentBuilder, XContentHelper}
+import org.elasticsearch.common.xcontent.XContentHelper
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest._
 import org.json.JSONObject
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.Constants
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, RRAuditEventRequest}
-import tech.beshu.ror.es.utils.ErrorContentBuilderHelper.createErrorResponse
 
 import scala.util.Try
 
@@ -38,29 +38,32 @@ class RestRRAuditEventAction(settings: Settings, controller: RestController)
 
   override val getName: String = "ror-audit-event-collector-handler"
 
-  override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = (channel: RestChannel) => {
-    val result = for {
+  override def prepareRequest(request: RestRequest,
+                              client: NodeClient): RestChannelConsumer = new RestChannelConsumer {
+    private val rorAuditRequest = for {
       _ <- validateContentSize(request)
       json <- validateBodyJson(request)
-    } yield json
-    result match {
-      case Right(json) =>
-        client
-          .execute(
-            new RRAuditEventActionType,
-            new RRAuditEventRequest(json),
-            new RestRRAuditEventActionResponseBuilder(channel)
-          )
-      case Left(errorResponseCreator) =>
-        channel.sendResponse(errorResponseCreator(channel))
+    } yield new RRAuditEventRequest(json)
+
+    override def accept(channel: RestChannel): Unit = {
+      val listener = new RestRRAuditEventActionResponseBuilder(channel)
+      rorAuditRequest match {
+        case Right(req) =>
+          client.execute(new RRAuditEventActionType, req, listener)
+        case Left(error) =>
+          listener.onFailure(error)
+      }
     }
   }
+
+  private def register(method: String, path: String): Unit =
+    controller.registerHandler(RestRequest.Method.valueOf(method), path, this)
 
   private def validateContentSize(request: RestRequest) = {
     Either.cond(
       request.content().length() <= Constants.MAX_AUDIT_EVENT_REQUEST_CONTENT_IN_BYTES,
       (),
-      (channel: RestChannel) => new RestRRAuditEventPayloadTooLarge(channel, Bytes(Constants.MAX_AUDIT_EVENT_REQUEST_CONTENT_IN_BYTES.toInt))
+      new AuditEventRequestPayloadTooLarge(Bytes(Constants.MAX_AUDIT_EVENT_REQUEST_CONTENT_IN_BYTES.toInt))
     )
   }
 
@@ -70,27 +73,15 @@ class RestRRAuditEventAction(settings: Settings, controller: RestController)
     } else {
       new JSONObject()
     }
-  }.toEither.left.map(_ => (channel: RestChannel) => new RestRRAuditEventBadRequest(channel))
+  }.toEither.left.map(_ => new AuditEventBadRequest)
 
-  private class RestRRAuditEventBadRequest(channel: RestChannel) extends BytesRestResponse(
-    RestStatus.BAD_REQUEST,
-    createErrorResponse(
-      channel,
-      RestStatus.BAD_REQUEST,
-      (builder: XContentBuilder) => builder.field("reason", "Content malformed")
-    )
-  )
+  private class AuditEventBadRequest extends ElasticsearchException("Content malformed") {
+    override def status(): RestStatus = RestStatus.BAD_REQUEST
+  }
 
-  private class RestRRAuditEventPayloadTooLarge(channel: RestChannel,
-                                                maxContentSize: Information) extends BytesRestResponse(
-    RestStatus.REQUEST_ENTITY_TOO_LARGE,
-    createErrorResponse(
-      channel,
-      RestStatus.REQUEST_ENTITY_TOO_LARGE,
-      (builder: XContentBuilder) => builder.field("reason", s"Max request content allowed = ${maxContentSize.toKilobits}KB")
-    )
-  )
+  private class AuditEventRequestPayloadTooLarge(maxContentSize: Information)
+    extends ElasticsearchException(s"Max request content allowed = ${maxContentSize.toKilobits}KB") {
+    override def status(): RestStatus = RestStatus.REQUEST_ENTITY_TOO_LARGE
+  }
 
-  private def register(method: String, path: String): Unit =
-    controller.registerHandler(RestRequest.Method.valueOf(method), path, this)
 }
