@@ -15,9 +15,9 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance, RorMode, StartingFailure}
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter
-import tech.beshu.ror.es.handler.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.request.RorNotAvailableResponse.createRorNotReadyYetResponse
+import tech.beshu.ror.es.handler.AclAwareRequestFilter
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.response.RorNotAvailableResponse.createRorNotReadyYetResponse
 import tech.beshu.ror.exceptions.SecurityPermissionException
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter.ThreadRepoChannelRenewalOnChainProceed
@@ -67,8 +67,8 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
         }
       case (Some(_), None) =>
         chain.proceed(task, action, request, listener)
-      case (None, Some(channel)) =>
-        channel.sendResponse(createRorNotReadyYetResponse(channel))
+      case (None, Some(_)) =>
+        listener.onFailure(createRorNotReadyYetResponse())
       case (None, None) =>
         throw new IllegalStateException("Cannot process current request")
     }
