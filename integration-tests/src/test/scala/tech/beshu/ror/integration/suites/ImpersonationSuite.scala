@@ -78,10 +78,7 @@ trait ImpersonationSuite
           |  "status":401
           |}
         """.stripMargin))
-      result.headers should be (Set(
-        SimpleHeader("WWW-Authenticate", "Basic"),
-        SimpleHeader("content-type", "application/json; charset=UTF-8"),
-      ))
+      result.headers should contain (SimpleHeader("WWW-Authenticate", "Basic"))
     }
     "user with admin privileges cannot be authenticated" in {
       val searchManager = new SearchManager(
@@ -112,10 +109,7 @@ trait ImpersonationSuite
           |  "status":401
           |}
         """.stripMargin))
-      result.headers should be (Set(
-        SimpleHeader("WWW-Authenticate", "Basic"),
-        SimpleHeader("content-type", "application/json; charset=UTF-8"),
-      ))
+      result.headers should contain (SimpleHeader("WWW-Authenticate", "Basic"))
     }
     "admin user is authenticated but cannot impersonate given user" in {
       val searchManager = new SearchManager(
@@ -146,10 +140,7 @@ trait ImpersonationSuite
           |  "status":401
           |}
         """.stripMargin))
-      result.headers should be (Set(
-        SimpleHeader("WWW-Authenticate", "Basic"),
-        SimpleHeader("content-type", "application/json; charset=UTF-8"),
-      ))
+      result.headers should contain (SimpleHeader("WWW-Authenticate", "Basic"))
     }
     "not supported authentication rule is used" which {
       "is full hashed auth credentials" in {
@@ -181,10 +172,7 @@ trait ImpersonationSuite
             |  "status":401
             |}
           """.stripMargin))
-        result.headers should be (Set(
-          SimpleHeader("WWW-Authenticate", "Basic"),
-          SimpleHeader("content-type", "application/json; charset=UTF-8"),
-        ))
+        result.headers should contain (SimpleHeader("WWW-Authenticate", "Basic"))
       }
     }
   }
