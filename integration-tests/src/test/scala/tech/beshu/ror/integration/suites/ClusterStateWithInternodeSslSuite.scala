@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers._
+import cats.data.NonEmptyList
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ContainerSpecification, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, BaseManyEsClustersIntegrationTest, MultipleClientsSupport, SingleClientSupport}
+import tech.beshu.ror.utils.containers.{ContainerSpecification, EsClusterContainer, EsClusterProvider, EsClusterSettings, EsContainer, EsContainerCreator, _}
 import tech.beshu.ror.utils.elasticsearch.CatManager
 
 trait ClusterStateWithInternodeSslSuite
@@ -32,27 +32,46 @@ trait ClusterStateWithInternodeSslSuite
 
   override implicit val rorConfigFileName = "/cluster_state_internode_ssl/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodes.head
 
-  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      numberOfInstances = 3,
-      rorContainerSpecification = ContainerSpecification(Map("ROR_INTER_KEY_PASS" -> "readonlyrest")),
-      internodeSslEnabled = true,
-      xPackSupport = false,
+  override def clusterContainer: EsClusterContainer = generalClusterContainer
+
+
+  override def targetEs: EsContainer = generalClusterContainer.nodes.head
+
+
+  lazy val generalClusterContainer: EsClusterContainer = createClusterFromDifferentlyConfiguredNodes(
+    NonEmptyList.of(
+      EsClusterSettings(
+        name = "xpack_cluster",
+        numberOfInstances = 2,
+        fullXPackSupport = true,
+        xPackSupport = true,
+        externalSslEnabled = false,
+        configHotReloadingEnabled = true,
+        enableXPackSsl = true
+      ),
+      EsClusterSettings(
+        name = "xpack_cluster",
+        rorContainerSpecification = ContainerSpecification(Map("ROR_INTER_KEY_PASS" -> "readonlyrest")),
+        internodeSslEnabled = true,
+        xPackSupport = false,
+        forceNonOssImage = true
+      )
     )
   )
 
-  private lazy val adminClusterStateManager = new CatManager(adminClient, esVersion = esVersionUsed)
+
+  private lazy val rorClusterAdminStateManager = new CatManager(clients.last.adminClient, esVersion = esVersionUsed)
 
   "Health check" should {
     "be successful" when {
       "internode ssl is enabled" in {
-        val response = adminClusterStateManager.healthCheck()
+        val response = rorClusterAdminStateManager.healthCheck()
 
         response.responseCode should be(200)
       }
     }
   }
 }
+
+object ElasticWithoutRorClusterProvider extends EsClusterProvider with EsWithoutRorPluginContainerCreator

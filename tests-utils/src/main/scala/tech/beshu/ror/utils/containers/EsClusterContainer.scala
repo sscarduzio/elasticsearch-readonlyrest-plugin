@@ -129,11 +129,14 @@ final case class EsClusterSettings(name: String,
                                    rorContainerSpecification: ContainerSpecification = ContainerSpecification(Map.empty),
                                    dependentServicesContainers: List[DependencyDef] = Nil,
                                    xPackSupport: Boolean,
+                                   fullXPackSupport: Boolean = false,
                                    configHotReloadingEnabled: Boolean = false,
                                    customRorIndexName: Option[String] = None,
                                    internodeSslEnabled: Boolean = false,
                                    esVersion: EsVersion = EsVersion.DeclaredInProject,
-                                   externalSslEnabled: Boolean = true)(implicit val rorConfigFileName: String)
+                                   externalSslEnabled: Boolean = true,
+                                   enableXPackSsl: Boolean = false,
+                                   forceNonOssImage: Boolean = false)(implicit val rorConfigFileName: String)
 
 object EsClusterSettings {
   val basic = EsClusterSettings(name = "ROR_SINGLE", xPackSupport = false)("/basic/readonlyrest.yml")

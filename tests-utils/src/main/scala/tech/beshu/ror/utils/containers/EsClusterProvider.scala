@@ -55,6 +55,23 @@ trait EsClusterProvider {
       remoteClusterSetup
     )
   }
+
+  def createClusterFromDifferentlyConfiguredNodes(clusters: NonEmptyList[EsClusterSettings]): EsClusterContainer = {
+    def clusterNodeDataFromClusterSettings(esClusterSettings: EsClusterSettings, startingIndex: Int) = {
+      Seq.iterate(startingIndex, esClusterSettings.numberOfInstances)(_ + 1)
+        .toList
+        .map(idx => s"${esClusterSettings.name}_$idx")
+        .map(name => ClusterNodeData(name, esClusterSettings))
+    }
+    val nodesData = clusters
+      .toList
+      .foldLeft((List.empty[ClusterNodeData], 1)) {
+        case ((currentNodeData, startingIndex), settings) =>
+          (currentNodeData ::: clusterNodeDataFromClusterSettings(settings, startingIndex),
+            startingIndex + settings.numberOfInstances)
+      }
+    createLocalClusterContainers(NonEmptyList.fromListUnsafe(nodesData._1))
+  }
 }
 object EsClusterProvider {
   final case class ClusterNodeData(name: String, settings: EsClusterSettings)

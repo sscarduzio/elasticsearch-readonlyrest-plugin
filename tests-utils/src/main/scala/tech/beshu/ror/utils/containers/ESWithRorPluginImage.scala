@@ -27,6 +27,9 @@ object ESWithRorPluginImage extends EsImage[EsWithRorPluginContainer.Config] {
   private val javaOptionsFileName = "jvm.options"
   private val keystoreFileName = "keystore.jks"
   private val truststoreFileName = "truststore.jks"
+  private val xpackTruststoreFileName = "shield.jks"
+  private val pkcsCerts = "elastic-certificates.p12"
+  private val elasticsearchKeystore = "elasticsearch.keystore"
   private val configDir = "/config"
 
   override protected def copyNecessaryFiles(builder: DockerfileBuilder, config: EsWithRorPluginContainer.Config): DockerfileBuilder = {
@@ -36,19 +39,30 @@ object ESWithRorPluginImage extends EsImage[EsWithRorPluginContainer.Config] {
   }
 
   override protected def entry(config: EsWithRorPluginContainer.Config): ImageFromDockerfile = {
-    new ImageFromDockerfile()
+    val image = new ImageFromDockerfile()
       .withFileFromFile(config.rorPluginFile.getAbsolutePath, config.rorPluginFile)
       .withFileFromFile(s"$configDir/$rorConfigFileName", config.rorConfigFile)
       .withFileFromFile(s"$configDir/$log4j2FileName", ContainerUtils.getResourceFile("/" + log4jFileNameBaseOn(config)))
       .withFileFromFile(s"$configDir/$keystoreFileName", ContainerUtils.getResourceFile("/" + keystoreFileName))
       .withFileFromFile(s"$configDir/$truststoreFileName", ContainerUtils.getResourceFile("/" + truststoreFileName))
       .withFileFromFile(s"$configDir/$javaOptionsFileName", ContainerUtils.getResourceFile("/" + javaOptionsFileName))
+      .withFileFromFile(s"$configDir/$xpackTruststoreFileName", ContainerUtils.getResourceFile("/" + xpackTruststoreFileName))
+      .withFileFromFile(s"$configDir/$pkcsCerts", ContainerUtils.getResourceFile("/" + pkcsCerts))
+    if (config.enableFullXPack) {
+      image.withFileFromFile(s"$configDir/$elasticsearchKeystore", ContainerUtils.getResourceFile("/" + elasticsearchKeystore))
+    } else {
+      image
+    }
   }
 
   override protected def install(builder: DockerfileBuilder,
                                  config: EsWithRorPluginContainer.Config): DockerfileBuilder = {
-    builder
-      .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install file:///tmp/" + config.rorPluginFile.getName)
+    if (config.enableFullXPack) {
+      builder
+    } else {
+      builder
+        .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install file:///tmp/" + config.rorPluginFile.getName)
+    }
   }
 
   private def log4jFileNameBaseOn(config: EsWithRorPluginContainer.Config) = {

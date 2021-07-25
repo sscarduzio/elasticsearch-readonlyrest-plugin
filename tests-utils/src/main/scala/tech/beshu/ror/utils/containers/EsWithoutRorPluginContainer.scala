@@ -42,10 +42,12 @@ object EsWithoutRorPluginContainer extends StrictLogging {
                           envs: Map[String, String],
                           esVersion: String,
                           xPackSupport: Boolean,
+                          enableFullXPack: Boolean,
                           configHotReloadingEnabled: Boolean,
                           customRorIndexName: Option[String],
                           internodeSslEnabled: Boolean,
-                          externalSslEnabled: Boolean) extends EsContainer.Config
+                          externalSslEnabled: Boolean,
+                          forceNonOssImage: Boolean) extends EsContainer.Config
 
   def create(config: EsWithoutRorPluginContainer.Config,
              initializer: ElasticsearchNodeDataInitializer,

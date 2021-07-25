@@ -97,7 +97,7 @@ public class RestClient {
     if (ssl) {
       try {
         SSLContextBuilder sslCtxBuilder = new SSLContextBuilder();
-        sslCtxBuilder.loadTrustMaterial(null, new TrustSelfSignedStrategy());
+        sslCtxBuilder.loadTrustMaterial(null, new TrustAllCertificatesStrategy());
         SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(sslCtxBuilder.build(), SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
         builder = HttpClients.custom().setSSLSocketFactory(sslsf);
       } catch (Exception e) {

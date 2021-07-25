@@ -47,16 +47,33 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
         copyNecessaryFiles(builder, config)
 
         RunCommandCombiner.empty
-          .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
+          .runWhen(!enableFullXPack, "/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
           .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(shouldDisableXpack(config),
-            "echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
+            command = "echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
           )
           .runWhen(externalSslEnabled, "echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(internodeSslEnabled, "echo 'transport.type: ror_ssl_internode' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(!configHotReloadingEnabled, "echo 'readonlyrest.force_load_from_file: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(customRorIndexName.isDefined, s"echo 'readonlyrest.settings_index: ${customRorIndexName.get}' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          .runWhen(enableFullXPack, "printf 'xpack.security.enabled: true\\n" +
+            "xpack.security.transport.ssl.enabled: true\\n" +
+            "xpack.security.transport.ssl.verification_mode: none\\n" +
+            "xpack.security.transport.ssl.client_authentication: none\\n" +
+            "xpack.security.transport.ssl.keystore.path: elastic-certificates.p12\\n" +
+            "xpack.security.transport.ssl.truststore.path: elastic-certificates.p12'" +
+            ">> /usr/share/elasticsearch/config/elasticsearch.yml")
+          .runWhen(enableFullXPack, "printf '\\n\\ny\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore create -p && " +
+            "printf 'readonlyrest\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore add xpack.security.transport.ssl.keystore.secure_password && " +
+            "printf 'readonlyrest\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore add xpack.security.transport.ssl.truststore.secure_password" )
           .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
+          .run("echo '/usr/local/bin/docker-entrypoint.sh &' > /entry.sh")
+          .run("echo 'sleep 35' >> /entry.sh") // Time needed to bootstrap cluster as elasticsearch-setup-passwords have to be run after cluster is ready
+          .run("echo 'export ES_JAVA_OPTS=\"-Xms1g -Xmx1g -Djava.security.egd=file:/dev/./urandoms\"' >> /entry.sh")
+          .run("echo 'printf \"y\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\n\" | elasticsearch-setup-passwords interactive' >> /entry.sh")
+          .run("echo \"curl -X POST -u elastic:elastic \"http://localhost:9200/_security/user/admin?pretty\" -H 'Content-Type: application/json' -d'{\\\"password\\\" : \\\"container\\\",\\\"roles\\\" : [ \\\"superuser\\\"]}'\n\" >> /entry.sh")
+          .run("echo 'wait' >> /entry.sh")
+          .run("chmod +x /entry.sh")
           .applyTo(builder)
           .user("root")
 
@@ -94,6 +111,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
 
         builder
           .user("elasticsearch")
+          .entryPoint("/entry.sh")
           .env(config.envs + ("ES_JAVA_OPTS" -> javaOpts) asJava)
 
         install(builder, config)
@@ -117,11 +135,15 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
 
   private def shouldUseEsNonOssImage(config: Config) = {
     config.xPackSupport ||
+      config.enableFullXPack ||
+      config.forceNonOssImage ||
       Version.lowerThan(config.esVersion, 6, 3, 0) ||
       Version.greaterOrEqualThan(config.esVersion, 7, 11, 0)
   }
 
   private def shouldDisableXpack(config: Config) = {
-    shouldUseEsNonOssImage(config) && Version.greaterOrEqualThan(config.esVersion, 6, 3, 0)
+    shouldUseEsNonOssImage(config) &&
+      Version.greaterOrEqualThan(config.esVersion, 6, 3, 0) &&
+      !config.enableFullXPack
   }
 }

@@ -39,10 +39,12 @@ trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
       envs = clusterSettings.rorContainerSpecification.environmentVariables,
       esVersion = esVersion,
       xPackSupport = clusterSettings.xPackSupport,
+      enableFullXPack = clusterSettings.fullXPackSupport,
       customRorIndexName = clusterSettings.customRorIndexName,
       configHotReloadingEnabled = true,
       internodeSslEnabled = false,
-      externalSslEnabled = false)
+      externalSslEnabled = false,
+      forceNonOssImage = clusterSettings.forceNonOssImage)
 
     EsWithoutRorPluginContainer.create(
       containerConfig,

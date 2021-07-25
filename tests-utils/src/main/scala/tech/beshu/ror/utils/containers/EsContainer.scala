@@ -18,7 +18,6 @@ package tech.beshu.ror.utils.containers
 
 import java.util.Optional
 import java.util.function.Consumer
-
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.SingleContainer
 import com.typesafe.scalalogging.Logger
@@ -30,6 +29,7 @@ import org.testcontainers.images.builder.ImageFromDockerfile
 import tech.beshu.ror.utils.containers.EsContainer.Credentials
 import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, None, Token}
 import tech.beshu.ror.utils.containers.providers.ClientProvider
+import tech.beshu.ror.utils.containers.providers.ClientProvider.xpackAdminCredentials
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
 import tech.beshu.ror.utils.misc.Tuple
@@ -72,10 +72,12 @@ object EsContainer {
     def envs: Map[String, String]
     def esVersion: String
     def xPackSupport: Boolean
+    def enableFullXPack: Boolean
     def internodeSslEnabled: Boolean
     def configHotReloadingEnabled: Boolean
     def customRorIndexName: Option[String]
     def externalSslEnabled: Boolean
+    def forceNonOssImage: Boolean
   }
 
   def init(esContainer: EsContainer,
@@ -84,12 +86,16 @@ object EsContainer {
            logger: Logger): EsContainer = {
 
     val logConsumer: Consumer[OutputFrame] = new Slf4jLogConsumer(logger.underlying)
+    val esClient = if (config.enableFullXPack)
+      Coeval(esContainer.basicAuthClient(xpackAdminCredentials._1, xpackAdminCredentials._2))
+    else
+      Coeval(esContainer.adminClient)
     esContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
     esContainer.container.addExposedPort(9200)
     esContainer.container.addExposedPort(9300)
     esContainer.container.addExposedPort(8000)
     esContainer.container.setWaitStrategy(
-      new ElasticsearchNodeWaitingStrategy(config.esVersion, esContainer.name, Coeval(esContainer.adminClient), initializer)
+      new ElasticsearchNodeWaitingStrategy(config.esVersion, esContainer.name, esClient, initializer)
         .withStartupTimeout(3 minutes)
     )
     esContainer.container.setNetwork(Network.SHARED)
