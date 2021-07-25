@@ -20,7 +20,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 //TODO change test names. Current names are copies from old java integration tests
@@ -134,8 +134,8 @@ trait FiltersAndFieldsSecuritySuite
 }
 
 object FiltersAndFieldsSecuritySuite {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManagerJ(adminRestClient)
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
     insertDoc("a1", "a", "title")
     insertDoc("a2", "a", "title")
     insertDoc("b1", "bandc", "title")
@@ -148,10 +148,11 @@ object FiltersAndFieldsSecuritySuite {
     insertDoc("d2", "d", "nottitle")
 
     def insertDoc(docName: String, idx: String, field: String): Unit = {
-      val path = s"/testfilter$idx/documents/doc-$docName${Math.random().toString}"
-      val entity = s"""{"$field": "$docName", "dummy": true}"""
+      val entity = ujson.read(s"""{"$field": "$docName", "dummy": true}""")
 
-      documentManager.insertDocAndWaitForRefresh(path, entity)
+      documentManager
+        .createDoc(s"testfilter$idx", "documents", s"doc-$docName${Math.random().toString}", entity)
+        .force()
     }
   }
 }

@@ -29,7 +29,6 @@ class RRConfigActionType extends Action[RRConfigsRequest, RRConfigsResponse, RRC
 }
 
 object RRConfigActionType {
-
   class RequestBuilder(client: ElasticsearchClient, rRConfigAction: RRConfigActionType, request: RRConfigsRequest)
     extends ActionRequestBuilder[RRConfigsRequest, RRConfigsResponse, RequestBuilder](client, rRConfigAction, request)
 

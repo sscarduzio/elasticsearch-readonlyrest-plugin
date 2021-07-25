@@ -27,4 +27,11 @@
    ]]></notes>
         <cve>CVE-2020-25649</cve>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: refined_2.12-0.9.5.jar - coincidence of names
+   ]]></notes>
+        <sha1>1527ed4eac814f971a696c0a6ddb7f74fbc0585e</sha1>
+        <cpe>cpe:/a:refined-github_project:refined-github</cpe>
+    </suppress>
 </suppressions>

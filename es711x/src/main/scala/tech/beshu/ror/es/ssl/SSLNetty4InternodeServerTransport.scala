@@ -47,7 +47,7 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
                                         namedWriteableRegistry: NamedWriteableRegistry,
                                         networkService: NetworkService,
                                         ssl: InternodeSslConfiguration,
-                                       sharedGroupFactory: SharedGroupFactory)
+                                        sharedGroupFactory: SharedGroupFactory)
   extends Netty4Transport(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService, sharedGroupFactory)
     with Logging {
 

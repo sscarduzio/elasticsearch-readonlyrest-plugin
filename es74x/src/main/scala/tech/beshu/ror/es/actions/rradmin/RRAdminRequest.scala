@@ -18,9 +18,11 @@ package tech.beshu.ror.es.actions.rradmin
 
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
 import tech.beshu.ror.Constants
 import tech.beshu.ror.adminapi.AdminRestApi
+
+import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
+
 class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
 
   def this() = {

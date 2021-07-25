@@ -21,24 +21,14 @@ import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
 import tech.beshu.ror.adminapi.AdminRestApi
 
-class RRAdminResponse(response: Either[Throwable, AdminRestApi.AdminResponse])
+class RRAdminResponse(response: AdminRestApi.AdminResponse)
   extends ActionResponse with ToXContentObject with Logging {
 
-  def this(response: AdminRestApi.AdminResponse) {
-    this(Right(response))
-  }
-
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
-    response match {
-      case Right(adminResponse) =>
-        adminResponse.result match {
-          case AdminRestApi.Success(message) => addResponseJson(builder, "ok", message)
-          case AdminRestApi.ConfigNotFound(message) => addResponseJson(builder, "empty", message)
-          case AdminRestApi.Failure(message) => addResponseJson(builder, "ko", message)
-        }
-      case Left(ex) =>
-        logger.error("RRAdmin internal error", ex)
-        addResponseJson(builder, "ko", AdminRestApi.AdminResponse.internalError.result.message)
+    response.result match {
+      case AdminRestApi.Success(message) => addResponseJson(builder, "ok", message)
+      case AdminRestApi.ConfigNotFound(message) => addResponseJson(builder, "empty", message)
+      case AdminRestApi.Failure(message) => addResponseJson(builder, "ko", message)
     }
     builder
   }
@@ -48,5 +38,17 @@ class RRAdminResponse(response: Either[Throwable, AdminRestApi.AdminResponse])
     builder.field("status", status)
     builder.field("message", message)
     builder.endObject
+  }
+}
+
+object RRAdminResponse extends Logging {
+  def apply(response: Either[Throwable, AdminRestApi.AdminResponse]): RRAdminResponse = {
+    response match {
+      case Left(ex) =>
+        logger.error("RRAdmin internal error", ex)
+        new RRAdminResponse(AdminRestApi.AdminResponse.internalError)
+      case Right(value) =>
+        new RRAdminResponse(value)
+    }
   }
 }

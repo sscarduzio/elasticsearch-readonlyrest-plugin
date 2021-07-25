@@ -26,7 +26,6 @@ import org.elasticsearch.common.unit.TimeValue
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest._
 import tech.beshu.ror.Constants
-import tech.beshu.ror.adminapi.AdminRestApi
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.NodeId
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfigRequest, Timeout}
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, RRConfigsRequest}
@@ -36,7 +35,7 @@ import scala.language.postfixOps
 
 @Inject
 class RestRRConfigAction(settings: Settings,
-                          controller: RestController,
+                         controller: RestController,
                          nodesInCluster: Supplier[DiscoveryNodes])
   extends BaseRestHandler(settings) {
 
@@ -49,10 +48,12 @@ class RestRRConfigAction(settings: Settings,
     val requestConfig = NodeConfigRequest(
       timeout = Timeout(timeout.nanos())
     )
-    channel => {
-      val localNodeId = NodeId(client.getLocalNodeId)
-      client.execute(new RRConfigActionType, new RRConfigsRequest(requestConfig, nodes.toArray: _*), new ResponseBuilder(localNodeId, channel))
-    }
+    channel =>
+      client.execute(
+        new RRConfigActionType,
+        new RRConfigsRequest(requestConfig, nodes.toArray: _*),
+        new RestRRConfigActionResponseBuilder(NodeId(client.getLocalNodeId), channel)
+      )
   }
 
   private def getTimeout(request: RestRequest, default: TimeValue) =

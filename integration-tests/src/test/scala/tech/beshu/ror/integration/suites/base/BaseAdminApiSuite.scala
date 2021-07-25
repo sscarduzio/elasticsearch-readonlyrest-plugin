@@ -18,12 +18,11 @@ package tech.beshu.ror.integration.suites.base
 
 import cats.data.NonEmptyList
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManager, IndexManagerJ, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
@@ -240,7 +239,8 @@ trait BaseAdminApiSuite
       "_readonlyrest/admin/config",
       s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest.yml"))}"}"""
     )
-    new IndexManagerJ(ror2_1Node.adminClient).remove(readonlyrestIndexName)
+    val indexManager = new IndexManager(ror2_1Node.adminClient)
+    indexManager.removeIndex(readonlyrestIndexName)
 
     ror1WithIndexConfigAdminActionManager.actionPost(
       "_readonlyrest/admin/config",
@@ -251,18 +251,24 @@ trait BaseAdminApiSuite
   protected def nodeDataInitializer(): ElasticsearchNodeDataInitializer = {
     (esVersion: String, adminRestClient: RestClient) => {
       val documentManager = new DocumentManager(adminRestClient, esVersion)
-      documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}"""))
-      documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}"""))
+      documentManager
+        .createDoc("test1_index", 1, ujson.read("""{"hello":"world"}"""))
+        .force()
+      documentManager
+        .createDoc("test2_index", 1, ujson.read("""{"hello":"world"}"""))
+        .force()
       insertInIndexConfig(documentManager, "/admin_api/readonlyrest_index.yml")
     }
   }
 
   private def insertInIndexConfig(documentManager: DocumentManager, resourceFilePath: String): Unit = {
-    documentManager.createDoc(
-      readonlyrestIndexName,
-      "settings",
-      id = 1,
-      ujson.read(s"""{"settings": "${escapeJava(getResourceContent(resourceFilePath))}"}""")
-    )
+    documentManager
+      .createDoc(
+        readonlyrestIndexName,
+        "settings",
+        id = 1,
+        ujson.read(s"""{"settings": "${escapeJava(getResourceContent(resourceFilePath))}"}""")
+      )
+      .force()
   }
 }

@@ -140,11 +140,10 @@ class EsServerBasedRorClusterService(settings: Settings,
       .map(results => zip(results, documents))
   }
 
-  private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService): Task[Set[FullRemoteIndexWithAliases]] = {
+  private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService) = {
     Task
       .gatherUnordered(
-        getRegisteredRemoteClusterNames(remoteClusterService)
-          .map(resolveAllRemoteIndices(_, remoteClusterService))
+        getRegisteredRemoteClusterNames(remoteClusterService).map(resolveAllRemoteIndices(_, remoteClusterService))
       )
       .map(_.flatten.toSet)
   }

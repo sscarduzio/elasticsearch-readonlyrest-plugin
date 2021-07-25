@@ -21,10 +21,9 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, IndexManagerJ, SearchManagerJ}
+import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
-
-import scala.collection.JavaConverters._
 
 //TODO change test names. Current names are copies from old java integration tests
 trait SearchWithAliasesSuite
@@ -39,164 +38,156 @@ trait SearchWithAliasesSuite
 
   override def nodeDataInitializer = Some(SearchWithAliasesSuite.nodeDataInitializer())
 
-  private lazy val restrictedDevSearchManager = new SearchManagerJ(basicAuthClient("restricted", "dev"))
-  private lazy val unrestrictedDevSearchManager = new SearchManagerJ(basicAuthClient("unrestricted", "dev"))
-  private lazy val adminIndexManager = new IndexManagerJ(adminClient)
-  private lazy val perfmonIndexManager = new IndexManagerJ(basicAuthClient("perfmon", "dev"))
-  private lazy val vietMyanSearchManager = new SearchManagerJ(basicAuthClient("VIET_MYAN", "dev"))
+  private lazy val restrictedDevSearchManager = new SearchManager(basicAuthClient("restricted", "dev"))
+  private lazy val unrestrictedDevSearchManager = new SearchManager(basicAuthClient("unrestricted", "dev"))
+  private lazy val adminIndexManager = new IndexManager(adminClient)
+  private lazy val perfmonIndexManager = new IndexManager(basicAuthClient("perfmon", "dev"))
+  private lazy val vietMyanSearchManager = new SearchManager(basicAuthClient("VIET_MYAN", "dev"))
 
-  "testDirectIndexQuery" in {
-    eventually {
-      val response = unrestrictedDevSearchManager.search("/my_data/_search")
+  "testDirectIndexQuery" in eventually {
+    val response = unrestrictedDevSearchManager.search("my_data")
 
-      response.getResponseCode should be(200)
-      response.getSearchHits.size() should be(2)
-    }
+    response.responseCode should be(200)
+    response.searchHits.size should be(2)
   }
   "testAliasQuery" in {
-    eventually {
-      val response = unrestrictedDevSearchManager.search("/public_data/_search")
+    val response = unrestrictedDevSearchManager.search("public_data")
 
-      response.getResponseCode should be(200)
-      response.getSearchHits.size() should be(1)
-    }
+    response.responseCode should be(200)
+    response.searchHits.size should be(1)
   }
   "testAliasAsWildcard" in {
-    eventually {
-      val response = unrestrictedDevSearchManager.search("/pub*/_search")
+    val response = unrestrictedDevSearchManager.search("pub*")
 
-      response.getResponseCode should be(200)
-      response.getSearchHits.size() should be(1)
-    }
+    response.responseCode should be(200)
+    response.searchHits.size should be(1)
   }
 
   // Tests with indices rule restricting to "pub*"
-
   "testRestrictedPureIndex" in {
-    eventually {
-      val response = restrictedDevSearchManager.search("/my_data/_search")
+    val response = restrictedDevSearchManager.search("my_data")
 
-      response.getResponseCode should be(404)
-    }
+    response.responseCode should be(404)
   }
   "testRestrictedAlias" in {
-    eventually {
-      val response = restrictedDevSearchManager.search("/public_data/_search")
+    val response = restrictedDevSearchManager.search("public_data")
 
-      response.getResponseCode should be(200)
-      response.getSearchHits.size() should be(1)
-    }
+    response.responseCode should be(200)
+    response.searchHits.size should be(1)
   }
   "testRestrictedAliasAsWildcard" in {
-    eventually {
-      val response = restrictedDevSearchManager.search("/public*/_search")
+    val response = restrictedDevSearchManager.search("public*")
 
-      response.getResponseCode should be(200)
-      response.getSearchHits.size() should be(1)
-    }
+    response.responseCode should be(200)
+    response.searchHits.size should be(1)
   }
   "testRestrictedAliasAsHalfWildcard" in {
-    eventually {
-      val response = restrictedDevSearchManager.search("/pu*/_search")
+    val response = restrictedDevSearchManager.search("pu*")
 
-      response.getResponseCode should be(200)
-      response.getSearchHits.size() should be(1)
-    }
+    response.responseCode should be(200)
+    response.searchHits.size should be(1)
   }
 
   // real cases from github
-
   "testIndexCanBeAccessedByAdminUsingNameOrAlias" in {
-    eventually {
-      val firstResponse = adminIndexManager.get("blabla")
+    val firstResponse = adminIndexManager.getIndex("blabla")
 
-      firstResponse.getResponseCode should be(200)
-      firstResponse.getAliases.size() should be(1)
+    firstResponse.responseCode should be(200)
+    firstResponse.indicesAndAliases.size should be(1)
 
-      val secondResponse = adminIndexManager.get("perfmon_my_test_alias")
+    val secondResponse = adminIndexManager.getIndex("perfmon_my_test_alias")
 
-      secondResponse.getResponseCode should be(200)
-      secondResponse.getAliases.size() should be(1)
-    }
+    secondResponse.responseCode should be(200)
+    secondResponse.indicesAndAliases.size should be(1)
   }
   "testIndexCanBeAccessedByAdminUsingNameOrAliasWithWildcard" in {
-    eventually {
-      val firstResponse = adminIndexManager.get("bla*")
+    val firstResponse = adminIndexManager.getIndex("bla*")
 
-      firstResponse.getResponseCode should be(200)
-      firstResponse.getAliases.size() should be(1)
+    firstResponse.responseCode should be(200)
+    firstResponse.indicesAndAliases.size should be(1)
 
-      val secondResponse = adminIndexManager.get("perf*mon_my_test*")
+    val secondResponse = adminIndexManager.getIndex("perf*mon_my_test*")
 
-      secondResponse.getResponseCode should be(200)
-      secondResponse.getAliases.size() should be(1)
-    }
+    secondResponse.responseCode should be(200)
+    secondResponse.indicesAndAliases.size should be(1)
   }
   "testIndexCanBeAccessedByUserPerfmonUsingNameOrAlias" in {
-    eventually {
-      val firstResponse = perfmonIndexManager.get("blabla")
+    val firstResponse = perfmonIndexManager.getIndex("blabla")
 
-      firstResponse.getResponseCode should be(200)
-      firstResponse.getAliases.size() should be(1)
+    firstResponse.responseCode should be(200)
+    firstResponse.indicesAndAliases should be(Map(
+      "blabla" -> Set.empty
+    ))
 
-      val secondResponse = perfmonIndexManager.get("perfmon_my_test_alias")
+    val secondResponse = perfmonIndexManager.getIndex("perfmon_my_test_alias")
 
-      secondResponse.getResponseCode should be(200)
-      secondResponse.getAliases.size() should be(1)
-    }
+    secondResponse.responseCode should be(200)
+    secondResponse.indicesAndAliases should be(Map(
+      "blabla" -> Set("perfmon_my_test_alias")
+    ))
   }
   "testIndexCanBeAccessedByUserPerfmonUsingNameOrAliasWithWildcard" in {
-    eventually {
-      val firstResponse = perfmonIndexManager.get("bla*")
+    val firstResponse = perfmonIndexManager.getIndex("bla*")
 
-      firstResponse.getResponseCode should be(200)
-      firstResponse.getAliases.size() should be(1)
+    firstResponse.responseCode should be(200)
+    firstResponse.indicesAndAliases should be(Map(
+      "blabla" -> Set.empty
+    ))
 
-      val secondResponse = perfmonIndexManager.get("perf*mon_my_test*")
+    val secondResponse = perfmonIndexManager.getIndex("perf*mon_my_test*")
 
-      secondResponse.getResponseCode should be(200)
-      secondResponse.getAliases.size() should be(1)
-    }
+    secondResponse.responseCode should be(200)
+    secondResponse.indicesAndAliases should be(Map(
+      "blabla" -> Set("perfmon_my_test_alias")
+    ))
   }
   "testVietMianUserShouldBeAbleToAccessVietnamIndex" in {
-    eventually {
-      val response = vietMyanSearchManager.search("/vuln-ass-all-vietnam/_search")
+    val response = vietMyanSearchManager.search("vuln-ass-all-vietnam")
 
-      response.getResponseCode should be(200)
-      response.getSearchHits.size() should be(1)
-    }
+    response.responseCode should be(200)
+    response.searchHits.size should be(1)
   }
   "testVietMianUserShouldNotBeAbleToAccessCongoIndex" in {
-    eventually {
-      val response = vietMyanSearchManager.search("/vuln-ass-all-congo/_search")
+    val response = vietMyanSearchManager.search("vuln-ass-all-congo")
 
-      response.getResponseCode should be(404)
-      response.getSearchHits.size() should be(0)
-    }
+    response.responseCode should be(404)
   }
   "testVietMianUserShouldBeAbleToSeeAllowedIndicesUsingAlias" in {
-    eventually {
-      val response = vietMyanSearchManager.search("/all-subs-data/_search")
+    val response = vietMyanSearchManager.search("all-subs-data")
 
-      response.getResponseCode should be(200)
-      response.getSearchHits.size() should be(2)
-    }
+    response.responseCode should be(200)
+    response.searchHits.size should be(2)
   }
 }
 
 object SearchWithAliasesSuite {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManagerJ(adminRestClient)
-    documentManager.insertDoc("/my_data/test/1", """{"hello":"world"}""")
-    documentManager.insertDoc("/my_data/test/2", """{"hello":"there", "public":1}""")
-    documentManager.insertDoc("/my_data/_alias/public_data", """{"filter":{"term":{"public":1}}}""")
-    documentManager.insertDoc("/blabla", """{"aliases" : {"perfmon_my_test_alias":{}}}""")
-    documentManager.insertDoc("/vuln-ass-all-angola/test/1", """{"country":"angola"}""")
-    documentManager.insertDoc("/vuln-ass-all-china/test/1", """{"country":"china"}""")
-    documentManager.insertDoc("/vuln-ass-all-congo/test/1", """{"country":"congo"}""")
-    documentManager.insertDoc("/vuln-ass-all-myanmar/test/1", """{"country":"myanmar"}""")
-    documentManager.insertDoc("/vuln-ass-all-norge/test/1", """{"country":"norge"}""")
-    documentManager.insertDoc("/vuln-ass-all-vietnam/test/1", """{"country":"vietnam"}""")
-    documentManager.createAlias("all-subs-data", Set("vuln-ass-all-angola", "vuln-ass-all-china", "vuln-ass-all-congo", "vuln-ass-all-myanmar", "vuln-ass-all-norge", "vuln-ass-all-vietnam").asJava)
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
+    val indexManager = new IndexManager(adminRestClient)
+
+    documentManager.createDoc("my_data", "test", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("my_data", "test", 2, ujson.read("""{"hello":"there", "public":1}""")).force()
+
+    documentManager.createDoc("blabla", 1, ujson.read("""{"hello":"there", "public":1}""")).force()
+
+    documentManager.createDoc("vuln-ass-all-angola", "test", 1, ujson.read("""{"country":"angola"}""")).force()
+    documentManager.createDoc("vuln-ass-all-china", "test", 1, ujson.read("""{"country":"china"}""")).force()
+    documentManager.createDoc("vuln-ass-all-congo", "test", 1, ujson.read("""{"country":"congo"}""")).force()
+    documentManager.createDoc("vuln-ass-all-myanmar", "test", 1, ujson.read("""{"country":"myanmar"}""")).force()
+    documentManager.createDoc("vuln-ass-all-norge", "test", 1, ujson.read("""{"country":"norge"}""")).force()
+    documentManager.createDoc("vuln-ass-all-vietnam", "test", 1, ujson.read("""{"country":"vietnam"}""")).force()
+
+    indexManager
+      .updateAliases(
+        AliasAction.Add("my_data", "public_data", Some(ujson.read("""{"term":{"public":1}}"""))),
+        AliasAction.Add("blabla", "perfmon_my_test_alias"),
+        AliasAction.Add("vuln-ass-all-angola", "all-subs-data"),
+        AliasAction.Add("vuln-ass-all-china", "all-subs-data"),
+        AliasAction.Add("vuln-ass-all-congo", "all-subs-data"),
+        AliasAction.Add("vuln-ass-all-myanmar", "all-subs-data"),
+        AliasAction.Add("vuln-ass-all-norge", "all-subs-data"),
+        AliasAction.Add("vuln-ass-all-vietnam", "all-subs-data")
+      )
+      .force()
   }
 }

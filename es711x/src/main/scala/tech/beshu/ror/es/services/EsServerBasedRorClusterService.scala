@@ -33,7 +33,6 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.metadata.RepositoriesMetadata
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
-import tech.beshu.ror.accesscontrol.show.logs._
 import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
@@ -41,6 +40,7 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
@@ -318,4 +318,5 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .zip(results)
       .toMap
   }
+
 }

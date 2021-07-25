@@ -106,7 +106,9 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
   private val emptyClusterState = new ClusterStateResponse(
-    ClusterName.CLUSTER_NAME_SETTING.get(s), ClusterState.EMPTY_STATE,serializeFullClusterState(ClusterState.EMPTY_STATE, Version.CURRENT).length
+    ClusterName.CLUSTER_NAME_SETTING.get(s),
+    ClusterState.EMPTY_STATE,
+    serializeFullClusterState(ClusterState.EMPTY_STATE, Version.CURRENT).length
   )
   private val esInitListener = new EsInitListener
 
@@ -130,7 +132,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         TransportServiceInterceptor.remoteClusterServiceSupplier,
         SnapshotsServiceInterceptor.snapshotsServiceSupplier,
         emptyClusterState,
-        esInitListener)
+        esInitListener
+      )
     }
     List.empty[AnyRef].asJava
   }
