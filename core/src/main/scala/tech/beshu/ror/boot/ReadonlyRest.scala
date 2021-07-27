@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
-import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext}
+import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
 import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
@@ -167,17 +167,16 @@ trait ReadonlyRest extends Logging {
           .right
           .map { coreSettings =>
             implicit val loggingContext: LoggingContext =
-              LoggingContext(coreSettings.aclStaticContext.obfuscatedHeaders)
+              LoggingContext(coreSettings.aclEngine.staticContext.obfuscatedHeaders)
             val engine = new Engine(
               accessControl = new AccessControlLoggingDecorator(
                 underlying = coreSettings.aclEngine,
                 auditingTool = coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
               ),
-              context = coreSettings.aclStaticContext,
               httpClientsFactory = httpClientsFactory,
               ldapConnectionPoolProvider
             )
-            engine.context.usedFlsEngineInFieldsRule.foreach {
+            engine.accessControl.staticContext.usedFlsEngineInFieldsRule.foreach {
               case FlsEngine.Lucene | FlsEngine.ESWithLucene =>
                 logger.warn("Defined fls engine relies on lucene. To make it work well, all nodes should have ROR plugin installed.")
               case FlsEngine.ES =>
@@ -456,7 +455,6 @@ object RorMode {
 }
 
 final class Engine(val accessControl: AccessControl,
-                   val context: AccessControlStaticContext,
                    httpClientsFactory: AsyncHttpClientsFactory,
                    ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider)
                   (implicit scheduler: Scheduler) {

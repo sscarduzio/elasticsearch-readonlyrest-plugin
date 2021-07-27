@@ -72,7 +72,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   }
 
   private def onForbidden(): Unit = {
-    esContext.listener.onFailure(ForbiddenResponse.create(Nil, engine.context))
+    esContext.listener.onFailure(ForbiddenResponse.create(Nil, engine.accessControl.staticContext))
   }
 
   private def onPassThrough(): Unit =

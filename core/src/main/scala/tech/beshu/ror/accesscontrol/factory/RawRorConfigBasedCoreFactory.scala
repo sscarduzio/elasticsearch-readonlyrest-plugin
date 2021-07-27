@@ -26,6 +26,7 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol._
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
+import tech.beshu.ror.accesscontrol.acl.AccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
@@ -54,7 +55,6 @@ import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.yaml.YamlOps
 
 final case class CoreSettings(aclEngine: AccessControl,
-                              aclStaticContext: AccessControlStaticContext,
                               auditingSettings: Option[AuditingTool.Settings])
 
 trait CoreFactory {
@@ -107,7 +107,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
       core <-
       if (!enabled) {
         AsyncDecoderCreator
-          .from(Decoder.const(CoreSettings(DisabledAccessControl, DisabledAccessControlStaticContext$, None)))
+          .from(Decoder.const(CoreSettings(DisabledAccessControl, None)))
       } else {
         for {
           auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
@@ -116,12 +116,9 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
             rorConfigurationIndex,
             auditingTools.map(_.rorAuditIndexTemplate)
           ))
-          aclAndContext <- aclDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings)
-          (acl, context) = aclAndContext
-
+          acl <- aclDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings)
         } yield CoreSettings(
           aclEngine = acl,
-          aclStaticContext = context,
           auditingSettings = auditingTools
         )
       }
@@ -248,16 +245,6 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
       }
   }
 
-  private def aclStaticContextCreator(blocks: NonEmptyList[Block],
-                                      obfuscatedHeaders: Set[Header.Name],
-                                      globalSettings: GlobalSettings): EnabledAccessControlStaticContext = {
-    new EnabledAccessControlStaticContext(
-      blocks,
-      globalSettings,
-      obfuscatedHeaders
-    )
-  }
-
   private val obfuscatedHeadersAsyncDecoder: Decoder[Set[Header.Name]] = {
     import tech.beshu.ror.accesscontrol.factory.decoders.common.headerName
     Decoder.instance(_.downField("obfuscated_headers").as[Option[Set[Header.Name]]])
@@ -266,9 +253,9 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
 
   private def aclDecoder(httpClientFactory: HttpClientsFactory,
                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                         globalSettings: GlobalSettings): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] = {
+                         globalSettings: GlobalSettings): AsyncDecoder[AccessControl] = {
     val caseMappingEquality: UserIdCaseMappingEquality = createUserMappingEquality(globalSettings)
-    AsyncDecoderCreator.instance[(AccessControl, EnabledAccessControlStaticContext)] { c =>
+    AsyncDecoderCreator.instance[AccessControl] { c =>
       val decoder = for {
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
@@ -315,14 +302,19 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
                 }
             }
         }
-        staticContext = aclStaticContextCreator(blocks, obfuscatedHeaders, globalSettings)
-        acl = {
-          implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
-          val upgradedBlocks = CrossBlockContextBlocksUpgrade.upgrade(blocks)
-          upgradedBlocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
-          new AccessControlList(upgradedBlocks): AccessControl
-        }
-      } yield (acl, staticContext)
+      } yield {
+        implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
+        val upgradedBlocks = CrossBlockContextBlocksUpgrade.upgrade(blocks)
+        upgradedBlocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
+        new AccessControlList(
+          upgradedBlocks,
+          new AccessControlListStaticContext(
+            blocks,
+            globalSettings,
+            obfuscatedHeaders
+          )
+        ): AccessControl
+      }
       decoder.apply(c)
     }
   }

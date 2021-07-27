@@ -18,7 +18,7 @@ package tech.beshu.ror.es.handler.response
 
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.rest.RestStatus
-import tech.beshu.ror.accesscontrol.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.es.handler.RegularRequestHandler.ForbiddenCause
 
 import scala.collection.JavaConverters._

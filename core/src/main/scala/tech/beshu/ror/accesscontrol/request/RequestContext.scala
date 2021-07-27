@@ -220,7 +220,8 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
       }
   }
 
-  private def findHeader(name: Header.Name) = requestContext.headers.find(_.name === name)
+  private def findHeader(name: Header.Name) =
+    requestContext.headers.find(_.name === name)
 }
 
 object RequestContextOps {

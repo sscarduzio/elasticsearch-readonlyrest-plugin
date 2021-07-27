@@ -59,7 +59,7 @@ import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
@@ -87,7 +87,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         handler.handle(new CurrentUserMetadataEsRequestContext(request, esContext, clusterService, threadPool))
       case _ =>
         val regularRequestHandler = new RegularRequestHandler(engine, esContext, threadPool)
-        handleEsRestApiRequest(regularRequestHandler, esContext, engine.context)
+        handleEsRestApiRequest(regularRequestHandler, esContext, engine.accessControl.staticContext)
     }
   }
 

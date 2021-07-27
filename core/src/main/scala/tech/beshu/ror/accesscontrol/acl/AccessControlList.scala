@@ -21,20 +21,25 @@ import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched
-import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
+import tech.beshu.ror.accesscontrol.AccessControl.{AccessControlStaticContext, RegularRequestResult, UserMetadataRequestResult, WithHistory}
+import tech.beshu.ror.accesscontrol.acl.AccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, HistoryItem, Policy}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.Group
+import tech.beshu.ror.accesscontrol.domain.{Group, Header}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.orders.forbiddenByMismatchedCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class AccessControlList(val blocks: NonEmptyList[Block])
+class AccessControlList(val blocks: NonEmptyList[Block],
+                        override val staticContext: AccessControlListStaticContext)
   extends AccessControl {
 
   override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](context: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]] = {
@@ -76,7 +81,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
         WithHistory(Vector.empty, RegularRequestResult.Failed(ex))
       }
   }
-  
+
   override def handleMetadataRequest(context: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]] = {
     Task
       .gather(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
@@ -250,5 +255,38 @@ class AccessControlList(val blocks: NonEmptyList[Block])
         .collect { case r: Rejected[B] => r }
     }
   }
+}
 
+object AccessControlList {
+
+  class AccessControlListStaticContext(blocks: NonEmptyList[Block],
+                                       globalSettings: GlobalSettings,
+                                       override val obfuscatedHeaders: Set[Header.Name])
+    extends AccessControlStaticContext {
+
+    override val forbiddenRequestMessage: String = globalSettings.forbiddenRequestMessage
+
+    val usedFlsEngineInFieldsRule: Option[GlobalSettings.FlsEngine] = {
+      blocks
+        .flatMap(_.rules)
+        .collect {
+          case rule: FieldsRule => rule.settings.flsEngine
+        }
+        .headOption
+    }
+
+    val doesRequirePassword: Boolean = {
+      globalSettings.showBasicAuthPrompt &&
+        blocks
+          .find(_
+            .rules
+            .collect {
+              case _: AuthenticationRule => true
+              case _: AuthorizationRule => true
+            }
+            .nonEmpty
+          )
+          .isDefined
+    }
+  }
 }

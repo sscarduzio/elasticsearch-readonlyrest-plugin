@@ -19,16 +19,24 @@ package tech.beshu.ror.accesscontrol
 import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
-import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
+import tech.beshu.ror.accesscontrol.AccessControl.{AccessControlStaticContext, RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.Block.History
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
+/*
+ * todo: * based on request.impersonate pick one ACL
+ *       * when impersonate is enabled, pick second ACL if present
+ *       * add endpoint for removing second ACL
+ */
 trait AccessControl {
   def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]]
   def handleMetadataRequest(requestContext: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]]
+  def staticContext: AccessControlStaticContext
 }
 
 object AccessControl {
@@ -72,5 +80,12 @@ object AccessControl {
     final case class Allow(userMetadata: UserMetadata, block: Block) extends UserMetadataRequestResult
     case object Forbidden extends UserMetadataRequestResult
     case object PassedThrough extends UserMetadataRequestResult
+  }
+
+  trait AccessControlStaticContext {
+    def usedFlsEngineInFieldsRule: Option[GlobalSettings.FlsEngine]
+    def doesRequirePassword: Boolean
+    def forbiddenRequestMessage: String
+    def obfuscatedHeaders: Set[Header.Name]
   }
 }

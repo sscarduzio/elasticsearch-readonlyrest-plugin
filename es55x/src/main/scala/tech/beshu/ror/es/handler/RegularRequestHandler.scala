@@ -108,7 +108,7 @@ class RegularRequestHandler(engine: Engine,
   }
 
   private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {
-    esContext.listener.onFailure(ForbiddenResponse.create(causes.toList, engine.context))
+    esContext.listener.onFailure(ForbiddenResponse.create(causes.toList, engine.accessControl.staticContext))
   }
 
   private def onIndexNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B]): Unit = {

@@ -24,7 +24,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
-import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
+import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Header
@@ -37,7 +37,8 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool: Option[AuditingTool])
+class AccessControlLoggingDecorator(val underlying: AccessControl,
+                                    auditingTool: Option[AuditingTool])
                                    (implicit loggingContext: LoggingContext,
                                     scheduler: Scheduler)
   extends AccessControl with Logging {
@@ -124,6 +125,8 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
       case _: ForbiddenBy[_] | _: Forbidden[_] | _: Errored[_] | _: RequestedIndexNotExist[_] => true
     }
   }
+
+  override val staticContext: AccessControl.AccessControlStaticContext = underlying.staticContext
 }
 
 object AccessControlLoggingDecorator {

@@ -20,30 +20,30 @@ import java.time.Clock
 
 import cats.data.NonEmptyList
 import cats.implicits._
+import eu.timepit.refined.auto._
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.Inside
 import org.scalatest.concurrent.Eventually
+import org.scalatest.matchers.should.Matchers.{a, _}
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.Inside
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.AccessControl
+import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{CoreFactory, CoreSettings}
-import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext, DisabledAccessControlStaticContext$}
+import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest
-import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration, KeyPass, KeystorePassword, TruststorePassword}
+import tech.beshu.ror.configuration.SslConfiguration._
 import tech.beshu.ror.configuration.{MalformedSettings, RawRorConfig, RorSsl}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.TestsPropertiesProvider
-import tech.beshu.ror.utils.TestsUtils.{getResourceContent, getResourcePath, rorConfigFromResource}
-import eu.timepit.refined.auto._
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.{getResourceContent, getResourcePath, rorConfigFromResource, _}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -74,11 +74,10 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
           )
           .runSyncUnsafe()
 
-        inside(result) { case Right(instance) =>
-          eventually {
-            instance.engine.isDefined should be(true)
-            instance.engine.get.context
-          }
+        inside(result.map(_.engine)) { case Right(Some(engine)) =>
+          val acl = engine.accessControl
+          acl shouldBe a [AccessControlLoggingDecorator]
+          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a [EnabledAcl]
         }
       }
       "file loading is forced in elasticsearch.yml" in {
@@ -92,8 +91,10 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
           )
           .runSyncUnsafe()
 
-        inside(result) { case Right(instance) =>
-          instance.engine.isDefined should be(true)
+        inside(result.map(_.engine)) { case Right(Some(engine)) =>
+          val acl = engine.accessControl
+          acl shouldBe a [AccessControlLoggingDecorator]
+          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a [EnabledAcl]
         }
       }
     }
@@ -115,10 +116,10 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
           )
           .runSyncUnsafe()
 
-        inside(result) { case Right(instance) =>
-          eventually {
-            instance.engine.isDefined should be(true)
-          }
+        inside(result.map(_.engine)) { case Right(Some(engine)) =>
+          val acl = engine.accessControl
+          acl shouldBe a [AccessControlLoggingDecorator]
+          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a [EnabledAcl]
         }
       }
       "index is available and file config is not provided" in {
@@ -138,10 +139,10 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
           )
           .runSyncUnsafe()
 
-        inside(result) { case Right(instance) =>
-          eventually {
-            instance.engine.isDefined should be(true)
-          }
+        inside(result.map(_.engine)) { case Right(Some(engine)) =>
+          val acl = engine.accessControl
+          acl shouldBe a [AccessControlLoggingDecorator]
+          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a [EnabledAcl]
         }
       }
     }
@@ -168,15 +169,17 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
           .runSyncUnsafe()
 
         inside(result) { case Right(instance) =>
-          eventually {
-            instance.engine.isDefined should be(true)
-          }
+          instance.engine.isDefined should be (true)
+          val acl = instance.engine.get.accessControl
+          acl shouldBe a [AccessControlLoggingDecorator]
+          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a [EnabledAcl]
+
           val oldEngine = instance.engine.get
           val reload1Result = instance
             .forceReloadAndSave(rorConfigFromResource(resourcesPath + newIndexConfigFile))
             .runSyncUnsafe()
-          reload1Result should be(Right(()))
 
+          reload1Result should be(Right(()))
           assert(oldEngine != instance.engine.get, "Engine was not reloaded")
         }
       }
@@ -194,7 +197,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
         mockCoreFactory(coreFactory, resourcesPath + firstNewIndexConfigFile)
         mockCoreFactory(coreFactory, resourcesPath + secondNewIndexConfigFile,
           createCoreResult =
-            Task.sleep(100 millis).map(_ => Right(CoreSettings(mock[AccessControl], mockAccessControlStaticContext, None))) // very long creation
+            Task.sleep(100 millis).map(_ => Right(CoreSettings(mock[AccessControl], None))) // very long creation
         )
         mockIndexJsonContentManagerSaveCall(
           mockedIndexJsonContentManager,
@@ -211,9 +214,10 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
           .runSyncUnsafe()
 
         inside(result) { case Right(instance) =>
-          eventually {
-            instance.engine.isDefined should be(true)
-          }
+          instance.engine.isDefined should be (true)
+          val acl = instance.engine.get.accessControl
+          acl shouldBe a [AccessControlLoggingDecorator]
+          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a [EnabledAcl]
 
           val results = Task
             .gather(List(
@@ -243,30 +247,36 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
       val updatedIndexConfigFile = "updated_readonlyrest.yml"
 
       val mockedIndexJsonContentManager = mock[IndexJsonContentService]
-      mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + originIndexConfigFile)
+      mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + originIndexConfigFile, repeatedCount = 1)
       mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + updatedIndexConfigFile)
 
       val coreFactory = mock[CoreFactory]
-      mockCoreFactory(coreFactory, resourcesPath + originIndexConfigFile, DisabledAccessControlStaticContext$)
+      mockCoreFactory(coreFactory, resourcesPath + originIndexConfigFile, mockDisabledAccessControl)
       mockCoreFactory(coreFactory, resourcesPath + updatedIndexConfigFile)
 
-      val result = readonlyRestBoot(coreFactory)
+      val result = readonlyRestBoot(coreFactory, refreshInterval = Some(2 seconds))
         .start(
           getResourcePath(resourcesPath),
           mock[AuditSinkService],
           mockedIndexJsonContentManager
         )
+        .flatMap { result =>
+          inside(result.map(_.engine)) { case Right(Some(engine)) =>
+            val acl = engine.accessControl
+            acl shouldBe a[AccessControlLoggingDecorator]
+            acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[DisabledAcl]
+          }
+
+          Task
+            .sleep(4 seconds)
+            .map(_ => result)
+        }
         .runSyncUnsafe()
 
-      inside(result) { case Right(instance) =>
-        eventually {
-          instance.engine.isDefined should be(true)
-          instance.engine.get.context should be (DisabledAccessControlStaticContext$)
-        }
-        eventually {
-          instance.engine.isDefined should be(true)
-          instance.engine.get.context should not be DisabledAccessControlStaticContext$
-        }
+      inside(result.map(_.engine)) { case Right(Some(engine)) =>
+        val acl = engine.accessControl
+        acl shouldBe a [AccessControlLoggingDecorator]
+        acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a [DisabledAcl]
       }
     }
     "failed to load" when {
@@ -556,30 +566,17 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
   }
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
-                               resourceFileName: String,
-                               aclStaticContext: AccessControlStaticContext = mockAccessControlStaticContext) = {
+                              resourceFileName: String,
+                              accessControlMock: AccessControl = mockEnabledAccessControl) = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
         (config: RawRorConfig, _, _, _) => config == rorConfigFromResource(resourceFileName)
       })
       .once()
-      .returns(Task.now(Right(CoreSettings(mock[AccessControl], aclStaticContext, None))))
+      .returns(Task.now(Right(CoreSettings(accessControlMock, None))))
     mockedCoreFactory
   }
 
-  private def mockAccessControlStaticContext = {
-    val mockedContext = mock[AccessControlStaticContext]
-    (mockedContext.obfuscatedHeaders _)
-      .expects()
-      .once()
-      .returns(Set.empty)
-
-    (mockedContext.usedFlsEngineInFieldsRule _)
-      .expects()
-      .once()
-      .returns(None)
-    mockedContext
-  }
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
                               resourceFileName: String,
                               createCoreResult: Task[Either[NonEmptyList[AclCreationError], CoreSettings]]) = {
@@ -603,4 +600,38 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
     mockedCoreFactory
   }
 
+  private def mockEnabledAccessControl = {
+    val mockedAccessControl = mock[EnabledAcl]
+    (mockedAccessControl.staticContext _)
+      .expects()
+      .anyNumberOfTimes()
+      .returns(mockAccessControlStaticContext)
+    mockedAccessControl
+  }
+
+  private def mockDisabledAccessControl = {
+    val mockedAccessControl = mock[DisabledAcl]
+    (mockedAccessControl.staticContext _)
+      .expects()
+      .anyNumberOfTimes()
+      .returns(mockAccessControlStaticContext)
+    mockedAccessControl
+  }
+
+  private def mockAccessControlStaticContext = {
+    val mockedContext = mock[AccessControlStaticContext]
+    (mockedContext.obfuscatedHeaders _)
+      .expects()
+      .anyNumberOfTimes()
+      .returns(Set.empty)
+
+    (mockedContext.usedFlsEngineInFieldsRule _)
+      .expects()
+      .anyNumberOfTimes()
+      .returns(None)
+    mockedContext
+  }
+
+  private abstract class EnabledAcl extends AccessControl
+  private abstract class DisabledAcl extends AccessControl
 }

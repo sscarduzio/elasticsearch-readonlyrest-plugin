@@ -16,23 +16,26 @@
  */
 package tech.beshu.ror.unit.acl
 
-import eu.timepit.refined.auto._
 import cats.data.NonEmptyList
+import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
-import org.scalatest.matchers.should.Matchers._
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.Inside
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult.Allow
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
+import tech.beshu.ror.accesscontrol.acl.AccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.{FlsEngine, UsernameCaseMapping}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -42,7 +45,7 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
   "An AccessControlList" when {
     "metadata request is called" should {
       "go through all blocks and collect metadata response content" in {
-        val acl = new AccessControlList(NonEmptyList.of(
+        val blocks = NonEmptyList.of(
           mockBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(group("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
           mockBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(group("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
           mockBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(group("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
@@ -50,7 +53,22 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
           mockBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(group("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
           mockBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(group("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
           mockBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(group("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-        ))
+        )
+        val acl = new AccessControlList(
+          blocks,
+          new AccessControlListStaticContext(
+            blocks,
+            GlobalSettings(
+              showBasicAuthPrompt = true,
+              forbiddenRequestMessage = "Forbidden",
+              flsEngine = FlsEngine.default,
+              configurationIndex = RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+              usernameCaseMapping = UsernameCaseMapping.CaseSensitive,
+              indexAuditTemplate = None
+            ),
+            Set.empty
+          )
+        )
         val userMetadataRequestResult = acl
           .handleMetadataRequest(mockMetadataRequestContext("admins"))
           .runSyncUnsafe()
@@ -73,6 +91,7 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
       NonEmptyList.of(
         new RegularRule {
           override val name: Rule.Name = Rule.Name("auth")
+
           override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
             Task.now(Rule.RuleResult.Fulfilled(blockContext.withUserMetadata(_ => userMetadata)))
           }
