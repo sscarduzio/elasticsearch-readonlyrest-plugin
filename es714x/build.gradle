@@ -121,7 +121,7 @@ task cleanOldData {
 
 task jarHellCheck(type: JavaExec) {
     outputs.upToDateWhen { false }
-    main = "org.elasticsearch.bootstrap.JarHell"
+    main = "org.elasticsearch.jdk.JarHell"
     classpath = project.sourceSets.main.compileClasspath.filter { it.exists() }
 }
 
