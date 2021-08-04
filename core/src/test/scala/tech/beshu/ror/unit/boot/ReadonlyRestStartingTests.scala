@@ -197,7 +197,9 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
         mockCoreFactory(coreFactory, resourcesPath + firstNewIndexConfigFile)
         mockCoreFactory(coreFactory, resourcesPath + secondNewIndexConfigFile,
           createCoreResult =
-            Task.sleep(100 millis).map(_ => Right(CoreSettings(mock[AccessControl], None))) // very long creation
+            Task
+              .sleep(100 millis)
+              .map(_ => Right(CoreSettings(mockEnabledAccessControl, None))) // very long creation
         )
         mockIndexJsonContentManagerSaveCall(
           mockedIndexJsonContentManager,
@@ -247,11 +249,12 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
       val updatedIndexConfigFile = "updated_readonlyrest.yml"
 
       val mockedIndexJsonContentManager = mock[IndexJsonContentService]
-      mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + originIndexConfigFile, repeatedCount = 1)
-      mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + updatedIndexConfigFile)
-
       val coreFactory = mock[CoreFactory]
+
+      mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + originIndexConfigFile, repeatedCount = 1)
       mockCoreFactory(coreFactory, resourcesPath + originIndexConfigFile, mockDisabledAccessControl)
+
+      mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + updatedIndexConfigFile)
       mockCoreFactory(coreFactory, resourcesPath + updatedIndexConfigFile)
 
       val result = readonlyRestBoot(coreFactory, refreshInterval = Some(2 seconds))
@@ -276,7 +279,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
       inside(result.map(_.engine)) { case Right(Some(engine)) =>
         val acl = engine.accessControl
         acl shouldBe a [AccessControlLoggingDecorator]
-        acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a [DisabledAcl]
+        acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a [EnabledAcl]
       }
     }
     "failed to load" when {
