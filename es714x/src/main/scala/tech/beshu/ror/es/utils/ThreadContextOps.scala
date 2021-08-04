@@ -14,30 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es.utils
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'core'
-include 'es55x'
-include 'es60x'
-include 'es61x'
-include 'es62x'
-include 'es63x'
-include 'es65x'
-include 'es66x'
-include 'es67x'
-include 'es70x'
-include 'es72x'
-include 'es73x'
-include 'es74x'
-include 'es77x'
-include 'es78x'
-include 'es79x'
-include 'es710x'
-include 'es711x'
-include 'es714x'
-include 'proxy'
-include 'tests-utils'
-include 'integration-tests'
-include 'eshome'
+import org.elasticsearch.common.util.concurrent.ThreadContext
+import tech.beshu.ror.utils.JavaConverters
+
+import scala.language.implicitConversions
+
+final class ThreadContextOps(threadContext: ThreadContext) {
+  def stashAndMergeResponseHeaders(): ThreadContext.StoredContext = {
+    val responseHeaders = JavaConverters.flattenPair(threadContext.getResponseHeaders)
+    val storedContext = threadContext.stashContext()
+    responseHeaders.foreach { case (k, v) => threadContext.addResponseHeader(k, v) }
+    storedContext
+  }
+}
+
+object ThreadContextOps {
+  implicit def createThreadContextOps(threadContext: ThreadContext): ThreadContextOps = new ThreadContextOps(threadContext)
+}

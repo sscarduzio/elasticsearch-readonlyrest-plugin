@@ -14,30 +14,24 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es.utils
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'core'
-include 'es55x'
-include 'es60x'
-include 'es61x'
-include 'es62x'
-include 'es63x'
-include 'es65x'
-include 'es66x'
-include 'es67x'
-include 'es70x'
-include 'es72x'
-include 'es73x'
-include 'es74x'
-include 'es77x'
-include 'es78x'
-include 'es79x'
-include 'es710x'
-include 'es711x'
-include 'es714x'
-include 'proxy'
-include 'tests-utils'
-include 'integration-tests'
-include 'eshome'
+import monix.eval.Task
+import org.elasticsearch.action.{ActionListener, ActionResponse}
+
+import scala.concurrent.Promise
+
+final class GenericResponseListener[RESPONSE <: ActionResponse] extends ActionListener[RESPONSE] {
+
+  private val promise = Promise[RESPONSE]
+
+  def result: Task[RESPONSE] = Task.fromFuture(promise.future)
+
+  override def onResponse(response: RESPONSE): Unit = {
+    promise.success(response)
+  }
+
+  override def onFailure(exception: Exception): Unit = {
+    promise.failure(exception)
+  }
+}
