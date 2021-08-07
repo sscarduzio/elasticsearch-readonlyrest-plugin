@@ -40,7 +40,7 @@ import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.AccessControllerHelper._
-import tech.beshu.ror.utils.RorInstanceSupplier
+import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
 import scala.language.postfixOps
 
@@ -130,7 +130,15 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     aclAwareRequestFilter
       .handle(
         engine,
-        EsContext(channel, task, action, request, listener, chain)
+        EsContext(
+          channel,
+          task,
+          action,
+          request,
+          listener,
+          chain,
+          JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toSet
+        )
       )
       .runAsync {
         case Right(_) =>

@@ -54,7 +54,7 @@ class RegularRequestHandler(engine: Engine,
     engine.accessControl
       .handleRegularRequest(request)
       .map { r =>
-        threadPool.getThreadContext.stashAndMergeResponseHeaders().bracket { _ =>
+        threadPool.getThreadContext.stashAndMergeResponseHeaders(esContext).bracket { _ =>
           commitResult(r.result, request)
         }
       }
