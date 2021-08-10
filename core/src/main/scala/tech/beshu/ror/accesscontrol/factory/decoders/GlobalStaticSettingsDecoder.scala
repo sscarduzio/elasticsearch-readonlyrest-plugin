@@ -39,7 +39,7 @@ object GlobalStaticSettingsDecoder {
           caseMapping <- c.downField("username_case_sensitivity").as[GlobalSettings.UsernameCaseMapping]
         } yield new GlobalSettings(
           basicAuthPrompt.getOrElse(true),
-          forbiddenMessage.getOrElse("forbidden"),
+          forbiddenMessage.getOrElse(GlobalSettings.defaultForbiddenRequestMessage),
           flsEngine,
           rorConfigurationIndex,
           caseMapping,

@@ -40,4 +40,6 @@ object GlobalSettings {
 
     val default = ESWithLucene
   }
+
+  val defaultForbiddenRequestMessage: String = "forbidden"
 }

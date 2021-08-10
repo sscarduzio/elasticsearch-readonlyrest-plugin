@@ -33,10 +33,10 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, F
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.RegularRequestHandler.{ForbiddenBlockMatch, ForbiddenCause, OperationNotAllowed, _}
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.{ForbiddenBlockMatch, ForbiddenCause, ImpersonationNotAllowed, ImpersonationNotSupported, OperationNotAllowed}
 import tech.beshu.ror.es.utils.ThreadContextOps._
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.LoggerOps._
@@ -69,7 +69,7 @@ class RegularRequestHandler(engine: Engine,
         case RegularRequestResult.ForbiddenBy(_, _) =>
           onForbidden(NonEmptyList.one(ForbiddenBlockMatch))
         case RegularRequestResult.ForbiddenByMismatched(causes) =>
-          onForbidden(causes.toNonEmptyList.map(fromMismatchedCause))
+          onForbidden(causes.toNonEmptyList.map(RegularRequestHandler.fromMismatchedCause))
         case RegularRequestResult.IndexNotFound() =>
           onIndexNotFound(request)
         case RegularRequestResult.AliasNotFound() =>
@@ -244,23 +244,8 @@ class RegularRequestHandler(engine: Engine,
 }
 
 object RegularRequestHandler {
-  sealed trait ForbiddenCause {
-    def stringify: String
-  }
-  case object ForbiddenBlockMatch extends ForbiddenCause {
-    override def stringify: String = "FORBIDDEN_BY_BLOCK"
-  }
-  case object OperationNotAllowed extends ForbiddenCause {
-    override def stringify: String = "OPERATION_NOT_ALLOWED"
-  }
-  case object ImpersonationNotSupported extends ForbiddenCause {
-    override def stringify: String = "IMPERSONATION_NOT_SUPPORTED"
-  }
-  case object ImpersonationNotAllowed extends ForbiddenCause {
-    override def stringify: String = "IMPERSONATION_NOT_ALLOWED"
-  }
 
-  def fromMismatchedCause(cause: Cause): ForbiddenCause = {
+  private def fromMismatchedCause(cause: Cause): ForbiddenCause = {
     cause match {
       case Cause.OperationNotAllowed => OperationNotAllowed
       case Cause.ImpersonationNotSupported => ImpersonationNotSupported
