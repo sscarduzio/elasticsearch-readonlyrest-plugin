@@ -34,7 +34,7 @@ import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot._
 import tech.beshu.ror.es.handler.AclAwareRequestFilter
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.response.ForbiddenResponse._
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
@@ -95,33 +95,37 @@ class IndexLevelActionFilter(clusterService: ClusterService,
         case Some(_) if action.startsWith("internal:") =>
           chain.proceed(task, action, request, listener)
         case Some(channel) =>
-          val esContext = EsContext(
-            channel,
-            task,
-            action,
-            request,
-            listener.asInstanceOf[ActionListener[ActionResponse]],
-            chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]],
-            JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toSet
+          proceedByRorEngine(
+            EsContext(
+              channel,
+              task,
+              action,
+              request,
+              listener.asInstanceOf[ActionListener[ActionResponse]],
+              chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]],
+              JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toSet
+            )
           )
-          rorInstanceState.get() match {
-            case RorInstanceStartingState.Starting =>
-              logger.warn(s"[${esContext.requestId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
-              listener.onFailure(createRorNotReadyYetResponse())
-            case RorInstanceStartingState.Started(instance) =>
-              instance.engine match {
-                case Some(engine) =>
-                  handleRequest(engine, esContext)
-                case None =>
-                  logger.warn(s"[${esContext.requestId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
-                  listener.onFailure(createRorNotReadyYetResponse())
-              }
-            case RorInstanceStartingState.NotStarted(_) =>
-
-              logger.error(s"[${esContext.requestId}] Cannot handle the ${esContext.channel.request().path()} request because ReadonlyREST failed to start")
-              listener.onFailure(createRorStartingFailureResponse())
-          }
       }
+    }
+  }
+
+  private def proceedByRorEngine(esContext: EsContext): Unit = {
+    rorInstanceState.get() match {
+      case RorInstanceStartingState.Starting =>
+        logger.warn(s"[${esContext.requestId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
+        esContext.listener.onFailure(createRorNotReadyYetResponse())
+      case RorInstanceStartingState.Started(instance) =>
+        instance.engine match {
+          case Some(engine) =>
+            handleRequest(engine, esContext)
+          case None =>
+            logger.warn(s"[${esContext.requestId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
+            esContext.listener.onFailure(createRorNotReadyYetResponse())
+        }
+      case RorInstanceStartingState.NotStarted(_) =>
+        logger.error(s"[${esContext.requestId}] Cannot handle the ${esContext.channel.request().path()} request because ReadonlyREST failed to start")
+        esContext.listener.onFailure(createRorStartingFailureResponse())
     }
   }
 

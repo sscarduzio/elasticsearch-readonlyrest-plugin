@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, F
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.RegularRequestHandler.fromMismatchedCause
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
@@ -69,7 +70,7 @@ class RegularRequestHandler(engine: Engine,
         case RegularRequestResult.ForbiddenBy(_, _) =>
           onForbidden(NonEmptyList.one(ForbiddenBlockMatch))
         case RegularRequestResult.ForbiddenByMismatched(causes) =>
-          onForbidden(causes.toNonEmptyList.map(RegularRequestHandler.fromMismatchedCause))
+          onForbidden(causes.toNonEmptyList.map(fromMismatchedCause))
         case RegularRequestResult.IndexNotFound() =>
           onIndexNotFound(request)
         case RegularRequestResult.AliasNotFound() =>
