@@ -49,7 +49,7 @@ import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.{SharedGroupFactory, Transport}
+import org.elasticsearch.transport.{SharedGroupFactory, Transport, TransportInterceptor}
 import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
@@ -127,19 +127,20 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         threadPool,
         environment,
         TransportServiceInterceptor.remoteClusterServiceSupplier,
-        RepositoriesServiceInterceptor.repositoriesServiceSupplier,
+        () => Some(repositoriesServiceSupplier.get()),
         esInitListener
       )
     }
     List.empty[AnyRef].asJava
   }
 
-  override def getGuiceServiceClasses: util.Collection[Class[_ <: LifecycleComponent]] = {
-    List[Class[_ <: LifecycleComponent]](
-      classOf[TransportServiceInterceptor],
-      classOf[RepositoriesServiceInterceptor]
-    ).asJava
-  }
+  // todo: remove interceors?
+//  override def getGuiceServiceClasses: util.Collection[Class[_ <: LifecycleComponent]] = {
+//    List[Class[_ <: LifecycleComponent]](
+//      classOf[TransportServiceInterceptor],
+//      classOf[RepositoriesServiceInterceptor]
+//    ).asJava
+//  }
 
   override def getActionFilters: util.List[ActionFilter] = {
     List[ActionFilter](ilaf).asJava

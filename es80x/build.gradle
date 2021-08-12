@@ -60,7 +60,7 @@ dependencies {
         exclude group: 'org.elasticsearch', module: 'elasticsearch-plugin-classloader'
     }
     compileClasspath    group: 'org.locationtech.spatial4j',        name: 'spatial4j',                  version: '0.7'
-    compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4',    version: esVersion
+    compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4',           version: esVersion
     compile             group: 'org.apache.logging.log4j',          name: 'log4j-core',                 version: '2.11.1'
 }
 

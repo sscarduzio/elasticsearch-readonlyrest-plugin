@@ -153,20 +153,6 @@ object QueryWithModifiableFields {
 
     }
 
-    //full text // todo: ???
-//    implicit val commonTermsQueryHandler: ModifiableLeafQuery[CommonTermsQueryBuilder] = ModifiableLeafQuery.instance {
-//      (query, notAllowedFields) =>
-//        QueryBuilders
-//          .commonTermsQuery(notAllowedFields.head.obfuscate.value, query.value())
-//          .analyzer(query.analyzer())
-//          .cutoffFrequency(query.cutoffFrequency())
-//          .highFreqMinimumShouldMatch(query.highFreqMinimumShouldMatch())
-//          .highFreqOperator(query.highFreqOperator())
-//          .lowFreqMinimumShouldMatch(query.lowFreqMinimumShouldMatch())
-//          .lowFreqOperator(query.lowFreqOperator())
-//          .boost(query.boost())
-//    }
-
     implicit val matchBoolPrefixQueryHandler: ModifiableLeafQuery[MatchBoolPrefixQueryBuilder] = ModifiableLeafQuery.instance { (query, notAllowedFields) =>
       val newQuery = new MatchBoolPrefixQueryBuilder(notAllowedFields.head.obfuscate.value, query.value())
         .analyzer(query.analyzer())
@@ -266,7 +252,6 @@ object QueryWithModifiableFields {
       case builder: DisMaxQueryBuilder => handleCompoundQuery(builder, notAllowedFields)
 
       //fulltext
-      case builder: CommonTermsQueryBuilder => handleLeafQuery(builder, notAllowedFields)
       case builder: MatchBoolPrefixQueryBuilder => handleLeafQuery(builder, notAllowedFields)
       case builder: MatchQueryBuilder => handleLeafQuery(builder, notAllowedFields)
       case builder: MatchPhraseQueryBuilder => handleLeafQuery(builder, notAllowedFields)

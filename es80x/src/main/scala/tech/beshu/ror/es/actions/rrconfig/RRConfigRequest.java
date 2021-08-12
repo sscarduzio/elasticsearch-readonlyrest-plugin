@@ -16,15 +16,15 @@
  */
 package tech.beshu.ror.es.actions.rrconfig;
 
-import org.elasticsearch.action.support.nodes.BaseNodesRequest;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
+import org.elasticsearch.transport.TransportRequest;
 import tech.beshu.ror.configuration.loader.distributed.NodeConfigRequest;
 import tech.beshu.ror.configuration.loader.distributed.internode.NodeConfigRequestSerializer;
 
 import java.io.IOException;
 
-public class RRConfigRequest extends BaseNodesRequest {
+public class RRConfigRequest extends TransportRequest {
     private final NodeConfigRequest nodeConfigRequest;
 
     public RRConfigRequest(NodeConfigRequest nodeConfigRequest) {

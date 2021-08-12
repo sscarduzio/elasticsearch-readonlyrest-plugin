@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.elasticsearch.SearchManager.MSearchResult
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-//TODO change test names. Current names are copies from old java integration tests
+//TODO: change test names. Current names are copies from old java integration tests
 trait MSearchWithFilterSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
