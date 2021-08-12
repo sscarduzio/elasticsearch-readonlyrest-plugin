@@ -1,0 +1,174 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+
+buildscript {
+    ext {
+        publishedPluginVersion = rootProject.properties['pluginVersion']
+        pluginVersion = rootProject.properties['pluginVersion']
+        esVersion = project.properties['esVersion']
+        pluginName = rootProject.properties['pluginName']
+    }
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        jcenter()
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+    dependencies {
+        classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins',  name: 'license-gradle-plugin', version: '0.15.0'
+        classpath group: 'com.star-zero.gradle',                         name: 'githook',               version: '1.2.1'
+    }
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+group = 'org.elasticsearch.plugin'
+version = pluginVersion + '_es' + esVersion
+def pluginFullName = pluginName + '-' + version
+
+apply plugin: "com.github.hierynomus.license"
+apply plugin: "com.star-zero.gradle.githook"
+apply plugin: 'maven'
+apply plugin: 'scala'
+
+compileScala {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+}
+
+dependencies {
+    compile project(path: ':core')
+    compile('org.elasticsearch:elasticsearch:' + esVersion) {
+        // because of https://github.com/elastic/elasticsearch/issues/68889 (for ES 7.11.0)
+        exclude group: 'org.elasticsearch', module: 'elasticsearch-plugin-classloader'
+    }
+    compileClasspath    group: 'org.locationtech.spatial4j',        name: 'spatial4j',                  version: '0.7'
+    compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4',    version: esVersion
+    compile             group: 'org.apache.logging.log4j',          name: 'log4j-core',                 version: '2.11.1'
+}
+
+license {
+    header rootProject.file('ReadonlyRESTLicenseHeader.txt')
+    skipExistingHeaders true
+    useDefaultMappings = false
+    mapping {
+        java = 'SLASHSTAR_STYLE'
+        scala = 'SLASHSTAR_STYLE'
+    }
+}
+
+test {
+    reports {
+        junitXml.enabled = true
+        html.enabled = false
+    }
+}
+
+githook {
+    hooks {
+        "pre-commit" {
+            shell = "./gradlew license --rerun-tasks"
+        }
+    }
+}
+
+tasks.withType(ScalaCompile) {
+    scalaCompileOptions.additionalParameters = ["-Ypartial-unification", "-Ywarn-macros:after", "-feature"]
+}
+
+tasks.withType(Zip) { task ->
+    task.doLast {
+        ant.checksum file: it.archivePath, algorithm: 'sha1'
+    }
+}
+
+configurations {
+    wagon
+    distJars {
+        extendsFrom runtime
+        exclude group: 'org.elasticsearch'
+        exclude group: 'lucene-core'
+        exclude module: 'log4j-api'
+        exclude module: 'log4j-core'
+        exclude group: 'lucene-analyzers-common'
+        exclude group: 'org.apache.commons'
+        exclude group: 'org.yaml'
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
+    }
+}
+
+task cleanOldData {
+    doLast {
+        delete 'build/tmp/' + pluginFullName
+    }
+}
+
+task jarHellCheck(type: JavaExec) {
+    outputs.upToDateWhen { false }
+    main = "org.elasticsearch.jdk.JarHell"
+    classpath = project.sourceSets.main.compileClasspath.filter { it.exists() }
+}
+
+task configureEsVersion() {
+    doLast {
+        if (project.hasProperty('esVersion')) {
+            esVersion = project.properties['esVersion']
+        }
+    }
+}
+
+task generateVersionsFile() {
+    outputs.upToDateWhen { false }
+    doFirst {
+        def resourcesDir = sourceSets.main.output.resourcesDir
+        
+        resourcesDir.mkdirs()
+        def contents = "es_version=$esVersion\nplugin_version=$pluginVersion"
+        new File(resourcesDir, "ror-build-info.properties").text = contents
+    }
+}
+
+task resolvePluginDescriptorTemplate(type: Copy, dependsOn: configureEsVersion) {
+    outputs.upToDateWhen { false }
+    from '../plugin-metadata'
+    into 'build/tmp/' + pluginFullName
+    expand([
+            'descriptor': [
+                    'name'         : pluginName,
+                    'pluginVersion': project.properties['pluginVersion'],
+                    'esVersion'    : project.properties['esVersion']
+            ]
+    ])
+}
+
+task toJar(type: Jar, dependsOn: generateVersionsFile) {
+    from sourceSets.main.getOutput()
+}
+
+task ror(type: Zip, dependsOn: [cleanOldData, jarHellCheck, toJar, resolvePluginDescriptorTemplate]) {
+    outputs.upToDateWhen { false }
+    archivesBaseName = pluginName
+    into('.')
+            {
+                from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && ! x.name.contains('jts')}
+                from 'build/libs/' + pluginFullName + '.jar'
+                from 'build/tmp/' + pluginFullName
+            }
+}
