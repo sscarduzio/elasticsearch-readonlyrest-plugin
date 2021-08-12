@@ -35,13 +35,13 @@ import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot._
 import tech.beshu.ror.es.handler.AclAwareRequestFilter
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.response.RorNotAvailableResponse._
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.AccessControllerHelper._
-import tech.beshu.ror.utils.RorInstanceSupplier
+import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
 import scala.language.postfixOps
 
@@ -98,46 +98,46 @@ class IndexLevelActionFilter(clusterService: ClusterService,
         case Some(_) if action.startsWith("internal:") =>
           chain.proceed(task, action, request, listener)
         case Some(channel) =>
-          rorInstanceState.get() match {
-            case RorInstanceStartingState.Starting =>
-              listener.onFailure(createRorNotReadyYetResponse())
-            case RorInstanceStartingState.Started(instance) =>
-              instance.engine match {
-                case Some(engine) =>
-                  handleRequest(
-                    engine,
-                    task,
-                    action,
-                    request,
-                    listener.asInstanceOf[ActionListener[ActionResponse]],
-                    chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]],
-                    channel
-                  )
-                case None =>
-                  listener.onFailure(createRorNotReadyYetResponse())
-              }
-            case RorInstanceStartingState.NotStarted(_) =>
-              listener.onFailure(createRorStartingFailureResponse())
-          }
+          proceedByRorEngine(
+            EsContext(
+              channel,
+              task,
+              action,
+              request,
+              listener.asInstanceOf[ActionListener[ActionResponse]],
+              chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]],
+              JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toSet
+            )
+          )
       }
     }
   }
 
-  private def handleRequest(engine: Engine,
-                            task: Task,
-                            action: String,
-                            request: ActionRequest,
-                            listener: ActionListener[ActionResponse],
-                            chain: ActionFilterChain[ActionRequest, ActionResponse],
-                            channel: RorRestChannel): Unit = {
+  private def proceedByRorEngine(esContext: EsContext): Unit = {
+    rorInstanceState.get() match {
+      case RorInstanceStartingState.Starting =>
+        logger.warn(s"[${esContext.requestId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
+        esContext.listener.onFailure(createRorNotReadyYetResponse())
+      case RorInstanceStartingState.Started(instance) =>
+        instance.engine match {
+          case Some(engine) =>
+            handleRequest(engine, esContext)
+          case None =>
+            logger.warn(s"[${esContext.requestId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
+            esContext.listener.onFailure(createRorNotReadyYetResponse())
+        }
+      case RorInstanceStartingState.NotStarted(_) =>
+        logger.error(s"[${esContext.requestId}] Cannot handle the ${esContext.channel.request().path()} request because ReadonlyREST failed to start")
+        esContext.listener.onFailure(createRorStartingFailureResponse())
+    }
+  }
+
+  private def handleRequest(engine: Engine, esContext: EsContext): Unit = {
     aclAwareRequestFilter
-      .handle(
-        engine,
-        EsContext(channel, task, action, request, listener, chain)
-      )
+      .handle(engine, esContext)
       .runAsync {
         case Right(_) =>
-        case Left(ex) => listener.onFailure(new Exception(ex))
+        case Left(ex) => esContext.listener.onFailure(new Exception(ex))
       }
   }
 
