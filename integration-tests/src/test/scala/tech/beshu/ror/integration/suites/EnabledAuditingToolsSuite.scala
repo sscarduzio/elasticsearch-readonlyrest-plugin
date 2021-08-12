@@ -18,15 +18,14 @@ package tech.beshu.ror.integration.suites
 
 import java.util.UUID
 
-import org.scalatest.concurrent.Eventually
-import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.BeforeAndAfterEach
+import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager, RorApiManager}
-import tech.beshu.ror.utils.httpclient.RestClient
 
 trait EnabledAuditingToolsSuite
   extends AnyWordSpec
@@ -44,12 +43,12 @@ trait EnabledAuditingToolsSuite
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
-      nodeDataInitializer = EnabledAuditingToolsSuite.nodeDataInitializer(),
+      nodeDataInitializer = ElasticsearchTweetsInitializer,
       xPackSupport = false,
     )
   )
 
-  private lazy val adminAuditIndexManager = new AuditIndexManager(adminClient, "audit_index")
+  private lazy val adminAuditIndexManager = new AuditIndexManager(adminClient, esVersionUsed, "audit_index")
 
   override def beforeEach(): Unit = {
     super.beforeEach()
@@ -62,7 +61,7 @@ trait EnabledAuditingToolsSuite
   "Regular ES request" should {
     "be audited" when {
       "rule 1 is matched with logged user" in {
-        val indexManager = new IndexManager(basicAuthClient("username", "dev"))
+        val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 200
 
@@ -78,7 +77,7 @@ trait EnabledAuditingToolsSuite
       }
       "no rule is matched with username from auth header" in {
         val indexManager = new IndexManager(
-          basicAuthClient("username", "wrong")
+          basicAuthClient("username", "wrong"), esVersionUsed
         )
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 403
@@ -93,7 +92,7 @@ trait EnabledAuditingToolsSuite
         }
       }
       "no rule is matched with raw auth header as user" in {
-        val indexManager = new IndexManager(tokenAuthClient("user_token"))
+        val indexManager = new IndexManager(tokenAuthClient("user_token"), esVersionUsed)
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 403
 
@@ -111,6 +110,7 @@ trait EnabledAuditingToolsSuite
           val correlationId = UUID.randomUUID().toString
           val indexManager = new IndexManager(
             basicAuthClient("username", "dev"),
+            esVersionUsed,
             additionalHeaders = Map("x-ror-correlation-id" -> correlationId)
           )
 
@@ -137,6 +137,7 @@ trait EnabledAuditingToolsSuite
 
           val indexManager = new IndexManager(
             basicAuthClient("username", "dev"),
+            esVersionUsed,
             additionalHeaders = Map("x-ror-correlation-id" -> correlationId)
           )
 
@@ -181,7 +182,7 @@ trait EnabledAuditingToolsSuite
     }
     "not be audited" when {
       "rule 2 is matched" in {
-        val indexManager = new IndexManager(basicAuthClient("username", "dev"))
+        val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
         val response = indexManager.getIndex("facebook")
         response.responseCode shouldBe 200
 
@@ -304,11 +305,5 @@ trait EnabledAuditingToolsSuite
         }
       }
     }
-  }
-}
-
-object EnabledAuditingToolsSuite {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    new ElasticsearchTweetsInitializer().initialize(adminRestClient)
   }
 }

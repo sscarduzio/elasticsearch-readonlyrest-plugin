@@ -20,9 +20,8 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
+import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager}
-import tech.beshu.ror.utils.httpclient.RestClient
 
 trait DisabledAuditingToolsSuite
   extends AnyWordSpec
@@ -33,9 +32,9 @@ trait DisabledAuditingToolsSuite
 
   override implicit val rorConfigFileName = "/disabled_auditing_tools/readonlyrest.yml"
 
-  override val nodeDataInitializer = Some(DisabledAuditingToolsSuite.nodeDataInitializer())
+  override val nodeDataInitializer = Some(ElasticsearchTweetsInitializer)
 
-  private lazy val auditIndexManager = new AuditIndexManager(adminClient, "audit_index")
+  private lazy val auditIndexManager = new AuditIndexManager(adminClient, esVersionUsed,"audit_index")
 
   override def beforeEach(): Unit = {
     super.beforeEach()
@@ -45,32 +44,26 @@ trait DisabledAuditingToolsSuite
   "Request" should {
     "not be audited" when {
       "rule 1 is matching" in {
-        val indexManager = new IndexManager(basicAuthClient("user", "dev"))
+        val indexManager = new IndexManager(basicAuthClient("user", "dev"), esVersionUsed)
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 200
 
         auditIndexManager.getEntries.responseCode should be (404)
       }
       "rule 2 is matching" in {
-        val indexManager = new IndexManager(basicAuthClient("user", "dev"))
+        val indexManager = new IndexManager(basicAuthClient("user", "dev"), esVersionUsed)
         val response = indexManager.getIndex("facebook")
         response.responseCode shouldBe 200
 
         auditIndexManager.getEntries.responseCode should be (404)
       }
       "no rule is matching" in {
-        val indexManager = new IndexManager(basicAuthClient("user", "wrong"))
+        val indexManager = new IndexManager(basicAuthClient("user", "wrong"), esVersionUsed)
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 403
 
         auditIndexManager.getEntries.responseCode should be (404)
       }
     }
-  }
-}
-
-object DisabledAuditingToolsSuite {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    new ElasticsearchTweetsInitializer().initialize(adminRestClient)
   }
 }

@@ -21,9 +21,8 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager, RorApiManager}
-import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import ujson.Str
 
@@ -43,12 +42,12 @@ trait QueryAuditLogSerializerSuite
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
-      nodeDataInitializer = QueryAuditLogSerializerSuite.nodeDataInitializer(),
+      nodeDataInitializer = ElasticsearchTweetsInitializer,
       xPackSupport = false,
     )
   )
 
-  private lazy val auditIndexManager = new AuditIndexManager(adminClient, "audit_index")
+  private lazy val auditIndexManager = new AuditIndexManager(adminClient, esVersionUsed, "audit_index")
 
   override def beforeEach(): Unit = {
     super.beforeEach()
@@ -94,7 +93,7 @@ trait QueryAuditLogSerializerSuite
         firstEntry("content").str shouldBe ""
       }
       "rule 1 is matching" in {
-        val indexManager = new IndexManager(basicAuthClient("user", "dev"))
+        val indexManager = new IndexManager(basicAuthClient("user", "dev"), esVersionUsed)
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 200
 
@@ -108,7 +107,7 @@ trait QueryAuditLogSerializerSuite
         firstEntry("content").str shouldBe ""
       }
       "no rule is matching" in {
-        val indexManager = new IndexManager(basicAuthClient("user", "wrong"))
+        val indexManager = new IndexManager(basicAuthClient("user", "wrong"), esVersionUsed)
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 403
 
@@ -122,7 +121,7 @@ trait QueryAuditLogSerializerSuite
     }
     "not be audited" when {
       "rule 2 is matching" in {
-        val indexManager = new IndexManager(basicAuthClient("user", "dev"))
+        val indexManager = new IndexManager(basicAuthClient("user", "dev"), esVersionUsed)
         val response = indexManager.getIndex("facebook")
         response.responseCode shouldBe 200
 
@@ -130,11 +129,5 @@ trait QueryAuditLogSerializerSuite
         auditEntriesResponse.responseCode should be (404)
       }
     }
-  }
-}
-
-object QueryAuditLogSerializerSuite {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    new ElasticsearchTweetsInitializer().initialize(adminRestClient)
   }
 }

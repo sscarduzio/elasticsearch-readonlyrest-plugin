@@ -37,7 +37,7 @@ trait ReindexSuite
 
   override def nodeDataInitializer = Some(ReindexSuite.nodeDataInitializer())
 
-  private lazy val user1IndexManager = new IndexManager(basicAuthClient("dev1", "test"))
+  private lazy val user1IndexManager = new IndexManager(basicAuthClient("dev1", "test"), esVersionUsed)
 
   "A reindex request" should {
     "be able to proceed" when {

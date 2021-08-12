@@ -181,7 +181,7 @@ stages:
 
     strategy:
       maxParallel: 99
-      matrix: 
+      matrix:
         PKG_es7xx:
           ROR_TASK: package_es7xx
         PKG_es6xx:

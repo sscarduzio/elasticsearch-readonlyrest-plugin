@@ -23,12 +23,11 @@ import net.jodah.failsafe.{Failsafe, RetryPolicy}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
+import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.SearchManager.MSearchResult
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, SearchManager}
-import tech.beshu.ror.utils.httpclient.RestClient
 
-//TODO change test names. Current names are copies from old java integration tests
+//TODO: change test names. Current names are copies from old java integration tests
 trait MSearchWithFilterSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
@@ -37,7 +36,7 @@ trait MSearchWithFilterSuite
 
   override implicit val rorConfigFileName = "/msearch_with_filter/readonlyrest.yml"
 
-  override def nodeDataInitializer = Some(MSearchWithFilterSuite.nodeDataInitializer())
+  override def nodeDataInitializer = Some(ElasticsearchTweetsInitializer)
 
   private val matchAllIndicesQuery = Seq(
     """{"index":"*"}""",
@@ -89,10 +88,4 @@ trait MSearchWithFilterSuite
   private def resultsContainsLessElementsThan(): BiPredicate[MSearchResult, Throwable] =
     (searchResult: MSearchResult, throwable: Throwable) =>
       throwable != null || searchResult == null || searchResult.totalHitsForResponse(0) < 4
-}
-
-object MSearchWithFilterSuite {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    new ElasticsearchTweetsInitializer().initialize(adminRestClient)
-  }
 }
