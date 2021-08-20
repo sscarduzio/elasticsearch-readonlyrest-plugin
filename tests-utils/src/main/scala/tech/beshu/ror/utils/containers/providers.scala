@@ -45,7 +45,7 @@ object providers {
   }
 
   object ClientProvider {
-    val adminCredentials: (String, String) = ("elastic", "container")
+    val adminCredentials: (String, String) = ("admin", "container")
   }
 
   trait RorConfigFileNameProvider {
