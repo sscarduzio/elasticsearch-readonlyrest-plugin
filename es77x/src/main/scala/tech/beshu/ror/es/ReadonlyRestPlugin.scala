@@ -29,11 +29,13 @@ import org.elasticsearch.client.Client
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes
+import tech.beshu.ror.utils.ScalaOps._
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.common.component.LifecycleComponent
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
+import org.elasticsearch.common.path.PathTrie
 import org.elasticsearch.common.settings._
 import org.elasticsearch.common.util.concurrent.{EsExecutors, ThreadContext}
 import org.elasticsearch.common.util.{BigArrays, PageCacheRecycler}
@@ -51,6 +53,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.Transport
 import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
+import org.joor.Reflect.on
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.boot.EsInitListener
@@ -62,13 +65,13 @@ import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, TransportRRAuditEventAction}
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
+import tech.beshu.ror.es.utils.ThreadRepo
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -146,7 +149,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
-    indexModule.setReaderWrapper(RoleIndexSearcherWrapper.instance)
+    //todo:
+//    indexModule.setReaderWrapper(RoleIndexSearcherWrapper.instance)
   }
 
   override def getSettings: util.List[Setting[_]] = {
@@ -210,6 +214,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                settingsFilter: SettingsFilter,
                                indexNameExpressionResolver: IndexNameExpressionResolver,
                                nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
+    hack(restController)
     List[RestHandler](
       new RestRRAdminAction(),
       new RestRRConfigAction(nodesInCluster),
@@ -218,19 +223,82 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     ).asJava
   }
 
-  override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
-    restHandler: RestHandler =>
-      (request: RestRequest, channel: RestChannel, client: NodeClient) => {
-        val rorRestChannel = new RorRestChannel(channel)
-        ThreadRepo.setRestChannel(rorRestChannel)
-        restHandler.handleRequest(request, rorRestChannel, client)
-      }
+  private def hack(restController: RestController) = {
+    doPrivileged {
+      val wrapper = on(restController).get[UnaryOperator[RestHandler]]("handlerWrapper")
+      on(restController).set("handlerWrapper", new NewUnaryOperatorRestHandler(wrapper))
+
+      val handlers = on(restController).get[PathTrie[Any]]("handlers")
+      val updatedHandlers = new PathTreeOps(handlers).update()
+      on(restController).set("handlers", updatedHandlers)
+    }
   }
+
+  final class PathTreeOps(pathTrie: PathTrie[Any]) {
+
+    def update(): PathTrie[Any] = {
+      val root = on(pathTrie).get[pathTrie.TrieNode]("root")
+      update(root)
+      pathTrie
+    }
+
+    private def update(trieNode: pathTrie.TrieNode): Unit = {
+      val value = on(trieNode).get[Any]("value")
+      if(value != null) MethodHandlersWrapper.updateWithWrapper(value)
+      val children = on(trieNode).get[java.util.Map[String, pathTrie.TrieNode]]("children").asSafeMap
+      children.values.foreach { trieNode =>
+        update(trieNode)
+      }
+    }
+  }
+
+  object MethodHandlersWrapper {
+    def updateWithWrapper(value: Any): Any = {
+      val methodHandlers = on(value).get[java.util.Map[RestRequest.Method, RestHandler]]("methodHandlers").asScala.toMap
+      val newMethodHandlers = methodHandlers
+        .map { case (key, handler) => (key, new NewHandler(handler)) }
+        .asJava
+      on(value).set("methodHandlers", newMethodHandlers)
+      value
+    }
+  }
+
+//  override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
+//    new OldUnaryOperatorRestHandler()
+////    restHandler: RestHandler =>
+////      (request: RestRequest, channel: RestChannel, client: NodeClient) => {
+////        val rorRestChannel = new RorRestChannel(channel)
+////        ThreadRepo.setRestChannel(rorRestChannel)
+////        restHandler.handleRequest(request, rorRestChannel, client)
+////      }
+//  }
 
   override def onNodeStarted(): Unit = {
     super.onNodeStarted()
     doPrivileged {
       esInitListener.onEsReady()
+    }
+  }
+
+  class OldUnaryOperatorRestHandler() extends UnaryOperator[RestHandler] {
+    override def apply(restHandler: RestHandler): RestHandler = new RestHandler {
+      override def handleRequest(request: RestRequest, channel: RestChannel, client: NodeClient): Unit = {
+        restHandler.handleRequest(request, channel, client)
+//        val rorRestChannel = new RorRestChannel(channel)
+//        ThreadRepo.setRestChannel(rorRestChannel)
+//        restHandler.handleRequest(request, rorRestChannel, client)
+      }
+    }
+  }
+  class NewUnaryOperatorRestHandler(wrapper: UnaryOperator[RestHandler]) extends UnaryOperator[RestHandler] {
+    override def apply(restHandler: RestHandler): RestHandler = new NewHandler(wrapper.apply(restHandler))
+  }
+
+  class NewHandler(value: RestHandler) extends RestHandler {
+    override def handleRequest(request: RestRequest, channel: RestChannel, client: NodeClient): Unit = {
+      val rorRestChannel = new RorRestChannel(channel)
+      ThreadRepo.setRestChannel(rorRestChannel)
+      value.handleRequest(request, channel, client)
     }
   }
 }
