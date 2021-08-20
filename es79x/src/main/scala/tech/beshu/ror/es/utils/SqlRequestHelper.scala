@@ -52,11 +52,9 @@ object ExtractedIndices {
       override def indices: Set[String] = Set.empty
     }
   }
-
 }
 
 object SqlRequestHelper {
-
   sealed trait ModificationError
   object ModificationError {
     final case class UnexpectedException(ex: Throwable) extends ModificationError

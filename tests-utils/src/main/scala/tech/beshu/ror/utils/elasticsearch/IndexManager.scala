@@ -21,7 +21,7 @@ import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
-import tech.beshu.ror.utils.elasticsearch.IndexManager.{AliasAction, AliasesResponse, ReindexSource, ResolveResponse}
+import tech.beshu.ror.utils.elasticsearch.IndexManager.{AliasAction, AliasesResponse, GetIndexResponse, ReindexSource, ResolveResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 class IndexManager(client: RestClient,
@@ -34,12 +34,12 @@ class IndexManager(client: RestClient,
     call(createIndexRequest(indices, settings, params), new JsonResponse(_))
   }
 
-  def getIndex(indices: List[String], params: Map[String, String] = Map.empty): JsonResponse = {
-    call(getIndexRequest(indices.toSet, params), new JsonResponse(_))
+  def getIndex(indices: List[String], params: Map[String, String] = Map.empty): GetIndexResponse = {
+    call(getIndexRequest(indices.toSet, params), new GetIndexResponse(_))
   }
 
-  def getIndex(indices: String*): JsonResponse = {
-    call(getIndexRequest(indices.toSet, Map.empty), new JsonResponse(_))
+  def getIndex(indices: String*): GetIndexResponse = {
+    call(getIndexRequest(indices.toSet, Map.empty), new GetIndexResponse(_))
   }
 
   def getAliases: AliasesResponse = {
@@ -121,6 +121,10 @@ class IndexManager(client: RestClient,
 
   def resize(source: String, target: String, aliases: List[String] = Nil): JsonResponse = {
     call(createResizeRequest(source, target, aliases), new JsonResponse(_))
+  }
+
+  def closeIndex(indexName: String): JsonResponse = {
+    call(createCloseIndexRequest(indexName), new JsonResponse(_))
   }
 
   private def getAliasRequest(indexOpt: Option[String] = None,
@@ -217,7 +221,8 @@ class IndexManager(client: RestClient,
 
   private def updateAliasesRequest(actions: NonEmptyList[AliasAction]) = {
     def actionStrings = actions.map {
-      case AliasAction.Add(index, alias) => s"""{ "add": { "index": "$index", "alias": "$alias" } }"""
+      case AliasAction.Add(index, alias, None) => s"""{ "add": { "index": "$index", "alias": "$alias" } }"""
+      case AliasAction.Add(index, alias, Some(filter)) => s"""{ "add": { "index": "$index", "alias": "$alias", "filter": ${ujson.write(filter)} } }"""
       case AliasAction.Delete(index, alias) => s"""{ "remove": { "index": "$index", "alias": "$alias" } }"""
     }
 
@@ -285,6 +290,10 @@ class IndexManager(client: RestClient,
         |}""".stripMargin))
     request
   }
+
+  private def createCloseIndexRequest(indexName: String) = {
+    new HttpPost(client.from(s"/$indexName/_close"))
+  }
 }
 
 object IndexManager {
@@ -300,14 +309,22 @@ object IndexManager {
 
   sealed trait AliasAction
   object AliasAction {
-    final case class Add(index: String, alias: String) extends AliasAction
+    final case class Add(index: String, alias: String, filter: Option[JSON] = None) extends AliasAction
     final case class Delete(index: String, alias: String) extends AliasAction
   }
 
-  class AliasesResponse(response: HttpResponse) extends JsonResponse(response) {
-    lazy val aliasesOfIndices: Map[String, List[String]] =
+  class GetIndexResponse(response: HttpResponse) extends JsonResponse(response) {
+    lazy val indicesAndAliases: Map[String, Set[String]] =
       responseJson.obj.toMap.map { case (indexName, json) =>
-        val aliases = json("aliases").obj.keys.toList
+        val aliases = json("aliases").obj.keys.toSet
+        (indexName, aliases)
+      }
+  }
+
+  class AliasesResponse(response: HttpResponse) extends JsonResponse(response) {
+    lazy val aliasesOfIndices: Map[String, Set[String]] =
+      responseJson.obj.toMap.map { case (indexName, json) =>
+        val aliases = json("aliases").obj.keys.toSet
         (indexName, aliases)
       }
   }

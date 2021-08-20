@@ -23,9 +23,13 @@ import tech.beshu.ror.utils.{CaseMappingEquality, MatcherWithWildcards, StringMa
 import scala.collection.JavaConverters._
 
 trait Matcher[A] {
+  type Conversion[B] = Function1[B, A]
+
   def underlying: MatcherWithWildcards[A]
 
   def filter[B <: A](items: Set[B]): Set[B]
+
+  def filter[B: Conversion](items: Set[B]): Set[B]
 
   def `match`[B <: A](value: B): Boolean
 
@@ -36,6 +40,9 @@ object Matcher {
     new StringMatcherWithWildcards(matcher.underlying.getMatchers)
   }
 
+  object Conversion {
+    def from[B, A](func: B => A): Matcher[A]#Conversion[B] = (a: B) => func(a)
+  }
 }
 
 class MatcherWithWildcardsScalaAdapter[A](override val underlying: MatcherWithWildcards[A])
@@ -48,12 +55,21 @@ class MatcherWithWildcardsScalaAdapter[A](override val underlying: MatcherWithWi
       .toSet
   }
 
+  override def filter[B: Conversion](items: Set[B]): Set[B] = {
+    val bToAConversion = implicitly[Conversion[B]]
+    items.flatMap {
+      case b if `match`(bToAConversion(b)) => Some(b)
+      case _ => None
+    }
+  }
+
   override def `match`[B <: A](value: B): Boolean = {
     underlying.`match`(value)
   }
 
   override def contains(str: String): Boolean =
     underlying.getMatchers.contains(str)
+
 }
 
 object MatcherWithWildcardsScalaAdapter {

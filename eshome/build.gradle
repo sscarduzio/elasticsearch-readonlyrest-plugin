@@ -39,11 +39,12 @@ configurations {
 }
 
 dependencies {
-    ror project(path: ':es710x')
+    ror project(path: ':es79x')
     runtime('org.elasticsearch:elasticsearch:' + esVersion) {
-        // because of https://github.com/elastic/elasticsearch/issues/68889 (for ES 7.11.0)
-        exclude group: 'org.elasticsearch', module: 'elasticsearch-plugin-classloader'
+//        // because of https://github.com/elastic/elasticsearch/issues/68889 (for ES 7.11.0)
+//        exclude group: 'org.elasticsearch', module: 'elasticsearch-plugin-classloader'
     }
+    runtime group: 'org.codelibs.elasticsearch.lib', name: 'plugin-classloader', version: esVersion // g(for ES < 7.11.0)
     runtime group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.11.0'
     netty group: 'org.elasticsearch.plugin', name: 'transport-netty4-client', version: esVersion
 }

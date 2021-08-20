@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.es.utils
 
-import org.elasticsearch.rest.RestChannel
-import org.elasticsearch.tasks.Task
 import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.exceptions.SecurityPermissionException
 
@@ -28,17 +26,14 @@ object ThreadRepo {
     threadLocalChannel.set(restChannel)
   }
 
-  def getRorRestChannelFor(task: Task): Option[RorRestChannel] = {
+  def getRorRestChannel: Option[RorRestChannel] = {
     val channel = threadLocalChannel.get
     if (channel != null) threadLocalChannel.remove()
     val reqNull =
       if (channel == null) true
       else channel.request == null
     if (shouldSkipACL(channel == null, reqNull)) None
-    else {
-      channel.setTask(task)
-      Option(channel)
-    }
+    else Option(channel)
   }
 
   private def shouldSkipACL(chanNull: Boolean, reqNull: Boolean): Boolean = { // This was not a REST message

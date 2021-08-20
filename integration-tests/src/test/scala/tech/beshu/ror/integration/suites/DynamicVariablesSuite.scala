@@ -19,8 +19,8 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ContainerSpecification, ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
+import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait DynamicVariablesSuite
@@ -43,22 +43,24 @@ trait DynamicVariablesSuite
     )
   )
 
-  private lazy val searchManager = new SearchManagerJ(basicAuthClient("simone", "dev"))
+  private lazy val searchManager = new SearchManager(basicAuthClient("simone", "dev"))
 
   "A search request" should {
     "be allowed with username as suffix" in {
-      val response = searchManager.search("/.kibana_simone/_search")
+      val response = searchManager.search(".kibana_simone")
 
-      response.getResponseCode should be(200)
-      response.getSearchHits.size() should be(1)
-      response.getSearchHits.get(0).get("_id") should be("doc-asd")
+      response.responseCode should be(200)
+      response.searchHits.size should be(1)
+      response.searchHits.head("_id").str should be("doc-asd")
     }
   }
 }
 
 object DynamicVariablesSuite {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManagerJ(adminRestClient)
-    documentManager.insertDocAndWaitForRefresh("/.kibana_simone/documents/doc-asd", """{"title": ".kibana_simone"}""")
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
+    documentManager
+      .createDoc(".kibana_simone", "documents", "doc-asd", ujson.read("""{"title": ".kibana_simone"}"""))
+      .force()
   }
 }

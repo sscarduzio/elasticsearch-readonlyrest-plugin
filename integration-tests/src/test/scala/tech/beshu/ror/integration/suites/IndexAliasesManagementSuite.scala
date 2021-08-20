@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
@@ -52,7 +51,7 @@ trait IndexAliasesManagementSuite
         result.responseCode should be (200)
         val allAliasesResponse = adminIndexManager.getAliases
         allAliasesResponse.responseCode should be (200)
-        allAliasesResponse.aliasesOfIndices("index") should be (List("admin-alias"))
+        allAliasesResponse.aliasesOfIndices("index") should be (Set("admin-alias"))
       }
       "user has access to both: index pattern and alias name" when {
         "an index of the pattern exists" in {
@@ -65,7 +64,7 @@ trait IndexAliasesManagementSuite
           result.responseCode should be(200)
           val allAliasesResponse = adminIndexManager.getAliases
           allAliasesResponse.responseCode should be (200)
-          allAliasesResponse.aliasesOfIndices("dev1-0001") should be (List("dev1"))
+          allAliasesResponse.aliasesOfIndices("dev1-0001") should be (Set("dev1"))
         }
         "no index of the pattern exists" in {
           adminDocumentManager.createFirstDoc("index", exampleDocument).force()
@@ -188,8 +187,8 @@ trait IndexAliasesManagementSuite
         result.responseCode should be (200)
         val allAliasesResponse = adminIndexManager.getAliases
         allAliasesResponse.responseCode should be (200)
-        allAliasesResponse.aliasesOfIndices("dev3-0001") should be (List("dev3"))
-        allAliasesResponse.aliasesOfIndices("dev3-0002") should be (List("dev3"))
+        allAliasesResponse.aliasesOfIndices("dev3-0001") should be (Set("dev3"))
+        allAliasesResponse.aliasesOfIndices("dev3-0002") should be (Set("dev3"))
       }
     }
     "be not allowed to be used" when {
@@ -206,7 +205,7 @@ trait IndexAliasesManagementSuite
         result.responseCode should be (403)
         val allAliasesResponse = adminIndexManager.getAliases
         allAliasesResponse.responseCode should be (200)
-        allAliasesResponse.aliasesOfIndices("dev3-0001") should be (List("dev3"))
+        allAliasesResponse.aliasesOfIndices("dev3-0001") should be (Set("dev3"))
       }
       "user doesn't have access to at least one alias from actions" in {
         adminDocumentManager.createFirstDoc("dev3-0001",  exampleDocument).force()
@@ -221,14 +220,14 @@ trait IndexAliasesManagementSuite
         result.responseCode should be (403)
         val allAliasesResponse = adminIndexManager.getAliases
         allAliasesResponse.responseCode should be (200)
-        allAliasesResponse.aliasesOfIndices("dev3-0001") should be (List("dev3"))
+        allAliasesResponse.aliasesOfIndices("dev3-0001") should be (Set("dev3"))
       }
     }
   }
 
   override protected def beforeEach(): Unit = {
-    adminIndexManager.removeAllIndices.force()
-    adminIndexManager.removeAllAliases
+    adminIndexManager.removeAllIndices().force()
+    adminIndexManager.removeAllAliases()
   }
 
   private def exampleDocument = ujson.read("""{"hello":"world"}""")

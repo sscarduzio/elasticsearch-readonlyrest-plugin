@@ -88,7 +88,7 @@ trait DuplicatedResponseHeadersIssueSuite
 
 object DuplicatedResponseHeadersIssueSuite {
 
-  final case class SearchResult(responseCode: Int, headers: List[SimpleHeader])
+  final case class SearchResult(responseCode: Int, headers: Set[SimpleHeader])
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     new ElasticsearchTweetsInitializer().initialize(adminRestClient)

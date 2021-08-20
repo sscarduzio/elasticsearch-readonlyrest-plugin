@@ -51,8 +51,6 @@ object RRAdminResponse extends Logging {
         new RRAdminResponse(AdminRestApi.AdminResponse.internalError)
       case Right(value) =>
         new RRAdminResponse(value)
-
     }
   }
-
 }

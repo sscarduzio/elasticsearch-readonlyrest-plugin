@@ -28,7 +28,7 @@ import org.elasticsearch.common.io.stream.{StreamInput, Writeable}
 import org.elasticsearch.env.Environment
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
-import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, RawRorConfigLoadingAction, Timeout}
+import tech.beshu.ror.configuration.loader.distributed.{RawRorConfigLoadingAction, NodeConfig, Timeout}
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.services.EsIndexJsonContentService
 import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}

@@ -77,6 +77,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
         SslContext sslCtx = SslContextBuilder.forClient()
                 .trustManager(usedTrustManager)
                 .build();
+
         ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter() {
           @Override
           public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress, SocketAddress localAddress, ChannelPromise promise) throws Exception {
@@ -122,6 +123,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
     @Override
     protected void initChannel(Channel ch) throws Exception {
       super.initChannel(ch);
+
       context.ifPresent(sslCtx -> {
         ch.pipeline().addFirst("ror_internode_ssl_handler", sslCtx.newHandler(ch.alloc()));
       });
@@ -130,7 +132,6 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
     private class SSLContextCreatorImpl implements SSLCertParser.SSLContextCreator {
       @Override
       public void mkSSLContext(InputStream certChain, InputStream privateKey) {
-
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null);

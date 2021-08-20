@@ -30,7 +30,6 @@ class RRUserMetadataActionType
 }
 
 object RRUserMetadataActionType {
-
   class RequestBuilder(client: ElasticsearchClient, actionType: RRUserMetadataActionType, request: RRUserMetadataRequest)
     extends ActionRequestBuilder[RRUserMetadataRequest, RRUserMetadataResponse, RequestBuilder](client, actionType, request)
 
