@@ -237,7 +237,7 @@ trait ClusterApiSuite
 object ClusterApiSuite {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
-    val indexManager = new IndexManager(adminRestClient)
+    val indexManager = new IndexManager(adminRestClient, esVersion)
     val documentManager = new DocumentManager(adminRestClient, esVersion)
 
     documentManager.createFirstDoc("test1_index", ujson.read("""{"hello":"world"}"""))

@@ -79,7 +79,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
             command = s"echo 'cluster.initial_master_nodes: ${nodes.toList.mkString(",")}' >> /usr/share/elasticsearch/config/elasticsearch.yml",
             orElse = s"echo 'node.master: true' >> /usr/share/elasticsearch/config/elasticsearch.yml"
           )
-          .runWhen(config.xPackSupport && Version.greaterOrEqualThan(esVersion, 7, 14, 0),
+          .runWhen(Version.greaterOrEqualThan(esVersion, 7, 14, 0),
             command = s"echo 'ingest.geoip.downloader.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
           )
 
@@ -95,8 +95,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
 
         builder
           .user("elasticsearch")
-          // todo:
-          .env(config.envs + ("ES_JAVA_OPTS" -> javaOpts) + ("ELASTIC_PASSWORD" -> "container") asJava)
+          .env(config.envs + ("ES_JAVA_OPTS" -> javaOpts) asJava)
 
         install(builder, config)
 

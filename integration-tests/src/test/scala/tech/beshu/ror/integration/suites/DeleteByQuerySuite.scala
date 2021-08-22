@@ -19,9 +19,8 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
+import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, ElasticsearchTweetsInitializer}
-import tech.beshu.ror.utils.httpclient.RestClient
 
 trait DeleteByQuerySuite
   extends AnyWordSpec
@@ -33,7 +32,7 @@ trait DeleteByQuerySuite
 
   override implicit val rorConfigFileName = "/delete_by_query/readonlyrest.yml"
 
-  override def nodeDataInitializer = Some(DeleteByQuerySuite.nodeDataInitializer())
+  override def nodeDataInitializer = Some(ElasticsearchTweetsInitializer)
 
   private lazy val blueTeamDeleteByQueryManager = new DocumentManager(basicAuthClient("blue", "dev"), esVersionUsed)
   private lazy val redTeamDeleteByQueryManager = new DocumentManager(basicAuthClient("red", "dev"), esVersionUsed)
@@ -51,11 +50,5 @@ trait DeleteByQuerySuite
         response.responseCode shouldBe 401
       }
     }
-  }
-}
-
-object DeleteByQuerySuite {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    new ElasticsearchTweetsInitializer().initialize(adminRestClient)
   }
 }

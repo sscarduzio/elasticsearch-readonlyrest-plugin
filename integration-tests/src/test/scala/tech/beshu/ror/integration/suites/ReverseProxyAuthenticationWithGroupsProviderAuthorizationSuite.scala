@@ -22,7 +22,6 @@ import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationT
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.dependencies.wiremock
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManager}
-import tech.beshu.ror.utils.httpclient.RestClient
 
 //TODO: change test names. Current names are copies from old java integration tests
 trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
@@ -54,7 +53,7 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
             "/rev_proxy_groups_provider/wiremock_service2_anytoken.json",
         )
       ),
-      nodeDataInitializer = ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite.nodeDataInitializer(),
+      nodeDataInitializer = ElasticsearchTweetsInitializer,
       xPackSupport = false,
     )
   )
@@ -62,6 +61,7 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
   "testAuthenticationAndAuthorizationSuccessWithService1" in {
     val indexManager = new IndexManager(
       client = noBasicAuthClient,
+      esVersionUsed,
       additionalHeaders = Map("X-Auth-Token" -> "cartman"))
 
     val result = indexManager.getIndex("twitter")
@@ -72,6 +72,7 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
   "testAuthenticationAndAuthorizationErrorWithService1" in {
     val indexManager = new IndexManager(
       client = noBasicAuthClient,
+      esVersionUsed,
       additionalHeaders = Map("X-Auth-Token" -> "morgan"))
 
     val result = indexManager.getIndex("twitter")
@@ -82,16 +83,11 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
   "testAuthenticationAndAuthorizationSuccessWithService2" in {
     val indexManager = new IndexManager(
       client = noBasicAuthClient,
+      esVersionUsed,
       additionalHeaders = Map("X-Auth-Token" -> "29b3d166-1952-11e7-8b77-6c4008a76fc6"))
 
     val result = indexManager.getIndex("facebook")
 
     result.responseCode should be(200)
-  }
-}
-
-object ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    new ElasticsearchTweetsInitializer().initialize(adminRestClient)
   }
 }

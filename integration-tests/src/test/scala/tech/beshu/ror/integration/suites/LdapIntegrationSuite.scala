@@ -47,12 +47,13 @@ trait LdapIntegrationSuite
     )
   )
 
-  private lazy val cartmanIndexManager = new IndexManager(basicAuthClient("cartman", "user2"))
-  private lazy val chandlerIndexManager = new IndexManager(basicAuthClient("bong", "user1"))
-  private lazy val morganIndexManager = new IndexManager(basicAuthClient("morgan", "user1"))
-  private lazy val bilboIndexManager = new IndexManager(basicAuthClient("Bìlbö Bággįnš", "user2"))
+  private lazy val cartmanIndexManager = new IndexManager(basicAuthClient("cartman", "user2"), esVersionUsed)
+  private lazy val chandlerIndexManager = new IndexManager(basicAuthClient("bong", "user1"), esVersionUsed)
+  private lazy val morganIndexManager = new IndexManager(basicAuthClient("morgan", "user1"), esVersionUsed)
+  private lazy val bilboIndexManager = new IndexManager(basicAuthClient("Bìlbö Bággįnš", "user2"), esVersionUsed)
 
-  private def indexManagerWithHeader(client: RestClient, header: (String, String)) = new IndexManager(client, additionalHeaders = Map(header))
+  private def indexManagerWithHeader(client: RestClient, header: (String, String)) =
+    new IndexManager(client, esVersionUsed, additionalHeaders = Map(header))
 
   "Test1 index" can {
     "be seen" when {
@@ -101,7 +102,7 @@ trait LdapIntegrationSuite
         response.responseCode should be(404)
       }
       "user cannot be authenticated" in {
-        val indexManager = new IndexManager(basicAuthClient("cartman", "wrong_password"))
+        val indexManager = new IndexManager(basicAuthClient("cartman", "wrong_password"), esVersionUsed)
         val response = indexManager.getIndex("test1")
 
         response.responseCode should be(403)

@@ -17,9 +17,8 @@
 package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
-import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.junit.runner.Description
-import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, IndexManager, SnapshotManager, LegacyTemplateManager}
+import tech.beshu.ror.utils.elasticsearch.{IndexManager, LegacyTemplateManager, RorApiManager, SnapshotManager}
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
 object SingletonEsContainer
@@ -32,10 +31,10 @@ object SingletonEsContainer
   val singleton: EsClusterContainer = createLocalClusterContainer(EsClusterSettings.basic)
 
   private lazy val adminClient = singleton.nodes.head.adminClient
-  private lazy val indexManager = new IndexManager(adminClient)
+  private lazy val indexManager = new IndexManager(adminClient, singleton.nodes.head.esVersion)
   private lazy val templateManager = new LegacyTemplateManager(adminClient, singleton.esVersion)
   private lazy val snapshotManager = new SnapshotManager(adminClient)
-  private lazy val adminApiManager = new ActionManagerJ(adminClient)
+  private lazy val adminApiManager = new RorApiManager(adminClient)
 
   logger.info("Starting singleton es container...")
   singleton.start()
@@ -47,14 +46,7 @@ object SingletonEsContainer
   }
 
   def updateConfig(rorConfigFileName: String): Unit = {
-    val response = adminApiManager.actionPost(
-      "_readonlyrest/admin/config",
-      s"""{"settings": "${escapeJava(getResourceContent(rorConfigFileName))}"}"""
-    )
-    if (!response.isSuccess) {
-      logger.error(s"Config update failed. Response: ${response.getBody}")
-      throw CouldNotUpdateRorConfigException()
-    }
+    adminApiManager.updateRorInIndexConfig(getResourceContent(rorConfigFileName)).force()
   }
 
   def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer): Unit = {
