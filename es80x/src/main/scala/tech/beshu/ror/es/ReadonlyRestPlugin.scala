@@ -16,14 +16,12 @@
  */
 package tech.beshu.ror.es
 
-import java.io.IOException
 import java.nio.file.Path
 import java.util
-import java.util.function.{Supplier, UnaryOperator}
+import java.util.function.Supplier
 
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
-import org.apache.lucene.index.DirectoryReader
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
@@ -35,16 +33,14 @@ import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
-import org.elasticsearch.common.path.PathTrie
 import org.elasticsearch.common.settings._
 import org.elasticsearch.common.util.concurrent.EsExecutors
 import org.elasticsearch.common.util.{BigArrays, PageCacheRecycler}
 import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.core.{CheckedFunction, RestApiVersion}
 import org.elasticsearch.env.{Environment, NodeEnvironment}
 import org.elasticsearch.http.HttpServerTransport
+import org.elasticsearch.index.IndexModule
 import org.elasticsearch.index.mapper.IgnoredFieldMapper
-import org.elasticsearch.index.{IndexModule, IndexService}
 import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.plugins._
@@ -71,10 +67,10 @@ import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
+import tech.beshu.ror.es.utils.RestControllerOps._
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.SetOnce
 
 import scala.collection.JavaConverters._
@@ -155,11 +151,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
-    doPrivileged {
-      on(indexModule)
-        .set("indexReaderWrapper", new org.apache.lucene.util.SetOnce[java.util.function.Function[IndexService, CheckedFunction[DirectoryReader, DirectoryReader, IOException]]]())
-    }
-    indexModule.setReaderWrapper(RoleIndexSearcherWrapper.instance)
+    import tech.beshu.ror.es.utils.IndexModuleOps._
+    indexModule.overwrite(RoleIndexSearcherWrapper.instance)
   }
 
   override def getSettings: util.List[Setting[_]] = {
@@ -228,7 +221,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                settingsFilter: SettingsFilter,
                                indexNameExpressionResolver: IndexNameExpressionResolver,
                                nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
-    hack(restController)
+    restController.decorateRestHandlersWith(new ChannelInterceptingRestHandlerDecorator(_))
     List[RestHandler](
       new RestRRAdminAction(),
       new RestRRConfigAction(nodesInCluster),
@@ -237,70 +230,20 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     ).asJava
   }
 
-  private def hack(restController: RestController) = {
-    doPrivileged {
-      val wrapper = on(restController).get[UnaryOperator[RestHandler]]("handlerWrapper")
-      on(restController).set("handlerWrapper", new NewUnaryOperatorRestHandler(wrapper))
-
-      val handlers = on(restController).get[PathTrie[Any]]("handlers")
-      val updatedHandlers = new PathTreeOps(handlers).update()
-      on(restController).set("handlers", updatedHandlers)
-    }
-  }
-
-  final class PathTreeOps(pathTrie: PathTrie[Any]) {
-
-    def update(): PathTrie[Any] = {
-      val root = on(pathTrie).get[pathTrie.TrieNode]("root")
-      update(root)
-      pathTrie
-    }
-
-    private def update(trieNode: pathTrie.TrieNode): Unit = {
-      val value = on(trieNode).get[Any]("value")
-      if (value != null) MethodHandlersWrapper.updateWithWrapper(value)
-      val children = on(trieNode).get[java.util.Map[String, pathTrie.TrieNode]]("children").asSafeMap
-      children.values.foreach { trieNode =>
-        update(trieNode)
-      }
-    }
-  }
-
-  object MethodHandlersWrapper {
-    def updateWithWrapper(value: Any): Any = {
-      val methodHandlers = on(value).get[java.util.Map[RestRequest.Method, java.util.Map[RestApiVersion, RestHandler]]]("methodHandlers").asScala.toMap
-      val newMethodHandlers = methodHandlers
-        .map { case (key, handlersMap) =>
-          val newHandlersMap = handlersMap
-            .asSafeMap
-            .map { case (apiVersion, handler) =>
-              (apiVersion, new NewHandler(handler))
-            }
-            .asJava
-          (key, newHandlersMap)
-        }
-        .asJava
-      on(value).set("methodHandlers", newMethodHandlers)
-      value
-    }
-  }
-
-  class NewUnaryOperatorRestHandler(wrapper: UnaryOperator[RestHandler]) extends UnaryOperator[RestHandler] {
-    override def apply(restHandler: RestHandler): RestHandler = new NewHandler(wrapper.apply(restHandler))
-  }
-
-  class NewHandler(value: RestHandler) extends RestHandler {
-    override def handleRequest(request: RestRequest, channel: RestChannel, client: NodeClient): Unit = {
-      val rorRestChannel = new RorRestChannel(channel)
-      ThreadRepo.setRestChannel(rorRestChannel)
-      value.handleRequest(request, rorRestChannel, client)
-    }
-  }
-
   override def onNodeStarted(): Unit = {
     super.onNodeStarted()
     doPrivileged {
       esInitListener.onEsReady()
+    }
+  }
+
+  private class ChannelInterceptingRestHandlerDecorator(underlying: RestHandler)
+    extends RestHandler {
+
+    override def handleRequest(request: RestRequest, channel: RestChannel, client: NodeClient): Unit = {
+      val rorRestChannel = new RorRestChannel(channel)
+      ThreadRepo.setRestChannel(rorRestChannel)
+      underlying.handleRequest(request, rorRestChannel, client)
     }
   }
 }
