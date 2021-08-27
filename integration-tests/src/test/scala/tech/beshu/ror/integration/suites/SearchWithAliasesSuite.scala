@@ -40,8 +40,8 @@ trait SearchWithAliasesSuite
 
   private lazy val restrictedDevSearchManager = new SearchManager(basicAuthClient("restricted", "dev"))
   private lazy val unrestrictedDevSearchManager = new SearchManager(basicAuthClient("unrestricted", "dev"))
-  private lazy val adminIndexManager = new IndexManager(adminClient)
-  private lazy val perfmonIndexManager = new IndexManager(basicAuthClient("perfmon", "dev"))
+  private lazy val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
+  private lazy val perfmonIndexManager = new IndexManager(basicAuthClient("perfmon", "dev"), esVersionUsed)
   private lazy val vietMyanSearchManager = new SearchManager(basicAuthClient("VIET_MYAN", "dev"))
 
   "testDirectIndexQuery" in eventually {
@@ -163,7 +163,7 @@ trait SearchWithAliasesSuite
 object SearchWithAliasesSuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    val indexManager = new IndexManager(adminRestClient)
+    val indexManager = new IndexManager(adminRestClient, esVersion)
 
     documentManager.createDoc("my_data", "test", 1, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("my_data", "test", 2, ujson.read("""{"hello":"there", "public":1}""")).force()

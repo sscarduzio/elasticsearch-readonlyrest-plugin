@@ -1,0 +1,12 @@
+readonlyrest:
+  # comments should survive
+  access_control_rules:
+    - name: "CONTAINER ADMIN - updated"
+      verbosity: "error"
+      type: "allow"
+      auth_key: "admin:container"
+
+    - name: "test1"
+      # no array (malformed YAML)
+      indices: "test1_index", "odd:test1_index"
+      auth_key: "dev1:test"

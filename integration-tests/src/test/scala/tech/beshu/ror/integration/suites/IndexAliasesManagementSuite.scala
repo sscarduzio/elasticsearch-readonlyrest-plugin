@@ -34,10 +34,10 @@ trait IndexAliasesManagementSuite
   override implicit val rorConfigFileName = "/aliases/readonlyrest.yml"
 
   private lazy val adminDocumentManager = new DocumentManager(basicAuthClient("admin", "container"), esVersionUsed)
-  private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"))
+  private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"), esVersionUsed)
   private lazy val adminCatManager = new CatManager(basicAuthClient("admin", "container"), esVersion = esVersionUsed)
-  private lazy val dev1IndexManager = new IndexManager(basicAuthClient("dev1", "test"))
-  private lazy val dev3IndexManager = new IndexManager(basicAuthClient("dev3", "test"))
+  private lazy val dev1IndexManager = new IndexManager(basicAuthClient("dev1", "test"), esVersionUsed)
+  private lazy val dev3IndexManager = new IndexManager(basicAuthClient("dev3", "test"), esVersionUsed)
 
   "Add index alias API" should {
     "be allowed to be used" when {

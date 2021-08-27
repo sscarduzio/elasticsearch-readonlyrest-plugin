@@ -37,7 +37,7 @@ trait BaseTemplatesSuite
   private lazy val adminLegacyTemplateManager = new LegacyTemplateManager(adminClient, esVersionUsed)
   private lazy val adminIndexTemplateManager = new IndexTemplateManager(adminClient, esVersionUsed)
   private lazy val adminComponentTemplateManager = new ComponentTemplateManager(adminClient, esVersionUsed)
-  private lazy val adminIndexManager = new IndexManager(adminClient)
+  private lazy val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
   protected lazy val adminDocumentManager = new DocumentManager(adminClient, esVersionUsed)
 
   private var originLegacyTemplateNames: List[String] = List.empty

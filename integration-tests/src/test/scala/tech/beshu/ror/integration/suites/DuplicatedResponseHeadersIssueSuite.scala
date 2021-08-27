@@ -21,10 +21,9 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.DuplicatedResponseHeadersIssueSuite.SearchResult
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.dependencies.wiremock
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, SearchManager}
-import tech.beshu.ror.utils.httpclient.RestClient
 
 //TODO change test names. Current names are copies from old java integration tests
 trait DuplicatedResponseHeadersIssueSuite
@@ -47,7 +46,7 @@ trait DuplicatedResponseHeadersIssueSuite
           "/duplicated_response_headers_issue/brian_groups.json",
           "/duplicated_response_headers_issue/freddie_groups.json")
       ),
-      nodeDataInitializer = DuplicatedResponseHeadersIssueSuite.nodeDataInitializer(),
+      nodeDataInitializer = ElasticsearchTweetsInitializer,
       xPackSupport = false,
     )
   )
@@ -89,8 +88,4 @@ trait DuplicatedResponseHeadersIssueSuite
 object DuplicatedResponseHeadersIssueSuite {
 
   final case class SearchResult(responseCode: Int, headers: Set[SimpleHeader])
-
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    new ElasticsearchTweetsInitializer().initialize(adminRestClient)
-  }
 }

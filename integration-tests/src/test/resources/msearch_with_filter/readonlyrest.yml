@@ -14,8 +14,10 @@ readonlyrest:
 
     - name: "::TEST F::"
       auth_key: test1:dev
+      indices: ["f*", "t*"]
       filter: '{"bool": { "must_not": { "match": { "_index": "twitter" }}}}'
 
     - name: "::TEST T::"
       auth_key: test2:dev
+      indices: ["f*", "t*"]
       filter: '{"bool": { "must_not": { "match": { "_index": "facebook" }}}}'
