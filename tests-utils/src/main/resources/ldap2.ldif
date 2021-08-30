@@ -1,0 +1,42 @@
+#################################
+#################################
+#################################
+# g1: cartman, chandler
+# g2: morgan
+# g3: morgan, cartman, chandler
+# gAll: morgan, cartman, chandler
+################################
+################################
+################################
+################################
+
+
+version: 1
+
+dn: ou=Groups,dc=example,dc=com
+objectClass: top
+objectClass: organizationalUnit
+ou: Groups
+
+dn: cn=group1,ou=Groups,dc=example,dc=com
+objectClass: top
+objectClass: groupOfUniqueNames
+cn: group1
+uniqueMember: cn=Morgan Freeman,ou=People,dc=example,dc=com
+
+dn: ou=People,dc=example,dc=com
+objectClass: top
+objectClass: organizationalUnit
+ou: People
+
+dn: cn=Morgan Freeman,ou=People,dc=example,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: Morgan Freeman
+sn: Freeman
+uid: morgan
+userPassword:: e1NNRDV9cTg2ZHlvbGRRRk5pZ04waVprMDgzYnZrVEY3bFdacFk=
+telephoneNumber: cn=group1,ou=Groups,dc=example,dc=com
+telephoneNumber: cn=group1,ou=Groups,dc=example,dc=com
