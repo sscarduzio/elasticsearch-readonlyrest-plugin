@@ -21,7 +21,6 @@ import java.util.function.Supplier
 
 import org.elasticsearch.common.component.AbstractLifecycleComponent
 import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.tasks.TaskManager
 import org.elasticsearch.transport.{RemoteClusterService, TransportService}
 
 class TransportServiceInterceptor(transportService: TransportService,
@@ -35,16 +34,13 @@ class TransportServiceInterceptor(transportService: TransportService,
   Option(transportService.getRemoteClusterService).foreach { r =>
     TransportServiceInterceptor.remoteClusterServiceSupplier.update(r)
   }
-  Option(transportService.getTaskManager).foreach { t  =>
-    TransportServiceInterceptor.taskManagerSupplier.update(t)
-  }
   override def doStart(): Unit = {}
   override def doStop(): Unit = {}
   override def doClose(): Unit = {}
 }
 object TransportServiceInterceptor {
   val remoteClusterServiceSupplier: RemoteClusterServiceSupplier = new RemoteClusterServiceSupplier
-  }
+}
 
 class RemoteClusterServiceSupplier extends Supplier[Option[RemoteClusterService]] {
   private val remoteClusterServiceAtomicReference = new AtomicReference(Option.empty[RemoteClusterService])
@@ -53,14 +49,4 @@ class RemoteClusterServiceSupplier extends Supplier[Option[RemoteClusterService]
     case None => Option.empty
   }
   def update(service: RemoteClusterService): Unit = remoteClusterServiceAtomicReference.set(Some(service))
-}
-
-
-class TaskManagerSupplier extends Supplier[Option[TaskManager]] {
-  private val taskManagerAtomicReference = new AtomicReference(Option.empty[TaskManager])
-  override def get(): Option[TaskManager] = taskManagerAtomicReference.get() match {
-    case Some(value) => Option(value)
-    case None => Option.empty
-  }
-  def update(taskManager: TaskManager): Unit = taskManagerAtomicReference.set(Some(taskManager))
 }
