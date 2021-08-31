@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
-import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
@@ -24,17 +23,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.utils.containers.LdapContainer
+import tech.beshu.ror.utils.containers.SingletonLdapContainers
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class LdapAuthorizationRuleSettingsTests
-  extends BaseRuleSettingsDecoderTest[LdapAuthorizationRule]
-    with ForAllTestContainer{
-
-  private val containerLdap1 = new LdapContainer("LDAP1", "test_example.ldif")
-  private val containerLdap2 = new LdapContainer("LDAP2", "test_example.ldif")
-
-  override val container: MultipleContainers = MultipleContainers(containerLdap1, containerLdap2)
+  extends BaseRuleSettingsDecoderTest[LdapAuthorizationRule] {
 
   "An LdapAuthorizationRule" should {
     "be able to be loaded from config" when {
@@ -55,8 +48,8 @@ class LdapAuthorizationRuleSettingsTests
                |  ldaps:
                |
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
@@ -86,8 +79,8 @@ class LdapAuthorizationRuleSettingsTests
                |  ldaps:
                |
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
@@ -119,8 +112,8 @@ class LdapAuthorizationRuleSettingsTests
                |  ldaps:
                |
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
@@ -147,8 +140,8 @@ class LdapAuthorizationRuleSettingsTests
                |  ldaps:
                |
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
@@ -180,8 +173,8 @@ class LdapAuthorizationRuleSettingsTests
                |  ldaps:
                |
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
@@ -209,8 +202,8 @@ class LdapAuthorizationRuleSettingsTests
                |  ldaps:
                |
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,

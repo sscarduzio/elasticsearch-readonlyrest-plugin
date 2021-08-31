@@ -16,47 +16,42 @@
  */
 package tech.beshu.ror.unit.acl.blocks.definitions
 
-import eu.timepit.refined.auto._
-import com.dimafeng.testcontainers.ForAllTestContainer
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.concurrent.Eventually
+import org.scalatest.matchers.should.Matchers._
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside}
-
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.DefaultGroupSearch
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
-import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.containers.LdapContainer
+import tech.beshu.ror.utils.containers.SingletonLdapContainers
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class UnboundidLdapAuthorizationServiceTests
+class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
   extends AnyWordSpec
     with BeforeAndAfterAll
-    with ForAllTestContainer
     with Inside
     with Eventually {
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
 
-  override val container: LdapContainer = new LdapContainer("LDAP1", "test_example.ldif")
-  val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
+  private val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
   override protected def afterAll(): Unit = {
     super.afterAll()
     ldapConnectionPoolProvider.close()
   }
+
   "An LdapAuthorizationService" should {
     "has method to provide user groups" which {
       "returns non empty set of groups" when {
@@ -86,10 +81,14 @@ class UnboundidLdapAuthorizationServiceTests
   private def authorizationService = {
     UnboundidLdapAuthorizationService
       .create(
-        Name("ldap1"),
+        Name("LDAP1"),
         ldapConnectionPoolProvider,
         LdapConnectionConfig(
-          ConnectionMethod.SingleServer(LdapHost.from(s"ldap://${container.ldapHost}:${container.ldapPort}").get),
+          ConnectionMethod.SingleServer(
+            LdapHost
+              .from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}")
+              .get
+          ),
           poolSize = 1,
           connectionTimeout = Refined.unsafeApply(5 seconds),
           requestTimeout = Refined.unsafeApply(5 seconds),

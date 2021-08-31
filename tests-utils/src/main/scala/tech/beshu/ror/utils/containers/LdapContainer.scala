@@ -33,7 +33,7 @@ import tech.beshu.ror.utils.misc.ScalaUtils._
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
-class LdapContainer(name: String, ldapInitScript: InitScriptSource)
+class LdapContainer private[containers] (name: String, ldapInitScript: InitScriptSource)
   extends GenericContainer(
     dockerImage = "osixia/openldap:1.1.7",
     env = Map(
@@ -69,11 +69,15 @@ object LdapContainer {
     implicit def fromFile(file: File): InitScriptSource = AFile(file)
   }
 
-  def create(name: String, ldapInitScript: String): LdapContainer = {
+  def create(name: String, ldapInitScript: InitScriptSource): LdapContainer = {
     val ldapContainer = new LdapContainer(name, ldapInitScript)
     ldapContainer.container
       .setNetwork(Network.SHARED)
     ldapContainer
+  }
+
+  def create(name: String, ldapInitScript: String): LdapContainer = {
+    create(name, InitScriptSource.fromString(ldapInitScript))
   }
 
   object defaults {

@@ -23,7 +23,7 @@ object dependencies {
   def ldap(name: String, ldapInitScript: String): DependencyDef = {
     DependencyDef(
       name = name,
-      Coeval(new LdapScalaAdapter(JavaLdapContainer.create(ldapInitScript))),
+      Coeval(LdapContainer.create(name, ldapInitScript)),
       originalPort = LdapContainer.defaults.ldap.port)
   }
 

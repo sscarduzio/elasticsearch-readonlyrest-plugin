@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{CircuitBreakerLdapAuthenticationServiceDecorator, Dn, LdapAuthenticationService}
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.ScalaOps.repeat
-import tech.beshu.ror.utils.containers.{LdapContainer, ToxiproxyContainer}
+import tech.beshu.ror.utils.containers.{LdapContainer, SingletonLdapContainers, ToxiproxyContainer}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -47,11 +47,14 @@ class UnboundidLdapAuthenticationServiceTests
     with ForAllTestContainer
     with Inside {
 
-  private val ldap1Container = LdapContainer.create("LDAP1", "test_example.ldif")
-  private val ldap1ContainerWithToxiproxy = new ToxiproxyContainer(ldap1Container, LdapContainer.defaults.ldap.port)
-  private val ldap2Container = new LdapContainer("LDAP2", "test_example.ldif")
-  override val container: Container = MultipleContainers(ldap1ContainerWithToxiproxy, ldap2Container)
+  private val ldap1ContainerWithToxiproxy = new ToxiproxyContainer(
+    SingletonLdapContainers.ldap1,
+    LdapContainer.defaults.ldap.port
+  )
+  private val ldapContainerToStop = LdapContainer.create("LDAP3", "test_example.ldif")
   private val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
+
+  override val container: Container = MultipleContainers(ldap1ContainerWithToxiproxy, ldapContainerToStop)
 
   override protected def afterAll(): Unit = {
     super.afterAll()
@@ -115,7 +118,7 @@ class UnboundidLdapAuthenticationServiceTests
             _ <- repeat(maxRetries = 5, delay = 500 millis) {
                 Task(assertMorganCanAuthenticate(service))
               }
-            _ <- Task(ldap2Container.stop())
+            _ <- Task(ldapContainerToStop.stop())
             _ <- repeat(10, 500 millis) {
               Task(assertMorganCanAuthenticate(service))
             }
@@ -220,8 +223,8 @@ class UnboundidLdapAuthenticationServiceTests
         LdapConnectionConfig(
           ConnectionMethod.SeveralServers(
             NonEmptyList.of(
-              LdapHost.from(s"ldap://${ldap1Container.ldapHost}:${ldap1Container.ldapPort}").get,
-              LdapHost.from(s"ldap://${ldap2Container.ldapHost}:${ldap2Container.ldapPort}").get,
+              LdapHost.from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}").get,
+              LdapHost.from(s"ldap://${ldapContainerToStop.ldapHost}:${ldapContainerToStop.ldapPort}").get,
             ),
             HaMethod.RoundRobin
           ),
