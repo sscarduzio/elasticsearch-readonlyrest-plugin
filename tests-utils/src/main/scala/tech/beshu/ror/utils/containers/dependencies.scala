@@ -27,6 +27,12 @@ object dependencies {
       originalPort = LdapContainer.defaults.ldap.port)
   }
 
+  def ldap(name: String, ldap: NonStoppableLdapContainer): DependencyDef = DependencyDef(
+    name = name,
+    Coeval(ldap),
+    originalPort = LdapContainer.defaults.ldap.port
+  )
+
   def wiremock(name: String, mappings: String*): DependencyDef = {
     DependencyDef(name,
       containerCreator = Coeval(new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))),

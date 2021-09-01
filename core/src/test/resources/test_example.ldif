@@ -48,6 +48,16 @@ sn: Bong
 uid: bong
 userPassword:: e1NIQX1zOXFuZTB3RXFWVWJoNEhRTVpIK0NZOHlYbWM9
 
+dn: cn=Bìlbö Bággįnš,ou=People,dc=example,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: Bìlbö Bággįnš
+sn: Bìlbö Bággįnš
+uid: Bìlbö Bággįnš
+userPassword:: e1NNRDV9czdnM0NVekVCMGQxMm5CM0N3VGFrQmp3K0VGMTE3cFg=
+
 dn: cn=Danny DeVito,ou=People,dc=example,dc=com
 objectClass: top
 objectClass: person
@@ -75,6 +85,7 @@ objectClass: top
 objectClass: groupOfUniqueNames
 cn: group2
 uniqueMember: cn=Morgan Freeman,ou=People,dc=example,dc=com
+uniqueMember: cn=Bìlbö Bággįnš,ou=People,dc=example,dc=com
 
 dn: cn=group3,ou=Groups,dc=example,dc=com
 objectClass: top

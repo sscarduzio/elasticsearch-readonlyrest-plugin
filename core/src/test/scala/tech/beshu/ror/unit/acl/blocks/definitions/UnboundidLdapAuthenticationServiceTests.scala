@@ -34,7 +34,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{CircuitBreakerLdapAuthenticationServiceDecorator, Dn, LdapAuthenticationService}
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.ScalaOps.repeat
-import tech.beshu.ror.utils.containers.{LdapContainer, SingletonLdapContainers, ToxiproxyContainer}
+import tech.beshu.ror.utils.SingletonLdapContainers
+import tech.beshu.ror.utils.containers.{LdapContainer, ToxiproxyContainer}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps

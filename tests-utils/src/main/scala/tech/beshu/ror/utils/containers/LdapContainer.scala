@@ -55,7 +55,6 @@ class LdapContainer private[containers] (name: String, ldapInitScript: InitScrip
   override def stop(): Unit = {
     this.container.stop()
   }
-
 }
 
 object LdapContainer {
@@ -101,6 +100,22 @@ object LdapContainer {
           .map(dc => s"cn=${defaults.ldap.adminName},$dc")
       }
     }
+  }
+}
+
+class NonStoppableLdapContainer private(name: String, ldapInitScript: InitScriptSource)
+  extends LdapContainer(name, ldapInitScript) {
+
+  override def start(): Unit = ()
+  override def stop(): Unit = ()
+
+  private [NonStoppableLdapContainer] def privateStart(): Unit = super.start()
+}
+object NonStoppableLdapContainer {
+  def createAndStart(name: String, ldapInitScript: InitScriptSource): NonStoppableLdapContainer = {
+    val ldap = new NonStoppableLdapContainer(name, ldapInitScript)
+    ldap.privateStart()
+    ldap
   }
 }
 

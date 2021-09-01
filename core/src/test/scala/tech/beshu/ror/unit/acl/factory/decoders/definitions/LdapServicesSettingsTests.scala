@@ -27,8 +27,9 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder
+import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
-import tech.beshu.ror.utils.containers.{LdapWithDnsContainer, SingletonLdapContainers}
+import tech.beshu.ror.utils.containers.LdapWithDnsContainer
 
 import scala.concurrent.duration._
 import scala.language.postfixOps

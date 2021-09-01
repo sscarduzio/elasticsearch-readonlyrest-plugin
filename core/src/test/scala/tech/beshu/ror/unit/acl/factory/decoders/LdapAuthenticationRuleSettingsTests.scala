@@ -21,7 +21,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{CacheableLdapAuthen
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthenticationRule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.utils.containers.SingletonLdapContainers
+import tech.beshu.ror.utils.SingletonLdapContainers
 
 class LdapAuthenticationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[LdapAuthenticationRule] {

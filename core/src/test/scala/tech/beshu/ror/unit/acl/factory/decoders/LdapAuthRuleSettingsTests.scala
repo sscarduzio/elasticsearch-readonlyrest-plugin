@@ -20,7 +20,7 @@ import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthRule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.utils.containers.SingletonLdapContainers
+import tech.beshu.ror.utils.SingletonLdapContainers
 
 class LdapAuthRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[LdapAuthRule] {

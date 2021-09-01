@@ -18,7 +18,6 @@ package tech.beshu.ror.integration
 
 import java.util.Base64
 
-import com.dimafeng.testcontainers.ForAllTestContainer
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
@@ -30,8 +29,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{FullLocalIndexWithAliases, Group, User}
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.containers.{LdapContainer, SingletonLdapContainers}
 import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList

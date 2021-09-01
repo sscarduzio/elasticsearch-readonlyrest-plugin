@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
-import com.dimafeng.testcontainers.ForAllTestContainer
 import eu.timepit.refined.auto._
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
@@ -30,8 +29,8 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.containers.{LdapContainer, SingletonLdapContainers}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class GroupsRuleSettingsTests

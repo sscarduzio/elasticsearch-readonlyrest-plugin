@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.containers.dependencies.ldap
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
@@ -39,8 +40,10 @@ trait LdapIntegrationSuite
     EsClusterSettings(
       name = "ROR1",
       dependentServicesContainers = List(
-        ldap(name = "LDAP1", ldapInitScript = "/ldap_integration/ldap.ldif"),
-        ldap(name = "LDAP2", ldapInitScript = "/ldap_integration/ldap.ldif")
+        ldap(name = "LDAP1", ldapInitScript = "ldap.ldif"),
+        ldap(name = "LDAP2", ldapInitScript = "ldap.ldif"),
+        ldap(name = "LDAP1", SingletonLdapContainers.ldap1),
+        ldap(name = "LDAP2", SingletonLdapContainers.ldap2)
       ),
       nodeDataInitializer = LdapIntegrationSuite.nodeDataInitializer(),
       xPackSupport = false,

@@ -29,8 +29,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
-import tech.beshu.ror.utils.containers.SingletonLdapContainers
 
 class LdapConnectivityCheckYamlLoadedAccessControlTests
   extends AnyWordSpec
@@ -39,7 +39,10 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
     with ForAllTestContainer
     with Inside {
 
-  override val container: MultipleContainers = MultipleContainers(SingletonLdapContainers.ldap1, SingletonLdapContainers.ldap2)
+  override val container: MultipleContainers = MultipleContainers(
+    SingletonLdapContainers.ldap1,
+    SingletonLdapContainers.ldap2
+  )
 
   override protected def configYaml: String =
     s"""readonlyrest:

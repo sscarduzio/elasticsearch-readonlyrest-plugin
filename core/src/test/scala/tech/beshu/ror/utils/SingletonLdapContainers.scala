@@ -14,33 +14,18 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.containers
+package tech.beshu.ror.utils
 
-import tech.beshu.ror.utils.containers.LdapContainer.InitScriptSource
+import tech.beshu.ror.utils.containers.NonStoppableLdapContainer
 
 object SingletonLdapContainers {
 
-  val ldap1: NonStoppableLdapContainer = {
-    val ldap = new NonStoppableLdapContainer("LDAP1", "test_example.ldif")
-    ldap.start()
-    ldap
-  }
+  val ldap1: NonStoppableLdapContainer =
+    NonStoppableLdapContainer.createAndStart("LDAP1", "test_example.ldif")
 
-  val ldap1Backup: NonStoppableLdapContainer = {
-    val ldap = new NonStoppableLdapContainer("LDAP1_BACKUP", "test_example.ldif")
-    ldap.start()
-    ldap
-  }
+  val ldap1Backup: NonStoppableLdapContainer =
+    NonStoppableLdapContainer.createAndStart("LDAP1_BACKUP", "test_example.ldif")
 
-  val ldap2: NonStoppableLdapContainer = {
-    val ldap = new NonStoppableLdapContainer("LDAP2", "test_example2.ldif")
-    ldap.start()
-    ldap
-  }
-
-  class NonStoppableLdapContainer(name: String, ldapInitScript: InitScriptSource)
-    extends LdapContainer(name, ldapInitScript) {
-
-    override def stop(): Unit = ()
-  }
+  val ldap2: NonStoppableLdapContainer =
+    NonStoppableLdapContainer.createAndStart("LDAP2", "test_example2.ldif")
 }
