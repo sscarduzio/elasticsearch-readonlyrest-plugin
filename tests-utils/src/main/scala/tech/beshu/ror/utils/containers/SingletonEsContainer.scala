@@ -28,18 +28,16 @@ object SingletonEsContainer
 
   private implicit val description: Description = Description.EMPTY
 
-  val singleton: EsClusterContainer = {
-    val container = createLocalClusterContainer(EsClusterSettings.basic)
-    logger.info("Starting singleton es container...")
-    singleton.start()
-    container
-  }
+  val singleton: EsClusterContainer = createLocalClusterContainer(EsClusterSettings.basic)
 
   private lazy val adminClient = singleton.nodes.head.adminClient
   private lazy val indexManager = new IndexManager(adminClient, singleton.nodes.head.esVersion)
   private lazy val templateManager = new LegacyTemplateManager(adminClient, singleton.esVersion)
   private lazy val snapshotManager = new SnapshotManager(adminClient)
   private lazy val adminApiManager = new RorApiManager(adminClient)
+
+  logger.info("Starting singleton es container...")
+  singleton.start()
 
   def cleanUpContainer(): Unit = {
     indexManager.removeAllIndices()
