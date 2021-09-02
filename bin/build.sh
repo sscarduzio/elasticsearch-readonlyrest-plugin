@@ -30,9 +30,9 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "cve_check" ]]; then
     ./gradlew dependencyCheckAnalyze
 fi
 
-if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "unit" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "core_tests" ]]; then
     echo ">>> Running unit tests.."
-    ./gradlew --stacktrace test ror
+    ./gradlew --stacktrace core:test
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_proxy" ]]; then
