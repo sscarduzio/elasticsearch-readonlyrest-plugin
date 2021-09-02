@@ -101,7 +101,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
         ),
         UserSearchFilterConfig(Dn("ou=Gods,dc=example,dc=com"), "uid"),
         UserGroupsSearchFilterConfig(GroupsFromUserAttribute(
-          Dn("ou=Region,dc=example,dc=com"),
+          Dn("ou=Regions,dc=example,dc=com"),
           "cn",
           "title"
         )),

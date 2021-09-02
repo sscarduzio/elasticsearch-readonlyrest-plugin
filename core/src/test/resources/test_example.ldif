@@ -1,10 +1,19 @@
 #################################
 #################################
 #################################
-# g1: cartman, chandler
-# g2: morgan
-# g3: morgan, cartman, chandler
-# gAll: morgan, cartman, chandler
+# groups and peoples:
+# * group1: cartman, chandler
+# * group2: morgan, bilbo
+# * group3: morgan, cartman, chandler
+# * gAll: morgan, cartman, chandler, bilbo
+#
+# Regionss and gods:
+# * europe: jesus
+# * north america: jesus
+# * south america: jesus
+# * asia: allah
+# * africa: jesus, allah
+# * [no group]: spaghetti
 ################################
 ################################
 ################################
@@ -102,6 +111,7 @@ cn: groupAll
 uniqueMember: cn=Chanandler Bong,ou=People,dc=example,dc=com
 uniqueMember: cn=Eric Cartman,ou=People,dc=example,dc=com
 uniqueMember: cn=Morgan Freeman,ou=People,dc=example,dc=com
+uniqueMember: cn=Bìlbö Bággįnš,ou=People,dc=example,dc=com
 
 dn: ou=Gods,dc=example,dc=com
 objectClass: top
@@ -117,10 +127,10 @@ cn: Jesus Christ
 sn: Jesus
 uid: jesus
 userPassword:: e1NNRDV9cTg2ZHlvbGRRRk5pZ04waVprMDgzYnZrVEY3bFdacFk=
-title: cn=europe,ou=Region,dc=example,dc=com
-title: cn=north america,ou=Region,dc=example,dc=com
-title: cn=south america,ou=Region,dc=example,dc=com
-title: cn=africa,ou=Region,dc=example,dc=com
+title: cn=europe,ou=Regions,dc=example,dc=com
+title: cn=north america,ou=Regions,dc=example,dc=com
+title: cn=south america,ou=Regions,dc=example,dc=com
+title: cn=africa,ou=Regions,dc=example,dc=com
 
 dn: cn=Allah,ou=Gods,dc=example,dc=com
 objectClass: top
@@ -131,8 +141,8 @@ cn: Allah
 sn: Allah
 uid: allah
 userPassword:: e1NNRDV9czdnM0NVekVCMGQxMm5CM0N3VGFrQmp3K0VGMTE3cFg=
-title: cn=asia,ou=Region,dc=example,dc=com
-title: cn=africa,ou=Region,dc=example,dc=com
+title: cn=asia,ou=Regions,dc=example,dc=com
+title: cn=africa,ou=Regions,dc=example,dc=com
 
 dn: cn=Spaghetti Monster,ou=Gods,dc=example,dc=com
 objectClass: top

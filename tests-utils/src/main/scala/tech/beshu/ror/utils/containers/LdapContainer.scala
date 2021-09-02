@@ -114,6 +114,7 @@ class NonStoppableLdapContainer private(name: String, ldapInitScript: InitScript
 object NonStoppableLdapContainer {
   def createAndStart(name: String, ldapInitScript: InitScriptSource): NonStoppableLdapContainer = {
     val ldap = new NonStoppableLdapContainer(name, ldapInitScript)
+    ldap.container.setNetwork(Network.SHARED)
     ldap.privateStart()
     ldap
   }
