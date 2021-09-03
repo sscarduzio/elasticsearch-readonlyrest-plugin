@@ -45,10 +45,10 @@ class CurrentUserMetadataAccessControlTests
     "/current_user_metadata_access_control_tests/wiremock_service1_user5.json",
     "/current_user_metadata_access_control_tests/wiremock_service2_user6.json"
   ))
-  private val ldap1 = new LdapContainer("LDAP1",
+  private val ldap1 = LdapContainer.create("LDAP1",
     "current_user_metadata_access_control_tests/ldap_ldap1_user5.ldif"
   )
-  private val ldap2 = new LdapContainer("LDAP2",
+  private val ldap2 = LdapContainer.create("LDAP2",
     "current_user_metadata_access_control_tests/ldap_ldap2_user6.ldif"
   )
 

@@ -1,5 +1,3 @@
-package tech.beshu.ror.utils.ldap;
-
 /*
  *    This file is part of ReadonlyREST.
  *
@@ -16,21 +14,16 @@ package tech.beshu.ror.utils.ldap;
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.integration.utils
 
-import tech.beshu.ror.utils.containers.LdapContainer;
+import tech.beshu.ror.utils.containers.NonStoppableLdapContainer
 
-/**
- * This is really useful when you want to stand up a LDAP server for manual tests
- */
-public class LDAPServer {
-  public static void main(String[] args) throws InterruptedException {
-    String ldifFile = "ldap.ldif";
-    System.out.println(LDAPServer.class.getSimpleName() + " using config file: " + ldifFile);
-    LdapContainer lc = LdapContainer.create("ldap", ldifFile);
-    lc.start();
-    System.out.println(lc.ldapHost() + " " + lc.ldapPort());
-    while(true){
-      Thread.sleep(Long.MAX_VALUE);
-    }
-  }
+object SingletonLdapContainers {
+
+  lazy val ldap1: NonStoppableLdapContainer =
+    NonStoppableLdapContainer.createAndStart("LDAP1", "ldap.ldif")
+
+  lazy val ldap2: NonStoppableLdapContainer =
+    NonStoppableLdapContainer.createAndStart("LDAP2", "ldap.ldif")
+
 }

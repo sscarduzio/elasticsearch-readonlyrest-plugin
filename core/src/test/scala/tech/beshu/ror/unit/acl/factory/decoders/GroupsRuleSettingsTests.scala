@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
-import com.dimafeng.testcontainers.ForAllTestContainer
 import eu.timepit.refined.auto._
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
@@ -30,16 +29,13 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class GroupsRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[GroupsRule]
-    with ForAllTestContainer
     with Inside {
-
-  override val container: LdapContainer = new LdapContainer("LDAP1", "test_example.ldif")
 
   "A GroupsRule" should {
     "be able to be loaded from config" when {
@@ -252,8 +248,8 @@ class GroupsRuleSettingsTests
                  |
                  |  ldaps:
                  |  - name: ldap1
-                 |    host: ${container.ldapHost}
-                 |    port: ${container.ldapPort}
+                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                  |    ssl_enabled: false
                  |    search_user_base_DN: "ou=People,dc=example,dc=com"
                  |    search_groups_base_DN: "ou=People,dc=example,dc=com"
@@ -322,8 +318,8 @@ class GroupsRuleSettingsTests
                  |
                  |  ldaps:
                  |  - name: ldap1
-                 |    host: ${container.ldapHost}
-                 |    port: ${container.ldapPort}
+                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                  |    ssl_enabled: false
                  |    search_user_base_DN: "ou=People,dc=example,dc=com"
                  |    search_groups_base_DN: "ou=People,dc=example,dc=com"
@@ -613,8 +609,8 @@ class GroupsRuleSettingsTests
                |
               |  ldaps:
                |  - name: ldap1
-               |    host: ${container.ldapHost}
-               |    port: ${container.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
@@ -656,8 +652,8 @@ class GroupsRuleSettingsTests
                |
               |  ldaps:
                |  - name: ldap1
-               |    host: ${container.ldapHost}
-               |    port: ${container.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
@@ -697,8 +693,8 @@ class GroupsRuleSettingsTests
                |
               |  ldaps:
                |  - name: ldap1
-               |    host: ${container.ldapHost}
-               |    port: ${container.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"

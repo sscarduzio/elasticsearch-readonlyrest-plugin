@@ -30,9 +30,9 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "cve_check" ]]; then
     ./gradlew dependencyCheckAnalyze
 fi
 
-if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "unit" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "core_tests" ]]; then
     echo ">>> Running unit tests.."
-    ./gradlew --stacktrace test ror
+    ./gradlew --stacktrace core:test
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_proxy" ]]; then
@@ -135,6 +135,7 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
     #es714
+    ./gradlew --stacktrace es714x:ror '-PesVersion=7.14.1'
     ./gradlew --stacktrace es714x:ror '-PesVersion=7.14.0'
 
     #es711

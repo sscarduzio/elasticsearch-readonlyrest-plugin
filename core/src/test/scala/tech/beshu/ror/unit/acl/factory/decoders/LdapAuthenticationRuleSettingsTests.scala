@@ -16,22 +16,15 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
-import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{CacheableLdapAuthenticationServiceDecorator, CircuitBreakerLdapAuthenticationServiceDecorator, LoggableLdapAuthenticationServiceDecorator}
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthenticationRule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.utils.containers.LdapContainer
+import tech.beshu.ror.utils.SingletonLdapContainers
 
 class LdapAuthenticationRuleSettingsTests
-  extends BaseRuleSettingsDecoderTest[LdapAuthenticationRule]
-    with ForAllTestContainer {
-
-  private val containerLdap1 = new LdapContainer("LDAP1", "test_example.ldif")
-  private val containerLdap2 = new LdapContainer("LDAP2", "test_example.ldif")
-
-  override val container: MultipleContainers = MultipleContainers(containerLdap1, containerLdap2)
+  extends BaseRuleSettingsDecoderTest[LdapAuthenticationRule] {
 
   "An LdapAuthenticationRule" should {
     "be able to be loaded from config" when {
@@ -49,8 +42,8 @@ class LdapAuthenticationRuleSettingsTests
               |  ldaps:
               |
               |  - name: ldap1
-              |    host: ${containerLdap1.ldapHost}
-              |    port: ${containerLdap1.ldapPort}
+              |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+              |    port: ${SingletonLdapContainers.ldap1.ldapPort}
               |    ssl_enabled: false
               |    search_user_base_DN: "ou=People,dc=example,dc=com"
               |""".stripMargin,
@@ -76,8 +69,8 @@ class LdapAuthenticationRuleSettingsTests
                |  ldaps:
                |
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
@@ -102,8 +95,8 @@ class LdapAuthenticationRuleSettingsTests
                |  ldaps:
                |
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
@@ -129,8 +122,8 @@ class LdapAuthenticationRuleSettingsTests
                |  ldaps:
                |
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
