@@ -14,12 +14,18 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.utils
 
-package tech.beshu.ror.utils.containers
+import tech.beshu.ror.utils.containers.NonStoppableLdapContainer
 
-import com.dimafeng.testcontainers.SingleContainer
-import org.testcontainers.containers.GenericContainer
+object SingletonLdapContainers {
 
-class LdapScalaAdapter(proxy: JavaLdapContainer) extends SingleContainer[GenericContainer[_]]{
-  override implicit val container: GenericContainer[_] = proxy
+  val ldap1: NonStoppableLdapContainer =
+    NonStoppableLdapContainer.createAndStart("LDAP1", "test_example.ldif")
+
+  val ldap1Backup: NonStoppableLdapContainer =
+    NonStoppableLdapContainer.createAndStart("LDAP1_BACKUP", "test_example.ldif")
+
+  val ldap2: NonStoppableLdapContainer =
+    NonStoppableLdapContainer.createAndStart("LDAP2", "test_example2.ldif")
 }

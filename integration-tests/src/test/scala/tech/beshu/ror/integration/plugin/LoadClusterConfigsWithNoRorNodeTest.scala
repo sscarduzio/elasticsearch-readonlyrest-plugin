@@ -16,20 +16,15 @@
  */
 package tech.beshu.ror.integration.plugin
 
-import java.util
-
 import cats.data.NonEmptyList
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.{BeforeAndAfterEach, Entry}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.{IndexConfigInitializer, PluginTestSupport}
 import tech.beshu.ror.utils.containers.EsClusterProvider.ClusterNodeData
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.elasticsearch.ActionManagerJ
+import tech.beshu.ror.utils.elasticsearch.RorApiManager
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
-
-import scala.collection.JavaConverters._
 
 final class LoadClusterConfigsWithNoRorNodeTest
   extends AnyWordSpec
@@ -70,25 +65,25 @@ final class LoadClusterConfigsWithNoRorNodeTest
     )(rorConfigFileName)
   )
 
-  private lazy val ror1WithIndexConfigAdminActionManager = new ActionManagerJ(clients.head.adminClient)
+  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.adminClient)
 
   "return index config, and a failure" in {
-    val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load")
+    val result = ror1WithIndexConfigAdminActionManager.loadRorCurrentConfig()
 
-    result.getResponseCode should be(200)
-    val config = result.getResponseJsonMap.get("config").asInstanceOf[util.Map[_, _]]
-    config should contain(Entry("indexName", readonlyrestIndexName))
-    config should contain(Entry("type", "INDEX_CONFIG"))
-    config should contain(Entry("raw", getResourceContent("/admin_api/readonlyrest_index.yml")))
-    result.getResponseJsonMap.get("warnings").asInstanceOf[util.Collection[Nothing]] shouldBe empty
+    result.responseCode should be(200)
+    val config = result.responseJson("config")
+    config("indexName").str should be(readonlyrestIndexName)
+    config("type").str should be("INDEX_CONFIG")
+    config("raw").str should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
+    result.responseJson("warnings").arr.toList shouldBe Nil
   }
   "return timeout" in {
-    val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load", Map("timeout" -> "1nanos").asJava)
+    val result = ror1WithIndexConfigAdminActionManager.loadRorCurrentConfig(Map("timeout" -> "1nanos"))
 
-    result.getResponseCode should be(200)
-    result.getResponseJsonMap.get("config") should be(null)
-    result.getResponseJsonMap.get("warnings").asInstanceOf[util.Collection[_]] shouldBe empty
-    result.getResponseJsonMap.get("error") shouldBe "current node response timeout"
+    result.responseCode should be(200)
+    result.responseJson("config").isNull should be(true)
+    result.responseJson("warnings").arr.toList shouldBe Nil
+    result.responseJson("error").str shouldBe "current node response timeout"
   }
 
 }

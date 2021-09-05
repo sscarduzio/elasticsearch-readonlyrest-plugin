@@ -65,7 +65,7 @@ stages:
         LICENSE:
           ROR_TASK: license
         UNIT:
-          ROR_TASK: unit
+          ROR_TASK: core_tests
 
         IT_PROXY:
           ROR_TASK: integration_proxy
@@ -181,7 +181,7 @@ stages:
 
     strategy:
       maxParallel: 99
-      matrix: 
+      matrix:
         PKG_es7xx:
           ROR_TASK: package_es7xx
         PKG_es6xx:

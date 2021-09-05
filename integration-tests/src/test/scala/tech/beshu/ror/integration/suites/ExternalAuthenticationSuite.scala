@@ -20,9 +20,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.dependencies.wiremock
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManager}
-import tech.beshu.ror.utils.httpclient.RestClient
 
 //TODO change test names. Current names are copies from old java integration tests
 trait ExternalAuthenticationSuite
@@ -43,38 +42,32 @@ trait ExternalAuthenticationSuite
         wiremock(name = "EXT1", mappings = "/external_authentication/wiremock_service1_cartman.json", "/external_authentication/wiremock_service1_morgan.json"),
         wiremock(name = "EXT2", mappings = "/external_authentication/wiremock_service2_cartman.json")
       ),
-      nodeDataInitializer = ExternalAuthenticationSuite.nodeDataInitializer(),
+      nodeDataInitializer = ElasticsearchTweetsInitializer,
       xPackSupport = false,
     )
   )
 
   "testAuthenticationSuccessWithService1" in {
-    val indexManager = new IndexManager(basicAuthClient("cartman", "user1"))
+    val indexManager = new IndexManager(basicAuthClient("cartman", "user1"), esVersionUsed)
     val response = indexManager.getIndex("twitter")
 
     response.responseCode shouldBe 200
   }
   "testAuthenticationSuccessWithService2" in {
-    val indexManager = new IndexManager(basicAuthClient("cartman", "user1"))
+    val indexManager = new IndexManager(basicAuthClient("cartman", "user1"), esVersionUsed)
     val response = indexManager.getIndex("facebook")
 
     response.responseCode shouldBe 200
   }
   "testAuthenticationErrorWithService1" in {
-    val firstIndexManager = new IndexManager(basicAuthClient("cartman", "user2"))
+    val firstIndexManager = new IndexManager(basicAuthClient("cartman", "user2"), esVersionUsed)
     val firstResult = firstIndexManager.getIndex("twitter")
 
     firstResult.responseCode shouldBe 403
 
-    val indexManager = new IndexManager(basicAuthClient("morgan", "user2"))
+    val indexManager = new IndexManager(basicAuthClient("morgan", "user2"), esVersionUsed)
     val response = indexManager.getIndex("twitter")
 
     response.responseCode shouldBe 403
-  }
-}
-
-object ExternalAuthenticationSuite {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    new ElasticsearchTweetsInitializer().initialize(adminRestClient)
   }
 }

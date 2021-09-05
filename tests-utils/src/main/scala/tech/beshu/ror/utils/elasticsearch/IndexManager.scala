@@ -23,8 +23,10 @@ import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
 import tech.beshu.ror.utils.elasticsearch.IndexManager.{AliasAction, AliasesResponse, GetIndexResponse, ReindexSource, ResolveResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.Version
 
 class IndexManager(client: RestClient,
+                   esVersion: String,
                    override val additionalHeaders: Map[String, String] = Map.empty)
   extends BaseManager(client) {
 
@@ -262,6 +264,15 @@ class IndexManager(client: RestClient,
           s"""
              |"index": "$index",
              |"type": "$indexType"
+             |""".stripMargin
+        case ReindexSource.Remote(index, address, username, password, _) if Version.greaterOrEqualThan(esVersion, 8, 0, 0) =>
+          s"""
+             |"index": "$index",
+             |"remote": {
+             |  "host": "$address",
+             |  "username": "$username",
+             |  "password": "$password"
+             |}
              |""".stripMargin
         case ReindexSource.Remote(index, address, username, password, indexType) =>
           s"""

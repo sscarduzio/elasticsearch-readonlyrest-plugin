@@ -18,7 +18,6 @@ package tech.beshu.ror.integration
 
 import java.util.Base64
 
-import com.dimafeng.testcontainers.ForAllTestContainer
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
@@ -28,10 +27,10 @@ import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.Forbidden
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, ForbiddenByMismatched}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{Group, FullLocalIndexWithAliases, User}
+import tech.beshu.ror.accesscontrol.domain.{FullLocalIndexWithAliases, Group, User}
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -39,12 +38,9 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 class GroupsRuleAccessControlTests
   extends AnyWordSpec
     with BaseYamlLoadedAccessControlTest
-    with ForAllTestContainer
     with Inside {
 
   private val (pub, secret) = Random.generateRsaRandomKeys
-
-  override val container: LdapContainer = new LdapContainer("LDAP1", "test_example.ldif")
 
   override protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
@@ -119,8 +115,8 @@ class GroupsRuleAccessControlTests
       |  #############################################################
       |  ldaps:
       |    - name: ldap1
-      |      host: "${container.ldapHost}"
-      |      port: ${container.ldapPort}
+      |      host: "${SingletonLdapContainers.ldap1.ldapHost}"
+      |      port: ${SingletonLdapContainers.ldap1.ldapPort}
       |      ssl_enabled: false                                        # default true
       |      ssl_trust_all_certs: true                                 # default false
       |      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind

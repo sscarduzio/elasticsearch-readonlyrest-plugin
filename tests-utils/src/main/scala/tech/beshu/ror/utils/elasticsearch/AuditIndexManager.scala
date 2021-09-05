@@ -23,11 +23,13 @@ import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, SimpleResponse}
 import tech.beshu.ror.utils.elasticsearch.SearchManager.SearchResult
 import tech.beshu.ror.utils.httpclient.RestClient
 
-class AuditIndexManager(restClient: RestClient, indexName: String)
+class AuditIndexManager(restClient: RestClient,
+                        esVersion: String,
+                        indexName: String)
   extends BaseManager(restClient) {
 
   private lazy val searchManager = new SearchManager(restClient)
-  private lazy val indexManager = new IndexManager(restClient)
+  private lazy val indexManager = new IndexManager(restClient, esVersion)
 
   def getEntries: AuditEntriesResult =
     eventually(new AuditEntriesResult(searchManager.search(indexName)))(

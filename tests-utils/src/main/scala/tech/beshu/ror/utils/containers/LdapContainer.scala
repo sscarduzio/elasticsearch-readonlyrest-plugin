@@ -33,7 +33,7 @@ import tech.beshu.ror.utils.misc.ScalaUtils._
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
-class LdapContainer(name: String, ldapInitScript: InitScriptSource)
+class LdapContainer private[containers] (name: String, ldapInitScript: InitScriptSource)
   extends GenericContainer(
     dockerImage = "osixia/openldap:1.1.7",
     env = Map(
@@ -55,7 +55,6 @@ class LdapContainer(name: String, ldapInitScript: InitScriptSource)
   override def stop(): Unit = {
     this.container.stop()
   }
-
 }
 
 object LdapContainer {
@@ -69,11 +68,15 @@ object LdapContainer {
     implicit def fromFile(file: File): InitScriptSource = AFile(file)
   }
 
-  def create(name: String, ldapInitScript: String): LdapContainer = {
+  def create(name: String, ldapInitScript: InitScriptSource): LdapContainer = {
     val ldapContainer = new LdapContainer(name, ldapInitScript)
     ldapContainer.container
       .setNetwork(Network.SHARED)
     ldapContainer
+  }
+
+  def create(name: String, ldapInitScript: String): LdapContainer = {
+    create(name, InitScriptSource.fromString(ldapInitScript))
   }
 
   object defaults {
@@ -97,6 +100,23 @@ object LdapContainer {
           .map(dc => s"cn=${defaults.ldap.adminName},$dc")
       }
     }
+  }
+}
+
+class NonStoppableLdapContainer private(name: String, ldapInitScript: InitScriptSource)
+  extends LdapContainer(name, ldapInitScript) {
+
+  override def start(): Unit = ()
+  override def stop(): Unit = ()
+
+  private [NonStoppableLdapContainer] def privateStart(): Unit = super.start()
+}
+object NonStoppableLdapContainer {
+  def createAndStart(name: String, ldapInitScript: InitScriptSource): NonStoppableLdapContainer = {
+    val ldap = new NonStoppableLdapContainer(name, ldapInitScript)
+    ldap.container.setNetwork(Network.SHARED)
+    ldap.privateStart()
+    ldap
   }
 }
 

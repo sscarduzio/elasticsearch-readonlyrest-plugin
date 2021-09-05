@@ -34,12 +34,12 @@ trait BaseIndexApiSuite
 
   override def nodeDataInitializer = Some(BaseIndexApiSuite.nodeDataInitializer())
 
-  private lazy val dev1IndexManager = new IndexManager(basicAuthClient("dev1", "test"))
-  private lazy val dev2IndexManager = new IndexManager(basicAuthClient("dev2", "test"))
-  private lazy val dev3IndexManager = new IndexManager(basicAuthClient("dev3", "test"))
-  private lazy val dev5IndexManager = new IndexManager(basicAuthClient("dev5", "test"))
-  private lazy val dev6IndexManager = new IndexManager(basicAuthClient("dev6", "test"))
-  private lazy val dev7IndexManager = new IndexManager(basicAuthClient("dev7", "test"))
+  private lazy val dev1IndexManager = new IndexManager(basicAuthClient("dev1", "test"), esVersionUsed)
+  private lazy val dev2IndexManager = new IndexManager(basicAuthClient("dev2", "test"), esVersionUsed)
+  private lazy val dev3IndexManager = new IndexManager(basicAuthClient("dev3", "test"), esVersionUsed)
+  private lazy val dev5IndexManager = new IndexManager(basicAuthClient("dev5", "test"), esVersionUsed)
+  private lazy val dev6IndexManager = new IndexManager(basicAuthClient("dev6", "test"), esVersionUsed)
+  private lazy val dev7IndexManager = new IndexManager(basicAuthClient("dev7", "test"), esVersionUsed)
 
   "ROR" when {
     "Get index API is used" should {
@@ -451,7 +451,7 @@ object BaseIndexApiSuite {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    val indexManager = new IndexManager(adminRestClient)
+    val indexManager = new IndexManager(adminRestClient, esVersion)
 
     documentManager.createDoc("index1", 1, ujson.read("""{"hello":"world"}""")).force()
     indexManager.createAliasOf("index1", "index1_alias").force()

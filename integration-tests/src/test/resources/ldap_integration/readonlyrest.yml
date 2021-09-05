@@ -42,6 +42,14 @@ readonlyrest:
       indices: ["test4"]
       groups: ["local_group2"]
 
+    - name: "::Test5 index::"
+      methods: GET
+      indices: ["test5"]
+      ldap_authentication:
+        name: "ldap3"
+      ldap_authorization:
+        name: "ldap3"
+        groups: ["europe"]
 
   users:
     - username: cartman
@@ -62,7 +70,7 @@ readonlyrest:
 
 
   ######### LDAP SERVERS CONFIGURATION ########################
-  # users:                                                    #
+  # people:                                                   #
   #   * cartman:user2                                         #
   #   * bong:user1                                            #
   #   * morgan:user1                                          #
@@ -71,6 +79,17 @@ readonlyrest:
   #   * group1: cartman, bong                                 #
   #   * group2: morgan, Bìlbö Bággįnš                         #
   #   * group3: morgan, cartman, bong                         #
+  #                                                           #
+  # gods:                                                     #
+  #   * jesus:user1                                           #
+  #   * allah:user2                                           #
+  #   * spaghetti:user2                                       #
+  # regions:                                                  #
+  #   * europe: jesus                                         #
+  #   * north america: jesus                                  #
+  #   * south america: jesus                                  #
+  #   * asia: allah                                           #
+  #   * africa: jesus, allah                                  #
   #############################################################
   ldaps:
     - name: ldap1
@@ -85,9 +104,9 @@ readonlyrest:
       user_id_attribute: "uid"                                  # default "uid"
       unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
       connection_pool_size: 10                                  # default 30
-      connection_timeout_in_sec: 10                             # default 1
-      request_timeout_in_sec: 10                                # default 1
-      cache_ttl_in_sec: 60                                      # default 0 - cache disabled
+      connection_timeout: 10s                                   # default 1
+      request_timeout: 10s                                      # default 1
+      cache_ttl: 60s                                            # default 0 - cache disabled
 
     - name: ldap2
       host: "{LDAP2_HOST}"
@@ -101,6 +120,23 @@ readonlyrest:
       user_id_attribute: "uid"                                  # default "uid"
       unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
       connection_pool_size: 10                                  # default 30
-      connection_timeout_in_sec: 10                             # default 1
-      request_timeout_in_sec: 10                                # default 1
-      cache_ttl_in_sec: 60                                      # default 0 - cache disabled
+      connection_timeout: 10s                                   # default 1
+      request_timeout: 10s                                      # default 1
+      cache_ttl: 60s                                            # default 0 - cache disabled
+
+    - name: ldap3
+      host: "{LDAP2_HOST}"
+      port: {LDAP2_PORT}                                        # default 389
+      ssl_enabled: false                                        # default true
+      ssl_trust_all_certs: true                                 # default false
+      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+      bind_password: "password"                                 # skip for anonymous bind
+      search_user_base_DN: "ou=Gods,dc=example,dc=com"
+      search_groups_base_DN: "ou=Regions,dc=example,dc=com"
+      groups_from_user: true
+      group_name_attribute: "cn"
+      groups_from_user_attribute: "title"
+      connection_pool_size: 10                                  # default 30
+      connection_timeout: 10s                                   # default 1
+      request_timeout: 10s                                      # default 1
+      cache_ttl: 60s                                            # default 0 - cache disabled

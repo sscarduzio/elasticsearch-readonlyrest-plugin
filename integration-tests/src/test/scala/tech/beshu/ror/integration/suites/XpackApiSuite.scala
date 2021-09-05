@@ -49,7 +49,7 @@ trait XpackApiSuite
     )
   )
 
-  private lazy val adminXpackApiManager = new XpackApiManager(basicAuthClient("admin", "container"), esVersionUsed)
+  private lazy val adminXpackApiManager = new XpackApiManager(adminClient, esVersionUsed)
   private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"))
   private lazy val dev2SearchManager = new SearchManager(basicAuthClient("dev2", "test"))
   private lazy val dev3XpackApiManager = new XpackApiManager(basicAuthClient("dev3", "test"), esVersionUsed)
@@ -940,7 +940,7 @@ object XpackApiSuite {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    val indexManager = new IndexManager(adminRestClient)
+    val indexManager = new IndexManager(adminRestClient, esVersion)
 
     createDocs(documentManager)
     storeScriptTemplate(adminRestClient)
