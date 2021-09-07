@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseSingleNodeEsClusterTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}

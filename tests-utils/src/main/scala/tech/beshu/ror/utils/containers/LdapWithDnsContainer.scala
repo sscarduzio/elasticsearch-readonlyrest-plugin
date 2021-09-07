@@ -22,7 +22,7 @@ import tech.beshu.ror.utils.containers.LdapContainer.InitScriptSource
 class LdapWithDnsContainer(name: String, ldapInitScript: InitScriptSource)
   extends Container {
 
-  private val ldapContainer = new LdapContainer(name, ldapInitScript)
+  private val ldapContainer = LdapContainer.create(name, ldapInitScript)
 
   private var dnsContainer: Option[DnsServerContainer] = None
 

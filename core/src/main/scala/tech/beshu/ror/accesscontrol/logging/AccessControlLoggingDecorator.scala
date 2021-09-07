@@ -121,7 +121,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl,
 
     context match {
       case AllowedBy(_, block, _, _) => shouldBeLogged(block)
-      case Allow(_, _, _, _) => true
+      case Allow(_, _, block, _) => shouldBeLogged(block)
       case _: ForbiddenBy[_] | _: Forbidden[_] | _: Errored[_] | _: RequestedIndexNotExist[_] => true
     }
   }

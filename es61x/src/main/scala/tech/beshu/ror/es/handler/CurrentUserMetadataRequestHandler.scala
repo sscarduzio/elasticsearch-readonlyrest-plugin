@@ -31,7 +31,8 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.EsRequest
-import tech.beshu.ror.es.handler.response.{ForbiddenResponse, RorNotAvailableResponse}
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.createRorNotEnabledResponse
+import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.utils.LoggerOps._
 
 import scala.collection.JavaConverters._
@@ -75,8 +76,10 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
     esContext.listener.onFailure(ForbiddenResponse.create(Nil, engine.accessControl.staticContext))
   }
 
-  private def onPassThrough(): Unit =
-    esContext.listener.onFailure(RorNotAvailableResponse.createRorNotEnabledResponse())
+  private def onPassThrough(): Unit = {
+    logger.warn(s"[${esContext.requestId}] Cannot handle the ${esContext.channel.request().path()} request because ReadonlyREST plugin was disabled in settings")
+    esContext.listener.onFailure(createRorNotEnabledResponse())
+  }
 }
 
 private class RRMetadataResponse(userMetadata: UserMetadata,

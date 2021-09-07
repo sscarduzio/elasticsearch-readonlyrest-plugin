@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.containers.dependencies.ldap
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
@@ -39,20 +40,23 @@ trait LdapIntegrationSuite
     EsClusterSettings(
       name = "ROR1",
       dependentServicesContainers = List(
-        ldap(name = "LDAP1", ldapInitScript = "/ldap_integration/ldap.ldif"),
-        ldap(name = "LDAP2", ldapInitScript = "/ldap_integration/ldap.ldif")
+        ldap(name = "LDAP1", SingletonLdapContainers.ldap1),
+        ldap(name = "LDAP2", SingletonLdapContainers.ldap2)
       ),
       nodeDataInitializer = LdapIntegrationSuite.nodeDataInitializer(),
       xPackSupport = false,
     )
   )
 
-  private lazy val cartmanIndexManager = new IndexManager(basicAuthClient("cartman", "user2"))
-  private lazy val chandlerIndexManager = new IndexManager(basicAuthClient("bong", "user1"))
-  private lazy val morganIndexManager = new IndexManager(basicAuthClient("morgan", "user1"))
-  private lazy val bilboIndexManager = new IndexManager(basicAuthClient("Bìlbö Bággįnš", "user2"))
+  private lazy val cartmanIndexManager = new IndexManager(basicAuthClient("cartman", "user2"), esVersionUsed)
+  private lazy val chandlerIndexManager = new IndexManager(basicAuthClient("bong", "user1"), esVersionUsed)
+  private lazy val morganIndexManager = new IndexManager(basicAuthClient("morgan", "user1"), esVersionUsed)
+  private lazy val bilboIndexManager = new IndexManager(basicAuthClient("Bìlbö Bággįnš", "user2"), esVersionUsed)
+  private lazy val jesusIndexManager = new IndexManager(basicAuthClient("jesus", "user1"), esVersionUsed)
+  private lazy val allahIndexManager = new IndexManager(basicAuthClient("allah", "user2"), esVersionUsed)
 
-  private def indexManagerWithHeader(client: RestClient, header: (String, String)) = new IndexManager(client, additionalHeaders = Map(header))
+  private def indexManagerWithHeader(client: RestClient, header: (String, String)) =
+    new IndexManager(client, esVersionUsed, additionalHeaders = Map(header))
 
   "Test1 index" can {
     "be seen" when {
@@ -101,7 +105,7 @@ trait LdapIntegrationSuite
         response.responseCode should be(404)
       }
       "user cannot be authenticated" in {
-        val indexManager = new IndexManager(basicAuthClient("cartman", "wrong_password"))
+        val indexManager = new IndexManager(basicAuthClient("cartman", "wrong_password"), esVersionUsed)
         val response = indexManager.getIndex("test1")
 
         response.responseCode should be(403)
@@ -178,6 +182,21 @@ trait LdapIntegrationSuite
       }
     }
   }
+
+  "Test 5 index" can {
+    "be seen" when {
+      "god is worshiped in europe" in {
+        val result = jesusIndexManager.getIndex("test5")
+        result.responseCode should be(200)
+      }
+    }
+    "not be seen" when {
+      "god is not worshiped in europe" in {
+        val result = allahIndexManager.getIndex("test5")
+        result.responseCode should be(403)
+      }
+    }
+  }
 }
 
 object LdapIntegrationSuite {
@@ -187,5 +206,6 @@ object LdapIntegrationSuite {
     documentManager.createDoc("test2", 1, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("test3", 1, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("test4", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test5", 1, ujson.read("""{"hello":"world"}""")).force()
   }
 }

@@ -413,7 +413,7 @@ object CrossClusterCallsSuite {
     documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-28",  ujson.read("""{"counter1":"50"}""")).force()
     documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-29",  ujson.read("""{"counter1":"50"}""")).force()
 
-    val indexManager = new IndexManager(adminRestClient)
+    val indexManager = new IndexManager(adminRestClient, esVersion)
     indexManager.createAliasOf("c02-logs-smg-stats-*", "c02-logs-smg-stats").force()
   }
 
@@ -423,7 +423,7 @@ object CrossClusterCallsSuite {
     documentManager.createFirstDoc("c03-logs-smg-stats-2020-03-28",  ujson.read("""{"counter1":"50"}""")).force()
     documentManager.createFirstDoc("c03-logs-smg-stats-2020-03-29",  ujson.read("""{"counter1":"50"}""")).force()
 
-    val indexManager = new IndexManager(adminRestClient)
+    val indexManager = new IndexManager(adminRestClient, esVersion)
     indexManager.createAliasOf("c03-logs-smg-stats-*", "c03-logs-smg-stats").force()
   }
 

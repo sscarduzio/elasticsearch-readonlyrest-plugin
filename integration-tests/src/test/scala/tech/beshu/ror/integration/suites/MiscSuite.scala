@@ -45,7 +45,7 @@ trait MiscSuite
   )
 
 
-  private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"))
+  private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"), esVersionUsed)
 
   "An x_forwarded_for" should {
     "block the request because hostname is not resolvable" in {

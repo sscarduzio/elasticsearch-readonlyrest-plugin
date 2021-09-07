@@ -63,7 +63,7 @@ trait RemoteReindexSuite
     )(rorConfigFileName)
   )
 
-  private lazy val destEsIndexManager = new IndexManager(clients.last.basicAuthClient("dev1", "test"))
+  private lazy val destEsIndexManager = new IndexManager(clients.last.basicAuthClient("dev1", "test"), esVersionUsed)
 
   private lazy val sourceEsContainer = sourceEsCluster.nodes.head
 

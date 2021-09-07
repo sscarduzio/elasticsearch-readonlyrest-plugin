@@ -79,6 +79,10 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
             command = s"echo 'cluster.initial_master_nodes: ${nodes.toList.mkString(",")}' >> /usr/share/elasticsearch/config/elasticsearch.yml",
             orElse = s"echo 'node.master: true' >> /usr/share/elasticsearch/config/elasticsearch.yml"
           )
+          .runWhen(Version.greaterOrEqualThan(esVersion, 7, 14, 0),
+            command = s"echo 'ingest.geoip.downloader.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
+          )
+
           .applyTo(builder)
 
         val javaOpts = {

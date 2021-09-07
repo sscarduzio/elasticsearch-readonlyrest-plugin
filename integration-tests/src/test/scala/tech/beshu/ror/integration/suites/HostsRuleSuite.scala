@@ -46,7 +46,7 @@ trait HostsRuleSuite
 object HostsRuleSuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    val indexManager = new IndexManager(adminRestClient)
+    val indexManager = new IndexManager(adminRestClient, esVersion)
 
     indexManager.createIndex("empty_index").force()
     documentManager.createDoc(".kibana", "documents", 1, ujson.read("""{"id": "asd123"}""")).force()

@@ -35,8 +35,8 @@ trait ResizeSuite
 
   override implicit val rorConfigFileName = "/resize/readonlyrest.yml"
 
-  private lazy val user1IndexManager = new IndexManager(basicAuthClient("dev1", "test"))
-  private lazy val user2IndexManager = new IndexManager(basicAuthClient("dev2", "test"))
+  private lazy val user1IndexManager = new IndexManager(basicAuthClient("dev1", "test"), esVersionUsed)
+  private lazy val user2IndexManager = new IndexManager(basicAuthClient("dev2", "test"), esVersionUsed)
 
 
   override def nodeDataInitializer = Some(ResizeSuite.nodeDataInitializer())
@@ -96,7 +96,7 @@ object ResizeSuite {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion: String, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    val indexManager = new IndexManager(adminRestClient)
+    val indexManager = new IndexManager(adminRestClient, esVersion)
 
     val shardSettings =
       ujson.read {

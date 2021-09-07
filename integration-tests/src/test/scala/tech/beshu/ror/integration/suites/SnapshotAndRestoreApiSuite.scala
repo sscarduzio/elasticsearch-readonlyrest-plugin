@@ -43,7 +43,7 @@ trait SnapshotAndRestoreApiSuite
   override def nodeDataInitializer = Some(SnapshotAndRestoreApiSuite.nodeDataInitializer())
 
   private lazy val adminSnapshotManager = new SnapshotManager(basicAuthClient("admin", "container"))
-  private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"))
+  private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"), esVersionUsed)
   private lazy val dev1SnapshotManager = new SnapshotManager(basicAuthClient("dev1", "test"))
   private lazy val dev2SnapshotManager = new SnapshotManager(basicAuthClient("dev2", "test"))
   private lazy val dev3SnapshotManager = new SnapshotManager(basicAuthClient("dev3", "test"))

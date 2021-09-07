@@ -30,14 +30,19 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "cve_check" ]]; then
     ./gradlew dependencyCheckAnalyze
 fi
 
-if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "unit" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "core_tests" ]]; then
     echo ">>> Running unit tests.."
-    ./gradlew --stacktrace test ror
+    ./gradlew --stacktrace core:test
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_proxy" ]]; then
     echo ">>> proxy => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=proxy' '-Pmode=proxy' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es714x" ]]; then
+    echo ">>> es714x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es714x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es711x" ]]; then
@@ -129,6 +134,10 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
 
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
+    #es714
+    ./gradlew --stacktrace es714x:ror '-PesVersion=7.14.1'
+    ./gradlew --stacktrace es714x:ror '-PesVersion=7.14.0'
+
     #es711
     ./gradlew --stacktrace es711x:ror '-PesVersion=7.13.4'
     ./gradlew --stacktrace es711x:ror '-PesVersion=7.13.3'
@@ -194,6 +203,7 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es6xx" ]]; then
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
     # es67
+    ./gradlew --stacktrace es67x:ror '-PesVersion=6.8.18'
     ./gradlew --stacktrace es67x:ror '-PesVersion=6.8.17'
     ./gradlew --stacktrace es67x:ror '-PesVersion=6.8.16'
     ./gradlew --stacktrace es67x:ror '-PesVersion=6.8.15'
