@@ -44,6 +44,12 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   extends Logging {
 
   def handle(request: RequestContext.Aux[CurrentUserMetadataRequestBlockContext] with EsRequest[CurrentUserMetadataRequestBlockContext]): Task[Unit] = {
+    import tech.beshu.ror.accesscontrol.request.RequestContextOps._
+    engine.secondAccessControl
+    request.impersonateAs match {
+      case Some(impersonateAs) =>
+      case None =>
+    }
     engine.accessControl
       .handleMetadataRequest(request)
       .map { r => commitResult(r.result, request) }

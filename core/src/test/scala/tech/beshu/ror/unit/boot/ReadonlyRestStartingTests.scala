@@ -74,7 +74,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
           )
           .runSyncUnsafe()
 
-        inside(result.map(_.engine)) { case Right(Some(engine)) =>
+        inside(result.map(_.mainEngine)) { case Right(Some(engine)) =>
           val acl = engine.accessControl
           acl shouldBe a [AccessControlLoggingDecorator]
           acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a [EnabledAcl]
@@ -91,7 +91,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
           )
           .runSyncUnsafe()
 
-        inside(result.map(_.engine)) { case Right(Some(engine)) =>
+        inside(result.map(_.mainEngine)) { case Right(Some(engine)) =>
           val acl = engine.accessControl
           acl shouldBe a [AccessControlLoggingDecorator]
           acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a [EnabledAcl]
@@ -116,7 +116,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
           )
           .runSyncUnsafe()
 
-        inside(result.map(_.engine)) { case Right(Some(engine)) =>
+        inside(result.map(_.mainEngine)) { case Right(Some(engine)) =>
           val acl = engine.accessControl
           acl shouldBe a [AccessControlLoggingDecorator]
           acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a [EnabledAcl]
@@ -139,7 +139,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
           )
           .runSyncUnsafe()
 
-        inside(result.map(_.engine)) { case Right(Some(engine)) =>
+        inside(result.map(_.mainEngine)) { case Right(Some(engine)) =>
           val acl = engine.accessControl
           acl shouldBe a [AccessControlLoggingDecorator]
           acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a [EnabledAcl]
@@ -169,18 +169,18 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
           .runSyncUnsafe()
 
         inside(result) { case Right(instance) =>
-          instance.engine.isDefined should be (true)
-          val acl = instance.engine.get.accessControl
+          instance.mainEngine.isDefined should be (true)
+          val acl = instance.mainEngine.get.accessControl
           acl shouldBe a [AccessControlLoggingDecorator]
           acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a [EnabledAcl]
 
-          val oldEngine = instance.engine.get
+          val oldEngine = instance.mainEngine.get
           val reload1Result = instance
             .forceReloadAndSave(rorConfigFromResource(resourcesPath + newIndexConfigFile))
             .runSyncUnsafe()
 
           reload1Result should be(Right(()))
-          assert(oldEngine != instance.engine.get, "Engine was not reloaded")
+          assert(oldEngine != instance.mainEngine.get, "Engine was not reloaded")
         }
       }
       "two parallel force reloads are invoked" in {
@@ -216,8 +216,8 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
           .runSyncUnsafe()
 
         inside(result) { case Right(instance) =>
-          instance.engine.isDefined should be (true)
-          val acl = instance.engine.get.accessControl
+          instance.mainEngine.isDefined should be (true)
+          val acl = instance.mainEngine.get.accessControl
           acl shouldBe a [AccessControlLoggingDecorator]
           acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a [EnabledAcl]
 
@@ -264,7 +264,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
           mockedIndexJsonContentManager
         )
         .flatMap { result =>
-          inside(result.map(_.engine)) { case Right(Some(engine)) =>
+          inside(result.map(_.mainEngine)) { case Right(Some(engine)) =>
             val acl = engine.accessControl
             acl shouldBe a[AccessControlLoggingDecorator]
             acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[DisabledAcl]
@@ -276,7 +276,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
         }
         .runSyncUnsafe()
 
-      inside(result.map(_.engine)) { case Right(Some(engine)) =>
+      inside(result.map(_.mainEngine)) { case Right(Some(engine)) =>
         val acl = engine.accessControl
         acl shouldBe a [AccessControlLoggingDecorator]
         acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a [EnabledAcl]

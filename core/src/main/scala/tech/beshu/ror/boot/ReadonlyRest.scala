@@ -36,6 +36,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.AccessControl
+import tech.beshu.ror.boot.RorInstance.{IndexConfigReloadError, IndexConfigReloadWithUpdateError, RawConfigReloadError}
 import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
 import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
@@ -227,42 +228,44 @@ class RorInstance private(boot: ReadonlyRest,
     case Mode.NoPeriodicIndexCheck => Cancelable.empty
   }
 
-  private val currentEngine = Atomic(Option(initialEngine))
+  private val aMainEngine = new MainEngine(
+    boot,
+    initialEngine,
+    reloadInProgress,
+    indexConfigManager,
+    rorConfigurationIndex,
+    auditSink
+  )
+  private val anImpersonatorsEngine = new ImpersonatorsEngine(
+    boot,
+    reloadInProgress,
+    indexConfigManager,
+    rorConfigurationIndex,
+    auditSink
+  )
 
-  def engine: Option[Engine] = currentEngine.get().map(_._1)
+  def mainEngine: Option[Engine] = aMainEngine.engine
 
-  def forceReloadAndSave(config: RawRorConfig): Task[Either[IndexConfigReloadWithUpdateError, Unit]] = {
-    logger.debug("Reloading of provided settings was forced")
+  def impersonatorsEngine: Option[Engine] = anImpersonatorsEngine.engine
+
+  def forceReloadFromIndex(): Task[Either[IndexConfigReloadError, Unit]] =
+    aMainEngine.forceReloadFromIndex()
+
+  def forceReloadAndSave(config: RawRorConfig): Task[Either[IndexConfigReloadWithUpdateError, Unit]] =
+    aMainEngine.forceReloadAndSave(config)
+
+  // todo: error
+  def forceReloadImpersonatorsEngine(config: RawRorConfig): Task[Either[Int, Unit]] = {
     reloadInProgress.withPermit {
-      value {
-        for {
-          _ <- reloadEngine(config).leftMap(IndexConfigReloadWithUpdateError.ReloadError.apply)
-          _ <- saveConfig(config)
-        } yield ()
-      }
+      logger.debug("Reloading of impersonators settings was forced")
+      ???
     }
   }
 
-  private def saveConfig(newConfig: RawRorConfig): EitherT[Task, IndexConfigReloadWithUpdateError, Unit] = EitherT {
-    for {
-      saveResult <- indexConfigManager.save(newConfig, rorConfigurationIndex)
-    } yield saveResult.left.map(IndexConfigReloadWithUpdateError.IndexConfigSavingError.apply)
-  }
-
-  def forceReloadFromIndex(): Task[Either[IndexConfigReloadError, Unit]] = {
-    reloadInProgress.withPermit {
-      logger.debug("Reloading of in-index settings was forced")
-      reloadEngineUsingIndexConfig().value
-    }
-  }
-
-  def stop(): Task[Unit] = {
-    reloadInProgress.withPermit {
-      Task {
-        currentEngine.get().foreach { case (engine, _) => engine.shutdown() }
-      }
-    }
-  }
+  def stop(): Task[Unit] = for {
+    _ <- anImpersonatorsEngine.stop()
+    _ <- aMainEngine.stop()
+  } yield ()
 
   private def scheduleIndexConfigChecking(interval: FiniteDuration Refined Positive): Cancelable = {
     logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index settings check within $interval")
@@ -300,20 +303,55 @@ class RorInstance private(boot: ReadonlyRest,
     }
     criticalSection.use {
       case true => value {
-        reloadEngineUsingIndexConfig().leftMap(ScheduledReloadError.EngineReloadError.apply)
+        aMainEngine
+          .reloadEngineUsingIndexConfig()
+          .leftMap(ScheduledReloadError.EngineReloadError.apply)
       }
       case false =>
         Task.now(Left(ScheduledReloadError.ReloadingInProgress))
     }
   }
 
-  private def reloadEngineUsingIndexConfig() = {
-    for {
-      newConfig <- EitherT(loadRorConfigFromIndex())
-      _ <- reloadEngine(newConfig)
-        .leftMap(IndexConfigReloadError.ReloadError.apply)
-        .leftWiden[IndexConfigReloadError]
-    } yield ()
+}
+
+private class MainEngine(boot: ReadonlyRest,
+                         initialEngine: (Engine, RawRorConfig),
+                         reloadInProgress: Semaphore[Task],
+                         indexConfigManager: IndexConfigManager,
+                         rorConfigurationIndex: RorConfigurationIndex,
+                         auditSink: AuditSinkService)
+                        (implicit scheduler: Scheduler)
+  extends Logging {
+
+  private val currentEngine = Atomic(Option(initialEngine))
+
+  def engine: Option[Engine] = currentEngine.get().map(_._1)
+
+  def forceReloadAndSave(config: RawRorConfig): Task[Either[IndexConfigReloadWithUpdateError, Unit]] = {
+    logger.debug("Reloading of provided settings was forced")
+    reloadInProgress.withPermit {
+      value {
+        for {
+          _ <- reloadEngine(config).leftMap(IndexConfigReloadWithUpdateError.ReloadError.apply)
+          _ <- saveConfig(config)
+        } yield ()
+      }
+    }
+  }
+
+  def forceReloadFromIndex(): Task[Either[IndexConfigReloadError, Unit]] = {
+    reloadInProgress.withPermit {
+      logger.debug("Reloading of in-index settings was forced")
+      reloadEngineUsingIndexConfig().value
+    }
+  }
+
+  def stop(): Task[Unit] = {
+    reloadInProgress.withPermit {
+      Task {
+        currentEngine.get().foreach { case (engine, _) => engine.shutdown() }
+      }
+    }
   }
 
   private def reloadEngine(newConfig: RawRorConfig) = {
@@ -323,12 +361,6 @@ class RorInstance private(boot: ReadonlyRest,
       oldEngine <- replaceCurrentEngine(newEngine, newConfig)
       _ <- scheduleDelayedShutdown(oldEngine)
     } yield ()
-  }
-
-  private def loadRorConfigFromIndex() = {
-    indexConfigManager
-      .load(rorConfigurationIndex)
-      .map(_.left.map(IndexConfigReloadError.LoadingConfigError.apply))
   }
 
   private def shouldBeReloaded(config: RawRorConfig): EitherT[Task, RawConfigReloadError, Unit] = {
@@ -368,8 +400,58 @@ class RorInstance private(boot: ReadonlyRest,
     })
   }
 
+  private [boot] def reloadEngineUsingIndexConfig() = {
+    for {
+      newConfig <- EitherT(loadRorConfigFromIndex())
+      _ <- reloadEngine(newConfig)
+        .leftMap(IndexConfigReloadError.ReloadError.apply)
+        .leftWiden[IndexConfigReloadError]
+    } yield ()
+  }
+
+  private def loadRorConfigFromIndex() = {
+    indexConfigManager
+      .load(rorConfigurationIndex)
+      .map(_.left.map(IndexConfigReloadError.LoadingConfigError.apply))
+  }
+
+  private def saveConfig(newConfig: RawRorConfig): EitherT[Task, IndexConfigReloadWithUpdateError, Unit] = EitherT {
+    for {
+      saveResult <- indexConfigManager.save(newConfig, rorConfigurationIndex)
+    } yield saveResult.left.map(IndexConfigReloadWithUpdateError.IndexConfigSavingError.apply)
+  }
+
   private def tryToLoadRorCore(config: RawRorConfig) =
     boot.loadRorCore(config, rorConfigurationIndex, auditSink)
+}
+
+private class ImpersonatorsEngine(boot: ReadonlyRest,
+                                  reloadInProgress: Semaphore[Task],
+                                  indexConfigManager: IndexConfigManager,
+                                  rorConfigurationIndex: RorConfigurationIndex,
+                                  auditSink: AuditSinkService)
+                                 (implicit scheduler: Scheduler)
+  extends Logging {
+
+  private val currentEngine = Atomic(Option.empty[Engine])
+
+  def engine: Option[Engine] = currentEngine.get()
+
+  // todo: error
+  def forceReloadImpersonatorsEngine(config: RawRorConfig): Task[Either[Int, Unit]] = {
+    reloadInProgress.withPermit {
+      logger.debug("Reloading of impersonators settings was forced")
+      ???
+    }
+  }
+
+  def stop(): Task[Unit] = {
+    reloadInProgress.withPermit {
+      Task {
+        currentEngine.get().foreach(_.shutdown())
+      }
+    }
+  }
 }
 
 object RorInstance {
@@ -442,7 +524,7 @@ object RorInstance {
     case object NoPeriodicIndexCheck extends Mode
   }
 
-  private val delayOfOldEngineShutdown = 10 seconds
+  private [boot] val delayOfOldEngineShutdown = 10 seconds
 }
 
 final case class StartingFailure(message: String, throwable: Option[Throwable] = None)

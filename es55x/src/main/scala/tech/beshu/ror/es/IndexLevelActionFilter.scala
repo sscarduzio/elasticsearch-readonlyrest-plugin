@@ -126,7 +126,7 @@ class IndexLevelActionFilter(settings: Settings,
         logger.warn(s"[${esContext.requestId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
         esContext.listener.onFailure(createRorNotReadyYetResponse())
       case RorInstanceStartingState.Started(instance) =>
-        instance.engine match {
+        instance.mainEngine match {
           case Some(engine) =>
             handleRequest(engine, esContext)
           case None =>
