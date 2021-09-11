@@ -25,19 +25,31 @@ import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.es.AuditSinkService
 
+import scala.concurrent.duration.FiniteDuration
+
 private[boot] class ImpersonatorsReloadableEngine(boot: ReadonlyRest,
                                                   reloadInProgress: Semaphore[Task],
                                                   rorConfigurationIndex: RorConfigurationIndex,
                                                   auditSink: AuditSinkService)
                                                  (implicit scheduler: Scheduler)
-  extends BaseReloadableEngine(boot, None, reloadInProgress, rorConfigurationIndex, auditSink) {
+  extends BaseReloadableEngine("test", boot, None, reloadInProgress, rorConfigurationIndex, auditSink) {
 
-  def forceReloadImpersonatorsEngine(config: RawRorConfig): Task[Either[RawConfigReloadError, Unit]] = {
+  def forceReloadImpersonatorsEngine(config: RawRorConfig,
+                                     ttl: Option[FiniteDuration]): Task[Either[RawConfigReloadError, Unit]] = {
     reloadInProgress.withPermit {
       for {
-        _ <- Task.delay(logger.debug("Reloading of impersonators settings was forced"))
-        reloadResult <- reloadEngine(config).value
+        _ <- Task.delay(logger.debug("Reloading of test settings was forced"))
+        reloadResult <- reloadEngine(config, ttl).value
       } yield reloadResult
+    }
+  }
+
+  def invalidateImpersonationEngine(): Task[Unit] = {
+    reloadInProgress.withPermit {
+      for {
+        _ <- Task.delay(logger.debug("Test settings will be invalidated ... "))
+        _ <- stop()
+      } yield ()
     }
   }
 }

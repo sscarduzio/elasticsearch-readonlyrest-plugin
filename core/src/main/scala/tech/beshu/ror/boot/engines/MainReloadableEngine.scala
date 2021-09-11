@@ -35,7 +35,7 @@ private [boot] class MainReloadableEngine(boot: ReadonlyRest,
                                           rorConfigurationIndex: RorConfigurationIndex,
                                           auditSink: AuditSinkService)
                                          (implicit scheduler: Scheduler)
-  extends BaseReloadableEngine(boot, Some(initialEngine), reloadInProgress, rorConfigurationIndex, auditSink) {
+  extends BaseReloadableEngine("main", boot, Some(initialEngine), reloadInProgress, rorConfigurationIndex, auditSink) {
 
   def forceReloadAndSave(config: RawRorConfig): Task[Either[IndexConfigReloadWithUpdateError, Unit]] = {
     for {

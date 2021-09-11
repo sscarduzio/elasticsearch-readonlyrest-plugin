@@ -16,12 +16,14 @@
  */
 package tech.beshu.ror.es.actions.rradmin
 
+import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
+import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
 import tech.beshu.ror.Constants
 import tech.beshu.ror.adminapi.AdminRestApi
 
-import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
+import scala.collection.JavaConverters._
 
 class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
 
@@ -43,17 +45,32 @@ object RRAdminRequest {
         AdminRestApi.AdminRequest.Type.ForceReload
       case (uri, method) if Constants.PROVIDE_INDEX_CONFIG_PATH.startsWith(uri) && method == GET =>
         AdminRestApi.AdminRequest.Type.ProvideIndexConfig
-      case (uri, method) if Constants.UPDATE_TEST_CONFIG_PATH.startsWith(uri) && method == POST =>
-        AdminRestApi.AdminRequest.Type.UpdateTestConfig
-      case (uri, method) if Constants.UPDATE_INDEX_CONFIG_PATH.startsWith(uri) && method == POST =>
-        AdminRestApi.AdminRequest.Type.UpdateIndexConfig
       case (uri, method) if Constants.PROVIDE_FILE_CONFIG_PATH.startsWith(uri) && method == GET =>
         AdminRestApi.AdminRequest.Type.ProvideFileConfig
+      case (uri, method) if Constants.UPDATE_TEST_CONFIG_PATH.startsWith(uri) && method == POST =>
+        AdminRestApi.AdminRequest.Type.UpdateTestConfig
+      case (uri, method) if Constants.DELETE_TEST_CONFIG_PATH.startsWith(uri) && method == DELETE =>
+        AdminRestApi.AdminRequest.Type.InvalidateTestConfig
+      case (uri, method) if Constants.UPDATE_INDEX_CONFIG_PATH.startsWith(uri) && method == POST =>
+        AdminRestApi.AdminRequest.Type.UpdateIndexConfig
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }
     new RRAdminRequest(
-      new AdminRestApi.AdminRequest(requestType, request.method.name, request.path, request.content.utf8ToString)
+      new AdminRestApi.AdminRequest(
+        requestType,
+        request.method.name,
+        request.path,
+        request
+          .getHeaders.asScala
+          .flatMap { case (name, values) =>
+            NonEmptyList
+              .fromList(values.asScala.toList)
+              .map((name, _))
+          }
+          .toMap,
+        request.content.utf8ToString
+      )
     )
   }
 }

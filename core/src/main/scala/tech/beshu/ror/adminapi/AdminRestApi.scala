@@ -16,9 +16,11 @@
  */
 package tech.beshu.ror.adminapi
 
-import cats.data.EitherT
+import cats.data.{EitherT, NonEmptyList}
 import cats.implicits._
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.adminapi.AdminRestApi.AdminRequest.Type
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
@@ -30,10 +32,14 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.Specia
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
 
+import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.util.Try
+
 class AdminRestApi(rorInstance: RorInstance,
                    indexConfigManager: IndexConfigManager,
                    fileConfigLoader: FileConfigLoader,
-                   rorConfigurationIndex: RorConfigurationIndex) {
+                   rorConfigurationIndex: RorConfigurationIndex)
+  extends Logging {
 
   import AdminRestApi._
 
@@ -41,9 +47,10 @@ class AdminRestApi(rorInstance: RorInstance,
     val apiCallResult = request.aType match {
       case Type.ForceReload => forceReloadRor()
       case Type.ProvideIndexConfig => provideRorIndexConfig()
-      case Type.UpdateIndexConfig => updateIndexConfiguration(request.body)
-      case Type.UpdateTestConfig => updateTestConfiguration(request.body)
       case Type.ProvideFileConfig => provideRorFileConfig()
+      case Type.UpdateIndexConfig => updateIndexConfiguration(request.body)
+      case Type.UpdateTestConfig => updateTestConfiguration(request.body, testConfigTtlFrom(request.headers))
+      case Type.InvalidateTestConfig => invalidateTestConfiguration()
       case Type.CurrentUserMetadata => Task.now(Success("ok"))
     }
     apiCallResult
@@ -74,15 +81,24 @@ class AdminRestApi(rorInstance: RorInstance,
     }
   }
 
-  private def updateTestConfiguration(body: String): Task[ApiCallResult] = {
+  private def updateTestConfiguration(body: String,
+                                      ttl: Option[FiniteDuration]): Task[ApiCallResult] = {
     val result = for {
       config <- rorConfigFrom(body)
-      _ <- forceReloadTestConfig(config)
+      _ <- forceReloadTestConfig(config, ttl)
     } yield ()
     result.value.map {
       case Right(_) => Success("updated settings")
       case Left(failure) => failure
     }
+  }
+
+  private def invalidateTestConfiguration(): Task[ApiCallResult] = {
+    rorInstance
+      .invalidateImpersonationEngine()
+      .map { _ =>
+        Success("test settings invalidated")
+      }
   }
 
   private def provideRorFileConfig(): Task[ApiCallResult] = {
@@ -147,8 +163,9 @@ class AdminRestApi(rorInstance: RorInstance,
       }
   }
 
-  private def forceReloadTestConfig(config: RawRorConfig) = {
-    EitherT(rorInstance.forceReloadImpersonatorsEngine(config))
+  private def forceReloadTestConfig(config: RawRorConfig,
+                                    ttl: Option[FiniteDuration]) = {
+    EitherT(rorInstance.forceReloadImpersonatorsEngine(config, ttl))
       .leftMap {
         case RawConfigReloadError.ReloadingFailed(failure) =>
           Failure(s"Cannot reload new settings: ${failure.message}")
@@ -159,19 +176,37 @@ class AdminRestApi(rorInstance: RorInstance,
       }
   }
 
+  private def testConfigTtlFrom(headers: Map[String, NonEmptyList[String]]) = {
+    headers
+      .find { case (name, _) => name.toLowerCase == Constants.HEADER_TEST_CONFIG_TTL}
+      .map { case (_, values) => values.head }
+      .flatMap { value =>
+        Try(Duration(value)).toOption match {
+          case Some(v: FiniteDuration) if v.toMillis > 0 => Some(v)
+          case Some(_) | None =>
+            logger.warn(s"Cannot parse '$value' of ${Constants.HEADER_TEST_CONFIG_TTL} header.")
+            None
+        }
+      }
+  }
 }
 
 object AdminRestApi {
 
-  final case class AdminRequest(aType: AdminRequest.Type, method: String, uri: String, body: String)
+  final case class AdminRequest(aType: AdminRequest.Type,
+                                method: String,
+                                uri: String,
+                                headers: Map[String, NonEmptyList[String]],
+                                body: String)
   object AdminRequest {
     sealed trait Type
     object Type {
       case object ForceReload extends Type
       case object ProvideIndexConfig extends Type
+      case object ProvideFileConfig extends Type
       case object UpdateIndexConfig extends Type
       case object UpdateTestConfig extends Type
-      case object ProvideFileConfig extends Type
+      case object InvalidateTestConfig extends Type
       case object CurrentUserMetadata extends Type
     }
   }

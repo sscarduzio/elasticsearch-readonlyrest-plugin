@@ -17,11 +17,13 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
-import org.apache.http.client.methods.{HttpGet, HttpPost}
+import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
+
 import scala.collection.JavaConverters._
+import scala.concurrent.duration.FiniteDuration
 
 class RorApiManager(client: RestClient,
                     override val additionalHeaders: Map[String, String] = Map.empty)
@@ -59,6 +61,10 @@ class RorApiManager(client: RestClient,
     call(createUpdateRorTestConfigRequest(config), new JsonResponse(_))
   }
 
+  def invalidateRorTestConfig(): JsonResponse = {
+    call(createInvalidateRorTestConfigRequest(), new JsonResponse(_))
+  }
+
   def reloadRorConfig(): JsonResponse = {
     call(createReloadRorConfigRequest(), new JsonResponse(_))
   }
@@ -87,13 +93,19 @@ class RorApiManager(client: RestClient,
     request
   }
 
-  private def createUpdateRorTestConfigRequest(config: String) = {
+  private def createUpdateRorTestConfigRequest(config: String,
+                                               ttl: Option[FiniteDuration] = None) = {
     val request = new HttpPost(client.from("/_readonlyrest/admin/config/test"))
     request.addHeader("Content-Type", "application/json")
+    ttl.foreach(t => request.addHeader("x-ror-test-config-ttl", t.toString()))
     request.setEntity(new StringEntity(
       s"""{"settings": "${escapeJava(config)}"}"""
     ))
     request
+  }
+
+  private def createInvalidateRorTestConfigRequest() = {
+    new HttpDelete(client.from("/_readonlyrest/admin/config/test"))
   }
 
   private def createGetRorFileConfigRequest() = {

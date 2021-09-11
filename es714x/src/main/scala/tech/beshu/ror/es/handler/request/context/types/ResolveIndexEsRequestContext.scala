@@ -49,7 +49,7 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
                                 filteredIndices: NonEmptyList[ClusterIndexName],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indices(filteredIndices.toList.map(_.stringify): _*)
-    ModificationResult.UpdateResponse(resp => Task.now(filterResponse(resp, allAllowedIndices)))
+    ModificationResult.UpdateResponse(resp => Task.delay(filterResponse(resp, allAllowedIndices)))
   }
 
   override def modifyWhenIndexNotFound: ModificationResult = {
