@@ -44,7 +44,8 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   extends Logging {
 
   def handle(request: RequestContext.Aux[CurrentUserMetadataRequestBlockContext] with EsRequest[CurrentUserMetadataRequestBlockContext]): Task[Unit] = {
-    engine.accessControl
+    engine
+      .accessControl
       .handleMetadataRequest(request)
       .map { r => commitResult(r.result, request) }
   }

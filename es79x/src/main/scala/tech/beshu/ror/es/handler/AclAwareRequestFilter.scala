@@ -61,8 +61,10 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.Engine
+import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
@@ -72,6 +74,7 @@ import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
 import scala.language.postfixOps
 import scala.reflect.ClassTag
+import scala.collection.JavaConverters._
 
 class AclAwareRequestFilter(clusterService: RorClusterService,
                             settings: Settings,
@@ -80,8 +83,9 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
                             scheduler: Scheduler)
   extends Logging {
 
-  def handle(engine: Engine,
+  def handle(engines: Engines,
              esContext: EsContext): Task[Unit] = {
+    val engine = esContext.pickEngineToHandle(engines)
     esContext.actionRequest match {
       case request: RRUserMetadataRequest =>
         val handler = new CurrentUserMetadataRequestHandler(engine, esContext)
@@ -237,6 +241,17 @@ object AclAwareRequestFilter {
                              threadContextResponseHeaders: Set[(String, String)]) {
     lazy val requestId = s"${channel.request().hashCode()}-${actionRequest.hashCode()}#${task.getId}"
     val timestamp: Instant = Instant.now()
+
+    def pickEngineToHandle(engines: Engines): Engine = {
+      val impersonationHeaderPresent = channel
+        .request()
+        .getHeaders.asScala
+        .exists { case (name, _) => name == Header.Name.impersonateAs.value.value }
+      engines.impersonatorsEngine match {
+        case Some(impersonatorsEngine) if impersonationHeaderPresent => impersonatorsEngine
+        case Some(_) | None => engines.mainEngine
+      }
+    }
   }
 }
 
