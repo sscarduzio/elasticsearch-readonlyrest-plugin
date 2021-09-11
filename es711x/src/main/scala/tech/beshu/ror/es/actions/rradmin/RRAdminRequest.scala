@@ -16,12 +16,15 @@
  */
 package tech.beshu.ror.es.actions.rradmin
 
+import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
 import tech.beshu.ror.Constants
 import tech.beshu.ror.adminapi.AdminRestApi
-
 import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
+
+import scala.collection.JavaConverters._
+import scala.collection.JavaConverters._
 
 class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
 
@@ -50,7 +53,20 @@ object RRAdminRequest {
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }
     new RRAdminRequest(
-      new AdminRestApi.AdminRequest(requestType, request.method.name, request.path, request.content.utf8ToString)
+      new AdminRestApi.AdminRequest(
+        requestType,
+        request.method.name,
+        request.path,
+        request
+          .getHeaders.asScala
+          .flatMap { case (name, values) =>
+            NonEmptyList
+              .fromList(values.asScala.toList)
+              .map((name, _))
+          }
+          .toMap,
+        request.content.utf8ToString
+      )
     )
   }
 }
