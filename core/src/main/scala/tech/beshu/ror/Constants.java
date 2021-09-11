@@ -36,6 +36,7 @@ public class Constants {
   public final static String AUDIT_EVENT_COLLECTOR_PATH = "/_readonlyrest/admin/audit/event/";
   public final static String FORCE_RELOAD_CONFIG_PATH = "/_readonlyrest/admin/refreshconfig/";
   public final static String UPDATE_INDEX_CONFIG_PATH = "/_readonlyrest/admin/config/";
+  public final static String UPDATE_TEST_CONFIG_PATH = "/_readonlyrest/admin/config/test";
   public final static String PROVIDE_INDEX_CONFIG_PATH = "/_readonlyrest/admin/config/";
   public final static String PROVIDE_FILE_CONFIG_PATH = "/_readonlyrest/admin/config/file/";
   public final static String MANAGE_ROR_CONFIG_PATH = "/_readonlyrest/admin/config/load";

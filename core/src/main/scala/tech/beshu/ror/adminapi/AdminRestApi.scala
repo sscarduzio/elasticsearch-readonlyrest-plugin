@@ -19,12 +19,8 @@ package tech.beshu.ror.adminapi
 import cats.data.EitherT
 import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.adminapi.AdminRestApi.AdminRequest.Type
-import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
-import shapeless.HNil
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.boot.RorInstance
+import tech.beshu.ror.adminapi.AdminRestApi.AdminRequest.Type
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigReloadError, RawConfigReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
@@ -46,6 +42,7 @@ class AdminRestApi(rorInstance: RorInstance,
       case Type.ForceReload => forceReloadRor()
       case Type.ProvideIndexConfig => provideRorIndexConfig()
       case Type.UpdateIndexConfig => updateIndexConfiguration(request.body)
+      case Type.UpdateTestConfig => updateTestConfiguration(request.body)
       case Type.ProvideFileConfig => provideRorFileConfig()
       case Type.CurrentUserMetadata => Task.now(Success("ok"))
     }
@@ -70,6 +67,17 @@ class AdminRestApi(rorInstance: RorInstance,
     val result = for {
       config <- rorConfigFrom(body)
       _ <- forceReloadAndSaveNewConfig(config)
+    } yield ()
+    result.value.map {
+      case Right(_) => Success("updated settings")
+      case Left(failure) => failure
+    }
+  }
+
+  private def updateTestConfiguration(body: String): Task[ApiCallResult] = {
+    val result = for {
+      config <- rorConfigFrom(body)
+      _ <- forceReloadTestConfig(config)
     } yield ()
     result.value.map {
       case Right(_) => Success("updated settings")
@@ -109,10 +117,11 @@ class AdminRestApi(rorInstance: RorInstance,
 
   private def settingsValue(json: io.circe.Json) = {
     def liftFailure(failureMessage: String) = EitherT.leftT[Task, RawRorConfig](Failure(failureMessage))
+
     json \\ "settings" match {
       case Nil =>
         liftFailure("Malformed settings payload - no settings key")
-      case configJsonValue :: Nil  =>
+      case configJsonValue :: Nil =>
         configJsonValue.asString match {
           case Some(configString) =>
             EitherT(RawRorConfig.fromString(configString).map(_.left.map(error => Failure(error.show))))
@@ -138,6 +147,18 @@ class AdminRestApi(rorInstance: RorInstance,
       }
   }
 
+  private def forceReloadTestConfig(config: RawRorConfig) = {
+    EitherT(rorInstance.forceReloadImpersonatorsEngine(config))
+      .leftMap {
+        case RawConfigReloadError.ReloadingFailed(failure) =>
+          Failure(s"Cannot reload new settings: ${failure.message}")
+        case RawConfigReloadError.ConfigUpToDate =>
+          Failure(s"Current settings are already loaded")
+        case RawConfigReloadError.RorInstanceStopped =>
+          Failure(s"ROR instance is being stopped")
+      }
+  }
+
 }
 
 object AdminRestApi {
@@ -149,6 +170,7 @@ object AdminRestApi {
       case object ForceReload extends Type
       case object ProvideIndexConfig extends Type
       case object UpdateIndexConfig extends Type
+      case object UpdateTestConfig extends Type
       case object ProvideFileConfig extends Type
       case object CurrentUserMetadata extends Type
     }
@@ -156,6 +178,7 @@ object AdminRestApi {
   final case class AdminResponse(result: ApiCallResult)
   object AdminResponse {
     def notAvailable: AdminResponse = AdminResponse(Failure("Service not available"))
+
     def internalError: AdminResponse = AdminResponse(Failure("Internal error"))
   }
 

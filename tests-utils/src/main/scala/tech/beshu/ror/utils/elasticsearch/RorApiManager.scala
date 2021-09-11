@@ -52,7 +52,11 @@ class RorApiManager(client: RestClient,
   }
 
   def updateRorInIndexConfig(config: String): JsonResponse = {
-    call(createUpdateRorConfigRequest(config), new JsonResponse(_))
+    call(createUpdateRorInIndexConfigRequest(config), new JsonResponse(_))
+  }
+
+  def updateRorTestConfig(config: String): JsonResponse = {
+    call(createUpdateRorTestConfigRequest(config), new JsonResponse(_))
   }
 
   def reloadRorConfig(): JsonResponse = {
@@ -74,8 +78,17 @@ class RorApiManager(client: RestClient,
     request
   }
 
-  private def createUpdateRorConfigRequest(config: String) = {
+  private def createUpdateRorInIndexConfigRequest(config: String) = {
     val request = new HttpPost(client.from("/_readonlyrest/admin/config"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""{"settings": "${escapeJava(config)}"}"""
+    ))
+    request
+  }
+
+  private def createUpdateRorTestConfigRequest(config: String) = {
+    val request = new HttpPost(client.from("/_readonlyrest/admin/config/test"))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(
       s"""{"settings": "${escapeJava(config)}"}"""

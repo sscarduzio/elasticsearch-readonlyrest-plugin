@@ -38,10 +38,13 @@ object RRAdminRequest {
 
   def createFrom(request: RestRequest): RRAdminRequest = {
     val requestType = (request.uri(), request.method()) match {
+      // todo: do it better than startsWith?
       case (uri, method) if Constants.FORCE_RELOAD_CONFIG_PATH.startsWith(uri) && method == POST =>
         AdminRestApi.AdminRequest.Type.ForceReload
       case (uri, method) if Constants.PROVIDE_INDEX_CONFIG_PATH.startsWith(uri) && method == GET =>
         AdminRestApi.AdminRequest.Type.ProvideIndexConfig
+      case (uri, method) if Constants.UPDATE_TEST_CONFIG_PATH.startsWith(uri) && method == POST =>
+        AdminRestApi.AdminRequest.Type.UpdateTestConfig
       case (uri, method) if Constants.UPDATE_INDEX_CONFIG_PATH.startsWith(uri) && method == POST =>
         AdminRestApi.AdminRequest.Type.UpdateIndexConfig
       case (uri, method) if Constants.PROVIDE_FILE_CONFIG_PATH.startsWith(uri) && method == GET =>
