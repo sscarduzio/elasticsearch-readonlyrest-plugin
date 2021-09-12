@@ -32,7 +32,8 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.Specia
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
 
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.util.Try
 
 class AdminRestApi(rorInstance: RorInstance,
@@ -165,20 +166,28 @@ class AdminRestApi(rorInstance: RorInstance,
 
   private def forceReloadTestConfig(config: RawRorConfig,
                                     ttl: Option[FiniteDuration]) = {
-    EitherT(rorInstance.forceReloadImpersonatorsEngine(config, ttl))
-      .leftMap {
-        case RawConfigReloadError.ReloadingFailed(failure) =>
-          Failure(s"Cannot reload new settings: ${failure.message}")
-        case RawConfigReloadError.ConfigUpToDate =>
-          Failure(s"Current settings are already loaded")
-        case RawConfigReloadError.RorInstanceStopped =>
-          Failure(s"ROR instance is being stopped")
-      }
+    EitherT(
+      rorInstance
+        .forceReloadImpersonatorsEngine(
+          config,
+          ttl.getOrElse(defaults.testConfigEngineDefaultTtl)
+        )
+        .map {
+          _.leftMap {
+            case RawConfigReloadError.ReloadingFailed(failure) =>
+              Failure(s"Cannot reload new settings: ${failure.message}")
+            case RawConfigReloadError.ConfigUpToDate =>
+              Failure(s"Current settings are already loaded")
+            case RawConfigReloadError.RorInstanceStopped =>
+              Failure(s"ROR instance is being stopped")
+          }
+        }
+    )
   }
 
   private def testConfigTtlFrom(headers: Map[String, NonEmptyList[String]]) = {
     headers
-      .find { case (name, _) => name.toLowerCase == Constants.HEADER_TEST_CONFIG_TTL}
+      .find { case (name, _) => name.toLowerCase == Constants.HEADER_TEST_CONFIG_TTL }
       .map { case (_, values) => values.head }
       .flatMap { value =>
         Try(Duration(value)).toOption match {
@@ -223,4 +232,8 @@ object AdminRestApi {
   final case class Success(message: String) extends ApiCallResult
   final case class ConfigNotFound(message: String) extends ApiCallResult
   final case class Failure(message: String) extends ApiCallResult
+
+  object defaults {
+    val testConfigEngineDefaultTtl: FiniteDuration = 30 minutes
+  }
 }

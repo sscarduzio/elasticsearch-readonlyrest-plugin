@@ -22,11 +22,12 @@ import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.boot.RorInstance.{IndexConfigReloadError, IndexConfigReloadWithUpdateError}
+import tech.beshu.ror.boot.RorInstance._
 import tech.beshu.ror.boot.{Engine, ReadonlyRest}
 import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.utils.ScalaOps.value
+import ConfigHash._
 
 private [boot] class MainReloadableEngine(boot: ReadonlyRest,
                                           initialEngine: (Engine, RawRorConfig),
@@ -39,7 +40,7 @@ private [boot] class MainReloadableEngine(boot: ReadonlyRest,
 
   def forceReloadAndSave(config: RawRorConfig): Task[Either[IndexConfigReloadWithUpdateError, Unit]] = {
     for {
-      _ <- Task.delay(logger.debug("Reloading of provided settings was forced"))
+      _ <- Task.delay(logger.info(s"[${config.hashString()}] Reloading of provided settings was forced"))
       reloadResult <- reloadInProgress.withPermit {
         value {
           for {
@@ -54,7 +55,7 @@ private [boot] class MainReloadableEngine(boot: ReadonlyRest,
   def forceReloadFromIndex(): Task[Either[IndexConfigReloadError, Unit]] = {
     reloadInProgress.withPermit {
       for {
-        _ <- Task.delay(logger.debug("Reloading of in-index settings was forced"))
+        _ <- Task.delay(logger.info("Reloading of in-index settings was forced"))
         reloadResult <- reloadEngineUsingIndexConfig()
       } yield reloadResult
     }
@@ -69,6 +70,9 @@ private [boot] class MainReloadableEngine(boot: ReadonlyRest,
     } yield ()
     result.value
   }
+
+  override protected val stateAfterStop: BaseReloadableEngine.EngineState =
+    BaseReloadableEngine.EngineState.Stopped
 
   private def saveConfig(newConfig: RawRorConfig): EitherT[Task, IndexConfigReloadWithUpdateError, Unit] = EitherT {
     for {

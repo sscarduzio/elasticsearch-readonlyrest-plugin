@@ -253,7 +253,7 @@ class RorInstance private(boot: ReadonlyRest,
     aMainEngine.forceReloadAndSave(config)
 
   def forceReloadImpersonatorsEngine(config: RawRorConfig,
-                                     ttl: Option[FiniteDuration]): Task[Either[RawConfigReloadError, Unit]] = {
+                                     ttl: FiniteDuration): Task[Either[RawConfigReloadError, Unit]] = {
     anImpersonatorsEngine.forceReloadImpersonatorsEngine(config, ttl)
   }
 

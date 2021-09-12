@@ -21,11 +21,12 @@ import cats.implicits._
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.execution.atomic.Atomic
+import monix.execution.atomic.{Atomic, AtomicAny}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
-import tech.beshu.ror.boot.engines.BaseReloadableEngine.delayOfOldEngineShutdown
+import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineState, delayOfOldEngineShutdown}
+import tech.beshu.ror.boot.engines.ConfigHash._
 import tech.beshu.ror.boot.{Engine, ReadonlyRest}
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.es.AuditSinkService
@@ -33,55 +34,74 @@ import tech.beshu.ror.es.AuditSinkService
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-private[engines] class BaseReloadableEngine(name: String,
-                                            boot: ReadonlyRest,
-                                            initialEngine: Option[(Engine, RawRorConfig)],
-                                            reloadInProgress: Semaphore[Task],
-                                            rorConfigurationIndex: RorConfigurationIndex,
-                                            auditSink: AuditSinkService)
-                                           (implicit scheduler: Scheduler)
+private[engines] abstract class BaseReloadableEngine(name: String,
+                                                     boot: ReadonlyRest,
+                                                     initialEngine: Option[(Engine, RawRorConfig)],
+                                                     reloadInProgress: Semaphore[Task],
+                                                     rorConfigurationIndex: RorConfigurationIndex,
+                                                     auditSink: AuditSinkService)
+                                                    (implicit scheduler: Scheduler)
   extends Logging {
 
-  private val currentEngine = Atomic(initialEngine)
+  private val currentEngine: Atomic[EngineState] = AtomicAny[EngineState](
+    initialEngine match {
+      case Some((engine, config)) => EngineState.Working(engine, config)
+      case None => EngineState.NotStartedYet
+    }
+  )
 
-  def engine: Option[Engine] = currentEngine.get().map(_._1)
+  protected def stateAfterStop: EngineState
+
+  def engine: Option[Engine] = currentEngine.get() match {
+    case EngineState.NotStartedYet => None
+    case EngineState.Working(engine, _) => Some(engine)
+    case EngineState.Stopped => None
+  }
 
   def stop(): Task[Unit] = {
     reloadInProgress.withPermit {
       for {
-        optEngine <- Task.delay(currentEngine.getAndSet(None))
-        _ <- Task.delay(optEngine.foreach { case (engine, _) => engine.shutdown() })
-        _ <- Task.delay(logger.info(s"ROR $name engine stopped!"))
+        state <- Task.delay(currentEngine.getAndSet(stateAfterStop))
+        _ <- Task.delay {
+          state match {
+            case EngineState.NotStartedYet =>
+            case EngineState.Working(engine, config) =>
+              engine.shutdown()
+              logger.info(s"[${config.hashString()}] ROR $name engine stopped!")
+            case EngineState.Stopped =>
+          }
+        }
       } yield ()
     }
   }
 
   protected def reloadEngine(newConfig: RawRorConfig,
-                             ttl: Option[FiniteDuration] = None): EitherT[Task, RawConfigReloadError, Unit] = {
+                             newConfigEngineTtl: Option[FiniteDuration] = None): EitherT[Task, RawConfigReloadError, Unit] = {
     for {
       _ <- shouldBeReloaded(newConfig)
       newEngine <- reloadWith(newConfig)
       oldEngine <- replaceCurrentEngine(newEngine, newConfig)
-      _ <- scheduleDelayedShutdown(oldEngine)
-      _ <- ttl match {
+      _ <- oldEngine match {
+        case Some(engineToStop) => scheduleDelayedShutdown(engineToStop) // it doesn't work atm!!
+        case None => EitherT.pure[Task, RawConfigReloadError](())
+      }
+      _ <- newConfigEngineTtl match {
         case Some(t) => scheduleDelayedShutdown(newEngine, t)
         case None => EitherT.pure[Task, RawConfigReloadError](())
       }
     } yield ()
   }
 
-  private def shouldBeReloaded(config: RawRorConfig): EitherT[Task, RawConfigReloadError, Unit] = {
+  private def shouldBeReloaded(newConfig: RawRorConfig): EitherT[Task, RawConfigReloadError, Unit] = {
     currentEngine.get() match {
-      case Some((_, currentConfig)) =>
-        EitherT.cond[Task](
-          currentConfig != config,
-          (),
-          RawConfigReloadError.ConfigUpToDate
-        )
-      case None =>
-        EitherT.leftT[Task, Unit](RawConfigReloadError.RorInstanceStopped)
+      case EngineState.NotStartedYet => doReload
+      case EngineState.Working(_, currentConfig) if currentConfig != newConfig => doReload
+      case EngineState.Working(_, _) => EitherT.leftT[Task, Unit](RawConfigReloadError.ConfigUpToDate)
+      case EngineState.Stopped => EitherT.leftT[Task, Unit](RawConfigReloadError.RorInstanceStopped)
     }
   }
+
+  private lazy val doReload = EitherT.pure[Task, RawConfigReloadError](())
 
   private def reloadWith(config: RawRorConfig): EitherT[Task, RawConfigReloadError, Engine] = EitherT {
     tryToLoadRorCore(config)
@@ -92,13 +112,16 @@ private[engines] class BaseReloadableEngine(name: String,
     boot.loadRorCore(config, rorConfigurationIndex, auditSink)
 
   private def replaceCurrentEngine(newEngine: Engine,
-                                   newEngineConfig: RawRorConfig): EitherT[Task, RawConfigReloadError, Engine] = {
-    currentEngine
-      .getAndTransform {
-        _.map(_ => (newEngine, newEngineConfig))
-      } match {
-      case Some((engine, _)) => EitherT.rightT[Task, RawConfigReloadError](engine)
-      case None => EitherT.leftT[Task, Engine](RawConfigReloadError.RorInstanceStopped)
+                                   newEngineConfig: RawRorConfig): EitherT[Task, RawConfigReloadError, Option[Engine]] = {
+    val result = currentEngine.getAndTransform {
+      case EngineState.NotStartedYet => EngineState.Working(newEngine, newEngineConfig)
+      case EngineState.Working(_, _) => EngineState.Working(newEngine, newEngineConfig)
+      case EngineState.Stopped => EngineState.Stopped
+    }
+    result match {
+      case EngineState.NotStartedYet => EitherT.rightT[Task, RawConfigReloadError](None)
+      case EngineState.Working(oldEngine, _) => EitherT.rightT[Task, RawConfigReloadError](Some(oldEngine))
+      case EngineState.Stopped => EitherT.leftT[Task, Option[Engine]](RawConfigReloadError.RorInstanceStopped)
     }
   }
 
@@ -106,12 +129,27 @@ private[engines] class BaseReloadableEngine(name: String,
                                       ttl: FiniteDuration = delayOfOldEngineShutdown) = {
     EitherT.right[RawConfigReloadError](Task.delay {
       scheduler.scheduleOnce(ttl) {
-        stop()
+        stop().runAsync {
+          case Right(_) =>
+          case Left(ex) =>
+            logger.error(s"ROR cannot stop $name engine!", ex)
+        }
       }
     })
   }
 }
 
 object BaseReloadableEngine {
+  private[engines] sealed trait EngineState
+  private[engines] object EngineState {
+    case object NotStartedYet
+      extends EngineState
+    final case class Working(engine: Engine,
+                             config: RawRorConfig)
+      extends EngineState
+    case object Stopped
+      extends EngineState
+  }
+
   private[BaseReloadableEngine] val delayOfOldEngineShutdown = 10 seconds
 }
