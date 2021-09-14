@@ -239,7 +239,7 @@ object AclAwareRequestFilter {
                              listener: ActionListener[ActionResponse],
                              chain: ActionFilterChain[ActionRequest, ActionResponse],
                              threadContextResponseHeaders: Set[(String, String)]) {
-    lazy val requestId = s"${channel.request().hashCode()}-${actionRequest.hashCode()}#${task.getId}"
+    lazy val requestContextId = s"${channel.request().hashCode()}-${actionRequest.hashCode()}#${task.getId}"
     val timestamp: Instant = Instant.now()
 
     def pickEngineToHandle(engines: Engines): Engine = {

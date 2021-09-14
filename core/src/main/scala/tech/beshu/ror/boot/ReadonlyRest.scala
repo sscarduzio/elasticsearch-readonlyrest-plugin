@@ -28,6 +28,7 @@ import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
@@ -246,56 +247,65 @@ class RorInstance private(boot: ReadonlyRest,
 
   def engines: Option[Engines] = aMainEngine.engine.map(Engines(_, anImpersonatorsEngine.engine))
 
-  def forceReloadFromIndex(): Task[Either[IndexConfigReloadError, Unit]] =
+  def forceReloadFromIndex()
+                          (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, Unit]] =
     aMainEngine.forceReloadFromIndex()
 
-  def forceReloadAndSave(config: RawRorConfig): Task[Either[IndexConfigReloadWithUpdateError, Unit]] =
+  def forceReloadAndSave(config: RawRorConfig)
+                        (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, Unit]] =
     aMainEngine.forceReloadAndSave(config)
 
   def forceReloadImpersonatorsEngine(config: RawRorConfig,
-                                     ttl: FiniteDuration): Task[Either[RawConfigReloadError, Unit]] = {
+                                     ttl: FiniteDuration)
+                                    (implicit requestId: RequestId): Task[Either[RawConfigReloadError, Unit]] = {
     anImpersonatorsEngine.forceReloadImpersonatorsEngine(config, ttl)
   }
 
-  def invalidateImpersonationEngine(): Task[Unit] = {
+  def invalidateImpersonationEngine()
+                                   (implicit requestId: RequestId): Task[Unit] = {
     anImpersonatorsEngine.invalidateImpersonationEngine()
   }
 
-  def stop(): Task[Unit] = for {
-    _ <- anImpersonatorsEngine.stop()
-    _ <- aMainEngine.stop()
-  } yield ()
+  def stop(): Task[Unit] = {
+    implicit val requestId: RequestId = RequestId("ES sigterm")
+    for {
+      _ <- anImpersonatorsEngine.stop()
+      _ <- aMainEngine.stop()
+    } yield ()
+  }
 
   private def scheduleIndexConfigChecking(interval: FiniteDuration Refined Positive): Cancelable = {
     logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index settings check within $interval")
     scheduler.scheduleOnce(interval.value) {
-      logger.debug("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST config from index ...")
+      implicit val requestId: RequestId = RequestId(JavaUuidProvider.random.toString)
+      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ReadonlyREST config from index ...")
       tryEngineReload()
         .runAsync {
           case Right(Right(_)) =>
             scheduleIndexConfigChecking(interval)
           case Right(Left(ReloadingInProgress)) =>
-            logger.debug(s"[CLUSTERWIDE SETTINGS] Reloading in progress ... skipping")
+            logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Reloading in progress ... skipping")
             scheduleIndexConfigChecking(interval)
-          case Right(Left(EngineReloadError(IndexConfigReloadError.ReloadError(RawConfigReloadError.ConfigUpToDate)))) =>
-            logger.debug("[CLUSTERWIDE SETTINGS] Settings are up to date. Nothing to reload.")
+          case Right(Left(EngineReloadError(IndexConfigReloadError.ReloadError(RawConfigReloadError.ConfigUpToDate(_))))) =>
+            logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Settings are up to date. Nothing to reload.")
             scheduleIndexConfigChecking(interval)
           case Right(Left(EngineReloadError(IndexConfigReloadError.ReloadError(RawConfigReloadError.RorInstanceStopped)))) =>
-            logger.debug("[CLUSTERWIDE SETTINGS] Stopping periodic settings check - application is being stopped")
+            logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Stopping periodic settings check - application is being stopped")
           case Right(Left(EngineReloadError(IndexConfigReloadError.ReloadError(RawConfigReloadError.ReloadingFailed(startingFailure))))) =>
-            logger.debug(s"[CLUSTERWIDE SETTINGS] ReadonlyREST starting failed: ${startingFailure.message}")
+            logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] ReadonlyREST starting failed: ${startingFailure.message}")
             scheduleIndexConfigChecking(interval)
           case Right(Left(EngineReloadError(IndexConfigReloadError.LoadingConfigError(error)))) =>
-            logger.debug(s"[CLUSTERWIDE SETTINGS] Loading config from index failed: ${error.show}")
+            logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading config from index failed: ${error.show}")
             scheduleIndexConfigChecking(interval)
           case Left(ex) =>
-            logger.error("[CLUSTERWIDE SETTINGS] Checking index settings failed: error", ex)
+            logger.error(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Checking index settings failed: error", ex)
             scheduleIndexConfigChecking(interval)
         }
     }
   }
 
-  private def tryEngineReload() = {
+  private def tryEngineReload()
+                             (implicit requestId: RequestId) = {
     val criticalSection = Resource.make(reloadInProgress.tryAcquire) {
       case true => reloadInProgress.release
       case false => Task.unit
@@ -317,7 +327,7 @@ object RorInstance {
   sealed trait RawConfigReloadError
   object RawConfigReloadError {
     final case class ReloadingFailed(failure: StartingFailure) extends RawConfigReloadError
-    object ConfigUpToDate extends RawConfigReloadError
+    final case class ConfigUpToDate(config: RawRorConfig) extends RawConfigReloadError
     object RorInstanceStopped extends RawConfigReloadError
   }
 

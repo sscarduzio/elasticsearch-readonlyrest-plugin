@@ -16,31 +16,36 @@
  */
 package tech.beshu.ror.boot.engines
 
-import cats.implicits._
 import cats.data.EitherT
+import cats.implicits._
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
+import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.{ConfigUpToDate, ReloadingFailed, RorInstanceStopped}
 import tech.beshu.ror.boot.RorInstance._
-import tech.beshu.ror.boot.{Engine, ReadonlyRest}
+import tech.beshu.ror.boot.engines.ConfigHash._
+import tech.beshu.ror.boot.{Engine, ReadonlyRest, StartingFailure}
+import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError.CannotSaveConfig
 import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.utils.ScalaOps.value
-import ConfigHash._
 
-private [boot] class MainReloadableEngine(boot: ReadonlyRest,
-                                          initialEngine: (Engine, RawRorConfig),
-                                          reloadInProgress: Semaphore[Task],
-                                          indexConfigManager: IndexConfigManager,
-                                          rorConfigurationIndex: RorConfigurationIndex,
-                                          auditSink: AuditSinkService)
-                                         (implicit scheduler: Scheduler)
+private[boot] class MainReloadableEngine(boot: ReadonlyRest,
+                                         initialEngine: (Engine, RawRorConfig),
+                                         reloadInProgress: Semaphore[Task],
+                                         indexConfigManager: IndexConfigManager,
+                                         rorConfigurationIndex: RorConfigurationIndex,
+                                         auditSink: AuditSinkService)
+                                        (implicit scheduler: Scheduler)
   extends BaseReloadableEngine("main", boot, Some(initialEngine), reloadInProgress, rorConfigurationIndex, auditSink) {
 
-  def forceReloadAndSave(config: RawRorConfig): Task[Either[IndexConfigReloadWithUpdateError, Unit]] = {
+  def forceReloadAndSave(config: RawRorConfig)
+                        (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, Unit]] = {
     for {
-      _ <- Task.delay(logger.info(s"[${config.hashString()}] Reloading of provided settings was forced"))
+      _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of provided settings was forced ..."))
       reloadResult <- reloadInProgress.withPermit {
         value {
           for {
@@ -49,30 +54,58 @@ private [boot] class MainReloadableEngine(boot: ReadonlyRest,
           } yield ()
         }
       }
+      _ <- Task.delay(reloadResult match {
+        case Right(_) =>
+          logger.info(s"[${requestId.show}] ROR $name engine (id=${config.hashString()}) settings reloaded!")
+        case Left(ReloadError(ConfigUpToDate(config))) =>
+          logger.info(s"[${requestId.show}] ROR $name engine (id=${config.hashString()}) already loaded!")
+        case Left(ReloadError(ReloadingFailed(StartingFailure(message, Some(ex))))) =>
+          logger.error(s"[${requestId.show}] [${config.hashString()}] Cannot reload ROR settings - failure: $message", ex)
+        case Left(ReloadError(ReloadingFailed(StartingFailure(message, None)))) =>
+          logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: $message")
+        case Left(ReloadError(RorInstanceStopped)) =>
+          logger.warn(s"[${requestId.show}] ROR is being stopped! Loading tests settings skipped!")
+        case Left(IndexConfigSavingError(CannotSaveConfig)) =>
+          // todo: invalidate created core?
+          logger.warn(s"[${requestId.show}] ROR is being stopped! Loading tests settings skipped!")
+      })
     } yield reloadResult
   }
 
-  def forceReloadFromIndex(): Task[Either[IndexConfigReloadError, Unit]] = {
+  def forceReloadFromIndex()
+                          (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, Unit]] = {
+    for {
+      _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of in-index settings was forced ..."))
+      reloadResult <- reloadEngineUsingIndexConfig()
+      _ <- Task.delay(reloadResult match {
+        case Right(config) =>
+          logger.info(s"[${requestId.show}] ROR $name engine (id=${config.hashString()}) settings reloaded!")
+        case Left(IndexConfigReloadError.ReloadError(ConfigUpToDate(config))) =>
+          logger.info(s"[${requestId.show}] ROR $name engine (id=${config.hashString()}) already loaded!")
+        case Left(IndexConfigReloadError.ReloadError(ReloadingFailed(StartingFailure(message, Some(ex))))) =>
+          logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: $message", ex)
+        case Left(IndexConfigReloadError.ReloadError(ReloadingFailed(StartingFailure(message, None)))) =>
+          logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: $message")
+        case Left(IndexConfigReloadError.ReloadError(RorInstanceStopped)) =>
+          logger.warn(s"[${requestId.show}] ROR is being stopped! Loading tests settings skipped!")
+        case Left(IndexConfigReloadError.LoadingConfigError(error)) =>
+          logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: ${error.show}")
+      })
+    } yield reloadResult.map(_ => ())
+  }
+
+  def reloadEngineUsingIndexConfig()
+                                  (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, RawRorConfig]] = {
     reloadInProgress.withPermit {
-      for {
-        _ <- Task.delay(logger.info("Reloading of in-index settings was forced"))
-        reloadResult <- reloadEngineUsingIndexConfig()
-      } yield reloadResult
+      val result = for {
+        newConfig <- EitherT(loadRorConfigFromIndex())
+        _ <- reloadEngine(newConfig)
+          .leftMap(IndexConfigReloadError.ReloadError.apply)
+          .leftWiden[IndexConfigReloadError]
+      } yield newConfig
+      result.value
     }
   }
-
-  def reloadEngineUsingIndexConfig(): Task[Either[IndexConfigReloadError, Unit]] = {
-    val result = for {
-      newConfig <- EitherT(loadRorConfigFromIndex())
-      _ <- reloadEngine(newConfig)
-        .leftMap(IndexConfigReloadError.ReloadError.apply)
-        .leftWiden[IndexConfigReloadError]
-    } yield ()
-    result.value
-  }
-
-  override protected val stateAfterStop: BaseReloadableEngine.EngineState =
-    BaseReloadableEngine.EngineState.Stopped
 
   private def saveConfig(newConfig: RawRorConfig): EitherT[Task, IndexConfigReloadWithUpdateError, Unit] = EitherT {
     for {

@@ -16,17 +16,18 @@
  */
 package tech.beshu.ror.boot.engines
 
+import cats.implicits._
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.boot.ReadonlyRest
+import tech.beshu.ror.boot.{ReadonlyRest, StartingFailure}
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.es.AuditSinkService
-
-import scala.concurrent.duration.FiniteDuration
 import ConfigHash._
+import scala.concurrent.duration.FiniteDuration
+import tech.beshu.ror.RequestId
 
 private[boot] class ImpersonatorsReloadableEngine(boot: ReadonlyRest,
                                                   reloadInProgress: Semaphore[Task],
@@ -36,24 +37,30 @@ private[boot] class ImpersonatorsReloadableEngine(boot: ReadonlyRest,
   extends BaseReloadableEngine("test", boot, None, reloadInProgress, rorConfigurationIndex, auditSink) {
 
   def forceReloadImpersonatorsEngine(config: RawRorConfig,
-                                     ttl: FiniteDuration): Task[Either[RawConfigReloadError, Unit]] = {
-    reloadInProgress.withPermit {
-      for {
-        _ <- Task.delay(logger.info(s"[${config.hashString()}] Reloading of test settings was forced (TTL of test engine is ${ttl.toString()})"))
-        reloadResult <- reloadEngine(config, Some(ttl)).value
-      } yield reloadResult
-    }
+                                     ttl: FiniteDuration)
+                                    (implicit requestId: RequestId): Task[Either[RawConfigReloadError, Unit]] = {
+    for {
+      _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of ROR test settings was forced (TTL of test engine is ${ttl.toString()}) ..."))
+      reloadResult <- reloadInProgress.withPermit {
+        reloadEngine(config, Some(ttl)).value
+      }
+      _ <- Task.delay(reloadResult match {
+        case Right(_) =>
+          logger.info(s"[${requestId.show}] ROR $name engine (id=${config.hashString()}) reloaded!")
+        case Left(RawConfigReloadError.ConfigUpToDate(_)) =>
+          logger.info(s"[${requestId.show}] ROR $name engine (id=${config.hashString()}) already loaded!")
+        case Left(RawConfigReloadError.ReloadingFailed(StartingFailure(message, Some(ex)))) =>
+          logger.error(s"[${requestId.show}] Cannot reload ROR test settings - failure: $message", ex)
+        case Left(RawConfigReloadError.ReloadingFailed(StartingFailure(message, None))) =>
+          logger.error(s"[${requestId.show}] Cannot reload ROR test settings - failure: $message")
+        case Left(RawConfigReloadError.RorInstanceStopped) =>
+          logger.warn(s"[${requestId.show}] ROR is being stopped! Loading tests settings skipped!")
+      })
+    } yield reloadResult
   }
 
-  def invalidateImpersonationEngine(): Task[Unit] = {
-    reloadInProgress.withPermit {
-      for {
-        _ <- Task.delay(logger.info("Test settings will be invalidated ... "))
-        _ <- stop()
-      } yield ()
-    }
+  def invalidateImpersonationEngine()
+                                   (implicit requestId: RequestId): Task[Unit] = {
+    invalidate()
   }
-
-  override protected val stateAfterStop: BaseReloadableEngine.EngineState =
-    BaseReloadableEngine.EngineState.NotStartedYet
 }

@@ -20,18 +20,16 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
-import tech.beshu.ror.Constants
+import tech.beshu.ror.{Constants, RequestId}
 import tech.beshu.ror.adminapi.AdminRestApi
 
 import scala.collection.JavaConverters._
 
-class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
+class RRAdminRequest(adminApiRequest: AdminRestApi.AdminRequest,
+                     esRestRequest: RestRequest) extends ActionRequest {
 
-  def this() = {
-    this(null: AdminRestApi.AdminRequest)
-  }
-
-  val getAdminRequest: AdminRestApi.AdminRequest = request
+  val getAdminRequest: AdminRestApi.AdminRequest = adminApiRequest
+  lazy val requestContextId: RequestId = RequestId(s"${esRestRequest.hashCode()}-${this.hashCode()}")
 
   override def validate(): ActionRequestValidationException = null
 }
@@ -70,7 +68,8 @@ object RRAdminRequest {
           }
           .toMap,
         request.content.utf8ToString
-      )
+      ),
+      request
     )
   }
 }

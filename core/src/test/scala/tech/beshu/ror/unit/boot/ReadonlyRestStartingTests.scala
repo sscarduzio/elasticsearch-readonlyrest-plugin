@@ -17,6 +17,7 @@
 package tech.beshu.ror.unit.boot
 
 import java.time.Clock
+import java.util.UUID
 
 import cats.data.NonEmptyList
 import cats.implicits._
@@ -30,6 +31,7 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers.{a, _}
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
@@ -174,6 +176,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
           acl shouldBe a [AccessControlLoggingDecorator]
           acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a [EnabledAcl]
 
+          implicit val requestId: RequestId = RequestId(UUID.randomUUID().toString)
           val oldEngine = instance.mainEngine.get
           val reload1Result = instance
             .forceReloadAndSave(rorConfigFromResource(resourcesPath + newIndexConfigFile))
@@ -224,7 +227,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
           val results = Task
             .gather(List(
               instance
-                .forceReloadAndSave(rorConfigFromResource(resourcesPath + firstNewIndexConfigFile))
+                .forceReloadAndSave(rorConfigFromResource(resourcesPath + firstNewIndexConfigFile))(RequestId(UUID.randomUUID().toString))
                 .map { result =>
                   // schedule after first finish
                   mockIndexJsonContentManagerSaveCall(mockedIndexJsonContentManager, resourcesPath + secondNewIndexConfigFile)
@@ -233,7 +236,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
               Task
                 .sleep(200 millis)
                 .flatMap { _ =>
-                  instance.forceReloadAndSave(rorConfigFromResource(resourcesPath + secondNewIndexConfigFile))
+                  instance.forceReloadAndSave(rorConfigFromResource(resourcesPath + secondNewIndexConfigFile))(RequestId(UUID.randomUUID().toString))
                 }
             ))
             .runSyncUnsafe()

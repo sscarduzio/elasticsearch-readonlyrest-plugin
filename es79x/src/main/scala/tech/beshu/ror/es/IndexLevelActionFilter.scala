@@ -114,18 +114,18 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   private def proceedByRorEngine(esContext: EsContext): Unit = {
     rorInstanceState.get() match {
       case RorInstanceStartingState.Starting =>
-        logger.warn(s"[${esContext.requestId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
+        logger.warn(s"[${esContext.requestContextId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
         esContext.listener.onFailure(createRorNotReadyYetResponse())
       case RorInstanceStartingState.Started(instance) =>
         instance.engines match {
           case Some(engines) =>
             handleRequest(engines, esContext)
           case None =>
-            logger.warn(s"[${esContext.requestId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
+            logger.warn(s"[${esContext.requestContextId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
             esContext.listener.onFailure(createRorNotReadyYetResponse())
         }
       case RorInstanceStartingState.NotStarted(_) =>
-        logger.error(s"[${esContext.requestId}] Cannot handle the ${esContext.channel.request().path()} request because ReadonlyREST failed to start")
+        logger.error(s"[${esContext.requestContextId}] Cannot handle the ${esContext.channel.request().path()} request because ReadonlyREST failed to start")
         esContext.listener.onFailure(createRorStartingFailureResponse())
     }
   }

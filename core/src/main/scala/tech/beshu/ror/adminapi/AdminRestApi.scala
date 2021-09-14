@@ -20,7 +20,6 @@ import cats.data.{EitherT, NonEmptyList}
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.adminapi.AdminRestApi.AdminRequest.Type
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
@@ -31,6 +30,7 @@ import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexCon
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
+import tech.beshu.ror.{Constants, RequestId}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -44,7 +44,8 @@ class AdminRestApi(rorInstance: RorInstance,
 
   import AdminRestApi._
 
-  def call(request: AdminRequest): Task[AdminResponse] = {
+  def call(request: AdminRequest)
+          (implicit requestId: RequestId): Task[AdminResponse] = {
     val apiCallResult = request.aType match {
       case Type.ForceReload => forceReloadRor()
       case Type.ProvideIndexConfig => provideRorIndexConfig()
@@ -59,19 +60,21 @@ class AdminRestApi(rorInstance: RorInstance,
       .executeOn(RorSchedulers.adminRestApiScheduler)
   }
 
-  private def forceReloadRor(): Task[ApiCallResult] = {
+  private def forceReloadRor()
+                            (implicit requestId: RequestId): Task[ApiCallResult] = {
     rorInstance
       .forceReloadFromIndex()
       .map {
         case Right(_) => Success("ReadonlyREST settings were reloaded with success!")
         case Left(IndexConfigReloadError.LoadingConfigError(error)) => Failure(error.show)
-        case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.ConfigUpToDate)) => Failure("Current settings are already loaded")
+        case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.ConfigUpToDate(_))) => Failure("Current settings are already loaded")
         case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.RorInstanceStopped)) => Failure("ROR is stopped")
         case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.ReloadingFailed(failure))) => Failure(s"Cannot reload new settings: ${failure.message}")
       }
   }
 
-  private def updateIndexConfiguration(body: String): Task[ApiCallResult] = {
+  private def updateIndexConfiguration(body: String)
+                                      (implicit requestId: RequestId): Task[ApiCallResult] = {
     val result = for {
       config <- rorConfigFrom(body)
       _ <- forceReloadAndSaveNewConfig(config)
@@ -83,7 +86,8 @@ class AdminRestApi(rorInstance: RorInstance,
   }
 
   private def updateTestConfiguration(body: String,
-                                      ttl: Option[FiniteDuration]): Task[ApiCallResult] = {
+                                      ttl: Option[FiniteDuration])
+                                     (implicit requestId: RequestId): Task[ApiCallResult] = {
     val result = for {
       config <- rorConfigFrom(body)
       _ <- forceReloadTestConfig(config, ttl)
@@ -94,7 +98,8 @@ class AdminRestApi(rorInstance: RorInstance,
     }
   }
 
-  private def invalidateTestConfiguration(): Task[ApiCallResult] = {
+  private def invalidateTestConfiguration()
+                                         (implicit requestId: RequestId): Task[ApiCallResult] = {
     rorInstance
       .invalidateImpersonationEngine()
       .map { _ =>
@@ -102,7 +107,8 @@ class AdminRestApi(rorInstance: RorInstance,
       }
   }
 
-  private def provideRorFileConfig(): Task[ApiCallResult] = {
+  private def provideRorFileConfig()
+                                  (implicit requestId: RequestId): Task[ApiCallResult] = {
     fileConfigLoader
       .load()
       .map {
@@ -111,7 +117,8 @@ class AdminRestApi(rorInstance: RorInstance,
       }
   }
 
-  private def provideRorIndexConfig(): Task[ApiCallResult] = {
+  private def provideRorIndexConfig()
+                                   (implicit requestId: RequestId): Task[ApiCallResult] = {
     indexConfigManager
       .load(rorConfigurationIndex)
       .map {
@@ -150,12 +157,13 @@ class AdminRestApi(rorInstance: RorInstance,
     }
   }
 
-  private def forceReloadAndSaveNewConfig(config: RawRorConfig) = {
+  private def forceReloadAndSaveNewConfig(config: RawRorConfig)
+                                         (implicit requestId: RequestId) = {
     EitherT(rorInstance.forceReloadAndSave(config))
       .leftMap {
         case IndexConfigSavingError(error) =>
           Failure(s"Cannot save new settings: ${error.show}")
-        case ReloadError(RawConfigReloadError.ConfigUpToDate) =>
+        case ReloadError(RawConfigReloadError.ConfigUpToDate(_)) =>
           Failure(s"Current settings are already loaded")
         case ReloadError(RawConfigReloadError.RorInstanceStopped) =>
           Failure(s"ROR instance is being stopped")
@@ -165,7 +173,8 @@ class AdminRestApi(rorInstance: RorInstance,
   }
 
   private def forceReloadTestConfig(config: RawRorConfig,
-                                    ttl: Option[FiniteDuration]) = {
+                                    ttl: Option[FiniteDuration])
+                                   (implicit requestId: RequestId) = {
     EitherT(
       rorInstance
         .forceReloadImpersonatorsEngine(
@@ -176,7 +185,7 @@ class AdminRestApi(rorInstance: RorInstance,
           _.leftMap {
             case RawConfigReloadError.ReloadingFailed(failure) =>
               Failure(s"Cannot reload new settings: ${failure.message}")
-            case RawConfigReloadError.ConfigUpToDate =>
+            case RawConfigReloadError.ConfigUpToDate(_) =>
               Failure(s"Current settings are already loaded")
             case RawConfigReloadError.RorInstanceStopped =>
               Failure(s"ROR instance is being stopped")
