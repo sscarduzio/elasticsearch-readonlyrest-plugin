@@ -28,11 +28,6 @@ import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-/*
- * todo: * based on request.impersonate pick one ACL
- *       * when impersonate is enabled, pick second ACL if present
- *       * add endpoint for removing second ACL
- */
 trait AccessControl {
   def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]]
   def handleMetadataRequest(requestContext: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]]
