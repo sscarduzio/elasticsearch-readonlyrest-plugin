@@ -6,8 +6,7 @@ readonlyrest:
     key_pass: readonlyrest
 
   access_control_rules:
-
-    - name: "CONTAINER ADMIN"
+    - name: "CONTAINER ADMIN - basic"
       verbosity: error
       type: allow
       auth_key: admin:container

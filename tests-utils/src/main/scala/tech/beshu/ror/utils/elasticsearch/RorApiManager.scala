@@ -57,8 +57,8 @@ class RorApiManager(client: RestClient,
     call(createUpdateRorInIndexConfigRequest(config), new JsonResponse(_))
   }
 
-  def updateRorTestConfig(config: String): JsonResponse = {
-    call(createUpdateRorTestConfigRequest(config), new JsonResponse(_))
+  def updateRorTestConfig(config: String, ttl: Option[FiniteDuration] = None): JsonResponse = {
+    call(createUpdateRorTestConfigRequest(config, ttl), new JsonResponse(_))
   }
 
   def invalidateRorTestConfig(): JsonResponse = {

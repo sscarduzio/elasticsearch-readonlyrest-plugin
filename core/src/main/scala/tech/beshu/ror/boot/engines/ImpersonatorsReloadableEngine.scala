@@ -47,8 +47,8 @@ private[boot] class ImpersonatorsReloadableEngine(boot: ReadonlyRest,
       _ <- Task.delay(reloadResult match {
         case Right(_) =>
           logger.info(s"[${requestId.show}] ROR $name engine (id=${config.hashString()}) reloaded!")
-        case Left(RawConfigReloadError.ConfigUpToDate(_)) =>
-          logger.info(s"[${requestId.show}] ROR $name engine (id=${config.hashString()}) already loaded!")
+        case Left(RawConfigReloadError.ConfigUpToDate(oldConfig)) =>
+          logger.info(s"[${requestId.show}] ROR $name engine (id=${oldConfig.hashString()}) already loaded!")
         case Left(RawConfigReloadError.ReloadingFailed(StartingFailure(message, Some(ex)))) =>
           logger.error(s"[${requestId.show}] Cannot reload ROR test settings - failure: $message", ex)
         case Left(RawConfigReloadError.ReloadingFailed(StartingFailure(message, None))) =>

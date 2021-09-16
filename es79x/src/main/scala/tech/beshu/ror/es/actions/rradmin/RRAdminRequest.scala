@@ -22,6 +22,7 @@ import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
 import tech.beshu.ror.{Constants, RequestId}
 import tech.beshu.ror.adminapi.AdminRestApi
+import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 
@@ -37,20 +38,19 @@ class RRAdminRequest(adminApiRequest: AdminRestApi.AdminRequest,
 object RRAdminRequest {
 
   def createFrom(request: RestRequest): RRAdminRequest = {
-    val requestType = (request.uri(), request.method()) match {
-      // todo: do it better than startsWith?
-      case (uri, method) if Constants.FORCE_RELOAD_CONFIG_PATH.startsWith(uri) && method == POST =>
+    val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
+      case (Constants.FORCE_RELOAD_CONFIG_PATH, POST) =>
         AdminRestApi.AdminRequest.Type.ForceReload
-      case (uri, method) if Constants.PROVIDE_INDEX_CONFIG_PATH.startsWith(uri) && method == GET =>
-        AdminRestApi.AdminRequest.Type.ProvideIndexConfig
-      case (uri, method) if Constants.PROVIDE_FILE_CONFIG_PATH.startsWith(uri) && method == GET =>
+      case (Constants.PROVIDE_FILE_CONFIG_PATH, GET) =>
         AdminRestApi.AdminRequest.Type.ProvideFileConfig
-      case (uri, method) if Constants.UPDATE_TEST_CONFIG_PATH.startsWith(uri) && method == POST =>
-        AdminRestApi.AdminRequest.Type.UpdateTestConfig
-      case (uri, method) if Constants.DELETE_TEST_CONFIG_PATH.startsWith(uri) && method == DELETE =>
-        AdminRestApi.AdminRequest.Type.InvalidateTestConfig
-      case (uri, method) if Constants.UPDATE_INDEX_CONFIG_PATH.startsWith(uri) && method == POST =>
+      case (Constants.PROVIDE_INDEX_CONFIG_PATH, GET) =>
+        AdminRestApi.AdminRequest.Type.ProvideIndexConfig
+      case (Constants.UPDATE_INDEX_CONFIG_PATH, POST) =>
         AdminRestApi.AdminRequest.Type.UpdateIndexConfig
+      case (Constants.UPDATE_TEST_CONFIG_PATH, POST) =>
+        AdminRestApi.AdminRequest.Type.UpdateTestConfig
+      case (Constants.DELETE_TEST_CONFIG_PATH, DELETE) =>
+        AdminRestApi.AdminRequest.Type.InvalidateTestConfig
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }

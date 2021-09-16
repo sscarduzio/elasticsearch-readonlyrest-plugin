@@ -57,8 +57,8 @@ private[boot] class MainReloadableEngine(boot: ReadonlyRest,
       _ <- Task.delay(reloadResult match {
         case Right(_) =>
           logger.info(s"[${requestId.show}] ROR $name engine (id=${config.hashString()}) settings reloaded!")
-        case Left(ReloadError(ConfigUpToDate(config))) =>
-          logger.info(s"[${requestId.show}] ROR $name engine (id=${config.hashString()}) already loaded!")
+        case Left(ReloadError(ConfigUpToDate(oldConfig))) =>
+          logger.info(s"[${requestId.show}] ROR $name engine (id=${oldConfig.hashString()}) already loaded!")
         case Left(ReloadError(ReloadingFailed(StartingFailure(message, Some(ex))))) =>
           logger.error(s"[${requestId.show}] [${config.hashString()}] Cannot reload ROR settings - failure: $message", ex)
         case Left(ReloadError(ReloadingFailed(StartingFailure(message, None)))) =>
