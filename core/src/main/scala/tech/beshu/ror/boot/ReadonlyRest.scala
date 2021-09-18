@@ -242,9 +242,6 @@ class RorInstance private(boot: ReadonlyRest,
     auditSink
   )
 
-  // todo: remove
-  def mainEngine: Option[Engine] = aMainEngine.engine
-
   def engines: Option[Engines] = aMainEngine.engine.map(Engines(_, anImpersonatorsEngine.engine))
 
   def forceReloadFromIndex()

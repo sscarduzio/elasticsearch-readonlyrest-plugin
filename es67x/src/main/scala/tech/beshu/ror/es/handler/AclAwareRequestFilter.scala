@@ -79,8 +79,9 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
                             scheduler: Scheduler)
   extends Logging {
 
-  def handle(engine: Engine,
+  def handle(engines: Engines,
              esContext: EsContext): Task[Unit] = {
+    val engine = esContext.pickEngineToHandle(engines)
     esContext.actionRequest match {
       case request: RRUserMetadataRequest =>
         val handler = new CurrentUserMetadataRequestHandler(engine, esContext)
@@ -213,8 +214,26 @@ object AclAwareRequestFilter {
                              listener: ActionListener[ActionResponse],
                              chain: ActionFilterChain[ActionRequest, ActionResponse],
                              threadContextResponseHeaders: Set[(String, String)]) {
-    lazy val requestId = s"${channel.request().hashCode()}-${actionRequest.hashCode()}#${task.getId}"
+    lazy val requestContextId = s"${channel.request().hashCode()}-${actionRequest.hashCode()}#${task.getId}"
     val timestamp: Instant = Instant.now()
+
+    def pickEngineToHandle(engines: Engines): Engine = {
+      val impersonationHeaderPresent = channel
+        .request()
+        .getHeaders.asScala
+        .exists { case (name, _) => isImpersonateAsHeader(name) }
+      engines.impersonatorsEngine match {
+        case Some(impersonatorsEngine) if impersonationHeaderPresent => impersonatorsEngine
+        case Some(_) | None => engines.mainEngine
+      }
+    }
+
+    private def isImpersonateAsHeader(headerName: String) = {
+      NonEmptyString
+        .unapply(headerName)
+        .map(Header.Name.apply)
+        .exists(_ === Header.Name.impersonateAs)
+    }
   }
 }
 

@@ -33,8 +33,6 @@ import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.utils.ScalaOps.value
 
-import scala.util.{Failure, Success, Try}
-
 private[boot] class MainReloadableEngine(boot: ReadonlyRest,
                                          initialEngine: (Engine, RawRorConfig),
                                          reloadInProgress: Semaphore[Task],

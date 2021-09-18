@@ -230,7 +230,7 @@ class RegularRequestHandler(engine: Engine,
   }
 
   private def logRequestProcessingTime(): Unit = {
-    logger.debug(s"[${esContext.requestId}] Request processing time: ${Duration.between(esContext.timestamp, Instant.now()).toMillis}ms")
+    logger.debug(s"[${esContext.requestContextId}] Request processing time: ${Duration.between(esContext.timestamp, Instant.now()).toMillis}ms")
   }
 
   private class UpdateResponseListener(update: ActionResponse => Task[ActionResponse]) extends ActionListener[ActionResponse] {

@@ -50,6 +50,7 @@ class RRAdminActionHandler(indexContentProvider: IndexJsonContentService,
   def handle(request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
     getApi match {
       case Some(api) => doPrivileged {
+        implicit val requestId: RequestId = request.requestContextId
         api
           .call(request.getAdminRequest)
           .runAsync { response =>

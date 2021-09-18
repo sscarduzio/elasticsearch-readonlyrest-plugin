@@ -63,7 +63,6 @@ class ReadonlyRestStartingTests
   implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
   // todo: resource cleaning needed
-  // todo: do sth with many reloads
   "A ReadonlyREST core" should {
     "be loaded from file" when {
       "index is not available but file config is provided" in {
@@ -83,11 +82,9 @@ class ReadonlyRestStartingTests
           )
           .runSyncUnsafe()
 
-        inside(result.map(_.mainEngine)) { case Right(Some(engine)) =>
-          val acl = engine.accessControl
-          acl shouldBe a[AccessControlLoggingDecorator]
-          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
-        }
+        val acl = result.right.value.engines.value.mainEngine.accessControl
+        acl shouldBe a[AccessControlLoggingDecorator]
+        acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
       }
       "file loading is forced in elasticsearch.yml" in {
         val coreFactory = mockCoreFactory(mock[CoreFactory], "/boot_tests/forced_file_loading/readonlyrest.yml")
@@ -100,11 +97,9 @@ class ReadonlyRestStartingTests
           )
           .runSyncUnsafe()
 
-        inside(result.map(_.mainEngine)) { case Right(Some(engine)) =>
-          val acl = engine.accessControl
-          acl shouldBe a[AccessControlLoggingDecorator]
-          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
-        }
+        val acl = result.right.value.engines.value.mainEngine.accessControl
+        acl shouldBe a[AccessControlLoggingDecorator]
+        acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
       }
     }
     "be loaded from index" when {
@@ -125,11 +120,9 @@ class ReadonlyRestStartingTests
           )
           .runSyncUnsafe()
 
-        inside(result.map(_.mainEngine)) { case Right(Some(engine)) =>
-          val acl = engine.accessControl
-          acl shouldBe a[AccessControlLoggingDecorator]
-          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
-        }
+        val acl = result.right.value.engines.value.mainEngine.accessControl
+        acl shouldBe a[AccessControlLoggingDecorator]
+        acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
       }
       "index is available and file config is not provided" in {
         val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
@@ -148,11 +141,9 @@ class ReadonlyRestStartingTests
           )
           .runSyncUnsafe()
 
-        inside(result.map(_.mainEngine)) { case Right(Some(engine)) =>
-          val acl = engine.accessControl
-          acl shouldBe a[AccessControlLoggingDecorator]
-          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
-        }
+        val acl = result.right.value.engines.value.mainEngine.accessControl
+        acl shouldBe a[AccessControlLoggingDecorator]
+        acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
       }
     }
     "be able to be reloaded" when {
@@ -177,21 +168,18 @@ class ReadonlyRestStartingTests
           )
           .runSyncUnsafe()
 
-        inside(result) { case Right(instance) =>
-          instance.mainEngine.isDefined should be(true)
-          val acl = instance.mainEngine.get.accessControl
-          acl shouldBe a[AccessControlLoggingDecorator]
-          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
+        val instance = result.right.value
+        val mainEngine = instance.engines.value.mainEngine
+        mainEngine.accessControl shouldBe a[AccessControlLoggingDecorator]
+        mainEngine.accessControl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
 
-          implicit val requestId: RequestId = RequestId(UUID.randomUUID().toString)
-          val oldEngine = instance.mainEngine.get
-          val reload1Result = instance
-            .forceReloadAndSave(rorConfigFromResource(resourcesPath + newIndexConfigFile))
-            .runSyncUnsafe()
+        implicit val requestId: RequestId = RequestId(UUID.randomUUID().toString)
+        val reload1Result = instance
+          .forceReloadAndSave(rorConfigFromResource(resourcesPath + newIndexConfigFile))
+          .runSyncUnsafe()
 
-          reload1Result should be(Right(()))
-          assert(oldEngine != instance.mainEngine.get, "Engine was not reloaded")
-        }
+        reload1Result should be(Right(()))
+        assert(mainEngine != instance.engines.value.mainEngine, "Engine was not reloaded")
       }
       "two parallel force reloads are invoked" in {
         val resourcesPath = "/boot_tests/config_reloading/"
@@ -225,32 +213,30 @@ class ReadonlyRestStartingTests
           )
           .runSyncUnsafe()
 
-        inside(result) { case Right(instance) =>
-          instance.mainEngine.isDefined should be(true)
-          val acl = instance.mainEngine.get.accessControl
-          acl shouldBe a[AccessControlLoggingDecorator]
-          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
-
-          val results = Task
-            .gather(List(
-              instance
-                .forceReloadAndSave(rorConfigFromResource(resourcesPath + firstNewIndexConfigFile))(RequestId(UUID.randomUUID().toString))
-                .map { result =>
-                  // schedule after first finish
-                  mockIndexJsonContentManagerSaveCall(mockedIndexJsonContentManager, resourcesPath + secondNewIndexConfigFile)
-                  result
-                },
-              Task
-                .sleep(200 millis)
-                .flatMap { _ =>
-                  instance.forceReloadAndSave(rorConfigFromResource(resourcesPath + secondNewIndexConfigFile))(RequestId(UUID.randomUUID().toString))
-                }
-            ))
-            .runSyncUnsafe()
-            .sequence
-
-          results should be(Right(List((), ())))
+        val instance = result.right.value
+        val acl = eventually {
+          instance.engines.value.mainEngine.accessControl
         }
+
+        val results = Task
+          .gather(List(
+            instance
+              .forceReloadAndSave(rorConfigFromResource(resourcesPath + firstNewIndexConfigFile))(RequestId(UUID.randomUUID().toString))
+              .map { result =>
+                // schedule after first finish
+                mockIndexJsonContentManagerSaveCall(mockedIndexJsonContentManager, resourcesPath + secondNewIndexConfigFile)
+                result
+              },
+            Task
+              .sleep(200 millis)
+              .flatMap { _ =>
+                instance.forceReloadAndSave(rorConfigFromResource(resourcesPath + secondNewIndexConfigFile))(RequestId(UUID.randomUUID().toString))
+              }
+          ))
+          .runSyncUnsafe()
+          .sequence
+
+        results should be(Right(List((), ())))
       }
     }
     "be reloaded if index config changes" in {
@@ -274,11 +260,9 @@ class ReadonlyRestStartingTests
           mockedIndexJsonContentManager
         )
         .flatMap { result =>
-          inside(result.map(_.mainEngine)) { case Right(Some(engine)) =>
-            val acl = engine.accessControl
-            acl shouldBe a[AccessControlLoggingDecorator]
-            acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[DisabledAcl]
-          }
+          val acl = result.right.value.engines.value.mainEngine.accessControl
+          acl shouldBe a[AccessControlLoggingDecorator]
+          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[DisabledAcl]
 
           Task
             .sleep(4 seconds)
@@ -286,11 +270,9 @@ class ReadonlyRestStartingTests
         }
         .runSyncUnsafe()
 
-      inside(result.map(_.mainEngine)) { case Right(Some(engine)) =>
-        val acl = engine.accessControl
-        acl shouldBe a[AccessControlLoggingDecorator]
-        acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
-      }
+      val acl = result.right.value.engines.value.mainEngine.accessControl
+      acl shouldBe a[AccessControlLoggingDecorator]
+      acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
     }
     "support test engine" which {
       "can be loaded" when {

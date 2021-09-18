@@ -49,11 +49,11 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
                                                                            request: Request,
                                                                            listener: ActionListener[Response],
                                                                            chain: ActionFilterChain[Request, Response]): Unit = {
-    (rorInstance.mainEngine, ProxyThreadRepo.getRestChannel(task)) match {
-      case (Some(engine), Some(channel)) =>
+    (rorInstance.engines, ProxyThreadRepo.getRestChannel(task)) match {
+      case (Some(engines), Some(channel)) =>
         Try {
           handleRequest(
-            engine,
+            engines.mainEngine,
             task,
             action,
             request,
