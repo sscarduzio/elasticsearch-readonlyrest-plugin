@@ -33,6 +33,8 @@ import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.utils.ScalaOps.value
 
+import scala.util.{Failure, Success, Try}
+
 private[boot] class MainReloadableEngine(boot: ReadonlyRest,
                                          initialEngine: (Engine, RawRorConfig),
                                          reloadInProgress: Semaphore[Task],
@@ -45,7 +47,7 @@ private[boot] class MainReloadableEngine(boot: ReadonlyRest,
   def forceReloadAndSave(config: RawRorConfig)
                         (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, Unit]] = {
     for {
-      _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of provided settings was forced ..."))
+      _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of provided settings was forced (engine id=${config.hashString()}) ..."))
       reloadResult <- reloadInProgress.withPermit {
         value {
           for {
@@ -97,14 +99,19 @@ private[boot] class MainReloadableEngine(boot: ReadonlyRest,
   def reloadEngineUsingIndexConfig()
                                   (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, RawRorConfig]] = {
     reloadInProgress.withPermit {
-      val result = for {
-        newConfig <- EitherT(loadRorConfigFromIndex())
-        _ <- reloadEngine(newConfig)
-          .leftMap(IndexConfigReloadError.ReloadError.apply)
-          .leftWiden[IndexConfigReloadError]
-      } yield newConfig
-      result.value
+      reloadEngineUsingIndexConfigWithoutPermit()
     }
+  }
+
+  private [boot] def reloadEngineUsingIndexConfigWithoutPermit()
+                                                              (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, RawRorConfig]] = {
+    val result = for {
+      newConfig <- EitherT(loadRorConfigFromIndex())
+      _ <- reloadEngine(newConfig)
+        .leftMap(IndexConfigReloadError.ReloadError.apply)
+        .leftWiden[IndexConfigReloadError]
+    } yield newConfig
+    result.value
   }
 
   private def saveConfig(newConfig: RawRorConfig): EitherT[Task, IndexConfigReloadWithUpdateError, Unit] = EitherT {

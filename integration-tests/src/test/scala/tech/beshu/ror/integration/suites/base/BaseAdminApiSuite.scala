@@ -21,7 +21,7 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, RorApiManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
@@ -56,7 +56,7 @@ trait BaseAdminApiSuite
           rorApiManager.updateRorInIndexConfig("/admin_api/readonlyrest_index.yml").force()
 
           val result = rorWithNoIndexConfigAdminActionManager.reloadRorConfig()
-          
+
           result.responseCode should be(200)
           result.responseJson("status").str should be("ok")
           result.responseJson("message").str should be("ReadonlyREST settings were reloaded with success!")
@@ -188,16 +188,16 @@ trait BaseAdminApiSuite
           }
         }
       }
-      "return info that there is no in-index config" when {
-        "there is none in index" in {
-          val getIndexConfigResult = rorWithNoIndexConfigAdminActionManager.getRorInIndexConfig
-          getIndexConfigResult.responseCode should be(200)
-          getIndexConfigResult.responseJson("status").str should be("empty")
-          getIndexConfigResult.responseJson("message").str should be {
-            "Cannot find settings index"
-          }
-        }
-      }
+//      "return info that there is no in-index config" when {
+//        "there is none in index" in {
+//          val getIndexConfigResult = rorWithNoIndexConfigAdminActionManager.getRorInIndexConfig
+//          getIndexConfigResult.responseCode should be(200)
+//          getIndexConfigResult.responseJson("status").str should be("empty")
+//          getIndexConfigResult.responseJson("message").str should be {
+//            "Cannot find settings index"
+//          }
+//        }
+//      }
     }
     "provide a method for fetching current file config" which {
       "return current config" in {
@@ -317,9 +317,6 @@ trait BaseAdminApiSuite
       .invalidateRorTestConfig()
       .force()
 
-    val indexManager = new IndexManager(ror2_1Node.adminClient, esVersionUsed)
-    indexManager.removeIndex(readonlyrestIndexName)
-
     ror1WithIndexConfigAdminActionManager
       .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
       .force()
@@ -332,16 +329,12 @@ trait BaseAdminApiSuite
   protected def nodeDataInitializer(): ElasticsearchNodeDataInitializer = {
     (esVersion: String, adminRestClient: RestClient) => {
       val documentManager = new DocumentManager(adminRestClient, esVersion)
-      val rorApiManager = new RorApiManager(adminRestClient)
       documentManager
         .createDoc("test1_index", 1, ujson.read("""{"hello":"world"}"""))
         .force()
       documentManager
         .createDoc("test2_index", 1, ujson.read("""{"hello":"world"}"""))
         .force()
-      rorApiManager
-          .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
-          .force()
     }
   }
 

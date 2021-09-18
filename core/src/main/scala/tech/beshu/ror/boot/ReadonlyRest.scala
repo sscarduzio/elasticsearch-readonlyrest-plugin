@@ -307,13 +307,15 @@ class RorInstance private(boot: ReadonlyRest,
   private def tryEngineReload()
                              (implicit requestId: RequestId) = {
     val criticalSection = Resource.make(reloadInProgress.tryAcquire) {
-      case true => reloadInProgress.release
-      case false => Task.unit
+      case true =>
+        reloadInProgress.release
+      case false =>
+        Task.unit
     }
     criticalSection.use {
       case true =>
         aMainEngine
-          .reloadEngineUsingIndexConfig()
+          .reloadEngineUsingIndexConfigWithoutPermit()
           .map(_.leftMap(ScheduledReloadError.EngineReloadError.apply))
       case false =>
         Task.now(Left(ScheduledReloadError.ReloadingInProgress))

@@ -2,11 +2,11 @@ readonlyrest:
   ssl:
     enable: true
     keystore_file: "keystore.jks"
-    keystore_pass: readonlyrest
-    key_pass: readonlyrest
+    keystore_pass: "readonlyrest"
+    key_pass: "readonlyrest"
 
   access_control_rules:
     - name: "CONTAINER ADMIN - basic"
-      verbosity: error
-      type: allow
-      auth_key: admin:container
+      verbosity: "error"
+      type: "allow"
+      auth_key: "admin:container"

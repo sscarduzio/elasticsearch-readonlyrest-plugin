@@ -47,6 +47,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   private val currentEngine: Atomic[EngineState] = AtomicAny[EngineState](
     initialEngine match {
       case Some((engine, config)) =>
+        logger.info(s"ROR $name engine (id=${config.hashString()}) was initiated.")
         EngineState.Working(EngineWithConfig(engine, config, ttl = None), scheduledShutdownJob = None)
       case None =>
         EngineState.NotStartedYet
@@ -106,15 +107,19 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   }
 
   private def canBeReloaded(newConfig: RawRorConfig): EitherT[Task, RawConfigReloadError, Unit] = {
-    currentEngine.get() match {
-      case EngineState.NotStartedYet =>
-        doReload
-      case EngineState.Working(EngineWithConfig(_, currentConfig, _), _) if currentConfig != newConfig =>
-        doReload
-      case EngineState.Working(EngineWithConfig(_, currentConfig, _), _) =>
-        EitherT.leftT[Task, Unit](RawConfigReloadError.ConfigUpToDate(currentConfig))
-      case EngineState.Stopped =>
-        EitherT.leftT[Task, Unit](RawConfigReloadError.RorInstanceStopped)
+    EitherT {
+      Task.delay {
+        currentEngine.get() match {
+          case EngineState.NotStartedYet =>
+            Right(())
+          case EngineState.Working(EngineWithConfig(_, currentConfig, _), _) if currentConfig != newConfig =>
+            Right(())
+          case EngineState.Working(EngineWithConfig(_, currentConfig, _), _) =>
+            Left(RawConfigReloadError.ConfigUpToDate(currentConfig))
+          case EngineState.Stopped =>
+            Left(RawConfigReloadError.RorInstanceStopped)
+        }
+      }
     }
   }
 
@@ -134,20 +139,24 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
 
   private def replaceCurrentEngine(newEngineWithConfig: EngineWithConfig)
                                   (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Option[EngineWithConfig]] = {
-    val result = currentEngine.getAndTransform {
-      case EngineState.NotStartedYet =>
-        workingStateFrom(newEngineWithConfig)
-      case oldWorkingEngine@EngineState.Working(_, _) =>
-        stopEarly(oldWorkingEngine)
-        workingStateFrom(newEngineWithConfig)
-      case EngineState.Stopped =>
-        newEngineWithConfig.engine.shutdown()
-        EngineState.Stopped
-    }
-    result match {
-      case EngineState.NotStartedYet => EitherT.rightT[Task, RawConfigReloadError](None)
-      case EngineState.Working(oldEngineWithConfig, _) => EitherT.rightT[Task, RawConfigReloadError](Some(oldEngineWithConfig))
-      case EngineState.Stopped => EitherT.leftT[Task, Option[EngineWithConfig]](RawConfigReloadError.RorInstanceStopped)
+    EitherT {
+      Task.delay {
+        val result = currentEngine.getAndTransform {
+          case EngineState.NotStartedYet =>
+            workingStateFrom(newEngineWithConfig)
+          case oldWorkingEngine@EngineState.Working(_, _) =>
+            stopEarly(oldWorkingEngine)
+            workingStateFrom(newEngineWithConfig)
+          case EngineState.Stopped =>
+            newEngineWithConfig.engine.shutdown()
+            EngineState.Stopped
+        }
+        result match {
+          case EngineState.NotStartedYet => Right(None)
+          case EngineState.Working(oldEngineWithConfig, _) => Right(Some(oldEngineWithConfig))
+          case EngineState.Stopped => Left(RawConfigReloadError.RorInstanceStopped)
+        }
+      }
     }
   }
 

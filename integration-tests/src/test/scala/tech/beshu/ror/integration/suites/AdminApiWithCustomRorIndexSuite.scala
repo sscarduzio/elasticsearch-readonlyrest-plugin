@@ -22,7 +22,7 @@ import tech.beshu.ror.utils.containers.{EsClusterSettings, EsContainerCreator}
 trait AdminApiWithCustomRorIndexSuite extends BaseAdminApiSuite {
   this: EsContainerCreator =>
 
-  override implicit val rorConfigFileName = "/basic/readonlyrest.yml"
+  override implicit val rorConfigFileName = "/admin_api/readonlyrest.yml"
   override protected val readonlyrestIndexName: String = "custom_ror_index"
 
   override protected lazy val rorWithIndexConfig = createLocalClusterContainer(
