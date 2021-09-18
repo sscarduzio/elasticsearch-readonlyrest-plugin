@@ -67,7 +67,7 @@ final class LoadClusterConfigsWithNoRorNodeTest
     )(rorConfigFileName)
   )
 
-  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.adminClient)
+  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.adminClient, esVersionUsed)
 
   "return index config, and a failure" in {
     val result = ror1WithIndexConfigAdminActionManager.loadRorCurrentConfig()
@@ -95,7 +95,7 @@ object LoadClusterConfigsWithNoRorNodeTest {
   private object IndexConfigInitializer extends ElasticsearchNodeDataInitializer {
 
     override def initialize(esVersion: String, adminRestClient: RestClient): Unit = {
-      val rorApiManager = new RorApiManager(adminRestClient)
+      val rorApiManager = new RorApiManager(adminRestClient, esVersion)
       rorApiManager
         .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
         .force()

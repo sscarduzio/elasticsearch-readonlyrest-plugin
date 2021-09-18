@@ -57,7 +57,7 @@ trait QueryAuditLogSerializerSuite
   "Request" should {
     "be audited" when {
       "user metadata context for failed login" in {
-        val user1MetadataManager = new RorApiManager(basicAuthClient("user2", "dev"))
+        val user1MetadataManager = new RorApiManager(basicAuthClient("user2", "dev"), esVersionUsed)
 
         val result = user1MetadataManager.fetchMetadata()
 
@@ -72,7 +72,7 @@ trait QueryAuditLogSerializerSuite
         firstEntry("content").str shouldBe ""
       }
       "user metadata context" in {
-        val user1MetadataManager = new RorApiManager(authHeader("X-Auth-Token", "user1-proxy-id"))
+        val user1MetadataManager = new RorApiManager(authHeader("X-Auth-Token", "user1-proxy-id"), esVersionUsed)
 
         val result = user1MetadataManager.fetchMetadata()
 

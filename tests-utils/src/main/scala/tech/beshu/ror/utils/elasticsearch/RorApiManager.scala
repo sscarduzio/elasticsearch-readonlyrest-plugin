@@ -26,8 +26,11 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
 
 class RorApiManager(client: RestClient,
+                    esVersion: String,
                     override val additionalHeaders: Map[String, String] = Map.empty)
   extends BaseManager(client) {
+
+  private lazy val documentManager = new DocumentManager(client, esVersion)
 
   def fetchMetadata(): JsonResponse = {
     call(createUserMetadataRequest(None), new JsonResponse(_))
@@ -69,6 +72,14 @@ class RorApiManager(client: RestClient,
     call(createReloadRorConfigRequest(), new JsonResponse(_))
   }
 
+  def insertInIndexConfigDirectlyToRorIndex(rorConfigIndex: String,
+                                            config: String): JsonResponse = {
+    documentManager.createFirstDoc(
+      index = rorConfigIndex,
+      content = ujson.read(rorConfigIndexDocumentContentFrom(config))
+    )
+  }
+
   private def createUserMetadataRequest(preferredGroup: Option[String]) = {
     val request = new HttpGet(client.from("/_readonlyrest/metadata/current_user"))
     preferredGroup.foreach(request.addHeader("x-ror-current-group", _))
@@ -87,9 +98,7 @@ class RorApiManager(client: RestClient,
   private def createUpdateRorInIndexConfigRequest(config: String) = {
     val request = new HttpPost(client.from("/_readonlyrest/admin/config"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""{"settings": "${escapeJava(config)}"}"""
-    ))
+    request.setEntity(new StringEntity(rorConfigIndexDocumentContentFrom(config)))
     request
   }
 
@@ -98,10 +107,12 @@ class RorApiManager(client: RestClient,
     val request = new HttpPost(client.from("/_readonlyrest/admin/config/test"))
     request.addHeader("Content-Type", "application/json")
     ttl.foreach(t => request.addHeader("x-ror-test-config-ttl", t.toString()))
-    request.setEntity(new StringEntity(
-      s"""{"settings": "${escapeJava(config)}"}"""
-    ))
+    request.setEntity(new StringEntity(rorConfigIndexDocumentContentFrom(config)))
     request
+  }
+
+  private def rorConfigIndexDocumentContentFrom(config: String) = {
+    s"""{"settings": "${escapeJava(config)}"}"""
   }
 
   private def createInvalidateRorTestConfigRequest() = {
