@@ -15,6 +15,6 @@ readonlyrest:
       auth_key: "dev2:test"
 
   impersonation:
-    - impersonator: admin
+    - impersonator: admin1
       auth_key: admin1:pass
       users: ["*"]

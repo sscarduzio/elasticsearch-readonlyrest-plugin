@@ -273,7 +273,6 @@ trait BaseAdminApiSuite
           forceReload("/admin_api/readonlyrest_first_update_with_impersonation.yml")
 
           // after first reload only dev1 can access indices
-          Thread.sleep(14000) // have to wait for ROR1_2 instance config reload
           val dev1ror1After1stReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
           dev1ror1After1stReloadResults.responseCode should be(200)
           val dev2ror1After1stReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")
@@ -287,7 +286,6 @@ trait BaseAdminApiSuite
           forceReload("/admin_api/readonlyrest_second_update_with_impersonation.yml")
 
           // after second reload dev1 & dev2 can access indices
-          Thread.sleep(7000) // have to wait for ROR1_2 instance config reload
           val dev1ror1After2ndReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
           dev1ror1After2ndReloadResults.responseCode should be(200)
           val dev2ror1After2ndReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")

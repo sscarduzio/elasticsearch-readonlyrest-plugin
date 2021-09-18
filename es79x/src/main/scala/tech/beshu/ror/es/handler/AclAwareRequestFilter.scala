@@ -18,6 +18,8 @@ package tech.beshu.ror.es.handler
 
 import java.time.Instant
 
+import cats.implicits._
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -246,11 +248,18 @@ object AclAwareRequestFilter {
       val impersonationHeaderPresent = channel
         .request()
         .getHeaders.asScala
-        .exists { case (name, _) => name == Header.Name.impersonateAs.value.value }
+        .exists { case (name, _) => isImpersonateAsHeader(name) }
       engines.impersonatorsEngine match {
         case Some(impersonatorsEngine) if impersonationHeaderPresent => impersonatorsEngine
         case Some(_) | None => engines.mainEngine
       }
+    }
+
+    private def isImpersonateAsHeader(headerName: String) = {
+      NonEmptyString
+        .unapply(headerName)
+        .map(Header.Name.apply)
+        .exists(_ === Header.Name.impersonateAs)
     }
   }
 }
