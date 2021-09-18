@@ -71,10 +71,14 @@ trait BaseAdminApiSuite
         "in-index config is the same as current one" in {
           val rorApiManager = new RorApiManager(ror2_1Node.adminClient, esVersionUsed)
           rorApiManager
-            .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest.yml"))
+            .insertInIndexConfigDirectlyToRorIndex(
+              rorConfigIndex = readonlyrestIndexName,
+              config = getResourceContent("/admin_api/readonlyrest.yml")
+            )
             .force()
 
           val result = rorWithNoIndexConfigAdminActionManager.reloadRorConfig()
+
           result.responseCode should be(200)
           result.responseJson("status").str should be("ko")
           result.responseJson("message").str should be("Current settings are already loaded")
@@ -92,7 +96,10 @@ trait BaseAdminApiSuite
         "config cannot be reloaded (eg. because LDAP is not achievable)" in {
           val rorApiManager = new RorApiManager(ror2_1Node.adminClient, esVersionUsed)
           rorApiManager
-            .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))
+            .insertInIndexConfigDirectlyToRorIndex(
+              rorConfigIndex = readonlyrestIndexName,
+              config = getResourceContent("/admin_api/readonlyrest_with_ldap.yml")
+            )
             .force()
 
           val result = rorWithNoIndexConfigAdminActionManager.reloadRorConfig()
