@@ -22,6 +22,7 @@ import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.ActionListener
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.adminapi.AdminRestApi
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.configuration.loader.FileConfigLoader

@@ -18,6 +18,8 @@ package tech.beshu.ror.es.handler
 
 import java.time.Instant
 
+import cats.implicits._
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -59,8 +61,10 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.Engine
+import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
@@ -68,6 +72,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.types._
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
+import scala.collection.JavaConverters._
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 

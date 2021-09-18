@@ -29,7 +29,8 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
-import tech.beshu.ror.boot.{Engine, Ror, RorInstance, RorMode}
+import tech.beshu.ror.boot.engines.Engines
+import tech.beshu.ror.boot.{Ror, RorInstance, RorMode}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}

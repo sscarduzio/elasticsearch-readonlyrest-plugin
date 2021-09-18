@@ -19,19 +19,22 @@ package tech.beshu.ror.es.actions.rradmin
 import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
-import tech.beshu.ror.Constants
+import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
+import tech.beshu.ror.{Constants, RequestId}
 import tech.beshu.ror.adminapi.AdminRestApi
-import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
+import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 
-class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
+class RRAdminRequest(adminApiRequest: AdminRestApi.AdminRequest,
+                     esRestRequest: RestRequest) extends ActionRequest {
 
-  def this() {
-    this(null)
+  val getAdminRequest: AdminRestApi.AdminRequest = adminApiRequest
+  lazy val requestContextId: RequestId = RequestId(s"${esRestRequest.hashCode()}-${this.hashCode()}")
+
+  def this() = {
+    this(null, null)
   }
-
-  val getAdminRequest: AdminRestApi.AdminRequest = request
 
   override def validate(): ActionRequestValidationException = null
 }
@@ -39,15 +42,19 @@ class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
 object RRAdminRequest {
 
   def createFrom(request: RestRequest): RRAdminRequest = {
-    val requestType = (request.uri(), request.method()) match {
-      case (uri, method) if Constants.FORCE_RELOAD_CONFIG_PATH.startsWith(uri) && method == POST =>
+    val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
+      case (Constants.FORCE_RELOAD_CONFIG_PATH, POST) =>
         AdminRestApi.AdminRequest.Type.ForceReload
-      case (uri, method) if Constants.PROVIDE_INDEX_CONFIG_PATH.startsWith(uri) && method == GET =>
-        AdminRestApi.AdminRequest.Type.ProvideIndexConfig
-      case (uri, method) if Constants.UPDATE_INDEX_CONFIG_PATH.startsWith(uri) && method == POST =>
-        AdminRestApi.AdminRequest.Type.UpdateIndexConfig
-      case (uri, method) if Constants.PROVIDE_FILE_CONFIG_PATH.startsWith(uri) && method == GET =>
+      case (Constants.PROVIDE_FILE_CONFIG_PATH, GET) =>
         AdminRestApi.AdminRequest.Type.ProvideFileConfig
+      case (Constants.PROVIDE_INDEX_CONFIG_PATH, GET) =>
+        AdminRestApi.AdminRequest.Type.ProvideIndexConfig
+      case (Constants.UPDATE_INDEX_CONFIG_PATH, POST) =>
+        AdminRestApi.AdminRequest.Type.UpdateIndexConfig
+      case (Constants.UPDATE_TEST_CONFIG_PATH, POST) =>
+        AdminRestApi.AdminRequest.Type.UpdateTestConfig
+      case (Constants.DELETE_TEST_CONFIG_PATH, DELETE) =>
+        AdminRestApi.AdminRequest.Type.InvalidateTestConfig
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }
@@ -65,7 +72,8 @@ object RRAdminRequest {
           }
           .toMap,
         request.content.utf8ToString
-      )
+      ),
+      request
     )
   }
 }
