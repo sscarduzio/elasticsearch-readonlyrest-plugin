@@ -62,7 +62,7 @@ class ReadonlyRestStartingTests
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
   implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
-  // todo: resource cleaning needed
+  // todo: resource cleaning needed (shutdown of started ROR)
   "A ReadonlyREST core" should {
     "be loaded from file" when {
       "index is not available but file config is provided" in {
