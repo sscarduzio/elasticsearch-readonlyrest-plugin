@@ -16,15 +16,12 @@
  */
 package tech.beshu.ror.adminapi
 
-import cats.data.EitherT
+import cats.data.{EitherT, NonEmptyList}
 import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.adminapi.AdminRestApi.AdminRequest.Type
-import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
-import shapeless.HNil
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.boot.RorInstance
+import tech.beshu.ror.adminapi.AdminRestApi.AdminRequest.Type
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigReloadError, RawConfigReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
@@ -33,20 +30,29 @@ import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexCon
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
+import tech.beshu.ror.{Constants, RequestId}
+
+import scala.concurrent.duration._
+import scala.language.postfixOps
+import scala.util.Try
 
 class AdminRestApi(rorInstance: RorInstance,
                    indexConfigManager: IndexConfigManager,
                    fileConfigLoader: FileConfigLoader,
-                   rorConfigurationIndex: RorConfigurationIndex) {
+                   rorConfigurationIndex: RorConfigurationIndex)
+  extends Logging {
 
   import AdminRestApi._
 
-  def call(request: AdminRequest): Task[AdminResponse] = {
+  def call(request: AdminRequest)
+          (implicit requestId: RequestId): Task[AdminResponse] = {
     val apiCallResult = request.aType match {
       case Type.ForceReload => forceReloadRor()
       case Type.ProvideIndexConfig => provideRorIndexConfig()
-      case Type.UpdateIndexConfig => updateIndexConfiguration(request.body)
       case Type.ProvideFileConfig => provideRorFileConfig()
+      case Type.UpdateIndexConfig => updateIndexConfiguration(request.body)
+      case Type.UpdateTestConfig => updateTestConfiguration(request.body, testConfigTtlFrom(request.headers))
+      case Type.InvalidateTestConfig => invalidateTestConfiguration()
       case Type.CurrentUserMetadata => Task.now(Success("ok"))
     }
     apiCallResult
@@ -54,19 +60,21 @@ class AdminRestApi(rorInstance: RorInstance,
       .executeOn(RorSchedulers.adminRestApiScheduler)
   }
 
-  private def forceReloadRor(): Task[ApiCallResult] = {
+  private def forceReloadRor()
+                            (implicit requestId: RequestId): Task[ApiCallResult] = {
     rorInstance
       .forceReloadFromIndex()
       .map {
         case Right(_) => Success("ReadonlyREST settings were reloaded with success!")
         case Left(IndexConfigReloadError.LoadingConfigError(error)) => Failure(error.show)
-        case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.ConfigUpToDate)) => Failure("Current settings are already loaded")
+        case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.ConfigUpToDate(_))) => Failure("Current settings are already loaded")
         case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.RorInstanceStopped)) => Failure("ROR is stopped")
         case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.ReloadingFailed(failure))) => Failure(s"Cannot reload new settings: ${failure.message}")
       }
   }
 
-  private def updateIndexConfiguration(body: String): Task[ApiCallResult] = {
+  private def updateIndexConfiguration(body: String)
+                                      (implicit requestId: RequestId): Task[ApiCallResult] = {
     val result = for {
       config <- rorConfigFrom(body)
       _ <- forceReloadAndSaveNewConfig(config)
@@ -77,7 +85,30 @@ class AdminRestApi(rorInstance: RorInstance,
     }
   }
 
-  private def provideRorFileConfig(): Task[ApiCallResult] = {
+  private def updateTestConfiguration(body: String,
+                                      ttl: Option[FiniteDuration])
+                                     (implicit requestId: RequestId): Task[ApiCallResult] = {
+    val result = for {
+      config <- rorConfigFrom(body)
+      _ <- forceReloadTestConfig(config, ttl)
+    } yield ()
+    result.value.map {
+      case Right(_) => Success("updated settings")
+      case Left(failure) => failure
+    }
+  }
+
+  private def invalidateTestConfiguration()
+                                         (implicit requestId: RequestId): Task[ApiCallResult] = {
+    rorInstance
+      .invalidateImpersonationEngine()
+      .map { _ =>
+        Success("test settings invalidated")
+      }
+  }
+
+  private def provideRorFileConfig()
+                                  (implicit requestId: RequestId): Task[ApiCallResult] = {
     fileConfigLoader
       .load()
       .map {
@@ -86,7 +117,8 @@ class AdminRestApi(rorInstance: RorInstance,
       }
   }
 
-  private def provideRorIndexConfig(): Task[ApiCallResult] = {
+  private def provideRorIndexConfig()
+                                   (implicit requestId: RequestId): Task[ApiCallResult] = {
     indexConfigManager
       .load(rorConfigurationIndex)
       .map {
@@ -109,10 +141,11 @@ class AdminRestApi(rorInstance: RorInstance,
 
   private def settingsValue(json: io.circe.Json) = {
     def liftFailure(failureMessage: String) = EitherT.leftT[Task, RawRorConfig](Failure(failureMessage))
+
     json \\ "settings" match {
       case Nil =>
         liftFailure("Malformed settings payload - no settings key")
-      case configJsonValue :: Nil  =>
+      case configJsonValue :: Nil =>
         configJsonValue.asString match {
           case Some(configString) =>
             EitherT(RawRorConfig.fromString(configString).map(_.left.map(error => Failure(error.show))))
@@ -124,12 +157,13 @@ class AdminRestApi(rorInstance: RorInstance,
     }
   }
 
-  private def forceReloadAndSaveNewConfig(config: RawRorConfig) = {
+  private def forceReloadAndSaveNewConfig(config: RawRorConfig)
+                                         (implicit requestId: RequestId) = {
     EitherT(rorInstance.forceReloadAndSave(config))
       .leftMap {
         case IndexConfigSavingError(error) =>
           Failure(s"Cannot save new settings: ${error.show}")
-        case ReloadError(RawConfigReloadError.ConfigUpToDate) =>
+        case ReloadError(RawConfigReloadError.ConfigUpToDate(_)) =>
           Failure(s"Current settings are already loaded")
         case ReloadError(RawConfigReloadError.RorInstanceStopped) =>
           Failure(s"ROR instance is being stopped")
@@ -138,24 +172,66 @@ class AdminRestApi(rorInstance: RorInstance,
       }
   }
 
+  private def forceReloadTestConfig(config: RawRorConfig,
+                                    ttl: Option[FiniteDuration])
+                                   (implicit requestId: RequestId) = {
+    EitherT(
+      rorInstance
+        .forceReloadImpersonatorsEngine(
+          config,
+          ttl.getOrElse(defaults.testConfigEngineDefaultTtl)
+        )
+        .map {
+          _.leftMap {
+            case RawConfigReloadError.ReloadingFailed(failure) =>
+              Failure(s"Cannot reload new settings: ${failure.message}")
+            case RawConfigReloadError.ConfigUpToDate(_) =>
+              Failure(s"Current settings are already loaded")
+            case RawConfigReloadError.RorInstanceStopped =>
+              Failure(s"ROR instance is being stopped")
+          }
+        }
+    )
+  }
+
+  private def testConfigTtlFrom(headers: Map[String, NonEmptyList[String]]) = {
+    headers
+      .find { case (name, _) => name.toLowerCase == Constants.HEADER_TEST_CONFIG_TTL }
+      .map { case (_, values) => values.head }
+      .flatMap { value =>
+        Try(Duration(value)).toOption match {
+          case Some(v: FiniteDuration) if v.toMillis > 0 => Some(v)
+          case Some(_) | None =>
+            logger.warn(s"Cannot parse '$value' of ${Constants.HEADER_TEST_CONFIG_TTL} header.")
+            None
+        }
+      }
+  }
 }
 
 object AdminRestApi {
 
-  final case class AdminRequest(aType: AdminRequest.Type, method: String, uri: String, body: String)
+  final case class AdminRequest(aType: AdminRequest.Type,
+                                method: String,
+                                uri: String,
+                                headers: Map[String, NonEmptyList[String]],
+                                body: String)
   object AdminRequest {
     sealed trait Type
     object Type {
       case object ForceReload extends Type
       case object ProvideIndexConfig extends Type
-      case object UpdateIndexConfig extends Type
       case object ProvideFileConfig extends Type
+      case object UpdateIndexConfig extends Type
+      case object UpdateTestConfig extends Type
+      case object InvalidateTestConfig extends Type
       case object CurrentUserMetadata extends Type
     }
   }
   final case class AdminResponse(result: ApiCallResult)
   object AdminResponse {
     def notAvailable: AdminResponse = AdminResponse(Failure("Service not available"))
+
     def internalError: AdminResponse = AdminResponse(Failure("Internal error"))
   }
 
@@ -165,4 +241,8 @@ object AdminRestApi {
   final case class Success(message: String) extends ApiCallResult
   final case class ConfigNotFound(message: String) extends ApiCallResult
   final case class Failure(message: String) extends ApiCallResult
+
+  object defaults {
+    val testConfigEngineDefaultTtl: FiniteDuration = 30 minutes
+  }
 }

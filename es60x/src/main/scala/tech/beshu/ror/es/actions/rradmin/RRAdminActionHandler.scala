@@ -22,6 +22,7 @@ import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.ActionListener
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.adminapi.AdminRestApi
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.configuration.loader.FileConfigLoader
@@ -50,6 +51,7 @@ class RRAdminActionHandler(indexContentProvider: IndexJsonContentService,
   def handle(request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
     getApi match {
       case Some(api) => doPrivileged {
+        implicit val requestId: RequestId = request.requestContextId
         api
           .call(request.getAdminRequest)
           .runAsync { response =>

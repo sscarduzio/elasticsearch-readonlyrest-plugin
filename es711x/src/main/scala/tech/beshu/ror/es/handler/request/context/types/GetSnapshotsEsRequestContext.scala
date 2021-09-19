@@ -66,7 +66,7 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
       case Right(_) =>
         ModificationResult.UpdateResponse {
           case r: GetSnapshotsResponse =>
-            Task.now(updateGetSnapshotResponse(r, blockContext.allAllowedIndices))
+            Task.delay(updateGetSnapshotResponse(r, blockContext.allAllowedIndices))
           case r =>
             Task.now(r)
         }

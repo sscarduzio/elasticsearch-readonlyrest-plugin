@@ -66,7 +66,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
             MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
-        inside(core) { case Right(CoreSettings(_, _, None)) => }
+        inside(core) { case Right(CoreSettings(_, None)) => }
       }
       "audit collector is disabled" in {
         val config = rorConfigFromUnsafe(
@@ -89,7 +89,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
             MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
-        inside(core) { case Right(CoreSettings(_, _, None)) => }
+        inside(core) { case Right(CoreSettings(_, None)) => }
       }
     }
     "be able to be loaded from config" when {
@@ -114,7 +114,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
             MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
-        inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
+        inside(core) { case Right(CoreSettings(_, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[DefaultAuditLogSerializer]
@@ -142,7 +142,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
             MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
-        inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
+        inside(core) { case Right(CoreSettings(_, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("custom_template_20181231"))
           auditingSettings.logSerializer shouldBe a[DefaultAuditLogSerializer]
@@ -170,7 +170,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
             MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
-        inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
+        inside(core) { case Right(CoreSettings(_, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[QueryAuditLogSerializer]
@@ -198,7 +198,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
             MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
-        inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
+        inside(core) { case Right(CoreSettings(_, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[DeprecatedAuditLogSerializerAdapter[_]]

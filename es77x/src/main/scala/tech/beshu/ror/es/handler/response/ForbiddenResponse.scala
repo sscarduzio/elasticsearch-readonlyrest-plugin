@@ -20,7 +20,7 @@ import cats.Show
 import cats.implicits._
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.rest.RestStatus
-import tech.beshu.ror.accesscontrol.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.ForbiddenCause
 

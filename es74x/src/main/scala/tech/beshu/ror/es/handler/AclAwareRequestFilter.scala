@@ -18,6 +18,8 @@ package tech.beshu.ror.es.handler
 
 import java.time.Instant
 
+import cats.implicits._
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -59,15 +61,18 @@ import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.Engine
+import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.types._
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
+import scala.collection.JavaConverters._
 
 import scala.language.postfixOps
 import scala.reflect.ClassTag
@@ -80,15 +85,16 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
                             scheduler: Scheduler)
   extends Logging {
 
-  def handle(engine: Engine,
+  def handle(engines: Engines,
              esContext: EsContext): Task[Unit] = {
+    val engine = esContext.pickEngineToHandle(engines)
     esContext.actionRequest match {
       case request: RRUserMetadataRequest =>
         val handler = new CurrentUserMetadataRequestHandler(engine, esContext)
         handler.handle(new CurrentUserMetadataEsRequestContext(request, esContext, clusterService, threadPool))
       case _ =>
         val regularRequestHandler = new RegularRequestHandler(engine, esContext, threadPool)
-        handleEsRestApiRequest(regularRequestHandler, esContext, engine.context)
+        handleEsRestApiRequest(regularRequestHandler, esContext, engine.accessControl.staticContext)
     }
   }
 
@@ -216,8 +222,26 @@ object AclAwareRequestFilter {
                              listener: ActionListener[ActionResponse],
                              chain: ActionFilterChain[ActionRequest, ActionResponse],
                              threadContextResponseHeaders: Set[(String, String)]) {
-    lazy val requestId = s"${channel.request().hashCode()}-${actionRequest.hashCode()}#${task.getId}"
+    lazy val requestContextId = s"${channel.request().hashCode()}-${actionRequest.hashCode()}#${task.getId}"
     val timestamp: Instant = Instant.now()
+
+    def pickEngineToHandle(engines: Engines): Engine = {
+      val impersonationHeaderPresent = channel
+        .request()
+        .getHeaders.asScala
+        .exists { case (name, _) => isImpersonateAsHeader(name) }
+      engines.impersonatorsEngine match {
+        case Some(impersonatorsEngine) if impersonationHeaderPresent => impersonatorsEngine
+        case Some(_) | None => engines.mainEngine
+      }
+    }
+
+    private def isImpersonateAsHeader(headerName: String) = {
+      NonEmptyString
+        .unapply(headerName)
+        .map(Header.Name.apply)
+        .exists(_ === Header.Name.impersonateAs)
+    }
   }
 }
 

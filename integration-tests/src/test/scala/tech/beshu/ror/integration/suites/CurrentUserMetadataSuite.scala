@@ -36,7 +36,7 @@ trait CurrentUserMetadataSuite
     "handling current user metadata kibana plugin request" should {
       "allow to proceed" when {
         "several blocks are matched" in {
-          val user1MetadataManager = new RorApiManager(basicAuthClient("user1", "pass"))
+          val user1MetadataManager = new RorApiManager(basicAuthClient("user1", "pass"), esVersionUsed)
 
           val result = user1MetadataManager.fetchMetadata()
 
@@ -48,7 +48,7 @@ trait CurrentUserMetadataSuite
           result.responseJson("x-ror-logging-id").str should fullyMatch uuidRegex()
         }
         "several blocks are matched and current group is set" in {
-          val user1MetadataManager = new RorApiManager(basicAuthClient("user4", "pass"))
+          val user1MetadataManager = new RorApiManager(basicAuthClient("user4", "pass"), esVersionUsed)
 
           val result = user1MetadataManager.fetchMetadata("group6")
 
@@ -62,7 +62,7 @@ trait CurrentUserMetadataSuite
           result.responseJson("x-ror-logging-id").str should fullyMatch uuidRegex()
         }
         "at least one block is matched" in {
-          val user2MetadataManager = new RorApiManager(basicAuthClient("user2", "pass"))
+          val user2MetadataManager = new RorApiManager(basicAuthClient("user2", "pass"), esVersionUsed)
 
           val result = user2MetadataManager.fetchMetadata()
 
@@ -77,7 +77,7 @@ trait CurrentUserMetadataSuite
           result.responseJson("x-ror-logging-id").str should fullyMatch uuidRegex()
         }
         "block with no available groups collected is matched" in {
-          val user3MetadataManager = new RorApiManager(basicAuthClient("user3", "pass"))
+          val user3MetadataManager = new RorApiManager(basicAuthClient("user3", "pass"), esVersionUsed)
 
           val result = user3MetadataManager.fetchMetadata()
 
@@ -91,21 +91,21 @@ trait CurrentUserMetadataSuite
       }
       "return forbidden" when {
         "no block is matched" in {
-          val unknownUserMetadataManager = new RorApiManager(basicAuthClient("userXXX", "pass"))
+          val unknownUserMetadataManager = new RorApiManager(basicAuthClient("userXXX", "pass"), esVersionUsed)
 
           val result = unknownUserMetadataManager.fetchMetadata()
 
           assertEquals(401, result.responseCode)
         }
         "current group is set but it doesn't exist on available groups list" in {
-          val user4MetadataManager = new RorApiManager(basicAuthClient("user4", "pass"))
+          val user4MetadataManager = new RorApiManager(basicAuthClient("user4", "pass"), esVersionUsed)
 
           val result = user4MetadataManager.fetchMetadata("group7")
 
           assertEquals(401, result.responseCode)
         }
         "block with no available groups collected is matched and current group is set" in {
-          val user3MetadataManager = new RorApiManager(basicAuthClient("user3", "pass"))
+          val user3MetadataManager = new RorApiManager(basicAuthClient("user3", "pass"), esVersionUsed)
 
           val result = user3MetadataManager.fetchMetadata("group7")
 

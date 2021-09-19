@@ -36,6 +36,8 @@ public class Constants {
   public final static String AUDIT_EVENT_COLLECTOR_PATH = "/_readonlyrest/admin/audit/event/";
   public final static String FORCE_RELOAD_CONFIG_PATH = "/_readonlyrest/admin/refreshconfig/";
   public final static String UPDATE_INDEX_CONFIG_PATH = "/_readonlyrest/admin/config/";
+  public final static String UPDATE_TEST_CONFIG_PATH = "/_readonlyrest/admin/config/test/";
+  public final static String DELETE_TEST_CONFIG_PATH = "/_readonlyrest/admin/config/test/";
   public final static String PROVIDE_INDEX_CONFIG_PATH = "/_readonlyrest/admin/config/";
   public final static String PROVIDE_FILE_CONFIG_PATH = "/_readonlyrest/admin/config/file/";
   public final static String MANAGE_ROR_CONFIG_PATH = "/_readonlyrest/admin/config/load";
@@ -56,6 +58,7 @@ public class Constants {
   public static final String HEADER_KIBANA_TEMPLATE_INDEX = "x-ror-kibana_template_index";
   public static final String HEADER_USER_ORIGIN           = "x-ror-origin";
   public static final String HEADER_CORRELATION_ID        = "x-ror-correlation-id";
+  public static final String HEADER_TEST_CONFIG_TTL       = "x-ror-test-config-ttl";
 
   public static final Set<String> RO_ACTIONS = Sets.newHashSet(
       "indices:admin/exists",

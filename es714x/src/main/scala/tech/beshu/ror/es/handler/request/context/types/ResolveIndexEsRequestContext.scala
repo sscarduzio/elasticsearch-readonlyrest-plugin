@@ -23,8 +23,9 @@ import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{ResolvedAlias, ResolvedIndex}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect._
+import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
-import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -48,7 +49,7 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
                                 filteredIndices: NonEmptyList[ClusterIndexName],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     request.indices(filteredIndices.toList.map(_.stringify): _*)
-    ModificationResult.UpdateResponse(resp => Task.now(filterResponse(resp, allAllowedIndices)))
+    ModificationResult.UpdateResponse(resp => Task.delay(filterResponse(resp, allAllowedIndices)))
   }
 
   override def modifyWhenIndexNotFound: ModificationResult = {

@@ -92,7 +92,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
   private def updateResponse(func: ClusterStateResponse => ClusterStateResponse) = {
     ModificationResult.UpdateResponse {
       case response: ClusterStateResponse =>
-        Task.now(func(response))
+        Task.delay(func(response))
       case other =>
         Task.now(other)
     }

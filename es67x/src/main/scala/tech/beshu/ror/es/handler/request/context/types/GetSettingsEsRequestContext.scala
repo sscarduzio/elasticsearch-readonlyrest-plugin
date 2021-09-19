@@ -21,7 +21,7 @@ import org.elasticsearch.action.admin.indices.settings.get.{GetSettingsRequest, 
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.domain.UriPath.CatIndicesPath
 import tech.beshu.ror.es.RorClusterService

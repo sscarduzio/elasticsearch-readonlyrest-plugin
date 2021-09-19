@@ -25,7 +25,7 @@ import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.indices.alias.get.{GetAliasesRequest, GetAliasesResponse}
 import org.elasticsearch.cluster.metadata.{AliasMetadata, DataStreamAlias}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, RandomIndexBasedOnBlockContextIndices}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName

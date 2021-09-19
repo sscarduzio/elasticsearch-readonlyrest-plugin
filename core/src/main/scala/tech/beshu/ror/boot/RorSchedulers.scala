@@ -42,7 +42,7 @@ object RorSchedulers {
 
   val blockingScheduler: Scheduler = Scheduler.io("blocking-index-content-provider")
 
-  val adminRestApiScheduler: Scheduler = Scheduler.fixedPool("admin-rest-api-executor", 5)
+  val adminRestApiScheduler: Scheduler = Scheduler.fixedPool("admin-rest-api-executor", 10)
 
   val ldapUnboundIdBlockingScheduler: Scheduler = Scheduler.cached("unboundid-executor", 10, 50)
 

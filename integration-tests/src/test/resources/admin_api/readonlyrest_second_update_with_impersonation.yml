@@ -1,0 +1,20 @@
+readonlyrest:
+  # comments should survive
+  access_control_rules:
+    - name: "CONTAINER ADMIN - updated"
+      verbosity: "error"
+      type: "allow"
+      auth_key: "admin:container"
+
+    - name: "test1"
+      indices: ["test1_index", "odd:test1_index"]
+      auth_key: "dev1:test"
+
+    - name: "test2"
+      indices: ["test2_index", "even:test2_index"]
+      auth_key: "dev2:test"
+
+  impersonation:
+    - impersonator: admin1
+      auth_key: admin1:pass
+      users: ["*"]

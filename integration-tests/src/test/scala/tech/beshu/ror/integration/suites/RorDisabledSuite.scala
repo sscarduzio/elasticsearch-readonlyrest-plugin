@@ -50,7 +50,7 @@ trait RorDisabledSuite
     }
     "return information that ROR is disabled" when {
       "ROR API endpoint is being called" in {
-        val user1MetadataManager = new RorApiManager(basicAuthClient("user1", "pass"))
+        val user1MetadataManager = new RorApiManager(basicAuthClient("user1", "pass"), esVersionUsed)
 
         val result = user1MetadataManager.fetchMetadata()
 

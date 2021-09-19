@@ -70,7 +70,7 @@ trait LocalGroupsSuite
   }
 
   "identify retrieval" in {
-    val userMetadataManager = new RorApiManager(basicAuthClient("user", "passwd"))
+    val userMetadataManager = new RorApiManager(basicAuthClient("user", "passwd"), esVersionUsed)
 
     val response = userMetadataManager.fetchMetadata()
 
@@ -86,7 +86,7 @@ trait LocalGroupsSuite
   }
 
   "identify retrieval with preferred group" in {
-    val userMetadataManager = new RorApiManager(basicAuthClient("user", "passwd"))
+    val userMetadataManager = new RorApiManager(basicAuthClient("user", "passwd"), esVersionUsed)
 
     val response = userMetadataManager.fetchMetadata(preferredGroup = "foogroup")
 

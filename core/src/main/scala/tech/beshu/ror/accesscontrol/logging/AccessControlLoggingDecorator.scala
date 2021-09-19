@@ -37,7 +37,8 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool: Option[AuditingTool])
+class AccessControlLoggingDecorator(val underlying: AccessControl,
+                                    auditingTool: Option[AuditingTool])
                                    (implicit loggingContext: LoggingContext,
                                     scheduler: Scheduler)
   extends AccessControl with Logging {
@@ -124,6 +125,8 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
       case _: ForbiddenBy[_] | _: Forbidden[_] | _: Errored[_] | _: RequestedIndexNotExist[_] => true
     }
   }
+
+  override val staticContext: AccessControl.AccessControlStaticContext = underlying.staticContext
 }
 
 object AccessControlLoggingDecorator {
