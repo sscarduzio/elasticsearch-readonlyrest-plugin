@@ -14,35 +14,27 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rradmin
+package tech.beshu.ror.es.actions.rrauthmock
 
 import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
 import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.env.Environment
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.transport.TransportService
 
-import scala.language.postfixOps
-
-class TransportRRAdminAction(transportService: TransportService,
-                             actionFilters: ActionFilters,
-                             env: Environment,
-                             ignore: Unit) // hack!
-  extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
-    RRAdminActionType.name, transportService, actionFilters, RRAdminActionType.exceptionReader
+class TransportRRUserMetadataAction(transportService: TransportService,
+                                    actionFilters: ActionFilters,
+                                    constructorDiscriminator: Unit)
+  extends HandledTransportAction[RRAuthMockRequest, RRAuthMockResponse](
+    RRAuthMockActionType.name, transportService, actionFilters, RRAuthMockActionType.exceptionReader
   ) {
 
   @Inject
   def this(transportService: TransportService,
-           actionFilters: ActionFilters,
-           env: Environment) {
-    this(transportService, actionFilters, env, ())
-  }
+           actionFilters: ActionFilters) =
+    this(transportService, actionFilters, ())
 
-  private val handler = new RRAdminActionHandler()
-
-  override def doExecute(task: Task, request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
-    handler.handle(request, listener)
+  override def doExecute(task: Task, request: RRAuthMockRequest, listener: ActionListener[RRAuthMockResponse]): Unit = {
+    // nothing to do here
   }
 }

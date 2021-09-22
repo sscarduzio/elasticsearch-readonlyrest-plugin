@@ -106,7 +106,7 @@ class RorApiManager(client: RestClient,
                                                ttl: Option[FiniteDuration] = None) = {
     val request = new HttpPost(client.from("/_readonlyrest/admin/config/test"))
     request.addHeader("Content-Type", "application/json")
-    ttl.foreach(t => request.addHeader("x-ror-test-config-ttl", t.toString()))
+    ttl.foreach(t => request.addHeader("x-ror-test-settings-ttl", t.toString()))
     request.setEntity(new StringEntity(rorConfigIndexDocumentContentFrom(config)))
     request
   }
