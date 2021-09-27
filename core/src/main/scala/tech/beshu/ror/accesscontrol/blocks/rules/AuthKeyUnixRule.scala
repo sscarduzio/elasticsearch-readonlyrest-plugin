@@ -23,11 +23,12 @@ import monix.eval.Task
 import org.apache.commons.codec.digest.Crypt.crypt
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyUnixRule.UnixHashedCredentials
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.{EligibleUsersSupport, UserExistence}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 import java.util.regex.Pattern
 
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 
 final class AuthKeyUnixRule(override val settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],

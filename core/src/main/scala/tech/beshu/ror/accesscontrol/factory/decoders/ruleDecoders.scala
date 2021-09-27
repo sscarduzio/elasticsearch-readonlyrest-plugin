@@ -133,7 +133,7 @@ object ruleDecoders {
       case ExternalAuthenticationRule.Name.name => Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions, caseMappingEquality))
       case JwtAuthRule.Name.name => Some(new JwtAuthRuleDecoder(jwtDefinitions, caseMappingEquality))
       case LdapAuthenticationRule.Name.name => Some(new LdapAuthenticationRuleDecoder(ldapServiceDefinitions, caseMappingEquality))
-      case ProxyAuthRule.Name.name => Some(new ProxyAuthRuleDecoder(authProxyDefinitions, caseMappingEquality))
+      case ProxyAuthRule.Name.name => Some(new ProxyAuthRuleDecoder(authProxyDefinitions, impersonatorsDefinitions, caseMappingEquality))
       case _ => None
     }
     optionalRuleDecoder

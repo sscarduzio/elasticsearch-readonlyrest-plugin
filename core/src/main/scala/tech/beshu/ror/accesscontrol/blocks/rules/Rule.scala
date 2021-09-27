@@ -23,20 +23,22 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralNonIndexRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence.{CannotCheck, Exists, NotExist}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationImpersonationSupport.UserExistence
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationImpersonationSupport.UserExistence.{CannotCheck, Exists, NotExist}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
-import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.matchers.{GenericPatternMatcher, MatcherWithWildcardsScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.CaseMappingEquality._
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 sealed trait Rule {
   def name: Rule.Name
@@ -119,9 +121,9 @@ object Rule {
 
   trait AuthRule extends AuthenticationRule with AuthorizationRule
 
-  trait AuthorizationRule extends Rule
+  trait AuthorizationRule extends Rule with AuthorizationImpersonationSupport
 
-  trait AuthenticationRule extends Rule {
+  trait AuthenticationRule extends Rule with AuthenticationImpersonationSupport {
 
     private lazy val enhancedImpersonatorDefs =
       impersonators
@@ -130,11 +132,6 @@ object Rule {
           val userMatcher = MatcherWithWildcardsScalaAdapter.fromSetString[User.Id](i.users.map(_.value.value).toSet)(caseMappingEquality)
           (i, impersonatorMatcher, userMatcher)
         }
-
-    protected def impersonators: List[ImpersonatorDef]
-
-    protected def exists(user: User.Id)
-                        (implicit userIdEq: Eq[User.Id]): Task[UserExistence]
 
     def eligibleUsers: AuthenticationRule.EligibleUsersSupport
 
@@ -214,13 +211,6 @@ object Rule {
     }
   }
   object AuthenticationRule {
-    sealed trait UserExistence
-    object UserExistence {
-      case object Exists extends UserExistence
-      case object NotExist extends UserExistence
-      case object CannotCheck extends UserExistence
-    }
-
     sealed trait EligibleUsersSupport
     object EligibleUsersSupport {
       final case class Available(users: Set[User.Id]) extends EligibleUsersSupport
@@ -228,14 +218,51 @@ object Rule {
     }
   }
 
-  trait NoImpersonationSupport {
+  trait AuthenticationImpersonationSupport {
+    this: AuthenticationRule =>
+
+    protected def impersonators: List[ImpersonatorDef]
+
+    protected def exists(user: User.Id)
+                        (implicit userIdEq: Eq[User.Id]): Task[UserExistence]
+
+  }
+  object AuthenticationImpersonationSupport {
+    sealed trait UserExistence
+    object UserExistence {
+      case object Exists extends UserExistence
+      case object NotExist extends UserExistence
+      case object CannotCheck extends UserExistence
+    }
+  }
+
+  trait NoAuthenticationImpersonationSupport extends AuthenticationImpersonationSupport {
     this: AuthenticationRule =>
 
     override protected val impersonators: List[ImpersonatorDef] = Nil
 
     override final protected def exists(user: User.Id)
                                        (implicit userIdEq: Eq[User.Id]): Task[UserExistence] =
-      Task.now(CannotCheck)
+      Task.now(UserExistence.CannotCheck)
+  }
+
+  trait AuthorizationImpersonationSupport {
+    this: AuthorizationRule =>
+
+    protected def mockedGroupsOf(user: User.Id): Groups
+  }
+  object AuthorizationImpersonationSupport {
+    sealed trait Groups
+    object Groups {
+      final case class Present(groups: UniqueList[Group]) extends Groups
+      case object CannotCheck extends Groups
+    }
+  }
+
+  trait NoAuthorizationImpersonationSupport extends AuthorizationImpersonationSupport {
+    this: AuthorizationRule =>
+
+    override final protected def mockedGroupsOf(user: User.Id): Groups = Groups.CannotCheck
   }
 
 }

@@ -42,7 +42,8 @@ import scala.util.Try
 final class RorKbnAuthRule(val settings: Settings,
                            implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthRule
-    with NoImpersonationSupport
+    with NoAuthenticationImpersonationSupport
+    with NoAuthorizationImpersonationSupport
     with Logging {
 
   override val name: Rule.Name = RorKbnAuthRule.Name.name

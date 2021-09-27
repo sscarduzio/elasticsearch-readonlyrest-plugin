@@ -39,7 +39,8 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 final class GroupsRule(val settings: Settings,
                        implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthRule
-    with NoImpersonationSupport
+    with NoAuthenticationImpersonationSupport
+    with NoAuthorizationImpersonationSupport
     with Logging {
 
   override val name: Rule.Name = GroupsRule.Name.name

@@ -20,7 +20,8 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.{EligibleUsersSupport, UserExistence}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationImpersonationSupport.UserExistence
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}

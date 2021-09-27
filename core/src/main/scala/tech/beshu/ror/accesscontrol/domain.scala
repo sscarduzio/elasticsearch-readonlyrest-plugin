@@ -80,6 +80,9 @@ object domain {
   final case class UserIdPatterns(patterns: UniqueNonEmptyList[User.UserIdPattern])
 
   final case class Group(value: NonEmptyString)
+  object Group {
+    implicit val eq: Eq[Group] = Eq.by(_.value.value)
+  }
 
   final case class Header(name: Header.Name, value: NonEmptyString)
   object Header {

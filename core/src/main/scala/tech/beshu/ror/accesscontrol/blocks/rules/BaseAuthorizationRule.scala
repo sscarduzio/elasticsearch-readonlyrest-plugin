@@ -16,39 +16,79 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.data.NonEmptySet
+import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthorizationImpersonationSupport.Groups
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.Group._
 import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser}
-import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 abstract class BaseAuthorizationRule
   extends AuthorizationRule {
 
-  protected def authorize[B <: BlockContext](blockContext: B,
-                                             user: LoggedUser): Task[AuthorizationResult]
+  protected def groupsPermittedByRule: UniqueNonEmptyList[Group]
+
+  protected def groupsPermittedByAllRulesOfThisType: UniqueNonEmptyList[Group]
+
+  protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[Group]]
+
+  protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = Right(())
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     blockContext.userMetadata.loggedUser match {
-      case Some(user) =>
-        authorize(blockContext, user)
-          .map {
-            case AuthorizationResult.Unauthorized =>
-              Rejected()
-            case AuthorizationResult.Authorized(availableGroups) =>
-              Fulfilled(blockContext.withUserMetadata(_.addAvailableGroups(availableGroups)))
-          }
+      case Some(user@LoggedUser.DirectlyLoggedUser(_)) =>
+        loggedUserPreconditionCheck(user) match {
+          case Left(_) => Task.now(Rejected())
+          case Right(_) => authorizeDirectlyLoggedUser(blockContext, user)
+        }
+      case Some(user@LoggedUser.ImpersonatedUser(_, _)) =>
+        loggedUserPreconditionCheck(user) match {
+          case Left(_) => Task.now(Rejected())
+          case Right(_) => authorizeImpersonatedUser(blockContext, user)
+        }
       case None =>
         Task.now(Rejected())
     }
   }
 
-  protected def pickCurrentGroupFrom(resolvedGroups: NonEmptySet[Group]): Group = {
-    resolvedGroups.toSortedSet.toList.minBy(_.value)
+  private def authorizeImpersonatedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
+                                                                                 user: LoggedUser.ImpersonatedUser): Task[RuleResult[B]] = {
+    mockedGroupsOf(user.id) match {
+      case Groups.Present(mockedGroups) =>
+        Task.delay(canBeAuthorized(blockContext, groupsPermittedByRule, mockedGroups))
+      case Groups.CannotCheck =>
+        Task.now(Rejected(Cause.ImpersonationNotSupported))
+    }
+  }
+
+  private def authorizeDirectlyLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
+                                                                                   user: LoggedUser.DirectlyLoggedUser): Task[RuleResult[B]] = {
+    val allAllowedGroups = groupsPermittedByRule
+    blockContext.userMetadata.currentGroup match {
+      case Some(currentGroup) if allAllowedGroups.exists(_ === currentGroup) =>
+        userGroups(blockContext, user)
+          .map(canBeAuthorized(blockContext, allAllowedGroups, _))
+      case Some(_) =>
+        Task.now(Rejected())
+      case None =>
+        userGroups(blockContext, user)
+          .map(canBeAuthorized(blockContext, allAllowedGroups, _))
+    }
+  }
+
+  private def canBeAuthorized[B <: BlockContext : BlockContextUpdater](blockContext: B,
+                                                                       permittedGroups: UniqueNonEmptyList[Group],
+                                                                       userGroups: UniqueList[Group]): RuleResult[B] = {
+    UniqueNonEmptyList.fromList(groupsPermittedByAllRulesOfThisType.toList.intersect(userGroups.toList)) match {
+      case Some(allowedGroups) =>
+        Fulfilled(blockContext.withUserMetadata(_.addAvailableGroups(allowedGroups)))
+      case None =>
+        Rejected()
+    }
   }
 }
 

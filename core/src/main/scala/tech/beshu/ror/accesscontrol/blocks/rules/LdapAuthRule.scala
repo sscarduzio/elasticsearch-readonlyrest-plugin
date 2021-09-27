@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, NoImpersonationSupport, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, NoAuthenticationImpersonationSupport, NoAuthorizationImpersonationSupport, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 
@@ -27,7 +27,8 @@ final class LdapAuthRule(val authentication: LdapAuthenticationRule,
                          val authorization: LdapAuthorizationRule,
                         implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthRule
-    with NoImpersonationSupport {
+    with NoAuthenticationImpersonationSupport
+    with NoAuthorizationImpersonationSupport {
 
   override val name: Rule.Name = LdapAuthRule.Name.name
 

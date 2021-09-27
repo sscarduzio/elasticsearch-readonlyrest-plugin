@@ -85,7 +85,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory {
     assertRule(settings, header, isMatched = false)
 
   private def assertRule(settings: ProxyAuthRule.Settings, header: Header, isMatched: Boolean) = {
-    val rule = new ProxyAuthRule(settings, UserIdEq.caseSensitive)
+    val rule = new ProxyAuthRule(settings, Nil, UserIdEq.caseSensitive)
     val requestContext = mock[RequestContext]
     (requestContext.headers _).expects().returning(Set(header)).twice()
     val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)

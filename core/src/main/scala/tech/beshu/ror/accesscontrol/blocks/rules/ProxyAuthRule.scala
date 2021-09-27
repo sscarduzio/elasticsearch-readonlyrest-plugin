@@ -16,13 +16,16 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
+import cats.Eq
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, NoImpersonationSupport, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
@@ -33,9 +36,9 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final class ProxyAuthRule(val settings: Settings,
+                          override val impersonators: List[ImpersonatorDef],
                           implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthenticationRule
-    with NoImpersonationSupport
     with Logging {
 
   private val userMatcher = MatcherWithWildcardsScalaAdapter[User.Id](settings.userIds.toSet)
@@ -54,6 +57,10 @@ final class ProxyAuthRule(val settings: Settings,
         Rejected()
     }
   }
+
+  override protected def exists(user: Id)
+                               (implicit userIdEq: Eq[Id]): Task[UserExistence] =
+    Task.now(UserExistence.Exists)
 
   private def getLoggedUser(context: RequestContext) = {
     context

@@ -180,16 +180,13 @@ class ExternalAuthorizationRuleTests
       }
       "current group is set for a given user but it's not present in intersection groups set" in {
         val service = mock[ExternalAuthorizationService]
-        (service.grantsFor _)
-          .expects(DirectlyLoggedUser(User.Id("user2")))
-          .returning(Task.now(UniqueList.of(groupFrom("g1"), groupFrom("g2"))))
 
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
             service,
-            UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
-            UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
-            UniqueNonEmptyList.of(User.Id("*"))
+            permittedGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
+            allExternalServiceGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
+            users = UniqueNonEmptyList.of(User.Id("*"))
           ),
           loggedUser = Some(User.Id("user2")),
           preferredGroup = Some(groupFrom("g3"))

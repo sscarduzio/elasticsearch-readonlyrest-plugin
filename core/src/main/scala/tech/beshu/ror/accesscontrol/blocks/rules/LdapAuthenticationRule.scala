@@ -16,18 +16,20 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
+import cats.Eq
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthenticationRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{NoImpersonationSupport, RuleName}
-import tech.beshu.ror.accesscontrol.domain.Credentials
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 
 final class LdapAuthenticationRule(val settings: Settings,
-                        implicit override val caseMappingEquality: UserIdCaseMappingEquality)
-  extends BaseBasicAuthenticationRule
-    with NoImpersonationSupport {
+                                   implicit override val caseMappingEquality: UserIdCaseMappingEquality)
+  extends BaseBasicAuthenticationRule {
 
   override val name: Rule.Name = LdapAuthenticationRule.Name.name
 
@@ -36,6 +38,10 @@ final class LdapAuthenticationRule(val settings: Settings,
   override protected def authenticateUsing(credentials: Credentials): Task[Boolean] =
     settings.ldap.authenticate(credentials.user, credentials.secret)
 
+  override protected def exists(user: User.Id)
+                               (implicit userIdEq: Eq[User.Id]): Task[UserExistence] = ???
+
+  override protected def impersonators: List[ImpersonatorDef] = ???
 }
 
 object LdapAuthenticationRule {
