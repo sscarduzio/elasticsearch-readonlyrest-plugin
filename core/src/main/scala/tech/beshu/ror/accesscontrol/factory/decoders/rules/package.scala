@@ -14,21 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.unit.acl.blocks.rules
+package tech.beshu.ror.accesscontrol.factory.decoders
 
-import eu.timepit.refined.auto._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.ImpersonationSettings
-import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, BasicAuthenticationRule}
-import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
-import tech.beshu.ror.utils.UserIdEq
+import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 
-class AuthKeyRuleTests extends BasicAuthenticationTestTemplate {
+package object rules {
 
-  override protected def ruleName: String = classOf[AuthKeyRule].getSimpleName
+  implicit class OptionalImpersonatorDefinitionOps(val impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]]) {
 
-  override protected val rule = new AuthKeyRule(
-    BasicAuthenticationRule.Settings(Credentials(User.Id("logstash"), PlainTextSecret("logstash"))),
-    ImpersonationSettings.withMutableMocksProviderWithCachePerRequest(List.empty),
-    UserIdEq.caseSensitive
-  )
+    def toImpersonationSettings: ImpersonationSettings = {
+      ImpersonationSettings.withMutableMocksProviderWithCachePerRequest {
+        impersonatorsDefinitions
+          .map(_.items)
+          .getOrElse(Nil)
+      }
+    }
+  }
 }

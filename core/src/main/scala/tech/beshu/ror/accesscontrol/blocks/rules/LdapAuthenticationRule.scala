@@ -18,16 +18,17 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.Eq
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{ImpersonationSettings, RuleName}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 
 final class LdapAuthenticationRule(val settings: Settings,
+                                   override val impersonationSetting: ImpersonationSettings,
                                    implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BaseBasicAuthenticationRule {
 
@@ -38,10 +39,21 @@ final class LdapAuthenticationRule(val settings: Settings,
   override protected def authenticateUsing(credentials: Credentials): Task[Boolean] =
     settings.ldap.authenticate(credentials.user, credentials.secret)
 
-  override protected def exists(user: User.Id)
-                               (implicit userIdEq: Eq[User.Id]): Task[UserExistence] = ???
-
-  override protected def impersonators: List[ImpersonatorDef] = ???
+  override protected[rules] def exists(user: User.Id)
+                                      (implicit requestId: RequestId,
+                                       eq: Eq[User.Id]): Task[UserExistence] = Task.delay {
+    impersonationSetting
+      .mocksProvider
+      .ldapServiceWith(settings.ldap.id)
+      .map { mock =>
+        val ldapUserExists = mock.users.exists(_.id == user)
+        if (ldapUserExists) UserExistence.Exists
+        else UserExistence.NotExist
+      }
+      .getOrElse {
+        UserExistence.CannotCheck
+      }
+  }
 }
 
 object LdapAuthenticationRule {

@@ -41,7 +41,11 @@ class AuthKeyRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
       .plainTextCredentialsDecoder
       .map(settings =>
         RuleWithVariableUsageDefinition.create(
-          new AuthKeyRule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+          new AuthKeyRule(
+            settings,
+            impersonatorsDef.toImpersonationSettings,
+            caseMappingEquality
+          )
         )
       )
   }
@@ -56,7 +60,11 @@ class AuthKeySha1RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDe
       .hashedCredentialsDecoder
       .map(settings =>
         RuleWithVariableUsageDefinition.create(
-          new AuthKeySha1Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+          new AuthKeySha1Rule(
+            settings,
+            impersonatorsDef.toImpersonationSettings,
+            caseMappingEquality
+          )
         )
       )
   }
@@ -71,7 +79,11 @@ class AuthKeySha256RuleDecoder(impersonatorsDef: Option[Definitions[Impersonator
       .hashedCredentialsDecoder
       .map(settings =>
         RuleWithVariableUsageDefinition.create(
-          new AuthKeySha256Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+          new AuthKeySha256Rule(
+            settings,
+            impersonatorsDef.toImpersonationSettings,
+            caseMappingEquality
+          )
         )
       )
   }
@@ -86,7 +98,11 @@ class AuthKeySha512RuleDecoder(impersonatorsDef: Option[Definitions[Impersonator
       .hashedCredentialsDecoder
       .map(settings =>
         RuleWithVariableUsageDefinition.create(
-          new AuthKeySha512Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+          new AuthKeySha512Rule(
+            settings,
+            impersonatorsDef.toImpersonationSettings,
+            caseMappingEquality
+          )
         )
       )
   }
@@ -101,7 +117,11 @@ class AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDef: Option[Definition
       .hashedCredentialsDecoder
       .map(settings =>
         RuleWithVariableUsageDefinition.create(
-          new AuthKeyPBKDF2WithHmacSHA512Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+          new AuthKeyPBKDF2WithHmacSHA512Rule(
+            settings,
+            impersonatorsDef.toImpersonationSettings,
+            caseMappingEquality
+          )
         )
       )
   }
@@ -116,7 +136,11 @@ class AuthKeyUnixRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDe
       .unixHashedCredentialsDecoder
       .map(settings =>
         RuleWithVariableUsageDefinition.create(
-          new AuthKeyUnixRule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+          new AuthKeyUnixRule(
+            settings,
+            impersonatorsDef.toImpersonationSettings,
+            caseMappingEquality
+          )
         )
       )
   }

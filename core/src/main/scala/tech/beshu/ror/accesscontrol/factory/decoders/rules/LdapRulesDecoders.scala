@@ -20,6 +20,7 @@ import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
+import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleWithVariableUsageDefinition}
 import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule, Rule}
@@ -40,6 +41,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
 class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
+                                    impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                     implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthenticationRule] {
 
@@ -58,7 +60,11 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
       }
       .map(new LoggableLdapAuthenticationServiceDecorator(_))
       .map(service => RuleWithVariableUsageDefinition.create(
-        new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service), caseMappingEquality)
+        new LdapAuthenticationRule(
+          LdapAuthenticationRule.Settings(service),
+          impersonatorsDef.toImpersonationSettings,
+          caseMappingEquality
+        )
       ))
       .decoder
   }
@@ -124,11 +130,12 @@ object LdapAuthorizationRuleDecoder {
 }
 
 class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
+                          impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                           caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[LdapAuthRule]] = {
-    LdapAuthRuleDecoder.instance(ldapDefinitions, caseMappingEquality)
+    LdapAuthRuleDecoder.instance(ldapDefinitions, impersonatorsDef, caseMappingEquality)
       .map(RuleWithVariableUsageDefinition.create(_))
   }
 }
@@ -136,7 +143,8 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
 object LdapAuthRuleDecoder {
 
   private def instance(ldapDefinitions: Definitions[LdapService],
-                      caseMappingEquality: UserIdCaseMappingEquality): Decoder[LdapAuthRule] =
+                       impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+                       caseMappingEquality: UserIdCaseMappingEquality): Decoder[LdapAuthRule] =
     Decoder
       .instance { c =>
         for {
@@ -153,21 +161,28 @@ object LdapAuthRuleDecoder {
             .findLdapService[LdapAuthService, LdapAuthRule](ldapDefinitions.items, name)
             .map(new CacheableLdapServiceDecorator(_, ttl))
             .map(new LoggableLdapServiceDecorator(_))
-            .map(createLdapAuthRule(_, groups, caseMappingEquality))
+            .map(createLdapAuthRule(_, impersonatorsDef, groups, caseMappingEquality))
         case (name, None, groups) =>
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthService, LdapAuthRule](ldapDefinitions.items, name)
             .map(new LoggableLdapServiceDecorator(_))
-            .map(createLdapAuthRule(_, groups, caseMappingEquality))
+            .map(createLdapAuthRule(_, impersonatorsDef, groups, caseMappingEquality))
       }
       .decoder
 
   private def createLdapAuthRule(ldapService: LdapAuthService,
+                                 impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                  groups: UniqueNonEmptyList[Group],
                                  caseMappingEquality: UserIdCaseMappingEquality) = {
     new LdapAuthRule(
-      new LdapAuthenticationRule(LdapAuthenticationRule.Settings(ldapService), caseMappingEquality),
-      new LdapAuthorizationRule(LdapAuthorizationRule.Settings(ldapService, groups, groups)),
+      new LdapAuthenticationRule(
+        LdapAuthenticationRule.Settings(ldapService),
+        impersonatorsDef.toImpersonationSettings,
+        caseMappingEquality
+      ),
+      new LdapAuthorizationRule(
+        LdapAuthorizationRule.Settings(ldapService, groups, groups)
+      ),
       caseMappingEquality
     )
   }

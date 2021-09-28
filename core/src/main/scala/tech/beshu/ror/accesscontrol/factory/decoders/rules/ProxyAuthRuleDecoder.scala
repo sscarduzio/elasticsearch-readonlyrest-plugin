@@ -43,7 +43,11 @@ class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth],
     ProxyAuthRuleDecoder.simpleSettingsDecoder
       .or(ProxyAuthRuleDecoder.extendedSettingsDecoder(authProxiesDefinitions))
       .map(settings => RuleWithVariableUsageDefinition.create(
-        new ProxyAuthRule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+        new ProxyAuthRule(
+          settings,
+          impersonatorsDef.toImpersonationSettings,
+          caseMappingEquality
+        )
       ))
   }
 }

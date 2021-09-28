@@ -20,12 +20,12 @@ import cats.Eq
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, ImpersonationSettings, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
@@ -36,7 +36,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final class ProxyAuthRule(val settings: Settings,
-                          override val impersonators: List[ImpersonatorDef],
+                          override val impersonationSetting: ImpersonationSettings,
                           implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthenticationRule
     with Logging {
@@ -58,8 +58,9 @@ final class ProxyAuthRule(val settings: Settings,
     }
   }
 
-  override protected def exists(user: Id)
-                               (implicit userIdEq: Eq[Id]): Task[UserExistence] =
+  override protected[rules] def exists(user: Id)
+                                      (implicit requestId: RequestId,
+                                       userIdEq: Eq[Id]): Task[UserExistence] =
     Task.now(UserExistence.Exists)
 
   private def getLoggedUser(context: RequestContext) = {

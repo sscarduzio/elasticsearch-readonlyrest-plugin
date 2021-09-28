@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules
 
 import monix.eval.Task
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthorizationImpersonationSupport.Groups
@@ -45,11 +46,11 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
   }
 
   override protected def userGroups[B <: BlockContext](blockContext: B,
-                                                       user: LoggedUser): Task[UniqueList[Group]] = {
+                                                       user: LoggedUser): Task[UniqueList[Group]] =
     settings.service.grantsFor(user)
-  }
 
-  override protected def mockedGroupsOf(user: User.Id): Groups = ???
+  override protected[rules] def mockedGroupsOf(user: User.Id)
+                                              (implicit requestId: RequestId): Groups = ???
 
 }
 

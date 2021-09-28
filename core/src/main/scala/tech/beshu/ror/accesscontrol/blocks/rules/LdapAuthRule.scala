@@ -16,19 +16,22 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
+import cats.Eq
 import monix.eval.Task
+import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, NoAuthenticationImpersonationSupport, NoAuthorizationImpersonationSupport, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule._
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 
 final class LdapAuthRule(val authentication: LdapAuthenticationRule,
                          val authorization: LdapAuthorizationRule,
-                        implicit override val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthRule
-    with NoAuthenticationImpersonationSupport
-    with NoAuthorizationImpersonationSupport {
+                         implicit override val caseMappingEquality: UserIdCaseMappingEquality)
+  extends AuthRule {
 
   override val name: Rule.Name = LdapAuthRule.Name.name
 
@@ -44,6 +47,19 @@ final class LdapAuthRule(val authentication: LdapAuthenticationRule,
           Task.now(Rejected())
       }
   }
+
+  override protected val impersonationSetting: ImpersonationSettings =
+    authentication.impersonationSetting
+
+  override protected[rules] def exists(user: User.Id)
+                                      (implicit requestId: RequestId,
+                                       eq: Eq[User.Id]): Task[UserExistence] =
+    authentication.exists(user)
+
+  override protected[rules] def mockedGroupsOf(user: User.Id)
+                                              (implicit requestId: RequestId): Groups =
+    authorization.mockedGroupsOf(user)
+
 }
 
 object LdapAuthRule {

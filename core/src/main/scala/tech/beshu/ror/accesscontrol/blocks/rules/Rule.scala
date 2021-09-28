@@ -20,9 +20,11 @@ import cats.data.EitherT
 import cats.implicits._
 import cats.{Eq, Show}
 import monix.eval.Task
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralNonIndexRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
+import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, MutableMocksProviderWithCachePerRequest, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationImpersonationSupport.UserExistence.{CannotCheck, Exists, NotExist}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthorizationImpersonationSupport.Groups
@@ -32,8 +34,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
-import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.accesscontrol.matchers.{GenericPatternMatcher, MatcherWithWildcardsScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
@@ -85,6 +87,7 @@ object Rule {
     }
 
     private[rules] def fulfilled[B <: BlockContext](blockContext: B): RuleResult[B] = RuleResult.Fulfilled(blockContext)
+
     private[rules] def rejected[B <: BlockContext](specialCause: Option[Cause] = None): RuleResult[B] = RuleResult.Rejected(specialCause)
   }
 
@@ -126,7 +129,8 @@ object Rule {
   trait AuthenticationRule extends Rule with AuthenticationImpersonationSupport {
 
     private lazy val enhancedImpersonatorDefs =
-      impersonators
+      impersonationSetting
+        .impersonators
         .map { i =>
           val impersonatorMatcher = new GenericPatternMatcher(i.usernames.patterns.toList)(caseMappingEquality)
           val userMatcher = MatcherWithWildcardsScalaAdapter.fromSetString[User.Id](i.users.map(_.value.value).toSet)(caseMappingEquality)
@@ -142,6 +146,7 @@ object Rule {
       val requestContext = blockContext.requestContext
       requestContext.impersonateAs match {
         case Some(theImpersonatedUserId) => toRuleResult[B] {
+          implicit lazy val requestId: RequestId = blockContext.requestContext.id.toRequestId
           for {
             impersonatorDef <- findImpersonatorWithProperRights[B](theImpersonatedUserId, requestContext)
             loggedImpersonator <- authenticateImpersonator(impersonatorDef, blockContext)
@@ -159,7 +164,7 @@ object Rule {
 
     private def findImpersonatorWithProperRights[B <: BlockContext](theImpersonatedUserId: User.Id,
                                                                     requestContext: RequestContext)
-                                                                   (implicit userIdEq: Eq[User.Id]) = {
+                                                                   (implicit eq: Eq[User.Id]) = {
       EitherT.fromOption[Task](
         requestContext
           .basicAuth
@@ -182,17 +187,18 @@ object Rule {
         .authenticationRule
         .tryToAuthenticate(BlockContextUpdater[B].emptyBlockContext(blockContext)) // we are not interested in gathering those data
         .map {
-          case Fulfilled(bc) =>
-            bc.userMetadata.loggedUser match {
-              case Some(loggedUser) => Right(loggedUser)
-              case None => throw new IllegalStateException("Impersonator should be logged")
-            }
-          case Rejected(_) => Left(Rejected[B](Cause.ImpersonationNotAllowed))
-        }
+        case Fulfilled(bc) =>
+          bc.userMetadata.loggedUser match {
+            case Some(loggedUser) => Right(loggedUser)
+            case None => throw new IllegalStateException("Impersonator should be logged")
+          }
+        case Rejected(_) => Left(Rejected[B](Cause.ImpersonationNotAllowed))
+      }
     }
 
     private def checkIfTheImpersonatedUserExist[B <: BlockContext](theImpersonatedUserId: User.Id)
-                                                                  (implicit userIdEq: Eq[User.Id]) = EitherT {
+                                                                  (implicit requestId: RequestId,
+                                                                   eq: Eq[User.Id]) = EitherT {
       exists(theImpersonatedUserId)
         .map {
           case Exists => Right(())
@@ -221,10 +227,11 @@ object Rule {
   trait AuthenticationImpersonationSupport {
     this: AuthenticationRule =>
 
-    protected def impersonators: List[ImpersonatorDef]
+    protected def impersonationSetting: ImpersonationSettings
 
-    protected def exists(user: User.Id)
-                        (implicit userIdEq: Eq[User.Id]): Task[UserExistence]
+    protected[rules] def exists(user: User.Id)
+                               (implicit requestId: RequestId,
+                                eq: Eq[User.Id]): Task[UserExistence]
 
   }
   object AuthenticationImpersonationSupport {
@@ -236,20 +243,33 @@ object Rule {
     }
   }
 
+  final case class ImpersonationSettings(impersonators: List[ImpersonatorDef],
+                                         mocksProvider: MocksProvider)
+  object ImpersonationSettings {
+    def withMutableMocksProviderWithCachePerRequest(impersonators: List[ImpersonatorDef]): ImpersonationSettings =
+      ImpersonationSettings(
+        impersonators,
+        new MutableMocksProviderWithCachePerRequest()
+      )
+  }
+
   trait NoAuthenticationImpersonationSupport extends AuthenticationImpersonationSupport {
     this: AuthenticationRule =>
 
-    override protected val impersonators: List[ImpersonatorDef] = Nil
+    override protected val impersonationSetting: ImpersonationSettings =
+      ImpersonationSettings(List.empty, NoOpMocksProvider)
 
-    override final protected def exists(user: User.Id)
-                                       (implicit userIdEq: Eq[User.Id]): Task[UserExistence] =
+    override final protected[rules] def exists(user: User.Id)
+                                              (implicit requestId: RequestId,
+                                               eq: Eq[User.Id]): Task[UserExistence] =
       Task.now(UserExistence.CannotCheck)
   }
 
   trait AuthorizationImpersonationSupport {
     this: AuthorizationRule =>
 
-    protected def mockedGroupsOf(user: User.Id): Groups
+    protected[rules] def mockedGroupsOf(user: User.Id)
+                                       (implicit requestId: RequestId): Groups
   }
   object AuthorizationImpersonationSupport {
     sealed trait Groups
@@ -262,7 +282,9 @@ object Rule {
   trait NoAuthorizationImpersonationSupport extends AuthorizationImpersonationSupport {
     this: AuthorizationRule =>
 
-    override final protected def mockedGroupsOf(user: User.Id): Groups = Groups.CannotCheck
+    override final protected[rules] def mockedGroupsOf(user: User.Id)
+                                                      (implicit requestId: RequestId): Groups =
+      Groups.CannotCheck
   }
 
 }

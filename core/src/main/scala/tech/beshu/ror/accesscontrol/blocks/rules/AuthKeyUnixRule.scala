@@ -21,18 +21,18 @@ import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.commons.codec.digest.Crypt.crypt
-import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyUnixRule.UnixHashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 import java.util.regex.Pattern
 
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationImpersonationSupport.UserExistence
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{ImpersonationSettings, RuleName}
 
 final class AuthKeyUnixRule(override val settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
-                            override val impersonators: List[ImpersonatorDef],
+                            override val impersonationSetting: ImpersonationSettings,
                             implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BasicAuthenticationRule(settings) {
 
@@ -46,7 +46,8 @@ final class AuthKeyUnixRule(override val settings: BasicAuthenticationRule.Setti
   }
 
   override def exists(user: User.Id)
-                     (implicit userIdEq: Eq[User.Id]): Task[UserExistence] = Task.now {
+                     (implicit requestId: RequestId,
+                      eq: Eq[User.Id]): Task[UserExistence] = Task.now {
     if (user === settings.credentials.userId) UserExistence.Exists
     else UserExistence.NotExist
   }

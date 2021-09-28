@@ -178,7 +178,7 @@ object domain {
 
   final case class Credentials(user: User.Id, secret: PlainTextSecret)
   object Credentials {
-    implicit def eqCredentials(implicit userIdEq: Eq[User.Id]): Eq[Credentials] =
+    implicit def eqCredentials(implicit eq: Eq[User.Id]): Eq[Credentials] =
       Eq.and(Eq.by(_.user), Eq.by(_.secret))
   }
   final case class BasicAuth private(credentials: Credentials) {

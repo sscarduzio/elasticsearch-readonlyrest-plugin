@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule}
@@ -130,7 +130,7 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
         val rule = authRuleWithImpersonation { defs =>
           new AuthKeySha1Rule(
             settings = BasicAuthenticationRule.Settings(HashedCredentials.HashedUserAndPassword("xxxxxxxxxxx")),
-            impersonators = defs,
+            impersonationSetting = ImpersonationSettings.withMutableMocksProviderWithCachePerRequest(defs),
             caseMappingEquality = UserIdEq.caseSensitive,
           )
         }
@@ -158,7 +158,7 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
           User.Id(NonEmptyString.unsafeFrom(user)),
           PlainTextSecret(NonEmptyString.unsafeFrom(password))
         )),
-        defs,
+        ImpersonationSettings.withMutableMocksProviderWithCachePerRequest(defs),
         UserIdEq.caseSensitive
       )
     }
@@ -192,7 +192,7 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
         User.Id(NonEmptyString.unsafeFrom(user)),
         PlainTextSecret(NonEmptyString.unsafeFrom(password))
       )),
-      impersonators = Nil,
+      impersonationSetting = ImpersonationSettings.withMutableMocksProviderWithCachePerRequest(List.empty),
       caseMappingEquality = defaultUserIdEq
     )
   }

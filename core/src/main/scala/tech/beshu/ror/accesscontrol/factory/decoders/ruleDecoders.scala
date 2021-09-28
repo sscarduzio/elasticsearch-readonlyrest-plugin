@@ -98,7 +98,7 @@ object ruleDecoders {
     val optionalRuleDecoder = name match {
       case ExternalAuthorizationRule.Name.name => Some(new ExternalAuthorizationRuleDecoder(authorizationServiceDefinitions, caseMappingEquality))
       case LdapAuthorizationRule.Name.name => Some(new LdapAuthorizationRuleDecoder(ldapServiceDefinitions))
-      case LdapAuthRule.Name.name => Some(new LdapAuthRuleDecoder(ldapServiceDefinitions, caseMappingEquality))
+      case LdapAuthRule.Name.name => Some(new LdapAuthRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, caseMappingEquality))
       case RorKbnAuthRule.Name.name => Some(new RorKbnAuthRuleDecoder(rorKbnDefinitions, caseMappingEquality))
       case _ =>
         authenticationRuleDecoderBy(
@@ -132,7 +132,7 @@ object ruleDecoders {
       case AuthKeyUnixRule.Name.name => Some(new AuthKeyUnixRuleDecoder(impersonatorsDefinitions, caseMappingEquality))
       case ExternalAuthenticationRule.Name.name => Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions, caseMappingEquality))
       case JwtAuthRule.Name.name => Some(new JwtAuthRuleDecoder(jwtDefinitions, caseMappingEquality))
-      case LdapAuthenticationRule.Name.name => Some(new LdapAuthenticationRuleDecoder(ldapServiceDefinitions, caseMappingEquality))
+      case LdapAuthenticationRule.Name.name => Some(new LdapAuthenticationRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, caseMappingEquality))
       case ProxyAuthRule.Name.name => Some(new ProxyAuthRuleDecoder(authProxyDefinitions, impersonatorsDefinitions, caseMappingEquality))
       case _ => None
     }

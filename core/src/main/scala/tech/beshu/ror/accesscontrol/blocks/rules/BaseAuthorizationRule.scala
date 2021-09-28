@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.implicits._
 import monix.eval.Task
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -57,6 +58,7 @@ abstract class BaseAuthorizationRule
 
   private def authorizeImpersonatedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                  user: LoggedUser.ImpersonatedUser): Task[RuleResult[B]] = {
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     mockedGroupsOf(user.id) match {
       case Groups.Present(mockedGroups) =>
         Task.delay(canBeAuthorized(blockContext, groupsPermittedByRule, mockedGroups))

@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.ImpersonationSettings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -158,7 +159,12 @@ class LdapAuthRuleTests
                          authorizationSettings: LdapAuthorizationRule.Settings,
                          basicHeader: Option[Header],
                          assertionType: AssertionType): Unit = {
-    val rule = new LdapAuthRule(authentication = new LdapAuthenticationRule(authenticationSettings, UserIdEq.caseSensitive),
+    val rule = new LdapAuthRule(
+      authentication = new LdapAuthenticationRule(
+        authenticationSettings,
+        ImpersonationSettings.withMutableMocksProviderWithCachePerRequest(List.empty),
+        UserIdEq.caseSensitive
+      ),
       authorization = new LdapAuthorizationRule(authorizationSettings),
       caseMappingEquality = UserIdEq.caseSensitive,
     )

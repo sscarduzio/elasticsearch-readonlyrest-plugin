@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules
 
 import monix.eval.Task
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthorizationService
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule.Settings
@@ -37,11 +38,11 @@ class LdapAuthorizationRule(val settings: Settings)
     settings.allLdapGroups
 
   override protected def userGroups[B <: BlockContext](blockContext: B,
-                                                       user: LoggedUser): Task[UniqueList[Group]] = {
+                                                       user: LoggedUser): Task[UniqueList[Group]] =
     settings.ldap.groupsOf(user.id)
-  }
 
-  override protected def mockedGroupsOf(user: User.Id): Groups = ???
+  override protected[rules] def mockedGroupsOf(user: User.Id)
+                                              (implicit requestId: RequestId): Groups = ???
 
 }
 

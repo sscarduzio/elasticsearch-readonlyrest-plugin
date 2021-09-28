@@ -18,6 +18,7 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import eu.timepit.refined.auto._
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.ImpersonationSettings
 import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyPBKDF2WithHmacSHA512Rule, BasicAuthenticationRule}
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.utils.UserIdEq
@@ -30,7 +31,7 @@ class AuthKeyPBKDF2WithHmacSHA512RuleTests extends BasicAuthenticationTestTempla
     BasicAuthenticationRule.Settings(
       HashedUserAndPassword("KhIxF5EEYkH5GPX51zTRIR4cHqhpRVALSmTaWE18mZEL2KqCkRMeMU4GR848mGq4SDtNvsybtJ/sZBuX6oFaSg==")
     ),
-    Nil,
+    ImpersonationSettings.withMutableMocksProviderWithCachePerRequest(List.empty),
     UserIdEq.caseSensitive
   )
 }
@@ -43,7 +44,7 @@ class AuthKeyPBKDF2WithHmacSHA512RuleAltSyntaxTests extends BasicAuthenticationT
     BasicAuthenticationRule.Settings(
       HashedOnlyPassword(User.Id("logstash"), "JltDNAoXNtc7MIBs2FYlW0o1f815ucj+bel3drdAk2yOufg2PNfQ51qr0EQ6RSkojw/DzrDLFDeXONumzwKjOA==")
     ),
-    Nil,
+    ImpersonationSettings.withMutableMocksProviderWithCachePerRequest(List.empty),
     UserIdEq.caseSensitive
   )
 }

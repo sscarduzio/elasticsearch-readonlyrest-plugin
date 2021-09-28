@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import cats.Eq
 import cats.data.NonEmptyList
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
@@ -29,9 +28,8 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataReque
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.CurrentUserMetadataRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth.{SeparateRules, SingleRule}
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.{WithGroupsMapping, WithoutGroupsMapping}
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, UserDef}
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule._
@@ -443,47 +441,31 @@ object GroupsRuleTests {
 
   private object authenticationRule {
 
-    def matching(user: User.Id) = new AuthenticationRule {
+    def matching(user: User.Id) = new AuthenticationRule with NoAuthenticationImpersonationSupport {
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
-      override protected val impersonators: List[ImpersonatorDef] = Nil
       override val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
-
-      override protected def exists(user: User.Id)
-                                   (implicit userIdEq: Eq[User.Id]): Task[UserExistence] =
-        Task.now(UserExistence.CannotCheck)
 
       override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
         Task.now(Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(user)))))
     }
 
-    val rejecting: AuthenticationRule = new AuthenticationRule {
+    val rejecting: AuthenticationRule = new AuthenticationRule with NoAuthenticationImpersonationSupport {
       override val name: Rule.Name = Rule.Name("dummy-rejecting")
-
-      override protected val impersonators: List[ImpersonatorDef] = Nil
       override val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
       override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
         Task.now(Rejected())
-
-      override def exists(user: User.Id)
-                         (implicit userIdEq: Eq[User.Id]): Task[UserExistence] =
-        Task.now(UserExistence.CannotCheck)
     }
 
-    val throwing: AuthenticationRule = new AuthenticationRule {
+    val throwing: AuthenticationRule = new AuthenticationRule with NoAuthenticationImpersonationSupport {
       override val name: Rule.Name = Rule.Name("dummy-throwing")
-
-      override protected val impersonators: List[ImpersonatorDef] = Nil
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
       override val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
 
       override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
         Task.raiseError(new Exception("Sth went wrong"))
-
-      override def exists(user: User.Id)
-                         (implicit userIdEq: Eq[User.Id]): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
     }
   }
 
