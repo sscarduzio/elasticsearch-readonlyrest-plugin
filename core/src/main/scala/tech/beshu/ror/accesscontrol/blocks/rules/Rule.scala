@@ -141,6 +141,8 @@ object Rule {
 
     def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]]
 
+    def caseMappingEquality: UserIdCaseMappingEquality
+
     override final def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
       implicit val eqUserId: Eq[User.Id] = caseMappingEquality.toOrder
       val requestContext = blockContext.requestContext
@@ -159,8 +161,6 @@ object Rule {
           tryToAuthenticate(blockContext)
       }
     }
-
-    def caseMappingEquality: UserIdCaseMappingEquality
 
     private def findImpersonatorWithProperRights[B <: BlockContext](theImpersonatedUserId: User.Id,
                                                                     requestContext: RequestContext)
@@ -245,13 +245,6 @@ object Rule {
 
   final case class ImpersonationSettings(impersonators: List[ImpersonatorDef],
                                          mocksProvider: MocksProvider)
-  object ImpersonationSettings {
-    def withMutableMocksProviderWithCachePerRequest(impersonators: List[ImpersonatorDef]): ImpersonationSettings =
-      ImpersonationSettings(
-        impersonators,
-        new MutableMocksProviderWithCachePerRequest()
-      )
-  }
 
   trait NoAuthenticationImpersonationSupport extends AuthenticationImpersonationSupport {
     this: AuthenticationRule =>
@@ -268,8 +261,11 @@ object Rule {
   trait AuthorizationImpersonationSupport {
     this: AuthorizationRule =>
 
+    protected def mocksProvider: MocksProvider
+
     protected[rules] def mockedGroupsOf(user: User.Id)
-                                       (implicit requestId: RequestId): Groups
+                                       (implicit requestId: RequestId,
+                                        eq: Eq[User.Id]): Groups
   }
   object AuthorizationImpersonationSupport {
     sealed trait Groups
@@ -282,8 +278,11 @@ object Rule {
   trait NoAuthorizationImpersonationSupport extends AuthorizationImpersonationSupport {
     this: AuthorizationRule =>
 
+    override protected val mocksProvider: MocksProvider = NoOpMocksProvider
+
     override final protected[rules] def mockedGroupsOf(user: User.Id)
-                                                      (implicit requestId: RequestId): Groups =
+                                                      (implicit requestId: RequestId,
+                                                       eq: Eq[User.Id]): Groups =
       Groups.CannotCheck
   }
 

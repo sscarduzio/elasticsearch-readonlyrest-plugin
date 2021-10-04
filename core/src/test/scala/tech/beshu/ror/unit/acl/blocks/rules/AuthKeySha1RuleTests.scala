@@ -17,6 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules
 
 import eu.timepit.refined.auto._
+import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.ImpersonationSettings
 import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeySha1Rule, BasicAuthenticationRule}
@@ -29,7 +30,7 @@ class AuthKeySha1RuleTests extends BasicAuthenticationTestTemplate {
 
   override protected val rule = new AuthKeySha1Rule(
     BasicAuthenticationRule.Settings(HashedUserAndPassword("4338fa3ea95532196849ae27615e14dda95c77b1")),
-    ImpersonationSettings.withMutableMocksProviderWithCachePerRequest(List.empty),
+    ImpersonationSettings(List.empty, NoOpMocksProvider),
     UserIdEq.caseSensitive
   )
 }
@@ -40,7 +41,7 @@ class AuthKeySha1RuleAltSyntaxTests extends BasicAuthenticationTestTemplate {
 
   override protected val rule = new AuthKeySha1Rule(
     BasicAuthenticationRule.Settings(HashedOnlyPassword(User.Id("logstash"), "9208e8476a2e8adc584bf2f613842177a39645b4")),
-    ImpersonationSettings.withMutableMocksProviderWithCachePerRequest(List.empty),
+    ImpersonationSettings(List.empty, NoOpMocksProvider),
     UserIdEq.caseSensitive
   )
 }

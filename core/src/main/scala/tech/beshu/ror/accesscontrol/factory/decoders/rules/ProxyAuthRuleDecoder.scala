@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 import cats.Order
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, ProxyAuth}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -36,6 +37,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth],
                            impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+                           mocksProvider: MocksProvider,
                            implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[ProxyAuthRule] {
 
@@ -45,7 +47,7 @@ class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth],
       .map(settings => RuleWithVariableUsageDefinition.create(
         new ProxyAuthRule(
           settings,
-          impersonatorsDef.toImpersonationSettings,
+          impersonatorsDef.toImpersonationSettings(mocksProvider),
           caseMappingEquality
         )
       ))

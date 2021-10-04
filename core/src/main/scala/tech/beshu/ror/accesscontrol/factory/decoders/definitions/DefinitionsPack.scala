@@ -31,10 +31,10 @@ final case class DefinitionsPack(proxies: Definitions[ProxyAuth],
 
 final case class Definitions[Item](items: List[Item]) extends AnyVal
 object Definitions {
+
   trait Item {
     type Id
     def id: Id
     implicit def show: Show[Id]
   }
-
 }

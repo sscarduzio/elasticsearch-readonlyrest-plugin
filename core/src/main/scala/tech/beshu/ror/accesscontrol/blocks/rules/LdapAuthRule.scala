@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 import cats.Eq
 import monix.eval.Task
 import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthorizationImpersonationSupport.Groups
@@ -51,15 +52,18 @@ final class LdapAuthRule(val authentication: LdapAuthenticationRule,
   override protected val impersonationSetting: ImpersonationSettings =
     authentication.impersonationSetting
 
+  override protected val mocksProvider: MocksProvider =
+    authorization.mocksProvider
+
   override protected[rules] def exists(user: User.Id)
                                       (implicit requestId: RequestId,
                                        eq: Eq[User.Id]): Task[UserExistence] =
     authentication.exists(user)
 
   override protected[rules] def mockedGroupsOf(user: User.Id)
-                                              (implicit requestId: RequestId): Groups =
+                                              (implicit requestId: RequestId,
+                                               eqUserId: Eq[User.Id]): Groups =
     authorization.mockedGroupsOf(user)
-
 }
 
 object LdapAuthRule {

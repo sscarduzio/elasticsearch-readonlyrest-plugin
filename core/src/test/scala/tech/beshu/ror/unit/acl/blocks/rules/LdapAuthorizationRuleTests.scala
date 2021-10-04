@@ -38,6 +38,8 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 import eu.timepit.refined.auto._
+import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
+import tech.beshu.ror.utils.UserIdEq
 
 class LdapAuthorizationRuleTests
   extends AnyWordSpec
@@ -128,7 +130,7 @@ class LdapAuthorizationRuleTests
                          loggedUser: Option[User.Id],
                          preferredGroup: Option[Group],
                          assertionType: AssertionType): Unit = {
-    val rule = new LdapAuthorizationRule(settings)
+    val rule = new LdapAuthorizationRule(settings, NoOpMocksProvider, UserIdEq.caseSensitive)
     val requestContext = MockRequestContext.metadata.copy(
       headers = preferredGroup.map(_.value).map(v => new Header(Header.Name.currentGroup, v)).toSet[Header]
     )

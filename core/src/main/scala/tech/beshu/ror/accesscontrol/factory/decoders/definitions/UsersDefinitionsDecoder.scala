@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.{GroupsRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -52,6 +53,7 @@ object UsersDefinitionsDecoder {
                rorKbnDefinitions: Definitions[RorKbnDef],
                ldapServiceDefinitions: Definitions[LdapService],
                impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
+               mocksProvider: MocksProvider,
                caseMappingEquality: UserIdCaseMappingEquality)
               (implicit clock: Clock,
                uuidProvider: UuidProvider): ADecoder[Id, Definitions[UserDef]] = {
@@ -72,6 +74,7 @@ object UsersDefinitionsDecoder {
               rorKbnDefinitions,
               ldapServiceDefinitions,
               impersonatorsDefinitions,
+              mocksProvider,
               caseMappingEquality
             )
             mode <- modeDecoder.tryDecode(c.withoutKeys(Set(usernameKey, groupsKey)))
@@ -89,6 +92,7 @@ object UsersDefinitionsDecoder {
                                 rorKbnDefinitions: Definitions[RorKbnDef],
                                 ldapServiceDefinitions: Definitions[LdapService],
                                 impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
+                                mocksProvider: MocksProvider,
                                 caseMappingEquality: UserIdCaseMappingEquality)
                                (implicit clock: Clock,
                                 uuidProvider: UuidProvider): Decoder[UserDef.Mode] = Decoder.instance { c =>
@@ -106,6 +110,7 @@ object UsersDefinitionsDecoder {
           rorKbnDefinitions,
           ldapServiceDefinitions,
           impersonatorsDefinitions,
+          mocksProvider,
           caseMappingEquality
         ) match {
           case Some(ruleDecoder) => Right(ruleDecoder :: decoders)

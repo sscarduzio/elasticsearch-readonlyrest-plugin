@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.ImpersonationSettings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
@@ -162,10 +163,10 @@ class LdapAuthRuleTests
     val rule = new LdapAuthRule(
       authentication = new LdapAuthenticationRule(
         authenticationSettings,
-        ImpersonationSettings.withMutableMocksProviderWithCachePerRequest(List.empty),
+        ImpersonationSettings(List.empty, NoOpMocksProvider),
         UserIdEq.caseSensitive
       ),
-      authorization = new LdapAuthorizationRule(authorizationSettings),
+      authorization = new LdapAuthorizationRule(authorizationSettings, NoOpMocksProvider, UserIdEq.caseSensitive),
       caseMappingEquality = UserIdEq.caseSensitive,
     )
     val requestContext = MockRequestContext.indices.copy(headers = basicHeader.toSet)

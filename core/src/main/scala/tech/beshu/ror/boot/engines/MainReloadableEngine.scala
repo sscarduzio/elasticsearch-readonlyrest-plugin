@@ -22,6 +22,7 @@ import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.{ConfigUpToDate, ReloadingFailed, RorInstanceStopped}
@@ -38,9 +39,12 @@ private[boot] class MainReloadableEngine(boot: ReadonlyRest,
                                          reloadInProgress: Semaphore[Task],
                                          indexConfigManager: IndexConfigManager,
                                          rorConfigurationIndex: RorConfigurationIndex,
-                                         auditSink: AuditSinkService)
+                                         auditSink: AuditSinkService,
+                                         mocksProvider: MocksProvider)
                                         (implicit scheduler: Scheduler)
-  extends BaseReloadableEngine("main", boot, Some(initialEngine), reloadInProgress, rorConfigurationIndex, auditSink) {
+  extends BaseReloadableEngine(
+    "main", boot, Some(initialEngine), reloadInProgress, rorConfigurationIndex, auditSink, mocksProvider
+  ) {
 
   def forceReloadAndSave(config: RawRorConfig)
                         (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, Unit]] = {

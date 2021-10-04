@@ -16,10 +16,12 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
+import cats.Eq
 import monix.eval.Task
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -28,6 +30,7 @@ import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings,
+                                override val mocksProvider: MocksProvider,
                                 implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends BaseAuthorizationRule {
 
@@ -50,7 +53,8 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
     settings.service.grantsFor(user)
 
   override protected[rules] def mockedGroupsOf(user: User.Id)
-                                              (implicit requestId: RequestId): Groups = ???
+                                              (implicit requestId: RequestId,
+                                               userIdEq: Eq[User.Id]): Groups = ???
 
 }
 

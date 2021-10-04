@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
+import cats.implicits._
 import cats.Eq
 import monix.eval.Task
 import tech.beshu.ror.RequestId
@@ -46,7 +47,7 @@ final class LdapAuthenticationRule(val settings: Settings,
       .mocksProvider
       .ldapServiceWith(settings.ldap.id)
       .map { mock =>
-        val ldapUserExists = mock.users.exists(_.id == user)
+        val ldapUserExists = mock.users.exists(_.id === user)
         if (ldapUserExists) UserExistence.Exists
         else UserExistence.NotExist
       }
