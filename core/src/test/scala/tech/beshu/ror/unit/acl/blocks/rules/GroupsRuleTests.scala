@@ -68,7 +68,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                   groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
                   usersDefinitions = NonEmptyList.of(UserDef(
                     usernames = userIdPatterns("user1"),
-                    groups = groups("g1", "g2"),
+                    groupMappings = groups("g1", "g2"),
                     mode = WithoutGroupsMapping(authenticationRule.matching(User.Id("user1")))
                   ))
                 ),
@@ -88,7 +88,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                   groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
                   usersDefinitions = NonEmptyList.of(UserDef(
                     usernames = userIdPatterns("user1"),
-                    groups = groups("g1", "g2"),
+                    groupMappings = groups("g1", "g2"),
                     mode = WithoutGroupsMapping(authenticationRule.matching(User.Id("User1")))
                   ))
                 ),
@@ -111,7 +111,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                   groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
                   usersDefinitions = NonEmptyList.of(UserDef(
                     usernames = userIdPatterns("u*"),
-                    groups = groups("g1", "g2"),
+                    groupMappings = groups("g1", "g2"),
                     mode = WithoutGroupsMapping(authenticationRule.matching(User.Id("user1")))
                   ))
                 ),
@@ -131,7 +131,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                   groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
                   usersDefinitions = NonEmptyList.of(UserDef(
                     usernames = userIdPatterns("u*"),
-                    groups = groups("g1", "g2"),
+                    groupMappings = groups("g1", "g2"),
                     mode = WithoutGroupsMapping(authenticationRule.matching(User.Id("User1")))
                   ))
                 ),
@@ -157,12 +157,12 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                   usersDefinitions = NonEmptyList.of(
                     UserDef(
                       usernames = userIdPatterns("user2"),
-                      groups = groups("g1", "g2"),
+                      groupMappings = groups("g1", "g2"),
                       mode = WithoutGroupsMapping(authenticationRule.rejecting)
                     ),
                     UserDef(
                       usernames = userIdPatterns("user1"),
-                      groups = groups("g1"),
+                      groupMappings = groups("g1"),
                       mode = WithoutGroupsMapping(authenticationRule.matching(User.Id("user1")))
                     )
                   )
@@ -189,12 +189,12 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                 usersDefinitions = NonEmptyList.of(
                   UserDef(
                     usernames = userIdPatterns("user2"),
-                    groups = groups("g1", "g2"),
+                    groupMappings = groups("g1", "g2"),
                     mode = WithoutGroupsMapping(authenticationRule.rejecting)
                   ),
                   UserDef(
                     usernames = userIdPatterns("user1"),
-                    groups = groups("g1"),
+                    groupMappings = groups("g1"),
                     mode = WithGroupsMapping(SingleRule(
                       authRule.matching(User.Id("user1"), NonEmptyList.of(Group("remote_group")))
                     ))
@@ -220,12 +220,12 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                 usersDefinitions = NonEmptyList.of(
                   UserDef(
                     usernames = userIdPatterns("user2"),
-                    groups = groups("g1", "g2"),
+                    groupMappings = groups("g1", "g2"),
                     mode = WithoutGroupsMapping(authenticationRule.rejecting)
                   ),
                   UserDef(
                     usernames = userIdPatterns("user1"),
-                    groups = groups("g1"),
+                    groupMappings = groups("g1"),
                     mode = WithGroupsMapping(SeparateRules(
                       authenticationRule.matching(User.Id("user1")),
                       authorizationRule.matching(NonEmptyList.of(Group("remote_group")))
@@ -254,7 +254,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
               groups = UniqueNonEmptyList.of(createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(Group.apply)).right.get),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
-                groups = groups("group_user1"),
+                groupMappings = groups("group_user1"),
                 mode = WithoutGroupsMapping(authenticationRule.rejecting)
               ))
             ),
@@ -268,7 +268,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
               groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
-                groups = groups("g1"),
+                groupMappings = groups("g1"),
                 mode = WithoutGroupsMapping(authenticationRule.rejecting)
               ))
             ),
@@ -282,7 +282,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
               groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
-                groups = groups("g1"),
+                groupMappings = groups("g1"),
                 mode = WithoutGroupsMapping(authenticationRule.rejecting)
               ))
             ),
@@ -296,7 +296,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
               groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
-                groups = groups("g1"),
+                groupMappings = groups("g1"),
                 mode = WithoutGroupsMapping(authenticationRule.rejecting)
               ))
             ),
@@ -310,7 +310,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
               groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("u*"),
-                groups = groups("g1"),
+                groupMappings = groups("g1"),
                 mode = WithoutGroupsMapping(authenticationRule.matching(User.Id("User1")))
               ))
             ),
@@ -324,7 +324,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
               groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
-                groups = groups("g1"),
+                groupMappings = groups("g1"),
                 mode = WithoutGroupsMapping(authenticationRule.throwing)
               ))
             ),
@@ -340,7 +340,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
               groups = UniqueNonEmptyList.of(createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(Group.apply)).right.get),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
-                groups = groups("group_user1"),
+                groupMappings = groups("group_user1"),
                 mode = WithGroupsMapping(SingleRule(authRule.rejecting))
               ))
             ),
@@ -354,7 +354,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
               groups = UniqueNonEmptyList.of(createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(Group.apply)).right.get),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
-                groups = groups("group_user1"),
+                groupMappings = groups("group_user1"),
                 mode = WithGroupsMapping(SeparateRules(
                   authenticationRule.matching(User.Id("user1")),
                   authorizationRule.rejecting
@@ -434,7 +434,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
   }
 
   private def groups(g1: String, gs: String*) = {
-    UniqueNonEmptyList.of(groupFrom(g1), gs.map(groupFrom): _*)
+    UniqueNonEmptyList.of(noGroupMappingFrom(g1), gs.map(noGroupMappingFrom): _*)
   }
 }
 

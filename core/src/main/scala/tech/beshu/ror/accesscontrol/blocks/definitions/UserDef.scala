@@ -19,8 +19,8 @@ package tech.beshu.ror.accesscontrol.blocks.definitions
 import java.util.UUID
 
 import cats.Show
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMapping, Mode}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain.{Group, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
@@ -28,20 +28,29 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final case class UserDef private(id: UserDef#Id,
                                  usernames: UserIdPatterns,
-                                 groups: UniqueNonEmptyList[Group],
+                                 groupMappings: UniqueNonEmptyList[GroupMapping],
                                  mode: Mode)
   extends Item {
 
   override type Id = UUID // artificial ID (won't be used)
   override implicit val show: Show[UUID] = Show.show(_.toString)
+
+  def localGroups: UniqueNonEmptyList[Group] = UniqueNonEmptyList.unsafeFromSet {
+    groupMappings
+      .map {
+        case GroupMapping.AnyExternalGroupToLocalGroupMapping(local) => local
+        case GroupMapping.LocalGroupToExternalGroupsMapping(local, _) => local
+      }
+      .toSet
+  }
 }
 
 object UserDef {
 
   def apply(usernames: UserIdPatterns,
-            groups: UniqueNonEmptyList[Group],
+            groupMappings: UniqueNonEmptyList[GroupMapping],
             mode: Mode): UserDef =
-    new UserDef(UUID.randomUUID(), usernames, groups, mode)
+    new UserDef(UUID.randomUUID(), usernames, groupMappings, mode)
 
   sealed trait Mode
   object Mode {
@@ -57,5 +66,14 @@ object UserDef {
           extends Auth
       }
     }
+  }
+
+  sealed trait GroupMapping
+  object GroupMapping {
+    final case class AnyExternalGroupToLocalGroupMapping(local: Group)
+      extends GroupMapping
+    final case class LocalGroupToExternalGroupsMapping(local: Group,
+                                                       externalGroups: UniqueNonEmptyList[Group])
+      extends GroupMapping
   }
 }

@@ -27,6 +27,8 @@ import io.circe.ParsingFailure
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMapping
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMapping.AnyExternalGroupToLocalGroupMapping
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.logging.LoggingContext
@@ -173,6 +175,8 @@ object TestsUtils {
     case Right(v) => Group(v)
     case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to Group")
   }
+
+  def noGroupMappingFrom(value: String): GroupMapping = AnyExternalGroupToLocalGroupMapping(groupFrom(value))
 
   def apiKeyFrom(value: String): ApiKey = NonEmptyString.from(value) match {
     case Right(v) => ApiKey(v)

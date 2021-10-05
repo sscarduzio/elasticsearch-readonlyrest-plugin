@@ -20,9 +20,10 @@ import java.time.Clock
 
 import cats.Id
 import cats.implicits._
-import io.circe.{ACursor, Decoder, DecodingFailure}
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
+import io.circe.{ACursor, Decoder, DecodingFailure, HCursor, Json}
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMapping.{AnyExternalGroupToLocalGroupMapping, LocalGroupToExternalGroupsMapping}
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMapping, Mode}
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
@@ -30,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.{GroupsRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain.{Group, UserIdPatterns}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.{usersDefinitionsAllowedRulesDecoderBy, withUserIdParamsCheck}
@@ -62,7 +63,6 @@ object UsersDefinitionsDecoder {
           val groupsKey = "groups"
           for {
             usernamePatterns <- c.downField(usernameKey).as[UniqueNonEmptyList[UserIdPattern]].map(UserIdPatterns.apply)
-            groups <- c.downField(groupsKey).as[UniqueNonEmptyList[Group]]
             modeDecoder = createModeDecoder(
               usernamePatterns,
               authenticationServiceDefinitions,
@@ -75,11 +75,47 @@ object UsersDefinitionsDecoder {
               caseMappingEquality
             )
             mode <- modeDecoder.tryDecode(c.withoutKeys(Set(usernameKey, groupsKey)))
-          } yield UserDef(usernamePatterns, groups, mode)
+            groupsMappings <- mode match {
+              case Mode.WithoutGroupsMapping(_) =>
+                c.downField(groupsKey).as[UniqueNonEmptyList[Group]]
+                  .map { groups => UniqueNonEmptyList.unsafeFromSet[GroupMapping](
+                    groups.map(AnyExternalGroupToLocalGroupMapping.apply).toSet
+                  )}
+              case Mode.WithGroupsMapping(_) =>
+                c.downField(groupsKey).as[UniqueNonEmptyList[GroupMapping]]
+            }
+          } yield UserDef(usernamePatterns, groupsMappings, mode)
         }
         .withError(DefinitionsLevelCreationError.apply, Message("User definition malformed"))
     DefinitionsBaseDecoder.instance[Id, UserDef]("users")
   }
+
+  private implicit val localGroupToExternalGroupsMappingDecoder: Decoder[LocalGroupToExternalGroupsMapping] =
+    Decoder
+      .instance { c =>
+        c.keys.map(_.toList) match {
+          case Some(key :: Nil) =>
+            for {
+              localGroup <- Decoder[Group].tryDecode(HCursor.fromJson(Json.fromString(key)))
+              externalGroups <- c.downField(key).as[UniqueNonEmptyList[Group]]
+            } yield LocalGroupToExternalGroupsMapping(localGroup, externalGroups)
+          case Some(Nil) | None =>
+            failure(Message(s"Groups mapping should have exactly one YAML key"))
+          case Some(keys) =>
+            failure(Message(s"Groups mapping should have exactly one YAML key, but several were defined: [${keys.mkString(",")}]"))
+        }
+      }
+
+  private implicit val groupMappingDecoder: Decoder[GroupMapping] =
+    localGroupToExternalGroupsMappingDecoder or
+    Decoder[Group].map(AnyExternalGroupToLocalGroupMapping)
+
+
+  private implicit val groupMappingUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[GroupMapping]] =
+    SyncDecoderCreator
+      .from(DecoderHelpers.decodeUniqueNonEmptyList[GroupMapping])
+      .withError(ValueLevelCreationError(Message("Non empty list of groups or groups mappings are required")))
+      .decoder
 
   private def createModeDecoder(usernamePatterns: UserIdPatterns,
                                 authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],

@@ -103,7 +103,7 @@ final class GroupsRule(val settings: Settings,
   private def authorizeAndAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                 resolvedGroups: UniqueNonEmptyList[Group])
                                                                                (userDef: UserDef): Task[Option[B]] = {
-    UniqueNonEmptyList.fromSortedSet(userDef.groups.intersect(resolvedGroups)) match {
+    UniqueNonEmptyList.fromSortedSet(userDef.localGroups.intersect(resolvedGroups)) match {
       case None =>
         Task.now(None)
       case Some(availableGroups) =>
