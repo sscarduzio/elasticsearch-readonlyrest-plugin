@@ -97,20 +97,26 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |
        |   - name: "LDAP groups explode"
        |     type: allow
-       |     ldap_auth:
-       |       name: "ldap1"
-       |       groups: ["group1", "group2"]
+       |     groups: ["g1", "g2", "g3"]
        |     indices: ["test-@explode{acl:available_groups}"]
        |
        |  users:
        |   - username: user1
-       |     auth_key: $${USER1_PASS}
        |     groups: ["g1", "g2", "g3", "gs1"]
+       |     auth_key: $${USER1_PASS}
        |
        |   - username: user2
-       |     auth_key: user2:passwd
        |     groups: ["g1", "g2", "g3", "gs2"]
+       |     auth_key: user2:passwd
        |
+       |   - username: "*"
+       |     groups:
+       |       - g1: group1
+       |       - g2: [group2]
+       |       - g3: "group3"
+       |     ldap_auth:
+       |       name: "ldap1"
+       |       groups: ["group1", "group2", "group3"]
        |
        |  jwt:
        |
@@ -314,9 +320,9 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             headers = Set(basicAuthHeader("cartman:user2")),
             indices = Set(clusterIndexName("*")),
             allIndicesAndAliases = Set(
-              FullLocalIndexWithAliases(fullIndexName("test-group1"), Set.empty),
-              FullLocalIndexWithAliases(fullIndexName("test-group2"), Set.empty),
-              FullLocalIndexWithAliases(fullIndexName("test-group3"), Set.empty)
+              FullLocalIndexWithAliases(fullIndexName("test-g1"), Set.empty),
+              FullLocalIndexWithAliases(fullIndexName("test-g2"), Set.empty),
+              FullLocalIndexWithAliases(fullIndexName("test-g3"), Set.empty)
             )
           )
 
@@ -329,12 +335,11 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
               UserMetadata
                 .from(request)
                 .withLoggedUser(DirectlyLoggedUser(User.Id("cartman")))
-                .withCurrentGroup(groupFrom("group1"))
-                .withAvailableGroups(UniqueList.of(groupFrom("group1")))
+                .withCurrentGroup(groupFrom("g1"))
+                .withAvailableGroups(UniqueList.of(groupFrom("g1"), groupFrom("g3")))
             )
-            blockContext.filteredIndices should be(Set.empty)
+            blockContext.filteredIndices should be(Set(clusterIndexName("test-g1"), clusterIndexName("test-g3")))
             blockContext.responseHeaders should be(Set.empty)
-            blockContext.filter should be(Some(Filter("""{"bool": { "must": { "terms": { "user_id": ["alice","bob"] }}}}""")))
           }
         }
       }

@@ -19,8 +19,10 @@ package tech.beshu.ror.accesscontrol.blocks.definitions
 import java.util.UUID
 
 import cats.Show
+import cats.data.NonEmptySet
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMapping, Mode}
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, Mode}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain.{Group, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
@@ -28,7 +30,6 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final case class UserDef private(id: UserDef#Id,
                                  usernames: UserIdPatterns,
-                                 groupMappings: UniqueNonEmptyList[GroupMapping],
                                  mode: Mode)
   extends Item {
 
@@ -36,26 +37,29 @@ final case class UserDef private(id: UserDef#Id,
   override implicit val show: Show[UUID] = Show.show(_.toString)
 
   def localGroups: UniqueNonEmptyList[Group] = UniqueNonEmptyList.unsafeFromSet {
-    groupMappings
-      .map {
-        case GroupMapping.AnyExternalGroupToLocalGroupMapping(local) => local
-        case GroupMapping.LocalGroupToExternalGroupsMapping(local, _) => local
-      }
-      .toSet
+    mode match {
+      case Mode.WithoutGroupsMapping(auth, localGroups) => localGroups.toSet
+      case Mode.WithGroupsMapping(auth, GroupMappings.Simple(localGroups)) => localGroups.toSet
+      case Mode.WithGroupsMapping(auth, GroupMappings.Advanced(mappings)) => mappings.map(_.local).toSet
+    }
   }
 }
 
 object UserDef {
 
   def apply(usernames: UserIdPatterns,
-            groupMappings: UniqueNonEmptyList[GroupMapping],
             mode: Mode): UserDef =
-    new UserDef(UUID.randomUUID(), usernames, groupMappings, mode)
+    new UserDef(UUID.randomUUID(), usernames, mode)
 
   sealed trait Mode
   object Mode {
-    final case class WithoutGroupsMapping(auth: AuthenticationRule) extends Mode
-    final case class WithGroupsMapping(auth: Auth) extends Mode
+    final case class WithoutGroupsMapping(auth: AuthenticationRule,
+                                          localGroups: UniqueNonEmptyList[Group])
+      extends Mode
+
+    final case class WithGroupsMapping(auth: Auth,
+                                       groupMappings: GroupMappings)
+      extends Mode
     object WithGroupsMapping {
       sealed trait Auth
       object Auth {
@@ -68,12 +72,12 @@ object UserDef {
     }
   }
 
-  sealed trait GroupMapping
-  object GroupMapping {
-    final case class AnyExternalGroupToLocalGroupMapping(local: Group)
-      extends GroupMapping
-    final case class LocalGroupToExternalGroupsMapping(local: Group,
-                                                       externalGroups: UniqueNonEmptyList[Group])
-      extends GroupMapping
+  sealed trait GroupMappings
+  object GroupMappings {
+    final case class Simple(localGroups: UniqueNonEmptyList[Group]) extends GroupMappings
+    final case class Advanced(mappings: UniqueNonEmptyList[Mapping]) extends GroupMappings
+    object Advanced {
+      final case class Mapping(local: Group, externalGroups: NonEmptySet[Group])
+    }
   }
 }

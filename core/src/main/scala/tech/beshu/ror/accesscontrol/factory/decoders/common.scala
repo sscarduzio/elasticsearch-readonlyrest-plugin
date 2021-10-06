@@ -20,6 +20,7 @@ import java.net.URI
 import java.util.concurrent.TimeUnit
 
 import cats.Show
+import cats.data.NonEmptySet
 import cats.implicits._
 import com.comcast.ip4s.{IpAddress, Port, SocketAddress}
 import com.softwaremill.sttp.Uri
@@ -116,6 +117,14 @@ object common extends Logging {
 
   implicit val idPatternDecoder: Decoder[UserIdPattern] =
     DecoderHelpers.decodeStringLikeNonEmpty.map(UserIdPattern.apply)
+
+  implicit val groupsNonEmptySetDecoder: Decoder[NonEmptySet[Group]] = {
+    import tech.beshu.ror.accesscontrol.orders._
+    SyncDecoderCreator
+      .from(DecoderHelpers.decodeStringLikeOrNonEmptySet[Group])
+      .withError(ValueLevelCreationError(Message("Non empty list of groups are required")))
+      .decoder
+  }
 
   implicit val groupsUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[Group]] =
     SyncDecoderCreator
