@@ -18,6 +18,7 @@ package tech.beshu.ror.integration
 
 import java.util.Base64
 
+import com.dimafeng.testcontainers.ForAllTestContainer
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
@@ -28,19 +29,28 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableRequestBlockContext, GeneralIndexRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.containers.NonStoppableLdapContainer
 import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
-  with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
+  with BaseYamlLoadedAccessControlTest
+  with ForAllTestContainer
+  with MockFactory with Inside {
+
+  override val container: NonStoppableLdapContainer = SingletonLdapContainers.ldap1
+
+  override protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
   private lazy val (pub, secret) = Random.generateRsaRandomKeys
 
@@ -85,34 +95,65 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |       name: "jwt2"
        |     indices: ["g@explode{jwt:tech.beshu.mainGroupsString}"]
        |
+       |   - name: "LDAP groups explode"
+       |     type: allow
+       |     groups: ["g1", "g2", "g3"]
+       |     indices: ["test-@explode{acl:available_groups}"]
+       |
        |  users:
        |   - username: user1
-       |     auth_key: $${USER1_PASS}
        |     groups: ["g1", "g2", "g3", "gs1"]
+       |     auth_key: $${USER1_PASS}
        |
        |   - username: user2
-       |     auth_key: user2:passwd
        |     groups: ["g1", "g2", "g3", "gs2"]
+       |     auth_key: user2:passwd
+       |
+       |   - username: "*"
+       |     groups:
+       |       - g1: group1
+       |       - g2: [group2]
+       |       - g3: "group3"
+       |     ldap_auth:
+       |       name: "ldap1"
+       |       groups: ["group1", "group2", "group3"]
        |
        |  jwt:
        |
-       |  - name: jwt1
-       |    signature_algo: "RSA"
-       |    signature_key: "${Base64.getEncoder.encodeToString(pub.getEncoded)}"
-       |    user_claim: "userId"
-       |    groups_claim: "tech.beshu.mainGroup"
+       |   - name: jwt1
+       |     signature_algo: "RSA"
+       |     signature_key: "${Base64.getEncoder.encodeToString(pub.getEncoded)}"
+       |     user_claim: "userId"
+       |     groups_claim: "tech.beshu.mainGroup"
        |
-       |  - name: jwt2
-       |    signature_algo: "RSA"
-       |    signature_key: "${Base64.getEncoder.encodeToString(pub.getEncoded)}"
-       |    user_claim: "userId"
-       |    groups_claim: "tech.beshu.mainGroupsString"
+       |   - name: jwt2
+       |     signature_algo: "RSA"
+       |     signature_key: "${Base64.getEncoder.encodeToString(pub.getEncoded)}"
+       |     user_claim: "userId"
+       |     groups_claim: "tech.beshu.mainGroupsString"
        |
-       |  - name: jwt3
-       |    signature_algo: "RSA"
-       |    signature_key: "${Base64.getEncoder.encodeToString(pub.getEncoded)}"
-       |    user_claim: "userId"
-       |    groups_claim: "tech.beshu.mainGroupsString"
+       |   - name: jwt3
+       |     signature_algo: "RSA"
+       |     signature_key: "${Base64.getEncoder.encodeToString(pub.getEncoded)}"
+       |     user_claim: "userId"
+       |     groups_claim: "tech.beshu.mainGroupsString"
+       |
+       |  ldaps:
+       |    - name: ldap1
+       |      host: "${SingletonLdapContainers.ldap1.ldapHost}"
+       |      port: ${SingletonLdapContainers.ldap1.ldapPort}
+       |      ssl_enabled: false                                        # default true
+       |      ssl_trust_all_certs: true                                 # default false
+       |      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+       |      bind_password: "password"                                 # skip for anonymous bind
+       |      search_user_base_DN: "ou=People,dc=example,dc=com"
+       |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+       |      user_id_attribute: "uid"                                  # default "uid"
+       |      unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+       |      connection_pool_size: 10                                  # default 30
+       |      connection_timeout_in_sec: 10                             # default 1
+       |      request_timeout_in_sec: 10                                # default 1
+       |      cache_ttl_in_sec: 60                                      # default 0 - cache disabled
     """.stripMargin
 
   "An ACL" when {
@@ -272,6 +313,33 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             blockContext.filteredIndices should be(Set.empty)
             blockContext.responseHeaders should be(Set.empty)
             blockContext.filter should be(Some(Filter("""{"bool": { "must": { "terms": { "user_id": ["alice","bob"] }}}}""")))
+          }
+        }
+        "Available groups env is used" in {
+          val request = MockRequestContext.search.copy(
+            headers = Set(basicAuthHeader("cartman:user2")),
+            indices = Set(clusterIndexName("*")),
+            allIndicesAndAliases = Set(
+              FullLocalIndexWithAliases(fullIndexName("test-g1"), Set.empty),
+              FullLocalIndexWithAliases(fullIndexName("test-g2"), Set.empty),
+              FullLocalIndexWithAliases(fullIndexName("test-g3"), Set.empty)
+            )
+          )
+
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+
+          result.history should have size 8
+          inside(result.result) { case RegularRequestResult.Allow(blockContext: FilterableRequestBlockContext, block) =>
+            block.name should be(Block.Name("LDAP groups explode"))
+            blockContext.userMetadata should be(
+              UserMetadata
+                .from(request)
+                .withLoggedUser(DirectlyLoggedUser(User.Id("cartman")))
+                .withCurrentGroup(groupFrom("g1"))
+                .withAvailableGroups(UniqueList.of(groupFrom("g1"), groupFrom("g3")))
+            )
+            blockContext.filteredIndices should be(Set(clusterIndexName("test-g1"), clusterIndexName("test-g3")))
+            blockContext.responseHeaders should be(Set.empty)
           }
         }
       }

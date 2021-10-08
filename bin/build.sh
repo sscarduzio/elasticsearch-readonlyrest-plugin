@@ -134,11 +134,12 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
 
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
-    #es714
+    #es714x
+    ./gradlew --stacktrace es714x:ror '-PesVersion=7.15.0'
     ./gradlew --stacktrace es714x:ror '-PesVersion=7.14.1'
     ./gradlew --stacktrace es714x:ror '-PesVersion=7.14.0'
 
-    #es711
+    #es711x
     ./gradlew --stacktrace es711x:ror '-PesVersion=7.13.4'
     ./gradlew --stacktrace es711x:ror '-PesVersion=7.13.3'
     ./gradlew --stacktrace es711x:ror '-PesVersion=7.13.2'
@@ -150,26 +151,26 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
     ./gradlew --stacktrace es711x:ror '-PesVersion=7.11.1'
     ./gradlew --stacktrace es711x:ror '-PesVersion=7.11.0'
 
-    #es710
+    #es710x
     ./gradlew --stacktrace es710x:ror '-PesVersion=7.10.2'
     ./gradlew --stacktrace es710x:ror '-PesVersion=7.10.1'
     ./gradlew --stacktrace es710x:ror '-PesVersion=7.10.0'
 
-    #es79
+    #es79x
     ./gradlew --stacktrace es79x:ror '-PesVersion=7.9.3'
     ./gradlew --stacktrace es79x:ror '-PesVersion=7.9.2'
     ./gradlew --stacktrace es79x:ror '-PesVersion=7.9.1'
     ./gradlew --stacktrace es79x:ror '-PesVersion=7.9.0'
 
-    #es78
+    #es78x
     ./gradlew --stacktrace es78x:ror '-PesVersion=7.8.1'
     ./gradlew --stacktrace es78x:ror '-PesVersion=7.8.0'
 
-    #es77
+    #es77x
     ./gradlew --stacktrace es77x:ror '-PesVersion=7.7.1'
     ./gradlew --stacktrace es77x:ror '-PesVersion=7.7.0'
 
-    #es74
+    #es74x
     ./gradlew --stacktrace es74x:ror '-PesVersion=7.6.2'
     ./gradlew --stacktrace es74x:ror '-PesVersion=7.6.1'
     ./gradlew --stacktrace es74x:ror '-PesVersion=7.6.0'
@@ -180,16 +181,16 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
     ./gradlew --stacktrace es74x:ror '-PesVersion=7.4.1'
     ./gradlew --stacktrace es74x:ror '-PesVersion=7.4.0'
 
-    #es73
+    #es73x
     ./gradlew --stacktrace es73x:ror '-PesVersion=7.3.2'
     ./gradlew --stacktrace es73x:ror '-PesVersion=7.3.1'
     ./gradlew --stacktrace es73x:ror '-PesVersion=7.3.0'
 
-    #es72
+    #es72x
     ./gradlew --stacktrace es72x:ror '-PesVersion=7.2.1'
     ./gradlew --stacktrace es72x:ror '-PesVersion=7.2.0'
 
-    #es70
+    #es70x
     ./gradlew --stacktrace es70x:ror '-PesVersion=7.1.1'
     ./gradlew --stacktrace es70x:ror '-PesVersion=7.1.0'
     ./gradlew --stacktrace es70x:ror '-PesVersion=7.0.1'
@@ -202,7 +203,7 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es6xx" ]]; then
 
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
-    # es67
+    # es67x
     ./gradlew --stacktrace es67x:ror '-PesVersion=6.8.18'
     ./gradlew --stacktrace es67x:ror '-PesVersion=6.8.17'
     ./gradlew --stacktrace es67x:ror '-PesVersion=6.8.16'
@@ -226,44 +227,44 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es6xx" ]]; then
     ./gradlew --stacktrace es67x:ror '-PesVersion=6.7.1'
     ./gradlew --stacktrace es67x:ror '-PesVersion=6.7.0'
 
-    # es66
+    # es66x
     ./gradlew --stacktrace es66x:ror '-PesVersion=6.6.2'
     ./gradlew --stacktrace es66x:ror '-PesVersion=6.6.1'
     ./gradlew --stacktrace es66x:ror '-PesVersion=6.6.0'
 
-    # es65
+    # es65x
     ./gradlew --stacktrace es65x:ror '-PesVersion=6.5.4'
     ./gradlew --stacktrace es65x:ror '-PesVersion=6.5.3'
     ./gradlew --stacktrace es65x:ror '-PesVersion=6.5.2'
     ./gradlew --stacktrace es65x:ror '-PesVersion=6.5.1'
     ./gradlew --stacktrace es65x:ror '-PesVersion=6.5.0'
 
-    # es64
+    # es64x
     ./gradlew --stacktrace es63x:ror '-PesVersion=6.4.3'
     ./gradlew --stacktrace es63x:ror '-PesVersion=6.4.2'
     ./gradlew --stacktrace es63x:ror '-PesVersion=6.4.1'
     ./gradlew --stacktrace es63x:ror '-PesVersion=6.4.0'
 
-    # es63
+    # es63x
     ./gradlew --stacktrace es63x:ror '-PesVersion=6.3.2'
     ./gradlew --stacktrace es63x:ror '-PesVersion=6.3.1'
     ./gradlew --stacktrace es63x:ror '-PesVersion=6.3.0'
 
-   # es62
+   # es62x
     ./gradlew --stacktrace es62:ror '-PesVersion=6.2.4'
     ./gradlew --stacktrace es62:ror '-PesVersion=6.2.3'
     ./gradlew --stacktrace es62:ror '-PesVersion=6.2.2'
     ./gradlew --stacktrace es62:ror '-PesVersion=6.2.1'
     ./gradlew --stacktrace es62:ror '-PesVersion=6.2.0'
 
-   # es61
+   # es61x
     ./gradlew --stacktrace es61x:ror '-PesVersion=6.1.4'
     ./gradlew --stacktrace es61x:ror '-PesVersion=6.1.3'
     ./gradlew --stacktrace es61x:ror '-PesVersion=6.1.2'
     ./gradlew --stacktrace es61x:ror '-PesVersion=6.1.1'
     ./gradlew --stacktrace es61x:ror '-PesVersion=6.1.0'
 
-    # es60
+    # es60x
     ./gradlew --stacktrace es60x:ror '-PesVersion=6.0.1'
     ./gradlew --stacktrace es60x:ror '-PesVersion=6.0.0'
 
@@ -273,7 +274,7 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es5xx" ]]; then
 
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
-    # es55
+    # es55x
     ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.16'
     ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.15'
     ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.14'
@@ -291,7 +292,6 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es5xx" ]]; then
     ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.2'
     ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.1'
     ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.0'
-
     ./gradlew --stacktrace es55x:ror '-PesVersion=5.5.3'
     ./gradlew --stacktrace es55x:ror '-PesVersion=5.5.2'
     ./gradlew --stacktrace es55x:ror '-PesVersion=5.5.1'

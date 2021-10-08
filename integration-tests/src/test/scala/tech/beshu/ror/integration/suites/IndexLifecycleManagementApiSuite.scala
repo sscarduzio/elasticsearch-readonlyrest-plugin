@@ -207,7 +207,7 @@ trait IndexLifecycleManagementApiSuite
       "be allowed" when {
         "user has an access to the requested index" excludeES (allEs5x, allEs6xBelowEs66x) in {
           val index = "dynamic1"
-          createIndexWithAppliedShrinkPolicyWhichCaseErrorStep(index)
+          createIndexWithAppliedRolloverPolicyWhichCaseErrorStep(index)
 
           eventually {
             val result = dev3IndexLifecycleManager.retryPolicyExecution(index)
@@ -217,9 +217,9 @@ trait IndexLifecycleManagementApiSuite
         }
         "user has and access to all requested indices" excludeES (allEs5x, allEs6xBelowEs66x) in {
           val index1 = "dynamic_1"
-          createIndexWithAppliedShrinkPolicyWhichCaseErrorStep(index1)
+          createIndexWithAppliedRolloverPolicyWhichCaseErrorStep(index1)
           val index2 = "dynamic_2"
-          createIndexWithAppliedShrinkPolicyWhichCaseErrorStep(index2)
+          createIndexWithAppliedRolloverPolicyWhichCaseErrorStep(index2)
 
           eventually {
             val result = dev3IndexLifecycleManager.retryPolicyExecution(index1, index2)
@@ -231,9 +231,9 @@ trait IndexLifecycleManagementApiSuite
       "not be allowed" when {
         "user has no access to at least one of requested indices" excludeES (allEs5x, allEs6xBelowEs66x) in {
           val index1 = "dynamic1"
-          createIndexWithAppliedShrinkPolicyWhichCaseErrorStep(index1)
+          createIndexWithAppliedRolloverPolicyWhichCaseErrorStep(index1)
           val index2 = "dynamic2"
-          createIndexWithAppliedShrinkPolicyWhichCaseErrorStep(index2)
+          createIndexWithAppliedRolloverPolicyWhichCaseErrorStep(index2)
 
           eventually {
             val result = dev3IndexLifecycleManager.retryPolicyExecution(index1, index2)
@@ -392,15 +392,14 @@ trait IndexLifecycleManagementApiSuite
              |      "name": "$policy"
              |    }
              |  }
-             |}
-                """.stripMargin)
+             |}""".stripMargin)
       )
       .force()
   }
 
-  private def createIndexWithAppliedShrinkPolicyWhichCaseErrorStep(index: String): Unit = {
+  private def createIndexWithAppliedRolloverPolicyWhichCaseErrorStep(index: String): Unit = {
     val policy = PolicyGenerator.next()
-    adminIndexLifecycleManager.putPolicy(policy, ExamplePolicies.shrinkPolicy).force()
+    adminIndexLifecycleManager.putPolicy(policy, ExamplePolicies.rolloverPolicy).force()
     adminIndexManager
       .createIndex(
         index,
@@ -408,11 +407,10 @@ trait IndexLifecycleManagementApiSuite
           s"""
              |{
              |  "settings": {
-             |    "index.number_of_shards": 1,
-             |    "index.lifecycle.name": "$policy"
+             |    "index.lifecycle.name": "$policy",
+             |    "index.lifecycle.rollover_alias": "my_data"
              |  }
-             |}
-          """.stripMargin
+             |}""".stripMargin
         })
       )
       .force()
@@ -493,6 +491,20 @@ object IndexLifecycleManagementApiSuite {
         |  }
         |}
       """.stripMargin
+    }
+
+    val rolloverPolicy: JSON = ujson.read {
+      """{
+        |  "policy": {
+        |    "phases": {
+        |      "hot": {
+        |        "actions": {
+        |          "rollover" : {"max_docs": 0}
+        |        }
+        |      }
+        |    }
+        |  }
+        |}""".stripMargin
     }
   }
 }
