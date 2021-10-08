@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.utils
 
-
 import cats.implicits._
 import cats.{Functor, Id}
 import io.circe._
@@ -49,14 +48,13 @@ sealed abstract class ADecoder[F[_] : Functor, A] {
   type Element = Json
   type Context = String
 
-
-  def withError(error: AclCreationError): DECODER[A] = {
+  def withError(error: => AclCreationError): DECODER[A] = {
     creator.instance { c =>
       apply(c).map(_.left.map(_.overrideDefaultErrorWith(error)))
     }
   }
 
-  def withError(newErrorCreator: Reason => AclCreationError, defaultErrorReason: Reason): DECODER[A] = {
+  def withError(newErrorCreator: Reason => AclCreationError, defaultErrorReason: => Reason): DECODER[A] = {
     creator.instance { c =>
       apply(c).map(_.left.map { df =>
         val error = df.aclCreationError.map(e => newErrorCreator(e.reason)) match {
@@ -194,9 +192,10 @@ object AsyncDecoderCreator extends ADecoderCreator[Task, AsyncDecoder] {
     def cursors(current: ACursor): Vector[ACursor] = {
       @tailrec
       def collectCursor(cursor: ACursor, foundCursors: Vector[ACursor]): Vector[ACursor] = {
-        if(!cursor.succeeded) foundCursors
+        if (!cursor.succeeded) foundCursors
         else collectCursor(cursor.right, foundCursors :+ cursor)
       }
+
       collectCursor(current, Vector.empty)
     }
   }

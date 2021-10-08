@@ -103,6 +103,7 @@ object orders {
   implicit val userDefOrder: Order[UserDef] = Order.by(_.id.toString)
   implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
   implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)
+  implicit val groupOrder: Order[Group] = Order.by(_.value)
   implicit val ruleWithVariableUsageDefinitionOrder: Order[RuleWithVariableUsageDefinition[Rule]] = Order.by(_.rule)
   implicit val patternOrder: Order[RegexPattern] = Order.by(_.pattern)
   implicit val forbiddenByMismatchedCauseOrder: Order[ForbiddenByMismatched.Cause] = Order.by {

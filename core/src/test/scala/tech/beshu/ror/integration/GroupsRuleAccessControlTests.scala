@@ -102,17 +102,6 @@ class GroupsRuleAccessControlTests
       |    user_claim: "userId"
       |    roles_claim: roles
       |
-      |  ######### LDAP SERVERS CONFIGURATION ########################
-      |  # users:                                                    #
-      |  #   * cartman:user2                                         #
-      |  #   * bong:user1                                            #
-      |  #   * morgan:user1                                          #
-      |  #   * Bìlbö Bággįnš:user2                                   #
-      |  # groups:                                                   #
-      |  #   * group1: cartman, bong                                 #
-      |  #   * group2: morgan, Bìlbö Bággįnš                         #
-      |  #   * group3: morgan, cartman, bong                         #
-      |  #############################################################
       |  ldaps:
       |    - name: ldap1
       |      host: "${SingletonLdapContainers.ldap1.ldapHost}"

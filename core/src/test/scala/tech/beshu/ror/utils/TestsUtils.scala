@@ -21,17 +21,18 @@ import java.time.Duration
 import java.util.Base64
 
 import better.files.File
-import cats.data.NonEmptyList
+import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.ParsingFailure
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.configuration.RawRorConfig
-import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
@@ -169,10 +170,17 @@ object TestsUtils {
     }
   }
 
+  def nonEmptySetOf(group: Group, groups: Group*): NonEmptySet[Group] = {
+    import tech.beshu.ror.accesscontrol.orders._
+    NonEmptySet.of(group, groups: _*)
+  }
+
   def groupFrom(value: String): Group = NonEmptyString.from(value) match {
     case Right(v) => Group(v)
     case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to Group")
   }
+
+  def noGroupMappingFrom(value: String): GroupMappings = GroupMappings.Simple(UniqueNonEmptyList.of(groupFrom(value)))
 
   def apiKeyFrom(value: String): ApiKey = NonEmptyString.from(value) match {
     case Right(v) => ApiKey(v)
