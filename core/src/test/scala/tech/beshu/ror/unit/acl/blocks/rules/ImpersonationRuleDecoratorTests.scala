@@ -28,20 +28,25 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, ImpersonationSettings}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettings
+import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{Credentials, Header, PlainTextSecret, User, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion {
+class ImpersonationRuleDecoratorTests
+  extends AnyWordSpec
+    with MockFactory with Inside with BlockContextAssertion {
+
   private implicit val defaultUserIdEq: UserIdCaseMappingEquality = UserIdEq.caseSensitive
 
   private val rule = authKeyRuleWithConfiguredImpersonation("user1", "secret")
@@ -193,7 +198,7 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
         User.Id(NonEmptyString.unsafeFrom(user)),
         PlainTextSecret(NonEmptyString.unsafeFrom(password))
       )),
-      impersonationSetting = ImpersonationSettings(List.empty, NoOpMocksProvider),
+      impersonationSetting = ImpersonationSettings.notConfigured,
       caseMappingEquality = defaultUserIdEq
     )
   }

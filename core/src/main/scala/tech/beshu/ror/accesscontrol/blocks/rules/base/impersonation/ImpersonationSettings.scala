@@ -14,10 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.clusterindices
+package tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation
 
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
+import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 
-class LocalClusterIndicesProcessor extends BaseIndicesProcessor with Logging {
-
+final case class ImpersonationSettings(impersonators: List[ImpersonatorDef],
+                                       mocksProvider: MocksProvider)
+object ImpersonationSettings {
+  val notConfigured: ImpersonationSettings = ImpersonationSettings(List.empty, NoOpMocksProvider)
 }

@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules
+package tech.beshu.ror.accesscontrol.blocks.rules.base
 
 import cats.data.{NonEmptyList, NonEmptySet, OptionT}
 import cats.implicits._
@@ -22,7 +22,7 @@ import com.comcast.ip4s.interop.cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.domain.Address.{Ip, Name}

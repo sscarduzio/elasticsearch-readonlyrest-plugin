@@ -16,25 +16,33 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import cats.data.NonEmptyList
 import eu.timepit.refined.auto._
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapAuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapAuthorizationService, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.ImpersonationSettings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
-import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
+import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettings
+import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
+import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.{AssertionType, BlockContextAssertion, _}
+import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -68,6 +76,39 @@ class LdapAuthRuleTests
             availableGroups = UniqueList.of(groupFrom("g1"))
           )
         )
+      }
+      "user is being impersonated" when {
+        "mocks provider has a given user with allowed groups" in {
+          assertMatchRule(
+            authenticationSettings = LdapAuthenticationRule.Settings(
+              mockLdapAuthenticationService(LdapService.Name("ldap1"))
+            ),
+            authorizationSettings = LdapAuthorizationRule.Settings(
+              mockLdapAuthorizationService(LdapService.Name("ldap1")),
+              UniqueNonEmptyList.of(Group("g1"), Group("g2")),
+              UniqueNonEmptyList.of(Group("g1"), Group("g2"))
+            ),
+            impersonationSettings = ImpersonationSettings(
+              impersonators = List(impersonatorDefFrom(
+                userIdPattern = "*",
+                impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
+                impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+              )),
+              mocksProvider = mocksProviderFrom(Map(
+                LdapService.Name("ldap1") -> Set((User.Id("user1"), Set(Group("g1"))))
+              ))
+            ),
+            basicHeader = basicAuthHeader("admin:pass"),
+            impersonateAsHeader = Some(impersonationHeader("user1"))
+          )(
+            blockContextAssertion = impersonatedUserOutputBlockContextAssertion(
+              user = User.Id("user1"),
+              group = groupFrom("g1"),
+              availableGroups = UniqueList.of(groupFrom("g1")),
+              impersonator = User.Id("admin")
+            )
+          )
+        }
       }
     }
     "not match" when {
@@ -119,7 +160,7 @@ class LdapAuthRuleTests
             UniqueNonEmptyList.of(Group("g1"), Group("g2"))
           ),
           basicHeader = basicAuthHeader("user1:pass"),
-          TestException("authentication failure")
+          exception = TestException("authentication failure")
         )
       }
       "LDAP authorization fails" in {
@@ -133,44 +174,68 @@ class LdapAuthRuleTests
             UniqueNonEmptyList.of(Group("g1"), Group("g2"))
           ),
           basicHeader = basicAuthHeader("user1:pass"),
-          TestException("authorization failure")
+          exception = TestException("authorization failure")
         )
+      }
+      "user is being impersonated" when {
+        "mocks provider doesn't have given user" in {
+
+        }
+        "mocks provider has a given user, but he doesn't have proper group" in {
+
+        }
+        "mocks provider is unavailable" in {
+
+        }
       }
     }
   }
 
   private def assertMatchRule(authenticationSettings: LdapAuthenticationRule.Settings,
                               authorizationSettings: LdapAuthorizationRule.Settings,
-                              basicHeader: Header)
+                              impersonationSettings: ImpersonationSettings = ImpersonationSettings.notConfigured,
+                              basicHeader: Header,
+                              impersonateAsHeader: Option[Header] = None)
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(authenticationSettings, authorizationSettings, Some(basicHeader), AssertionType.RuleFulfilled(blockContextAssertion))
+    assertRule(authenticationSettings, authorizationSettings, impersonationSettings, impersonateAsHeader.toSet + basicHeader, AssertionType.RuleFulfilled(blockContextAssertion))
 
   private def assertNotMatchRule(authenticationSettings: LdapAuthenticationRule.Settings,
                                  authorizationSettings: LdapAuthorizationRule.Settings,
-                                 basicHeader: Option[Header]): Unit =
-    assertRule(authenticationSettings, authorizationSettings, basicHeader, AssertionType.RuleRejected)
+                                 impersonationSettings: ImpersonationSettings = ImpersonationSettings.notConfigured,
+                                 basicHeader: Option[Header],
+                                 impersonateAsHeader: Option[Header] = None): Unit =
+    assertRule(authenticationSettings, authorizationSettings, impersonationSettings, impersonateAsHeader.toSet ++ basicHeader.toSet, AssertionType.RuleRejected)
 
   private def assertRuleThrown(authenticationSettings: LdapAuthenticationRule.Settings,
                                authorizationSettings: LdapAuthorizationRule.Settings,
+                               impersonationSettings: ImpersonationSettings = ImpersonationSettings.notConfigured,
                                basicHeader: Header,
                                exception: Throwable): Unit =
-    assertRule(authenticationSettings, authorizationSettings, Some(basicHeader), AssertionType.RuleThrownException(exception))
+    assertRule(authenticationSettings, authorizationSettings, impersonationSettings, Set(basicHeader), AssertionType.RuleThrownException(exception))
 
   private def assertRule(authenticationSettings: LdapAuthenticationRule.Settings,
                          authorizationSettings: LdapAuthorizationRule.Settings,
-                         basicHeader: Option[Header],
+                         impersonationSettings: ImpersonationSettings,
+                         headers: Set[Header],
                          assertionType: AssertionType): Unit = {
     val rule = new LdapAuthRule(
       authentication = new LdapAuthenticationRule(
         authenticationSettings,
-        ImpersonationSettings(List.empty, NoOpMocksProvider),
+        impersonationSettings,
         UserIdEq.caseSensitive
       ),
-      authorization = new LdapAuthorizationRule(authorizationSettings, NoOpMocksProvider, UserIdEq.caseSensitive),
+      authorization = new LdapAuthorizationRule(authorizationSettings, impersonationSettings.mocksProvider, UserIdEq.caseSensitive),
       caseMappingEquality = UserIdEq.caseSensitive,
     )
-    val requestContext = MockRequestContext.indices.copy(headers = basicHeader.toSet)
-    val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty, Set.empty, Set.empty)
+    val requestContext = MockRequestContext.indices.copy(headers = headers)
+    val blockContext = GeneralIndexRequestBlockContext(
+      requestContext = requestContext,
+      userMetadata = UserMetadata.from(requestContext),
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty,
+      filteredIndices = Set.empty,
+      allAllowedIndices = Set.empty
+    )
     val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
     assertionType match {
       case AssertionType.RuleFulfilled(blockContextAssertion) =>
@@ -190,10 +255,51 @@ class LdapAuthRuleTests
     service
   }
 
+  private def mockLdapAuthenticationService(ldapId: LdapService#Id) = {
+    val service = mock[LdapAuthenticationService]
+    (service.id _).expects().returning(ldapId)
+    service
+  }
+
   private def mockLdapAuthorizationService(user: User.Id, result: Task[UniqueList[Group]]) = {
     val service = mock[LdapAuthorizationService]
     (service.groupsOf _).expects(user).returning(result)
     service
+  }
+
+  private def mockLdapAuthorizationService(ldapId: LdapService#Id) = {
+    val service = mock[LdapAuthorizationService]
+    (service.id _).expects().returning(ldapId)
+    service
+  }
+
+  private def impersonatorDefFrom(userIdPattern: NonEmptyString,
+                                  impersonatorCredentials: Credentials,
+                                  impersonatedUsers: NonEmptyList[User.Id]) = {
+    ImpersonatorDef(
+      UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(userIdPattern))),
+      new AuthKeyRule(
+        BasicAuthenticationRule.Settings(impersonatorCredentials),
+        ImpersonationSettings.notConfigured,
+        UserIdEq.caseSensitive
+      ),
+      UniqueNonEmptyList.fromNonEmptyList(impersonatedUsers)
+    )
+  }
+
+  private def mocksProviderFrom(map: Map[LdapService.Name, Set[(User.Id, Set[Group])]]) = {
+    new MocksProvider {
+      override def ldapServiceWith(id: LdapService.Name)
+                                  (implicit context: RequestId): Option[LdapServiceMock] = {
+        map
+          .get(id)
+          .map(r => LdapServiceMock {
+            r.map { case (userId, groups) =>
+              LdapUserMock(userId, groups)
+            }
+          })
+      }
+    }
   }
 
   private def defaultOutputBlockContextAssertion(user: User.Id,
@@ -202,6 +308,18 @@ class LdapAuthRuleTests
     (blockContext: BlockContext) => {
       assertBlockContext(
         loggedUser = Some(DirectlyLoggedUser(user)),
+        currentGroup = Some(group),
+        availableGroups = availableGroups
+      )(blockContext)
+    }
+
+  private def impersonatedUserOutputBlockContextAssertion(user: User.Id,
+                                                          group: Group,
+                                                          availableGroups: UniqueList[Group],
+                                                          impersonator: User.Id): BlockContext => Unit =
+    (blockContext: BlockContext) => {
+      assertBlockContext(
+        loggedUser = Some(ImpersonatedUser(user, impersonator)),
         currentGroup = Some(group),
         availableGroups = availableGroups
       )(blockContext)

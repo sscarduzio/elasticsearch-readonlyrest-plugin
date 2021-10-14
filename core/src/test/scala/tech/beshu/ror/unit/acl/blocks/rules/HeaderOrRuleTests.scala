@@ -16,17 +16,17 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import eu.timepit.refined.auto._
 import cats.data.NonEmptySet
+import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header, UriPath}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.HeadersOrRule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header, UriPath}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils.{requiredHeaderFrom, _}
@@ -68,7 +68,7 @@ class HeaderOrRuleTests extends AnyWordSpec with MockFactory {
           )
         )
       }
-      "first configured header is forbidden, second is required"  when {
+      "first configured header is forbidden, second is required" when {
         "forbidden header was sent and required header was sent" in {
           assertMatchRule(
             configuredHeaders = NonEmptySet.of(
@@ -144,7 +144,7 @@ class HeaderOrRuleTests extends AnyWordSpec with MockFactory {
           )
         )
       }
-      "first configured header is forbidden, second is required"  when {
+      "first configured header is forbidden, second is required" when {
         "forbidden header was sent and required header wasn't sent" in {
           assertNotMatchRule(
             configuredHeaders = NonEmptySet.of(

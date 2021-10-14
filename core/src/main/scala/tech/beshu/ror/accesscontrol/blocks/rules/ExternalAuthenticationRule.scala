@@ -18,8 +18,10 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{NoAuthenticationImpersonationSupport, RuleName}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.NoAuthenticationImpersonationSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseBasicAuthenticationRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.Credentials
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 

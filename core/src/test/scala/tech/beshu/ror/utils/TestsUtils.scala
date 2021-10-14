@@ -43,9 +43,12 @@ object TestsUtils {
 
   def basicAuthHeader(value: String): Header =
     new Header(
-      Name(NonEmptyString.unsafeFrom("Authorization")),
+      Header.Name.authorization,
       NonEmptyString.unsafeFrom("Basic " + Base64.getEncoder.encodeToString(value.getBytes))
     )
+
+  def impersonationHeader(username: NonEmptyString): Header =
+    new Header(Header.Name.impersonateAs, username)
 
   def header(name: String, value: String): Header =
     new Header(
@@ -106,8 +109,8 @@ object TestsUtils {
                            templates: Set[TemplateOperation] = Set.empty)
                           (blockContext: BlockContext): Unit = {
       blockContext.userMetadata.loggedUser should be(loggedUser)
-      blockContext.userMetadata.currentGroup should be(currentGroup)
       blockContext.userMetadata.availableGroups should be(availableGroups)
+      blockContext.userMetadata.currentGroup should be(currentGroup)
       blockContext.userMetadata.kibanaIndex should be(kibanaIndex)
       blockContext.userMetadata.kibanaTemplateIndex should be(kibanaTemplateIndex)
       blockContext.userMetadata.hiddenKibanaApps should be(hiddenKibanaApps)

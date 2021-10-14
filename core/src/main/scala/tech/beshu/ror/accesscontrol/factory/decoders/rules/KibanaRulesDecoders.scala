@@ -18,8 +18,8 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import cats.implicits._
 import io.circe.Decoder
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaHideAppsRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.createSingleResolvableVariableFrom
@@ -76,13 +76,13 @@ class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorConfigurationIndex)
       .map(_.toLowerCase)
       .toSyncDecoder
       .emapE[KibanaAccess] {
-        case "ro" => Right(KibanaAccess.RO)
-        case "rw" => Right(KibanaAccess.RW)
-        case "ro_strict" => Right(KibanaAccess.ROStrict)
-        case "admin" => Right(KibanaAccess.Admin)
-        case "unrestricted" => Right(KibanaAccess.Unrestricted)
-        case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
-      }
+      case "ro" => Right(KibanaAccess.RO)
+      case "rw" => Right(KibanaAccess.RW)
+      case "ro_strict" => Right(KibanaAccess.ROStrict)
+      case "admin" => Right(KibanaAccess.Admin)
+      case "unrestricted" => Right(KibanaAccess.Unrestricted)
+      case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
+    }
       .map(KibanaAccessRule.Settings(_, rorIndexNameConfiguration))
       .map(settings => RuleWithVariableUsageDefinition.create(new KibanaAccessRule(settings)))
       .decoder
