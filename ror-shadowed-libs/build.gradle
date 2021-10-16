@@ -24,8 +24,8 @@ buildscript {
     }
 
     dependencies {
-        classpath group: 'org.owasp',                                    name: 'dependency-check-gradle',  version: '6.1.6'
-        classpath 'com.github.jengelman.gradle.plugins:shadow:4.0.4'
+        classpath group: 'org.owasp',                            name: 'dependency-check-gradle',  version: '6.4.1.1'
+        classpath group: 'com.github.jengelman.gradle.plugins',  name: 'shadow',                   version: '4.0.4'
     }
 }
 
@@ -39,6 +39,19 @@ apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'org.owasp.dependencycheck'
+
+dependencyCheck {
+    /*
+       Severity	Base Score
+       None     0
+       Low      0.1-3.9
+       Medium   4.0-6.9
+       High     7.0-8.9
+       Critical 9.0-10.0
+     */
+    failBuildOnCVSS = 3
+    suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
+}
 
 configurations {
     shadowCompile
@@ -54,12 +67,7 @@ dependencies {
     shadowCompile group: 'com.fasterxml.jackson.dataformat',      name: 'jackson-dataformat-yaml',                version: '2.12.4'
     shadowCompile group: 'com.fasterxml.jackson.core',            name: 'jackson-databind',                       version: '2.12.4'
     shadowCompile group: 'org.yaml',                              name: 'snakeyaml',                              version: '1.29'
-    shadowCompile group: 'com.jayway.jsonpath',                   name: 'json-path',                              version: '2.2.0'
-    shadowCompile(group: 'net.minidev',                           name: 'json-smart'){
-        version {
-            strictly '2.4.7'
-        }
-    }
+    shadowCompile group: 'com.jayway.jsonpath',                   name: 'json-path',                              version: '2.6.0'
 }
 
 shadowJar {
