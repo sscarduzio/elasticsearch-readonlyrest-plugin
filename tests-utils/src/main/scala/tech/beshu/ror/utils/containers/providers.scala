@@ -17,12 +17,11 @@
 package tech.beshu.ror.utils.containers
 
 import java.util.Optional
-
 import cats.data.NonEmptyList
 import org.apache.http.message.BasicHeader
 import tech.beshu.ror.utils.containers.EsContainer.Credentials
 import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, Token}
-import tech.beshu.ror.utils.containers.providers.ClientProvider.rorAdminCredentials
+import tech.beshu.ror.utils.containers.providers.ClientProvider.{rorAdminCredentials, xpackAdminCredentials}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Tuple
 import tech.beshu.ror.utils.proxy.RorProxyInstance
@@ -39,7 +38,9 @@ object providers {
 
     def noBasicAuthClient: RestClient = client(Credentials.None)
 
-    def adminClient: RestClient = basicAuthClient(rorAdminCredentials._1, rorAdminCredentials._2)
+    def rorAdminClient: RestClient = basicAuthClient(rorAdminCredentials._1, rorAdminCredentials._2)
+
+    def xpackSecurityAdminClient: RestClient = basicAuthClient(xpackAdminCredentials._1, xpackAdminCredentials._2)
 
     private[providers] def client(credentials: Credentials): RestClient
   }

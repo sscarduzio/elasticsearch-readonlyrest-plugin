@@ -47,7 +47,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
         copyNecessaryFiles(builder, config)
 
         RunCommandCombiner.empty
-          .runWhen(!enableFullXPack, "/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
+          .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
           .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(shouldDisableXpack(config),
             command = "echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
@@ -56,14 +56,14 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .runWhen(internodeSslEnabled, "echo 'transport.type: ror_ssl_internode' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(!configHotReloadingEnabled, "echo 'readonlyrest.force_load_from_file: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(customRorIndexName.isDefined, s"echo 'readonlyrest.settings_index: ${customRorIndexName.get}' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-          .runWhen(enableFullXPack, "printf 'xpack.security.enabled: true\\n" +
+          .runWhen(useXpackSecurityInsteadOfRor, "printf 'xpack.security.enabled: true\\n" +
             "xpack.security.transport.ssl.enabled: true\\n" +
             "xpack.security.transport.ssl.verification_mode: none\\n" +
             "xpack.security.transport.ssl.client_authentication: none\\n" +
             "xpack.security.transport.ssl.keystore.path: elastic-certificates.p12\\n" +
             "xpack.security.transport.ssl.truststore.path: elastic-certificates.p12'" +
             ">> /usr/share/elasticsearch/config/elasticsearch.yml")
-          .runWhen(enableFullXPack, "printf '\\n\\ny\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore create -p && " +
+          .runWhen(useXpackSecurityInsteadOfRor, "printf '\\n\\ny\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore create -p && " +
             "printf 'readonlyrest\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore add xpack.security.transport.ssl.keystore.secure_password && " +
             "printf 'readonlyrest\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore add xpack.security.transport.ssl.truststore.secure_password" )
           .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
@@ -135,7 +135,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
 
   private def shouldUseEsNonOssImage(config: Config) = {
     config.xPackSupport ||
-      config.enableFullXPack ||
+      config.useXpackSecurityInsteadOfRor ||
       config.forceNonOssImage ||
       Version.lowerThan(config.esVersion, 6, 3, 0) ||
       Version.greaterOrEqualThan(config.esVersion, 7, 11, 0)
@@ -144,6 +144,6 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
   private def shouldDisableXpack(config: Config) = {
     shouldUseEsNonOssImage(config) &&
       Version.greaterOrEqualThan(config.esVersion, 6, 3, 0) &&
-      !config.enableFullXPack
+      !config.useXpackSecurityInsteadOfRor
   }
 }

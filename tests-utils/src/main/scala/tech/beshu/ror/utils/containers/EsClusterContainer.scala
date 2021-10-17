@@ -104,7 +104,7 @@ class EsRemoteClustersContainer private[containers](val localCluster: EsClusterC
 
   private def remoteClustersInitializer(container: EsClusterContainer,
                                         remoteClustersConfig: Map[String, EsClusterContainer]): Unit = {
-    val clusterManager = new ClusterManager(container.nodes.head.adminClient, esVersion = container.nodes.head.esVersion)
+    val clusterManager = new ClusterManager(container.nodes.head.rorAdminClient, esVersion = container.nodes.head.esVersion)
     val result = clusterManager.configureRemoteClusters(
       remoteClustersConfig.mapValues(_.nodes.map(c => s""""${c.name}:9300""""))
     )
@@ -129,7 +129,7 @@ final case class EsClusterSettings(name: String,
                                    rorContainerSpecification: ContainerSpecification = ContainerSpecification(Map.empty),
                                    dependentServicesContainers: List[DependencyDef] = Nil,
                                    xPackSupport: Boolean,
-                                   fullXPackSupport: Boolean = false,
+                                   useXpackSecurityInsteadOfRor: Boolean = false,
                                    configHotReloadingEnabled: Boolean = false,
                                    customRorIndexName: Option[String] = None,
                                    internodeSslEnabled: Boolean = false,

@@ -20,7 +20,7 @@ import org.testcontainers.images.builder.ImageFromDockerfile
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
 import tech.beshu.ror.utils.misc.Version
 
-object ESWithRorPluginImage extends EsImage[EsWithRorPluginContainer.Config] {
+object ESWithSecurityPluginImage extends EsImage[EsWithSecurityPluginContainer.Config] {
 
   private val rorConfigFileName = "readonlyrest.yml"
   private val log4j2FileName = "log4j2.properties"
@@ -32,13 +32,13 @@ object ESWithRorPluginImage extends EsImage[EsWithRorPluginContainer.Config] {
   private val elasticsearchKeystore = "elasticsearch.keystore"
   private val configDir = "/config"
 
-  override protected def copyNecessaryFiles(builder: DockerfileBuilder, config: EsWithRorPluginContainer.Config): DockerfileBuilder = {
+  override protected def copyNecessaryFiles(builder: DockerfileBuilder, config: EsWithSecurityPluginContainer.Config): DockerfileBuilder = {
     builder
       .copy(config.rorPluginFile.getAbsolutePath, "/tmp/")
       .copy(s"$configDir/*", "/usr/share/elasticsearch/config/")
   }
 
-  override protected def entry(config: EsWithRorPluginContainer.Config): ImageFromDockerfile = {
+  override protected def entry(config: EsWithSecurityPluginContainer.Config): ImageFromDockerfile = {
     val image = new ImageFromDockerfile()
       .withFileFromFile(config.rorPluginFile.getAbsolutePath, config.rorPluginFile)
       .withFileFromFile(s"$configDir/$rorConfigFileName", config.rorConfigFile)
@@ -48,7 +48,7 @@ object ESWithRorPluginImage extends EsImage[EsWithRorPluginContainer.Config] {
       .withFileFromFile(s"$configDir/$javaOptionsFileName", ContainerUtils.getResourceFile("/" + javaOptionsFileName))
       .withFileFromFile(s"$configDir/$xpackTruststoreFileName", ContainerUtils.getResourceFile("/" + xpackTruststoreFileName))
       .withFileFromFile(s"$configDir/$pkcsCerts", ContainerUtils.getResourceFile("/" + pkcsCerts))
-    if (config.enableFullXPack) {
+    if (config.useXpackSecurityInsteadOfRor) {
       image.withFileFromFile(s"$configDir/$elasticsearchKeystore", ContainerUtils.getResourceFile("/" + elasticsearchKeystore))
     } else {
       image
@@ -56,8 +56,8 @@ object ESWithRorPluginImage extends EsImage[EsWithRorPluginContainer.Config] {
   }
 
   override protected def install(builder: DockerfileBuilder,
-                                 config: EsWithRorPluginContainer.Config): DockerfileBuilder = {
-    if (config.enableFullXPack) {
+                                 config: EsWithSecurityPluginContainer.Config): DockerfileBuilder = {
+    if (config.useXpackSecurityInsteadOfRor) {
       builder
     } else {
       builder
@@ -65,7 +65,7 @@ object ESWithRorPluginImage extends EsImage[EsWithRorPluginContainer.Config] {
     }
   }
 
-  private def log4jFileNameBaseOn(config: EsWithRorPluginContainer.Config) = {
+  private def log4jFileNameBaseOn(config: EsWithSecurityPluginContainer.Config) = {
     if(Version.greaterOrEqualThan(config.esVersion, 7, 10, 0)) "log4j2_es_7.10_and_newer.properties"
     else "log4j2_es_before_7.10.properties"
   }

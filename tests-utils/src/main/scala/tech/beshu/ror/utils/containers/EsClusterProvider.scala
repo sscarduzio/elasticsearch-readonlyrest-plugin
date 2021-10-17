@@ -56,7 +56,7 @@ trait EsClusterProvider {
     )
   }
 
-  def createClusterFromDifferentlyConfiguredNodes(clusters: NonEmptyList[EsClusterSettings]): EsClusterContainer = {
+  def createFrom(clusters: NonEmptyList[EsClusterSettings]): EsClusterContainer = {
     def clusterNodeDataFromClusterSettings(esClusterSettings: EsClusterSettings, startingIndex: Int) = {
       Seq.iterate(startingIndex, esClusterSettings.numberOfInstances)(_ + 1)
         .toList

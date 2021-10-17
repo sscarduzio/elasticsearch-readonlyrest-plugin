@@ -16,4 +16,4 @@
  */
 package tech.beshu.ror.utils.containers
 
-object ESWithoutRorPluginImage extends EsImage[EsWithoutRorPluginContainer.Config]
+object ESWithoutSecurityPluginImage extends EsImage[EsWithoutSecurityPluginContainer.Config]

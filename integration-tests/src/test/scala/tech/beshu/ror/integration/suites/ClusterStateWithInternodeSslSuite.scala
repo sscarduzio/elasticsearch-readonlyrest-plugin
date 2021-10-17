@@ -39,12 +39,12 @@ trait ClusterStateWithInternodeSslSuite
   override def targetEs: EsContainer = generalClusterContainer.nodes.head
 
 
-  lazy val generalClusterContainer: EsClusterContainer = createClusterFromDifferentlyConfiguredNodes(
+  lazy val generalClusterContainer: EsClusterContainer = createFrom(
     NonEmptyList.of(
       EsClusterSettings(
         name = "xpack_cluster",
         numberOfInstances = 2,
-        fullXPackSupport = true,
+        useXpackSecurityInsteadOfRor = true,
         xPackSupport = true,
         externalSslEnabled = false,
         configHotReloadingEnabled = true,
@@ -52,7 +52,6 @@ trait ClusterStateWithInternodeSslSuite
       ),
       EsClusterSettings(
         name = "xpack_cluster",
-        rorContainerSpecification = ContainerSpecification(Map("ROR_INTER_KEY_PASS" -> "readonlyrest")),
         internodeSslEnabled = true,
         xPackSupport = false,
         forceNonOssImage = true
@@ -60,8 +59,7 @@ trait ClusterStateWithInternodeSslSuite
     )
   )
 
-
-  private lazy val rorClusterAdminStateManager = new CatManager(clients.last.adminClient, esVersion = esVersionUsed)
+  private lazy val rorClusterAdminStateManager = new CatManager(clients.last.rorAdminClient, esVersion = esVersionUsed)
 
   "Health check" should {
     "be successful" when {
@@ -74,4 +72,4 @@ trait ClusterStateWithInternodeSslSuite
   }
 }
 
-object ElasticWithoutRorClusterProvider extends EsClusterProvider with EsWithoutRorPluginContainerCreator
+object ElasticWithoutRorClusterProvider extends EsClusterProvider with EsWithoutSecurityPluginContainerCreator

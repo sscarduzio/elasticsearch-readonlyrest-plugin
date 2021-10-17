@@ -72,7 +72,7 @@ object EsContainer {
     def envs: Map[String, String]
     def esVersion: String
     def xPackSupport: Boolean
-    def enableFullXPack: Boolean
+    def useXpackSecurityInsteadOfRor: Boolean
     def internodeSslEnabled: Boolean
     def configHotReloadingEnabled: Boolean
     def customRorIndexName: Option[String]
@@ -86,10 +86,10 @@ object EsContainer {
            logger: Logger): EsContainer = {
 
     val logConsumer: Consumer[OutputFrame] = new Slf4jLogConsumer(logger.underlying)
-    val esClient = if (config.enableFullXPack)
+    val esClient = if (config.useXpackSecurityInsteadOfRor)
       Coeval(esContainer.basicAuthClient(xpackAdminCredentials._1, xpackAdminCredentials._2))
     else
-      Coeval(esContainer.adminClient)
+      Coeval(esContainer.rorAdminClient)
     esContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
     esContainer.container.addExposedPort(9200)
     esContainer.container.addExposedPort(9300)
