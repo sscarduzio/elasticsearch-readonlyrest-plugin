@@ -36,7 +36,7 @@ class RorTransportInterceptor(threadContext: ThreadContext, nodeName: String) ex
                                                      options: TransportRequestOptions,
                                                      handler: TransportResponseHandler[T]): Unit = {
       if (threadContext.getHeader(AuthenticationKey) == null) {
-        threadContext.putHeader(AuthenticationKey, getAuthenticationHeaderValue
+        threadContext.putHeader(AuthenticationKey, getAuthenticationHeaderValue)
       }
       sender.sendRequest(connection, action, request, options, handler)
     }

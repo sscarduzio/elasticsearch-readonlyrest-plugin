@@ -87,7 +87,7 @@ object EsContainer {
 
     val logConsumer: Consumer[OutputFrame] = new Slf4jLogConsumer(logger.underlying)
     val esClient = if (config.useXpackSecurityInsteadOfRor)
-      Coeval(esContainer.basicAuthClient(xpackAdminCredentials._1, xpackAdminCredentials._2))
+      Coeval(esContainer.xpackSecurityAdminClient)
     else
       Coeval(esContainer.rorAdminClient)
     esContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
