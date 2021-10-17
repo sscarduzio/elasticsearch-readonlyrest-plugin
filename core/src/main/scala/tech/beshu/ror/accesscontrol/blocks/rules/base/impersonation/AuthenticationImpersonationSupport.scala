@@ -25,18 +25,22 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.AuthenticationImpersonationSupport.UserExistence
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.AuthenticationImpersonationSupport.UserExistence.{CannotCheck, Exists, NotExist}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettingsBasedSupport.UserExistence
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettingsBasedSupport.UserExistence.{CannotCheck, Exists, NotExist}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.matchers.{GenericPatternMatcher, MatcherWithWildcardsScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
-trait AuthenticationImpersonationSupport {
+trait AuthenticationImpersonationSupport
+
+trait ImpersonationSettingsBasedSupport extends AuthenticationImpersonationSupport {
   this: AuthenticationRule =>
 
+  def caseMappingEquality: UserIdCaseMappingEquality
   protected def impersonationSetting: ImpersonationSettings
 
   private lazy val enhancedImpersonatorDefs =
@@ -87,15 +91,15 @@ trait AuthenticationImpersonationSupport {
                                                                                 blockContext: B) = EitherT {
     impersonatorDef
       .authenticationRule
-      .tryToAuthenticate(BlockContextUpdater[B].emptyBlockContext(blockContext)) // we are not interested in gathering those data
+      .authenticate(BlockContextUpdater[B].emptyBlockContext(blockContext)) // we are not interested in gathering those data
       .map {
-      case Fulfilled(bc) =>
-        bc.userMetadata.loggedUser match {
-          case Some(loggedUser) => Right(loggedUser)
-          case None => throw new IllegalStateException("Impersonator should be logged")
-        }
-      case Rejected(_) => Left(Rejected[B](Cause.ImpersonationNotAllowed))
-    }
+        case Fulfilled(bc) =>
+          bc.userMetadata.loggedUser match {
+            case Some(loggedUser) => Right(loggedUser)
+            case None => throw new IllegalStateException("Impersonator should be logged")
+          }
+        case Rejected(_) => Left(Rejected[B](Cause.ImpersonationNotAllowed))
+      }
   }
 
   private def checkIfTheImpersonatedUserExist[B <: BlockContext](theImpersonatedUserId: User.Id)
@@ -124,7 +128,7 @@ trait AuthenticationImpersonationSupport {
 
 }
 
-object AuthenticationImpersonationSupport {
+object ImpersonationSettingsBasedSupport {
   sealed trait UserExistence
   object UserExistence {
     case object Exists extends UserExistence
@@ -133,13 +137,4 @@ object AuthenticationImpersonationSupport {
   }
 }
 
-trait NoAuthenticationImpersonationSupport extends AuthenticationImpersonationSupport {
-  this: AuthenticationRule =>
-
-  override protected val impersonationSetting: ImpersonationSettings = ImpersonationSettings.notConfigured
-
-  override final protected[rules] def exists(user: User.Id)
-                                            (implicit requestId: RequestId,
-                                             eq: Eq[User.Id]): Task[UserExistence] =
-    Task.now(UserExistence.CannotCheck)
-}
+trait AuthenticationImpersonationCustomSupport extends AuthenticationImpersonationSupport

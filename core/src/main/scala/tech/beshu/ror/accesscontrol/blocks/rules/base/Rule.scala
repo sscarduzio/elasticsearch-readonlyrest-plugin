@@ -16,18 +16,17 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.base
 
-import cats.{Eq, Show}
+import cats.Show
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralNonIndexRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{AuthenticationImpersonationSupport, AuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
-import tech.beshu.ror.utils.CaseMappingEquality._
 
 sealed trait Rule {
   def name: Rule.Name
@@ -103,23 +102,17 @@ object Rule {
 
   }
 
-  trait AuthenticationRule extends Rule with AuthenticationImpersonationSupport {
+  trait AuthenticationRule extends Rule {
+    this: AuthenticationImpersonationSupport =>
 
     def eligibleUsers: AuthenticationRule.EligibleUsersSupport
-
-    def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]]
-
     def caseMappingEquality: UserIdCaseMappingEquality
 
-    override final def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
-      implicit val eqUserId: Eq[User.Id] = caseMappingEquality.toOrder
-      val requestContext = blockContext.requestContext
-      requestContext.impersonateAs match {
-        case Some(theImpersonatedUserId) => impersonate(as = theImpersonatedUserId, blockContext)
-        case None => tryToAuthenticate(blockContext)
-      }
+    override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
+      authenticate(blockContext)
     }
 
+    protected [base] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]]
   }
   object AuthenticationRule {
     sealed trait EligibleUsersSupport
@@ -129,8 +122,28 @@ object Rule {
     }
   }
 
-  trait AuthorizationRule extends Rule with AuthorizationImpersonationSupport
+  trait AuthorizationRule extends Rule {
+    this: AuthorizationImpersonationSupport =>
 
-  trait AuthRule extends AuthenticationRule with AuthorizationRule
+    override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+      authorize(blockContext)
+    }
+
+    protected [base] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]]
+  }
+
+  trait AuthRule extends Rule {
+    this: AuthenticationRule with AuthorizationRule =>
+
+    override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+      authenticate(blockContext)
+        .flatMap {
+          case Fulfilled(newBlockContext) =>
+            authorize(newBlockContext)
+          case rejected@Rejected(_) =>
+            Task.now(rejected)
+        }
+    }
+  }
 
 }

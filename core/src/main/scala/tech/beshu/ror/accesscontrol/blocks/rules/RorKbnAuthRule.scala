@@ -27,7 +27,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule._
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{NoAuthenticationImpersonationSupport, NoAuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -44,8 +43,8 @@ import scala.util.Try
 final class RorKbnAuthRule(val settings: Settings,
                            implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthRule
-    with NoAuthenticationImpersonationSupport
-    with NoAuthorizationImpersonationSupport
+    with AuthenticationRule
+    with AuthorizationRule
     with Logging {
 
   override val name: Rule.Name = RorKbnAuthRule.Name.name
@@ -58,7 +57,7 @@ final class RorKbnAuthRule(val settings: Settings,
     case Ec(pubKey) => Jwts.parserBuilder().setSigningKey(pubKey).build()
   }
 
-  override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     val authHeaderName = Header.Name.authorization
     blockContext.requestContext.bearerToken.map(h => JwtToken(h.value)) match {
       case None =>
@@ -68,6 +67,9 @@ final class RorKbnAuthRule(val settings: Settings,
         process(token, blockContext)
     }
   }
+
+  override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+    Task.now(RuleResult.Fulfilled(blockContext))
 
   private def process[B <: BlockContext : BlockContextUpdater](token: JwtToken, blockContext: B): RuleResult[B] = {
     jwtTokenData(token) match {
@@ -135,7 +137,6 @@ final class RorKbnAuthRule(val settings: Settings,
       case ClaimSearchResult.NotFound => blockContext
     }
   }
-
 }
 
 object RorKbnAuthRule {

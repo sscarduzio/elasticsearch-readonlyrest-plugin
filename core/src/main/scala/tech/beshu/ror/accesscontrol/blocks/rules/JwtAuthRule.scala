@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
+import eu.timepit.refined.auto._
 import io.jsonwebtoken.Jwts
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -27,7 +27,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule._
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{NoAuthenticationImpersonationSupport, NoAuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -44,8 +43,8 @@ import scala.util.Try
 final class JwtAuthRule(val settings: JwtAuthRule.Settings,
                         implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthRule
-    with NoAuthenticationImpersonationSupport
-    with NoAuthorizationImpersonationSupport
+    with AuthenticationRule
+    with AuthorizationRule
     with Logging {
 
   override val name: Rule.Name = JwtAuthRule.Name.name
@@ -60,7 +59,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
       case Ec(pubKey) => Jwts.parserBuilder().setSigningKey(pubKey).build()
     }
 
-  override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task
+  override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task
     .unit
     .flatMap { _ =>
       jwtTokenFrom(blockContext.requestContext) match {
@@ -71,6 +70,9 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
           process(token, blockContext)
       }
     }
+
+  override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+    Task.now(RuleResult.Fulfilled(blockContext))
 
   private def jwtTokenFrom(requestContext: RequestContext) = {
     requestContext
@@ -98,7 +100,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
             settings.jwt.checkMethod match {
               case NoCheck(service) =>
                 service
-                  .authenticate(Credentials(User.Id(NonEmptyString.unsafeFrom("jwt")), PlainTextSecret(token.value)))
+                  .authenticate(Credentials(User.Id("jwt"), PlainTextSecret(token.value)))
                   .map(RuleResult.resultBasedOnCondition(modifiedBlockContext)(_))
               case Hmac(_) | Rsa(_) | Ec(_) =>
                 Task.now(Fulfilled(modifiedBlockContext))
@@ -190,7 +192,6 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
       case Some(Found(_)) | None => Right(blockContext)
     }
   }
-
 }
 
 object JwtAuthRule {

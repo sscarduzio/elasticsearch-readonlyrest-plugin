@@ -20,7 +20,6 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Credentials
@@ -28,8 +27,8 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
 
-abstract class BaseBasicAuthenticationRule
-  extends AuthenticationRule
+abstract class BaseBasicAuthAuthenticationRule
+  extends BaseAuthenticationRule
     with Logging {
 
   protected def authenticateUsing(credentials: Credentials): Task[Boolean]
@@ -55,7 +54,7 @@ abstract class BaseBasicAuthenticationRule
 }
 
 abstract class BasicAuthenticationRule[CREDENTIALS](val settings: Settings[CREDENTIALS])
-  extends BaseBasicAuthenticationRule {
+  extends BaseBasicAuthAuthenticationRule {
 
   override protected def authenticateUsing(credentials: Credentials): Task[Boolean] =
     compare(settings.credentials, credentials)

@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule._
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{NoAuthenticationImpersonationSupport, NoAuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -41,8 +40,8 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 final class GroupsRule(val settings: Settings,
                        implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthRule
-    with NoAuthenticationImpersonationSupport
-    with NoAuthorizationImpersonationSupport
+    with AuthenticationRule
+    with AuthorizationRule
     with Logging {
 
   override val name: Rule.Name = GroupsRule.Name.name
@@ -54,7 +53,7 @@ final class GroupsRule(val settings: Settings,
     .map { userDef => userDef -> new GenericPatternMatcher(userDef.usernames.patterns.toList) }
     .toMap
 
-  override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+  override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     Task
       .unit
       .flatMap { _ =>
@@ -66,6 +65,10 @@ final class GroupsRule(val settings: Settings,
             Task.now(Rejected())
         }
       }
+  }
+
+  override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+    Task.now(RuleResult.Fulfilled(blockContext))
 
   private def continueCheckingWithUserDefinitions[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                            resolvedGroups: UniqueNonEmptyList[Group]): Task[RuleResult[B]] = {
@@ -281,6 +284,7 @@ final class GroupsRule(val settings: Settings,
   private def resolveGroups[B <: BlockContext](blockContext: B) = {
     resolveAll(settings.groups.toNonEmptyList, blockContext)
   }
+
 }
 
 object GroupsRule {

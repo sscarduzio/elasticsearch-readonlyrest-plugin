@@ -27,7 +27,7 @@ import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyUnixRule.UnixHashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.AuthenticationImpersonationSupport.UserExistence
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettingsBasedSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettings
 import tech.beshu.ror.accesscontrol.blocks.rules.base.{BasicAuthenticationRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality

@@ -51,8 +51,7 @@ object CrossBlockContextBlocksUpgrade {
             )
             modifiedRules :+ new LdapAuthRule(
               currentRule.authentication,
-              new LdapAuthorizationRule(newSettings, currentRule.authorization.mocksProvider, currentRule.caseMappingEquality),
-              currentRule.caseMappingEquality
+              new LdapAuthorizationRule(newSettings, currentRule.authorization.mocksProvider, currentRule.authorization.caseMappingEquality)
             )
           case (modifiedRules, currentRule) =>
             modifiedRules :+ currentRule

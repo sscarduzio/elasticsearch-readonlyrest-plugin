@@ -18,13 +18,15 @@ package tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation
 
 import cats.Eq
 import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthorizationRule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.AuthorizationImpersonationSupport.Groups
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.MocksProviderBasedAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-trait AuthorizationImpersonationSupport {
+trait AuthorizationImpersonationSupport
+
+trait MocksProviderBasedAuthorizationImpersonationSupport extends AuthorizationImpersonationSupport {
   this: AuthorizationRule =>
 
   protected def mocksProvider: MocksProvider
@@ -33,7 +35,7 @@ trait AuthorizationImpersonationSupport {
                                      (implicit requestId: RequestId,
                                       eq: Eq[User.Id]): Groups
 }
-object AuthorizationImpersonationSupport {
+object MocksProviderBasedAuthorizationImpersonationSupport {
   sealed trait Groups
   object Groups {
     final case class Present(groups: UniqueList[Group]) extends Groups
@@ -41,14 +43,4 @@ object AuthorizationImpersonationSupport {
   }
 }
 
-trait NoAuthorizationImpersonationSupport extends AuthorizationImpersonationSupport {
-  this: AuthorizationRule =>
-
-  override protected val mocksProvider: MocksProvider = NoOpMocksProvider
-
-  override final protected[rules] def mockedGroupsOf(user: User.Id)
-                                                    (implicit requestId: RequestId,
-                                                     eq: Eq[User.Id]): Groups =
-    Groups.CannotCheck
-}
-
+trait AuthorizationImpersonationCustomSupport extends AuthorizationImpersonationSupport

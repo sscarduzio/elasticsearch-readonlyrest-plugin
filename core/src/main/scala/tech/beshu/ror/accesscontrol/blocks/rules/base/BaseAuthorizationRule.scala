@@ -23,15 +23,14 @@ import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthorizationRule, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.AuthorizationImpersonationSupport.Groups
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.MocksProviderBasedAuthorizationImpersonationSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.MocksProviderBasedAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.Group._
-import tech.beshu.ror.accesscontrol.domain.User.Id._
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, User}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-abstract class BaseAuthorizationRule
-  extends AuthorizationRule {
+trait BaseAuthorizationRule extends AuthorizationRule with MocksProviderBasedAuthorizationImpersonationSupport {
 
   protected def caseMappingEquality: UserIdCaseMappingEquality
 
@@ -44,6 +43,10 @@ abstract class BaseAuthorizationRule
   protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = Right(())
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+    authorize(blockContext)
+  }
+
+  override protected [base] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     blockContext.userMetadata.loggedUser match {
       case Some(user@LoggedUser.DirectlyLoggedUser(_)) =>
         loggedUserPreconditionCheck(user) match {
@@ -66,7 +69,11 @@ abstract class BaseAuthorizationRule
     implicit val eqUserId: Eq[User.Id] = caseMappingEquality.toOrder
     mockedGroupsOf(user.id) match {
       case Groups.Present(mockedGroups) =>
-        Task.delay(canBeAuthorized(blockContext, groupsPermittedByRule, mockedGroups))
+        authorizeLoggedUser(
+          blockContext,
+          user,
+          userGroupsProvider = (_, _) => Task.now(mockedGroups)
+        )
       case Groups.CannotCheck =>
         Task.now(Rejected(Cause.ImpersonationNotSupported))
     }
@@ -74,35 +81,37 @@ abstract class BaseAuthorizationRule
 
   private def authorizeDirectlyLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                    user: LoggedUser.DirectlyLoggedUser): Task[RuleResult[B]] = {
+    authorizeLoggedUser(
+      blockContext,
+      user,
+      userGroupsProvider = userGroups
+    )
+  }
+
+  private def authorizeLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
+                                                                           user: LoggedUser,
+                                                                           userGroupsProvider: (B, LoggedUser) => Task[UniqueList[Group]]): Task[RuleResult[B]] = {
     val allAllowedGroups = groupsPermittedByRule
     blockContext.userMetadata.currentGroup match {
-      case Some(currentGroup) if allAllowedGroups.exists(_ === currentGroup) =>
-        userGroups(blockContext, user)
-          .map(canBeAuthorized(blockContext, allAllowedGroups, _))
-      case Some(_) =>
+      case Some(currentGroup) if !allAllowedGroups.exists(_ === currentGroup) =>
         Task.now(Rejected())
-      case None =>
-        userGroups(blockContext, user)
-          .map(canBeAuthorized(blockContext, allAllowedGroups, _))
+      case Some(_) | None =>
+        userGroupsProvider(blockContext, user).map { fetchedUserGroups =>
+          canBeAuthorized(
+            blockContext,
+            allowedGroups = UniqueList.fromList(allAllowedGroups.intersect(fetchedUserGroups).toList)
+          )
+        }
     }
   }
 
   private def canBeAuthorized[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                       permittedGroups: UniqueNonEmptyList[Group],
-                                                                       userGroups: UniqueList[Group]): RuleResult[B] = {
-    UniqueNonEmptyList.fromList(groupsPermittedByAllRulesOfThisType.toList.intersect(userGroups.toList)) match {
-      case Some(allowedGroups) =>
-        Fulfilled(blockContext.withUserMetadata(_.addAvailableGroups(allowedGroups)))
+                                                                       allowedGroups: UniqueList[Group]): RuleResult[B] = {
+    UniqueNonEmptyList.fromList(groupsPermittedByAllRulesOfThisType.toList.intersect(allowedGroups.toList)) match {
+      case Some(filteredGroups) =>
+        Fulfilled(blockContext.withUserMetadata(_.addAvailableGroups(filteredGroups)))
       case None =>
         Rejected()
     }
-  }
-}
-
-object BaseAuthorizationRule {
-  trait AuthorizationResult
-  object AuthorizationResult {
-    case object Unauthorized extends AuthorizationResult
-    final case class Authorized(availableGroups: UniqueNonEmptyList[Group]) extends AuthorizationResult
   }
 }

@@ -224,8 +224,7 @@ class LdapAuthRuleTests
         impersonationSettings,
         UserIdEq.caseSensitive
       ),
-      authorization = new LdapAuthorizationRule(authorizationSettings, impersonationSettings.mocksProvider, UserIdEq.caseSensitive),
-      caseMappingEquality = UserIdEq.caseSensitive,
+      authorization = new LdapAuthorizationRule(authorizationSettings, impersonationSettings.mocksProvider, UserIdEq.caseSensitive)
     )
     val requestContext = MockRequestContext.indices.copy(headers = headers)
     val blockContext = GeneralIndexRequestBlockContext(

@@ -22,12 +22,12 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, RuleName, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.AuthenticationImpersonationSupport.UserExistence
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettingsBasedSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettings
+import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseAuthenticationRule, Rule}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
@@ -40,7 +40,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 final class ProxyAuthRule(val settings: Settings,
                           override val impersonationSetting: ImpersonationSettings,
                           implicit override val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRule
+  extends BaseAuthenticationRule
     with Logging {
 
   private val userMatcher = MatcherWithWildcardsScalaAdapter[User.Id](settings.userIds.toSet)

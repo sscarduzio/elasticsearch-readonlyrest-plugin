@@ -195,8 +195,7 @@ object LdapAuthRuleDecoder {
         LdapAuthorizationRule.Settings(ldapService, groups, groups),
         mocksProvider,
         caseMappingEquality
-      ),
-      caseMappingEquality
+      )
     )
   }
 }

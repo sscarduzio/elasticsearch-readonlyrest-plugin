@@ -24,16 +24,16 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationSe
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.AuthenticationImpersonationSupport.UserExistence
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettingsBasedSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettings
-import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseBasicAuthenticationRule, Rule}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseBasicAuthAuthenticationRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 
 final class LdapAuthenticationRule(val settings: Settings,
                                    override val impersonationSetting: ImpersonationSettings,
                                    implicit override val caseMappingEquality: UserIdCaseMappingEquality)
-  extends BaseBasicAuthenticationRule {
+  extends BaseBasicAuthAuthenticationRule {
 
   override val name: Rule.Name = LdapAuthenticationRule.Name.name
 
