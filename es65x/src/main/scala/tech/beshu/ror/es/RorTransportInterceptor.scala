@@ -53,10 +53,6 @@ class RorTransportInterceptor(threadContext: ThreadContext, nodeName: String) ex
     output.writeString("__attach")
     output.writeString("__attach")
     output.writeBoolean(false)
-    if (output.getVersion.onOrAfter(Version.V_6_7_0)) {
-      output.writeVInt(4) // Internal
-      output.writeMap(Map[String, Object]().asJava)
-    }
     Base64.getEncoder().encodeToString(BytesReference.toBytes(output.bytes()));
   }
 }
