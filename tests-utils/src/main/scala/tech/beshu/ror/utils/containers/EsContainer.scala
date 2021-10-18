@@ -96,7 +96,7 @@ object EsContainer {
     esContainer.container.addExposedPort(8000)
     esContainer.container.setWaitStrategy(
       new ElasticsearchNodeWaitingStrategy(config.esVersion, esContainer.name, esClient, initializer)
-        .withStartupTimeout(3 minutes)
+        .withStartupTimeout(5 minutes)
     )
     esContainer.container.setNetwork(Network.SHARED)
     esContainer.container.setNetworkAliases((config.nodeName :: Nil).asJava)

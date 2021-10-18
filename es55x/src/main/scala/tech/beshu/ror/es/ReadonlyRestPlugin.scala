@@ -18,6 +18,8 @@ package tech.beshu.ror.es
 
 import java.nio.file.Path
 import java.util
+import monix.execution.Scheduler
+import monix.execution.schedulers.CanBlock
 import java.util.function.{Supplier, UnaryOperator}
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.support.ActionFilter
@@ -60,6 +62,10 @@ import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeSe
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+
+import scala.collection.JavaConverters._
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 class ReadonlyRestPlugin(s: Settings,
                          ignore: Unit) // hack!
@@ -181,7 +187,7 @@ class ReadonlyRestPlugin(s: Settings,
       }
   }
 
-  override def getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry, threadContext: ThreadContext): util.List[TransportInterceptor] = {
+  override def getTransportInterceptors(threadContext: ThreadContext): util.List[TransportInterceptor] = {
     List[TransportInterceptor](new RorTransportInterceptor(threadContext, s.get("node.name"))).asJava
   }
 }
