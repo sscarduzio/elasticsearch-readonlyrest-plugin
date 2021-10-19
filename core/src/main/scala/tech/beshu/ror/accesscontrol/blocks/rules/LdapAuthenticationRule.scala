@@ -25,13 +25,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettingsBasedSupport.UserExistence
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettings
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseBasicAuthAuthenticationRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 
 final class LdapAuthenticationRule(val settings: Settings,
-                                   override val impersonationSetting: ImpersonationSettings,
+                                   override val impersonation: Impersonation,
                                    implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BaseBasicAuthAuthenticationRule {
 
@@ -45,17 +45,22 @@ final class LdapAuthenticationRule(val settings: Settings,
   override protected[rules] def exists(user: User.Id)
                                       (implicit requestId: RequestId,
                                        eq: Eq[User.Id]): Task[UserExistence] = Task.delay {
-    impersonationSetting
-      .mocksProvider
-      .ldapServiceWith(settings.ldap.id)
-      .map { mock =>
-        val ldapUserExists = mock.users.exists(_.id === user)
-        if (ldapUserExists) UserExistence.Exists
-        else UserExistence.NotExist
-      }
-      .getOrElse {
+    impersonation match {
+      case Impersonation.Enabled(impersonationSettings) =>
+        impersonationSettings
+          .mocksProvider
+          .ldapServiceWith(settings.ldap.id)
+          .map { mock =>
+            val ldapUserExists = mock.users.exists(_.id === user)
+            if (ldapUserExists) UserExistence.Exists
+            else UserExistence.NotExist
+          }
+          .getOrElse {
+            UserExistence.CannotCheck
+          }
+      case Impersonation.Disabled =>
         UserExistence.CannotCheck
-      }
+    }
   }
 }
 

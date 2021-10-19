@@ -16,29 +16,22 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.base
 
-import cats.Eq
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettingsBasedSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettingsBasedSupport.ImpersonationResult
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
 trait BaseAuthenticationRule extends AuthenticationRule with ImpersonationSettingsBasedSupport {
 
-  protected def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]]
+  protected def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]]
 
-  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
-    authenticate(blockContext)
-  }
-
-  override protected[base] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
-    implicit val eqUserId: Eq[User.Id] = caseMappingEquality.toOrder
-    val requestContext = blockContext.requestContext
-    requestContext.impersonateAs match {
-      case Some(theImpersonatedUserId) => impersonate(as = theImpersonatedUserId, blockContext)
-      case None => tryToAuthenticate(blockContext)
-    }
+  override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+    tryToImpersonateUser(blockContext)
+      .flatMap {
+        case ImpersonationResult.WontImpersonate() => tryToAuthenticateUser(blockContext)
+        case ImpersonationResult.Handled(result) => Task.now(result)
+      }
   }
 
 }

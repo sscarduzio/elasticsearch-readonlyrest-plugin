@@ -25,10 +25,9 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettings
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
@@ -49,7 +48,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
         val rule = new LdapAuthenticationRule(
           LdapAuthenticationRule.Settings(service),
-          ImpersonationSettings.notConfigured,
+          Impersonation.Disabled,
           UserIdEq.caseSensitive
         )
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
@@ -71,7 +70,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
         val rule = new LdapAuthenticationRule(
           LdapAuthenticationRule.Settings(service),
-          ImpersonationSettings.notConfigured,
+          Impersonation.Disabled,
           UserIdEq.caseSensitive
         )
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
@@ -83,7 +82,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
         val rule = new LdapAuthenticationRule(
           LdapAuthenticationRule.Settings(service),
-          ImpersonationSettings.notConfigured,
+          Impersonation.Disabled,
           UserIdEq.caseSensitive
         )
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
@@ -97,7 +96,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
         val rule = new LdapAuthenticationRule(
           LdapAuthenticationRule.Settings(service),
-          ImpersonationSettings.notConfigured,
+          Impersonation.Disabled,
           UserIdEq.caseSensitive
         )
         val thrown = the[TestException] thrownBy rule.check(blockContext).runSyncUnsafe()

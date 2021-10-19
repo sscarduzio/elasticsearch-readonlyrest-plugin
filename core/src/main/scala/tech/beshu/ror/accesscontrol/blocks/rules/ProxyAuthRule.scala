@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.El
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettingsBasedSupport.UserExistence
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettings
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseAuthenticationRule, Rule}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -38,7 +38,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final class ProxyAuthRule(val settings: Settings,
-                          override val impersonationSetting: ImpersonationSettings,
+                          override val impersonation: Impersonation,
                           implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BaseAuthenticationRule
     with Logging {
@@ -49,7 +49,7 @@ final class ProxyAuthRule(val settings: Settings,
 
   override val name: Rule.Name = ProxyAuthRule.Name.name
 
-  override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     getLoggedUser(blockContext.requestContext) match {
       case None =>
         Rejected()

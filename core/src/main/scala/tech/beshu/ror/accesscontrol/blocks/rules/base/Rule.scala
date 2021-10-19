@@ -112,7 +112,7 @@ object Rule {
       authenticate(blockContext)
     }
 
-    protected [base] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]]
+    protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]]
   }
   object AuthenticationRule {
     sealed trait EligibleUsersSupport
@@ -129,11 +129,11 @@ object Rule {
       authorize(blockContext)
     }
 
-    protected [base] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]]
+    protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]]
   }
 
-  trait AuthRule extends Rule {
-    this: AuthenticationRule with AuthorizationRule =>
+  trait AuthRule extends AuthenticationRule with AuthorizationRule {
+    this: AuthenticationImpersonationSupport with AuthorizationImpersonationSupport =>
 
     override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
       authenticate(blockContext)

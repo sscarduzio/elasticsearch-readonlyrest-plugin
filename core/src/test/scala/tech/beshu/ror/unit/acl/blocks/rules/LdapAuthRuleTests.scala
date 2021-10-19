@@ -36,7 +36,7 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.L
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettings
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
@@ -221,7 +221,7 @@ class LdapAuthRuleTests
     val rule = new LdapAuthRule(
       authentication = new LdapAuthenticationRule(
         authenticationSettings,
-        impersonationSettings,
+        Impersonation.Enabled(impersonationSettings),
         UserIdEq.caseSensitive
       ),
       authorization = new LdapAuthorizationRule(authorizationSettings, impersonationSettings.mocksProvider, UserIdEq.caseSensitive)
@@ -279,7 +279,7 @@ class LdapAuthRuleTests
       UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(userIdPattern))),
       new AuthKeyRule(
         BasicAuthenticationRule.Settings(impersonatorCredentials),
-        ImpersonationSettings.notConfigured,
+        Impersonation.Disabled,
         UserIdEq.caseSensitive
       ),
       UniqueNonEmptyList.fromNonEmptyList(impersonatedUsers)

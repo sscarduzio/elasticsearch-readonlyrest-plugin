@@ -17,10 +17,9 @@
 package tech.beshu.ror.unit.acl.blocks.rules
 
 import eu.timepit.refined.auto._
-import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyRule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettings
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
 import tech.beshu.ror.utils.UserIdEq
 
@@ -30,7 +29,7 @@ class AuthKeyRuleTests extends BasicAuthenticationTestTemplate {
 
   override protected val rule = new AuthKeyRule(
     BasicAuthenticationRule.Settings(Credentials(User.Id("logstash"), PlainTextSecret("logstash"))),
-    ImpersonationSettings.notConfigured,
+    Impersonation.Disabled,
     UserIdEq.caseSensitive
   )
 }

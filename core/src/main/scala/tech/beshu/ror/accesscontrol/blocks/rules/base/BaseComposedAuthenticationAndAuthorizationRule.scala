@@ -24,12 +24,12 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 abstract class BaseComposedAuthenticationAndAuthorizationRule(authenticationRule: AuthenticationRule,
                                                               authorizationRule: AuthorizationRule)
   extends AuthRule
-    with AuthenticationRule with AuthenticationImpersonationCustomSupport
-    with AuthorizationRule with AuthorizationImpersonationCustomSupport {
+    with AuthenticationImpersonationCustomSupport
+    with AuthorizationImpersonationCustomSupport {
 
-  override protected[base] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-    authenticationRule.authenticate(blockContext)
+  override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+    authenticationRule.check(blockContext)
 
-  override protected[base] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-    authorizationRule.authorize(blockContext)
+  override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+    authorizationRule.check(blockContext)
 }

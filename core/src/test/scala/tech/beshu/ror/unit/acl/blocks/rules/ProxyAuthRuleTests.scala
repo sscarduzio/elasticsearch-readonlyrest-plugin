@@ -24,10 +24,9 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettings
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
@@ -89,7 +88,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory {
   private def assertRule(settings: ProxyAuthRule.Settings, header: Header, isMatched: Boolean) = {
     val rule = new ProxyAuthRule(
       settings,
-      ImpersonationSettings.notConfigured,
+      Impersonation.Disabled,
       UserIdEq.caseSensitive
     )
     val requestContext = mock[RequestContext]

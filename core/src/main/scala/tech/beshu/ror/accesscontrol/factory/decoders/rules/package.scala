@@ -18,20 +18,26 @@ package tech.beshu.ror.accesscontrol.factory.decoders
 
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, MutableMocksProviderWithCachePerRequest}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettings
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 
 package object rules {
 
   implicit class OptionalImpersonatorDefinitionOps(val impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]]) {
 
-    def toImpersonationSettings(mocksProvider: MocksProvider): ImpersonationSettings = {
-      ImpersonationSettings(
-        impersonatorsDefinitions
-          .map(_.items)
-          .getOrElse(Nil),
-        new MutableMocksProviderWithCachePerRequest()
-      )
+    def toImpersonationSettings(mocksProvider: MocksProvider): Impersonation = {
+      impersonatorsDefinitions match {
+        case Some(definitions) =>
+          Impersonation.Enabled(
+            ImpersonationSettings(
+              definitions.items,
+              new MutableMocksProviderWithCachePerRequest()
+            )
+          )
+        case None =>
+          Impersonation.Disabled
+      }
+
     }
   }
 }

@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule._
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -40,8 +41,8 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 final class GroupsRule(val settings: Settings,
                        implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthRule
-    with AuthenticationRule
-    with AuthorizationRule
+    with AuthenticationImpersonationCustomSupport
+    with AuthorizationImpersonationCustomSupport
     with Logging {
 
   override val name: Rule.Name = GroupsRule.Name.name
@@ -53,7 +54,7 @@ final class GroupsRule(val settings: Settings,
     .map { userDef => userDef -> new GenericPatternMatcher(userDef.usernames.patterns.toList) }
     .toMap
 
-  override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+  override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     Task
       .unit
       .flatMap { _ =>
@@ -67,7 +68,7 @@ final class GroupsRule(val settings: Settings,
       }
   }
 
-  override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+  override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
     Task.now(RuleResult.Fulfilled(blockContext))
 
   private def continueCheckingWithUserDefinitions[B <: BlockContext : BlockContextUpdater](blockContext: B,

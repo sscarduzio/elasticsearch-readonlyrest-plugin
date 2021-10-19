@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule._
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -43,8 +44,8 @@ import scala.util.Try
 final class JwtAuthRule(val settings: JwtAuthRule.Settings,
                         implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthRule
-    with AuthenticationRule
-    with AuthorizationRule
+    with AuthenticationImpersonationCustomSupport
+    with AuthorizationImpersonationCustomSupport
     with Logging {
 
   override val name: Rule.Name = JwtAuthRule.Name.name

@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettings
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -136,7 +136,7 @@ class ImpersonationRuleDecoratorTests
         val rule = authRuleWithImpersonation { defs =>
           new AuthKeySha1Rule(
             settings = BasicAuthenticationRule.Settings(HashedCredentials.HashedUserAndPassword("xxxxxxxxxxx")),
-            impersonationSetting = ImpersonationSettings(defs, NoOpMocksProvider),
+            impersonation = Impersonation.Enabled(ImpersonationSettings(defs, NoOpMocksProvider)),
             caseMappingEquality = UserIdEq.caseSensitive,
           )
         }
@@ -164,7 +164,7 @@ class ImpersonationRuleDecoratorTests
           User.Id(NonEmptyString.unsafeFrom(user)),
           PlainTextSecret(NonEmptyString.unsafeFrom(password))
         )),
-        ImpersonationSettings(defs, NoOpMocksProvider),
+        Impersonation.Enabled(ImpersonationSettings(defs, NoOpMocksProvider)),
         UserIdEq.caseSensitive
       )
     }
@@ -198,7 +198,7 @@ class ImpersonationRuleDecoratorTests
         User.Id(NonEmptyString.unsafeFrom(user)),
         PlainTextSecret(NonEmptyString.unsafeFrom(password))
       )),
-      impersonationSetting = ImpersonationSettings.notConfigured,
+      impersonation = Impersonation.Disabled,
       caseMappingEquality = defaultUserIdEq
     )
   }

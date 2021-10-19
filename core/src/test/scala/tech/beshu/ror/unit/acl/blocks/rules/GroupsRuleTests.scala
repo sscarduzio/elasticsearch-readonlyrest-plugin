@@ -21,6 +21,7 @@ import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
@@ -46,7 +47,6 @@ import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
-import tech.beshu.ror.unit.acl.blocks.rules.GroupsRuleTests._
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -57,6 +57,8 @@ import scala.language.postfixOps
 class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion {
 
   implicit val provider: EnvVarsProvider = OsEnvVarsProvider
+
+  import tech.beshu.ror.unit.acl.blocks.rules.GroupsRuleTests._
 
   "A GroupsRule" should {
     "match" when {
@@ -446,16 +448,16 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
   }
 }
 
-object GroupsRuleTests {
+object GroupsRuleTests extends MockFactory {
 
   private object authenticationRule {
 
-    def matching(user: User.Id) = new AuthenticationRule with AuthenticationImpersonationCustomSupport {
+    def matching(user: User.Id): AuthenticationRule = new AuthenticationRule with AuthenticationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
       override val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
-      override protected [rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
+      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
         Task.now(Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(user)))))
     }
 
@@ -464,7 +466,7 @@ object GroupsRuleTests {
       override val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
-      override protected [rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
+      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
         Task.now(Rejected())
     }
 
@@ -473,7 +475,7 @@ object GroupsRuleTests {
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
       override val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
 
-      override protected [rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
+      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
         Task.raiseError(new Exception("Sth went wrong"))
     }
   }
@@ -483,7 +485,7 @@ object GroupsRuleTests {
     def matching(groups: NonEmptyList[Group]): AuthorizationRule = new AuthorizationRule with AuthorizationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
 
-      override protected [rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
         Task.now(Fulfilled(blockContext.withUserMetadata(
           _.withAvailableGroups(UniqueList.fromList(groups.toList))
         )))
@@ -493,30 +495,29 @@ object GroupsRuleTests {
     val rejecting: AuthorizationRule = new AuthorizationRule with AuthorizationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-rejecting")
 
-      override protected [rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
         Task.now(Rejected())
     }
   }
 
   private object authRule {
 
-    def matching(user: User.Id, groups: NonEmptyList[Group]): AuthRule =
-      new AuthRule with AuthenticationRule with AuthorizationRule with AuthorizationImpersonationCustomSupport with AuthenticationImpersonationCustomSupport {
-        override val name: Rule.Name = Rule.Name("dummy-fulfilling")
+    def matching(user: User.Id, groups: NonEmptyList[Group]): AuthRule = new AuthRule with AuthenticationRule with AuthorizationRule with AuthorizationImpersonationCustomSupport with AuthenticationImpersonationCustomSupport {
+      override val name: Rule.Name = Rule.Name("dummy-fulfilling")
 
-        override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
-        override val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
+      override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
+      override val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
 
-        override protected [rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
-          Task.now(Fulfilled(blockContext.withUserMetadata(
-            _.withLoggedUser(DirectlyLoggedUser(user))
-          )))
+      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
+        Task.now(Fulfilled(blockContext.withUserMetadata(
+          _.withLoggedUser(DirectlyLoggedUser(user))
+        )))
 
-        override protected [rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-          Task.now(Fulfilled(blockContext.withUserMetadata(
-            _.withAvailableGroups(UniqueList.fromList(groups.toList))
-          )))
-      }
+      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+        Task.now(Fulfilled(blockContext.withUserMetadata(
+          _.withAvailableGroups(UniqueList.fromList(groups.toList))
+        )))
+    }
 
     val rejecting: AuthRule = new AuthRule with AuthenticationRule with AuthorizationRule with AuthorizationImpersonationCustomSupport with AuthenticationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-rejecting")
@@ -524,10 +525,10 @@ object GroupsRuleTests {
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
       override val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
 
-      override protected [rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
+      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
         Task.now(Rejected())
 
-      override protected [rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
         Task.now(Rejected())
     }
   }

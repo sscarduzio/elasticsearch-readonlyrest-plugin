@@ -33,7 +33,7 @@ abstract class BaseBasicAuthAuthenticationRule
 
   protected def authenticateUsing(credentials: Credentials): Task[Boolean]
 
-  override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
+  override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
     Task
       .unit
       .flatMap { _ =>

@@ -22,7 +22,7 @@ import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettings
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettingsBasedSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseBasicAuthAuthenticationRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -36,7 +36,7 @@ final class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.
 
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
-  override protected def impersonationSetting: ImpersonationSettings = ???
+  override protected def impersonation: Impersonation = ???
 
   override protected def authenticateUsing(credentials: Credentials): Task[Boolean] =
     settings.service.authenticate(credentials)
