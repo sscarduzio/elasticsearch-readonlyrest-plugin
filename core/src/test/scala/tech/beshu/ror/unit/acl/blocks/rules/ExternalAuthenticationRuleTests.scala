@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
@@ -37,6 +38,7 @@ import tech.beshu.ror.utils.UserIdEq
 
 class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
+  // todo: impersonation tests
   "An ExternalAuthenticationRule" should {
     "match" when {
       "external authentication service returns true" in {
@@ -49,12 +51,16 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
           .returning(Task.now(true))
 
         val requestContext = mock[RequestContext]
-        (requestContext.id _).expects().returning(RequestContext.Id("1"))
-        (requestContext.headers _).expects().returning(Set(baHeader)).twice()
+        (requestContext.id _).expects().returning(RequestContext.Id("1")).anyNumberOfTimes()
+        (requestContext.headers _).expects().returning(Set(baHeader)).anyNumberOfTimes()
 
         val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
-        val rule = new ExternalAuthenticationRule(Settings(externalAuthenticationService), UserIdEq.caseSensitive)
+        val rule = new ExternalAuthenticationRule(
+          Settings(externalAuthenticationService),
+          Impersonation.Disabled,
+          UserIdEq.caseSensitive
+        )
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
           GeneralNonIndexRequestBlockContext(
             requestContext,
@@ -76,12 +82,16 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
           .returning(Task.now(false))
 
         val requestContext = mock[RequestContext]
-        (requestContext.id _).expects().returning(RequestContext.Id("1"))
-        (requestContext.headers _).expects().returning(Set(baHeader)).twice()
+        (requestContext.id _).expects().returning(RequestContext.Id("1")).anyNumberOfTimes()
+        (requestContext.headers _).expects().returning(Set(baHeader)).anyNumberOfTimes()
 
         val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
-        val rule = new ExternalAuthenticationRule(Settings(externalAuthenticationService), UserIdEq.caseSensitive)
+        val rule = new ExternalAuthenticationRule(
+          Settings(externalAuthenticationService),
+          Impersonation.Disabled,
+          UserIdEq.caseSensitive
+        )
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
     }

@@ -24,24 +24,24 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonatio
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.utils.UserIdEq
 
-class AuthKeySha1RuleTests extends BasicAuthenticationTestTemplate {
+class AuthKeySha1RuleTests extends BasicAuthenticationTestTemplate(supportingImpersonation = false) {
 
   override protected def ruleName: String = classOf[AuthKeySha1Rule].getSimpleName
 
-  override protected val rule = new AuthKeySha1Rule(
+  override protected def ruleCreator: Impersonation => BasicAuthenticationRule[_] = impersonation => new AuthKeySha1Rule(
     BasicAuthenticationRule.Settings(HashedUserAndPassword("4338fa3ea95532196849ae27615e14dda95c77b1")),
-    Impersonation.Disabled,
+    impersonation,
     UserIdEq.caseSensitive
   )
 }
 
-class AuthKeySha1RuleAltSyntaxTests extends BasicAuthenticationTestTemplate {
+class AuthKeySha1RuleAltSyntaxTests extends BasicAuthenticationTestTemplate(supportingImpersonation = true) {
 
   override protected def ruleName: String = classOf[AuthKeySha1Rule].getSimpleName
 
-  override protected val rule = new AuthKeySha1Rule(
+  override protected def ruleCreator: Impersonation => BasicAuthenticationRule[_] = impersonation => new AuthKeySha1Rule(
     BasicAuthenticationRule.Settings(HashedOnlyPassword(User.Id("logstash"), "9208e8476a2e8adc584bf2f613842177a39645b4")),
-    Impersonation.Disabled,
+    impersonation,
     UserIdEq.caseSensitive
   )
 }

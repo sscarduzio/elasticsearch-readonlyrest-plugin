@@ -23,13 +23,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonatio
 import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
 import tech.beshu.ror.utils.UserIdEq
 
-class AuthKeyRuleTests extends BasicAuthenticationTestTemplate {
+class AuthKeyRuleTests extends BasicAuthenticationTestTemplate(supportingImpersonation = true) {
 
   override protected def ruleName: String = classOf[AuthKeyRule].getSimpleName
 
-  override protected val rule = new AuthKeyRule(
+  override protected def ruleCreator: Impersonation => BasicAuthenticationRule[_] = impersonation => new AuthKeyRule(
     BasicAuthenticationRule.Settings(Credentials(User.Id("logstash"), PlainTextSecret("logstash"))),
-    Impersonation.Disabled,
+    impersonation,
     UserIdEq.caseSensitive
   )
 }

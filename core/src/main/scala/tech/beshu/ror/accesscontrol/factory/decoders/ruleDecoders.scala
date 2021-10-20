@@ -139,14 +139,22 @@ object ruleDecoders {
         Some(new AuthKeyRuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
       case AuthKeySha1Rule.Name.name =>
         Some(new AuthKeySha1RuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
-      case AuthKeySha256Rule.Name.name => Some(new AuthKeySha256RuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
-      case AuthKeySha512Rule.Name.name => Some(new AuthKeySha512RuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
-      case AuthKeyPBKDF2WithHmacSHA512Rule.Name.name => Some(new AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
-      case AuthKeyUnixRule.Name.name => Some(new AuthKeyUnixRuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
-      case ExternalAuthenticationRule.Name.name => Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions, caseMappingEquality))
-      case JwtAuthRule.Name.name => Some(new JwtAuthRuleDecoder(jwtDefinitions, caseMappingEquality))
-      case LdapAuthenticationRule.Name.name => Some(new LdapAuthenticationRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
-      case ProxyAuthRule.Name.name => Some(new ProxyAuthRuleDecoder(authProxyDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+      case AuthKeySha256Rule.Name.name =>
+        Some(new AuthKeySha256RuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+      case AuthKeySha512Rule.Name.name =>
+        Some(new AuthKeySha512RuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+      case AuthKeyPBKDF2WithHmacSHA512Rule.Name.name =>
+        Some(new AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+      case AuthKeyUnixRule.Name.name =>
+        Some(new AuthKeyUnixRuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+      case ExternalAuthenticationRule.Name.name =>
+        Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+      case JwtAuthRule.Name.name =>
+        Some(new JwtAuthRuleDecoder(jwtDefinitions, caseMappingEquality))
+      case LdapAuthenticationRule.Name.name =>
+        Some(new LdapAuthenticationRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+      case ProxyAuthRule.Name.name =>
+        Some(new ProxyAuthRuleDecoder(authProxyDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
       case _ => None
     }
     optionalRuleDecoder

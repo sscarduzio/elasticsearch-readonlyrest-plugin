@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.base
 
 import cats.Eq
-import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
@@ -46,7 +45,7 @@ trait BaseAuthorizationRule extends AuthorizationRule with MocksProviderBasedAut
     authorize(blockContext)
   }
 
-  override protected [base] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+  override protected[base] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     blockContext.userMetadata.loggedUser match {
       case Some(user@LoggedUser.DirectlyLoggedUser(_)) =>
         loggedUserPreconditionCheck(user) match {
@@ -91,27 +90,30 @@ trait BaseAuthorizationRule extends AuthorizationRule with MocksProviderBasedAut
   private def authorizeLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                            user: LoggedUser,
                                                                            userGroupsProvider: (B, LoggedUser) => Task[UniqueList[Group]]): Task[RuleResult[B]] = {
-    val allAllowedGroups = groupsPermittedByRule
     blockContext.userMetadata.currentGroup match {
-      case Some(currentGroup) if !allAllowedGroups.exists(_ === currentGroup) =>
-        Task.now(Rejected())
+      case Some(group) if !groupsPermittedByRule.contains(group) =>
+        Task.now(RuleResult.Rejected())
       case Some(_) | None =>
-        userGroupsProvider(blockContext, user).map { fetchedUserGroups =>
-          canBeAuthorized(
-            blockContext,
-            allowedGroups = UniqueList.fromList(allAllowedGroups.intersect(fetchedUserGroups).toList)
-          )
-        }
+        userGroupsProvider(blockContext, user)
+          .map(uniqueList => UniqueNonEmptyList.fromSet(uniqueList.toSet))
+          .map {
+            case Some(fetchedUserGroups) =>
+              UniqueNonEmptyList.fromSortedSet(groupsPermittedByRule.intersect(fetchedUserGroups.toSet)) match {
+                case Some(_) =>
+                  Fulfilled(blockContext.withUserMetadata(
+                    _.addAvailableGroups(allGroupsIntersection(fetchedUserGroups))
+                  ))
+                case None =>
+                  RuleResult.Rejected()
+              }
+            case None =>
+              RuleResult.Rejected()
+          }
     }
   }
 
-  private def canBeAuthorized[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                       allowedGroups: UniqueList[Group]): RuleResult[B] = {
-    UniqueNonEmptyList.fromList(groupsPermittedByAllRulesOfThisType.toList.intersect(allowedGroups.toList)) match {
-      case Some(filteredGroups) =>
-        Fulfilled(blockContext.withUserMetadata(_.addAvailableGroups(filteredGroups)))
-      case None =>
-        Rejected()
-    }
+  private def allGroupsIntersection(availableGroups: UniqueNonEmptyList[Group]) = {
+    UniqueNonEmptyList.unsafeFromSortedSet(groupsPermittedByAllRulesOfThisType.intersect(availableGroups)) // it is safe here
   }
+
 }

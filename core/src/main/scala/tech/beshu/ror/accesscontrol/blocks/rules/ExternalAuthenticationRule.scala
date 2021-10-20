@@ -29,14 +29,13 @@ import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 
 final class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.Settings,
+                                       override val impersonation: Impersonation,
                                        implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BaseBasicAuthAuthenticationRule {
 
   override val name: Rule.Name = ExternalAuthenticationRule.Name.name
 
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
-
-  override protected def impersonation: Impersonation = ???
 
   override protected def authenticateUsing(credentials: Credentials): Task[Boolean] =
     settings.service.authenticate(credentials)

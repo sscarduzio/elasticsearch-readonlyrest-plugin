@@ -92,7 +92,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory {
       UserIdEq.caseSensitive
     )
     val requestContext = mock[RequestContext]
-    (requestContext.headers _).expects().returning(Set(header)).twice()
+    (requestContext.headers _).expects().returning(Set(header)).anyNumberOfTimes()
     val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) {
