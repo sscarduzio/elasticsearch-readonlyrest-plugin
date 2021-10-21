@@ -44,14 +44,14 @@ object CrossBlockContextBlocksUpgrade {
             val newSettings = currentRule.settings.copy(
               allLdapGroups = crossBlocksAvailableLdapGroups(currentRule.settings.ldap.id)
             )
-            modifiedRules :+ new LdapAuthorizationRule(newSettings, currentRule.mocksProvider, currentRule.caseMappingEquality)
+            modifiedRules :+ new LdapAuthorizationRule(newSettings, currentRule.impersonation, currentRule.caseMappingEquality)
           case (modifiedRules, currentRule: LdapAuthRule) =>
             val newSettings = currentRule.authorization.settings.copy(
               allLdapGroups = crossBlocksAvailableLdapGroups(currentRule.authorization.settings.ldap.id)
             )
             modifiedRules :+ new LdapAuthRule(
               currentRule.authentication,
-              new LdapAuthorizationRule(newSettings, currentRule.authorization.mocksProvider, currentRule.authorization.caseMappingEquality)
+              new LdapAuthorizationRule(newSettings, currentRule.authorization.impersonation, currentRule.authorization.caseMappingEquality)
             )
           case (modifiedRules, currentRule) =>
             modifiedRules :+ currentRule
@@ -96,7 +96,7 @@ object CrossBlockContextBlocksUpgrade {
             val newSettings = currentRule.settings.copy(
               allExternalServiceGroups = crossBlocksAvailableExternalServiceGroups(currentRule.settings.service.id)
             )
-            modifiedRules :+ new ExternalAuthorizationRule(newSettings, currentRule.mocksProvider, currentRule.caseMappingEquality)
+            modifiedRules :+ new ExternalAuthorizationRule(newSettings, currentRule.impersonation, currentRule.caseMappingEquality)
           case (modifiedRules, currentRule) =>
             modifiedRules :+ currentRule
         }

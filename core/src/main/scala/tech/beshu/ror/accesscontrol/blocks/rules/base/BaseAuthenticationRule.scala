@@ -18,11 +18,11 @@ package tech.beshu.ror.accesscontrol.blocks.rules.base
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettingsBasedSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettingsBasedSupport.ImpersonationResult
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthenticationImpersonationSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthenticationImpersonationSupport.ImpersonationResult
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 
-trait BaseAuthenticationRule extends AuthenticationRule with ImpersonationSettingsBasedSupport {
+trait BaseAuthenticationRule extends AuthenticationRule with SimpleAuthenticationImpersonationSupport {
 
   protected def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]]
 

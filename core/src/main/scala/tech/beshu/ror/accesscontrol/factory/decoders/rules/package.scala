@@ -25,7 +25,7 @@ package object rules {
 
   implicit class OptionalImpersonatorDefinitionOps(val impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]]) {
 
-    def toImpersonationSettings(mocksProvider: MocksProvider): Impersonation = {
+    def toImpersonation(mocksProvider: MocksProvider): Impersonation = {
       impersonatorsDefinitions match {
         case Some(definitions) =>
           Impersonation.Enabled(

@@ -59,7 +59,7 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
       .map(service => RuleWithVariableUsageDefinition.create(new
           ExternalAuthenticationRule(
             Settings(service),
-            impersonatorsDef.toImpersonationSettings(mocksProvider),
+            impersonatorsDef.toImpersonation(mocksProvider),
             caseMappingEquality
           )
       ))

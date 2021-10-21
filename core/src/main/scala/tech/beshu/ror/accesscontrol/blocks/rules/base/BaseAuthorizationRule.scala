@@ -19,17 +19,18 @@ package tech.beshu.ror.accesscontrol.blocks.rules.base
 import cats.Eq
 import monix.eval.Task
 import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthorizationRule, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.MocksProviderBasedAuthorizationImpersonationSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.MocksProviderBasedAuthorizationImpersonationSupport.Groups
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{Impersonation, ImpersonationSettings, SimpleAuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, User}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-trait BaseAuthorizationRule extends AuthorizationRule with MocksProviderBasedAuthorizationImpersonationSupport {
+trait BaseAuthorizationRule extends AuthorizationRule with SimpleAuthorizationImpersonationSupport {
 
   protected def caseMappingEquality: UserIdCaseMappingEquality
 
@@ -46,27 +47,28 @@ trait BaseAuthorizationRule extends AuthorizationRule with MocksProviderBasedAut
   }
 
   override protected[base] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
-    blockContext.userMetadata.loggedUser match {
-      case Some(user@LoggedUser.DirectlyLoggedUser(_)) =>
+    (blockContext.userMetadata.loggedUser, impersonation) match {
+      case (Some(user@LoggedUser.ImpersonatedUser(_, _)), Impersonation.Enabled(ImpersonationSettings(_, mocksProvider))) =>
         loggedUserPreconditionCheck(user) match {
           case Left(_) => Task.now(Rejected())
-          case Right(_) => authorizeDirectlyLoggedUser(blockContext, user)
+          case Right(_) => authorizeImpersonatedUser(blockContext, user, mocksProvider)
         }
-      case Some(user@LoggedUser.ImpersonatedUser(_, _)) =>
+      case (Some(user), _) =>
         loggedUserPreconditionCheck(user) match {
           case Left(_) => Task.now(Rejected())
-          case Right(_) => authorizeImpersonatedUser(blockContext, user)
+          case Right(_) => authorizeLoggedUser(blockContext, user)
         }
-      case None =>
+      case (None, _) =>
         Task.now(Rejected())
     }
   }
 
   private def authorizeImpersonatedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                                 user: LoggedUser.ImpersonatedUser): Task[RuleResult[B]] = {
+                                                                                 user: LoggedUser.ImpersonatedUser,
+                                                                                 mocksProvider: MocksProvider): Task[RuleResult[B]] = {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     implicit val eqUserId: Eq[User.Id] = caseMappingEquality.toOrder
-    mockedGroupsOf(user.id) match {
+    mockedGroupsOf(user.id, mocksProvider) match {
       case Groups.Present(mockedGroups) =>
         authorizeLoggedUser(
           blockContext,
@@ -78,8 +80,8 @@ trait BaseAuthorizationRule extends AuthorizationRule with MocksProviderBasedAut
     }
   }
 
-  private def authorizeDirectlyLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                                   user: LoggedUser.DirectlyLoggedUser): Task[RuleResult[B]] = {
+  private def authorizeLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
+                                                                           user: LoggedUser): Task[RuleResult[B]] = {
     authorizeLoggedUser(
       blockContext,
       user,

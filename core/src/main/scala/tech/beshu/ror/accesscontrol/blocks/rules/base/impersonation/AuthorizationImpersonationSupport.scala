@@ -20,22 +20,23 @@ import cats.Eq
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthorizationRule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.MocksProviderBasedAuthorizationImpersonationSupport.Groups
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 trait AuthorizationImpersonationSupport
 
-trait MocksProviderBasedAuthorizationImpersonationSupport extends AuthorizationImpersonationSupport {
+trait SimpleAuthorizationImpersonationSupport extends AuthorizationImpersonationSupport {
   this: AuthorizationRule =>
 
-  protected def mocksProvider: MocksProvider
+  protected def impersonation: Impersonation
 
-  protected[rules] def mockedGroupsOf(user: User.Id)
-                                     (implicit requestId: RequestId,
-                                      eq: Eq[User.Id]): Groups
+  protected def mockedGroupsOf(user: User.Id,
+                               mocksProvider: MocksProvider)
+                              (implicit requestId: RequestId,
+                               eq: Eq[User.Id]): Groups
 }
-object MocksProviderBasedAuthorizationImpersonationSupport {
+object SimpleAuthorizationImpersonationSupport {
   sealed trait Groups
   object Groups {
     final case class Present(groups: UniqueList[Group]) extends Groups

@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation
 
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
-import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 
 sealed trait Impersonation
 object Impersonation {
@@ -27,9 +27,3 @@ object Impersonation {
 
 final case class ImpersonationSettings(impersonators: List[ImpersonatorDef],
                                        mocksProvider: MocksProvider)
-
-object ImpersonationSettings {
-  // todo: do wee need it?
-  val notConfigured: ImpersonationSettings = ImpersonationSettings(List.empty, NoOpMocksProvider)
-}
-

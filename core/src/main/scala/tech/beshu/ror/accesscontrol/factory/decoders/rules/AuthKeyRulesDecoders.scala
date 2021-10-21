@@ -46,7 +46,7 @@ class AuthKeyRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
         RuleWithVariableUsageDefinition.create(
           new AuthKeyRule(
             settings,
-            impersonatorsDef.toImpersonationSettings(mocksProvider),
+            impersonatorsDef.toImpersonation(mocksProvider),
             caseMappingEquality
           )
         )
@@ -66,7 +66,7 @@ class AuthKeySha1RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDe
         RuleWithVariableUsageDefinition.create(
           new AuthKeySha1Rule(
             settings,
-            impersonatorsDef.toImpersonationSettings(mocksProvider),
+            impersonatorsDef.toImpersonation(mocksProvider),
             caseMappingEquality
           )
         )
@@ -86,7 +86,7 @@ class AuthKeySha256RuleDecoder(impersonatorsDef: Option[Definitions[Impersonator
         RuleWithVariableUsageDefinition.create(
           new AuthKeySha256Rule(
             settings,
-            impersonatorsDef.toImpersonationSettings(mocksProvider),
+            impersonatorsDef.toImpersonation(mocksProvider),
             caseMappingEquality
           )
         )
@@ -106,7 +106,7 @@ class AuthKeySha512RuleDecoder(impersonatorsDef: Option[Definitions[Impersonator
         RuleWithVariableUsageDefinition.create(
           new AuthKeySha512Rule(
             settings,
-            impersonatorsDef.toImpersonationSettings(mocksProvider),
+            impersonatorsDef.toImpersonation(mocksProvider),
             caseMappingEquality
           )
         )
@@ -126,7 +126,7 @@ class AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDef: Option[Definition
         RuleWithVariableUsageDefinition.create(
           new AuthKeyPBKDF2WithHmacSHA512Rule(
             settings,
-            impersonatorsDef.toImpersonationSettings(mocksProvider),
+            impersonatorsDef.toImpersonation(mocksProvider),
             caseMappingEquality
           )
         )
@@ -146,7 +146,7 @@ class AuthKeyUnixRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDe
         RuleWithVariableUsageDefinition.create(
           new AuthKeyUnixRule(
             settings,
-            impersonatorsDef.toImpersonationSettings(mocksProvider),
+            impersonatorsDef.toImpersonation(mocksProvider),
             caseMappingEquality
           )
         )

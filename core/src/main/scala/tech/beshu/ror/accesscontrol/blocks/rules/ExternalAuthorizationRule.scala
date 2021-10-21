@@ -23,7 +23,8 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.MocksProviderBasedAuthorizationImpersonationSupport.Groups
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseAuthorizationRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, User}
@@ -31,7 +32,7 @@ import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings,
-                                override val mocksProvider: MocksProvider,
+                                override val impersonation: Impersonation,
                                 implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends BaseAuthorizationRule {
 
@@ -53,10 +54,8 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
                                                        user: LoggedUser): Task[UniqueList[Group]] =
     settings.service.grantsFor(user)
 
-  override protected[rules] def mockedGroupsOf(user: User.Id)
-                                              (implicit requestId: RequestId,
-                                               userIdEq: Eq[User.Id]): Groups = ???
-
+  override protected def mockedGroupsOf(user: User.Id, mocksProvider: MocksProvider)
+                                       (implicit requestId: RequestId, eq: Eq[User.Id]): Groups = ???
 }
 
 object ExternalAuthorizationRule {

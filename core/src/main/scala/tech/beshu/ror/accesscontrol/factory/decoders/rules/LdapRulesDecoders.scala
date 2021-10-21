@@ -66,7 +66,7 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .map(service => RuleWithVariableUsageDefinition.create(
         new LdapAuthenticationRule(
           LdapAuthenticationRule.Settings(service),
-          impersonatorsDef.toImpersonationSettings(mocksProvider),
+          impersonatorsDef.toImpersonation(mocksProvider),
           caseMappingEquality
         )
       ))
@@ -95,6 +95,7 @@ object LdapAuthenticationRuleDecoder {
 }
 
 class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
+                                   impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                    mocksProvider: MocksProvider,
                                    caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthorizationRule] {
@@ -103,7 +104,7 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
     LdapAuthorizationRuleDecoder
       .settingsDecoder(ldapDefinitions)
       .map(settings => RuleWithVariableUsageDefinition.create(
-        new LdapAuthorizationRule(settings, mocksProvider, caseMappingEquality)
+        new LdapAuthorizationRule(settings, impersonatorsDef.toImpersonation(mocksProvider), caseMappingEquality)
       ))
   }
 }
@@ -185,15 +186,16 @@ object LdapAuthRuleDecoder {
                                  mocksProvider: MocksProvider,
                                  groups: UniqueNonEmptyList[Group],
                                  caseMappingEquality: UserIdCaseMappingEquality) = {
+    val impersonation = impersonatorsDef.toImpersonation(mocksProvider)
     new LdapAuthRule(
       new LdapAuthenticationRule(
         LdapAuthenticationRule.Settings(ldapService),
-        impersonatorsDef.toImpersonationSettings(mocksProvider),
+        impersonation,
         caseMappingEquality
       ),
       new LdapAuthorizationRule(
         LdapAuthorizationRule.Settings(ldapService, groups, groups),
-        mocksProvider,
+        impersonation,
         caseMappingEquality
       )
     )

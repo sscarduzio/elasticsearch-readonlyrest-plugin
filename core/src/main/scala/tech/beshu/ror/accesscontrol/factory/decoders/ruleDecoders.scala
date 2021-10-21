@@ -102,9 +102,9 @@ object ruleDecoders {
                                             caseMappingEquality: UserIdCaseMappingEquality): Option[RuleDecoder[Rule]] = {
     val optionalRuleDecoder = name match {
       case ExternalAuthorizationRule.Name.name =>
-        Some(new ExternalAuthorizationRuleDecoder(authorizationServiceDefinitions, mocksProvider, caseMappingEquality))
+        Some(new ExternalAuthorizationRuleDecoder(authorizationServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
       case LdapAuthorizationRule.Name.name =>
-        Some(new LdapAuthorizationRuleDecoder(ldapServiceDefinitions, mocksProvider, caseMappingEquality))
+        Some(new LdapAuthorizationRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
       case LdapAuthRule.Name.name =>
         Some(new LdapAuthRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
       case RorKbnAuthRule.Name.name =>

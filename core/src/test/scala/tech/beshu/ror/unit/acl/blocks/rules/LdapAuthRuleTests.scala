@@ -88,7 +88,7 @@ class LdapAuthRuleTests
               UniqueNonEmptyList.of(Group("g1"), Group("g2")),
               UniqueNonEmptyList.of(Group("g1"), Group("g2"))
             ),
-            impersonationSettings = ImpersonationSettings(
+            impersonation = Impersonation.Enabled(ImpersonationSettings(
               impersonators = List(impersonatorDefFrom(
                 userIdPattern = "*",
                 impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
@@ -97,7 +97,7 @@ class LdapAuthRuleTests
               mocksProvider = mocksProviderFrom(Map(
                 LdapService.Name("ldap1") -> Set((User.Id("user1"), Set(Group("g1"))))
               ))
-            ),
+            )),
             basicHeader = basicAuthHeader("admin:pass"),
             impersonateAsHeader = Some(impersonationHeader("user1"))
           )(
@@ -193,38 +193,34 @@ class LdapAuthRuleTests
 
   private def assertMatchRule(authenticationSettings: LdapAuthenticationRule.Settings,
                               authorizationSettings: LdapAuthorizationRule.Settings,
-                              impersonationSettings: ImpersonationSettings = ImpersonationSettings.notConfigured,
+                              impersonation: Impersonation = Impersonation.Disabled,
                               basicHeader: Header,
                               impersonateAsHeader: Option[Header] = None)
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(authenticationSettings, authorizationSettings, impersonationSettings, impersonateAsHeader.toSet + basicHeader, AssertionType.RuleFulfilled(blockContextAssertion))
+    assertRule(authenticationSettings, authorizationSettings, impersonation, impersonateAsHeader.toSet + basicHeader, AssertionType.RuleFulfilled(blockContextAssertion))
 
   private def assertNotMatchRule(authenticationSettings: LdapAuthenticationRule.Settings,
                                  authorizationSettings: LdapAuthorizationRule.Settings,
-                                 impersonationSettings: ImpersonationSettings = ImpersonationSettings.notConfigured,
+                                 impersonation: Impersonation = Impersonation.Disabled,
                                  basicHeader: Option[Header],
                                  impersonateAsHeader: Option[Header] = None): Unit =
-    assertRule(authenticationSettings, authorizationSettings, impersonationSettings, impersonateAsHeader.toSet ++ basicHeader.toSet, AssertionType.RuleRejected)
+    assertRule(authenticationSettings, authorizationSettings, impersonation, impersonateAsHeader.toSet ++ basicHeader.toSet, AssertionType.RuleRejected)
 
   private def assertRuleThrown(authenticationSettings: LdapAuthenticationRule.Settings,
                                authorizationSettings: LdapAuthorizationRule.Settings,
-                               impersonationSettings: ImpersonationSettings = ImpersonationSettings.notConfigured,
+                               impersonation: Impersonation = Impersonation.Disabled,
                                basicHeader: Header,
                                exception: Throwable): Unit =
-    assertRule(authenticationSettings, authorizationSettings, impersonationSettings, Set(basicHeader), AssertionType.RuleThrownException(exception))
+    assertRule(authenticationSettings, authorizationSettings, impersonation, Set(basicHeader), AssertionType.RuleThrownException(exception))
 
   private def assertRule(authenticationSettings: LdapAuthenticationRule.Settings,
                          authorizationSettings: LdapAuthorizationRule.Settings,
-                         impersonationSettings: ImpersonationSettings,
+                         impersonation: Impersonation,
                          headers: Set[Header],
                          assertionType: AssertionType): Unit = {
     val rule = new LdapAuthRule(
-      authentication = new LdapAuthenticationRule(
-        authenticationSettings,
-        Impersonation.Enabled(impersonationSettings),
-        UserIdEq.caseSensitive
-      ),
-      authorization = new LdapAuthorizationRule(authorizationSettings, impersonationSettings.mocksProvider, UserIdEq.caseSensitive)
+      authentication = new LdapAuthenticationRule(authenticationSettings, impersonation, UserIdEq.caseSensitive),
+      authorization = new LdapAuthorizationRule(authorizationSettings, impersonation, UserIdEq.caseSensitive)
     )
     val requestContext = MockRequestContext.indices.copy(headers = headers)
     val blockContext = GeneralIndexRequestBlockContext(

@@ -26,8 +26,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.C
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation.Enabled
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettingsBasedSupport.UserExistence.{CannotCheck, Exists, NotExist}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSettingsBasedSupport.{ImpersonationResult, UserExistence}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence.{CannotCheck, Exists, NotExist}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthenticationImpersonationSupport.{ImpersonationResult, UserExistence}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.accesscontrol.domain.User
@@ -38,7 +38,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
 trait AuthenticationImpersonationSupport
 
-trait ImpersonationSettingsBasedSupport extends AuthenticationImpersonationSupport {
+trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonationSupport {
   this: AuthenticationRule =>
 
   def caseMappingEquality: UserIdCaseMappingEquality
@@ -147,7 +147,7 @@ trait ImpersonationSettingsBasedSupport extends AuthenticationImpersonationSuppo
 
 }
 
-object ImpersonationSettingsBasedSupport {
+object SimpleAuthenticationImpersonationSupport {
   sealed trait ImpersonationResult[B <: BlockContext]
   object ImpersonationResult {
     final case class WontImpersonate[B <: BlockContext]() extends ImpersonationResult[B]

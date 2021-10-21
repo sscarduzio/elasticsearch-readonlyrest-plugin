@@ -25,14 +25,15 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthorizationSer
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.MocksProviderBasedAuthorizationImpersonationSupport.Groups
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseAuthorizationRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, User}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 class LdapAuthorizationRule(val settings: Settings,
-                            override val mocksProvider: MocksProvider,
+                            override val impersonation: Impersonation,
                             override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BaseAuthorizationRule {
 
@@ -48,9 +49,10 @@ class LdapAuthorizationRule(val settings: Settings,
                                                        user: LoggedUser): Task[UniqueList[Group]] =
     settings.ldap.groupsOf(user.id)
 
-  override protected[rules] def mockedGroupsOf(user: User.Id)
-                                              (implicit requestId: RequestId,
-                                               eq: Eq[User.Id]): Groups = {
+  override protected def mockedGroupsOf(user: User.Id,
+                                        mocksProvider: MocksProvider)
+                                       (implicit requestId: RequestId,
+                                        eq: Eq[User.Id]): Groups = {
     mocksProvider
       .ldapServiceWith(settings.ldap.id)
       .map { mock =>

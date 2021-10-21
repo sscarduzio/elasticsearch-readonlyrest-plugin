@@ -47,7 +47,7 @@ class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth],
       .map(settings => RuleWithVariableUsageDefinition.create(
         new ProxyAuthRule(
           settings,
-          impersonatorsDef.toImpersonationSettings(mocksProvider),
+          impersonatorsDef.toImpersonation(mocksProvider),
           caseMappingEquality
         )
       ))
