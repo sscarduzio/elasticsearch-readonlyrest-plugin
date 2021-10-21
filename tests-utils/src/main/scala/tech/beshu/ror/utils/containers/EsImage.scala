@@ -47,6 +47,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
         copyNecessaryFiles(builder, config)
 
         RunCommandCombiner.empty
+          .runWhen(!useXpackSecurityInsteadOfRor, "/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
           .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(shouldDisableXpack(config),
             command = "echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
@@ -67,16 +68,16 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
             "printf 'readonlyrest\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore add xpack.security.transport.ssl.truststore.secure_password" )
           .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
           .runWhen(Version.greaterOrEqualThan(esVersion, 6, 6, 0),
-            command = "echo '/usr/local/bin/docker-entrypoint.sh &' > /usr/share/elasticsearch/entry.sh",
-            orElse = "echo '/usr/share/elasticsearch/bin/es-docker &' > /usr/share/elasticsearch/entry.sh")
-          .run("echo 'sleep 45' >> /usr/share/elasticsearch/entry.sh") // Time needed to bootstrap cluster as elasticsearch-setup-passwords have to be run after cluster is ready
-          .run("echo 'export ES_JAVA_OPTS=\"-Xms1g -Xmx1g -Djava.security.egd=file:/dev/./urandoms\"' >> /usr/share/elasticsearch/entry.sh")
-          .run("echo 'Setting up default passwords' >> /usr/share/elasticsearch/entry.sh")
-          .run("echo 'printf \"y\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\n\" | elasticsearch-setup-passwords interactive' >> /usr/share/elasticsearch/entry.sh")
-          .run("echo \"curl -X POST -u elastic:elastic \"http://localhost:9200/_security/user/admin?pretty\" -H 'Content-Type: application/json' -d'{\\\"password\\\" : \\\"container\\\",\\\"roles\\\" : [ \\\"superuser\\\"]}'\n\" >> /usr/share/elasticsearch/entry.sh")
-          .run("echo \"curl -X PUT \"http://localhost:9200/_xpack/security/user/elastic/_password?pretty\" -H 'Content-Type: application/json' -d'\n{\n  \"password\": \"elastic\"\n}\n'\n\" >> /usr/share/elasticsearch/entry.sh")
-          .run("echo 'wait' >> /usr/share/elasticsearch/entry.sh")
-          .run("chmod +x /usr/share/elasticsearch/entry.sh")
+            command = "echo '/usr/local/bin/docker-entrypoint.sh &' > /usr/share/elasticsearch/xpack-setup-entry.sh",
+            orElse = "echo '/usr/share/elasticsearch/bin/es-docker &' > /usr/share/elasticsearch/xpack-setup-entry.sh")
+          .run("echo 'sleep 45' >> /usr/share/elasticsearch/xpack-setup-entry.sh") // Time needed to bootstrap cluster as elasticsearch-setup-passwords have to be run after cluster is ready
+          .run("echo 'export ES_JAVA_OPTS=\"-Xms1g -Xmx1g -Djava.security.egd=file:/dev/./urandoms\"' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
+          .run("echo 'echo \"Setting up default passwords\"' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
+          .run("echo 'printf \"y\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\n\" | elasticsearch-setup-passwords interactive' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
+          .run("echo \"curl -X POST -u elastic:elastic \"http://localhost:9200/_security/user/admin?pretty\" -H 'Content-Type: application/json' -d'{\\\"password\\\" : \\\"container\\\",\\\"roles\\\" : [ \\\"superuser\\\"]}'\n\" >> /usr/share/elasticsearch/xpack-setup-entry.sh")
+          .run("echo \"curl -X PUT \"http://localhost:9200/_xpack/security/user/elastic/_password?pretty\" -H 'Content-Type: application/json' -d'\n{\n  \"password\": \"elastic\"\n}\n'\n\" >> /usr/share/elasticsearch/xpack-setup-entry.sh")
+          .run("echo 'wait' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
+          .run("chmod +x /usr/share/elasticsearch/xpack-setup-entry.sh")
           .applyTo(builder)
           .user("root")
 
@@ -112,9 +113,11 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
             xDebugJavaOptions(esVersion)
         }.mkString(" ")
 
+        if (useXpackSecurityInsteadOfRor)
+          builder.entryPoint("/usr/share/elasticsearch/xpack-setup-entry.sh")
+
         builder
           .user("elasticsearch")
-          .entryPoint("/usr/share/elasticsearch/entry.sh")
           .env(config.envs + ("ES_JAVA_OPTS" -> javaOpts) asJava)
 
         install(builder, config)
