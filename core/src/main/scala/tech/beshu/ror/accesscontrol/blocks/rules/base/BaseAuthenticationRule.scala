@@ -29,7 +29,7 @@ trait BaseAuthenticationRule extends AuthenticationRule with SimpleAuthenticatio
   override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     tryToImpersonateUser(blockContext)
       .flatMap {
-        case ImpersonationResult.WontImpersonate() => tryToAuthenticateUser(blockContext)
+        case ImpersonationResult.NotImpersonationRequest() => tryToAuthenticateUser(blockContext)
         case ImpersonationResult.Handled(result) => Task.now(result)
       }
   }

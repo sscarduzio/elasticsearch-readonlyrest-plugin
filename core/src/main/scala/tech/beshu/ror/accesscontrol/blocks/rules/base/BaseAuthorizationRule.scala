@@ -21,11 +21,13 @@ import monix.eval.Task
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause.ImpersonationNotSupported
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthorizationRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{Impersonation, ImpersonationSettings, SimpleAuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, User}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -48,12 +50,14 @@ trait BaseAuthorizationRule extends AuthorizationRule with SimpleAuthorizationIm
 
   override protected[base] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     (blockContext.userMetadata.loggedUser, impersonation) match {
-      case (Some(user@LoggedUser.ImpersonatedUser(_, _)), Impersonation.Enabled(ImpersonationSettings(_, mocksProvider))) =>
+      case (Some(user@ImpersonatedUser(_, _)), Impersonation.Enabled(ImpersonationSettings(_, mocksProvider))) =>
         loggedUserPreconditionCheck(user) match {
           case Left(_) => Task.now(Rejected())
           case Right(_) => authorizeImpersonatedUser(blockContext, user, mocksProvider)
         }
-      case (Some(user), _) =>
+      case (Some(ImpersonatedUser(_, _)), Impersonation.Disabled) =>
+        Task.now(Rejected(ImpersonationNotSupported))
+      case (Some(user@DirectlyLoggedUser(_)), _) =>
         loggedUserPreconditionCheck(user) match {
           case Left(_) => Task.now(Rejected())
           case Right(_) => authorizeLoggedUser(blockContext, user)
@@ -63,6 +67,7 @@ trait BaseAuthorizationRule extends AuthorizationRule with SimpleAuthorizationIm
     }
   }
 
+  // todo: shouldn't it be moved to SimpleAuthorizationImpersonationSupport?
   private def authorizeImpersonatedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                  user: LoggedUser.ImpersonatedUser,
                                                                                  mocksProvider: MocksProvider): Task[RuleResult[B]] = {

@@ -25,10 +25,21 @@ import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.ParsingFailure
 import org.scalatest.matchers.should.Matchers._
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
+import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyRule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.domain.Header.Name
+import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.configuration.RawRorConfig
@@ -69,6 +80,35 @@ object TestsUtils {
   def indexPattern(str: NonEmptyString): IndexPattern = IndexPattern(clusterIndexName(str))
 
   implicit def scalaFiniteDuration2JavaDuration(duration: FiniteDuration): Duration = Duration.ofMillis(duration.toMillis)
+
+  def impersonatorDefFrom(userIdPattern: NonEmptyString,
+                          impersonatorCredentials: Credentials,
+                          impersonatedUsers: NonEmptyList[User.Id]): ImpersonatorDef = {
+    ImpersonatorDef(
+      UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(userIdPattern))),
+      new AuthKeyRule(
+        BasicAuthenticationRule.Settings(impersonatorCredentials),
+        Impersonation.Disabled,
+        UserIdEq.caseSensitive
+      ),
+      UniqueNonEmptyList.fromNonEmptyList(impersonatedUsers)
+    )
+  }
+
+  def mocksProviderFrom(map: Map[LdapService.Name, Set[(User.Id, Set[Group])]]): MocksProvider = {
+    new MocksProvider {
+      override def ldapServiceWith(id: LdapService.Name)
+                                  (implicit context: RequestId): Option[LdapServiceMock] = {
+        map
+          .get(id)
+          .map(r => LdapServiceMock {
+            r.map { case (userId, groups) =>
+              LdapUserMock(userId, groups)
+            }
+          })
+      }
+    }
+  }
 
   trait BlockContextAssertion {
 
@@ -122,24 +162,24 @@ object TestsUtils {
         case _: CurrentUserMetadataRequestBlockContext =>
         case _: GeneralNonIndexRequestBlockContext =>
         case bc: RepositoryRequestBlockContext =>
-          bc.repositories should be (repositories)
+          bc.repositories should be(repositories)
         case bc: SnapshotRequestBlockContext =>
-          bc.snapshots should be (snapshots)
-          bc.repositories should be (repositories)
-          bc.filteredIndices should be (indices)
+          bc.snapshots should be(snapshots)
+          bc.repositories should be(repositories)
+          bc.filteredIndices should be(indices)
         case bc: TemplateRequestBlockContext =>
-          bc.templateOperation  should be (templates)
+          bc.templateOperation should be(templates)
         case bc: GeneralIndexRequestBlockContext =>
-          bc.filteredIndices should be (indices)
+          bc.filteredIndices should be(indices)
         case bc: MultiIndexRequestBlockContext =>
-          bc.indices should be (indices)
+          bc.indices should be(indices)
         case bc: FilterableRequestBlockContext =>
-          bc.filteredIndices should be (indices)
+          bc.filteredIndices should be(indices)
         case bc: FilterableMultiRequestBlockContext =>
-          bc.indices should be (indices)
+          bc.indices should be(indices)
         case bc: AliasRequestBlockContext =>
-          bc.indices should be (indices)
-          bc.aliases should be (aliases)
+          bc.indices should be(indices)
+          bc.aliases should be(aliases)
       }
     }
   }
@@ -147,7 +187,7 @@ object TestsUtils {
   sealed trait AssertionType
   object AssertionType {
     final case class RuleFulfilled(blockContextAssertion: BlockContext => Unit) extends AssertionType
-    object RuleRejected extends AssertionType
+    final case class RuleRejected(cause: Option[Cause]) extends AssertionType
     final case class RuleThrownException(exception: Throwable) extends AssertionType
   }
 

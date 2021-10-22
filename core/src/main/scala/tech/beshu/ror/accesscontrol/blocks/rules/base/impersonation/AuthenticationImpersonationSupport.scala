@@ -60,9 +60,9 @@ trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonati
 
   // todo: clean up
   protected def tryToImpersonateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[ImpersonationResult[B]] = {
+    val requestContext = blockContext.requestContext
     impersonation match {
       case Enabled(_) =>
-        val requestContext = blockContext.requestContext
         requestContext.impersonateAs match {
           case Some(theImpersonatedUserId) =>
             implicit val userIdEq: Eq[User.Id] = caseMappingEquality.toOrder
@@ -79,10 +79,10 @@ trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonati
               ImpersonationResult.Handled.apply
             }
           case None =>
-            Task.now(ImpersonationResult.WontImpersonate())
+            Task.now(ImpersonationResult.NotImpersonationRequest())
         }
       case Impersonation.Disabled =>
-        Task.now(ImpersonationResult.WontImpersonate())
+        Task.now(ImpersonationResult.NotImpersonationRequest())
     }
   }
 
@@ -111,14 +111,14 @@ trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonati
       .authenticationRule
       .check(BlockContextUpdater[B].emptyBlockContext(blockContext)) // we are not interested in gathering those data
       .map {
-      case Fulfilled(bc) =>
-        bc.userMetadata.loggedUser match {
-          case Some(loggedUser) => Right(loggedUser)
-          case None => throw new IllegalStateException("Impersonator should be logged")
-        }
-      case Rejected(_) =>
-        Left(Rejected[B](Cause.ImpersonationNotAllowed))
-    }
+        case Fulfilled(bc) =>
+          bc.userMetadata.loggedUser match {
+            case Some(loggedUser) => Right(loggedUser)
+            case None => throw new IllegalStateException("Impersonator should be logged")
+          }
+        case Rejected(_) =>
+          Left(Rejected[B](Cause.ImpersonationNotAllowed))
+      }
   }
 
   private def checkIfTheImpersonatedUserExist[B <: BlockContext](theImpersonatedUserId: User.Id)
@@ -150,7 +150,7 @@ trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonati
 object SimpleAuthenticationImpersonationSupport {
   sealed trait ImpersonationResult[B <: BlockContext]
   object ImpersonationResult {
-    final case class WontImpersonate[B <: BlockContext]() extends ImpersonationResult[B]
+    final case class NotImpersonationRequest[B <: BlockContext]() extends ImpersonationResult[B]
     final case class Handled[B <: BlockContext](result: Rule.RuleResult[B]) extends ImpersonationResult[B]
   }
 
