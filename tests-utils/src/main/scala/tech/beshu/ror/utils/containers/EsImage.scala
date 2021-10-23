@@ -57,6 +57,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .runWhen(!configHotReloadingEnabled, "echo 'readonlyrest.force_load_from_file: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(customRorIndexName.isDefined, s"echo 'readonlyrest.settings_index: ${customRorIndexName.get}' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(useXpackSecurityInsteadOfRor, "printf 'xpack.security.enabled: true\\n" +
+            "xpack.ml.enabled: false\\n" +
             "xpack.security.transport.ssl.enabled: true\\n" +
             "xpack.security.transport.ssl.verification_mode: none\\n" +
             "xpack.security.transport.ssl.client_authentication: none\\n" +
@@ -66,16 +67,17 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .runWhen(useXpackSecurityInsteadOfRor, "/usr/share/elasticsearch/bin/elasticsearch-keystore create")
           .runWhen(useXpackSecurityInsteadOfRor,"printf 'readonlyrest\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore add xpack.security.transport.ssl.keystore.secure_password")
           .runWhen(useXpackSecurityInsteadOfRor, "printf 'readonlyrest\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore add xpack.security.transport.ssl.truststore.secure_password")
+          .runWhen(useXpackSecurityInsteadOfRor && Version.greaterOrEqualThan(esVersion, 6, 6, 0), "printf 'elastic\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore add bootstrap.password")
           .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
-          .runWhen(Version.greaterOrEqualThan(esVersion, 6, 6, 0),
+          .runWhen(Version.greaterOrEqualThan(esVersion, 6, 5, 0),
             command = "echo '/usr/local/bin/docker-entrypoint.sh &' > /usr/share/elasticsearch/xpack-setup-entry.sh",
             orElse = "echo '/usr/share/elasticsearch/bin/es-docker &' > /usr/share/elasticsearch/xpack-setup-entry.sh")
           .run("echo 'sleep 45' >> /usr/share/elasticsearch/xpack-setup-entry.sh") // Time needed to bootstrap cluster as elasticsearch-setup-passwords have to be run after cluster is ready
           .run("echo 'export ES_JAVA_OPTS=\"-Xms1g -Xmx1g -Djava.security.egd=file:/dev/./urandoms\"' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
           .run("echo 'echo \"Setting up default passwords\"' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
-          .run("echo 'printf \"y\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\n\" | elasticsearch-setup-passwords interactive' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
-          .run("echo \"curl -X POST -u elastic:elastic \"http://localhost:9200/_security/user/admin?pretty\" -H 'Content-Type: application/json' -d'{\\\"password\\\" : \\\"container\\\",\\\"roles\\\" : [ \\\"superuser\\\"]}'\n\" >> /usr/share/elasticsearch/xpack-setup-entry.sh")
-          .run("echo \"curl -X PUT \"http://localhost:9200/_xpack/security/user/elastic/_password?pretty\" -H 'Content-Type: application/json' -d'\n{\n  \"password\": \"elastic\"\n}\n'\n\" >> /usr/share/elasticsearch/xpack-setup-entry.sh")
+//          .run("echo 'echo \"y\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\n\" | elasticsearch-setup-passwords interactive' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
+//          .runWhen(Version.lowerOrEqualThan(esVersion, 6, 6, 0), "echo \"curl -u elastic:changeme -X PUT \"http://localhost:9200/_xpack/security/user/elastic/_password?pretty\" -H 'Content-Type: application/json' -d'{\\\"password\\\": \\\"elastic\\\"}'\n\" >> /usr/share/elasticsearch/xpack-setup-entry.sh")
+          .runWhen(Version.greaterOrEqualThan(esVersion, 6, 7, 0),"echo \"curl -X POST -u elastic:elastic \"http://localhost:9200/_security/user/admin?pretty\" -H 'Content-Type: application/json' -d'{\\\"password\\\" : \\\"container\\\",\\\"roles\\\" : [ \\\"superuser\\\"]}'\n\" >> /usr/share/elasticsearch/xpack-setup-entry.sh")
           .run("echo 'wait' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
           .run("chmod +x /usr/share/elasticsearch/xpack-setup-entry.sh")
           .applyTo(builder)
