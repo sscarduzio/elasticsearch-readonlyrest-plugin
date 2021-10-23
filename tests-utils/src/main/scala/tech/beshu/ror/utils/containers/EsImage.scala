@@ -72,7 +72,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .runWhen(Version.greaterOrEqualThan(esVersion, 6, 0, 0),
             command = "echo '/usr/local/bin/docker-entrypoint.sh &' > /usr/share/elasticsearch/xpack-setup-entry.sh",
             orElse = "echo '/usr/share/elasticsearch/bin/es-docker &' > /usr/share/elasticsearch/xpack-setup-entry.sh")
-          .run("echo 'sleep 45' >> /usr/share/elasticsearch/xpack-setup-entry.sh") // Time needed to bootstrap cluster as elasticsearch-setup-passwords have to be run after cluster is ready
+          .run("echo 'sleep 55' >> /usr/share/elasticsearch/xpack-setup-entry.sh") // Time needed to bootstrap cluster as elasticsearch-setup-passwords have to be run after cluster is ready
           .run("echo 'export ES_JAVA_OPTS=\"-Xms1g -Xmx1g -Djava.security.egd=file:/dev/./urandoms\"' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
           .run("echo 'echo \"Setting up default passwords\"' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
 //          .run("echo 'echo \"y\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\nelastic\\n\" | elasticsearch-setup-passwords interactive' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
