@@ -69,7 +69,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .runWhen(useXpackSecurityInsteadOfRor, "printf 'readonlyrest\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore add xpack.security.transport.ssl.truststore.secure_password")
           .runWhen(useXpackSecurityInsteadOfRor && Version.greaterOrEqualThan(esVersion, 6, 6, 0), "printf 'elastic\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore add bootstrap.password")
           .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
-          .runWhen(Version.greaterOrEqualThan(esVersion, 6, 5, 0),
+          .runWhen(Version.greaterOrEqualThan(esVersion, 6, 0, 0),
             command = "echo '/usr/local/bin/docker-entrypoint.sh &' > /usr/share/elasticsearch/xpack-setup-entry.sh",
             orElse = "echo '/usr/share/elasticsearch/bin/es-docker &' > /usr/share/elasticsearch/xpack-setup-entry.sh")
           .run("echo 'sleep 45' >> /usr/share/elasticsearch/xpack-setup-entry.sh") // Time needed to bootstrap cluster as elasticsearch-setup-passwords have to be run after cluster is ready
