@@ -39,7 +39,7 @@ object ESWithSecurityPluginImage extends EsImage[EsWithSecurityPluginContainer.C
   }
 
   override protected def entry(config: EsWithSecurityPluginContainer.Config): ImageFromDockerfile = {
-    val image = new ImageFromDockerfile()
+    new ImageFromDockerfile()
       .withFileFromFile(config.rorPluginFile.getAbsolutePath, config.rorPluginFile)
       .withFileFromFile(s"$configDir/$rorConfigFileName", config.rorConfigFile)
       .withFileFromFile(s"$configDir/$log4j2FileName", ContainerUtils.getResourceFile("/" + log4jFileNameBaseOn(config)))
@@ -48,11 +48,6 @@ object ESWithSecurityPluginImage extends EsImage[EsWithSecurityPluginContainer.C
       .withFileFromFile(s"$configDir/$javaOptionsFileName", ContainerUtils.getResourceFile("/" + javaOptionsFileName))
       .withFileFromFile(s"$configDir/$xpackTruststoreFileName", ContainerUtils.getResourceFile("/" + xpackTruststoreFileName))
       .withFileFromFile(s"$configDir/$pkcsCerts", ContainerUtils.getResourceFile("/" + pkcsCerts))
-    if (config.useXpackSecurityInsteadOfRor) {
-      image.withFileFromFile(s"$configDir/$elasticsearchKeystore", ContainerUtils.getResourceFile("/" + elasticsearchKeystore))
-    } else {
-      image
-    }
   }
 
   override protected def install(builder: DockerfileBuilder,

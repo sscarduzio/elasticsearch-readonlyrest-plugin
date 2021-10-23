@@ -63,9 +63,9 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
             "xpack.security.transport.ssl.keystore.path: elastic-certificates.p12\\n" +
             "xpack.security.transport.ssl.truststore.path: elastic-certificates.p12'" +
             ">> /usr/share/elasticsearch/config/elasticsearch.yml")
-          .runWhen(useXpackSecurityInsteadOfRor, "printf '\\n\\ny\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore create && " +
-            "printf 'readonlyrest\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore add xpack.security.transport.ssl.keystore.secure_password && " +
-            "printf 'readonlyrest\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore add xpack.security.transport.ssl.truststore.secure_password" )
+          .runWhen(useXpackSecurityInsteadOfRor, "/usr/share/elasticsearch/bin/elasticsearch-keystore create")
+          .runWhen(useXpackSecurityInsteadOfRor,"printf 'readonlyrest\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore add xpack.security.transport.ssl.keystore.secure_password")
+          .runWhen(useXpackSecurityInsteadOfRor, "printf 'readonlyrest\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore add xpack.security.transport.ssl.truststore.secure_password")
           .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
           .runWhen(Version.greaterOrEqualThan(esVersion, 6, 6, 0),
             command = "echo '/usr/local/bin/docker-entrypoint.sh &' > /usr/share/elasticsearch/xpack-setup-entry.sh",
