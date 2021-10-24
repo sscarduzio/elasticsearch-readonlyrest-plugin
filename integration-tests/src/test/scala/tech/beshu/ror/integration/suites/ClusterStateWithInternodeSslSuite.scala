@@ -40,23 +40,35 @@ trait ClusterStateWithInternodeSslSuite
 
 
   lazy val generalClusterContainer: EsClusterContainer = createFrom(
-    NonEmptyList.of(
-      EsClusterSettings(
-        name = "xpack_cluster",
-        numberOfInstances = 2,
-        useXpackSecurityInsteadOfRor = true,
-        xPackSupport = true,
-        externalSslEnabled = false,
-        configHotReloadingEnabled = true,
-        enableXPackSsl = true
-      ),
-      EsClusterSettings(
-        name = "xpack_cluster",
-        internodeSslEnabled = true,
-        xPackSupport = false,
-        forceNonOssImage = true
+    if (executedOn(allEs5x, allEs6xBelowEs63x)) {
+      // ROR for ES below 6.3 doesn't support internode SSL with XPack, so we test it only using ROR nodes.
+      NonEmptyList.of(
+        EsClusterSettings(
+          name = "ROR1",
+          numberOfInstances = 3,
+          internodeSslEnabled = true,
+          xPackSupport = false,
+        )
       )
-    )
+    } else {
+      NonEmptyList.of(
+        EsClusterSettings(
+          name = "xpack_cluster",
+          numberOfInstances = 2,
+          useXpackSecurityInsteadOfRor = true,
+          xPackSupport = true,
+          externalSslEnabled = false,
+          configHotReloadingEnabled = true,
+          enableXPackSsl = true
+        ),
+        EsClusterSettings(
+          name = "xpack_cluster",
+          internodeSslEnabled = true,
+          xPackSupport = false,
+          forceNonOssImage = true
+        )
+      )
+    }
   )
 
   private lazy val rorClusterAdminStateManager = new CatManager(clients.last.rorAdminClient, esVersion = esVersionUsed)
