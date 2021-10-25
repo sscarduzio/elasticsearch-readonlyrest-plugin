@@ -22,9 +22,9 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.transport.TransportService
 
-class TransportRRUserMetadataAction(transportService: TransportService,
-                                    actionFilters: ActionFilters,
-                                    constructorDiscriminator: Unit)
+class TransportRRAuthMockAction(transportService: TransportService,
+                                actionFilters: ActionFilters,
+                                constructorDiscriminator: Unit)
   extends HandledTransportAction[RRAuthMockRequest, RRAuthMockResponse](
     RRAuthMockActionType.name, transportService, actionFilters, RRAuthMockActionType.exceptionReader
   ) {
@@ -34,7 +34,9 @@ class TransportRRUserMetadataAction(transportService: TransportService,
            actionFilters: ActionFilters) =
     this(transportService, actionFilters, ())
 
+  private val handler = new RRAuthMockActionHandler()
+
   override def doExecute(task: Task, request: RRAuthMockRequest, listener: ActionListener[RRAuthMockResponse]): Unit = {
-    // nothing to do here
+    handler.handle(request, listener)
   }
 }

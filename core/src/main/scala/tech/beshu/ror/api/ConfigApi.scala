@@ -14,14 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.adminapi
+package tech.beshu.ror.api
 
 import cats.data.{EitherT, NonEmptyList}
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.adminapi.AdminRestApi.AdminRequest.Type
+import tech.beshu.ror.api.ConfigApi.ConfigRequest.Type
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigReloadError, RawConfigReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
@@ -36,32 +36,30 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
 
-class AdminRestApi(rorInstance: RorInstance,
-                   indexConfigManager: IndexConfigManager,
-                   fileConfigLoader: FileConfigLoader,
-                   rorConfigurationIndex: RorConfigurationIndex)
+class ConfigApi(rorInstance: RorInstance,
+                indexConfigManager: IndexConfigManager,
+                fileConfigLoader: FileConfigLoader,
+                rorConfigurationIndex: RorConfigurationIndex)
   extends Logging {
 
-  import AdminRestApi._
+  import ConfigApi._
 
-  def call(request: AdminRequest)
-          (implicit requestId: RequestId): Task[AdminResponse] = {
-    val apiCallResult = request.aType match {
+  def call(request: ConfigRequest)
+          (implicit requestId: RequestId): Task[ConfigResponse] = {
+    val ConfigResponse = request.aType match {
       case Type.ForceReload => forceReloadRor()
       case Type.ProvideIndexConfig => provideRorIndexConfig()
       case Type.ProvideFileConfig => provideRorFileConfig()
       case Type.UpdateIndexConfig => updateIndexConfiguration(request.body)
       case Type.UpdateTestConfig => updateTestConfiguration(request.body, testConfigTtlFrom(request.headers))
       case Type.InvalidateTestConfig => invalidateTestConfiguration()
-      case Type.CurrentUserMetadata => Task.now(Success("ok"))
     }
-    apiCallResult
-      .map(AdminResponse(_))
-      .executeOn(RorSchedulers.adminRestApiScheduler)
+    ConfigResponse
+      .executeOn(RorSchedulers.restApiScheduler)
   }
 
   private def forceReloadRor()
-                            (implicit requestId: RequestId): Task[ApiCallResult] = {
+                            (implicit requestId: RequestId): Task[ConfigResponse] = {
     rorInstance
       .forceReloadFromIndex()
       .map {
@@ -74,7 +72,7 @@ class AdminRestApi(rorInstance: RorInstance,
   }
 
   private def updateIndexConfiguration(body: String)
-                                      (implicit requestId: RequestId): Task[ApiCallResult] = {
+                                      (implicit requestId: RequestId): Task[ConfigResponse] = {
     val result = for {
       config <- rorConfigFrom(body)
       _ <- forceReloadAndSaveNewConfig(config)
@@ -87,7 +85,7 @@ class AdminRestApi(rorInstance: RorInstance,
 
   private def updateTestConfiguration(body: String,
                                       ttl: Option[FiniteDuration])
-                                     (implicit requestId: RequestId): Task[ApiCallResult] = {
+                                     (implicit requestId: RequestId): Task[ConfigResponse] = {
     val result = for {
       config <- rorConfigFrom(body)
       _ <- forceReloadTestConfig(config, ttl)
@@ -99,7 +97,7 @@ class AdminRestApi(rorInstance: RorInstance,
   }
 
   private def invalidateTestConfiguration()
-                                         (implicit requestId: RequestId): Task[ApiCallResult] = {
+                                         (implicit requestId: RequestId): Task[ConfigResponse] = {
     rorInstance
       .invalidateImpersonationEngine()
       .map { _ =>
@@ -108,7 +106,7 @@ class AdminRestApi(rorInstance: RorInstance,
   }
 
   private def provideRorFileConfig()
-                                  (implicit requestId: RequestId): Task[ApiCallResult] = {
+                                  (implicit requestId: RequestId): Task[ConfigResponse] = {
     fileConfigLoader
       .load()
       .map {
@@ -118,7 +116,7 @@ class AdminRestApi(rorInstance: RorInstance,
   }
 
   private def provideRorIndexConfig()
-                                   (implicit requestId: RequestId): Task[ApiCallResult] = {
+                                   (implicit requestId: RequestId): Task[ConfigResponse] = {
     indexConfigManager
       .load(rorConfigurationIndex)
       .map {
@@ -209,14 +207,14 @@ class AdminRestApi(rorInstance: RorInstance,
   }
 }
 
-object AdminRestApi {
+object ConfigApi {
 
-  final case class AdminRequest(aType: AdminRequest.Type,
-                                method: String,
-                                uri: String,
-                                headers: Map[String, NonEmptyList[String]],
-                                body: String)
-  object AdminRequest {
+  final case class ConfigRequest(aType: ConfigRequest.Type,
+                                 method: String,
+                                 uri: String,
+                                 headers: Map[String, NonEmptyList[String]],
+                                 body: String)
+  object ConfigRequest {
     sealed trait Type
     object Type {
       case object ForceReload extends Type
@@ -225,22 +223,18 @@ object AdminRestApi {
       case object UpdateIndexConfig extends Type
       case object UpdateTestConfig extends Type
       case object InvalidateTestConfig extends Type
-      case object CurrentUserMetadata extends Type
     }
   }
-  final case class AdminResponse(result: ApiCallResult)
-  object AdminResponse {
-    def notAvailable: AdminResponse = AdminResponse(Failure("Service not available"))
-
-    def internalError: AdminResponse = AdminResponse(Failure("Internal error"))
+  
+  sealed trait ConfigResponse
+  object ConfigResponse {
+    def notAvailable: ConfigResponse = Failure("Service not available")
+    def internalError: ConfigResponse = Failure("Internal error")
   }
-
-  sealed trait ApiCallResult {
-    def message: String
-  }
-  final case class Success(message: String) extends ApiCallResult
-  final case class ConfigNotFound(message: String) extends ApiCallResult
-  final case class Failure(message: String) extends ApiCallResult
+  
+  final case class Success(message: String) extends ConfigResponse
+  final case class ConfigNotFound(message: String) extends ConfigResponse
+  final case class Failure(message: String) extends ConfigResponse
 
   object defaults {
     val testConfigEngineDefaultTtl: FiniteDuration = 30 minutes

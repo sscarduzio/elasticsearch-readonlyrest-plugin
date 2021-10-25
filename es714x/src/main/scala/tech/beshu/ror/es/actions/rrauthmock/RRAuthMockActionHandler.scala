@@ -14,37 +14,37 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rradmin
+package tech.beshu.ror.es.actions.rrauthmock
 
 import monix.execution.Scheduler
 import org.elasticsearch.action.ActionListener
 import tech.beshu.ror.RequestId
-import tech.beshu.ror.api.ConfigApi
+import tech.beshu.ror.api.AuthMockApi.AuthMockResponse
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RorInstanceSupplier
 
 import scala.language.postfixOps
 
-class RRAdminActionHandler() {
+class RRAuthMockActionHandler() {
 
-  private implicit val adminRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
+  private implicit val rorRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
 
-  def handle(request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
+  def handle(request: RRAuthMockRequest, listener: ActionListener[RRAuthMockResponse]): Unit = {
     getApi match {
       case Some(api) => doPrivileged {
         implicit val requestId: RequestId = request.requestContextId
         api
-          .call(request.getAdminRequest)
+          .call(request.getAuthMockRequest)
           .runAsync { response =>
-            listener.onResponse(RRAdminResponse(response))
+            listener.onResponse(RRAuthMockResponse(response))
           }
       }
       case None =>
-        listener.onResponse(new RRAdminResponse(ConfigApi.ConfigResponse.notAvailable))
+        listener.onResponse(new RRAuthMockResponse(AuthMockResponse.notAvailable))
     }
   }
 
   private def getApi =
-    RorInstanceSupplier.get().map(_.configApi)
+    RorInstanceSupplier.get().map(_.authMockApi)
 }

@@ -22,9 +22,9 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
-import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestHandler, RestRequest}
-import org.elasticsearch.rest.RestRequest.Method.{POST, DELETE}
+import org.elasticsearch.rest.RestRequest.Method.{DELETE, POST}
 import org.elasticsearch.rest.action.RestToXContentListener
+import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestHandler, RestRequest}
 import tech.beshu.ror.Constants
 import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionType, RRAuthMockRequest, RRAuthMockResponse}
 
@@ -39,9 +39,13 @@ class RestRRAuthMockAction()
     new Route(DELETE, Constants.CONFIGURE_AUTH_MOCK_PATH)
   ).asJava
 
-  override val getName: String = "ror-user-metadata-handler"
+  override val getName: String = "ror-auth-mock-handler"
 
-  override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = (channel: RestChannel) => {
-    client.execute(new RRAuthMockActionType, new RRAuthMockRequest, new RestToXContentListener[RRAuthMockResponse](channel))
+  override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = new RestChannelConsumer {
+    private val rorAuthMockRequest = RRAuthMockRequest.createFrom(request)
+
+    override def accept(channel: RestChannel): Unit = {
+      client.execute(new RRAuthMockActionType, rorAuthMockRequest, new RestToXContentListener[RRAuthMockResponse](channel))
+    }
   }
 }

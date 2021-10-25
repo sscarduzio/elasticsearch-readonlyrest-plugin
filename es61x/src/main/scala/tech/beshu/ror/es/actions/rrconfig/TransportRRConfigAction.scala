@@ -63,7 +63,7 @@ class TransportRRConfigAction(setting: Settings,
     nodeResponseClass
   ) {
 
-  import tech.beshu.ror.boot.RorSchedulers.Implicits.adminApiScheduler
+  import tech.beshu.ror.boot.RorSchedulers.Implicits.rorRestApiScheduler
 
   implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider

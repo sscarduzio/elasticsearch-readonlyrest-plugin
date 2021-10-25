@@ -37,7 +37,7 @@ import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
-import tech.beshu.ror.adminapi.AdminRestApi
+import tech.beshu.ror.api.{AuthMockApi, ConfigApi}
 import tech.beshu.ror.boot.engines.{Engines, ImpersonatorsReloadableEngine, MainReloadableEngine}
 import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
 import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
@@ -253,16 +253,22 @@ class RorInstance private(boot: ReadonlyRest,
     mocksProvider
   )
 
-  private val adminRestApi = new AdminRestApi(
+  private val configRestApi = new ConfigApi(
     rorInstance = this,
     indexConfigManager,
     new FileConfigLoader(esConfigPath, propertiesProvider),
     rorConfigurationIndex
   )
 
+  private val authMockRestApi = new AuthMockApi(
+    mocksProvider
+  )
+
   def engines: Option[Engines] = aMainEngine.engine.map(Engines(_, anImpersonatorsEngine.engine))
 
-  def adminApi: AdminRestApi = adminRestApi
+  def configApi: ConfigApi = configRestApi
+
+  def authMockApi: AuthMockApi = authMockRestApi
 
   def forceReloadFromIndex()
                           (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, Unit]] =

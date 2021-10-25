@@ -23,7 +23,7 @@ import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.ActionListener
 import tech.beshu.ror.RequestId
-import tech.beshu.ror.adminapi.AdminRestApi
+import tech.beshu.ror.api.ConfigApi
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.configuration.{IndexConfigManager, RorIndexNameConfiguration}
@@ -38,7 +38,7 @@ import scala.language.postfixOps
 class RRAdminActionHandler(indexContentProvider: IndexJsonContentService,
                            esConfigFile: Path) {
 
-  private implicit val adminRestApiScheduler: Scheduler = RorSchedulers.adminRestApiScheduler
+  private implicit val adminRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
 
   private val rorIndexNameConfig = RorIndexNameConfiguration
     .load(esConfigFile)
@@ -59,11 +59,11 @@ class RRAdminActionHandler(indexContentProvider: IndexJsonContentService,
           }
       }
       case None =>
-        listener.onResponse(new RRAdminResponse(AdminRestApi.AdminResponse.notAvailable))
+        listener.onResponse(new RRAdminResponse(ConfigApi.ConfigResponse.notAvailable))
     }
   }
 
   private def getApi =
     RorInstanceSupplier.get()
-      .map(instance => new AdminRestApi(instance, indexConfigManager, fileConfigLoader, rorIndexNameConfig.index))
+      .map(instance => new ConfigApi(instance, indexConfigManager, fileConfigLoader, rorIndexNameConfig.index))
 }

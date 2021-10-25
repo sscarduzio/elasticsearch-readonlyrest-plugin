@@ -25,7 +25,7 @@ class RRAuthMockActionType extends ActionType[RRAuthMockResponse](
 )
 
 object RRAuthMockActionType {
-  val name = domain.Action.rorUserMetadataAction.value
+  val name = domain.Action.rorAuthMockAction.value
   val instance = new RRAuthMockActionType()
 
   final case object RRAuthMockActionCannotBeTransported extends Exception
