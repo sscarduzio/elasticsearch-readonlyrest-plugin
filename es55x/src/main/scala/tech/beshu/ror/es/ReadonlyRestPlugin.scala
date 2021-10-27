@@ -44,7 +44,7 @@ import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.plugins._
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.{Transport, TransportInterceptor}
+import org.elasticsearch.transport.Transport
 import org.elasticsearch.transport.netty4.Netty4Utils
 import tech.beshu.ror.Constants
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
@@ -185,9 +185,5 @@ class ReadonlyRestPlugin(s: Settings,
         ThreadRepo.setRestChannel(rorRestChannel)
         restHandler.handleRequest(request, rorRestChannel, client)
       }
-  }
-
-  override def getTransportInterceptors(threadContext: ThreadContext): util.List[TransportInterceptor] = {
-    List[TransportInterceptor](new RorTransportInterceptor(threadContext, s.get("node.name"))).asJava
   }
 }

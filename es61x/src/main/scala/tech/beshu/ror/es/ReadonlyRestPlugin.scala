@@ -49,7 +49,7 @@ import org.elasticsearch.plugins._
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.{Transport, TransportInterceptor}
+import org.elasticsearch.transport.Transport
 import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
 import org.elasticsearch.{ElasticsearchException, Version}
@@ -227,10 +227,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         ThreadRepo.setRestChannel(rorRestChannel)
         restHandler.handleRequest(request, rorRestChannel, client)
       }
-  }
-
-  override def getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry, threadContext: ThreadContext): util.List[TransportInterceptor] = {
-    List[TransportInterceptor](new RorTransportInterceptor(threadContext, s.get("node.name"))).asJava
   }
 
   override def onNodeStarted(): Unit = {

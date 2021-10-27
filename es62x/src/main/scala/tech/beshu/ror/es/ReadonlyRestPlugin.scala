@@ -234,10 +234,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       }
   }
 
-  override def getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry, threadContext: ThreadContext): util.List[TransportInterceptor] = {
-    List[TransportInterceptor](new RorTransportInterceptor(threadContext, s.get("node.name"))).asJava
-  }
-
   override def onNodeStarted(): Unit = {
     super.onNodeStarted()
     doPrivileged {
