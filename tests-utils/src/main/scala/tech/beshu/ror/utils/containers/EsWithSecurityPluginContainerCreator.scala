@@ -24,7 +24,7 @@ import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
 import java.io.File
 
-trait EsWithRorPluginContainerCreator extends EsContainerCreator {
+trait EsWithSecurityPluginContainerCreator extends EsContainerCreator {
 
   override def create(name: String,
                       nodeNames: NonEmptyList[String],
@@ -44,7 +44,7 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
       RorConfigAdjuster.Mode.Plugin
     )
 
-    val containerConfig = EsWithRorPluginContainer.Config(
+    val containerConfig = EsWithSecurityPluginContainer.Config(
       clusterName = clusterSettings.name,
       nodeName = name,
       nodes = nodeNames,
@@ -56,9 +56,11 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
       customRorIndexName = clusterSettings.customRorIndexName,
       internodeSslEnabled = clusterSettings.internodeSslEnabled,
       xPackSupport = clusterSettings.xPackSupport,
-      externalSslEnabled = clusterSettings.externalSslEnabled)
+      useXpackSecurityInsteadOfRor = clusterSettings.useXpackSecurityInsteadOfRor,
+      externalSslEnabled = clusterSettings.externalSslEnabled,
+      forceNonOssImage = clusterSettings.forceNonOssImage)
 
-    EsWithRorPluginContainer.create(
+    EsWithSecurityPluginContainer.create(
       containerConfig,
       clusterSettings.nodeDataInitializer,
       startedClusterDependencies,

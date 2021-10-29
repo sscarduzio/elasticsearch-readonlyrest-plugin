@@ -48,8 +48,8 @@ trait ClosedIndicesSuite
   }
 
   // we use admin client here so 'CONTAINER ADMIN' block is matched. We need to match 'Getter' block
-  private lazy val searchManager = new SearchManager(adminClient, additionalHeaders = Map("x-api-key" -> "g"))
-  private lazy val indexManager = new IndexManager(adminClient, esVersionUsed, additionalHeaders = Map("x-api-key" -> "g"))
+  private lazy val searchManager = new SearchManager(rorAdminClient, additionalHeaders = Map("x-api-key" -> "g"))
+  private lazy val indexManager = new IndexManager(rorAdminClient, esVersionUsed, additionalHeaders = Map("x-api-key" -> "g"))
 
   "A search request" should {
     "return only data related to a1 index and ignore closed a2 index" when {

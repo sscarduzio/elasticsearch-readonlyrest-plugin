@@ -14,6 +14,21 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.containers
+package tech.beshu.ror.utils.httpclient;
 
-object ESWithoutRorPluginImage extends EsImage[EsWithoutRorPluginContainer.Config]
+import org.apache.http.conn.ssl.TrustStrategy;
+
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+
+public class TrustAllCertificatesStrategy implements TrustStrategy {
+
+    public static final tech.beshu.ror.utils.httpclient.TrustAllCertificatesStrategy INSTANCE = new tech.beshu.ror.utils.httpclient.TrustAllCertificatesStrategy();
+
+    @Override
+    public boolean isTrusted(
+            final X509Certificate[] chain, final String authType) throws CertificateException {
+        return true;
+    }
+
+}

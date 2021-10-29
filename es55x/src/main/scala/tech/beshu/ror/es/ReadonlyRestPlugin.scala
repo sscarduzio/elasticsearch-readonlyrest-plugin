@@ -18,10 +18,9 @@ package tech.beshu.ror.es
 
 import java.nio.file.Path
 import java.util
-import java.util.function.{Supplier, UnaryOperator}
-
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
+import java.util.function.{Supplier, UnaryOperator}
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.action.{ActionRequest, ActionResponse}

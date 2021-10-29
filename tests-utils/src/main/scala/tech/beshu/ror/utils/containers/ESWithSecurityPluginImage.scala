@@ -20,22 +20,25 @@ import org.testcontainers.images.builder.ImageFromDockerfile
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
 import tech.beshu.ror.utils.misc.Version
 
-object ESWithRorPluginImage extends EsImage[EsWithRorPluginContainer.Config] {
+object ESWithSecurityPluginImage extends EsImage[EsWithSecurityPluginContainer.Config] {
 
   private val rorConfigFileName = "readonlyrest.yml"
   private val log4j2FileName = "log4j2.properties"
   private val javaOptionsFileName = "jvm.options"
   private val keystoreFileName = "keystore.jks"
   private val truststoreFileName = "truststore.jks"
+  private val xpackTruststoreFileName = "shield.jks"
+  private val pkcsCerts = "elastic-certificates.p12"
+  private val elasticsearchKeystore = "elasticsearch.keystore"
   private val configDir = "/config"
 
-  override protected def copyNecessaryFiles(builder: DockerfileBuilder, config: EsWithRorPluginContainer.Config): DockerfileBuilder = {
+  override protected def copyNecessaryFiles(builder: DockerfileBuilder, config: EsWithSecurityPluginContainer.Config): DockerfileBuilder = {
     builder
       .copy(config.rorPluginFile.getAbsolutePath, "/tmp/")
       .copy(s"$configDir/*", "/usr/share/elasticsearch/config/")
   }
 
-  override protected def entry(config: EsWithRorPluginContainer.Config): ImageFromDockerfile = {
+  override protected def entry(config: EsWithSecurityPluginContainer.Config): ImageFromDockerfile = {
     new ImageFromDockerfile()
       .withFileFromFile(config.rorPluginFile.getAbsolutePath, config.rorPluginFile)
       .withFileFromFile(s"$configDir/$rorConfigFileName", config.rorConfigFile)
@@ -43,15 +46,21 @@ object ESWithRorPluginImage extends EsImage[EsWithRorPluginContainer.Config] {
       .withFileFromFile(s"$configDir/$keystoreFileName", ContainerUtils.getResourceFile("/" + keystoreFileName))
       .withFileFromFile(s"$configDir/$truststoreFileName", ContainerUtils.getResourceFile("/" + truststoreFileName))
       .withFileFromFile(s"$configDir/$javaOptionsFileName", ContainerUtils.getResourceFile("/" + javaOptionsFileName))
+      .withFileFromFile(s"$configDir/$xpackTruststoreFileName", ContainerUtils.getResourceFile("/" + xpackTruststoreFileName))
+      .withFileFromFile(s"$configDir/$pkcsCerts", ContainerUtils.getResourceFile("/" + pkcsCerts))
   }
 
   override protected def install(builder: DockerfileBuilder,
-                                 config: EsWithRorPluginContainer.Config): DockerfileBuilder = {
-    builder
-      .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install file:///tmp/" + config.rorPluginFile.getName)
+                                 config: EsWithSecurityPluginContainer.Config): DockerfileBuilder = {
+    if (config.useXpackSecurityInsteadOfRor) {
+      builder
+    } else {
+      builder
+        .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install file:///tmp/" + config.rorPluginFile.getName)
+    }
   }
 
-  private def log4jFileNameBaseOn(config: EsWithRorPluginContainer.Config) = {
+  private def log4jFileNameBaseOn(config: EsWithSecurityPluginContainer.Config) = {
     if(Version.greaterOrEqualThan(config.esVersion, 7, 10, 0)) "log4j2_es_7.10_and_newer.properties"
     else "log4j2_es_before_7.10.properties"
   }

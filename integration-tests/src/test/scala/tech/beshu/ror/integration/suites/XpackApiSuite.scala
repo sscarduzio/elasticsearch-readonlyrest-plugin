@@ -49,7 +49,7 @@ trait XpackApiSuite
     )
   )
 
-  private lazy val adminXpackApiManager = new XpackApiManager(adminClient, esVersionUsed)
+  private lazy val adminXpackApiManager = new XpackApiManager(rorAdminClient, esVersionUsed)
   private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"))
   private lazy val dev2SearchManager = new SearchManager(basicAuthClient("dev2", "test"))
   private lazy val dev3XpackApiManager = new XpackApiManager(basicAuthClient("dev3", "test"), esVersionUsed)
