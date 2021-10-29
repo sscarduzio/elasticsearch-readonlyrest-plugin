@@ -107,6 +107,7 @@ dependencies {
     compile group: 'io.circe',                              name: 'circe-generic_2.12',                     version: '0.13.0'
     compile group: 'io.circe',                              name: 'circe-generic-extras_2.12',              version: '0.13.0'
     compile group: 'io.circe',                              name: 'circe-parser_2.12',                      version: '0.13.0'
+    compile group: 'io.circe',                              name: 'circe-refined_2.12',                     version: '0.13.0'
     compile group: 'io.circe',                              name: 'circe-shapes_2.12',                      version: '0.13.0'
     compile group: 'commons-codec',                         name: 'commons-codec',                          version: '1.15'
     compile group: 'org.typelevel',                         name: 'cats-free_2.12',                         version: '2.1.1'

@@ -16,14 +16,26 @@
  */
 package tech.beshu.ror.api
 
+import cats.implicits._
+import eu.timepit.refined.types.string.NonEmptyString
+import io.circe.parser._
+import io.circe.refined._
+import io.circe.{Decoder, KeyDecoder}
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol.blocks.mocks.MutableMocksProviderWithCachePerRequest
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.{MapsBasedMocksProvider, MutableMocksProviderWithCachePerRequest}
+import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.boot.RorSchedulers
 
-class AuthMockApi(mockProvider: MutableMocksProviderWithCachePerRequest) {
+class AuthMockApi(mockProvider: MutableMocksProviderWithCachePerRequest)
+  extends Logging {
 
   import AuthMockApi._
+  import AuthMockApi.coders._
 
   def call(request: AuthMockRequest)
           (implicit requestId: RequestId): Task[AuthMockResponse] = {
@@ -36,7 +48,28 @@ class AuthMockApi(mockProvider: MutableMocksProviderWithCachePerRequest) {
   }
 
   private def updateAuthMock(body: String)
-                            (implicit requestId: RequestId): Task[AuthMockResponse] = ???
+                            (implicit requestId: RequestId): Task[AuthMockResponse] = {
+    Task
+      .delay {
+        for {
+          json <- parse(body)
+          mocks <- mocksDecoder.decodeJson(json)
+        } yield mocks
+      }
+      .flatMap {
+        case Right(mapsBasedMocksProvider) =>
+          Task.delay {
+            mockProvider.update(mapsBasedMocksProvider)
+            Success("ok") //todo:
+          }
+        case Left(error) =>
+          Task.now(Failure("todo")) // todo:
+      }
+      .onErrorRecover { case ex =>
+        logger.error(s"[${requestId.show}] Updating auth mock failed", ex)
+        Failure("ex") //todo:
+      }
+  }
 
   private def invalidateAuthMock()
                                 (implicit requestId: RequestId): Task[AuthMockResponse] = {
@@ -45,6 +78,7 @@ class AuthMockApi(mockProvider: MutableMocksProviderWithCachePerRequest) {
       .map(_ => AuthMockApi.Success("Auth mock settings invalidated"))
   }
 }
+
 object AuthMockApi {
 
   final case class AuthMockRequest(aType: AuthMockRequest.Type,
@@ -60,8 +94,30 @@ object AuthMockApi {
   sealed trait AuthMockResponse
   object AuthMockResponse {
     def internalError: AuthMockResponse = Failure("Internal error")
+
     def notAvailable: AuthMockResponse = Failure("Service not available")
   }
   final case class Success(message: String) extends AuthMockResponse
   final case class Failure(message: String) extends AuthMockResponse
+
+  private object coders {
+    val mocksDecoder: Decoder[MapsBasedMocksProvider] = Decoder.forProduct1("ldaps")(ldaps =>
+      new MapsBasedMocksProvider(ldaps)
+    )
+
+    private implicit lazy val ldapServiceIdDecoder: KeyDecoder[LdapService.Name] =
+      KeyDecoder[NonEmptyString].map(LdapService.Name.apply)
+
+    private implicit lazy val ldapServiceMockDecoder: Decoder[LdapServiceMock] =
+      Decoder.forProduct1("users")(LdapServiceMock.apply)
+
+    private implicit lazy val ldapUserMockDecoder: Decoder[LdapUserMock] =
+      Decoder.forProduct2("name", "groups")(LdapUserMock.apply)
+
+    private implicit lazy val userIdDecoder: Decoder[User.Id] =
+      Decoder[NonEmptyString].map(User.Id.apply)
+
+    private implicit lazy val groupDecoder: Decoder[Group] =
+      Decoder[NonEmptyString].map(Group.apply)
+  }
 }
