@@ -19,22 +19,24 @@ package tech.beshu.ror.integration.suites
 import org.junit.Assert.assertEquals
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait ActionsSuite
   extends AnyWordSpec
-    with BaseSingleNodeEsClusterTest {
+    with BaseSingleNodeEsClusterTest
+    with ESVersionSupportForAnyWordSpecLike {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/actions/readonlyrest.yml"
 
   override val nodeDataInitializer = Some { (esVersion, adminRestClient: RestClient) => {
-      val documentManager = new DocumentManager(adminRestClient, esVersion)
-      documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
-      documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
-    }
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
+    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
+  }
   }
 
   private lazy val actionManager = new DocumentManager(basicAuthClient("any", "whatever"), esVersionUsed)

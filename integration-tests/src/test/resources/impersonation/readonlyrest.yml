@@ -21,6 +21,45 @@ readonlyrest:
       indices: ["test2_index"]
       auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
 
+    - name: "test3"
+      indices: ["test3_index"]
+      ldap_auth:
+        name: "ldap1"
+        groups: ["group1", "group3"]
+
+  ldaps:
+    - name: ldap1
+      host: "{LDAP1_HOST}"
+      port: {LDAP1_PORT}                                        # default 389
+      ssl_enabled: false                                        # default true
+      ssl_trust_all_certs: true                                 # default false
+      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+      bind_password: "password"                                 # skip for anonymous bind
+      search_user_base_DN: "ou=People,dc=example,dc=com"
+      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      user_id_attribute: "uid"                                  # default "uid"
+      unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+      connection_pool_size: 10                                  # default 30
+      connection_timeout: 10s                                   # default 1
+      request_timeout: 10s                                      # default 1
+      cache_ttl: 60s                                            # default 0 - cache disabled
+
+    - name: ldap2
+      host: "{LDAP2_HOST}"
+      port: {LDAP2_PORT}                                        # default 389
+      ssl_enabled: false                                        # default true
+      ssl_trust_all_certs: true                                 # default false
+      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+      bind_password: "password"                                 # skip for anonymous bind
+      search_user_base_DN: "ou=People,dc=example,dc=com"
+      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      user_id_attribute: "uid"                                  # default "uid"
+      unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+      connection_pool_size: 10                                  # default 30
+      connection_timeout: 10s                                   # default 1
+      request_timeout: 10s                                      # default 1
+      cache_ttl: 60s                                            # default 0 - cache disabled
+
   impersonation:
     - impersonator: admin1
       auth_key: admin1:pass

@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import io.jsonwebtoken.SignatureAlgorithm
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.CatManager
 import tech.beshu.ror.utils.misc.JwtUtils._
@@ -26,7 +27,8 @@ import tech.beshu.ror.utils.misc.JwtUtils._
 //TODO change test names. Current names are copies from old java integration tests
 trait JwtAuthSuite
   extends AnyWordSpec
-    with BaseSingleNodeEsClusterTest {
+    with BaseSingleNodeEsClusterTest
+    with ESVersionSupportForAnyWordSpecLike {
   this: EsContainerCreator =>
 
   private val algo = SignatureAlgorithm.valueOf("HS256")

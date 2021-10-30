@@ -17,14 +17,14 @@
 package tech.beshu.ror.integration.suites
 
 import monix.execution.atomic.Atomic
-import org.scalatest.concurrent.Eventually
-import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.BeforeAndAfterEach
+import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.IndexLifecycleManagementApiSuite.{ExamplePolicies, PolicyGenerator}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.integration.utils.ESVersionSupport
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.{ClusterManager, DocumentManager, IndexLifecycleManager, IndexManager}
@@ -35,7 +35,7 @@ trait IndexLifecycleManagementApiSuite
   extends AnyWordSpec
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
-    with ESVersionSupport
+    with ESVersionSupportForAnyWordSpecLike
     with BeforeAndAfterEach
     with Matchers
     with Eventually {

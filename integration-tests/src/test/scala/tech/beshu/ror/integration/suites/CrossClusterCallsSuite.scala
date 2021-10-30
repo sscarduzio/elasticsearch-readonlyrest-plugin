@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.CrossClusterCallsSuite._
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.integration.utils.ESVersionSupport
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -29,7 +29,7 @@ trait CrossClusterCallsSuite
   extends AnyWordSpec
     with BaseEsRemoteClusterIntegrationTest
     with SingleClientSupport
-    with ESVersionSupport {
+    with ESVersionSupportForAnyWordSpecLike {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/cross_cluster_search/readonlyrest.yml"

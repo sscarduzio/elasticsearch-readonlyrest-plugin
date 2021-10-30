@@ -19,12 +19,14 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.{ContainerSpecification, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.CatManager
 
 trait ClusterStateWithInternodeSslSuite
   extends AnyWordSpec
     with BaseEsClusterIntegrationTest
+    with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
     with BeforeAndAfterAll {
   this: EsContainerCreator =>

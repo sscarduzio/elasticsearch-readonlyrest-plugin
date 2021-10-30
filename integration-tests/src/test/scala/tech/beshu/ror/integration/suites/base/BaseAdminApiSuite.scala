@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -31,6 +32,7 @@ import scala.language.postfixOps
 trait BaseAdminApiSuite
   extends AnyWordSpec
     with BaseManyEsClustersIntegrationTest
+    with ESVersionSupportForAnyWordSpecLike
     with MultipleClientsSupport
     with BeforeAndAfterEach {
   this: EsContainerCreator =>
@@ -483,7 +485,7 @@ trait BaseAdminApiSuite
         dev2ror2After2ndReloadResults.responseCode should be(200)
 
         val result = ror1WithIndexConfigAdminActionManager.invalidateRorTestConfig()
-        result.responseCode should be (200)
+        result.responseCode should be(200)
 
         // after test core invalidation, main core should handle these requests
         val dev1ror1AfterTestEngineAutoDestruction = dev1Ror1stInstanceSearchManager.search("test1_index")

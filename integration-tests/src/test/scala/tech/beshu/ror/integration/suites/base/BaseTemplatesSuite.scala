@@ -30,9 +30,8 @@ trait BaseTemplatesSuite
   extends BaseSingleNodeEsClusterTest
     with BeforeAndAfterEach
     with BeforeAndAfterAll
-    with ESVersionSupport
     with LazyLogging {
-  this: Suite with EsContainerCreator =>
+  this: Suite with EsContainerCreator with ESVersionSupport =>
 
   private lazy val adminLegacyTemplateManager = new LegacyTemplateManager(adminClient, esVersionUsed)
   private lazy val adminIndexTemplateManager = new IndexTemplateManager(adminClient, esVersionUsed)

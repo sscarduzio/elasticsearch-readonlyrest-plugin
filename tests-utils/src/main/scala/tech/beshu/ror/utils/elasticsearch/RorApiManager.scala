@@ -72,6 +72,14 @@ class RorApiManager(client: RestClient,
     call(createReloadRorConfigRequest(), new JsonResponse(_))
   }
 
+  def configureImpersonationMocks(payload: JSON): JsonResponse = {
+    call(createConfigureImpersonationMocksRequest(payload), new JsonResponse(_))
+  }
+
+  def invalidateImpersonationMocks(): JsonResponse = {
+    call(createInvalidateImpersonationMocksRequest(), new JsonResponse(_))
+  }
+
   def insertInIndexConfigDirectlyToRorIndex(rorConfigIndex: String,
                                             config: String): JsonResponse = {
     documentManager.createFirstDoc(
@@ -131,6 +139,17 @@ class RorApiManager(client: RestClient,
     val request = new HttpPost(client.from("/_readonlyrest/admin/refreshconfig"))
     request.addHeader("Content-Type", "application/json")
     request
+  }
+
+  private def createConfigureImpersonationMocksRequest(payload: JSON) = {
+    val request = new HttpPost(client.from("/_readonlyrest/admin/authmock"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(ujson.write(payload)))
+    request
+  }
+
+  private def createInvalidateImpersonationMocksRequest() = {
+    new HttpDelete(client.from("/_readonlyrest/admin/authmock"))
   }
 
   private def createLoadRorCurrentConfigRequest(additionalParams: Map[String, String]) = {
