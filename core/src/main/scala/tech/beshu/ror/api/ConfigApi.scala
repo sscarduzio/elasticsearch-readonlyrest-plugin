@@ -30,6 +30,7 @@ import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexCon
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
+import tech.beshu.ror.utils.HttpOps
 import tech.beshu.ror.{Constants, RequestId}
 
 import scala.concurrent.duration._
@@ -193,17 +194,7 @@ class ConfigApi(rorInstance: RorInstance,
   }
 
   private def testConfigTtlFrom(headers: Map[String, NonEmptyList[String]]) = {
-    headers
-      .find { case (name, _) => name.toLowerCase == Constants.HEADER_TEST_CONFIG_TTL }
-      .map { case (_, values) => values.head }
-      .flatMap { value =>
-        Try(Duration(value)).toOption match {
-          case Some(v: FiniteDuration) if v.toMillis > 0 => Some(v)
-          case Some(_) | None =>
-            logger.warn(s"Cannot parse '$value' of ${Constants.HEADER_TEST_CONFIG_TTL} header.")
-            None
-        }
-      }
+    HttpOps.finiteDurationHeaderValueFrom(headers, Constants.HEADER_TEST_CONFIG_TTL)
   }
 }
 

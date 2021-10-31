@@ -160,6 +160,81 @@ trait ImpersonationSuite
         }
       }
     }
+    "'groups' rule" - {
+      "is not supported" - {
+        "when ldap service used in internal auth rule is not mocked" in {
+          rorApiManager
+            .configureImpersonationMocks(ujson.read(
+              s"""
+                 |{
+                 |  "ldaps": {
+                 |    "ldap2": {
+                 |      "users": [
+                 |        {
+                 |          "name": "ldap_user_2",
+                 |          "groups": ["group1", "group3"]
+                 |        }
+                 |      ]
+                 |    }
+                 |  }
+                 |}
+             """.stripMargin
+            ))
+            .force()
+
+          val searchManager = new SearchManager(
+            basicAuthClient("admin1", "pass"),
+            Map("impersonate_as" -> "ldap_user_1")
+          )
+
+          val result = searchManager.search("test4_index")
+
+          result.responseCode should be(401)
+          result.responseJson should be(impersonationNotSupportedResponse)
+        }
+      }
+      "is supported" - {
+        "by default when internal auth rule with " in {
+          val searchManager = new SearchManager(
+            basicAuthClient("admin1", "pass"),
+            Map("impersonate_as" -> "dev2")
+          )
+
+          val result = searchManager.search("test4_index")
+
+          result.responseCode should be(200)
+        }
+        "when ldap service used in internal auth rule is mocked" in {
+          rorApiManager
+            .configureImpersonationMocks(ujson.read(
+              s"""
+                 |{
+                 |  "ldaps": {
+                 |    "ldap1": {
+                 |      "users": [
+                 |        {
+                 |          "name": "ldap_user_1",
+                 |          "groups": ["group1", "group2"]
+                 |        }
+                 |      ]
+                 |    }
+                 |  }
+                 |}
+             """.stripMargin
+            ))
+            .force()
+
+          val searchManager = new SearchManager(
+            basicAuthClient("admin1", "pass"),
+            Map("impersonate_as" -> "ldap_user_1")
+          )
+
+          val result = searchManager.search("test4_index")
+
+          result.responseCode should be(200)
+        }
+      }
+    }
   }
 
   "Impersonation cannot be done when" - {
@@ -267,13 +342,13 @@ trait ImpersonationSuite
       |      {
       |        "type":"forbidden_response",
       |        "reason":"forbidden",
-      |        "due_to":"IMPERSONATION_NOT_ALLOWED",
+      |        "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"],
       |        "header":{"WWW-Authenticate":"Basic"}
       |      }
       |    ],
       |    "type":"forbidden_response",
       |    "reason":"forbidden",
-      |    "due_to":"IMPERSONATION_NOT_ALLOWED",
+      |    "due_to":["OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"],
       |    "header":{"WWW-Authenticate":"Basic"}
       |  },
       |  "status":401
@@ -288,5 +363,6 @@ object ImpersonationSuite {
     documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("test3_index", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test4_index", 1, ujson.read("""{"hello":"world"}""")).force()
   }
 }

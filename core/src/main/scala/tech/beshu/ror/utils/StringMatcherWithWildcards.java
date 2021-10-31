@@ -21,7 +21,7 @@ package tech.beshu.ror.utils;
 public class StringMatcherWithWildcards extends MatcherWithWildcards<String> {
 
     private static final CaseMappingEqualityJava<String> stringCaseMappingEquality =
-            CaseMappingEquality.summonJava(StringCaseMapping.caseSensitiveEquality());
+        tech.beshu.ror.utils.CaseMappingEquality.summonJava(tech.beshu.ror.utils.StringCaseMapping.caseSensitiveEquality());
 
     public StringMatcherWithWildcards(Iterable<String> patterns) {
         super(patterns, stringCaseMappingEquality);

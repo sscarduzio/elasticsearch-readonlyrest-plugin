@@ -16,12 +16,15 @@
  */
 package tech.beshu.ror.es.actions.rrauthmock
 
+import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.rest.RestRequest.Method.{DELETE, POST}
 import tech.beshu.ror.api.AuthMockApi
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.{Constants, RequestId}
+
+import scala.collection.JavaConverters._
 
 class RRAuthMockRequest(authMockApiRequest: AuthMockApi.AuthMockRequest,
                         esRestRequest: RestRequest) extends ActionRequest {
@@ -46,7 +49,15 @@ object RRAuthMockRequest {
     new RRAuthMockRequest(
       new AuthMockApi.AuthMockRequest(
         requestType,
-        request.content.utf8ToString
+        request.content.utf8ToString,
+        request
+          .getHeaders.asScala
+          .flatMap { case (name, values) =>
+            NonEmptyList
+              .fromList(values.asScala.toList)
+              .map((name, _))
+          }
+          .toMap,
       ),
       request
     )

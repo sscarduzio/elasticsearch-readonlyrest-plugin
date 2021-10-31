@@ -16,22 +16,26 @@
  */
 package tech.beshu.ror.api
 
+import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.parser._
 import io.circe.refined._
-import io.circe.{Decoder, KeyDecoder}
+import io.circe.{Decoder, DecodingFailure, KeyDecoder, ParsingFailure}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MapsBasedMocksProvider, MutableMocksProviderWithCachePerRequest}
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.boot.RorSchedulers
+import tech.beshu.ror.utils.HttpOps
+import tech.beshu.ror.{Constants, RequestId}
 
-// todo: what about TTL?
+import scala.concurrent.duration._
+import scala.language.postfixOps
+
 class AuthMockApi(mockProvider: MutableMocksProviderWithCachePerRequest)
   extends Logging {
 
@@ -41,14 +45,15 @@ class AuthMockApi(mockProvider: MutableMocksProviderWithCachePerRequest)
   def call(request: AuthMockRequest)
           (implicit requestId: RequestId): Task[AuthMockResponse] = {
     val apiCallResult = request.aType match {
-      case AuthMockRequest.Type.UpdateAuthMock => updateAuthMock(request.body)
+      case AuthMockRequest.Type.UpdateAuthMock => updateAuthMock(request.body, authMockTtlFrom(request.headers))
       case AuthMockRequest.Type.InvalidateAuthMock => invalidateAuthMock()
     }
     apiCallResult
       .executeOn(RorSchedulers.restApiScheduler)
   }
 
-  private def updateAuthMock(body: String)
+  private def updateAuthMock(body: String,
+                             authMockTtl: Option[FiniteDuration])
                             (implicit requestId: RequestId): Task[AuthMockResponse] = {
     Task
       .delay {
@@ -60,15 +65,20 @@ class AuthMockApi(mockProvider: MutableMocksProviderWithCachePerRequest)
       .flatMap {
         case Right(mapsBasedMocksProvider) =>
           Task.delay {
-            mockProvider.update(mapsBasedMocksProvider)
-            Success("ok") //todo:
+            mockProvider.update(mapsBasedMocksProvider, authMockTtl.orElse(Some(defaults.authMockDefaultTtl)))
+            Success("Auth mock updated")
           }
         case Left(error) =>
-          Task.now(Failure("todo")) // todo:
+          Task.now(Failure {
+            error match {
+              case ParsingFailure(_, _) => "Cannot parse JSON"
+              case _: DecodingFailure => "Invalid structure of sent JSON"
+            }
+          })
       }
       .onErrorRecover { case ex =>
         logger.error(s"[${requestId.show}] Updating auth mock failed", ex)
-        Failure("ex") //todo:
+        AuthMockResponse.internalError
       }
   }
 
@@ -76,14 +86,19 @@ class AuthMockApi(mockProvider: MutableMocksProviderWithCachePerRequest)
                                 (implicit requestId: RequestId): Task[AuthMockResponse] = {
     Task
       .delay(mockProvider.invalidate())
-      .map(_ => AuthMockApi.Success("Auth mock settings invalidated"))
+      .map(_ => AuthMockApi.Success("Auth mock invalidated"))
+  }
+
+  private def authMockTtlFrom(headers: Map[String, NonEmptyList[String]]) = {
+    HttpOps.finiteDurationHeaderValueFrom(headers, Constants.HEADER_AUTH_MOCK_TTL)
   }
 }
 
 object AuthMockApi {
 
   final case class AuthMockRequest(aType: AuthMockRequest.Type,
-                                   body: String)
+                                   body: String,
+                                   headers: Map[String, NonEmptyList[String]])
   object AuthMockRequest {
     sealed trait Type
     object Type {
@@ -103,7 +118,7 @@ object AuthMockApi {
 
   private object coders {
     val mocksDecoder: Decoder[MapsBasedMocksProvider] = Decoder.forProduct1("ldaps")(ldaps =>
-      new MapsBasedMocksProvider(ldaps)
+      MapsBasedMocksProvider(ldaps)
     )
 
     private implicit lazy val ldapServiceIdDecoder: KeyDecoder[LdapService.Name] =
@@ -120,5 +135,9 @@ object AuthMockApi {
 
     private implicit lazy val groupDecoder: Decoder[Group] =
       Decoder[NonEmptyString].map(Group.apply)
+  }
+
+  object defaults {
+    val authMockDefaultTtl: FiniteDuration = 30 minutes
   }
 }

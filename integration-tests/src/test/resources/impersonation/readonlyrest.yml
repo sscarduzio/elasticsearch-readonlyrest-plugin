@@ -27,6 +27,21 @@ readonlyrest:
         name: "ldap1"
         groups: ["group1", "group3"]
 
+    - name: "test4"
+      indices: ["test4_index"]
+      groups: ["local_group1", "local_group2"]
+
+  users:
+    - username: "*"
+      groups: ["local_group1"]
+      ldap_auth:
+        name: ldap1
+        groups: ["group1", "group3"]
+
+    - username: "*"
+      groups: ["local_group2"]
+      auth_key: dev2:test
+
   ldaps:
     - name: ldap1
       host: "{LDAP1_HOST}"

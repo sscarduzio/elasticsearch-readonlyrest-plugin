@@ -20,7 +20,7 @@ import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock
 
-class MapsBasedMocksProvider(ldapMocks: Map[LdapService.Name, LdapServiceMock])
+final case class MapsBasedMocksProvider(ldapMocks: Map[LdapService.Name, LdapServiceMock])
   extends MocksProvider {
 
   override def ldapServiceWith(id: LdapService.Name)

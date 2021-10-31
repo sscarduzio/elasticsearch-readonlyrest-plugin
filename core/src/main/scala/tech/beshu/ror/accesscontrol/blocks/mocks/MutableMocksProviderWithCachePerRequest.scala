@@ -16,8 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.mocks
 
+import java.time.Clock
+
 import com.github.blemale.scaffeine.{Cache, Scaffeine}
 import monix.execution.atomic.Atomic
+import monix.execution.{Cancelable, Scheduler}
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock
@@ -26,23 +29,34 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class MutableMocksProviderWithCachePerRequest(initial: MocksProvider)
+                                             (implicit scheduler: Scheduler,
+                                              clock: Clock)
   extends MocksProvider {
 
-  def this() = this(NoOpMocksProvider)
+  def this()
+          (implicit scheduler: Scheduler,
+           clock: Clock) =
+    this(NoOpMocksProvider)
 
-  private val currentMockProvider = Atomic(initial)
+  private val currentMockProvider = Atomic(CurrentMocksProviderConfiguration(initial, None))
 
   private val cache: Cache[RequestId, MocksProvider] =
     Scaffeine()
       .expireAfterWrite(1 minute)
       .build()
 
-  def update(mocksProvider: MocksProvider): Unit = {
-    currentMockProvider.update(mocksProvider)
+  def update(mocksProvider: MocksProvider, ttl: Option[FiniteDuration]): Unit = {
+    currentMockProvider.transform { currentMockProviderConfig =>
+      currentMockProviderConfig.scheduledInvalidateHandler.foreach(_.cancel())
+      CurrentMocksProviderConfiguration(
+        mocksProvider,
+        ttl.map(scheduler.scheduleOnce(_)(invalidate()))
+      )
+    }
   }
 
   def invalidate(): Unit = {
-    currentMockProvider.update(NoOpMocksProvider)
+    update(NoOpMocksProvider, None)
   }
 
   override def ldapServiceWith(id: LdapService.Name)
@@ -51,5 +65,11 @@ class MutableMocksProviderWithCachePerRequest(initial: MocksProvider)
   }
 
   private def getMockProviderByContext(context: RequestId) =
-    cache.get(context, _ => currentMockProvider.get())
+    cache.get(context, _ => currentMockProvider.get().mocksProvider)
+
+  private sealed case class CurrentMocksProviderConfiguration(mocksProvider: MocksProvider,
+                                                              scheduledInvalidateHandler: Option[Cancelable])
+  private object CurrentMocksProviderConfiguration {
+    val default = CurrentMocksProviderConfiguration(NoOpMocksProvider, None)
+  }
 }
