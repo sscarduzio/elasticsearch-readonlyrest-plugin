@@ -24,6 +24,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.commons.codec.digest.Crypt.crypt
 import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyUnixRule.UnixHashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
@@ -47,7 +48,7 @@ final class AuthKeyUnixRule(override val settings: BasicAuthenticationRule.Setti
       configuredCredentials.from(credentials).contains(configuredCredentials)
   }
 
-  override def exists(user: User.Id)
+  override def exists(user: User.Id, mocksProvider: MocksProvider)
                      (implicit requestId: RequestId,
                       eq: Eq[User.Id]): Task[UserExistence] = Task.now {
     if (user === settings.credentials.userId) UserExistence.Exists

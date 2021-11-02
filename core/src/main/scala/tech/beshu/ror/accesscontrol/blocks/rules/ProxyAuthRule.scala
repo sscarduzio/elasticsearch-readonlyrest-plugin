@@ -21,6 +21,7 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
@@ -60,7 +61,7 @@ final class ProxyAuthRule(val settings: Settings,
     }
   }
 
-  override protected[rules] def exists(user: Id)
+  override protected[rules] def exists(user: Id, mocksProvider: MocksProvider)
                                       (implicit requestId: RequestId,
                                        userIdEq: Eq[Id]): Task[UserExistence] =
     Task.now(UserExistence.Exists)

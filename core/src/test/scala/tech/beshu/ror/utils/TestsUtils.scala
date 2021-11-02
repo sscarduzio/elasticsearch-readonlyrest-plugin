@@ -28,11 +28,11 @@ import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService, ImpersonatorDef}
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyRule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
@@ -107,6 +107,12 @@ object TestsUtils {
             }
           })
       }
+
+      override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
+                                                    (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = None
+
+      override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
+                                                   (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = None
     }
   }
 

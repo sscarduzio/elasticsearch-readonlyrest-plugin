@@ -22,6 +22,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
@@ -50,7 +51,7 @@ abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings[Has
     }
   }
 
-  override final def exists(user: User.Id)
+  override final def exists(user: User.Id, mocksProvider: MocksProvider)
                            (implicit requestId: RequestId,
                             eq: Eq[User.Id]): Task[UserExistence] = Task.now {
     settings.credentials match {

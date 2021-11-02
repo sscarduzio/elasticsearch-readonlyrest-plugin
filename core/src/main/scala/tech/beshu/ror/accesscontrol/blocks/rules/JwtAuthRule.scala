@@ -60,20 +60,21 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
       case Ec(pubKey) => Jwts.parserBuilder().setSigningKey(pubKey).build()
     }
 
-  override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task
-    .unit
-    .flatMap { _ =>
-      jwtTokenFrom(blockContext.requestContext) match {
-        case None =>
-          logger.debug(s"Authorization header '${settings.jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
-          Task.now(Rejected())
-        case Some(token) =>
-          process(token, blockContext)
-      }
-    }
+  override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+    Task.now(RuleResult.Fulfilled(blockContext))
 
   override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-    Task.now(RuleResult.Fulfilled(blockContext))
+    Task
+      .unit
+      .flatMap { _ =>
+        jwtTokenFrom(blockContext.requestContext) match {
+          case None =>
+            logger.debug(s"Authorization header '${settings.jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
+            Task.now(Rejected())
+          case Some(token) =>
+            process(token, blockContext)
+        }
+      }
 
   private def jwtTokenFrom(requestContext: RequestContext) = {
     requestContext

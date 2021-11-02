@@ -23,7 +23,8 @@ import monix.execution.atomic.Atomic
 import monix.execution.{Cancelable, Scheduler}
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -62,6 +63,16 @@ class MutableMocksProviderWithCachePerRequest(initial: MocksProvider)
   override def ldapServiceWith(id: LdapService.Name)
                               (implicit context: RequestId): Option[LdapServiceMock] = {
     getMockProviderByContext(context).ldapServiceWith(id)
+  }
+
+  override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
+                                                (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = {
+    getMockProviderByContext(context).externalAuthenticationServiceWith(id)
+  }
+
+  override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
+                                               (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = {
+    getMockProviderByContext(context).externalAuthorizationServiceWith(id)
   }
 
   private def getMockProviderByContext(context: RequestId) =

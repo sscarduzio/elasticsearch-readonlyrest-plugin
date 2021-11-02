@@ -21,6 +21,7 @@ import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
@@ -62,7 +63,7 @@ trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonati
   protected def tryToImpersonateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[ImpersonationResult[B]] = {
     val requestContext = blockContext.requestContext
     impersonation match {
-      case Enabled(_) =>
+      case Enabled(settings) =>
         requestContext.impersonateAs match {
           case Some(theImpersonatedUserId) =>
             implicit val userIdEq: Eq[User.Id] = caseMappingEquality.toOrder
@@ -71,7 +72,7 @@ trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonati
               for {
                 impersonatorDef <- findImpersonatorWithProperRights[B](theImpersonatedUserId, blockContext.requestContext)
                 loggedImpersonator <- authenticateImpersonator(impersonatorDef, blockContext)
-                _ <- checkIfTheImpersonatedUserExist[B](theImpersonatedUserId)
+                _ <- checkIfTheImpersonatedUserExist[B](theImpersonatedUserId, settings.mocksProvider)
               } yield {
                 blockContext.withUserMetadata(_.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, loggedImpersonator.id)))
               }
@@ -121,10 +122,11 @@ trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonati
       }
   }
 
-  private def checkIfTheImpersonatedUserExist[B <: BlockContext](theImpersonatedUserId: User.Id)
+  private def checkIfTheImpersonatedUserExist[B <: BlockContext](theImpersonatedUserId: User.Id,
+                                                                 mocksProvider: MocksProvider)
                                                                 (implicit requestId: RequestId,
                                                                  eq: Eq[User.Id]) = EitherT {
-    exists(theImpersonatedUserId)
+    exists(theImpersonatedUserId, mocksProvider)
       .map {
         case Exists => Right(())
         case NotExist => Left(Rejected[B]())
@@ -141,7 +143,7 @@ trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonati
       }
   }
 
-  protected[rules] def exists(user: User.Id)
+  protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)
                              (implicit requestId: RequestId,
                               eq: Eq[User.Id]): Task[UserExistence]
 

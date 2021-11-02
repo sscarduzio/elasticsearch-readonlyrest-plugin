@@ -24,8 +24,11 @@ import io.circe.refined._
 import io.circe.{Decoder, DecodingFailure, KeyDecoder, ParsingFailure}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MapsBasedMocksProvider, MutableMocksProviderWithCachePerRequest}
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
@@ -117,10 +120,11 @@ object AuthMockApi {
   final case class Failure(message: String) extends AuthMockResponse
 
   private object coders {
-    val mocksDecoder: Decoder[MapsBasedMocksProvider] = Decoder.forProduct1("ldaps")(ldaps =>
-      MapsBasedMocksProvider(ldaps)
+    val mocksDecoder: Decoder[MapsBasedMocksProvider] = Decoder.forProduct3("ldaps", "authn_services", "authz_services")(
+      (ldaps, authnServices, authzServices) => MapsBasedMocksProvider(ldaps, authnServices, authzServices)
     )
 
+    // ldaps
     private implicit lazy val ldapServiceIdDecoder: KeyDecoder[LdapService.Name] =
       KeyDecoder[NonEmptyString].map(LdapService.Name.apply)
 
@@ -130,11 +134,33 @@ object AuthMockApi {
     private implicit lazy val ldapUserMockDecoder: Decoder[LdapUserMock] =
       Decoder.forProduct2("name", "groups")(LdapUserMock.apply)
 
+    // authn services
+    private implicit lazy val authnServiceIdDecoder: KeyDecoder[ExternalAuthenticationService.Name] =
+      KeyDecoder[String].map(ExternalAuthenticationService.Name.apply)
+
+    private implicit lazy val externalAuthenticationServiceMockDecoder: Decoder[ExternalAuthenticationServiceMock] =
+      Decoder.forProduct1("users")(ExternalAuthenticationServiceMock.apply)
+
+    private implicit lazy val externalAuthenticationUserMockDecoder: Decoder[ExternalAuthenticationUserMock] =
+      Decoder.forProduct1("name")(ExternalAuthenticationUserMock.apply)
+
+    // authz services
+    private implicit lazy val authzServiceIdDecoder: KeyDecoder[ExternalAuthorizationService.Name] =
+      KeyDecoder[String].map(ExternalAuthorizationService.Name.apply)
+
+    private implicit lazy val externalAuthorizationServiceMockDecoder: Decoder[ExternalAuthorizationServiceMock] =
+      Decoder.forProduct1("users")(ExternalAuthorizationServiceMock.apply)
+
+    private implicit lazy val externalAuthorizationServiceUserMockDecoder: Decoder[ExternalAuthorizationServiceUserMock] =
+      Decoder.forProduct2("name", "groups")(ExternalAuthorizationServiceUserMock.apply)
+
+    // commons
     private implicit lazy val userIdDecoder: Decoder[User.Id] =
       Decoder[NonEmptyString].map(User.Id.apply)
 
     private implicit lazy val groupDecoder: Decoder[Group] =
       Decoder[NonEmptyString].map(Group.apply)
+
   }
 
   object defaults {

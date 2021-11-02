@@ -21,6 +21,7 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
@@ -43,7 +44,7 @@ final class AuthKeyRule(override val settings: BasicAuthenticationRule.Settings[
     configuredCredentials === credentials
   }
 
-  override def exists(user: User.Id)
+  override def exists(user: User.Id, mocksProvider: MocksProvider)
                      (implicit requestId: RequestId,
                       eq: Eq[User.Id]): Task[UserExistence] = Task.now {
     if (user === settings.credentials.user) UserExistence.Exists

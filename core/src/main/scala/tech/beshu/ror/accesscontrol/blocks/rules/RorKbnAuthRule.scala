@@ -58,19 +58,20 @@ final class RorKbnAuthRule(val settings: Settings,
     case Ec(pubKey) => Jwts.parserBuilder().setSigningKey(pubKey).build()
   }
 
-  override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-    val authHeaderName = Header.Name.authorization
-    blockContext.requestContext.bearerToken.map(h => JwtToken(h.value)) match {
-      case None =>
-        logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
-        Rejected()
-      case Some(token) =>
-        process(token, blockContext)
-    }
-  }
+  override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+    Task.now(RuleResult.Fulfilled(blockContext))
 
   override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-    Task.now(RuleResult.Fulfilled(blockContext))
+    Task {
+      val authHeaderName = Header.Name.authorization
+      blockContext.requestContext.bearerToken.map(h => JwtToken(h.value)) match {
+        case None =>
+          logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
+          Rejected()
+        case Some(token) =>
+          process(token, blockContext)
+      }
+    }
 
   private def process[B <: BlockContext : BlockContextUpdater](token: JwtToken, blockContext: B): RuleResult[B] = {
     jwtTokenData(token) match {

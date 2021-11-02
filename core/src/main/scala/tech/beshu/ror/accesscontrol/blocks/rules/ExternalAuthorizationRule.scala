@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
+import cats.implicits._
 import cats.Eq
 import monix.eval.Task
 import tech.beshu.ror.RequestId
@@ -55,7 +56,24 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
     settings.service.grantsFor(user)
 
   override protected def mockedGroupsOf(user: User.Id, mocksProvider: MocksProvider)
-                                       (implicit requestId: RequestId, eq: Eq[User.Id]): Groups = ???
+                                       (implicit requestId: RequestId, eq: Eq[User.Id]): Groups = {
+    mocksProvider
+      .externalAuthorizationServiceWith(settings.service.id)
+      .map { mock =>
+        Groups.Present(UniqueList.of(
+          mock
+            .users
+            .filter(_.id === user)
+            .flatMap {
+              _.groups
+            }
+            .toSeq: _*
+        ))
+      }
+      .getOrElse {
+        Groups.CannotCheck
+      }
+  }
 }
 
 object ExternalAuthorizationRule {

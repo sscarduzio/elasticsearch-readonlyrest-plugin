@@ -16,10 +16,12 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
+import cats.implicits._
 import cats.Eq
 import monix.eval.Task
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
@@ -40,8 +42,19 @@ final class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.
   override protected def authenticateUsing(credentials: Credentials): Task[Boolean] =
     settings.service.authenticate(credentials)
 
-  override protected[rules] def exists(user: User.Id)
-                                      (implicit requestId: RequestId, eq: Eq[User.Id]): Task[UserExistence] = ???
+  override protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)
+                                      (implicit requestId: RequestId, eq: Eq[User.Id]): Task[UserExistence] = Task.delay {
+    mocksProvider
+      .externalAuthenticationServiceWith(settings.service.id)
+      .map { mock =>
+        val ldapUserExists = mock.users.exists(_.id === user)
+        if (ldapUserExists) UserExistence.Exists
+        else UserExistence.NotExist
+      }
+      .getOrElse {
+        UserExistence.CannotCheck
+      }
+  }
 }
 
 object ExternalAuthenticationRule {
