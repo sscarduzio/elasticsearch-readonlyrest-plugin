@@ -81,8 +81,8 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
                   impersonatedUsers = NonEmptyList.of(User.Id("user1"))
                 )),
-                mocksProvider = mocksProviderFrom(Map(
-                  LdapService.Name("ldap1") -> Set((User.Id("user1"), Set(Group("g1"))))
+                mocksProvider = mocksProviderForLdapFrom(Map(
+                  LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(Group("g1")))
                 ))
               )),
               UserIdEq.caseSensitive
@@ -157,8 +157,8 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("different_password")),
                   impersonatedUsers = NonEmptyList.of(User.Id("user1"))
                 )),
-                mocksProvider = mocksProviderFrom(Map(
-                  LdapService.Name("ldap1") -> Set((User.Id("user1"), Set(Group("g1"))))
+                mocksProvider = mocksProviderForLdapFrom(Map(
+                  LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(Group("g1")))
                 ))
               )),
               UserIdEq.caseSensitive
@@ -181,8 +181,8 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
                   impersonatedUsers = NonEmptyList.of(User.Id("user2"))
                 )),
-                mocksProvider = mocksProviderFrom(Map(
-                  LdapService.Name("ldap1") -> Set((User.Id("user1"), Set(Group("g1"))))
+                mocksProvider = mocksProviderForLdapFrom(Map(
+                  LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(Group("g1")))
                 ))
               )),
               UserIdEq.caseSensitive
@@ -206,8 +206,8 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
                   impersonatedUsers = NonEmptyList.of(User.Id("user1"))
                 )),
-                mocksProvider = mocksProviderFrom(Map(
-                  LdapService.Name("ldap1") -> Set((User.Id("user2"), Set(Group("g1"))))
+                mocksProvider = mocksProviderForLdapFrom(Map(
+                  LdapService.Name("ldap1") -> Map(User.Id("user2") -> Set(Group("g1")))
                 ))
               )),
               UserIdEq.caseSensitive

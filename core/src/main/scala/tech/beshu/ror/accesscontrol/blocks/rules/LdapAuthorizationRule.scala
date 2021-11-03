@@ -56,15 +56,11 @@ class LdapAuthorizationRule(val settings: Settings,
     mocksProvider
       .ldapServiceWith(settings.ldap.id)
       .map { mock =>
-        Groups.Present(UniqueList.of(
-          mock
-            .users
-            .filter(_.id === user)
-            .flatMap {
-              _.groups
-            }
-            .toSeq: _*
-        ))
+        mock
+          .users
+          .find(_.id === user)
+          .map(m => Groups.Present(UniqueList.of(m.groups.toSeq: _*)))
+          .getOrElse(Groups.Present(UniqueList.empty))
       }
       .getOrElse {
         Groups.CannotCheck

@@ -16,44 +16,41 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import cats.data.NonEmptyList
 import eu.timepit.refined.auto._
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, GeneralNonIndexRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
-import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause.{ImpersonationNotAllowed, ImpersonationNotSupported}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{Impersonation, ImpersonationSettings}
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
-import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
+import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, impersonationHeader, impersonatorDefFrom, mocksProviderForExternalAuthnServiceFrom}
 import tech.beshu.ror.utils.UserIdEq
 
 class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
-  // todo: impersonation tests
   "An ExternalAuthenticationRule" should {
     "match" when {
       "external authentication service returns true" in {
-        val baHeader = basicAuthHeader("user:pass")
-        val externalAuthenticationService = mock[ExternalAuthenticationService]
-        (externalAuthenticationService.authenticate _)
-          .expects(where { credentials: Credentials =>
-            credentials.user === User.Id("user") && credentials.secret == PlainTextSecret("pass")
-          })
-          .returning(Task.now(true))
+        val externalAuthenticationService = mockExternalAuthService(
+          name = "service1",
+          credentials = Credentials(User.Id("user"), PlainTextSecret("pass"))
+        )
 
-        val requestContext = mock[RequestContext]
-        (requestContext.id _).expects().returning(RequestContext.Id("1")).anyNumberOfTimes()
-        (requestContext.headers _).expects().returning(Set(baHeader)).anyNumberOfTimes()
-
+        val requestContext = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("user:pass")))
         val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
         val rule = new ExternalAuthenticationRule(
@@ -70,21 +67,55 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
           )
         ))
       }
+      "user is being impersonated" when {
+        "impersonation is enabled" when {
+          "mocks provider has a given user for the given external service" in {
+            val externalAuthenticationService = mockExternalAuthService(
+              name = "service1",
+              credentials = Credentials(User.Id("user"), PlainTextSecret("pass"))
+            )
+
+            val requestContext = MockRequestContext.indices.copy(
+              headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("user1"))
+            )
+
+            val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+
+            val rule = new ExternalAuthenticationRule(
+              Settings(externalAuthenticationService),
+              Impersonation.Enabled(ImpersonationSettings(
+                impersonators = List(impersonatorDefFrom(
+                  userIdPattern = "*",
+                  impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
+                  impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+                )),
+                mocksProvider = mocksProviderForExternalAuthnServiceFrom(Map(
+                  ExternalAuthenticationService.Name("service1") -> Set(User.Id("user1"))
+                ))
+              )),
+              UserIdEq.caseSensitive
+            )
+            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
+              GeneralNonIndexRequestBlockContext(
+                requestContext,
+                UserMetadata.from(requestContext).withLoggedUser(ImpersonatedUser(Id("user1"), Id("admin"))),
+                Set.empty,
+                List.empty
+              )
+            ))
+          }
+        }
+      }
     }
     "not match" when {
       "external authentication service returns false" in {
-        val baHeader = basicAuthHeader("user:pass")
-        val externalAuthenticationService = mock[ExternalAuthenticationService]
-        (externalAuthenticationService.authenticate _)
-          .expects(where { credentials: Credentials =>
-            credentials.user === User.Id("user") && credentials.secret == PlainTextSecret("pass")
-          })
-          .returning(Task.now(false))
-
-        val requestContext = mock[RequestContext]
-        (requestContext.id _).expects().returning(RequestContext.Id("1")).anyNumberOfTimes()
-        (requestContext.headers _).expects().returning(Set(baHeader)).anyNumberOfTimes()
-
+        val externalAuthenticationService = mockExternalAuthService(
+          name = "service1",
+          credentials = Credentials(User.Id("user"), PlainTextSecret("pass"))
+        )
+        val requestContext = MockRequestContext.indices.copy(
+          headers = Set(basicAuthHeader("user:wrong_pass"))
+        )
         val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
         val rule = new ExternalAuthenticationRule(
@@ -94,6 +125,138 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
         )
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
+      "user is being impersonated" when {
+        "impersonation is enabled" when {
+          "admin cannot be authenticated" in {
+            val requestContext = MockRequestContext.indices.copy(
+              headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("user1"))
+            )
+            val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+
+            val rule = new ExternalAuthenticationRule(
+              Settings(mock[ExternalAuthenticationService]),
+              Impersonation.Enabled(ImpersonationSettings(
+                impersonators = List(impersonatorDefFrom(
+                  userIdPattern = "*",
+                  impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("different_password")),
+                  impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+                )),
+                mocksProvider = mocksProviderForExternalAuthnServiceFrom(Map(
+                  ExternalAuthenticationService.Name("service1") -> Set(User.Id("user1"))
+                ))
+              )),
+              UserIdEq.caseSensitive
+            )
+
+            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected(ImpersonationNotAllowed))
+          }
+          "admin cannot impersonate the given user" in {
+            val requestContext = MockRequestContext.indices.copy(
+              headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("user1"))
+            )
+            val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+
+            val rule = new ExternalAuthenticationRule(
+              Settings(mock[ExternalAuthenticationService]),
+              Impersonation.Enabled(ImpersonationSettings(
+                impersonators = List(impersonatorDefFrom(
+                  userIdPattern = "*",
+                  impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
+                  impersonatedUsers = NonEmptyList.of(User.Id("user2"))
+                )),
+                mocksProvider = mocksProviderForExternalAuthnServiceFrom(Map(
+                  ExternalAuthenticationService.Name("service1") -> Set(User.Id("user1"))
+                ))
+              )),
+              UserIdEq.caseSensitive
+            )
+
+            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected(ImpersonationNotAllowed))
+          }
+          "mocks provider doesn't have the given user" in {
+            val externalAuthenticationService = mockExternalAuthService(
+              name = "service1",
+              credentials = Credentials(User.Id("user"), PlainTextSecret("pass"))
+            )
+
+            val requestContext = MockRequestContext.indices.copy(
+              headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("user1"))
+            )
+            val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+
+            val rule = new ExternalAuthenticationRule(
+              Settings(externalAuthenticationService),
+              Impersonation.Enabled(ImpersonationSettings(
+                impersonators = List(impersonatorDefFrom(
+                  userIdPattern = "*",
+                  impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
+                  impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+                )),
+                mocksProvider = mocksProviderForExternalAuthnServiceFrom(Map(
+                  ExternalAuthenticationService.Name("service1") -> Set(User.Id("user2"))
+                ))
+              )),
+              UserIdEq.caseSensitive
+            )
+
+            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
+          }
+          "mocks provider is unavailable" in {
+            val externalAuthenticationService = mockExternalAuthService(
+              name = "service1",
+              credentials = Credentials(User.Id("user"), PlainTextSecret("pass"))
+            )
+
+            val requestContext = MockRequestContext.indices.copy(
+              headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("user1"))
+            )
+            val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+
+            val rule = new ExternalAuthenticationRule(
+              Settings(externalAuthenticationService),
+              Impersonation.Enabled(ImpersonationSettings(
+                impersonators = List(impersonatorDefFrom(
+                  userIdPattern = "*",
+                  impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
+                  impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+                )),
+                mocksProvider = NoOpMocksProvider
+              )),
+              UserIdEq.caseSensitive
+            )
+
+            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected(ImpersonationNotSupported))
+          }
+        }
+        "impersonation is disabled" when {
+          "admin is trying to impersonate user" in {
+            val externalAuthenticationService = mockExternalAuthService(
+              name = "service1",
+              credentials = Credentials(User.Id("user"), PlainTextSecret("pass"))
+            )
+
+            val requestContext = MockRequestContext.indices.copy(
+              headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("user1"))
+            )
+            val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+
+            val rule = new ExternalAuthenticationRule(
+              Settings(externalAuthenticationService),
+              Impersonation.Disabled,
+              UserIdEq.caseSensitive
+            )
+
+            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
+          }
+        }
+      }
+    }
+  }
+
+  private def mockExternalAuthService(name: NonEmptyString, credentials: Credentials) = {
+    new ExternalAuthenticationService {
+      override def id: ExternalAuthenticationService.Name = ExternalAuthenticationService.Name(name.value)
+      override def authenticate(aCredentials: Credentials): Task[Boolean] = Task.delay { credentials == aCredentials }
     }
   }
 

@@ -21,17 +21,30 @@ readonlyrest:
       indices: ["test2_index"]
       auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
 
-    - name: "test3"
+    - name: "test3 (1)"
       indices: ["test3_index"]
       ldap_auth:
         name: "ldap1"
         groups: ["group1", "group3"]
 
+    - name: "test3 (2)"
+      indices: ["test3_index"]
+      external_authentication: "ext1"
+
+    - name: "test3 (3)"
+      indices: ["test3_index"]
+      auth_key: gpa_user_1:test
+      groups_provider_authorization:
+        user_groups_provider: "grp1"
+        groups: ["group4"]
+
     - name: "test4"
       indices: ["test4_index"]
       groups: ["local_group1", "local_group2"]
 
+
   users:
+
     - username: "*"
       groups: ["local_group1"]
       ldap_auth:
@@ -43,6 +56,7 @@ readonlyrest:
       auth_key: dev2:test
 
   ldaps:
+
     - name: ldap1
       host: "{LDAP1_HOST}"
       port: {LDAP1_PORT}                                        # default 389
@@ -75,10 +89,38 @@ readonlyrest:
       request_timeout: 10s                                      # default 1
       cache_ttl: 60s                                            # default 0 - cache disabled
 
+  external_authentication_service_configs:
+
+    - name: "ext1"
+      authentication_endpoint: "http://{EXT1_HOST}:{EXT1_PORT}/auth"
+      success_status_code: 200
+      cache_ttl: 60s
+
+    - name: "ext2"
+      authentication_endpoint: "http://{EXT1_HOST}:{EXT1_PORT}/auth"
+      success_status_code: 200
+      cache_ttl: 60s
+
+  user_groups_providers:
+
+    - name: "grp1"
+      groups_endpoint: "http://{EXT1_HOST}:{EXT1_PORT}/auth"
+      auth_token_name: "user"
+      auth_token_passed_as: QUERY_PARAM
+      response_groups_json_path: "$..groups[?(@.name)].name"
+
+    - name: "grp2"
+      groups_endpoint: "http://{EXT1_HOST}:{EXT1_PORT}/auth"
+      auth_token_name: "user"
+      auth_token_passed_as: QUERY_PARAM
+      response_groups_json_path: "$..groups[?(@.name)].name"
+
   impersonation:
+
     - impersonator: admin1
       auth_key: admin1:pass
       users: ["*"]
+
     - impersonator: admin2
       auth_key: admin2:pass
       users: ["dev2"]

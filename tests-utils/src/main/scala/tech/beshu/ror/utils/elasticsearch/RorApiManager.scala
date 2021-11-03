@@ -17,6 +17,7 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
+import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
@@ -72,12 +73,12 @@ class RorApiManager(client: RestClient,
     call(createReloadRorConfigRequest(), new JsonResponse(_))
   }
 
-  def configureImpersonationMocks(payload: JSON): JsonResponse = {
-    call(createConfigureImpersonationMocksRequest(payload), new JsonResponse(_))
+  def configureImpersonationMocks(payload: JSON): RorApiResponse = {
+    call(createConfigureImpersonationMocksRequest(payload), new RorApiResponse(_))
   }
 
-  def invalidateImpersonationMocks(): JsonResponse = {
-    call(createInvalidateImpersonationMocksRequest(), new JsonResponse(_))
+  def invalidateImpersonationMocks(): RorApiResponse = {
+    call(createInvalidateImpersonationMocksRequest(), new RorApiResponse(_))
   }
 
   def insertInIndexConfigDirectlyToRorIndex(rorConfigIndex: String,
@@ -154,5 +155,15 @@ class RorApiManager(client: RestClient,
 
   private def createLoadRorCurrentConfigRequest(additionalParams: Map[String, String]) = {
     new HttpGet(client.from("/_readonlyrest/admin/config/load", additionalParams.asJava))
+  }
+
+  final class RorApiResponse(override val response: HttpResponse) extends JsonResponse(response) {
+
+    def forceOk(): this.type = {
+      force()
+      val status = responseJson("status").str
+      if (status != "ok") throw new IllegalStateException(s"Expected business status 'ok' but got '$status'}; Message: '${responseJson.obj.get("message").map(_.str).getOrElse("[none]")}'")
+      this
+    }
   }
 }

@@ -24,12 +24,12 @@ import io.circe.refined._
 import io.circe.{Decoder, DecodingFailure, KeyDecoder, ParsingFailure}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MapsBasedMocksProvider, MutableMocksProviderWithCachePerRequest}
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.boot.RorSchedulers
@@ -121,7 +121,15 @@ object AuthMockApi {
 
   private object coders {
     val mocksDecoder: Decoder[MapsBasedMocksProvider] = Decoder.forProduct3("ldaps", "authn_services", "authz_services")(
-      (ldaps, authnServices, authzServices) => MapsBasedMocksProvider(ldaps, authnServices, authzServices)
+      (
+        ldaps: Option[Map[LdapService.Name, LdapServiceMock]],
+        authnServices: Option[Map[ExternalAuthenticationService.Name, ExternalAuthenticationServiceMock]],
+        authzServices: Option[Map[ExternalAuthorizationService.Name, ExternalAuthorizationServiceMock]]
+      ) => MapsBasedMocksProvider(
+        ldaps.getOrElse(Map.empty),
+        authnServices.getOrElse(Map.empty),
+        authzServices.getOrElse(Map.empty)
+      )
     )
 
     // ldaps

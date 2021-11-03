@@ -17,6 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules
 
 import eu.timepit.refined.auto._
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -25,7 +26,7 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationService, LdapService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationService, LdapService, LdapUser}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule
@@ -54,9 +55,13 @@ class LdapAuthorizationRuleTests
   "An LdapAuthorizationRule" should {
     "match" when {
       "user has at least one LDAP group which is permitted" in {
+        val ldapService = mockLdapService(
+          name = "ldap1",
+          groups = Map(User.Id("user1") -> Set(groupFrom("g1"), groupFrom("g2")))
+        )
         assertMatchRule(
           settings = LdapAuthorizationRule.Settings(
-            ldap = mockLdapService(Id("user1"), Task.now(UniqueList.of(groupFrom("g1"), groupFrom("g2")))),
+            ldap = ldapService,
             permittedGroups = UniqueNonEmptyList.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1")),
             allLdapGroups = UniqueNonEmptyList.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1"))
           ),
@@ -73,16 +78,19 @@ class LdapAuthorizationRuleTests
       "user is being impersonated" when {
         "impersonation is enabled" when {
           "mocks provider has a given user with allowed groups" in {
+            val userGroupsInLdap1 = Map(User.Id("user1") -> Set(groupFrom("g1"), groupFrom("g2")))
+            val ldapService = mockLdapService(name = "ldap1", groups = userGroupsInLdap1)
+
             assertMatchRule(
               settings = LdapAuthorizationRule.Settings(
-                ldap = mockLdapService(LdapService.Name("ldap1")),
+                ldap = ldapService,
                 permittedGroups = UniqueNonEmptyList.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1")),
                 allLdapGroups = UniqueNonEmptyList.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1"))
               ),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List.empty, // not needed in this context
-                mocksProvider = mocksProviderFrom(Map(
-                  LdapService.Name("ldap1") -> Set((User.Id("user1"), Set(groupFrom("g1"), groupFrom("g2"))))
+                mocksProvider = mocksProviderForLdapFrom(Map(
+                  LdapService.Name("ldap1") -> userGroupsInLdap1
                 ))
               )),
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
@@ -112,9 +120,13 @@ class LdapAuthorizationRuleTests
         )
       }
       "user has no group which is permitted" in {
+        val ldapService = mockLdapService(
+          name = "ldap1",
+          groups = Map(User.Id("user1") -> Set(groupFrom("g5")))
+        )
         assertNotMatchRule(
           settings = LdapAuthorizationRule.Settings(
-            ldap = mockLdapService(Id("user1"), Task.now(UniqueList.of(groupFrom("g5")))),
+            ldap = ldapService,
             permittedGroups = UniqueNonEmptyList.of(groupFrom("g2"), groupFrom("g1")),
             allLdapGroups = UniqueNonEmptyList.of(groupFrom("g2"), groupFrom("g1"))
           ),
@@ -136,7 +148,7 @@ class LdapAuthorizationRuleTests
       "LDAP service fails" in {
         assertRuleThrown(
           settings = LdapAuthorizationRule.Settings(
-            ldap = mockLdapService(Id("user1"), Task.raiseError(TestException("LDAP failed"))),
+            ldap = mockFailedLdapService("service1", TestException("LDAP failed")),
             permittedGroups = UniqueNonEmptyList.of(groupFrom("g2"), groupFrom("g1")),
             allLdapGroups = UniqueNonEmptyList.of(groupFrom("g2"), groupFrom("g1"))
           ),
@@ -148,17 +160,21 @@ class LdapAuthorizationRuleTests
       "user is being impersonated" when {
         "impersonation is enabled" when {
           "mocks provider doesn't have a given user" in {
+            val ldapService = mockLdapService(
+              name = "ldap1",
+              groups = Map(User.Id("user1") -> Set(groupFrom("g5")))
+            )
             assertNotMatchRule(
               settings = LdapAuthorizationRule.Settings(
-                ldap = mockLdapService(LdapService.Name("ldap1")),
+                ldap = ldapService,
                 permittedGroups = UniqueNonEmptyList.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1")),
                 allLdapGroups = UniqueNonEmptyList.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1"))
               ),
 
               impersonation = Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List.empty, // not needed in this context
-                mocksProvider = mocksProviderFrom(Map(
-                  LdapService.Name("ldap1") -> Set((User.Id("user2"), Set(groupFrom("g1"), groupFrom("g2"))))
+                mocksProvider = mocksProviderForLdapFrom(Map(
+                  LdapService.Name("ldap1") -> Map(User.Id("user2") -> Set(groupFrom("g1"), groupFrom("g2")))
                 ))
               )),
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
@@ -166,17 +182,21 @@ class LdapAuthorizationRuleTests
             )
           }
           "mocks provider has a given user, but he doesn't have proper group" in {
+            val ldapService = mockLdapService(
+              name = "ldap1",
+              groups = Map(User.Id("user1") -> Set(groupFrom("g5")))
+            )
             assertNotMatchRule(
               settings = LdapAuthorizationRule.Settings(
-                ldap = mockLdapService(LdapService.Name("ldap1")),
+                ldap = ldapService,
                 permittedGroups = UniqueNonEmptyList.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1")),
                 allLdapGroups = UniqueNonEmptyList.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1"))
               ),
 
               impersonation = Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List.empty, // not needed in this context
-                mocksProvider = mocksProviderFrom(Map(
-                  LdapService.Name("ldap1") -> Set((User.Id("user1"), Set(groupFrom("g5"), groupFrom("g6"))))
+                mocksProvider = mocksProviderForLdapFrom(Map(
+                  LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(groupFrom("g5"), groupFrom("g6")))
                 ))
               )),
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
@@ -184,9 +204,13 @@ class LdapAuthorizationRuleTests
             )
           }
           "mocks provider is unavailable" in {
+            val ldapService = mockLdapService(
+              name = "ldap1",
+              groups = Map(User.Id("user1") -> Set(groupFrom("g5")))
+            )
             assertNotMatchRule(
               settings = LdapAuthorizationRule.Settings(
-                ldap = mockLdapService(LdapService.Name("ldap1")),
+                ldap = ldapService,
                 permittedGroups = UniqueNonEmptyList.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1")),
                 allLdapGroups = UniqueNonEmptyList.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1"))
               ),
@@ -266,24 +290,32 @@ class LdapAuthorizationRuleTests
     }
   }
 
-  private def mockLdapService(ldapId: LdapService#Id, user: User.Id, result: Task[UniqueList[Group]]) = {
-    val service = mock[LdapAuthorizationService]
-    (service.id _).expects().returning(ldapId)
-    (service.groupsOf _).expects(user).returning(result)
-    service
+  private def mockLdapService(name: NonEmptyString, groups: Map[User.Id, Set[Group]]) = {
+    new LdapAuthorizationService {
+      override def id: LdapService.Name = LdapService.Name(name)
+
+      override def groupsOf(id: User.Id): Task[UniqueList[Group]] = Task.delay {
+        groups.get(id) match {
+          case Some(g) => UniqueList.fromList(g.toList)
+          case None => UniqueList.empty
+        }
+      }
+
+      override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
+        Task.raiseError(new IllegalStateException("Should not be called"))
+    }
   }
 
-  private def mockLdapService(user: User.Id, result: Task[UniqueList[Group]]) = {
-    val service = mock[LdapAuthorizationService]
-    (service.groupsOf _).expects(user).returning(result)
-    service
-  }
+  private def mockFailedLdapService(name: NonEmptyString, failure: Throwable) = {
+    new LdapAuthorizationService {
+      override def id: LdapService.Name = LdapService.Name(name)
 
+      override def groupsOf(id: User.Id): Task[UniqueList[Group]] =
+        Task.raiseError(failure)
 
-  private def mockLdapService(ldapId: LdapService#Id) = {
-    val service = mock[LdapAuthorizationService]
-    (service.id _).expects().returning(ldapId)
-    service
+      override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
+        Task.raiseError(new IllegalStateException("Should not be called"))
+    }
   }
 
   private def defaultOutputBlockContextAssertion(user: User.Id,

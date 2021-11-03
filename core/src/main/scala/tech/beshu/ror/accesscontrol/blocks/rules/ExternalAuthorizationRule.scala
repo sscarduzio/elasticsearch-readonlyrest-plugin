@@ -53,22 +53,18 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
 
   override protected def userGroups[B <: BlockContext](blockContext: B,
                                                        user: LoggedUser): Task[UniqueList[Group]] =
-    settings.service.grantsFor(user)
+    settings.service.grantsFor(user.id)
 
   override protected def mockedGroupsOf(user: User.Id, mocksProvider: MocksProvider)
                                        (implicit requestId: RequestId, eq: Eq[User.Id]): Groups = {
     mocksProvider
       .externalAuthorizationServiceWith(settings.service.id)
       .map { mock =>
-        Groups.Present(UniqueList.of(
-          mock
-            .users
-            .filter(_.id === user)
-            .flatMap {
-              _.groups
-            }
-            .toSeq: _*
-        ))
+        mock
+          .users
+          .find(_.id === user)
+          .map(m => Groups.Present(UniqueList.of(m.groups.toSeq: _*)))
+          .getOrElse(Groups.Present(UniqueList.empty))
       }
       .getOrElse {
         Groups.CannotCheck

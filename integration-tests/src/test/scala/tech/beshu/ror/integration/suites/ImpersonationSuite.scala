@@ -20,7 +20,7 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.freespec.AnyFreeSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonLdapContainers}
-import tech.beshu.ror.utils.containers.dependencies.ldap
+import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, RorApiManager, SearchManager}
@@ -43,7 +43,9 @@ trait ImpersonationSuite
       name = "ROR1",
       dependentServicesContainers = List(
         ldap(name = "LDAP1", SingletonLdapContainers.ldap1),
-        ldap(name = "LDAP2", SingletonLdapContainers.ldap2)
+        ldap(name = "LDAP2", SingletonLdapContainers.ldap2),
+        wiremock(name = "EXT1", mappings = "/impersonation/wiremock_service1_ext_user_1.json", "/impersonation/wiremock_group_provider1_gpa_user_1.json"),
+        wiremock(name = "EXT1", mappings = "/impersonation/wiremock_service2_ext_user_2.json", "/impersonation/wiremock_group_provider2_gpa_user_2.json"),
       ),
       nodeDataInitializer = ImpersonationSuite.nodeDataInitializer(),
       xPackSupport = false,
@@ -53,7 +55,7 @@ trait ImpersonationSuite
   private lazy val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
 
   override protected def beforeEach(): Unit = {
-    rorApiManager.invalidateImpersonationMocks().force()
+    rorApiManager.invalidateImpersonationMocks().forceOk()
     super.beforeEach()
   }
 
@@ -115,7 +117,7 @@ trait ImpersonationSuite
                  |}
              """.stripMargin
             ))
-            .force()
+            .forceOk()
 
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
@@ -147,11 +149,155 @@ trait ImpersonationSuite
                  |}
              """.stripMargin
             ))
-            .force()
+            .forceOk()
 
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
             Map("impersonate_as" -> "ldap_user_1")
+          )
+
+          val result = searchManager.search("test3_index")
+
+          result.responseCode should be(200)
+        }
+      }
+    }
+    "'external_authentication' rule" - {
+      "is not supported" - {
+        "by default" in {
+          val searchManager = new SearchManager(
+            basicAuthClient("admin1", "pass"),
+            Map("impersonate_as" -> "ext_user_1")
+          )
+
+          val result = searchManager.search("test3_index")
+
+          result.responseCode should be(401)
+          result.responseJson should be(impersonationNotSupportedResponse)
+        }
+        "when external auth service used in rule is not mocked" in {
+          rorApiManager
+            .configureImpersonationMocks(ujson.read(
+              s"""
+                 |{
+                 |  "authn_services": {
+                 |    "ext2": {
+                 |      "users": [
+                 |        { "name": "ext_user_2" },
+                 |        { "name": "ext_user_2a" }
+                 |      ]
+                 |    }
+                 |  }
+                 |}
+             """.stripMargin
+            ))
+            .forceOk()
+
+          val searchManager = new SearchManager(
+            basicAuthClient("admin1", "pass"),
+            Map("impersonate_as" -> "ext_user_1")
+          )
+
+          val result = searchManager.search("test3_index")
+
+          result.responseCode should be(401)
+          result.responseJson should be(impersonationNotSupportedResponse)
+        }
+      }
+      "is supported" - {
+        "when external auth service used in rule is mocked" in {
+          rorApiManager
+            .configureImpersonationMocks(ujson.read(
+              s"""
+                 |{
+                 |  "authn_services": {
+                 |    "ext1": {
+                 |      "users": [
+                 |        { "name": "ext_user_1" },
+                 |        { "name": "ext_user_2" }
+                 |      ]
+                 |    }
+                 |  }
+                 |}
+             """.stripMargin
+            ))
+            .forceOk()
+
+          val searchManager = new SearchManager(
+            basicAuthClient("admin1", "pass"),
+            Map("impersonate_as" -> "ext_user_1")
+          )
+
+          val result = searchManager.search("test3_index")
+
+          result.responseCode should be(200)
+        }
+      }
+    }
+    "'external_authorization' rule" - {
+      "is not supported" - {
+        "by default" in {
+          val searchManager = new SearchManager(
+            basicAuthClient("admin1", "pass"),
+            Map("impersonate_as" -> "gpa_user_1")
+          )
+
+          val result = searchManager.search("test3_index")
+
+          result.responseCode should be(401)
+          result.responseJson should be(impersonationNotSupportedResponse)
+        }
+        "when external auth service used in rule is not mocked" in {
+          rorApiManager
+            .configureImpersonationMocks(ujson.read(
+              s"""
+                 |{
+                 |  "authz_services": {
+                 |    "grp2": {
+                 |      "users": [
+                 |        { "name": "gpa_user_1",  "groups": ["group4", "group5"]},
+                 |        { "name": "gpa_user_1a", "groups": ["group4a", "group5a"] }
+                 |      ]
+                 |    }
+                 |  }
+                 |}
+             """.stripMargin
+            ))
+            .forceOk()
+
+          val searchManager = new SearchManager(
+            basicAuthClient("admin1", "pass"),
+            Map("impersonate_as" -> "gpa_user_1")
+          )
+
+          val result = searchManager.search("test3_index")
+
+          result.responseCode should be(401)
+          result.responseJson should be(impersonationNotSupportedResponse)
+        }
+      }
+      "is supported" - {
+        "when external auth service used in rule is mocked" in {
+          rorApiManager
+            .configureImpersonationMocks(ujson.read(
+              s"""
+                 |{
+                 |  "authz_services": {
+                 |    "grp1": {
+                 |      "users": [
+                 |        { "name": "gpa_user_1",  "groups": ["group4", "group5"]},
+                 |        { "name": "gpa_user_1a", "groups": ["group4a", "group5a"] }
+                 |      ]
+                 |    }
+                 |  }
+                 |}
+             """.stripMargin
+            ))
+            .forceOk()
+
+          val searchManager = new SearchManager(
+            basicAuthClient("admin1", "pass"),
+            Map("impersonate_as" -> "gpa_user_1")
           )
 
           val result = searchManager.search("test3_index")
@@ -180,7 +326,7 @@ trait ImpersonationSuite
                  |}
              """.stripMargin
             ))
-            .force()
+            .forceOk()
 
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
@@ -222,7 +368,7 @@ trait ImpersonationSuite
                  |}
              """.stripMargin
             ))
-            .force()
+            .forceOk()
 
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
@@ -292,7 +438,7 @@ trait ImpersonationSuite
              |}
              """.stripMargin
         ))
-        .force()
+        .forceOk()
 
       val searchManager = new SearchManager(
         basicAuthClient("admin1", "pass"),
@@ -303,7 +449,7 @@ trait ImpersonationSuite
 
       result1.responseCode should be(200)
 
-      rorApiManager.invalidateImpersonationMocks().force()
+      rorApiManager.invalidateImpersonationMocks().forceOk()
 
       val result2 = searchManager.search("test3_index")
 
