@@ -19,7 +19,6 @@ package tech.beshu.ror.es
 import java.nio.file.Path
 import java.util
 import java.util.function.{Supplier, UnaryOperator}
-
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
 import org.elasticsearch.{ElasticsearchException, Version}
@@ -51,7 +50,7 @@ import org.elasticsearch.plugins._
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.Transport
+import org.elasticsearch.transport.{Transport, TransportInterceptor}
 import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
@@ -233,6 +232,10 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         ThreadRepo.setRestChannel(rorRestChannel)
         restHandler.handleRequest(request, rorRestChannel, client)
       }
+  }
+
+  override def getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry, threadContext: ThreadContext): util.List[TransportInterceptor] = {
+    List[TransportInterceptor](new RorTransportInterceptor(threadContext, s.get("node.name"))).asJava
   }
 
   override def onNodeStarted(): Unit = {

@@ -50,7 +50,7 @@ trait EnabledAuditingToolsSuite
     )
   )
 
-  private lazy val adminAuditIndexManager = new AuditIndexManager(adminClient, esVersionUsed, "audit_index")
+  private lazy val adminAuditIndexManager = new AuditIndexManager(rorAdminClient, esVersionUsed, "audit_index")
 
   override def beforeEach(): Unit = {
     super.beforeEach()
@@ -243,7 +243,7 @@ trait EnabledAuditingToolsSuite
     }
     "not be audited" when {
       "admin rule is matched" in {
-        val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
+        val rorApiManager = new RorApiManager(rorAdminClient, esVersionUsed)
 
         val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }"""))
         response.responseCode shouldBe 204

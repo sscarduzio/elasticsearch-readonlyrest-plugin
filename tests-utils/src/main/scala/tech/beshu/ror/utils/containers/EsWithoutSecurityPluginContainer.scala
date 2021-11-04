@@ -22,11 +22,11 @@ import org.testcontainers.images.builder.ImageFromDockerfile
 
 import scala.language.postfixOps
 
-class EsWithoutRorPluginContainer(name: String,
-                                  esVersion: String,
-                                  startedClusterDependencies: StartedClusterDependencies,
-                                  esClusterSettings: EsClusterSettings,
-                                  image: ImageFromDockerfile)
+class EsWithoutSecurityPluginContainer(name: String,
+                                       esVersion: String,
+                                       startedClusterDependencies: StartedClusterDependencies,
+                                       esClusterSettings: EsClusterSettings,
+                                       image: ImageFromDockerfile)
   extends EsContainer(name, esVersion, startedClusterDependencies, esClusterSettings, image)
     with StrictLogging {
   logger.info(s"[$name] Creating ES without ROR plugin installed container ...")
@@ -34,7 +34,7 @@ class EsWithoutRorPluginContainer(name: String,
   override val sslEnabled: Boolean = false
 }
 
-object EsWithoutRorPluginContainer extends StrictLogging {
+object EsWithoutSecurityPluginContainer extends StrictLogging {
 
   final case class Config(clusterName: String,
                           nodeName: String,
@@ -42,21 +42,23 @@ object EsWithoutRorPluginContainer extends StrictLogging {
                           envs: Map[String, String],
                           esVersion: String,
                           xPackSupport: Boolean,
+                          useXpackSecurityInsteadOfRor: Boolean,
                           configHotReloadingEnabled: Boolean,
                           customRorIndexName: Option[String],
                           internodeSslEnabled: Boolean,
-                          externalSslEnabled: Boolean) extends EsContainer.Config
+                          externalSslEnabled: Boolean,
+                          forceNonOssImage: Boolean) extends EsContainer.Config
 
-  def create(config: EsWithoutRorPluginContainer.Config,
+  def create(config: EsWithoutSecurityPluginContainer.Config,
              initializer: ElasticsearchNodeDataInitializer,
              startedClusterDependencies: StartedClusterDependencies,
              esClusterSettings: EsClusterSettings): EsContainer = {
-    val esContainer = new EsWithoutRorPluginContainer(
+    val esContainer = new EsWithoutSecurityPluginContainer(
       config.nodeName,
       config.esVersion,
       startedClusterDependencies,
       esClusterSettings,
-      ESWithoutRorPluginImage.create(config)
+      ESWithoutSecurityPluginImage.create(config)
     )
     EsContainer.init(esContainer, config, initializer, logger)
   }

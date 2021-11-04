@@ -82,6 +82,11 @@ sealed trait ESVersionSupport {
           throw new IllegalStateException("None of ES module was excluded")
       }
     }
+
+  }
+
+  def executedOn(regex: Regex, regexArgs: Regex*) = {
+    (regex :: regexArgs.toList).exists(_.findFirstIn(RorPluginGradleProject.fromSystemProperty.moduleName).isDefined)
   }
 
   private final class ExcludeESModule(value: String) extends Tag(s"tech.beshu.tags.ExcludeESModule.$value")

@@ -38,7 +38,7 @@ trait CatApiSuite
 
   "A _cat/state" should {
     "work as expected" in {
-      lazy val adminClusterStateManager = new CatManager(adminClient, esVersion = esVersionUsed)
+      lazy val adminClusterStateManager = new CatManager(rorAdminClient, esVersion = esVersionUsed)
       val response = adminClusterStateManager.healthCheck()
 
       response.responseCode should be(200)
@@ -131,7 +131,7 @@ trait CatApiSuite
 
   def indexTemplateApiTests(name: String)
                            (templateManagerCreator: RestClient => BaseTemplateManager): Unit = {
-    val adminTemplateManager = templateManagerCreator(adminClient)
+    val adminTemplateManager = templateManagerCreator(rorAdminClient)
 
     s"$name" when {
       "user is dev1" should {

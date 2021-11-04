@@ -49,7 +49,7 @@ trait QueryAuditLogSerializerSuite
     )
   )
 
-  private lazy val auditIndexManager = new AuditIndexManager(adminClient, esVersionUsed, "audit_index")
+  private lazy val auditIndexManager = new AuditIndexManager(rorAdminClient, esVersionUsed, "audit_index")
 
   override def beforeEach(): Unit = {
     super.beforeEach()

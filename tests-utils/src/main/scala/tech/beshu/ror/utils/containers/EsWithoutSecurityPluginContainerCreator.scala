@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import tech.beshu.ror.utils.containers.EsClusterSettings.EsVersion
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
-trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
+trait EsWithoutSecurityPluginContainerCreator extends EsContainerCreator {
 
   override def create(name: String,
                       nodeNames: NonEmptyList[String],
@@ -32,19 +32,21 @@ trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
     }
     val esVersion = project.getESVersion
 
-    val containerConfig = EsWithoutRorPluginContainer.Config(
+    val containerConfig = EsWithoutSecurityPluginContainer.Config(
       clusterName = clusterSettings.name,
       nodeName = name,
       nodes = nodeNames,
       envs = clusterSettings.rorContainerSpecification.environmentVariables,
       esVersion = esVersion,
       xPackSupport = clusterSettings.xPackSupport,
+      useXpackSecurityInsteadOfRor = clusterSettings.useXpackSecurityInsteadOfRor,
       customRorIndexName = clusterSettings.customRorIndexName,
       configHotReloadingEnabled = true,
       internodeSslEnabled = false,
-      externalSslEnabled = false)
+      externalSslEnabled = false,
+      forceNonOssImage = clusterSettings.forceNonOssImage)
 
-    EsWithoutRorPluginContainer.create(
+    EsWithoutSecurityPluginContainer.create(
       containerConfig,
       clusterSettings.nodeDataInitializer,
       startedClusterDependencies,

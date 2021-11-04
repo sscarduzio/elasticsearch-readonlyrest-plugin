@@ -24,12 +24,12 @@ import org.testcontainers.images.builder.ImageFromDockerfile
 
 import scala.language.postfixOps
 
-class EsWithRorPluginContainer private(name: String,
-                                       esVersion: String,
-                                       startedClusterDependencies: StartedClusterDependencies,
-                                       esClusterSettings: EsClusterSettings,
-                                       image: ImageFromDockerfile,
-                                       externalSslEnabled: Boolean)
+class EsWithSecurityPluginContainer private(name: String,
+                                            esVersion: String,
+                                            startedClusterDependencies: StartedClusterDependencies,
+                                            esClusterSettings: EsClusterSettings,
+                                            image: ImageFromDockerfile,
+                                            externalSslEnabled: Boolean)
   extends EsContainer(name, esVersion, startedClusterDependencies, esClusterSettings, image)
     with StrictLogging {
 
@@ -38,7 +38,7 @@ class EsWithRorPluginContainer private(name: String,
   override val sslEnabled: Boolean = externalSslEnabled
 }
 
-object EsWithRorPluginContainer extends StrictLogging {
+object EsWithSecurityPluginContainer extends StrictLogging {
 
   final case class Config(clusterName: String,
                           nodeName: String,
@@ -46,23 +46,25 @@ object EsWithRorPluginContainer extends StrictLogging {
                           envs: Map[String, String],
                           esVersion: String,
                           xPackSupport: Boolean,
+                          useXpackSecurityInsteadOfRor: Boolean,
                           rorPluginFile: File,
                           rorConfigFile: File,
                           configHotReloadingEnabled: Boolean,
                           customRorIndexName: Option[String],
                           internodeSslEnabled: Boolean,
-                          externalSslEnabled: Boolean) extends EsContainer.Config
+                          externalSslEnabled: Boolean,
+                          forceNonOssImage: Boolean) extends EsContainer.Config
 
-  def create(config: EsWithRorPluginContainer.Config,
+  def create(config: EsWithSecurityPluginContainer.Config,
              initializer: ElasticsearchNodeDataInitializer,
              startedClusterDependencies: StartedClusterDependencies,
              esClusterSettings: EsClusterSettings): EsContainer = {
-    val rorContainer = new EsWithRorPluginContainer(
+    val rorContainer = new EsWithSecurityPluginContainer(
       config.nodeName,
       config.esVersion,
       startedClusterDependencies,
       esClusterSettings,
-      ESWithRorPluginImage.create(config),
+      ESWithSecurityPluginImage.create(config),
       config.externalSslEnabled
     )
     EsContainer.init(rorContainer, config, initializer, logger)

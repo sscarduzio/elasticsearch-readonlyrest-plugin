@@ -33,11 +33,11 @@ trait BaseTemplatesSuite
     with LazyLogging {
   this: Suite with EsContainerCreator with ESVersionSupport =>
 
-  private lazy val adminLegacyTemplateManager = new LegacyTemplateManager(adminClient, esVersionUsed)
-  private lazy val adminIndexTemplateManager = new IndexTemplateManager(adminClient, esVersionUsed)
-  private lazy val adminComponentTemplateManager = new ComponentTemplateManager(adminClient, esVersionUsed)
-  private lazy val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
-  protected lazy val adminDocumentManager = new DocumentManager(adminClient, esVersionUsed)
+  private lazy val adminLegacyTemplateManager = new LegacyTemplateManager(rorAdminClient, esVersionUsed)
+  private lazy val adminIndexTemplateManager = new IndexTemplateManager(rorAdminClient, esVersionUsed)
+  private lazy val adminComponentTemplateManager = new ComponentTemplateManager(rorAdminClient, esVersionUsed)
+  private lazy val adminIndexManager = new IndexManager(rorAdminClient, esVersionUsed)
+  protected lazy val adminDocumentManager = new DocumentManager(rorAdminClient, esVersionUsed)
 
   private var originLegacyTemplateNames: List[String] = List.empty
   private var originIndexTemplateNames: List[String] = List.empty

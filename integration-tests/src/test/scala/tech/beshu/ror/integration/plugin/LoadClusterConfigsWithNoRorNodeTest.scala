@@ -68,7 +68,7 @@ final class LoadClusterConfigsWithNoRorNodeTest
     )(rorConfigFileName)
   )
 
-  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.adminClient, esVersionUsed)
+  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.rorAdminClient, esVersionUsed)
 
   "return index config, and a failure" in {
     val result = ror1WithIndexConfigAdminActionManager.loadRorCurrentConfig()
