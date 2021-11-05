@@ -67,7 +67,6 @@ trait BaseAuthorizationRule extends AuthorizationRule with SimpleAuthorizationIm
     }
   }
 
-  // todo: shouldn't it be moved to SimpleAuthorizationImpersonationSupport?
   private def authorizeImpersonatedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                  user: LoggedUser.ImpersonatedUser,
                                                                                  mocksProvider: MocksProvider): Task[RuleResult[B]] = {

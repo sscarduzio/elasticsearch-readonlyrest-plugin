@@ -381,7 +381,6 @@ class ExternalAuthorizationRuleTests
       )(blockContext)
     }
 
-
   private def mockExternalAuthorizationService(name: NonEmptyString, groups: Map[User.Id, Set[Group]]) =
     new ExternalAuthorizationService {
       override def id: ExternalAuthorizationService.Name = ExternalAuthorizationService.Name(name.value)

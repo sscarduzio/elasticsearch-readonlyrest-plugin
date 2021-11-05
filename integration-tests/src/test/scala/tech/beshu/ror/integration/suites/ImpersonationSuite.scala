@@ -52,7 +52,7 @@ trait ImpersonationSuite
     )
   )
 
-  private lazy val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
+  private lazy val rorApiManager = new RorApiManager(rorAdminClient, esVersionUsed)
 
   override protected def beforeEach(): Unit = {
     rorApiManager.invalidateImpersonationMocks().forceOk()
@@ -84,6 +84,20 @@ trait ImpersonationSuite
         result.responseCode should be(401)
         result.responseJson should be(impersonationNotSupportedResponse)
         result.headers should contain(SimpleHeader("WWW-Authenticate", "Basic"))
+      }
+    }
+    "'proxy_auth' rule" - {
+      "is supported and" - {
+        "impersonator can be properly authenticated" in {
+          val searchManager = new SearchManager(
+            basicAuthClient("admin1", "pass"),
+            Map("impersonate_as" -> "proxy_user_1")
+          )
+
+          val result = searchManager.search("test2_index")
+
+          result.responseCode should be(200)
+        }
       }
     }
     "'ldap_auth' rule" - {

@@ -26,14 +26,14 @@ import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{RuleName, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseAuthenticationRule, Rule}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, User}
+import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -54,17 +54,19 @@ final class ProxyAuthRule(val settings: Settings,
     getLoggedUser(blockContext.requestContext) match {
       case None =>
         Rejected()
-      case Some(loggedUser) if shouldAuthenticate(loggedUser) =>
+      case Some(loggedUser) if shouldAuthenticate(loggedUser.id) =>
         Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(loggedUser)))
       case Some(_) =>
         Rejected()
     }
   }
 
-  override protected[rules] def exists(user: Id, mocksProvider: MocksProvider)
+  override protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)
                                       (implicit requestId: RequestId,
-                                       userIdEq: Eq[Id]): Task[UserExistence] =
-    Task.now(UserExistence.Exists)
+                                       userIdEq: Eq[Id]): Task[UserExistence] = Task.delay {
+    if(shouldAuthenticate(user)) UserExistence.Exists
+    else UserExistence.NotExist
+  }
 
   private def getLoggedUser(context: RequestContext) = {
     context
@@ -73,8 +75,8 @@ final class ProxyAuthRule(val settings: Settings,
       .map(h => DirectlyLoggedUser(Id(h.value)))
   }
 
-  private def shouldAuthenticate(user: LoggedUser) = {
-    userMatcher.`match`(user.id)
+  private def shouldAuthenticate(userId: User.Id) = {
+    userMatcher.`match`(userId)
   }
 }
 

@@ -17,9 +17,15 @@ readonlyrest:
       indices: ["test1_index"]
       auth_key: dev1:test
 
-    - name: "test2"
+    - name: "test2 (1)"
       indices: ["test2_index"]
       auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+
+    - name: "test2 (2)"
+      indices: ["test2_index"]
+      proxy_auth:
+        proxy_auth_config: "proxy1"
+        users: ["proxy_user_1"]
 
     - name: "test3 (1)"
       indices: ["test3_index"]
@@ -33,7 +39,7 @@ readonlyrest:
 
     - name: "test3 (3)"
       indices: ["test3_index"]
-      auth_key: gpa_user_1:test
+      auth_key: "gpa_user_1:test"
       groups_provider_authorization:
         user_groups_provider: "grp1"
         groups: ["group4"]
@@ -54,6 +60,11 @@ readonlyrest:
     - username: "*"
       groups: ["local_group2"]
       auth_key: dev2:test
+
+  proxy_auth_configs:
+
+    - name: "proxy1"
+      user_id_header: "X-Auth-Token"
 
   ldaps:
 

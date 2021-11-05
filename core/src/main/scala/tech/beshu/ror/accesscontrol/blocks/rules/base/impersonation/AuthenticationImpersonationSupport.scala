@@ -59,31 +59,36 @@ trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonati
       List.empty
   }
 
-  // todo: clean up
   protected def tryToImpersonateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[ImpersonationResult[B]] = {
     val requestContext = blockContext.requestContext
     impersonation match {
       case Enabled(settings) =>
         requestContext.impersonateAs match {
           case Some(theImpersonatedUserId) =>
-            implicit val userIdEq: Eq[User.Id] = caseMappingEquality.toOrder
-            toRuleResult[B] {
-              implicit lazy val requestId: RequestId = blockContext.requestContext.id.toRequestId
-              for {
-                impersonatorDef <- findImpersonatorWithProperRights[B](theImpersonatedUserId, blockContext.requestContext)
-                loggedImpersonator <- authenticateImpersonator(impersonatorDef, blockContext)
-                _ <- checkIfTheImpersonatedUserExist[B](theImpersonatedUserId, settings.mocksProvider)
-              } yield {
-                blockContext.withUserMetadata(_.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, loggedImpersonator.id)))
-              }
-            } map {
-              ImpersonationResult.Handled.apply
-            }
+            tryToImpersonateUser(theImpersonatedUserId, settings, blockContext)
           case None =>
             Task.now(ImpersonationResult.NotImpersonationRequest())
         }
       case Impersonation.Disabled =>
         Task.now(ImpersonationResult.NotImpersonationRequest())
+    }
+  }
+
+  private def tryToImpersonateUser[B <: BlockContext : BlockContextUpdater](theImpersonatedUserId: User.Id,
+                                                                            settings: ImpersonationSettings,
+                                                                            blockContext: B) = {
+    implicit val userIdEq: Eq[User.Id] = caseMappingEquality.toOrder
+    toRuleResult[B] {
+      implicit lazy val requestId: RequestId = blockContext.requestContext.id.toRequestId
+      for {
+        impersonatorDef <- findImpersonatorWithProperRights[B](theImpersonatedUserId, blockContext.requestContext)
+        loggedImpersonator <- authenticateImpersonator(impersonatorDef, blockContext)
+        _ <- checkIfTheImpersonatedUserExist[B](theImpersonatedUserId, settings.mocksProvider)
+      } yield {
+        blockContext.withUserMetadata(_.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, loggedImpersonator.id)))
+      }
+    } map {
+      ImpersonationResult.Handled.apply
     }
   }
 
