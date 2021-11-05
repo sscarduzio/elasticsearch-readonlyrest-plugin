@@ -120,17 +120,23 @@ object AuthMockApi {
   final case class Failure(message: String) extends AuthMockResponse
 
   private object coders {
-    val mocksDecoder: Decoder[MapsBasedMocksProvider] = Decoder.forProduct3("ldaps", "authn_services", "authz_services")(
-      (
-        ldaps: Option[Map[LdapService.Name, LdapServiceMock]],
-        authnServices: Option[Map[ExternalAuthenticationService.Name, ExternalAuthenticationServiceMock]],
-        authzServices: Option[Map[ExternalAuthorizationService.Name, ExternalAuthorizationServiceMock]]
-      ) => MapsBasedMocksProvider(
-        ldaps.getOrElse(Map.empty),
-        authnServices.getOrElse(Map.empty),
-        authzServices.getOrElse(Map.empty)
-      )
-    )
+    val mocksDecoder: Decoder[MapsBasedMocksProvider] = Decoder.instance { c =>
+      val maps = for {
+        ldaps <- c.downField("ldaps").as[Option[Map[LdapService.Name, LdapServiceMock]]]
+        authnServices <- c.downField("authn_services").as[Option[Map[ExternalAuthenticationService.Name, ExternalAuthenticationServiceMock]]]
+        authzServices <- c.downField("authz_services").as[Option[Map[ExternalAuthorizationService.Name, ExternalAuthorizationServiceMock]]]
+      } yield (ldaps, authnServices, authzServices)
+      maps.flatMap {
+        case (None, None, None) =>
+          Left(DecodingFailure("", List.empty))
+        case (ldaps, authnServices, authzServices) =>
+          Right(MapsBasedMocksProvider(
+            ldaps.getOrElse(Map.empty),
+            authnServices.getOrElse(Map.empty),
+            authzServices.getOrElse(Map.empty)
+          ))
+      }
+    }
 
     // ldaps
     private implicit lazy val ldapServiceIdDecoder: KeyDecoder[LdapService.Name] =
