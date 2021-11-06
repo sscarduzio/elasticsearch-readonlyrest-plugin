@@ -50,7 +50,6 @@ import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
 import tech.beshu.ror.proxy.es.EsRestServiceSimulator.ProcessingResult
 import tech.beshu.ror.proxy.es.clients.{EsRestNodeClient, RestHighLevelClientAdapter}
 import tech.beshu.ror.proxy.es.proxyaction.{ByProxyProcessedRequest, ByProxyProcessedResponseActionListener, GenericPathIndicesRequest, GenericRequest}
-import tech.beshu.ror.proxy.es.services.ProxyIndexJsonContentService
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.TaskOps._
 
@@ -285,10 +284,9 @@ object EsRestServiceSimulator {
              envVarsProvider: EnvVarsProvider,
              generator: UniqueIdentifierGenerator): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
     val simulatorEsSettingsFolder = esConfigFile.parent.path
-    val rrAdminActionHandler = new RRAdminActionHandler(ProxyIndexJsonContentService, simulatorEsSettingsFolder)
     val result = for {
       filter <- EitherT(ProxyIndexLevelActionFilter.create(simulatorEsSettingsFolder, esClient, threadPool))
-    } yield new EsRestServiceSimulator(esConfigFile, filter, esClient, rrAdminActionHandler, threadPool)
+    } yield new EsRestServiceSimulator(esConfigFile, filter, esClient, new RRAdminActionHandler(), threadPool)
     result.value
   }
 }

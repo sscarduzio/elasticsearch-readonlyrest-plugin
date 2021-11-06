@@ -19,7 +19,6 @@ package tech.beshu.ror.es.actions.rradmin
 import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
 import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.env.Environment
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.transport.TransportService
 
@@ -27,7 +26,6 @@ import scala.language.postfixOps
 
 class TransportRRAdminAction(transportService: TransportService,
                              actionFilters: ActionFilters,
-                             env: Environment,
                              ignore: Unit) // hack!
   extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
     RRAdminActionType.name, transportService, actionFilters, RRAdminActionType.exceptionReader
@@ -35,9 +33,8 @@ class TransportRRAdminAction(transportService: TransportService,
 
   @Inject
   def this(transportService: TransportService,
-           actionFilters: ActionFilters,
-           env: Environment) {
-    this(transportService, actionFilters, env, ())
+           actionFilters: ActionFilters) {
+    this(transportService, actionFilters, ())
   }
 
   private val handler = new RRAdminActionHandler()
