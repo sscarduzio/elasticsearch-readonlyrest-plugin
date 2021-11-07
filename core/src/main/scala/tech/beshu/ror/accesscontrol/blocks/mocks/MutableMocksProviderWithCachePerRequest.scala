@@ -44,6 +44,7 @@ class MutableMocksProviderWithCachePerRequest(initial: MocksProvider)
   private val cache: Cache[RequestId, MocksProvider] =
     Scaffeine()
       .expireAfterWrite(1 minute)
+      .executor(scheduler)
       .build()
 
   def update(mocksProvider: MocksProvider, ttl: Option[FiniteDuration]): Unit = {

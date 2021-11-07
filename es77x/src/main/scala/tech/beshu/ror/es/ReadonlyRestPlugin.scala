@@ -19,6 +19,7 @@ package tech.beshu.ror.es
 import java.nio.file.Path
 import java.util
 import java.util.function.{Supplier, UnaryOperator}
+
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
@@ -66,6 +67,8 @@ import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, TransportRRAuditEventAction}
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
+import tech.beshu.ror.es.actions.rrauthmock.rest.RestRRAuthMockAction
+import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionType, TransportRRAuthMockAction}
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 
@@ -196,6 +199,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   override def getActions: util.List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]] = {
     List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
       new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction]),
+      new ActionHandler(RRAuthMockActionType.instance, classOf[TransportRRAuthMockAction]),
       new ActionHandler(RRConfigActionType.instance, classOf[TransportRRConfigAction]),
       new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
       new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
@@ -211,6 +215,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
     List[RestHandler](
       new RestRRAdminAction(),
+      new RestRRAuthMockAction(),
       new RestRRConfigAction(nodesInCluster),
       new RestRRUserMetadataAction(),
       new RestRRAuditEventAction()

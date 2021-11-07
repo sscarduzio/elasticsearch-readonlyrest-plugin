@@ -113,13 +113,13 @@ object ProxyIndexLevelActionFilter {
              generator: UniqueIdentifierGenerator,
              envVarsProvider: EnvVarsProvider): MTask[Either[StartingFailure, ProxyIndexLevelActionFilter]] = {
     val result = for {
-      instance <- EitherT {
-        val ror = new Ror(
+      instance <- EitherT(
+        new Ror(
           mode = RorMode.Proxy,
           envVarsProvider = envVarsProvider
         )
-        ror.start(configFile, new ProxyAuditSinkService(esClient), ProxyIndexJsonContentService)
-      }
+          .start(configFile, new ProxyAuditSinkService(esClient), ProxyIndexJsonContentService)
+      )
       _ = RorInstanceSupplier.update(instance)
     } yield new ProxyIndexLevelActionFilter(instance, esClient, threadPool)
     result.value
