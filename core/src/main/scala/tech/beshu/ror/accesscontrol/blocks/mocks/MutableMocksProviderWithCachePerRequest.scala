@@ -41,7 +41,7 @@ class MutableMocksProviderWithCachePerRequest(initial: MocksProvider)
 
   private val currentMockProvider = Atomic(CurrentMocksProviderConfiguration(initial, None))
 
-  private val cache: Cache[RequestId, MocksProvider] =
+  private lazy val cache: Cache[RequestId, MocksProvider] =
     Scaffeine()
       .expireAfterWrite(1 minute)
       .executor(scheduler)
