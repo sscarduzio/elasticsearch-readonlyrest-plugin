@@ -41,7 +41,7 @@ import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
 import tech.beshu.ror.es.actions.rrauditevent._
 import tech.beshu.ror.es.actions.rrauthmock.rest.RestRRAuthMockAction
-import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionType, TransportRRAuthMockAction}
+import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionHandler, RRAuthMockActionType, RRAuthMockRequest, RRAuthMockResponse, TransportRRAuthMockAction}
 import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
@@ -204,6 +204,8 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
                 rrAdminActionHandler.handle(req, resp)
               case (req: RRAuditEventRequest, resp: ActionListener[RRAuditEventResponse]) =>
                 RRAuditEventActionHandler.handle(req, resp)
+              case (req: RRAuthMockRequest, resp: ActionListener[RRAuthMockResponse]) =>
+                new RRAuthMockActionHandler().handle(req, resp)
               case _ =>
                 handleEsAction(esActionRequestHandler, request, listener, proxyRestChannel)
             }
