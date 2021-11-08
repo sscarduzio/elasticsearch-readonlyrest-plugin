@@ -20,16 +20,16 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
-import tech.beshu.ror.adminapi.AdminRestApi
+import tech.beshu.ror.api.ConfigApi
 
-class RRAdminResponse(response: AdminRestApi.AdminResponse)
+class RRAdminResponse(response: ConfigApi.ConfigResponse)
   extends ActionResponse with ToXContentObject with Logging {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
-    response.result match {
-      case AdminRestApi.Success(message) => addResponseJson(builder, "ok", message)
-      case AdminRestApi.ConfigNotFound(message) => addResponseJson(builder, "empty", message)
-      case AdminRestApi.Failure(message) => addResponseJson(builder, "ko", message)
+    response match {
+      case ConfigApi.Success(message) => addResponseJson(builder, "ok", message)
+      case ConfigApi.ConfigNotFound(message) => addResponseJson(builder, "empty", message)
+      case ConfigApi.Failure(message) => addResponseJson(builder, "ko", message)
     }
     builder
   }
@@ -44,15 +44,14 @@ class RRAdminResponse(response: AdminRestApi.AdminResponse)
   }
 }
 object RRAdminResponse extends Logging {
-  def apply(response: Either[Throwable, AdminRestApi.AdminResponse]): RRAdminResponse = {
+  def apply(response: Either[Throwable, ConfigApi.ConfigResponse]): RRAdminResponse = {
     response match {
       case Left(ex) =>
         logger.error("RRAdmin internal error", ex)
-        new RRAdminResponse(AdminRestApi.AdminResponse.internalError)
+        new RRAdminResponse(ConfigApi.ConfigResponse.internalError)
       case Right(value) =>
         new RRAdminResponse(value)
 
     }
   }
-
 }

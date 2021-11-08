@@ -30,7 +30,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.utils.TestsUtils.scalaFiniteDuration2JavaDuration
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule.Settings
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser

@@ -25,7 +25,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.HostsRule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.domain.Address
@@ -111,7 +111,7 @@ class HostsRuleTests extends AnyWordSpec with MockFactory {
       .createMultiResolvableVariableFrom[Address](NonEmptyString.unsafeFrom(value)) {
       AlwaysRightConvertible
         .from(extracted => Address.from(extracted.value).getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value")))
-      }
+    }
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }

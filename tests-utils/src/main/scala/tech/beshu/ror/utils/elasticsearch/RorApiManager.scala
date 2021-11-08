@@ -17,6 +17,7 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
+import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
@@ -72,6 +73,14 @@ class RorApiManager(client: RestClient,
     call(createReloadRorConfigRequest(), new JsonResponse(_))
   }
 
+  def configureImpersonationMocks(payload: JSON): RorApiResponse = {
+    call(createConfigureImpersonationMocksRequest(payload), new RorApiResponse(_))
+  }
+
+  def invalidateImpersonationMocks(): RorApiResponse = {
+    call(createInvalidateImpersonationMocksRequest(), new RorApiResponse(_))
+  }
+
   def insertInIndexConfigDirectlyToRorIndex(rorConfigIndex: String,
                                             config: String): JsonResponse = {
     documentManager.createFirstDoc(
@@ -106,7 +115,7 @@ class RorApiManager(client: RestClient,
                                                ttl: Option[FiniteDuration] = None) = {
     val request = new HttpPost(client.from("/_readonlyrest/admin/config/test"))
     request.addHeader("Content-Type", "application/json")
-    ttl.foreach(t => request.addHeader("x-ror-test-config-ttl", t.toString()))
+    ttl.foreach(t => request.addHeader("x-ror-test-settings-ttl", t.toString()))
     request.setEntity(new StringEntity(rorConfigIndexDocumentContentFrom(config)))
     request
   }
@@ -133,7 +142,28 @@ class RorApiManager(client: RestClient,
     request
   }
 
+  private def createConfigureImpersonationMocksRequest(payload: JSON) = {
+    val request = new HttpPost(client.from("/_readonlyrest/admin/authmock"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(ujson.write(payload)))
+    request
+  }
+
+  private def createInvalidateImpersonationMocksRequest() = {
+    new HttpDelete(client.from("/_readonlyrest/admin/authmock"))
+  }
+
   private def createLoadRorCurrentConfigRequest(additionalParams: Map[String, String]) = {
     new HttpGet(client.from("/_readonlyrest/admin/config/load", additionalParams.asJava))
+  }
+
+  final class RorApiResponse(override val response: HttpResponse) extends JsonResponse(response) {
+
+    def forceOk(): this.type = {
+      force()
+      val status = responseJson("status").str
+      if (status != "ok") throw new IllegalStateException(s"Expected business status 'ok' but got '$status'}; Message: '${responseJson.obj.get("message").map(_.str).getOrElse("[none]")}'")
+      this
+    }
   }
 }

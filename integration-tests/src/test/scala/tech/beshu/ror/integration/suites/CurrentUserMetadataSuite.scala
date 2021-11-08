@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.junit.Assert.assertEquals
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.RorApiManager
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
@@ -27,6 +28,7 @@ import ujson.Str
 trait CurrentUserMetadataSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
   this: EsContainerCreator =>
 

@@ -20,10 +20,11 @@ import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService}
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService, ImpersonatorDef}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
+import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
-import tech.beshu.ror.accesscontrol.blocks.rules.{ExternalAuthenticationRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -39,10 +40,12 @@ import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import scala.concurrent.duration.FiniteDuration
 
 class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[ExternalAuthenticationService],
+                                        impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+                                        mocksProvider: MocksProvider,
                                         implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[ExternalAuthenticationRule] {
 
-  override protected def decoder: Decoder[Rule.RuleWithVariableUsageDefinition[ExternalAuthenticationRule]] = {
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ExternalAuthenticationRule]] = {
     simpleExternalAuthenticationServiceNameAndLocalConfig
       .orElse(complexExternalAuthenticationServiceNameAndLocalConfig)
       .toSyncDecoder
@@ -53,7 +56,13 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
         case (name, None) =>
           findAuthenticationService(authenticationServices.items, name)
       }
-      .map(service => RuleWithVariableUsageDefinition.create(new ExternalAuthenticationRule(Settings(service), caseMappingEquality)))
+      .map(service => RuleWithVariableUsageDefinition.create(new
+          ExternalAuthenticationRule(
+            Settings(service),
+            impersonatorsDef.toImpersonation(mocksProvider),
+            caseMappingEquality
+          )
+      ))
       .decoder
   }
 

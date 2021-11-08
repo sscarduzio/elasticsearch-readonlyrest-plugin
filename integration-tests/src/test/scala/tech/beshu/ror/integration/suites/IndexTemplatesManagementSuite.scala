@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import cats.data.NonEmptyList
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
-import tech.beshu.ror.integration.utils.ESVersionSupport
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager.Template
 import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplate
@@ -29,7 +29,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 trait IndexTemplatesManagementSuite
   extends AnyWordSpec
     with BaseTemplatesSuite
-    with ESVersionSupport {
+    with ESVersionSupportForAnyWordSpecLike {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/templates/readonlyrest.yml"

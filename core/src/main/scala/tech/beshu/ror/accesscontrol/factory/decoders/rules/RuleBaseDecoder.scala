@@ -19,16 +19,17 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 import io.circe.CursorOp.DownField
 import io.circe.Decoder.Result
 import io.circe.{ACursor, Decoder, HCursor}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule._
-import tech.beshu.ror.accesscontrol.blocks.rules._
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecodingFailureOps, _}
 
 sealed abstract class RuleDecoder[T <: Rule : RuleName] extends Decoder[RuleDecoder.Result[T]] {
 
   def associatedFields: Set[String]
+
   def ruleName: Rule.Name = implicitly[RuleName[T]].name
 
   override def apply(c: HCursor): Decoder.Result[RuleDecoder.Result[T]] = {
@@ -66,6 +67,7 @@ object RuleBaseDecoder {
   abstract class RuleBaseDecoderWithoutAssociatedFields[T <: Rule : RuleName] extends RuleDecoder[T] {
 
     protected def decoder: Decoder[RuleWithVariableUsageDefinition[T]]
+
     override val associatedFields: Set[String] = Set.empty
 
     override def doDecode(value: ACursor, associatedFieldsJson: ACursor): Result[RuleWithVariableUsageDefinition[T]] =
@@ -75,6 +77,7 @@ object RuleBaseDecoder {
   abstract class RuleBaseDecoderWithAssociatedFields[T <: Rule : RuleName, S] extends RuleDecoder[T] {
 
     def ruleDecoderCreator: S => Decoder[RuleWithVariableUsageDefinition[T]]
+
     def associatedFieldsDecoder: Decoder[S]
 
     override def doDecode(value: ACursor, associatedFieldsJson: ACursor): Result[RuleWithVariableUsageDefinition[T]] = {

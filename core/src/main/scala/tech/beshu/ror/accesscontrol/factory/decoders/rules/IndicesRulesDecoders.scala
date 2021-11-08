@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 import cats.data.NonEmptySet
 import cats.implicits._
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.rules.{RepositoriesRule, SnapshotsRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}

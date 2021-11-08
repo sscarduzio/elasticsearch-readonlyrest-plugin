@@ -23,6 +23,7 @@ import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
+import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.boot.RorMode
@@ -47,6 +48,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
   }
   protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = MockLdapConnectionPoolProvider
   protected val httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory
+  protected val mockProvider: MocksProvider = NoOpMocksProvider
 
   lazy val acl: AccessControl = {
     val aclEngineT = for {
@@ -58,7 +60,8 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
           config,
           RorConfigurationIndex(IndexName.Full(".readonlyrest")),
           httpClientsFactory,
-          ldapConnectionPoolProvider
+          ldapConnectionPoolProvider,
+          mockProvider
         )
         .map(_.fold(err => throw new IllegalStateException(s"Cannot create ACL: $err"), identity))
     } yield core.aclEngine

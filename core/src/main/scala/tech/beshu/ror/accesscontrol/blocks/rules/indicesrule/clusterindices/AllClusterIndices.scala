@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.clusterindices
 import cats.implicits._
 import cats.kernel.Semigroup
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule.ProcessResult
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.CanPass

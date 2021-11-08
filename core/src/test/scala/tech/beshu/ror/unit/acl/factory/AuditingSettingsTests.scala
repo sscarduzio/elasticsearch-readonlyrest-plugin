@@ -23,6 +23,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -63,7 +64,8 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
             config,
             RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
-            MockLdapConnectionPoolProvider
+            MockLdapConnectionPoolProvider,
+            NoOpMocksProvider
           )
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, None)) => }
@@ -86,7 +88,8 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
             config,
             RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
-            MockLdapConnectionPoolProvider
+            MockLdapConnectionPoolProvider,
+            NoOpMocksProvider
           )
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, None)) => }
@@ -111,7 +114,8 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
             config,
             RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
-            MockLdapConnectionPoolProvider
+            MockLdapConnectionPoolProvider,
+            NoOpMocksProvider
           )
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, Some(auditingSettings))) =>
@@ -139,7 +143,8 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
             config,
             RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
-            MockLdapConnectionPoolProvider
+            MockLdapConnectionPoolProvider,
+            NoOpMocksProvider
           )
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, Some(auditingSettings))) =>
@@ -167,7 +172,8 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
             config,
             RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
-            MockLdapConnectionPoolProvider
+            MockLdapConnectionPoolProvider,
+            NoOpMocksProvider
           )
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, Some(auditingSettings))) =>
@@ -195,7 +201,8 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
             config,
             RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
-            MockLdapConnectionPoolProvider
+            MockLdapConnectionPoolProvider,
+            NoOpMocksProvider
           )
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, Some(auditingSettings))) =>
@@ -225,7 +232,8 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
             config,
             RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
-            MockLdapConnectionPoolProvider
+            MockLdapConnectionPoolProvider,
+            NoOpMocksProvider
           )
           .runSyncUnsafe()
         inside(core) { case Left(errors) =>
@@ -254,7 +262,8 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
             config,
             RorConfigurationIndex(IndexName.Full(".readonlyrest")),
             MockHttpClientsFactory,
-            MockLdapConnectionPoolProvider
+            MockLdapConnectionPoolProvider,
+            NoOpMocksProvider
           )
           .runSyncUnsafe()
         inside(core) { case Left(errors) =>

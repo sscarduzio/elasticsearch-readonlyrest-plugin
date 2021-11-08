@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -26,6 +27,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 trait IndicesReverseWildcardSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with ESVersionSupportForAnyWordSpecLike
     with Matchers {
   this: EsContainerCreator =>
 
@@ -49,14 +51,14 @@ trait IndicesReverseWildcardSuite
 
         response.responseCode should be(200)
         response.searchHits.size should be(2)
-        response.searchHits.map(_("_id").str) should contain allOf ("doc-a1", "doc-a2")
+        response.searchHits.map(_ ("_id").str) should contain allOf("doc-a1", "doc-a2")
       }
       "reverse wildcard search is used" in {
         val response = dev1SearchManager.search("logstash-*")
 
         response.responseCode should be(200)
         response.searchHits.size should be(2)
-        response.searchHits.map(_("_id").str) should contain allOf ("doc-a1", "doc-a2")
+        response.searchHits.map(_ ("_id").str) should contain allOf("doc-a1", "doc-a2")
       }
 
       "reverse total wildcard search is used" in {
@@ -64,7 +66,7 @@ trait IndicesReverseWildcardSuite
 
         response.responseCode should be(200)
         response.searchHits.size should be(2)
-        response.searchHits.map(_("_id").str) should contain allOf ("doc-a1", "doc-a2")
+        response.searchHits.map(_ ("_id").str) should contain allOf("doc-a1", "doc-a2")
       }
 
       "generic search all is used" in {
@@ -72,7 +74,7 @@ trait IndicesReverseWildcardSuite
 
         response.responseCode should be(200)
         response.searchHits.size should be(2)
-        response.searchHits.map(_("_id").str) should contain allOf ("doc-a1", "doc-a2")
+        response.searchHits.map(_ ("_id").str) should contain allOf("doc-a1", "doc-a2")
       }
     }
   }

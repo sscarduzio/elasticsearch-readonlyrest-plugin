@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions
 import java.util.UUID
 
 import cats.Show
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.domain.{User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList

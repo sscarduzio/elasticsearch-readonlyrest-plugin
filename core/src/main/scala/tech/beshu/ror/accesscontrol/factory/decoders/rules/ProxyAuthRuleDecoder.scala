@@ -18,9 +18,10 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import cats.Order
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.definitions.ProxyAuth
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, ProxyAuth}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -35,13 +36,21 @@ import tech.beshu.ror.utils.CaseMappingEquality._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth],
+                           impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+                           mocksProvider: MocksProvider,
                            implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[ProxyAuthRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ProxyAuthRule]] = {
     ProxyAuthRuleDecoder.simpleSettingsDecoder
       .or(ProxyAuthRuleDecoder.extendedSettingsDecoder(authProxiesDefinitions))
-      .map(settings => RuleWithVariableUsageDefinition.create(new ProxyAuthRule(settings, caseMappingEquality)))
+      .map(settings => RuleWithVariableUsageDefinition.create(
+        new ProxyAuthRule(
+          settings,
+          impersonatorsDef.toImpersonation(mocksProvider),
+          caseMappingEquality
+        )
+      ))
   }
 }
 

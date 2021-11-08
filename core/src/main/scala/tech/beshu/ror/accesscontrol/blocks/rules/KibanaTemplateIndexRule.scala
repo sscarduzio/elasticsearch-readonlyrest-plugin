@@ -18,7 +18,8 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaTemplateIndexRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{MatchingAlwaysRule, RuleName}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{MatchingAlwaysRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName

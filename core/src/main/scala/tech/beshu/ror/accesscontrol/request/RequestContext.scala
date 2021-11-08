@@ -27,6 +27,7 @@ import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
 import squants.information.{Bytes, Information}
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain._
@@ -105,7 +106,9 @@ object RequestContext extends Logging {
 
   type Aux[B <: BlockContext] = RequestContext { type BLOCK_CONTEXT = B }
 
-  final case class Id(value: String) extends AnyVal
+  final case class Id(value: String) {
+    def toRequestId: RequestId = RequestId(value)
+  }
   object Id {
     implicit val show: Show[Id] = Show.show(_.value)
   }

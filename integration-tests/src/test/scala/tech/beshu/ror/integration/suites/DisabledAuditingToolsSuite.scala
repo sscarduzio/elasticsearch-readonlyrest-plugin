@@ -20,12 +20,14 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager}
 
 trait DisabledAuditingToolsSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with ESVersionSupportForAnyWordSpecLike
     with BeforeAndAfterEach
     with Matchers {
   this: EsContainerCreator =>
@@ -34,7 +36,7 @@ trait DisabledAuditingToolsSuite
 
   override val nodeDataInitializer = Some(ElasticsearchTweetsInitializer)
 
-  private lazy val auditIndexManager = new AuditIndexManager(rorAdminClient, esVersionUsed,"audit_index")
+  private lazy val auditIndexManager = new AuditIndexManager(rorAdminClient, esVersionUsed, "audit_index")
 
   override def beforeEach(): Unit = {
     super.beforeEach()
@@ -48,21 +50,21 @@ trait DisabledAuditingToolsSuite
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 200
 
-        auditIndexManager.getEntries.responseCode should be (404)
+        auditIndexManager.getEntries.responseCode should be(404)
       }
       "rule 2 is matching" in {
         val indexManager = new IndexManager(basicAuthClient("user", "dev"), esVersionUsed)
         val response = indexManager.getIndex("facebook")
         response.responseCode shouldBe 200
 
-        auditIndexManager.getEntries.responseCode should be (404)
+        auditIndexManager.getEntries.responseCode should be(404)
       }
       "no rule is matching" in {
         val indexManager = new IndexManager(basicAuthClient("user", "wrong"), esVersionUsed)
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 403
 
-        auditIndexManager.getEntries.responseCode should be (404)
+        auditIndexManager.getEntries.responseCode should be(404)
       }
     }
   }

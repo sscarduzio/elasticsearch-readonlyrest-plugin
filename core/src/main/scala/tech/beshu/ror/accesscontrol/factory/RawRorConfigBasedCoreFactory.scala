@@ -28,10 +28,10 @@ import tech.beshu.ror.accesscontrol._
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.acl.AccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
+import tech.beshu.ror.accesscontrol.blocks.Block.{RuleWithVariableUsageDefinition, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.UsernameCaseMapping
@@ -61,7 +61,8 @@ trait CoreFactory {
   def createCoreFrom(config: RawRorConfig,
                      rorIndexNameConfiguration: RorConfigurationIndex,
                      httpClientFactory: HttpClientsFactory,
-                     ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): Task[Either[NonEmptyList[AclCreationError], CoreSettings]]
+                     ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
+                     mocksProvider: MocksProvider): Task[Either[NonEmptyList[AclCreationError], CoreSettings]]
 }
 
 class RawRorConfigBasedCoreFactory(rorMode: RorMode)
@@ -73,10 +74,23 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
   override def createCoreFrom(config: RawRorConfig,
                               rorIndexNameConfiguration: RorConfigurationIndex,
                               httpClientFactory: HttpClientsFactory,
-                              ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): Task[Either[NonEmptyList[AclCreationError], CoreSettings]] = {
+                              ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
+                              mocksProvider: MocksProvider): Task[Either[NonEmptyList[AclCreationError], CoreSettings]] = {
     config.configJson \\ Attributes.rorSectionName match {
-      case Nil => createCoreFromRorSection(config.configJson, rorIndexNameConfiguration, httpClientFactory, ldapConnectionPoolProvider)
-      case rorSection :: Nil => createCoreFromRorSection(rorSection, rorIndexNameConfiguration, httpClientFactory, ldapConnectionPoolProvider)
+      case Nil => createCoreFromRorSection(
+        config.configJson,
+        rorIndexNameConfiguration,
+        httpClientFactory,
+        ldapConnectionPoolProvider,
+        mocksProvider
+      )
+      case rorSection :: Nil => createCoreFromRorSection(
+        rorSection,
+        rorIndexNameConfiguration,
+        httpClientFactory,
+        ldapConnectionPoolProvider,
+        mocksProvider
+      )
       case _ => Task.now(Left(NonEmptyList.one(GeneralReadonlyrestSettingsError(Message(s"Malformed settings")))))
     }
   }
@@ -84,10 +98,11 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
   private def createCoreFromRorSection(rorSection: Json,
                                        rorIndexNameConfiguration: RorConfigurationIndex,
                                        httpClientFactory: HttpClientsFactory,
-                                       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider) = {
+                                       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
+                                       mocksProvider: MocksProvider) = {
     JsonConfigStaticVariableResolver.resolve(rorSection) match {
       case Right(resolvedRorSection) =>
-        createFrom(resolvedRorSection, rorIndexNameConfiguration, httpClientFactory, ldapConnectionPoolProvider).map {
+        createFrom(resolvedRorSection, rorIndexNameConfiguration, httpClientFactory, ldapConnectionPoolProvider, mocksProvider).map {
           case Right(settings) =>
             Right(settings)
           case Left(failure) =>
@@ -101,7 +116,8 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
   private def createFrom(settingsJson: Json,
                          rorConfigurationIndex: RorConfigurationIndex,
                          httpClientFactory: HttpClientsFactory,
-                         ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider) = {
+                         ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
+                         mocksProvider: MocksProvider) = {
     val decoder = for {
       enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
       core <-
@@ -116,7 +132,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
             rorConfigurationIndex,
             auditingTools.map(_.rorAuditIndexTemplate)
           ))
-          acl <- aclDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings)
+          acl <- aclDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings, mocksProvider)
         } yield CoreSettings(
           aclEngine = acl,
           auditingSettings = auditingTools
@@ -138,20 +154,21 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
   import RawRorConfigBasedCoreFactory._
 
   private def rulesNelDecoder(definitions: DefinitionsPack,
-                              globalSettings: GlobalSettings): Decoder[NonEmptyList[RuleWithVariableUsageDefinition[Rule]]] = Decoder.instance { c =>
+                              globalSettings: GlobalSettings,
+                              mocksProvider: MocksProvider): Decoder[NonEmptyList[RuleWithVariableUsageDefinition[Rule]]] = Decoder.instance { c =>
     val init = State.pure[ACursor, Validated[List[String], Decoder.Result[List[RuleWithVariableUsageDefinition[Rule]]]]](Validated.Valid(Right(List.empty)))
 
     val (_, result) = c.keys.toList.flatten // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
-        for {
-          last <- collectedRuleResults
-          current <- decodeRuleInCursorContext(currentRuleName, definitions, globalSettings).map {
-            case RuleDecodingResult.Result(value) => Validated.Valid(value.map(_ :: Nil))
-            case RuleDecodingResult.UnknownRule => Validated.Invalid(currentRuleName :: Nil)
-            case RuleDecodingResult.Skipped => Validated.Valid(Right(List.empty))
-          }
-        } yield Monoid.combine(last, current)
-      }
+      for {
+        last <- collectedRuleResults
+        current <- decodeRuleInCursorContext(currentRuleName, definitions, globalSettings, mocksProvider).map {
+          case RuleDecodingResult.Result(value) => Validated.Valid(value.map(_ :: Nil))
+          case RuleDecodingResult.UnknownRule => Validated.Invalid(currentRuleName :: Nil)
+          case RuleDecodingResult.Skipped => Validated.Valid(Right(List.empty))
+        }
+      } yield Monoid.combine(last, current)
+    }
       .run(c)
       .value
 
@@ -172,13 +189,14 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
 
   private def decodeRuleInCursorContext(name: String,
                                         definitions: DefinitionsPack,
-                                        globalSettings: GlobalSettings): State[ACursor, RuleDecodingResult] = {
+                                        globalSettings: GlobalSettings,
+                                        mocksProvider: MocksProvider): State[ACursor, RuleDecodingResult] = {
     val caseMappingEquality: UserIdCaseMappingEquality = createUserMappingEquality(globalSettings)
     State(cursor => {
-      if(!cursor.keys.toList.flatten.contains(name)) {
+      if (!cursor.keys.toList.flatten.contains(name)) {
         (cursor, RuleDecodingResult.Skipped)
       } else {
-        ruleDecoderBy(Rule.Name(name), definitions, globalSettings, caseMappingEquality) match {
+        ruleDecoderBy(Rule.Name(name), definitions, globalSettings, mocksProvider, caseMappingEquality) match {
           case Some(decoder) =>
             decoder.tryDecode(cursor) match {
               case Right(RuleDecoder.Result(rule, unconsumedCursor)) =>
@@ -201,7 +219,8 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
   }
 
   private def blockDecoder(definitions: DefinitionsPack,
-                           globalSettings: GlobalSettings)
+                           globalSettings: GlobalSettings,
+                           mocksProvider: MocksProvider)
                           (implicit loggingContext: LoggingContext): Decoder[Block] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] =
@@ -230,7 +249,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
           name <- c.downField(Attributes.Block.name).as[Block.Name]
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
           verbosity <- c.downField(Attributes.Block.verbosity).as[Option[Block.Verbosity]]
-          rules <- rulesNelDecoder(definitions, globalSettings)
+          rules <- rulesNelDecoder(definitions, globalSettings, mocksProvider)
             .toSyncDecoder
             .decoder
             .tryDecode(c.withFocus(
@@ -253,7 +272,8 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
 
   private def aclDecoder(httpClientFactory: HttpClientsFactory,
                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                         globalSettings: GlobalSettings): AsyncDecoder[AccessControl] = {
+                         globalSettings: GlobalSettings,
+                         mocksProvider: MocksProvider): AsyncDecoder[AccessControl] = {
     val caseMappingEquality: UserIdCaseMappingEquality = createUserMappingEquality(globalSettings)
     AsyncDecoderCreator.instance[AccessControl] { c =>
       val decoder = for {
@@ -264,10 +284,20 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
         ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder(ldapConnectionPoolProvider)
         rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance())
         impersonationDefinitionsDecoderCreator = new ImpersonationDefinitionsDecoderCreator(
-          caseMappingEquality, authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs
+          caseMappingEquality, authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs, mocksProvider
         )
         impersonationDefs <- AsyncDecoderCreator.from(impersonationDefinitionsDecoderCreator.create)
-        userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(authenticationServices, authorizationServices, authProxies, jwtDefs, rorKbnDefs, ldapServices, Some(impersonationDefs), caseMappingEquality))
+        userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(
+          authenticationServices,
+          authorizationServices,
+          authProxies,
+          jwtDefs,
+          rorKbnDefs,
+          ldapServices,
+          Some(impersonationDefs),
+          mocksProvider,
+          caseMappingEquality
+        ))
         obfuscatedHeaders <- AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
         blocks <- {
           implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
@@ -283,7 +313,8 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
                 ldaps = ldapServices,
                 impersonators = impersonationDefs
               ),
-              globalSettings
+              globalSettings,
+              mocksProvider
             )
           }
           DecoderHelpers

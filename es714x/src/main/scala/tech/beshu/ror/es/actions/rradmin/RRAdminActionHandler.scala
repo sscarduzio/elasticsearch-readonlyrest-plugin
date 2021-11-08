@@ -16,37 +16,19 @@
  */
 package tech.beshu.ror.es.actions.rradmin
 
-import java.nio.file.Path
-
 import monix.execution.Scheduler
-import monix.execution.schedulers.CanBlock
-import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.ActionListener
 import tech.beshu.ror.RequestId
-import tech.beshu.ror.adminapi.AdminRestApi
+import tech.beshu.ror.api.ConfigApi
 import tech.beshu.ror.boot.RorSchedulers
-import tech.beshu.ror.configuration.loader.FileConfigLoader
-import tech.beshu.ror.configuration.{IndexConfigManager, RorIndexNameConfiguration}
-import tech.beshu.ror.es.IndexJsonContentService
-import tech.beshu.ror.providers.JvmPropertiesProvider
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RorInstanceSupplier
 
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class RRAdminActionHandler(indexContentProvider: IndexJsonContentService,
-                           esConfigFile: Path) {
+class RRAdminActionHandler() {
 
-  private implicit val adminRestApiScheduler: Scheduler = RorSchedulers.adminRestApiScheduler
-
-  private val rorIndexNameConfig = RorIndexNameConfiguration
-    .load(esConfigFile)
-    .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
-    .runSyncUnsafe(10 seconds)(adminRestApiScheduler, CanBlock.permit)
-
-  private val indexConfigManager = new IndexConfigManager(indexContentProvider)
-  private val fileConfigLoader = new FileConfigLoader(esConfigFile, JvmPropertiesProvider)
+  private implicit val adminRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
 
   def handle(request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
     getApi match {
@@ -59,11 +41,10 @@ class RRAdminActionHandler(indexContentProvider: IndexJsonContentService,
           }
       }
       case None =>
-        listener.onResponse(new RRAdminResponse(AdminRestApi.AdminResponse.notAvailable))
+        listener.onResponse(new RRAdminResponse(ConfigApi.ConfigResponse.notAvailable))
     }
   }
 
   private def getApi =
-    RorInstanceSupplier.get()
-      .map(instance => new AdminRestApi(instance, indexConfigManager, fileConfigLoader, rorIndexNameConfig.index))
+    RorInstanceSupplier.get().map(_.configApi)
 }

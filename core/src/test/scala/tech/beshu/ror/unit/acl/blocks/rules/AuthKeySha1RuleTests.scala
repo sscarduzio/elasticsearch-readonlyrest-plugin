@@ -18,28 +18,30 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import eu.timepit.refined.auto._
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials._
-import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeySha1Rule, BasicAuthenticationRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeySha1Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.utils.UserIdEq
 
-class AuthKeySha1RuleTests extends BasicAuthenticationTestTemplate {
+class AuthKeySha1RuleTests extends BasicAuthenticationTestTemplate(supportingImpersonation = false) {
 
   override protected def ruleName: String = classOf[AuthKeySha1Rule].getSimpleName
 
-  override protected val rule = new AuthKeySha1Rule(
+  override protected def ruleCreator: Impersonation => BasicAuthenticationRule[_] = impersonation => new AuthKeySha1Rule(
     BasicAuthenticationRule.Settings(HashedUserAndPassword("4338fa3ea95532196849ae27615e14dda95c77b1")),
-    Nil,
+    impersonation,
     UserIdEq.caseSensitive
   )
 }
 
-class AuthKeySha1RuleAltSyntaxTests extends BasicAuthenticationTestTemplate {
+class AuthKeySha1RuleAltSyntaxTests extends BasicAuthenticationTestTemplate(supportingImpersonation = true) {
 
   override protected def ruleName: String = classOf[AuthKeySha1Rule].getSimpleName
 
-  override protected val rule = new AuthKeySha1Rule(
+  override protected def ruleCreator: Impersonation => BasicAuthenticationRule[_] = impersonation => new AuthKeySha1Rule(
     BasicAuthenticationRule.Settings(HashedOnlyPassword(User.Id("logstash"), "9208e8476a2e8adc584bf2f613842177a39645b4")),
-    Nil,
+    impersonation,
     UserIdEq.caseSensitive
   )
 }

@@ -24,12 +24,14 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager, RorApiManager}
 
 trait EnabledAuditingToolsSuite
   extends AnyWordSpec
     with BaseEsClusterIntegrationTest
+    with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
     with BeforeAndAfterEach
     with Matchers
@@ -132,7 +134,7 @@ trait EnabledAuditingToolsSuite
           val userMetadataManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
           val userMetadataResponse = userMetadataManager.fetchMetadata()
 
-          userMetadataResponse.responseCode should be (200)
+          userMetadataResponse.responseCode should be(200)
           val correlationId = userMetadataResponse.responseJson("x-ror-logging-id").str
 
           val indexManager = new IndexManager(
@@ -163,14 +165,14 @@ trait EnabledAuditingToolsSuite
           }
 
           val response1 = fetchMetadata()
-          response1.responseCode should be (200)
+          response1.responseCode should be(200)
           val loggingId1 = response1.responseJson("x-ror-logging-id").str
 
           val response2 = fetchMetadata(correlationId = Some(loggingId1))
-          response2.responseCode should be (200)
+          response2.responseCode should be(200)
           val loggingId2 = response2.responseJson("x-ror-logging-id").str
 
-          loggingId1 shouldNot be (loggingId2)
+          loggingId1 shouldNot be(loggingId2)
 
           eventually {
             val auditEntries = adminAuditIndexManager.getEntries.jsons
@@ -256,7 +258,7 @@ trait EnabledAuditingToolsSuite
 
         val response = rorApiManager.sendAuditEvent(ujson.read("""[]"""))
         response.responseCode shouldBe 400
-        response.responseJson should be (ujson.read(
+        response.responseJson should be(ujson.read(
           """
             |{
             |  "error":{
@@ -283,7 +285,7 @@ trait EnabledAuditingToolsSuite
 
         val response = rorApiManager.sendAuditEvent(ujson.read(s"""{ "event": "${Stream.continually("!").take(5000).mkString}" }"""))
         response.responseCode shouldBe 413
-        response.responseJson should be (ujson.read(
+        response.responseJson should be(ujson.read(
           """
             |{
             |  "error":{
