@@ -16,8 +16,32 @@
  */
 package tech.beshu.ror.unit.acl.domain
 
-import org.scalatest.wordspec.AnyWordSpecLike
+import cats.data.NonEmptyList
+import eu.timepit.refined.auto._
+import org.scalatest.freespec.AnyFreeSpecLike
+import org.scalatest.matchers.should.Matchers
+import tech.beshu.ror.accesscontrol.domain.TemplateNamePattern
 
-class TemplateNamePatternTests extends AnyWordSpecLike {
+class TemplateNamePatternTests extends AnyFreeSpecLike with Matchers {
 
+  "A TemplateNamePattern's method" - {
+    "findMostGenericTemplateNamePatten should" - {
+      "allow find the most generic template name pattern among given templates" in {
+        TemplateNamePattern
+          .findMostGenericTemplateNamePatten(NonEmptyList.of(
+            TemplateNamePattern("temp1"), TemplateNamePattern("temp2"), TemplateNamePattern("temp3")
+          )) should be(TemplateNamePattern("temp*"))
+
+        TemplateNamePattern
+          .findMostGenericTemplateNamePatten(NonEmptyList.of(
+            TemplateNamePattern("te*"), TemplateNamePattern("temp2"), TemplateNamePattern("temp3")
+          )) should be(TemplateNamePattern("te*"))
+
+        TemplateNamePattern
+          .findMostGenericTemplateNamePatten(NonEmptyList.of(
+            TemplateNamePattern("te*"), TemplateNamePattern("temp2"), TemplateNamePattern("aTemp")
+          )) should be(TemplateNamePattern("*"))
+      }
+    }
+  }
 }
