@@ -820,13 +820,22 @@ object domain {
     }
 
     def findMostGenericTemplateNamePatten(in: NonEmptyList[TemplateNamePattern]): TemplateNamePattern = {
-      def allTheSame(letters: List[Char]) = letters.size > 1 && letters.distinct.size == 1
+      def allTheSame(letters: List[Char]) = {
+        letters.size > 1 && letters.distinct.size == 1
+      }
+      def minTemplateNameLength() = {
+        in.foldLeft(Int.MaxValue) {
+          case (minLength, elem) if elem.value.length < minLength => elem.value.length
+          case (minLength, _) => minLength
+        }
+      }
 
       if (in.size > 1) {
         TemplateNamePattern
           .fromString {
+            val minLength = minTemplateNameLength()
             in
-              .toList.map(_.value.value.toCharArray)
+              .toList.map(_.value.value.substring(0, minLength).toCharArray)
               .transpose
               .foldLeft((false, StringBuilder.newBuilder)) {
                 case ((false, builder), letters) if allTheSame(letters) =>
