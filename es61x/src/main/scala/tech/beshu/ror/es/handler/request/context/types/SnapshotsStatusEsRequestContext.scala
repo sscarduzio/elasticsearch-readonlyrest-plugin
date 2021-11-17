@@ -18,8 +18,10 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotsStatusRequest
+import monix.eval.Task
+import org.elasticsearch.action.admin.cluster.snapshots.status.{SnapshotsStatusRequest, SnapshotsStatusResponse}
 import org.elasticsearch.threadpool.ThreadPool
+import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
@@ -28,6 +30,8 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
+
+import scala.collection.JavaConverters._
 
 class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
                                       esContext: EsContext,
@@ -51,10 +55,44 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
     Set(ClusterIndexName.Local.wildcard)
 
   override protected def modifyRequest(blockContext: SnapshotRequestBlockContext): ModificationResult = {
+    if (isCurrentSnapshotStatusRequest(actionRequest)) updateSnapshotStatusResponse(blockContext)
+    else modifySnapshotStatusRequest(actionRequest, blockContext)
+  }
+
+  private def updateSnapshotStatusResponse(blockContext: SnapshotRequestBlockContext): ModificationResult = {
+    ModificationResult.UpdateResponse {
+      case r: SnapshotsStatusResponse => Task.delay(filterOutNotAllowedSnapshotsAndRepositories(r, blockContext))
+      case r => Task.now(r)
+    }
+  }
+
+  private def filterOutNotAllowedSnapshotsAndRepositories(response: SnapshotsStatusResponse,
+                                                          blockContext: SnapshotRequestBlockContext): SnapshotsStatusResponse = {
+    val allowedRepositoriesMatcher = MatcherWithWildcardsScalaAdapter.create(blockContext.repositories)
+    val allowedSnapshotsMatcher = MatcherWithWildcardsScalaAdapter.create(blockContext.snapshots)
+
+    val allowedSnapshotStatuses = response
+      .getSnapshots.asSafeList
+      .filter { snapshotStatus =>
+        (for {
+          repositoryName <- RepositoryName.from(snapshotStatus.getSnapshot.getRepository)
+          snapshotName <- SnapshotName.from(snapshotStatus.getSnapshot.getSnapshotId.getName)
+        } yield  {
+          allowedRepositoriesMatcher.`match`(repositoryName) &&
+            allowedSnapshotsMatcher.`match`(snapshotName)
+        }) getOrElse false
+      }
+
+    on(response).set("snapshots", allowedSnapshotStatuses.asJava)
+    response
+  }
+
+  private def modifySnapshotStatusRequest(request: SnapshotsStatusRequest,
+                                          blockContext: SnapshotRequestBlockContext) = {
     val updateResult = for {
       snapshots <- snapshotsFrom(blockContext)
       repository <- repositoryFrom(blockContext)
-    } yield update(actionRequest, snapshots, repository)
+    } yield update(request, snapshots, repository)
     updateResult match {
       case Right(_) =>
         ModificationResult.Modified
@@ -103,5 +141,10 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
                      repository: RepositoryName.Full) = {
     actionRequest.snapshots(snapshots.toList.map(SnapshotName.toString).toArray)
     actionRequest.repository(RepositoryName.toString(repository))
+  }
+
+  private def isCurrentSnapshotStatusRequest(actionRequest: SnapshotsStatusRequest) = {
+    val repositories = repositoriesFrom(actionRequest)
+    (repositories.isEmpty || repositories == Set(RepositoryName.all)) && snapshotsFrom(actionRequest).isEmpty
   }
 }
