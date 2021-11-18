@@ -104,7 +104,7 @@ class EsRemoteClustersContainer private[containers](val localCluster: EsClusterC
 
   private def remoteClustersInitializer(container: EsClusterContainer,
                                         remoteClustersConfig: Map[String, EsClusterContainer]): Unit = {
-    val clusterManager = new ClusterManager(container.nodes.head.adminClient, esVersion = container.nodes.head.esVersion)
+    val clusterManager = new ClusterManager(container.nodes.head.rorAdminClient, esVersion = container.nodes.head.esVersion)
     val result = clusterManager.configureRemoteClusters(
       remoteClustersConfig.mapValues(_.nodes.map(c => s""""${c.name}:9300""""))
     )
@@ -129,11 +129,14 @@ final case class EsClusterSettings(name: String,
                                    rorContainerSpecification: ContainerSpecification = ContainerSpecification(Map.empty),
                                    dependentServicesContainers: List[DependencyDef] = Nil,
                                    xPackSupport: Boolean,
+                                   useXpackSecurityInsteadOfRor: Boolean = false,
                                    configHotReloadingEnabled: Boolean = false,
                                    customRorIndexName: Option[String] = None,
                                    internodeSslEnabled: Boolean = false,
                                    esVersion: EsVersion = EsVersion.DeclaredInProject,
-                                   externalSslEnabled: Boolean = true)(implicit val rorConfigFileName: String)
+                                   externalSslEnabled: Boolean = true,
+                                   enableXPackSsl: Boolean = false,
+                                   forceNonOssImage: Boolean = false)(implicit val rorConfigFileName: String)
 
 object EsClusterSettings {
   val basic = EsClusterSettings(name = "ROR_SINGLE", xPackSupport = false)("/basic/readonlyrest.yml")

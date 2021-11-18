@@ -61,8 +61,8 @@ dependencies {
     compile  project(path: ':es79x')
 
     compile  group: 'org.elasticsearch.client',             name: 'elasticsearch-rest-high-level-client',   version: esVersion
-    compile group: 'com.github.finagle',                    name: 'finchx-circe_2.12',                      version: '0.32.1'
-    compile group: 'com.github.finagle',                    name: 'finchx-core_2.12',                       version: '0.32.1'
+    compile  group: 'com.github.finagle',                   name: 'finchx-circe_2.12',                      version: '0.32.1'
+    compile  group: 'com.github.finagle',                   name: 'finchx-core_2.12',                       version: '0.32.1'
     compile  group: 'org.javassist',                        name: 'javassist',                              version: '3.26.0-GA'
     compile  group: 'org.jooq',                             name: 'joor-java-8',                            version: '0.9.13'
     compile  group: 'org.codelibs.elasticsearch.module',    name: 'lang-mustache',                          version: esVersion

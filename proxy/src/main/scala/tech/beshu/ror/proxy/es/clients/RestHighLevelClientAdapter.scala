@@ -64,6 +64,7 @@ import org.elasticsearch.index.reindex.{BulkByScrollResponse, DeleteByQueryReque
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.script.mustache.{MultiSearchTemplateRequest, MultiSearchTemplateResponse, SearchTemplateRequest, SearchTemplateResponse}
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventRequest, RRAuditEventResponse}
+import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockRequest, RRAuthMockResponse}
 import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter._
 import tech.beshu.ror.proxy.es.clients.actions.ResolveIndex._

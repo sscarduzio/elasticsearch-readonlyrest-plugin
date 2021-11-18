@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -27,6 +28,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 trait MSearchTEST1Suite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with ESVersionSupportForAnyWordSpecLike
     with Matchers {
   this: EsContainerCreator =>
 
@@ -56,7 +58,7 @@ trait MSearchTEST1Suite
 
     val response = searchManager.mSearchUnsafe(msearchBodyNotExists: _*)
 
-    response.searchHitsForResponse(0) should be (Vector.empty)
+    response.searchHitsForResponse(0) should be(Vector.empty)
   }
 
   "test274_1_queryworks" in {

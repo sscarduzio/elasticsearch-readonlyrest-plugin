@@ -16,30 +16,29 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
-import com.dimafeng.testcontainers.ForAllTestContainer
 import eu.timepit.refined.auto._
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.{WithGroupsMapping, WithoutGroupsMapping}
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
 import tech.beshu.ror.accesscontrol.blocks.rules._
+import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class GroupsRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[GroupsRule]
-    with ForAllTestContainer
     with Inside {
-
-  override val container: LdapContainer = new LdapContainer("LDAP1", "test_example.ldif")
 
   "A GroupsRule" should {
     "be able to be loaded from config" when {
@@ -66,9 +65,9 @@ class GroupsRuleSettingsTests
                 val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("group1").nel))
                 rule.settings.groups should be(groups)
                 rule.settings.usersDefinitions.length should be(1)
-                inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(authRule)) =>
+                inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
-                  userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
@@ -98,9 +97,9 @@ class GroupsRuleSettingsTests
                 val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("group1").nel))
                 rule.settings.groups should be(groups)
                 rule.settings.usersDefinitions.length should be(1)
-                inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(authRule)) =>
+                inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("car*"))))
-                  userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
@@ -130,9 +129,9 @@ class GroupsRuleSettingsTests
                 val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("group1").nel))
                 rule.settings.groups should be(groups)
                 rule.settings.usersDefinitions.length should be(1)
-                inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(authRule)) =>
+                inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"), User.UserIdPattern("ca*"))))
-                  userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
@@ -170,17 +169,17 @@ class GroupsRuleSettingsTests
                 rule.settings.groups should be(groups)
                 rule.settings.usersDefinitions.length should be(2)
                 val sortedUserDefinitions = rule.settings.usersDefinitions
-                inside(sortedUserDefinitions.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(authRule)) =>
+                inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
-                  userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
                   }
                 }
-                inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(authRule)) =>
+                inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("morgan"))))
-                  userGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
                   authRule shouldBe an[AuthKeySha1Rule]
                   authRule.asInstanceOf[AuthKeySha1Rule].settings should be {
                     BasicAuthenticationRule.Settings(HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a"))
@@ -213,9 +212,9 @@ class GroupsRuleSettingsTests
                 rule.settings.groups.tail.head shouldBe a[ToBeResolved[_]]
 
                 rule.settings.usersDefinitions.length should be(1)
-                inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(authRule)) =>
+                inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
-                  userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
@@ -252,8 +251,8 @@ class GroupsRuleSettingsTests
                  |
                  |  ldaps:
                  |  - name: ldap1
-                 |    host: ${container.ldapHost}
-                 |    port: ${container.ldapPort}
+                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                  |    ssl_enabled: false
                  |    search_user_base_DN: "ou=People,dc=example,dc=com"
                  |    search_groups_base_DN: "ou=People,dc=example,dc=com"
@@ -274,9 +273,9 @@ class GroupsRuleSettingsTests
               rule.settings.groups should be(groups)
               rule.settings.usersDefinitions.length should be(2)
               val sortedUserDefinitions = rule.settings.usersDefinitions
-              inside(sortedUserDefinitions.head) { case UserDef(_, patterns, userGroups, WithGroupsMapping(Auth.SeparateRules(rule1, rule2))) =>
+              inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SeparateRules(rule1, rule2), groupMappings)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
-                userGroups should be(UniqueNonEmptyList.of(groupFrom("group1")))
+                groupMappings should be(GroupMappings.Simple(UniqueNonEmptyList.of(groupFrom("group1"))))
 
                 rule1 shouldBe an[AuthKeyRule]
                 rule1.asInstanceOf[AuthKeyRule].settings should be {
@@ -287,9 +286,9 @@ class GroupsRuleSettingsTests
                   Group("group3")
                 ))
               }
-              inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(rule1)) =>
+              inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(rule1, localGroups)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("morgan"))))
-                userGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
+                localGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
                 rule1 shouldBe an[AuthKeySha1Rule]
                 rule1.asInstanceOf[AuthKeySha1Rule].settings should be {
                   BasicAuthenticationRule.Settings(HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a"))
@@ -322,8 +321,8 @@ class GroupsRuleSettingsTests
                  |
                  |  ldaps:
                  |  - name: ldap1
-                 |    host: ${container.ldapHost}
-                 |    port: ${container.ldapPort}
+                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                  |    ssl_enabled: false
                  |    search_user_base_DN: "ou=People,dc=example,dc=com"
                  |    search_groups_base_DN: "ou=People,dc=example,dc=com"
@@ -337,18 +336,82 @@ class GroupsRuleSettingsTests
               rule.settings.groups should be(groups)
               rule.settings.usersDefinitions.length should be(2)
               val sortedUserDefinitions = rule.settings.usersDefinitions
-              inside(sortedUserDefinitions.head) { case UserDef(_, patterns, userGroups, WithGroupsMapping(Auth.SingleRule(rule1))) =>
+              inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SingleRule(rule1), groupMappings)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
-                userGroups should be(UniqueNonEmptyList.of(groupFrom("group1")))
+                groupMappings should be(GroupMappings.Simple(UniqueNonEmptyList.of(groupFrom("group1"))))
                 rule1 shouldBe an[LdapAuthRule]
               }
-              inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(rule1)) =>
+              inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(rule1, localGroups)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("morgan"))))
-                userGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
+                localGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
                 rule1 shouldBe an[AuthKeySha1Rule]
                 rule1.asInstanceOf[AuthKeySha1Rule].settings should be {
                   BasicAuthenticationRule.Settings(HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a"))
                 }
+              }
+            }
+          )
+        }
+        "non-simple groups mapping is used" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 |readonlyrest:
+                 |
+                 |  access_control_rules:
+                 |
+                 |  - name: test_block1
+                 |    groups: [group1, group3]
+                 |
+                 |  users:
+                 |  - username: cartman
+                 |    groups:
+                 |     - group1: ["ldap_group3"]
+                 |     - group2: "ldap_group4"
+                 |    auth_key: "cartman:pass"
+                 |    groups_provider_authorization:
+                 |      user_groups_provider: GroupsService1
+                 |      groups: ["ldap_group3", "ldap_group4"]
+                 |
+                 |  ldaps:
+                 |  - name: ldap1
+                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                 |    ssl_enabled: false
+                 |    search_user_base_DN: "ou=People,dc=example,dc=com"
+                 |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+                 |
+                 |  user_groups_providers:
+                 |  - name: GroupsService1
+                 |    groups_endpoint: "http://localhost:8080/groups"
+                 |    auth_token_name: "user"
+                 |    auth_token_passed_as: QUERY_PARAM
+                 |    response_groups_json_path: "$$..groups[?(@.name)].name"
+                 |
+                 |""".stripMargin,
+            assertion = rule => {
+              val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(
+                AlreadyResolved(groupFrom("group1").nel),
+                AlreadyResolved(groupFrom("group3").nel)
+              )
+              rule.settings.groups should be(groups)
+              rule.settings.usersDefinitions.length should be(1)
+              val sortedUserDefinitions = rule.settings.usersDefinitions
+              inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SeparateRules(rule1, rule2), groupMappings)) =>
+                patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
+                groupMappings should be(GroupMappings.Advanced(UniqueNonEmptyList.of(
+                  Mapping(groupFrom("group1"), nonEmptySetOf(groupFrom("ldap_group3"))),
+                  Mapping(groupFrom("group2"), nonEmptySetOf(groupFrom("ldap_group4")))
+                )))
+
+                rule1 shouldBe an[AuthKeyRule]
+                rule1.asInstanceOf[AuthKeyRule].settings should be {
+                  BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
+                }
+                rule2 shouldBe an[ExternalAuthorizationRule]
+                rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroups should be(UniqueNonEmptyList.of(
+                  Group("ldap_group3"), Group("ldap_group4")
+                ))
               }
             }
           )
@@ -382,17 +445,17 @@ class GroupsRuleSettingsTests
             rule.settings.groups should be(groups)
             rule.settings.usersDefinitions.length should be(2)
             val sortedUserDefinitions = rule.settings.usersDefinitions
-            inside(sortedUserDefinitions.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(r)) =>
+            inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(r, localGroups)) =>
               patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("*"))))
-              userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
+              localGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
               r shouldBe an[AuthKeyRule]
               r.asInstanceOf[AuthKeyRule].settings should be {
                 BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
               }
             }
-            inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(r)) =>
+            inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(r, localGroups)) =>
               patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("*"))))
-              userGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
+              localGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
               r shouldBe an[AuthKeyRule]
               r.asInstanceOf[AuthKeyRule].settings should be {
                 BasicAuthenticationRule.Settings(Credentials(User.Id("morgan"), PlainTextSecret("pass")))
@@ -613,8 +676,8 @@ class GroupsRuleSettingsTests
                |
               |  ldaps:
                |  - name: ldap1
-               |    host: ${container.ldapHost}
-               |    port: ${container.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
@@ -656,8 +719,8 @@ class GroupsRuleSettingsTests
                |
               |  ldaps:
                |  - name: ldap1
-               |    host: ${container.ldapHost}
-               |    port: ${container.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
@@ -697,8 +760,8 @@ class GroupsRuleSettingsTests
                |
               |  ldaps:
                |  - name: ldap1
-               |    host: ${container.ldapHost}
-               |    port: ${container.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"

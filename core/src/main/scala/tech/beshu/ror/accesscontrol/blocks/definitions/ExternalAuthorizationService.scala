@@ -43,7 +43,7 @@ import scala.util.{Failure, Success, Try}
 trait ExternalAuthorizationService extends Item {
   override type Id = Name
   def id: Id
-  def grantsFor(loggedUser: LoggedUser): Task[UniqueList[Group]]
+  def grantsFor(userId: User.Id): Task[UniqueList[Group]]
 
   override implicit def show: Show[Name] = Name.nameShow
 }
@@ -68,9 +68,9 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
   extends ExternalAuthorizationService
   with Logging {
 
-  override def grantsFor(loggedUser: LoggedUser): Task[UniqueList[Group]] = {
+  override def grantsFor(userId: User.Id): Task[UniqueList[Group]] = {
     httpClient
-      .send(createRequest(loggedUser))
+      .send(createRequest(userId))
       .flatMap { response =>
         response.body match {
           case Right(body) =>
@@ -81,17 +81,17 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
       }
   }
 
-  private def createRequest(loggedUser: LoggedUser) = {
-    val uriWithParams = uri.params(queryParams(loggedUser.id))
+  private def createRequest(userId: User.Id) = {
+    val uriWithParams = uri.params(queryParams(userId))
     method match {
       case SupportedHttpMethod.Get =>
         sttp
           .get(uriWithParams)
-          .headers(headersMap(loggedUser.id))
+          .headers(headersMap(userId))
       case SupportedHttpMethod.Post =>
         sttp
           .post(uriWithParams)
-          .headers(headersMap(loggedUser.id))
+          .headers(headersMap(userId))
     }
   }
 
@@ -153,10 +153,10 @@ class CacheableExternalAuthorizationServiceDecorator(underlying: ExternalAuthori
                                                      ttl: FiniteDuration Refined Positive)
   extends ExternalAuthorizationService {
 
-  private val cacheableGrantsFor = new CacheableAction[LoggedUser, UniqueList[Group]](ttl, underlying.grantsFor)
+  private val cacheableGrantsFor = new CacheableAction[User.Id, UniqueList[Group]](ttl, underlying.grantsFor)
 
   override val id: ExternalAuthorizationService#Id = underlying.id
 
-  override def grantsFor(loggedUser: LoggedUser): Task[UniqueList[Group]] =
-    cacheableGrantsFor.call(loggedUser)
+  override def grantsFor(userId: User.Id): Task[UniqueList[Group]] =
+    cacheableGrantsFor.call(userId)
 }

@@ -80,6 +80,9 @@ object domain {
   final case class UserIdPatterns(patterns: UniqueNonEmptyList[User.UserIdPattern])
 
   final case class Group(value: NonEmptyString)
+  object Group {
+    implicit val eq: Eq[Group] = Eq.by(_.value.value)
+  }
 
   final case class Header(name: Header.Name, value: NonEmptyString)
   object Header {
@@ -175,7 +178,7 @@ object domain {
 
   final case class Credentials(user: User.Id, secret: PlainTextSecret)
   object Credentials {
-    implicit def eqCredentials(implicit userIdEq: Eq[User.Id]): Eq[Credentials] =
+    implicit def eqCredentials(implicit eq: Eq[User.Id]): Eq[Credentials] =
       Eq.and(Eq.by(_.user), Eq.by(_.secret))
   }
   final case class BasicAuth private(credentials: Credentials) {
@@ -297,6 +300,7 @@ object domain {
     // ROR actions
     val rorUserMetadataAction = Action("cluster:ror/user_metadata/get")
     val rorConfigAction = Action("cluster:ror/config/manage")
+    val rorAuthMockAction = Action("cluster:ror/authmock/manage")
     val rorAuditEventAction = Action("cluster:ror/audit_event/put")
     val rorOldConfigAction = Action("cluster:ror/config/refreshsettings")
 
@@ -816,13 +820,22 @@ object domain {
     }
 
     def findMostGenericTemplateNamePatten(in: NonEmptyList[TemplateNamePattern]): TemplateNamePattern = {
-      def allTheSame(letters: List[Char]) = letters.size > 1 && letters.distinct.size == 1
+      def allTheSame(letters: List[Char]) = {
+        letters.size > 1 && letters.distinct.size == 1
+      }
+      def minTemplateNameLength() = {
+        in.foldLeft(Int.MaxValue) {
+          case (minLength, elem) if elem.value.length < minLength => elem.value.length
+          case (minLength, _) => minLength
+        }
+      }
 
       if (in.size > 1) {
         TemplateNamePattern
           .fromString {
+            val minLength = minTemplateNameLength()
             in
-              .toList.map(_.value.value.toCharArray)
+              .toList.map(_.value.value.substring(0, minLength).toCharArray)
               .transpose
               .foldLeft((false, StringBuilder.newBuilder)) {
                 case ((false, builder), letters) if allTheSame(letters) =>

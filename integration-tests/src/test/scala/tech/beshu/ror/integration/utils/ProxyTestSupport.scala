@@ -32,7 +32,7 @@ trait ProxyTestSupport
   extends BeforeAndAfterAll
     with ForAllTestContainer
     with CallingProxy
-    with EsWithoutRorPluginContainerCreator
+    with EsWithoutSecurityPluginContainerCreator
     with LazyLogging {
   this: Suite with MultipleEsTargets with RorConfigFileNameProvider =>
 

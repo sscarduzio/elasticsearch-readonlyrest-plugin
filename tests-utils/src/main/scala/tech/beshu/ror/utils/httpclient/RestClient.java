@@ -28,7 +28,6 @@ import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.config.SocketConfig;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -97,7 +96,7 @@ public class RestClient {
     if (ssl) {
       try {
         SSLContextBuilder sslCtxBuilder = new SSLContextBuilder();
-        sslCtxBuilder.loadTrustMaterial(null, new TrustSelfSignedStrategy());
+        sslCtxBuilder.loadTrustMaterial(null, new TrustAllCertificatesStrategy());
         SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(sslCtxBuilder.build(), SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
         builder = HttpClients.custom().setSSLSocketFactory(sslsf);
       } catch (Exception e) {
@@ -108,7 +107,12 @@ public class RestClient {
       builder = HttpClientBuilder.create();
     }
 
-    int timeout = 100;
+    int timeout;
+    try {
+      timeout = Integer.parseInt(System.getProperty("rest_timeout"));
+    } catch (Exception ex) {
+      timeout = 100;
+    }
     builder
       .setRetryHandler(new StandardHttpRequestRetryHandler(3, true))
       .setDefaultHeaders(Lists.newArrayList(headers))

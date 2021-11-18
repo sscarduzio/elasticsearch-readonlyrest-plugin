@@ -20,16 +20,17 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater._
 import tech.beshu.ror.accesscontrol.blocks.rules.FilterRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFilterUpdater}
 import tech.beshu.ror.accesscontrol.domain.Filter
 
 /**
- * Document level security (DLS) rule.
- */
+  * Document level security (DLS) rule.
+  */
 class FilterRule(val settings: Settings)
   extends RegularRule with Logging {
 
@@ -69,7 +70,7 @@ class FilterRule(val settings: Settings)
 object FilterRule {
 
   implicit case object Name extends RuleName[FilterRule] {
-    override  val name = Rule.Name("filter")
+    override val name = Rule.Name("filter")
   }
 
   final case class Settings(filter: RuntimeSingleResolvableVariable[Filter])

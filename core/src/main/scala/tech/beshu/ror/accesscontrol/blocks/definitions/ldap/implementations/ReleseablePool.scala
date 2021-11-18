@@ -22,13 +22,13 @@ import monix.execution.atomic.Atomic
 
 import scala.language.higherKinds
 
-final class ReleseablePool[M[_] : Monad, A,B](acquire: B => M[A])(release: A => M[Unit]) {
+final class ReleseablePool[M[_] : Monad, A, B](acquire: B => M[A])(release: A => M[Unit]) {
 
   import ReleseablePool._
 
   private val pool: Atomic[ActiveList[A]] = Atomic(ActiveList[A]())
 
-  def get(b:B): M[ClosedPool.type Either A] =
+  def get(b: B): M[Either[ClosedPool.type, A]] =
     acquire(b).flatMap { resource =>
       pool.transformAndExtract(transform(resource))
     }

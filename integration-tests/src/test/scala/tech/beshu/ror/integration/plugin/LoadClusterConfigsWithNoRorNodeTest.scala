@@ -19,11 +19,13 @@ package tech.beshu.ror.integration.plugin
 import cats.data.NonEmptyList
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.integration.plugin.LoadClusterConfigsWithNoRorNodeTest.IndexConfigInitializer
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, MultipleClientsSupport}
-import tech.beshu.ror.integration.utils.{IndexConfigInitializer, PluginTestSupport}
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers.EsClusterProvider.ClusterNodeData
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.RorApiManager
+import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
 final class LoadClusterConfigsWithNoRorNodeTest
@@ -31,7 +33,8 @@ final class LoadClusterConfigsWithNoRorNodeTest
     with BeforeAndAfterEach
     with PluginTestSupport
     with BaseEsClusterIntegrationTest
-    with MultipleClientsSupport {
+    with MultipleClientsSupport
+    with ESVersionSupportForAnyWordSpecLike {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/admin_api/readonlyrest.yml"
@@ -49,7 +52,7 @@ final class LoadClusterConfigsWithNoRorNodeTest
     name = "ror1",
     settings = EsClusterSettings(
       name = "ROR1",
-      nodeDataInitializer = new IndexConfigInitializer(readonlyrestIndexName, "/admin_api/readonlyrest_index.yml"),
+      nodeDataInitializer = IndexConfigInitializer,
       numberOfInstances = 2,
       xPackSupport = false,
       configHotReloadingEnabled = true
@@ -59,13 +62,13 @@ final class LoadClusterConfigsWithNoRorNodeTest
     name = "ror2",
     settings = EsClusterSettings(
       name = "ROR1",
-      nodeDataInitializer = new IndexConfigInitializer(readonlyrestIndexName, "/admin_api/readonlyrest_index.yml"),
+      nodeDataInitializer = IndexConfigInitializer,
       xPackSupport = false,
       configHotReloadingEnabled = true
     )(rorConfigFileName)
   )
 
-  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.adminClient)
+  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.rorAdminClient, esVersionUsed)
 
   "return index config, and a failure" in {
     val result = ror1WithIndexConfigAdminActionManager.loadRorCurrentConfig()
@@ -84,6 +87,20 @@ final class LoadClusterConfigsWithNoRorNodeTest
     result.responseJson("config").isNull should be(true)
     result.responseJson("warnings").arr.toList shouldBe Nil
     result.responseJson("error").str shouldBe "current node response timeout"
+  }
+
+}
+
+object LoadClusterConfigsWithNoRorNodeTest {
+
+  private object IndexConfigInitializer extends ElasticsearchNodeDataInitializer {
+
+    override def initialize(esVersion: String, adminRestClient: RestClient): Unit = {
+      val rorApiManager = new RorApiManager(adminRestClient, esVersion)
+      rorApiManager
+        .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
+        .force()
+    }
   }
 
 }

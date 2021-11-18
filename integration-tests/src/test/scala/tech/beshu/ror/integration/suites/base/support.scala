@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites.base
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import org.scalatest.Suite
+import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.providers._
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterProvider, EsContainerCreator, EsRemoteClustersContainer}
 
@@ -30,7 +31,7 @@ object support {
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
       with ForAllTestContainer {
-    this: Suite with EsContainerCreator =>
+    this: Suite with EsContainerCreator with ESVersionSupport =>
 
     override lazy val container: EsClusterContainer = clusterContainer
 
@@ -43,7 +44,7 @@ object support {
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
       with ForAllTestContainer {
-    this: Suite with EsContainerCreator =>
+    this: Suite with EsContainerCreator with ESVersionSupport =>
 
     override lazy val container: EsRemoteClustersContainer = remoteClusterContainer
 
@@ -56,7 +57,7 @@ object support {
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
       with ForAllTestContainer {
-    this: Suite with EsContainerCreator =>
+    this: Suite with EsContainerCreator with ESVersionSupport =>
 
     import com.dimafeng.testcontainers.LazyContainer._
 
@@ -72,7 +73,7 @@ object support {
       with SingleClientSupport
       with TestSuiteWithClosedTaskAssertion
       with NodeInitializerProvider {
-    this: Suite with EsContainerCreator =>
+    this: Suite with EsContainerCreator with ESVersionSupport =>
   }
 
   trait SingleClientSupport extends SingleClient with SingleEsTarget

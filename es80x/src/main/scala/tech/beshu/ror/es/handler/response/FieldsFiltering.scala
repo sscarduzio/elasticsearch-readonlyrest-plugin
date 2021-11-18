@@ -19,7 +19,7 @@ package tech.beshu.ror.es.handler.response
 import org.elasticsearch.common.bytes.BytesReference
 import org.elasticsearch.common.document.{DocumentField => ESDocumentField}
 import org.elasticsearch.common.xcontent.support.XContentMapValues
-import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
+import org.elasticsearch.xcontent.{XContentFactory, XContentType}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.AccessMode
 import tech.beshu.ror.fls.FieldsPolicy

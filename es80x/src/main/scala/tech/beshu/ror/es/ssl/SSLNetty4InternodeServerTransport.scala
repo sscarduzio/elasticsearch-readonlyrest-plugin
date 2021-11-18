@@ -32,8 +32,7 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.util.PageCacheRecycler
 import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.SharedGroupFactory
-import org.elasticsearch.transport.netty4.Netty4Transport
+import org.elasticsearch.transport.netty4.{Netty4Transport, SharedGroupFactory}
 import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SSLCertParser

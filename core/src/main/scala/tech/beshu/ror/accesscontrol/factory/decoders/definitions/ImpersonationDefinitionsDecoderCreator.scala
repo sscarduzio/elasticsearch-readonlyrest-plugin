@@ -22,7 +22,8 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain.{User, UserIdPatterns}
@@ -40,7 +41,8 @@ class ImpersonationDefinitionsDecoderCreator(caseMappingEquality: UserIdCaseMapp
                                              authProxyDefinitions: Definitions[ProxyAuth],
                                              jwtDefinitions: Definitions[JwtDef],
                                              ldapDefinitions: Definitions[LdapService],
-                                             rorKbnDefinitions: Definitions[RorKbnDef]) {
+                                             rorKbnDefinitions: Definitions[RorKbnDef],
+                                             mocksProvider: MocksProvider) {
 
   def create: ADecoder[Id, Definitions[ImpersonatorDef]] = {
     implicit val decoder: SyncDecoder[ImpersonatorDef] = SyncDecoderCreator.from(impersonationDefDecoder)
@@ -80,7 +82,8 @@ class ImpersonationDefinitionsDecoderCreator(caseMappingEquality: UserIdCaseMapp
             ldapDefinitions,
             rorKbnDefinitions,
             impersonatorsDefinitions = None,
-            caseMappingEquality = caseMappingEquality
+            mocksProvider,
+            caseMappingEquality
           ) match {
           case Some(decoder) =>
             ruleDecoders

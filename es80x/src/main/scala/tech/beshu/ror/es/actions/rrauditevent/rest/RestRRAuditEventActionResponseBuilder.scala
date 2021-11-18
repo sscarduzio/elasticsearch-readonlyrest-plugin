@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.actions.rrauditevent.rest
 
-import org.elasticsearch.common.xcontent.XContentBuilder
+import org.elasticsearch.xcontent.XContentBuilder
 import org.elasticsearch.rest.action.RestBuilderListener
 import org.elasticsearch.rest.{BytesRestResponse, RestChannel, RestResponse, RestStatus}
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventResponse

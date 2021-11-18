@@ -17,18 +17,22 @@
 package tech.beshu.ror.integration.suites.base
 
 import cats.data.NonEmptyList
-import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
+import scala.concurrent.duration._
+import scala.language.postfixOps
+
 trait BaseAdminApiSuite
   extends AnyWordSpec
     with BaseManyEsClustersIntegrationTest
+    with ESVersionSupportForAnyWordSpecLike
     with MultipleClientsSupport
     with BeforeAndAfterEach {
   this: EsContainerCreator =>
@@ -43,8 +47,8 @@ trait BaseAdminApiSuite
   private lazy val ror1_2Node = rorWithIndexConfig.nodes.tail.head
   private lazy val ror2_1Node = rorWithNoIndexConfig.nodes.head
 
-  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.adminClient)
-  private lazy val rorWithNoIndexConfigAdminActionManager = new RorApiManager(clients.last.adminClient)
+  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.rorAdminClient, esVersionUsed)
+  private lazy val rorWithNoIndexConfigAdminActionManager = new RorApiManager(clients.last.rorAdminClient, esVersionUsed)
 
   override lazy val esTargets = NonEmptyList.of(ror1_1Node, ror1_2Node, ror2_1Node)
   override lazy val clusterContainers = NonEmptyList.of(rorWithIndexConfig, rorWithNoIndexConfig)
@@ -53,13 +57,16 @@ trait BaseAdminApiSuite
     "provide a method for force refresh ROR config" which {
       "is going to reload ROR core" when {
         "in-index config is newer than current one" in {
-          insertInIndexConfig(
-            new DocumentManager(ror2_1Node.adminClient, ror2_1Node.esVersion),
-            "/admin_api/readonlyrest_index.yml"
-          )
+          val rorApiManager = new RorApiManager(ror2_1Node.rorAdminClient, esVersionUsed)
+          rorApiManager
+            .insertInIndexConfigDirectlyToRorIndex(
+              rorConfigIndex = readonlyrestIndexName,
+              config = getResourceContent("/admin_api/readonlyrest_index.yml")
+            )
+            .force()
 
           val result = rorWithNoIndexConfigAdminActionManager.reloadRorConfig()
-          
+
           result.responseCode should be(200)
           result.responseJson("status").str should be("ok")
           result.responseJson("message").str should be("ReadonlyREST settings were reloaded with success!")
@@ -67,12 +74,16 @@ trait BaseAdminApiSuite
       }
       "return info that config is up to date" when {
         "in-index config is the same as current one" in {
-          insertInIndexConfig(
-            new DocumentManager(ror2_1Node.adminClient, ror2_1Node.esVersion),
-            "/admin_api/readonlyrest.yml"
-          )
+          val rorApiManager = new RorApiManager(ror2_1Node.rorAdminClient, esVersionUsed)
+          rorApiManager
+            .insertInIndexConfigDirectlyToRorIndex(
+              rorConfigIndex = readonlyrestIndexName,
+              config = getResourceContent("/admin_api/readonlyrest.yml")
+            )
+            .force()
 
           val result = rorWithNoIndexConfigAdminActionManager.reloadRorConfig()
+
           result.responseCode should be(200)
           result.responseJson("status").str should be("ko")
           result.responseJson("message").str should be("Current settings are already loaded")
@@ -88,10 +99,13 @@ trait BaseAdminApiSuite
       }
       "return info that cannot reload config" when {
         "config cannot be reloaded (eg. because LDAP is not achievable)" in {
-          insertInIndexConfig(
-            new DocumentManager(ror2_1Node.adminClient, ror2_1Node.esVersion),
-            "/admin_api/readonlyrest_with_ldap.yml"
-          )
+          val rorApiManager = new RorApiManager(ror2_1Node.rorAdminClient, esVersionUsed)
+          rorApiManager
+            .insertInIndexConfigDirectlyToRorIndex(
+              rorConfigIndex = readonlyrestIndexName,
+              config = getResourceContent("/admin_api/readonlyrest_with_ldap.yml")
+            )
+            .force()
 
           val result = rorWithNoIndexConfigAdminActionManager.reloadRorConfig()
           result.responseCode should be(200)
@@ -160,6 +174,7 @@ trait BaseAdminApiSuite
         "in-index config is the same as provided one" in {
           val result = ror1WithIndexConfigAdminActionManager
             .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
+
           result.responseCode should be(200)
           result.responseJson("status").str should be("ko")
           result.responseJson("message").str should be("Current settings are already loaded")
@@ -169,6 +184,7 @@ trait BaseAdminApiSuite
         "invalid YAML is provided" in {
           val result = ror1WithIndexConfigAdminActionManager
             .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_malformed.yml"))
+
           result.responseCode should be(200)
           result.responseJson("status").str should be("ko")
           result.responseJson("message").str should startWith("Settings content is malformed")
@@ -178,6 +194,7 @@ trait BaseAdminApiSuite
         "ROR core cannot be reloaded" in {
           val result = ror1WithIndexConfigAdminActionManager
             .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))
+
           result.responseCode should be(200)
           result.responseJson("status").str should be("ko")
           result.responseJson("message").str should be("Cannot reload new settings: Errors:\nThere was a problem with LDAP connection to: ldap://localhost:389")
@@ -188,6 +205,7 @@ trait BaseAdminApiSuite
       "return current config" when {
         "there is one in index" in {
           val getIndexConfigResult = ror1WithIndexConfigAdminActionManager.getRorInIndexConfig
+
           getIndexConfigResult.responseCode should be(200)
           getIndexConfigResult.responseJson("status").str should be("ok")
           getIndexConfigResult.responseJson("message").str should be {
@@ -198,6 +216,7 @@ trait BaseAdminApiSuite
       "return info that there is no in-index config" when {
         "there is none in index" in {
           val getIndexConfigResult = rorWithNoIndexConfigAdminActionManager.getRorInIndexConfig
+
           getIndexConfigResult.responseCode should be(200)
           getIndexConfigResult.responseJson("status").str should be("empty")
           getIndexConfigResult.responseJson("message").str should be {
@@ -209,11 +228,274 @@ trait BaseAdminApiSuite
     "provide a method for fetching current file config" which {
       "return current config" in {
         val result = ror1WithIndexConfigAdminActionManager.getRorFileConfig
+
         result.responseCode should be(200)
         result.responseJson("status").str should be("ok")
         result.responseJson("message").str should be {
           getResourceContent("/admin_api/readonlyrest.yml")
         }
+      }
+    }
+    "provide a method for reload test config engine" which {
+      "is going to reload ROR test core" when {
+        "configuration is new and correct" in {
+          def forceReload(rorSettingsResource: String) = {
+            val result = ror1WithIndexConfigAdminActionManager.updateRorTestConfig(getResourceContent(rorSettingsResource))
+
+            result.responseCode should be(200)
+            result.responseJson("status").str should be("ok")
+            result.responseJson("message").str should be("updated settings")
+          }
+
+          val dev1Ror1stInstanceSearchManager = new SearchManager(
+            clients.head.basicAuthClient("admin1", "pass"),
+            Map("IMPERSONATE_AS" -> "dev1")
+          )
+          val dev2Ror1stInstanceSearchManager = new SearchManager(
+            clients.head.basicAuthClient("admin1", "pass"),
+            Map("IMPERSONATE_AS" -> "dev2")
+          )
+          val dev1Ror2ndInstanceSearchManager = new SearchManager(
+            clients.head.basicAuthClient("admin1", "pass"),
+            Map("IMPERSONATE_AS" -> "dev1")
+          )
+          val dev2Ror2ndInstanceSearchManager = new SearchManager(
+            clients.head.basicAuthClient("admin1", "pass"),
+            Map("IMPERSONATE_AS" -> "dev2")
+          )
+
+          // before first reload no user can access indices
+          val dev1ror1Results = dev1Ror1stInstanceSearchManager.search("test1_index")
+          dev1ror1Results.responseCode should be(401)
+          val dev2ror1Results = dev2Ror1stInstanceSearchManager.search("test2_index")
+          dev2ror1Results.responseCode should be(401)
+          val dev1ror2Results = dev1Ror2ndInstanceSearchManager.search("test1_index")
+          dev1ror2Results.responseCode should be(401)
+          val dev2ror2Results = dev2Ror2ndInstanceSearchManager.search("test2_index")
+          dev2ror2Results.responseCode should be(401)
+
+          // first reload
+          forceReload("/admin_api/readonlyrest_first_update_with_impersonation.yml")
+
+          // after first reload only dev1 can access indices
+          val dev1ror1After1stReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
+          dev1ror1After1stReloadResults.responseCode should be(200)
+          val dev2ror1After1stReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")
+          dev2ror1After1stReloadResults.responseCode should be(401)
+          val dev1ror2After1stReloadResults = dev1Ror2ndInstanceSearchManager.search("test1_index")
+          dev1ror2After1stReloadResults.responseCode should be(200)
+          val dev2ror2After1stReloadResults = dev2Ror2ndInstanceSearchManager.search("test2_index")
+          dev2ror2After1stReloadResults.responseCode should be(401)
+
+          // second reload
+          forceReload("/admin_api/readonlyrest_second_update_with_impersonation.yml")
+
+          // after second reload dev1 & dev2 can access indices
+          val dev1ror1After2ndReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
+          dev1ror1After2ndReloadResults.responseCode should be(200)
+          val dev2ror1After2ndReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")
+          dev2ror1After2ndReloadResults.responseCode should be(200)
+          val dev1ror2After2ndReloadResults = dev1Ror2ndInstanceSearchManager.search("test1_index")
+          dev1ror2After2ndReloadResults.responseCode should be(200)
+          val dev2ror2After2ndReloadResults = dev2Ror2ndInstanceSearchManager.search("test2_index")
+          dev2ror2After2ndReloadResults.responseCode should be(200)
+
+        }
+      }
+      "is going to reload ROR test core with TTL" when {
+        "configuration is new and correct" in {
+          def forceReload(rorSettingsResource: String, ttl: Option[FiniteDuration] = None) = {
+            val result = ror1WithIndexConfigAdminActionManager.updateRorTestConfig(
+              getResourceContent(rorSettingsResource),
+              ttl
+            )
+
+            result.responseCode should be(200)
+            result.responseJson("status").str should be("ok")
+            result.responseJson("message").str should be("updated settings")
+          }
+
+          val dev1Ror1stInstanceSearchManager = new SearchManager(
+            clients.head.basicAuthClient("admin1", "pass"),
+            Map("IMPERSONATE_AS" -> "dev1")
+          )
+          val dev2Ror1stInstanceSearchManager = new SearchManager(
+            clients.head.basicAuthClient("admin1", "pass"),
+            Map("IMPERSONATE_AS" -> "dev2")
+          )
+          val dev1Ror2ndInstanceSearchManager = new SearchManager(
+            clients.head.basicAuthClient("admin1", "pass"),
+            Map("IMPERSONATE_AS" -> "dev1")
+          )
+          val dev2Ror2ndInstanceSearchManager = new SearchManager(
+            clients.head.basicAuthClient("admin1", "pass"),
+            Map("IMPERSONATE_AS" -> "dev2")
+          )
+
+          // before first reload no user can access indices
+          val dev1ror1Results = dev1Ror1stInstanceSearchManager.search("test1_index")
+          dev1ror1Results.responseCode should be(401)
+          val dev2ror1Results = dev2Ror1stInstanceSearchManager.search("test2_index")
+          dev2ror1Results.responseCode should be(401)
+          val dev1ror2Results = dev1Ror2ndInstanceSearchManager.search("test1_index")
+          dev1ror2Results.responseCode should be(401)
+          val dev2ror2Results = dev2Ror2ndInstanceSearchManager.search("test2_index")
+          dev2ror2Results.responseCode should be(401)
+
+          // first reload
+          forceReload("/admin_api/readonlyrest_first_update_with_impersonation.yml")
+
+          // after first reload only dev1 can access indices
+          val dev1ror1After1stReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
+          dev1ror1After1stReloadResults.responseCode should be(200)
+          val dev2ror1After1stReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")
+          dev2ror1After1stReloadResults.responseCode should be(401)
+          val dev1ror2After1stReloadResults = dev1Ror2ndInstanceSearchManager.search("test1_index")
+          dev1ror2After1stReloadResults.responseCode should be(200)
+          val dev2ror2After1stReloadResults = dev2Ror2ndInstanceSearchManager.search("test2_index")
+          dev2ror2After1stReloadResults.responseCode should be(401)
+
+          // second reload
+          forceReload(
+            "/admin_api/readonlyrest_second_update_with_impersonation.yml",
+            ttl = Some(3 seconds)
+          )
+
+          // after second reload dev1 & dev2 can access indices
+          val dev1ror1After2ndReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
+          dev1ror1After2ndReloadResults.responseCode should be(200)
+          val dev2ror1After2ndReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")
+          dev2ror1After2ndReloadResults.responseCode should be(200)
+          val dev1ror2After2ndReloadResults = dev1Ror2ndInstanceSearchManager.search("test1_index")
+          dev1ror2After2ndReloadResults.responseCode should be(200)
+          val dev2ror2After2ndReloadResults = dev2Ror2ndInstanceSearchManager.search("test2_index")
+          dev2ror2After2ndReloadResults.responseCode should be(200)
+
+          // wait for test engine auto-destruction
+          Thread.sleep(3000)
+          val dev1ror1AfterTestEngineAutoDestruction = dev1Ror1stInstanceSearchManager.search("test1_index")
+          dev1ror1AfterTestEngineAutoDestruction.responseCode should be(401)
+          val dev2ror1AfterTestEngineAutoDestruction = dev2Ror1stInstanceSearchManager.search("test2_index")
+          dev2ror1AfterTestEngineAutoDestruction.responseCode should be(401)
+          val dev1ror2AfterTestEngineAutoDestruction = dev1Ror2ndInstanceSearchManager.search("test1_index")
+          dev1ror2AfterTestEngineAutoDestruction.responseCode should be(401)
+          val dev2ror2AfterTestEngineAutoDestruction = dev2Ror2ndInstanceSearchManager.search("test2_index")
+          dev2ror2AfterTestEngineAutoDestruction.responseCode should be(401)
+        }
+      }
+      "return info that config is up to date" when {
+        "test config is the same as provided one" in {
+          ror1WithIndexConfigAdminActionManager
+            .updateRorTestConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
+            .force()
+
+          val result = ror1WithIndexConfigAdminActionManager
+            .updateRorTestConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
+            .force()
+
+          result.responseCode should be(200)
+          result.responseJson("status").str should be("ko")
+          result.responseJson("message").str should be("Current settings are already loaded")
+        }
+      }
+      "return info that config is malformed" when {
+        "invalid YAML is provided" in {
+          val result = ror1WithIndexConfigAdminActionManager
+            .updateRorTestConfig(getResourceContent("/admin_api/readonlyrest_malformed.yml"))
+
+          result.responseCode should be(200)
+          result.responseJson("status").str should be("ko")
+          result.responseJson("message").str should startWith("Settings content is malformed")
+        }
+      }
+      "return info that cannot reload" when {
+        "ROR core cannot be reloaded" in {
+          val result = ror1WithIndexConfigAdminActionManager
+            .updateRorTestConfig(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))
+
+          result.responseCode should be(200)
+          result.responseJson("status").str should be("ko")
+          result.responseJson("message").str should be("Cannot reload new settings: Errors:\nThere was a problem with LDAP connection to: ldap://localhost:389")
+        }
+      }
+    }
+    "provide a method for test config engine invalidation" which {
+      "will destruct the engine on demand" in {
+        def forceReload(rorSettingsResource: String) = {
+          val result = ror1WithIndexConfigAdminActionManager.updateRorTestConfig(
+            getResourceContent(rorSettingsResource)
+          )
+
+          result.responseCode should be(200)
+          result.responseJson("status").str should be("ok")
+          result.responseJson("message").str should be("updated settings")
+        }
+
+        val dev1Ror1stInstanceSearchManager = new SearchManager(
+          clients.head.basicAuthClient("admin1", "pass"),
+          Map("IMPERSONATE_AS" -> "dev1")
+        )
+        val dev2Ror1stInstanceSearchManager = new SearchManager(
+          clients.head.basicAuthClient("admin1", "pass"),
+          Map("IMPERSONATE_AS" -> "dev2")
+        )
+        val dev1Ror2ndInstanceSearchManager = new SearchManager(
+          clients.head.basicAuthClient("admin1", "pass"),
+          Map("IMPERSONATE_AS" -> "dev1")
+        )
+        val dev2Ror2ndInstanceSearchManager = new SearchManager(
+          clients.head.basicAuthClient("admin1", "pass"),
+          Map("IMPERSONATE_AS" -> "dev2")
+        )
+
+        // before first reload no user can access indices
+        val dev1ror1Results = dev1Ror1stInstanceSearchManager.search("test1_index")
+        dev1ror1Results.responseCode should be(401)
+        val dev2ror1Results = dev2Ror1stInstanceSearchManager.search("test2_index")
+        dev2ror1Results.responseCode should be(401)
+        val dev1ror2Results = dev1Ror2ndInstanceSearchManager.search("test1_index")
+        dev1ror2Results.responseCode should be(401)
+        val dev2ror2Results = dev2Ror2ndInstanceSearchManager.search("test2_index")
+        dev2ror2Results.responseCode should be(401)
+
+        // first reload
+        forceReload("/admin_api/readonlyrest_first_update_with_impersonation.yml")
+
+        // after first reload only dev1 can access indices
+        val dev1ror1After1stReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
+        dev1ror1After1stReloadResults.responseCode should be(200)
+        val dev2ror1After1stReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")
+        dev2ror1After1stReloadResults.responseCode should be(401)
+        val dev1ror2After1stReloadResults = dev1Ror2ndInstanceSearchManager.search("test1_index")
+        dev1ror2After1stReloadResults.responseCode should be(200)
+        val dev2ror2After1stReloadResults = dev2Ror2ndInstanceSearchManager.search("test2_index")
+        dev2ror2After1stReloadResults.responseCode should be(401)
+
+        // second reload
+        forceReload("/admin_api/readonlyrest_second_update_with_impersonation.yml")
+
+        // after second reload dev1 & dev2 can access indices
+        val dev1ror1After2ndReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
+        dev1ror1After2ndReloadResults.responseCode should be(200)
+        val dev2ror1After2ndReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")
+        dev2ror1After2ndReloadResults.responseCode should be(200)
+        val dev1ror2After2ndReloadResults = dev1Ror2ndInstanceSearchManager.search("test1_index")
+        dev1ror2After2ndReloadResults.responseCode should be(200)
+        val dev2ror2After2ndReloadResults = dev2Ror2ndInstanceSearchManager.search("test2_index")
+        dev2ror2After2ndReloadResults.responseCode should be(200)
+
+        val result = ror1WithIndexConfigAdminActionManager.invalidateRorTestConfig()
+        result.responseCode should be(200)
+
+        // after test core invalidation, main core should handle these requests
+        val dev1ror1AfterTestEngineAutoDestruction = dev1Ror1stInstanceSearchManager.search("test1_index")
+        dev1ror1AfterTestEngineAutoDestruction.responseCode should be(401)
+        val dev2ror1AfterTestEngineAutoDestruction = dev2Ror1stInstanceSearchManager.search("test2_index")
+        dev2ror1AfterTestEngineAutoDestruction.responseCode should be(401)
+        val dev1ror2AfterTestEngineAutoDestruction = dev1Ror2ndInstanceSearchManager.search("test1_index")
+        dev1ror2AfterTestEngineAutoDestruction.responseCode should be(401)
+        val dev2ror2AfterTestEngineAutoDestruction = dev2Ror2ndInstanceSearchManager.search("test2_index")
+        dev2ror2AfterTestEngineAutoDestruction.responseCode should be(401)
       }
     }
   }
@@ -224,11 +506,19 @@ trait BaseAdminApiSuite
       .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest.yml"))
       .force()
 
-    val indexManager = new IndexManager(ror2_1Node.adminClient, esVersionUsed)
+    rorWithNoIndexConfigAdminActionManager
+      .invalidateRorTestConfig()
+      .force()
+
+    val indexManager = new IndexManager(ror2_1Node.rorAdminClient, esVersionUsed)
     indexManager.removeIndex(readonlyrestIndexName)
 
     ror1WithIndexConfigAdminActionManager
       .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
+      .force()
+
+    ror1WithIndexConfigAdminActionManager
+      .invalidateRorTestConfig()
       .force()
   }
 
@@ -241,18 +531,7 @@ trait BaseAdminApiSuite
       documentManager
         .createDoc("test2_index", 1, ujson.read("""{"hello":"world"}"""))
         .force()
-      insertInIndexConfig(documentManager, "/admin_api/readonlyrest_index.yml")
     }
   }
 
-  private def insertInIndexConfig(documentManager: DocumentManager, resourceFilePath: String): Unit = {
-    documentManager
-      .createDoc(
-        readonlyrestIndexName,
-        "settings",
-        id = 1,
-        ujson.read(s"""{"settings": "${escapeJava(getResourceContent(resourceFilePath))}"}""")
-      )
-      .force()
-  }
 }

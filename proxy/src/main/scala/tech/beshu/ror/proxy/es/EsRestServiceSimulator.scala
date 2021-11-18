@@ -40,6 +40,8 @@ import tech.beshu.ror.es.actions.rradmin._
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
 import tech.beshu.ror.es.actions.rrauditevent._
+import tech.beshu.ror.es.actions.rrauthmock.rest.RestRRAuthMockAction
+import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionHandler, RRAuthMockActionType, RRAuthMockRequest, RRAuthMockResponse, TransportRRAuthMockAction}
 import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
@@ -50,7 +52,6 @@ import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
 import tech.beshu.ror.proxy.es.EsRestServiceSimulator.ProcessingResult
 import tech.beshu.ror.proxy.es.clients.{EsRestNodeClient, RestHighLevelClientAdapter}
 import tech.beshu.ror.proxy.es.proxyaction.{ByProxyProcessedRequest, ByProxyProcessedResponseActionListener, GenericPathIndicesRequest, GenericRequest}
-import tech.beshu.ror.proxy.es.services.ProxyIndexJsonContentService
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.TaskOps._
 
@@ -203,6 +204,8 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
                 rrAdminActionHandler.handle(req, resp)
               case (req: RRAuditEventRequest, resp: ActionListener[RRAuditEventResponse]) =>
                 RRAuditEventActionHandler.handle(req, resp)
+              case (req: RRAuthMockRequest, resp: ActionListener[RRAuthMockResponse]) =>
+                new RRAuthMockActionHandler().handle(req, resp)
               case _ =>
                 handleEsAction(esActionRequestHandler, request, listener, proxyRestChannel)
             }
@@ -233,6 +236,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
     override def getActions: util.List[ActionHandler[_ <: ActionRequest, _ <: ActionResponse]] = {
       List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
         new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction]),
+        new ActionHandler(RRAuthMockActionType.instance, classOf[TransportRRAuthMockAction]),
         new ActionHandler(RRConfigActionType.instance, classOf[TransportRRConfigAction]),
         new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
         new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
@@ -248,6 +252,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
                                  nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
       List[RestHandler](
         new RestRRAdminAction(),
+        new RestRRAuthMockAction(),
         new RestRRConfigAction(nodesInCluster),
         new RestRRUserMetadataAction(),
         new RestRRAuditEventAction()
@@ -285,10 +290,9 @@ object EsRestServiceSimulator {
              envVarsProvider: EnvVarsProvider,
              generator: UniqueIdentifierGenerator): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
     val simulatorEsSettingsFolder = esConfigFile.parent.path
-    val rrAdminActionHandler = new RRAdminActionHandler(ProxyIndexJsonContentService, simulatorEsSettingsFolder)
     val result = for {
       filter <- EitherT(ProxyIndexLevelActionFilter.create(simulatorEsSettingsFolder, esClient, threadPool))
-    } yield new EsRestServiceSimulator(esConfigFile, filter, esClient, rrAdminActionHandler, threadPool)
+    } yield new EsRestServiceSimulator(esConfigFile, filter, esClient, new RRAdminActionHandler(), threadPool)
     result.value
   }
 }

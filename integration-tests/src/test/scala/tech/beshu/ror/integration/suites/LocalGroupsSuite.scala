@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, RorApiManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
@@ -28,6 +29,7 @@ import ujson.Str
 trait LocalGroupsSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with ESVersionSupportForAnyWordSpecLike
     with Matchers
     with CustomScalaTestMatchers {
   this: EsContainerCreator =>
@@ -38,7 +40,7 @@ trait LocalGroupsSuite
     val clusterManager = new ClusterManager(
       basicAuthClient("user", "passwd"),
       esVersion = esVersionUsed,
-      additionalHeaders =  Map("x-ror-current-group" -> "group_extra")
+      additionalHeaders = Map("x-ror-current-group" -> "group_extra")
     )
 
     val response = clusterManager.state()
@@ -50,7 +52,7 @@ trait LocalGroupsSuite
     val clusterManager = new ClusterManager(
       basicAuthClient("user", "wrong"),
       esVersion = esVersionUsed,
-      additionalHeaders =  Map("x-ror-current-group" -> "group_extra")
+      additionalHeaders = Map("x-ror-current-group" -> "group_extra")
     )
 
     val response = clusterManager.state()
@@ -70,7 +72,7 @@ trait LocalGroupsSuite
   }
 
   "identify retrieval" in {
-    val userMetadataManager = new RorApiManager(basicAuthClient("user", "passwd"))
+    val userMetadataManager = new RorApiManager(basicAuthClient("user", "passwd"), esVersionUsed)
 
     val response = userMetadataManager.fetchMetadata()
 
@@ -86,7 +88,7 @@ trait LocalGroupsSuite
   }
 
   "identify retrieval with preferred group" in {
-    val userMetadataManager = new RorApiManager(basicAuthClient("user", "passwd"))
+    val userMetadataManager = new RorApiManager(basicAuthClient("user", "passwd"), esVersionUsed)
 
     val response = userMetadataManager.fetchMetadata(preferredGroup = "foogroup")
 

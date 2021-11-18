@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.integration
 
-import eu.timepit.refined.auto._
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
+import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
@@ -29,8 +29,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
-import tech.beshu.ror.utils.containers.LdapContainer
 
 class LdapConnectivityCheckYamlLoadedAccessControlTests
   extends AnyWordSpec
@@ -39,10 +39,10 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
     with ForAllTestContainer
     with Inside {
 
-  private val ldap1 = new LdapContainer("LDAP1", "test_example.ldif")
-  private val ldap2 = new LdapContainer("LDAP2", "test_example2.ldif")
-
-  override val container: MultipleContainers = MultipleContainers(ldap1, ldap2)
+  override val container: MultipleContainers = MultipleContainers(
+    SingletonLdapContainers.ldap1,
+    SingletonLdapContainers.ldap2
+  )
 
   override protected def configYaml: String =
     s"""readonlyrest:
@@ -61,7 +61,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
        |  ldaps:
        |    - name: ldap1
        |      servers:
-       |        - "ldap://${ldap1.ldapHost}:${ldap1.ldapPort}"
+       |        - "ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}"
        |        - "ldap://localhost:666"                                # doesn't work
        |      ha: ROUND_ROBIN
        |      ssl_enabled: false                                        # default true
@@ -71,8 +71,8 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
        |      search_user_base_DN: "ou=People,dc=example,dc=com"
        |      user_id_attribute: "uid"                                  # default "uid
        |    - name: ldap2
-       |      host: "${ldap2.ldapHost}"
-       |      port: ${ldap2.ldapPort}
+       |      host: "${SingletonLdapContainers.ldap2.ldapHost}"
+       |      port: ${SingletonLdapContainers.ldap2.ldapPort}
        |      ignore_ldap_connectivity_problems: true
        |      ssl_enabled: false                                        # default true
        |      ssl_trust_all_certs: true                                 # default false

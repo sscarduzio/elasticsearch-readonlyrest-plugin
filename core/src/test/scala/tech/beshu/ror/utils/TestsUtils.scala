@@ -21,17 +21,31 @@ import java.time.Duration
 import java.util.Base64
 
 import better.files.File
-import cats.data.NonEmptyList
+import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.ParsingFailure
 import org.scalatest.matchers.should.Matchers._
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService, ImpersonatorDef}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyRule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, definitions}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
+import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.configuration.RawRorConfig
-import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
@@ -42,9 +56,12 @@ object TestsUtils {
 
   def basicAuthHeader(value: String): Header =
     new Header(
-      Name(NonEmptyString.unsafeFrom("Authorization")),
+      Header.Name.authorization,
       NonEmptyString.unsafeFrom("Basic " + Base64.getEncoder.encodeToString(value.getBytes))
     )
+
+  def impersonationHeader(username: NonEmptyString): Header =
+    new Header(Header.Name.impersonateAs, username)
 
   def header(name: String, value: String): Header =
     new Header(
@@ -65,6 +82,74 @@ object TestsUtils {
   def indexPattern(str: NonEmptyString): IndexPattern = IndexPattern(clusterIndexName(str))
 
   implicit def scalaFiniteDuration2JavaDuration(duration: FiniteDuration): Duration = Duration.ofMillis(duration.toMillis)
+
+  def impersonatorDefFrom(userIdPattern: NonEmptyString,
+                          impersonatorCredentials: Credentials,
+                          impersonatedUsers: NonEmptyList[User.Id]): ImpersonatorDef = {
+    ImpersonatorDef(
+      UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(userIdPattern))),
+      new AuthKeyRule(
+        BasicAuthenticationRule.Settings(impersonatorCredentials),
+        Impersonation.Disabled,
+        UserIdEq.caseSensitive
+      ),
+      UniqueNonEmptyList.fromNonEmptyList(impersonatedUsers)
+    )
+  }
+
+  def mocksProviderForLdapFrom(map: Map[LdapService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
+    new MocksProvider {
+      override def ldapServiceWith(id: LdapService.Name)
+                                  (implicit context: RequestId): Option[LdapServiceMock] = {
+        map
+          .get(id)
+          .map(r => LdapServiceMock {
+            r.map { case (userId, groups) => LdapUserMock(userId, groups) }.toSet
+          })
+      }
+
+      override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
+                                                    (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = None
+
+      override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
+                                                   (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = None
+    }
+  }
+
+  def mocksProviderForExternalAuthnServiceFrom(map: Map[definitions.ExternalAuthenticationService.Name, Set[User.Id]]): MocksProvider = {
+    new MocksProvider {
+      override def ldapServiceWith(id: LdapService.Name)
+                                  (implicit context: RequestId): Option[LdapServiceMock] = None
+
+      override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
+                                                    (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = {
+        map
+          .get(id)
+          .map(users => ExternalAuthenticationServiceMock(users.map(ExternalAuthenticationUserMock.apply)))
+      }
+
+      override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
+                                                   (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = None
+    }
+  }
+
+  def mocksProviderForExternalAuthzServiceFrom(map: Map[definitions.ExternalAuthorizationService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
+    new MocksProvider {
+      override def ldapServiceWith(id: LdapService.Name)(implicit context: RequestId): Option[LdapServiceMock] = None
+
+      override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
+                                                    (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = None
+
+      override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
+                                                   (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = {
+        map
+          .get(id)
+          .map(r => ExternalAuthorizationServiceMock {
+            r.map { case (userId, groups) => ExternalAuthorizationServiceUserMock(userId, groups) }.toSet
+          })
+      }
+    }
+  }
 
   trait BlockContextAssertion {
 
@@ -105,8 +190,8 @@ object TestsUtils {
                            templates: Set[TemplateOperation] = Set.empty)
                           (blockContext: BlockContext): Unit = {
       blockContext.userMetadata.loggedUser should be(loggedUser)
-      blockContext.userMetadata.currentGroup should be(currentGroup)
       blockContext.userMetadata.availableGroups should be(availableGroups)
+      blockContext.userMetadata.currentGroup should be(currentGroup)
       blockContext.userMetadata.kibanaIndex should be(kibanaIndex)
       blockContext.userMetadata.kibanaTemplateIndex should be(kibanaTemplateIndex)
       blockContext.userMetadata.hiddenKibanaApps should be(hiddenKibanaApps)
@@ -118,24 +203,24 @@ object TestsUtils {
         case _: CurrentUserMetadataRequestBlockContext =>
         case _: GeneralNonIndexRequestBlockContext =>
         case bc: RepositoryRequestBlockContext =>
-          bc.repositories should be (repositories)
+          bc.repositories should be(repositories)
         case bc: SnapshotRequestBlockContext =>
-          bc.snapshots should be (snapshots)
-          bc.repositories should be (repositories)
-          bc.filteredIndices should be (indices)
+          bc.snapshots should be(snapshots)
+          bc.repositories should be(repositories)
+          bc.filteredIndices should be(indices)
         case bc: TemplateRequestBlockContext =>
-          bc.templateOperation  should be (templates)
+          bc.templateOperation should be(templates)
         case bc: GeneralIndexRequestBlockContext =>
-          bc.filteredIndices should be (indices)
+          bc.filteredIndices should be(indices)
         case bc: MultiIndexRequestBlockContext =>
-          bc.indices should be (indices)
+          bc.indices should be(indices)
         case bc: FilterableRequestBlockContext =>
-          bc.filteredIndices should be (indices)
+          bc.filteredIndices should be(indices)
         case bc: FilterableMultiRequestBlockContext =>
-          bc.indices should be (indices)
+          bc.indices should be(indices)
         case bc: AliasRequestBlockContext =>
-          bc.indices should be (indices)
-          bc.aliases should be (aliases)
+          bc.indices should be(indices)
+          bc.aliases should be(aliases)
       }
     }
   }
@@ -143,7 +228,7 @@ object TestsUtils {
   sealed trait AssertionType
   object AssertionType {
     final case class RuleFulfilled(blockContextAssertion: BlockContext => Unit) extends AssertionType
-    object RuleRejected extends AssertionType
+    final case class RuleRejected(cause: Option[Cause]) extends AssertionType
     final case class RuleThrownException(exception: Throwable) extends AssertionType
   }
 
@@ -169,10 +254,17 @@ object TestsUtils {
     }
   }
 
+  def nonEmptySetOf(group: Group, groups: Group*): NonEmptySet[Group] = {
+    import tech.beshu.ror.accesscontrol.orders._
+    NonEmptySet.of(group, groups: _*)
+  }
+
   def groupFrom(value: String): Group = NonEmptyString.from(value) match {
     case Right(v) => Group(v)
     case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to Group")
   }
+
+  def noGroupMappingFrom(value: String): GroupMappings = GroupMappings.Simple(UniqueNonEmptyList.of(groupFrom(value)))
 
   def apiKeyFrom(value: String): ApiKey = NonEmptyString.from(value) match {
     case Right(v) => ApiKey(v)

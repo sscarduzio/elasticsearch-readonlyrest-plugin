@@ -21,6 +21,7 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager, RorApiManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
@@ -29,6 +30,7 @@ import ujson.Str
 trait QueryAuditLogSerializerSuite
   extends AnyWordSpec
     with BaseEsClusterIntegrationTest
+    with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
     with BeforeAndAfterEach
     with Matchers
@@ -47,7 +49,7 @@ trait QueryAuditLogSerializerSuite
     )
   )
 
-  private lazy val auditIndexManager = new AuditIndexManager(adminClient, esVersionUsed, "audit_index")
+  private lazy val auditIndexManager = new AuditIndexManager(rorAdminClient, esVersionUsed, "audit_index")
 
   override def beforeEach(): Unit = {
     super.beforeEach()
@@ -57,7 +59,7 @@ trait QueryAuditLogSerializerSuite
   "Request" should {
     "be audited" when {
       "user metadata context for failed login" in {
-        val user1MetadataManager = new RorApiManager(basicAuthClient("user2", "dev"))
+        val user1MetadataManager = new RorApiManager(basicAuthClient("user2", "dev"), esVersionUsed)
 
         val result = user1MetadataManager.fetchMetadata()
 
@@ -72,7 +74,7 @@ trait QueryAuditLogSerializerSuite
         firstEntry("content").str shouldBe ""
       }
       "user metadata context" in {
-        val user1MetadataManager = new RorApiManager(authHeader("X-Auth-Token", "user1-proxy-id"))
+        val user1MetadataManager = new RorApiManager(authHeader("X-Auth-Token", "user1-proxy-id"), esVersionUsed)
 
         val result = user1MetadataManager.fetchMetadata()
 
@@ -101,9 +103,9 @@ trait QueryAuditLogSerializerSuite
         auditEntries.size shouldBe 1
 
         val firstEntry = auditEntries(0)
-        firstEntry("user").str should be ("user")
+        firstEntry("user").str should be("user")
         firstEntry("final_state").str shouldBe "ALLOWED"
-        firstEntry("block").str should include ("name: 'Rule 1'")
+        firstEntry("block").str should include("name: 'Rule 1'")
         firstEntry("content").str shouldBe ""
       }
       "no rule is matching" in {
@@ -126,7 +128,7 @@ trait QueryAuditLogSerializerSuite
         response.responseCode shouldBe 200
 
         val auditEntriesResponse = auditIndexManager.getEntries
-        auditEntriesResponse.responseCode should be (404)
+        auditEntriesResponse.responseCode should be(404)
       }
     }
   }

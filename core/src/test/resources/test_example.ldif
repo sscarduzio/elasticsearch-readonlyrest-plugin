@@ -1,10 +1,19 @@
 #################################
 #################################
 #################################
-# g1: cartman, chandler
-# g2: morgan
-# g3: morgan, cartman, chandler
-# gAll: morgan, cartman, chandler
+# groups and peoples:
+# * group1: cartman, chandler
+# * group2: morgan, bilbo
+# * group3: morgan, cartman, chandler
+# * gAll: morgan, cartman, chandler, bilbo
+#
+# Regions and gods:
+# * europe: jesus
+# * north america: jesus
+# * south america: jesus
+# * asia: allah
+# * africa: jesus, allah
+# * [no group]: spaghetti
 ################################
 ################################
 ################################
@@ -48,6 +57,16 @@ sn: Bong
 uid: bong
 userPassword:: e1NIQX1zOXFuZTB3RXFWVWJoNEhRTVpIK0NZOHlYbWM9
 
+dn: cn=Bìlbö Bággįnš,ou=People,dc=example,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: Bìlbö Bággįnš
+sn: Bìlbö Bággįnš
+uid: Bìlbö Bággįnš
+userPassword:: e1NNRDV9czdnM0NVekVCMGQxMm5CM0N3VGFrQmp3K0VGMTE3cFg=
+
 dn: cn=Danny DeVito,ou=People,dc=example,dc=com
 objectClass: top
 objectClass: person
@@ -75,6 +94,7 @@ objectClass: top
 objectClass: groupOfUniqueNames
 cn: group2
 uniqueMember: cn=Morgan Freeman,ou=People,dc=example,dc=com
+uniqueMember: cn=Bìlbö Bággįnš,ou=People,dc=example,dc=com
 
 dn: cn=group3,ou=Groups,dc=example,dc=com
 objectClass: top
@@ -91,3 +111,45 @@ cn: groupAll
 uniqueMember: cn=Chanandler Bong,ou=People,dc=example,dc=com
 uniqueMember: cn=Eric Cartman,ou=People,dc=example,dc=com
 uniqueMember: cn=Morgan Freeman,ou=People,dc=example,dc=com
+uniqueMember: cn=Bìlbö Bággįnš,ou=People,dc=example,dc=com
+
+dn: ou=Gods,dc=example,dc=com
+objectClass: top
+objectClass: organizationalUnit
+ou: Gods
+
+dn: cn=Jesus Christ,ou=Gods,dc=example,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: Jesus Christ
+sn: Jesus
+uid: jesus
+userPassword:: e1NNRDV9cTg2ZHlvbGRRRk5pZ04waVprMDgzYnZrVEY3bFdacFk=
+title: cn=europe,ou=Regions,dc=example,dc=com
+title: cn=north america,ou=Regions,dc=example,dc=com
+title: cn=south america,ou=Regions,dc=example,dc=com
+title: cn=africa,ou=Regions,dc=example,dc=com
+
+dn: cn=Allah,ou=Gods,dc=example,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: Allah
+sn: Allah
+uid: allah
+userPassword:: e1NNRDV9czdnM0NVekVCMGQxMm5CM0N3VGFrQmp3K0VGMTE3cFg=
+title: cn=asia,ou=Regions,dc=example,dc=com
+title: cn=africa,ou=Regions,dc=example,dc=com
+
+dn: cn=Spaghetti Monster,ou=Gods,dc=example,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: Spaghetti Monster
+sn: Spaghetti
+uid: spaghetti
+userPassword:: e1NNRDV9czdnM0NVekVCMGQxMm5CM0N3VGFrQmp3K0VGMTE3cFg=

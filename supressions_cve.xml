@@ -29,9 +29,16 @@
     </suppress>
     <suppress>
         <notes><![CDATA[
-   file name: refined_2.12-0.9.5.jar - coincidence of names
+   file name: circe-refined_2.12-0.13.0.jar - coincidence of names
    ]]></notes>
-        <sha1>1527ed4eac814f971a696c0a6ddb7f74fbc0585e</sha1>
+        <sha1>e48e7de23bba2007ceb0d6bce80e55139d98d9c2</sha1>
+        <cpe>cpe:/a:refined-github_project:refined-github</cpe>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: refined_2.12-0.9.12.jar - coincidence of names
+   ]]></notes>
+        <sha1>6ff2aa22c46cb271116c136e51bc624a3dcdddcb</sha1>
         <cpe>cpe:/a:refined-github_project:refined-github</cpe>
     </suppress>
 </suppressions>

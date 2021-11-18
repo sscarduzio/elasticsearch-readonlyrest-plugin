@@ -34,9 +34,8 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings._
-import org.elasticsearch.common.util.concurrent.EsExecutors
+import org.elasticsearch.common.util.concurrent.{EsExecutors, ThreadContext}
 import org.elasticsearch.common.util.{BigArrays, PageCacheRecycler}
-import org.elasticsearch.common.xcontent.NamedXContentRegistry
 import org.elasticsearch.env.{Environment, NodeEnvironment}
 import org.elasticsearch.http.HttpServerTransport
 import org.elasticsearch.index.IndexModule
@@ -48,9 +47,10 @@ import org.elasticsearch.repositories.{RepositoriesService, VerifyNodeRepository
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.netty4.Netty4Utils
-import org.elasticsearch.transport.{SharedGroupFactory, Transport, TransportService}
+import org.elasticsearch.transport.netty4.{Netty4Utils, SharedGroupFactory}
+import org.elasticsearch.transport.{Transport, TransportInterceptor, TransportService}
 import org.elasticsearch.watcher.ResourceWatcherService
+import org.elasticsearch.xcontent.NamedXContentRegistry
 import org.joor.Reflect.on
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
@@ -61,6 +61,8 @@ import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, TransportRRAuditEventAction}
+import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionType, TransportRRAuthMockAction}
+import tech.beshu.ror.es.actions.rrauthmock.rest.RestRRAuthMockAction
 import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
@@ -208,6 +210,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   override def getActions: util.List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]] = {
     List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
       new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction]),
+      new ActionHandler(RRAuthMockActionType.instance, classOf[TransportRRAuthMockAction]),
       new ActionHandler(RRConfigActionType.instance, classOf[TransportRRConfigAction]),
       new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
       new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
@@ -224,10 +227,15 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     restController.decorateRestHandlersWith(new ChannelInterceptingRestHandlerDecorator(_))
     List[RestHandler](
       new RestRRAdminAction(),
+      new RestRRAuthMockAction(),
       new RestRRConfigAction(nodesInCluster),
       new RestRRUserMetadataAction(),
       new RestRRAuditEventAction()
     ).asJava
+  }
+
+  override def getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry, threadContext: ThreadContext): util.List[TransportInterceptor] = {
+    List[TransportInterceptor](new RorTransportInterceptor(threadContext, s.get("node.name"))).asJava
   }
 
   override def onNodeStarted(): Unit = {

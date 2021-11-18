@@ -65,7 +65,7 @@ stages:
         LICENSE:
           ROR_TASK: license
         UNIT:
-          ROR_TASK: unit
+          ROR_TASK: core_tests
 
         IT_PROXY:
           ROR_TASK: integration_proxy

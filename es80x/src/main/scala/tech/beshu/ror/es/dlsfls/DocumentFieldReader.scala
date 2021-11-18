@@ -28,7 +28,8 @@ import org.apache.lucene.util.Bits
 import org.elasticsearch.ExceptionsHelper
 import org.elasticsearch.common.bytes.{BytesArray, BytesReference}
 import org.elasticsearch.common.lucene.index.SequentialStoredFieldsLeafReader
-import org.elasticsearch.common.xcontent.{XContentBuilder, XContentHelper, XContentType}
+import org.elasticsearch.common.xcontent.XContentHelper
+import org.elasticsearch.xcontent.{XContentBuilder, XContentType}
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.es.dlsfls.DocumentFieldDirectoryReader.DocumentFieldDirectorySubReader

@@ -23,12 +23,13 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{CacheableLdapServiceDecorator, CircuitBreakerLdapServiceDecorator, LdapAuthService, LdapAuthenticationService, LdapService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder
+import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
-import tech.beshu.ror.utils.containers.{LdapContainer, LdapWithDnsContainer}
+import tech.beshu.ror.utils.containers.LdapWithDnsContainer
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -47,11 +48,11 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
     ldapConnectionPoolProvider.close()
   }
 
-  private val containerLdap1 = new LdapContainer("LDAP1", "test_example.ldif")
-  private val containerLdap2 = new LdapContainer("LDAP2", "test_example.ldif")
   private val ldapWithDnsContainer = new LdapWithDnsContainer("LDAP3", "test_example.ldif")
 
-  override val container: MultipleContainers = MultipleContainers(containerLdap1, containerLdap2, ldapWithDnsContainer)
+  override val container: MultipleContainers = MultipleContainers(
+    SingletonLdapContainers.ldap1, SingletonLdapContainers.ldap1Backup, ldapWithDnsContainer
+  )
 
   private def getUnderlyingFieldFromCacheableLdapServiceDecorator(cacheableLdapServiceDecorator: CacheableLdapServiceDecorator) = {
     val reflectUniverse = scala.reflect.runtime.universe
@@ -69,8 +70,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}                          # default 389
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}                          # default 389
                |    ssl_enabled: false                                        # default true
                |    ssl_trust_all_certs: true                                 # default false
                |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
@@ -101,8 +102,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}                          # default 389
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}                          # default 389
                |    ssl_enabled: false                                        # default true
                |    ssl_trust_all_certs: true                                 # default false
                |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
@@ -136,8 +137,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}                          # default 389
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}                          # default 389
                |    ssl_enabled: false                                        # default true
                |    ssl_trust_all_certs: true                                 # default false
                |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
@@ -151,9 +152,9 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    request_timeout_in_sec: 10                                # default 1
                |    cache_ttl_in_sec: 60                                      # default 0 - cache disabled
                |
-             |  - name: ldap2
-               |    host: ${containerLdap2.ldapHost}
-               |    port: ${containerLdap2.ldapPort}
+               |  - name: ldap2
+               |    host: ${SingletonLdapContainers.ldap1Backup.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1Backup.ldapPort}
                |    ssl_enabled: false                                        # default true
                |    ssl_trust_all_certs: true                                 # default false
                |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
@@ -185,8 +186,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapSSLPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapSSLPort}
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
            """.stripMargin,
@@ -204,8 +205,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapSSLPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapSSLPort}
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
                |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
@@ -246,8 +247,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |  ldaps:
                |  - name: ldap1
                |    hosts:
-               |    - "ldap://${containerLdap2.ldapHost}:${containerLdap2.ldapPort}"
-               |    - "ldap://${containerLdap1.ldapHost}:${containerLdap1.ldapPort}"
+               |    - "ldap://${SingletonLdapContainers.ldap1Backup.ldapHost}:${SingletonLdapContainers.ldap1Backup.ldapPort}"
+               |    - "ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}"
                |    ssl_enabled: false                                        # default true
                |    ssl_trust_all_certs: true                                 # default false
                |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
@@ -335,8 +336,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |  ldaps:
                |  - name: ldap1
                |    hosts:
-               |    - "ldap://${containerLdap2.ldapHost}:${containerLdap2.ldapPort}"
-               |    - "ldap://${containerLdap1.ldapHost}:${containerLdap1.ldapPort}"
+               |    - "ldap://${SingletonLdapContainers.ldap1Backup.ldapHost}:${SingletonLdapContainers.ldap1Backup.ldapPort}"
+               |    - "ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}"
                |    ha: ROUND_ROBIN
                |    ssl_enabled: false                                        # default true
                |    ssl_trust_all_certs: true                                 # default false
@@ -366,8 +367,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |  ldaps:
                |  - name: ldap1
                |    hosts:
-               |    - "ldap://${containerLdap2.ldapHost}:${containerLdap2.ldapPort}"
-               |    - "ldap://${containerLdap1.ldapHost}:${containerLdap1.ldapPort}"
+               |    - "ldap://${SingletonLdapContainers.ldap1Backup.ldapHost}:${SingletonLdapContainers.ldap1Backup.ldapPort}"
+               |    - "ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}"
                |    ha: ROUND_ROBIN
                |    ssl_enabled: false                                        # default true
                |    ssl_trust_all_certs: true                                 # default false
@@ -393,8 +394,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapSSLPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapSSLPort}
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
                |    circuit_breaker:
@@ -421,15 +422,15 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
           yaml =
             s"""
                |  ldaps:
-               |  - host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |  - host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
             inside(error) { case AclCreationError.DefinitionsLevelCreationError(MalformedValue(message)) =>
-              message should include(s"""host: "${containerLdap1.ldapHost}"""")
-              message should include(s"""port: ${containerLdap1.ldapPort}""")
+              message should include(s"""host: "${SingletonLdapContainers.ldap1.ldapHost}"""")
+              message should include(s"""port: ${SingletonLdapContainers.ldap1.ldapPort}""")
               message should include(s"""search_user_base_DN: "ou=People,dc=example,dc=com"""")
               message should include(s"""search_groups_base_DN: "ou=Groups,dc=example,dc=com"""")
             }
@@ -442,16 +443,16 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
                |    ssl_trust_all_certs: true
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
                |
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ssl_enabled: false
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
@@ -467,8 +468,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
                |    cache_ttl_in_sec: infinity
@@ -484,8 +485,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
                |    cache_ttl_in_sec: -10
@@ -501,8 +502,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    bind_dn: "cn=admin,dc=example,dc=com"
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
@@ -518,8 +519,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    bind_password: "pass"
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
@@ -535,7 +536,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    port: ${containerLdap1.ldapPort}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
@@ -550,11 +551,11 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    servers:
-               |    - "ldap://${containerLdap2.ldapHost}:${containerLdap2.ldapPort}"
-               |    - "ldap://${containerLdap1.ldapHost}:${containerLdap1.ldapPort}"
+               |    - "ldap://${SingletonLdapContainers.ldap1Backup.ldapHost}:${SingletonLdapContainers.ldap1Backup.ldapPort}"
+               |    - "ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}"
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
@@ -569,8 +570,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    server_discovery: true
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
@@ -586,8 +587,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    ha: ROUND_ROBIN
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
@@ -604,8 +605,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |  ldaps:
                |  - name: ldap1
                |    servers:
-               |    - "ldap://${containerLdap2.ldapHost}:${containerLdap2.ldapPort}"
-               |    - "ldap://${containerLdap1.ldapHost}:${containerLdap1.ldapPort}"
+               |    - "ldap://${SingletonLdapContainers.ldap1Backup.ldapHost}:${SingletonLdapContainers.ldap1Backup.ldapPort}"
+               |    - "ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}"
                |    ha: RANDOM
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
@@ -637,8 +638,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
                |    connection_pool_size: -10
@@ -654,8 +655,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
                |    connection_timeout_in_sec: -10
@@ -671,8 +672,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             s"""
                |  ldaps:
                |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
                |    request_timeout_in_sec: -10
@@ -689,8 +690,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |  ldaps:
                |  - name: ldap1
                |    hosts:
-               |    - "ldaps://${containerLdap1.ldapHost}:${containerLdap1.ldapPort}"
-               |    - "ldap://${containerLdap2.ldapHost}:${containerLdap2.ldapPort}"
+               |    - "ldaps://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}"
+               |    - "ldap://${SingletonLdapContainers.ldap1Backup.ldapHost}:${SingletonLdapContainers.ldap1Backup.ldapPort}"
                |    ssl_trust_all_certs: true
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"

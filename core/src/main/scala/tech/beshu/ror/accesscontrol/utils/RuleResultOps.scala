@@ -17,8 +17,8 @@
 package tech.beshu.ror.accesscontrol.utils
 
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 
 import scala.language.implicitConversions
 
@@ -41,6 +41,7 @@ class RuleResultEitherOps[B <: BlockContext](val ruleResultEither: Either[Reject
 object RuleResultOps {
   implicit def from[B <: BlockContext](ruleResult: RuleResult[B]): RuleResultOps[B] =
     new RuleResultOps(ruleResult)
+
   implicit def from[B <: BlockContext](ruleResultEither: Either[Rejected[B], Fulfilled[B]]): RuleResultEitherOps[B] =
     new RuleResultEitherOps(ruleResultEither)
 }

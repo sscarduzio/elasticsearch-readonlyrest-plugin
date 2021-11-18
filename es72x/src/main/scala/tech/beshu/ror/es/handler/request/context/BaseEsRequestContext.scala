@@ -49,7 +49,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override val taskId: Long = esContext.task.getId
 
-  override lazy implicit val id: RequestContext.Id = RequestContext.Id(esContext.requestId)
+  override lazy implicit val id: RequestContext.Id = RequestContext.Id(esContext.requestContextId)
 
   override lazy val action: Action = Action(esContext.actionType)
 

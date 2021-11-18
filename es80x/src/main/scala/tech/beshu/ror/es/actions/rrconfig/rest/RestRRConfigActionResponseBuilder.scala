@@ -19,7 +19,7 @@ package tech.beshu.ror.es.actions.rrconfig.rest
 import java.util.concurrent.TimeoutException
 
 import org.elasticsearch.action.FailedNodeException
-import org.elasticsearch.common.xcontent.XContentBuilder
+import org.elasticsearch.xcontent.XContentBuilder
 import org.elasticsearch.rest.action.RestBuilderListener
 import org.elasticsearch.rest.{BytesRestResponse, RestChannel, RestResponse, RestStatus}
 import org.elasticsearch.transport.ActionNotFoundTransportException

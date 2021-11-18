@@ -15,18 +15,23 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
+
 import cats.Eq
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.{EligibleUsersSupport, UserExistence}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
+import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
+import tech.beshu.ror.accesscontrol.blocks.rules.base.{BasicAuthenticationRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 
 final class AuthKeyRule(override val settings: BasicAuthenticationRule.Settings[Credentials],
-                        override val impersonators: List[ImpersonatorDef],
+                        override val impersonation: Impersonation,
                         implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BasicAuthenticationRule(settings)
     with Logging {
@@ -39,8 +44,9 @@ final class AuthKeyRule(override val settings: BasicAuthenticationRule.Settings[
     configuredCredentials === credentials
   }
 
-  override def exists(user: User.Id)
-                     (implicit userIdEq: Eq[User.Id]): Task[UserExistence] = Task.now {
+  override def exists(user: User.Id, mocksProvider: MocksProvider)
+                     (implicit requestId: RequestId,
+                      eq: Eq[User.Id]): Task[UserExistence] = Task.now {
     if (user === settings.credentials.user) UserExistence.Exists
     else UserExistence.NotExist
   }

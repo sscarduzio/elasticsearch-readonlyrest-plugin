@@ -28,6 +28,7 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.{Header, IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
@@ -149,7 +150,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |
             |""".stripMargin)
         val acl = createCore(config)
-        val obfuscatedHeaders = acl.right.get.aclStaticContext.obfuscatedHeaders
+        val obfuscatedHeaders = acl.right.get.aclEngine.staticContext.obfuscatedHeaders
         obfuscatedHeaders shouldEqual Set(Header.Name.authorization)
       }
       "the section exists, and obfuscated header is not defined" in {
@@ -166,7 +167,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |  obfuscated_headers: []
             |""".stripMargin)
         val acl = createCore(config)
-        val headers = acl.right.get.aclStaticContext.obfuscatedHeaders
+        val headers = acl.right.get.aclEngine.staticContext.obfuscatedHeaders
         headers shouldBe empty
       }
       "the section exists, and obfuscated header is defined" in {
@@ -184,7 +185,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |  - CorpoAuth
             |""".stripMargin)
         val acl = createCore(config)
-        val headers = acl.right.get.aclStaticContext.obfuscatedHeaders
+        val headers = acl.right.get.aclEngine.staticContext.obfuscatedHeaders
         headers should have size 1
         headers.head should be(Header.Name(NonEmptyString.unsafeFrom("CorpoAuth")))
       }
@@ -446,7 +447,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
           |""".stripMargin)
 
       inside(createCore(config)) {
-        case Right(CoreSettings(acl: AccessControlList, _, _)) =>
+        case Right(CoreSettings(acl: AccessControlList, _)) =>
           val firstBlock = acl.blocks.head
           firstBlock.name should be(Block.Name("test_block1"))
           firstBlock.policy should be(Block.Policy.Forbid)
@@ -477,7 +478,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |""".stripMargin)
 
         inside(createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))) {
-          case Right(CoreSettings(acl: AccessControlList, _, _)) =>
+          case Right(CoreSettings(acl: AccessControlList, _)) =>
             val firstBlock = acl.blocks.head
             firstBlock.name should be(Block.Name("test_block1"))
             firstBlock.rules should have size 2
@@ -497,7 +498,8 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
         config,
         RorConfigurationIndex(IndexName.Full(".readonlyrest")),
         clientsFactory,
-        MockLdapConnectionPoolProvider
+        MockLdapConnectionPoolProvider,
+        NoOpMocksProvider
       )
       .runSyncUnsafe()
   }

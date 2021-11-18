@@ -109,7 +109,7 @@ class RegularRequestHandler(engine: Engine,
   }
 
   private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {
-    esContext.listener.onFailure(ForbiddenResponse.create(causes.toList, engine.context))
+    esContext.listener.onFailure(ForbiddenResponse.create(causes.toList, engine.accessControl.staticContext))
   }
 
   private def onIndexNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
@@ -229,7 +229,7 @@ class RegularRequestHandler(engine: Engine,
   }
 
   private def logRequestProcessingTime(): Unit = {
-    logger.debug(s"[${esContext.requestId}] Request processing time: ${Duration.between(esContext.timestamp, Instant.now()).toMillis}ms")
+    logger.debug(s"[${esContext.requestContextId}] Request processing time: ${Duration.between(esContext.timestamp, Instant.now()).toMillis}ms")
   }
 
   private class UpdateResponseListener(update: ActionResponse => Task[ActionResponse]) extends ActionListener[ActionResponse] {

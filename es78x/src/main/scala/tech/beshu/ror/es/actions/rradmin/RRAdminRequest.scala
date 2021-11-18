@@ -16,20 +16,21 @@
  */
 package tech.beshu.ror.es.actions.rradmin
 
+import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
-import tech.beshu.ror.Constants
-import tech.beshu.ror.adminapi.AdminRestApi
+import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
+import tech.beshu.ror.{Constants, RequestId}
+import tech.beshu.ror.api.ConfigApi
+import tech.beshu.ror.utils.ScalaOps._
 
-import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
+import scala.collection.JavaConverters._
 
-class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
+class RRAdminRequest(adminApiRequest: ConfigApi.ConfigRequest,
+                     esRestRequest: RestRequest) extends ActionRequest {
 
-  def this() = {
-    this(null: AdminRestApi.AdminRequest)
-  }
-
-  val getAdminRequest: AdminRestApi.AdminRequest = request
+  val getAdminRequest: ConfigApi.ConfigRequest = adminApiRequest
+  lazy val requestContextId: RequestId = RequestId(s"${esRestRequest.hashCode()}-${this.hashCode()}")
 
   override def validate(): ActionRequestValidationException = null
 }
@@ -37,20 +38,38 @@ class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
 object RRAdminRequest {
 
   def createFrom(request: RestRequest): RRAdminRequest = {
-    val requestType = (request.uri(), request.method()) match {
-      case (uri, method) if Constants.FORCE_RELOAD_CONFIG_PATH.startsWith(uri) && method == POST =>
-        AdminRestApi.AdminRequest.Type.ForceReload
-      case (uri, method) if Constants.PROVIDE_INDEX_CONFIG_PATH.startsWith(uri) && method == GET =>
-        AdminRestApi.AdminRequest.Type.ProvideIndexConfig
-      case (uri, method) if Constants.UPDATE_INDEX_CONFIG_PATH.startsWith(uri) && method == POST =>
-        AdminRestApi.AdminRequest.Type.UpdateIndexConfig
-      case (uri, method) if Constants.PROVIDE_FILE_CONFIG_PATH.startsWith(uri) && method == GET =>
-        AdminRestApi.AdminRequest.Type.ProvideFileConfig
+    val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
+      case (Constants.FORCE_RELOAD_CONFIG_PATH, POST) =>
+        ConfigApi.ConfigRequest.Type.ForceReload
+      case (Constants.PROVIDE_FILE_CONFIG_PATH, GET) =>
+        ConfigApi.ConfigRequest.Type.ProvideFileConfig
+      case (Constants.PROVIDE_INDEX_CONFIG_PATH, GET) =>
+        ConfigApi.ConfigRequest.Type.ProvideIndexConfig
+      case (Constants.UPDATE_INDEX_CONFIG_PATH, POST) =>
+        ConfigApi.ConfigRequest.Type.UpdateIndexConfig
+      case (Constants.UPDATE_TEST_CONFIG_PATH, POST) =>
+        ConfigApi.ConfigRequest.Type.UpdateTestConfig
+      case (Constants.DELETE_TEST_CONFIG_PATH, DELETE) =>
+        ConfigApi.ConfigRequest.Type.InvalidateTestConfig
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }
     new RRAdminRequest(
-      new AdminRestApi.AdminRequest(requestType, request.method.name, request.path, request.content.utf8ToString)
+      new ConfigApi.ConfigRequest(
+        requestType,
+        request.method.name,
+        request.path,
+        request
+          .getHeaders.asScala
+          .flatMap { case (name, values) =>
+            NonEmptyList
+              .fromList(values.asScala.toList)
+              .map((name, _))
+          }
+          .toMap,
+        request.content.utf8ToString
+      ),
+      request
     )
   }
 }

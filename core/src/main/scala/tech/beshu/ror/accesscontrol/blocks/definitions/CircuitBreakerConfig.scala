@@ -21,5 +21,5 @@ import eu.timepit.refined.numeric.Positive
 
 import scala.concurrent.duration.FiniteDuration
 
-final case class CircuitBreakerConfig(maxFailures: Int Refined Positive, resetDuration: FiniteDuration Refined Positive)
-
+final case class CircuitBreakerConfig(maxFailures: Int Refined Positive,
+                                      resetDuration: FiniteDuration Refined Positive)

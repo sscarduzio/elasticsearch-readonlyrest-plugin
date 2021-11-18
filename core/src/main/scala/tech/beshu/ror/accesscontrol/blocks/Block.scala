@@ -25,8 +25,9 @@ import tech.beshu.ror.Constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block._
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RuleWithVariableUsageDefinition}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.BlockValidator
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
@@ -146,6 +147,13 @@ object Block {
     final case class RuleHistoryItem[B <: BlockContext](rule: Rule.Name,
                                                         result: RuleResult[B])
       extends HistoryItem[B]
+  }
+
+  final case class RuleWithVariableUsageDefinition[+T <: Rule](rule: T, variableUsage: VariableUsage[T])
+  object RuleWithVariableUsageDefinition {
+    def create[T <: Rule : VariableUsage](rule: T) = {
+      new RuleWithVariableUsageDefinition(rule, implicitly[VariableUsage[T]])
+    }
   }
 
   sealed trait ExecutionResult[B <: BlockContext] {

@@ -19,14 +19,14 @@ package tech.beshu.ror.es.actions.rradmin
 import tech.beshu.ror.accesscontrol.domain
 import org.elasticsearch.action.{Action, ActionRequestBuilder}
 import org.elasticsearch.client.ElasticsearchClient
-import tech.beshu.ror.adminapi.AdminRestApi
+import tech.beshu.ror.api.ConfigApi
 
 class RRAdminActionType extends Action[RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder](RRAdminActionType.name) {
   override def newRequestBuilder(client: ElasticsearchClient): RRAdminRequestBuilder =
     new RRAdminRequestBuilder(client, RRAdminActionType.instance)
 
   override def newResponse(): RRAdminResponse = {
-    new RRAdminResponse(AdminRestApi.AdminResponse.notAvailable)
+    new RRAdminResponse(ConfigApi.ConfigResponse.notAvailable)
   }
 }
 object RRAdminActionType {

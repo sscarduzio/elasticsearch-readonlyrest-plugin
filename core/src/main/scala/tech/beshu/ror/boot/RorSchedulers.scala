@@ -23,7 +23,7 @@ object RorSchedulers {
 
   object Implicits {
     implicit val mainScheduler: Scheduler = RorSchedulers.scheduler
-    implicit val adminApiScheduler: Scheduler = RorSchedulers.adminRestApiScheduler
+    implicit val rorRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
   }
 
   val scheduler: Scheduler = {
@@ -42,7 +42,7 @@ object RorSchedulers {
 
   val blockingScheduler: Scheduler = Scheduler.io("blocking-index-content-provider")
 
-  val adminRestApiScheduler: Scheduler = Scheduler.fixedPool("admin-rest-api-executor", 5)
+  val restApiScheduler: Scheduler = Scheduler.fixedPool("ror-rest-api-executor", 10)
 
   val ldapUnboundIdBlockingScheduler: Scheduler = Scheduler.cached("unboundid-executor", 10, 50)
 
