@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.dependencies.wiremock
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManager}
@@ -27,6 +28,7 @@ import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, Index
 trait ExternalAuthenticationSuite
   extends AnyWordSpec
     with BaseEsClusterIntegrationTest
+    with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
     with Matchers {
   this: EsContainerCreator =>

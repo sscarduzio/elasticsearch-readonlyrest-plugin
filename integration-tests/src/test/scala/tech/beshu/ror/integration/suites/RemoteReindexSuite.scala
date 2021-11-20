@@ -17,12 +17,11 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
-import org.apache.http.HttpStatus
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
-import tech.beshu.ror.integration.utils.ESVersionSupport
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsClusterSettings.EsVersion
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
@@ -34,7 +33,7 @@ trait RemoteReindexSuite
   with BaseManyEsClustersIntegrationTest
   with MultipleClientsSupport
   with BeforeAndAfterEach
-  with ESVersionSupport
+  with ESVersionSupportForAnyWordSpecLike
   with Matchers {
   this: EsContainerCreator =>
 

@@ -16,18 +16,25 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
+import cats.Eq
+import cats.implicits._
 import monix.eval.Task
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthenticationRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{NoImpersonationSupport, RuleName}
-import tech.beshu.ror.accesscontrol.domain.Credentials
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
+import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseBasicAuthAuthenticationRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 
 final class LdapAuthenticationRule(val settings: Settings,
-                        implicit override val caseMappingEquality: UserIdCaseMappingEquality)
-  extends BaseBasicAuthenticationRule
-    with NoImpersonationSupport {
+                                   override val impersonation: Impersonation,
+                                   implicit override val caseMappingEquality: UserIdCaseMappingEquality)
+  extends BaseBasicAuthAuthenticationRule {
 
   override val name: Rule.Name = LdapAuthenticationRule.Name.name
 
@@ -36,6 +43,20 @@ final class LdapAuthenticationRule(val settings: Settings,
   override protected def authenticateUsing(credentials: Credentials): Task[Boolean] =
     settings.ldap.authenticate(credentials.user, credentials.secret)
 
+  override protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)
+                                      (implicit requestId: RequestId,
+                                       eq: Eq[User.Id]): Task[UserExistence] = Task.delay {
+    mocksProvider
+      .ldapServiceWith(settings.ldap.id)
+      .map { mock =>
+        val ldapUserExists = mock.users.exists(_.id === user)
+        if (ldapUserExists) UserExistence.Exists
+        else UserExistence.NotExist
+      }
+      .getOrElse {
+        UserExistence.CannotCheck
+      }
+  }
 }
 
 object LdapAuthenticationRule {

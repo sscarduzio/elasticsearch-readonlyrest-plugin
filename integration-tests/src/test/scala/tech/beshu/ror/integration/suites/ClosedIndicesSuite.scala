@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -26,6 +27,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 trait ClosedIndicesSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with ESVersionSupportForAnyWordSpecLike
     with Matchers {
   this: EsContainerCreator =>
 
@@ -48,8 +50,8 @@ trait ClosedIndicesSuite
   }
 
   // we use admin client here so 'CONTAINER ADMIN' block is matched. We need to match 'Getter' block
-  private lazy val searchManager = new SearchManager(adminClient, additionalHeaders = Map("x-api-key" -> "g"))
-  private lazy val indexManager = new IndexManager(adminClient, esVersionUsed, additionalHeaders = Map("x-api-key" -> "g"))
+  private lazy val searchManager = new SearchManager(rorAdminClient, additionalHeaders = Map("x-api-key" -> "g"))
+  private lazy val indexManager = new IndexManager(rorAdminClient, esVersionUsed, additionalHeaders = Map("x-api-key" -> "g"))
 
   "A search request" should {
     "return only data related to a1 index and ignore closed a2 index" when {

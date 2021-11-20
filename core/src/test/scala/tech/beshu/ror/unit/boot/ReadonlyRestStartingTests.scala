@@ -790,7 +790,7 @@ class ReadonlyRestStartingTests
                               accessControlMock: AccessControl): CoreFactory = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
-        (config: RawRorConfig, _, _, _) => config == rawRorConfig
+        (config: RawRorConfig, _, _, _, _) => config == rawRorConfig
       })
       .once()
       .returns(Task.now(Right(CoreSettings(accessControlMock, None))))
@@ -802,7 +802,7 @@ class ReadonlyRestStartingTests
                               createCoreResult: Task[Either[NonEmptyList[AclCreationError], CoreSettings]]) = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
-        (config: RawRorConfig, _, _, _) => config == rorConfigFromResource(resourceFileName)
+        (config: RawRorConfig, _, _, _, _) => config == rorConfigFromResource(resourceFileName)
       })
       .once()
       .returns(createCoreResult)
@@ -818,7 +818,7 @@ class ReadonlyRestStartingTests
                                     rawRorConfig: RawRorConfig): CoreFactory = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
-        (config: RawRorConfig, _, _, _) => config == rawRorConfig
+        (config: RawRorConfig, _, _, _, _) => config == rawRorConfig
       })
       .once()
       .returns(Task.now(Left(NonEmptyList.one(AclCreationError.GeneralReadonlyrestSettingsError(Message("failed"))))))

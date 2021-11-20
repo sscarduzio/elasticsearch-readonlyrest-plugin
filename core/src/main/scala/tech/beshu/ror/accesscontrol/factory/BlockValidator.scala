@@ -19,8 +19,10 @@ package tech.beshu.ror.accesscontrol.factory
 import cats.data.Validated._
 import cats.data.{NonEmptyList, Validated, _}
 import cats.syntax.all._
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleWithVariableUsageDefinition}
-import tech.beshu.ror.accesscontrol.blocks.rules.{ActionsRule, GroupsRule, KibanaAccessRule, Rule}
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, AuthorizationRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.{ActionsRule, GroupsRule, KibanaAccessRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.RequirementVerifier
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.ComplianceResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.{NotUsingVariable, UsingVariable}
@@ -48,7 +50,7 @@ object BlockValidator {
   private def validateOnlyOneAuthenticationRulePrinciple(rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]]) = {
     rules
       .map(_.rule)
-      .collect { case a: AuthenticationRule => a}
+      .collect { case a: AuthenticationRule => a }
       .filter {
         case _: GroupsRule => false
         case _ => true
@@ -64,7 +66,7 @@ object BlockValidator {
 
   private def validateKibanaAccessRuleAndActionsRuleSeparationPrinciple(rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
     val kibanaAccessRules = rules.map(_.rule).collect { case r: KibanaAccessRule => r }
-    val actionsRules = rules.map(_.rule).collect { case r: ActionsRule => r}
+    val actionsRules = rules.map(_.rule).collect { case r: ActionsRule => r }
     (kibanaAccessRules, actionsRules) match {
       case (Nil, Nil) => Validated.Valid(())
       case (Nil, _) => Validated.Valid(())

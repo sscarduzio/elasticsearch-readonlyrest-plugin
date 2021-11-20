@@ -26,15 +26,20 @@ import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.es.AuditSinkService
 import ConfigHash._
+
 import scala.concurrent.duration.FiniteDuration
 import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 
 private[boot] class ImpersonatorsReloadableEngine(boot: ReadonlyRest,
                                                   reloadInProgress: Semaphore[Task],
                                                   rorConfigurationIndex: RorConfigurationIndex,
-                                                  auditSink: AuditSinkService)
+                                                  auditSink: AuditSinkService,
+                                                  mocksProvider: MocksProvider)
                                                  (implicit scheduler: Scheduler)
-  extends BaseReloadableEngine("test", boot, None, reloadInProgress, rorConfigurationIndex, auditSink) {
+  extends BaseReloadableEngine(
+    "test", boot, None, reloadInProgress, rorConfigurationIndex, auditSink, mocksProvider
+  ) {
 
   def forceReloadImpersonatorsEngine(config: RawRorConfig,
                                      ttl: FiniteDuration)

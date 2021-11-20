@@ -48,7 +48,7 @@ import org.elasticsearch.plugins._
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.Transport
+import org.elasticsearch.transport.{Transport, TransportInterceptor}
 import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
@@ -67,6 +67,8 @@ import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, TransportRRAuditEventAction}
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
+import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionType, TransportRRAuthMockAction}
+import tech.beshu.ror.es.actions.rrauthmock.rest.RestRRAuthMockAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 
@@ -195,6 +197,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   override def getActions: util.List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]] = {
     List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
       new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction]),
+      new ActionHandler(RRAuthMockActionType.instance, classOf[TransportRRAuthMockAction]),
       new ActionHandler(RRConfigActionType.instance, classOf[TransportRRConfigAction]),
       new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
       new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
@@ -210,6 +213,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
     List[RestHandler](
       new RestRRAdminAction(restController),
+      new RestRRAuthMockAction(restController),
       new RestRRConfigAction(restController, nodesInCluster),
       new RestRRUserMetadataAction(restController),
       new RestRRAuditEventAction(restController)
@@ -223,6 +227,10 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         ThreadRepo.setRestChannel(rorRestChannel)
         restHandler.handleRequest(request, rorRestChannel, client)
       }
+  }
+
+  override def getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry, threadContext: ThreadContext): util.List[TransportInterceptor] = {
+    List[TransportInterceptor](new RorTransportInterceptor(threadContext, s.get("node.name"))).asJava
   }
 
   override def onNodeStarted(): Unit = {

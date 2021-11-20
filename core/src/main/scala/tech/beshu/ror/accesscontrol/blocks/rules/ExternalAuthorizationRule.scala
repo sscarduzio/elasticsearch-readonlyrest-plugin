@@ -16,18 +16,24 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
+import cats.implicits._
+import cats.Eq
 import monix.eval.Task
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService
-import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult
-import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult.{Authorized, Unauthorized}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
+import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseAuthorizationRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings,
+                                override val impersonation: Impersonation,
                                 implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends BaseAuthorizationRule {
 
@@ -35,37 +41,34 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
 
   override val name: Rule.Name = ExternalAuthorizationRule.Name.name
 
-  override protected def authorize[B <: BlockContext](blockContext: B,
-                                                      user: LoggedUser): Task[AuthorizationResult] = {
-    if (userMatcher.`match`(user.id)) checkUserGroups(user, blockContext.userMetadata.currentGroup)
-    else Task.now(Unauthorized)
+  override protected val groupsPermittedByRule: UniqueNonEmptyList[Group] =
+    settings.permittedGroups
+
+  override protected val groupsPermittedByAllRulesOfThisType: UniqueNonEmptyList[Group] =
+    settings.allExternalServiceGroups
+
+  override protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = {
+    Either.cond(userMatcher.`match`(user.id), (), ())
   }
 
-  private def checkUserGroups(user: LoggedUser, currentGroup: Option[Group]): Task[AuthorizationResult] = {
-    settings
-      .service
-      .grantsFor(user)
-      .map(groups => UniqueNonEmptyList.fromSortedSet(groups))
-      .map {
-        case None =>
-          Unauthorized
-        case Some(ldapGroups) =>
-          UniqueNonEmptyList.fromSortedSet(settings.permittedGroups.intersect(ldapGroups)) match {
-            case None =>
-              Unauthorized
-            case Some(availableGroups) =>
-              currentGroup match {
-                case Some(group) if !availableGroups.contains(group) =>
-                  Unauthorized
-                case Some(_) | None =>
-                  Authorized(allExternalServiceGroupsIntersection(ldapGroups))
-              }
-          }
+  override protected def userGroups[B <: BlockContext](blockContext: B,
+                                                       user: LoggedUser): Task[UniqueList[Group]] =
+    settings.service.grantsFor(user.id)
+
+  override protected def mockedGroupsOf(user: User.Id, mocksProvider: MocksProvider)
+                                       (implicit requestId: RequestId, eq: Eq[User.Id]): Groups = {
+    mocksProvider
+      .externalAuthorizationServiceWith(settings.service.id)
+      .map { mock =>
+        mock
+          .users
+          .find(_.id === user)
+          .map(m => Groups.Present(UniqueList.of(m.groups.toSeq: _*)))
+          .getOrElse(Groups.Present(UniqueList.empty))
       }
-  }
-
-  private def allExternalServiceGroupsIntersection(availableGroups: UniqueNonEmptyList[Group]) = {
-    UniqueNonEmptyList.unsafeFromSortedSet(settings.allExternalServiceGroups.intersect(availableGroups)) // it is safe here
+      .getOrElse {
+        Groups.CannotCheck
+      }
   }
 }
 

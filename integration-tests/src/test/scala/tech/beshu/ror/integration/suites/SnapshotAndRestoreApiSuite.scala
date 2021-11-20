@@ -17,13 +17,13 @@
 package tech.beshu.ror.integration.suites
 
 import monix.execution.atomic.Atomic
-import org.scalatest.concurrent.{Eventually, IntegrationPatience}
 import org.scalatest.BeforeAndAfterEach
+import org.scalatest.concurrent.{Eventually, IntegrationPatience}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.SnapshotAndRestoreApiSuite.{RepositoryNameGenerator, SnapshotNameGenerator}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.utils.ESVersionSupport
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SnapshotManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -35,7 +35,7 @@ trait SnapshotAndRestoreApiSuite
     with IntegrationPatience
     with BeforeAndAfterEach
     with Matchers
-    with ESVersionSupport {
+    with ESVersionSupportForAnyWordSpecLike {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/snapshot_and_restore_api/readonlyrest.yml"
@@ -555,7 +555,7 @@ trait SnapshotAndRestoreApiSuite
             val result = dev2SnapshotManager.getAllSnapshotStatuses()
 
             result.responseCode should be(200)
-            result.snapshots.map(_ ("snapshot").str) should contain theSameElementsAs List(snapshotName1)
+            result.snapshots.map(_ ("snapshot").str) should contain theSameElementsAs List.empty // only the in-progres ones
           }
           "he has access to all of them" in {
             val repositoryName = RepositoryNameGenerator.next("dev2-repo")
@@ -570,7 +570,7 @@ trait SnapshotAndRestoreApiSuite
             val result = adminSnapshotManager.getAllSnapshotStatuses()
 
             result.responseCode should be(200)
-            result.snapshots.map(_ ("snapshot").str) should contain theSameElementsAs List(snapshotName1, snapshotName2)
+            result.snapshots.map(_ ("snapshot").str) should contain theSameElementsAs List.empty // only the in-progres ones
           }
         }
       }

@@ -19,17 +19,13 @@ package tech.beshu.ror.es.actions.rradmin
 import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
 import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.env.Environment
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.transport.TransportService
-import tech.beshu.ror.es.services.EsIndexJsonContentService
 
 import scala.language.postfixOps
 
 class TransportRRAdminAction(transportService: TransportService,
                              actionFilters: ActionFilters,
-                             env: Environment,
-                             indexContentProvider: EsIndexJsonContentService,
                              ignore: Unit) // hack!
   extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
     RRAdminActionType.name, transportService, actionFilters, () => new RRAdminRequest
@@ -37,13 +33,11 @@ class TransportRRAdminAction(transportService: TransportService,
 
   @Inject
   def this(transportService: TransportService,
-           actionFilters: ActionFilters,
-           env: Environment,
-           indexContentProvider: EsIndexJsonContentService) {
-    this(transportService, actionFilters, env, indexContentProvider, ())
+           actionFilters: ActionFilters) {
+    this(transportService, actionFilters, ())
   }
 
-  private val handler = new RRAdminActionHandler(indexContentProvider, env.configFile())
+  private val handler = new RRAdminActionHandler()
 
   override def doExecute(task: Task, request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
     handler.handle(request, listener)

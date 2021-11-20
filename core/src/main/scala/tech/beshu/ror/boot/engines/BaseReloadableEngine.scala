@@ -24,6 +24,7 @@ import monix.execution.atomic.{Atomic, AtomicAny}
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineState, EngineWithConfig}
@@ -40,7 +41,8 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
                                                      initialEngine: Option[(Engine, RawRorConfig)],
                                                      reloadInProgress: Semaphore[Task],
                                                      rorConfigurationIndex: RorConfigurationIndex,
-                                                     auditSink: AuditSinkService)
+                                                     auditSink: AuditSinkService,
+                                                     mocksProvider: MocksProvider)
                                                     (implicit scheduler: Scheduler)
   extends Logging {
 
@@ -123,8 +125,6 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     }
   }
 
-  private lazy val doReload = EitherT.pure[Task, RawConfigReloadError](())
-
   private def reloadWith(newConfig: RawRorConfig,
                          newConfigEngineTtl: Option[FiniteDuration]): EitherT[Task, RawConfigReloadError, EngineWithConfig] = EitherT {
     tryToLoadRorCore(newConfig)
@@ -135,7 +135,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   }
 
   private def tryToLoadRorCore(config: RawRorConfig) =
-    boot.loadRorCore(config, rorConfigurationIndex, auditSink)
+    boot.loadRorCore(config, rorConfigurationIndex, auditSink, mocksProvider)
 
   private def replaceCurrentEngine(newEngineWithConfig: EngineWithConfig)
                                   (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Option[EngineWithConfig]] = {

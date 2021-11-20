@@ -16,26 +16,32 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
+import cats.Eq
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, NoImpersonationSupport, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
+import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseAuthenticationRule, Rule}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, User}
+import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final class ProxyAuthRule(val settings: Settings,
+                          override val impersonation: Impersonation,
                           implicit override val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRule
-    with NoImpersonationSupport
+  extends BaseAuthenticationRule
     with Logging {
 
   private val userMatcher = MatcherWithWildcardsScalaAdapter[User.Id](settings.userIds.toSet)
@@ -44,15 +50,22 @@ final class ProxyAuthRule(val settings: Settings,
 
   override val name: Rule.Name = ProxyAuthRule.Name.name
 
-  override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     getLoggedUser(blockContext.requestContext) match {
       case None =>
         Rejected()
-      case Some(loggedUser) if shouldAuthenticate(loggedUser) =>
+      case Some(loggedUser) if shouldAuthenticate(loggedUser.id) =>
         Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(loggedUser)))
       case Some(_) =>
         Rejected()
     }
+  }
+
+  override protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)
+                                      (implicit requestId: RequestId,
+                                       userIdEq: Eq[Id]): Task[UserExistence] = Task.delay {
+    if(shouldAuthenticate(user)) UserExistence.Exists
+    else UserExistence.NotExist
   }
 
   private def getLoggedUser(context: RequestContext) = {
@@ -62,8 +75,8 @@ final class ProxyAuthRule(val settings: Settings,
       .map(h => DirectlyLoggedUser(Id(h.value)))
   }
 
-  private def shouldAuthenticate(user: LoggedUser) = {
-    userMatcher.`match`(user.id)
+  private def shouldAuthenticate(userId: User.Id) = {
+    userMatcher.`match`(userId)
   }
 }
 

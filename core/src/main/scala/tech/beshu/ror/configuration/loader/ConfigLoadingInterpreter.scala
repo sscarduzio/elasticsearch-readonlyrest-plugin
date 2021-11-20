@@ -38,7 +38,8 @@ import language.postfixOps
 
 object ConfigLoadingInterpreter extends Logging {
 
-  def create(indexConfigManager: IndexConfigManager, inIndexLoadingDelay: LoadingDelay)
+  def create(indexConfigManager: IndexConfigManager,
+             inIndexLoadingDelay: LoadingDelay)
             (implicit envVarsProvider: EnvVarsProvider): LoadConfigAction ~> Task = new (LoadConfigAction ~> Task) {
     override def apply[A](fa: LoadConfigAction[A]): Task[A] = fa match {
       case ConfigLoading.LoadConfigAction.LoadEsConfig(esConfigPath) =>

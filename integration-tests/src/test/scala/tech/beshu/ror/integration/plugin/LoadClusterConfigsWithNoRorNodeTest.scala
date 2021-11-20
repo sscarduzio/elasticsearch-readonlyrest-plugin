@@ -21,7 +21,7 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.plugin.LoadClusterConfigsWithNoRorNodeTest.IndexConfigInitializer
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, MultipleClientsSupport}
-import tech.beshu.ror.integration.utils.PluginTestSupport
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers.EsClusterProvider.ClusterNodeData
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.RorApiManager
@@ -33,7 +33,8 @@ final class LoadClusterConfigsWithNoRorNodeTest
     with BeforeAndAfterEach
     with PluginTestSupport
     with BaseEsClusterIntegrationTest
-    with MultipleClientsSupport {
+    with MultipleClientsSupport
+    with ESVersionSupportForAnyWordSpecLike {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/admin_api/readonlyrest.yml"
@@ -67,7 +68,7 @@ final class LoadClusterConfigsWithNoRorNodeTest
     )(rorConfigFileName)
   )
 
-  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.adminClient, esVersionUsed)
+  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.rorAdminClient, esVersionUsed)
 
   "return index config, and a failure" in {
     val result = ror1WithIndexConfigAdminActionManager.loadRorCurrentConfig()

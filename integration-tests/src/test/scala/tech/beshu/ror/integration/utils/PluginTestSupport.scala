@@ -19,9 +19,9 @@ package tech.beshu.ror.integration.utils
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.providers._
-import tech.beshu.ror.utils.containers.{EsContainer, EsWithRorPluginContainerCreator, SingletonEsContainer}
+import tech.beshu.ror.utils.containers.{EsContainer, EsWithSecurityPluginContainerCreator, SingletonEsContainer}
 
-trait PluginTestSupport extends EsWithRorPluginContainerCreator with CallingEsDirectly {
+trait PluginTestSupport extends EsWithSecurityPluginContainerCreator with CallingEsDirectly {
   this: MultipleEsTargets =>
 }
 

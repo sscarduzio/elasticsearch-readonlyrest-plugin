@@ -16,19 +16,19 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import eu.timepit.refined.auto._
 import cats.data.NonEmptySet
+import eu.timepit.refined.auto._
+import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
-import monix.execution.Scheduler.Implicits.global
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.HeadersAndRule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header, UriPath}
 import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
 
 class HeadersAndRuleTests extends AnyWordSpec with MockFactory {

@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -27,6 +28,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 trait FiltersAndFieldsSecuritySuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with ESVersionSupportForAnyWordSpecLike
     with Matchers {
   this: EsContainerCreator =>
 
@@ -36,7 +38,7 @@ trait FiltersAndFieldsSecuritySuite
 
   "testDirectSingleIdxa" in {
     val searchManager = new SearchManager(
-      adminClient,
+      rorAdminClient,
       Map("x-api-key" -> "g")
     )
     val response = searchManager.search("testfiltera")
@@ -53,7 +55,7 @@ trait FiltersAndFieldsSecuritySuite
 
   "testHeaderReplacement" in {
     val searchManager = new SearchManager(
-      adminClient,
+      rorAdminClient,
       Map("x-api-key" -> "put-the-header", "x-randomheader" -> "value")
     )
     val response = searchManager.search("testfiltera")
@@ -70,7 +72,7 @@ trait FiltersAndFieldsSecuritySuite
 
   "testDirectMultipleIdxbandc" in {
     val searchManager = new SearchManager(
-      adminClient,
+      rorAdminClient,
       Map("x-api-key" -> "g")
     )
     val response = searchManager.search("testfilterbandc")
@@ -87,7 +89,7 @@ trait FiltersAndFieldsSecuritySuite
 
   "testDirectSingleIdxd" in {
     val searchManager = new SearchManager(
-      adminClient,
+      rorAdminClient,
       Map("x-api-key" -> "g")
     )
     val response = searchManager.search("testfilterd")
@@ -109,14 +111,14 @@ trait FiltersAndFieldsSecuritySuite
 
   "tesANoCache" in {
     val searchManager = new SearchManager(
-      adminClient,
+      rorAdminClient,
       Map("x-api-key" -> "a_nofilter")
     )
     val firstResponse = searchManager.search("testfiltera")
     firstResponse.responseCode shouldBe 200
 
     val searchManager2 = new SearchManager(
-      adminClient,
+      rorAdminClient,
       Map("x-api-key" -> "g")
     )
 

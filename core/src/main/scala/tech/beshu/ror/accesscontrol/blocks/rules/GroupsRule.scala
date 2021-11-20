@@ -24,9 +24,11 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, Mode}
 import tech.beshu.ror.accesscontrol.blocks.rules.GroupsRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule._
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule._
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -39,7 +41,8 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 final class GroupsRule(val settings: Settings,
                        implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthRule
-    with NoImpersonationSupport
+    with AuthenticationImpersonationCustomSupport
+    with AuthorizationImpersonationCustomSupport
     with Logging {
 
   override val name: Rule.Name = GroupsRule.Name.name
@@ -51,7 +54,7 @@ final class GroupsRule(val settings: Settings,
     .map { userDef => userDef -> new GenericPatternMatcher(userDef.usernames.patterns.toList) }
     .toMap
 
-  override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+  override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     Task
       .unit
       .flatMap { _ =>
@@ -63,6 +66,10 @@ final class GroupsRule(val settings: Settings,
             Task.now(Rejected())
         }
       }
+  }
+
+  override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+    Task.now(RuleResult.Fulfilled(blockContext))
 
   private def continueCheckingWithUserDefinitions[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                            resolvedGroups: UniqueNonEmptyList[Group]): Task[RuleResult[B]] = {
@@ -220,9 +227,9 @@ final class GroupsRule(val settings: Settings,
   }
 
   private def updateBlockContextWithLoggedUserAndAllowedGroups[B <: BlockContext : BlockContextUpdater](sourceBlockContext: B,
-                                                                                                      destinationBlockContext: B,
-                                                                                                      potentiallyAvailableGroups: UniqueNonEmptyList[Group],
-                                                                                                      groupMappings: GroupMappings) = {
+                                                                                                        destinationBlockContext: B,
+                                                                                                        potentiallyAvailableGroups: UniqueNonEmptyList[Group],
+                                                                                                        groupMappings: GroupMappings) = {
     val externalAvailableGroups = sourceBlockContext.userMetadata.availableGroups
     for {
       externalGroupsMappedToLocalGroups <- mapExternalGroupsToLocalGroups(groupMappings, externalAvailableGroups)
@@ -278,6 +285,7 @@ final class GroupsRule(val settings: Settings,
   private def resolveGroups[B <: BlockContext](blockContext: B) = {
     resolveAll(settings.groups.toNonEmptyList, blockContext)
   }
+
 }
 
 object GroupsRule {

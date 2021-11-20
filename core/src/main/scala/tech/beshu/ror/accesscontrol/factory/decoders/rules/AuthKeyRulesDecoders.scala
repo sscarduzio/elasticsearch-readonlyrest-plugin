@@ -18,10 +18,12 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyUnixRule.UnixHashedCredentials
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules._
+import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -33,6 +35,7 @@ import tech.beshu.ror.utils.StringWiseSplitter
 import tech.beshu.ror.utils.StringWiseSplitter._
 
 class AuthKeyRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+                         mocksProvider: MocksProvider,
                          implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[AuthKeyRule] {
 
@@ -41,13 +44,18 @@ class AuthKeyRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
       .plainTextCredentialsDecoder
       .map(settings =>
         RuleWithVariableUsageDefinition.create(
-          new AuthKeyRule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+          new AuthKeyRule(
+            settings,
+            impersonatorsDef.toImpersonation(mocksProvider),
+            caseMappingEquality
+          )
         )
       )
   }
 }
 
 class AuthKeySha1RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+                             mocksProvider: MocksProvider,
                              implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[AuthKeySha1Rule] {
 
@@ -56,13 +64,18 @@ class AuthKeySha1RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDe
       .hashedCredentialsDecoder
       .map(settings =>
         RuleWithVariableUsageDefinition.create(
-          new AuthKeySha1Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+          new AuthKeySha1Rule(
+            settings,
+            impersonatorsDef.toImpersonation(mocksProvider),
+            caseMappingEquality
+          )
         )
       )
   }
 }
 
 class AuthKeySha256RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+                               mocksProvider: MocksProvider,
                                implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[AuthKeySha256Rule] {
 
@@ -71,13 +84,18 @@ class AuthKeySha256RuleDecoder(impersonatorsDef: Option[Definitions[Impersonator
       .hashedCredentialsDecoder
       .map(settings =>
         RuleWithVariableUsageDefinition.create(
-          new AuthKeySha256Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+          new AuthKeySha256Rule(
+            settings,
+            impersonatorsDef.toImpersonation(mocksProvider),
+            caseMappingEquality
+          )
         )
       )
   }
 }
 
 class AuthKeySha512RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+                               mocksProvider: MocksProvider,
                                implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[AuthKeySha512Rule] {
 
@@ -86,13 +104,18 @@ class AuthKeySha512RuleDecoder(impersonatorsDef: Option[Definitions[Impersonator
       .hashedCredentialsDecoder
       .map(settings =>
         RuleWithVariableUsageDefinition.create(
-          new AuthKeySha512Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+          new AuthKeySha512Rule(
+            settings,
+            impersonatorsDef.toImpersonation(mocksProvider),
+            caseMappingEquality
+          )
         )
       )
   }
 }
 
 class AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+                                             mocksProvider: MocksProvider,
                                              implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[AuthKeyPBKDF2WithHmacSHA512Rule] {
 
@@ -101,13 +124,18 @@ class AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDef: Option[Definition
       .hashedCredentialsDecoder
       .map(settings =>
         RuleWithVariableUsageDefinition.create(
-          new AuthKeyPBKDF2WithHmacSHA512Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+          new AuthKeyPBKDF2WithHmacSHA512Rule(
+            settings,
+            impersonatorsDef.toImpersonation(mocksProvider),
+            caseMappingEquality
+          )
         )
       )
   }
 }
 
 class AuthKeyUnixRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+                             mocksProvider: MocksProvider,
                              implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[AuthKeyUnixRule] {
 
@@ -116,7 +144,11 @@ class AuthKeyUnixRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDe
       .unixHashedCredentialsDecoder
       .map(settings =>
         RuleWithVariableUsageDefinition.create(
-          new AuthKeyUnixRule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+          new AuthKeyUnixRule(
+            settings,
+            impersonatorsDef.toImpersonation(mocksProvider),
+            caseMappingEquality
+          )
         )
       )
   }

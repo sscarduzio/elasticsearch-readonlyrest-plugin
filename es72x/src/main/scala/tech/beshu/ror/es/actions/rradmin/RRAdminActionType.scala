@@ -18,11 +18,11 @@ package tech.beshu.ror.es.actions.rradmin
 
 import org.elasticsearch.action.Action
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.adminapi.AdminRestApi
+import tech.beshu.ror.api.ConfigApi
 
 class RRAdminActionType extends Action[RRAdminResponse](RRAdminActionType.name) {
   override def newResponse(): RRAdminResponse =
-    new RRAdminResponse(AdminRestApi.AdminResponse.notAvailable)
+    new RRAdminResponse(ConfigApi.ConfigResponse.notAvailable)
 }
 object RRAdminActionType {
   val name = domain.Action.rorOldConfigAction.value

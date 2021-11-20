@@ -17,14 +17,121 @@ readonlyrest:
       indices: ["test1_index"]
       auth_key: dev1:test
 
-    - name: "test2"
+    - name: "test2 (1)"
       indices: ["test2_index"]
       auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
 
+    - name: "test2 (2)"
+      indices: ["test2_index"]
+      proxy_auth:
+        proxy_auth_config: "proxy1"
+        users: ["proxy_user_1"]
+
+    - name: "test3 (1)"
+      indices: ["test3_index"]
+      ldap_auth:
+        name: "ldap1"
+        groups: ["group1", "group3"]
+
+    - name: "test3 (2)"
+      indices: ["test3_index"]
+      external_authentication: "ext1"
+
+    - name: "test3 (3)"
+      indices: ["test3_index"]
+      auth_key: "gpa_user_1:test"
+      groups_provider_authorization:
+        user_groups_provider: "grp1"
+        groups: ["group4"]
+
+    - name: "test4"
+      indices: ["test4_index"]
+      groups: ["local_group1", "local_group2"]
+
+
+  users:
+
+    - username: "*"
+      groups: ["local_group1"]
+      ldap_auth:
+        name: ldap1
+        groups: ["group1", "group3"]
+
+    - username: "*"
+      groups: ["local_group2"]
+      auth_key: dev2:test
+
+  proxy_auth_configs:
+
+    - name: "proxy1"
+      user_id_header: "X-Auth-Token"
+
+  ldaps:
+
+    - name: ldap1
+      host: "{LDAP1_HOST}"
+      port: {LDAP1_PORT}                                        # default 389
+      ssl_enabled: false                                        # default true
+      ssl_trust_all_certs: true                                 # default false
+      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+      bind_password: "password"                                 # skip for anonymous bind
+      search_user_base_DN: "ou=People,dc=example,dc=com"
+      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      user_id_attribute: "uid"                                  # default "uid"
+      unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+      connection_pool_size: 10                                  # default 30
+      connection_timeout: 10s                                   # default 1
+      request_timeout: 10s                                      # default 1
+      cache_ttl: 60s                                            # default 0 - cache disabled
+
+    - name: ldap2
+      host: "{LDAP2_HOST}"
+      port: {LDAP2_PORT}                                        # default 389
+      ssl_enabled: false                                        # default true
+      ssl_trust_all_certs: true                                 # default false
+      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+      bind_password: "password"                                 # skip for anonymous bind
+      search_user_base_DN: "ou=People,dc=example,dc=com"
+      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      user_id_attribute: "uid"                                  # default "uid"
+      unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+      connection_pool_size: 10                                  # default 30
+      connection_timeout: 10s                                   # default 1
+      request_timeout: 10s                                      # default 1
+      cache_ttl: 60s                                            # default 0 - cache disabled
+
+  external_authentication_service_configs:
+
+    - name: "ext1"
+      authentication_endpoint: "http://{EXT1_HOST}:{EXT1_PORT}/auth"
+      success_status_code: 200
+      cache_ttl: 60s
+
+    - name: "ext2"
+      authentication_endpoint: "http://{EXT1_HOST}:{EXT1_PORT}/auth"
+      success_status_code: 200
+      cache_ttl: 60s
+
+  user_groups_providers:
+
+    - name: "grp1"
+      groups_endpoint: "http://{EXT1_HOST}:{EXT1_PORT}/auth"
+      auth_token_name: "user"
+      auth_token_passed_as: QUERY_PARAM
+      response_groups_json_path: "$..groups[?(@.name)].name"
+
+    - name: "grp2"
+      groups_endpoint: "http://{EXT1_HOST}:{EXT1_PORT}/auth"
+      auth_token_name: "user"
+      auth_token_passed_as: QUERY_PARAM
+      response_groups_json_path: "$..groups[?(@.name)].name"
+
   impersonation:
+
     - impersonator: admin1
       auth_key: admin1:pass
       users: ["*"]
+
     - impersonator: admin2
       auth_key: admin2:pass
       users: ["dev2"]

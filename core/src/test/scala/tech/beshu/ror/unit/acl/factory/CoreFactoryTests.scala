@@ -28,6 +28,7 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.{Header, IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
@@ -497,7 +498,8 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
         config,
         RorConfigurationIndex(IndexName.Full(".readonlyrest")),
         clientsFactory,
-        MockLdapConnectionPoolProvider
+        MockLdapConnectionPoolProvider,
+        NoOpMocksProvider
       )
       .runSyncUnsafe()
   }

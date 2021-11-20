@@ -23,9 +23,11 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule._
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule._
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -42,7 +44,8 @@ import scala.util.Try
 final class RorKbnAuthRule(val settings: Settings,
                            implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthRule
-    with NoImpersonationSupport
+    with AuthenticationImpersonationCustomSupport
+    with AuthorizationImpersonationCustomSupport
     with Logging {
 
   override val name: Rule.Name = RorKbnAuthRule.Name.name
@@ -55,16 +58,20 @@ final class RorKbnAuthRule(val settings: Settings,
     case Ec(pubKey) => Jwts.parserBuilder().setSigningKey(pubKey).build()
   }
 
-  override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-    val authHeaderName = Header.Name.authorization
-    blockContext.requestContext.bearerToken.map(h => JwtToken(h.value)) match {
-      case None =>
-        logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
-        Rejected()
-      case Some(token) =>
-        process(token, blockContext)
+  override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+    Task.now(RuleResult.Fulfilled(blockContext))
+
+  override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+    Task {
+      val authHeaderName = Header.Name.authorization
+      blockContext.requestContext.bearerToken.map(h => JwtToken(h.value)) match {
+        case None =>
+          logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
+          Rejected()
+        case Some(token) =>
+          process(token, blockContext)
+      }
     }
-  }
 
   private def process[B <: BlockContext : BlockContextUpdater](token: JwtToken, blockContext: B): RuleResult[B] = {
     jwtTokenData(token) match {
@@ -132,7 +139,6 @@ final class RorKbnAuthRule(val settings: Settings,
       case ClaimSearchResult.NotFound => blockContext
     }
   }
-
 }
 
 object RorKbnAuthRule {

@@ -89,10 +89,11 @@ object UnboundidLdapAuthenticationService {
       _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
         .recoverWith {
           case error: ConnectionError =>
-            if (connectionConfig.ignoreLdapConnectivityProblems)
-              EitherT.rightT(Unit)
-            else
-              EitherT.leftT(error)
+            EitherT.cond(
+              test = connectionConfig.ignoreLdapConnectivityProblems,
+              right = (),
+              left = error
+            )
         }
       connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](poolProvider.connect(connectionConfig))
     } yield new UnboundidLdapAuthenticationService(id, connectionPool, userSearchFiler, connectionConfig.requestTimeout)).value

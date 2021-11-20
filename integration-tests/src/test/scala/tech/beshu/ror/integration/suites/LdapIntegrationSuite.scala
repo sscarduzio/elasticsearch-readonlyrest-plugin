@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.integration.utils.SingletonLdapContainers
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonLdapContainers}
 import tech.beshu.ror.utils.containers.dependencies.ldap
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
@@ -28,6 +28,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 trait LdapIntegrationSuite
   extends AnyWordSpec
     with BaseEsClusterIntegrationTest
+    with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
     with Matchers {
   this: EsContainerCreator =>

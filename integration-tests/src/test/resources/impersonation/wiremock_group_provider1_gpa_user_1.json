@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/groups",
+    "queryParameters": {
+      "user": {
+        "equalTo": "gpa_user_1"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{ \"sth\": \"unknown\", \"groups\": [ { \"name\": \"group4\" }, { \"name\": \"group5\" } ] }"
+  }
+}

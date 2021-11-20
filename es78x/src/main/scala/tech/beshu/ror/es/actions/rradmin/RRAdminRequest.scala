@@ -21,15 +21,15 @@ import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
 import tech.beshu.ror.{Constants, RequestId}
-import tech.beshu.ror.adminapi.AdminRestApi
+import tech.beshu.ror.api.ConfigApi
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 
-class RRAdminRequest(adminApiRequest: AdminRestApi.AdminRequest,
+class RRAdminRequest(adminApiRequest: ConfigApi.ConfigRequest,
                      esRestRequest: RestRequest) extends ActionRequest {
 
-  val getAdminRequest: AdminRestApi.AdminRequest = adminApiRequest
+  val getAdminRequest: ConfigApi.ConfigRequest = adminApiRequest
   lazy val requestContextId: RequestId = RequestId(s"${esRestRequest.hashCode()}-${this.hashCode()}")
 
   override def validate(): ActionRequestValidationException = null
@@ -40,22 +40,22 @@ object RRAdminRequest {
   def createFrom(request: RestRequest): RRAdminRequest = {
     val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
       case (Constants.FORCE_RELOAD_CONFIG_PATH, POST) =>
-        AdminRestApi.AdminRequest.Type.ForceReload
+        ConfigApi.ConfigRequest.Type.ForceReload
       case (Constants.PROVIDE_FILE_CONFIG_PATH, GET) =>
-        AdminRestApi.AdminRequest.Type.ProvideFileConfig
+        ConfigApi.ConfigRequest.Type.ProvideFileConfig
       case (Constants.PROVIDE_INDEX_CONFIG_PATH, GET) =>
-        AdminRestApi.AdminRequest.Type.ProvideIndexConfig
+        ConfigApi.ConfigRequest.Type.ProvideIndexConfig
       case (Constants.UPDATE_INDEX_CONFIG_PATH, POST) =>
-        AdminRestApi.AdminRequest.Type.UpdateIndexConfig
+        ConfigApi.ConfigRequest.Type.UpdateIndexConfig
       case (Constants.UPDATE_TEST_CONFIG_PATH, POST) =>
-        AdminRestApi.AdminRequest.Type.UpdateTestConfig
+        ConfigApi.ConfigRequest.Type.UpdateTestConfig
       case (Constants.DELETE_TEST_CONFIG_PATH, DELETE) =>
-        AdminRestApi.AdminRequest.Type.InvalidateTestConfig
+        ConfigApi.ConfigRequest.Type.InvalidateTestConfig
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }
     new RRAdminRequest(
-      new AdminRestApi.AdminRequest(
+      new ConfigApi.ConfigRequest(
         requestType,
         request.method.name,
         request.path,
