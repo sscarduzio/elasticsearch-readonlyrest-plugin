@@ -31,9 +31,10 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import tech.beshu.ror.es.handler.request.context.ModificationResult.{CannotModify, Modified, UpdateResponse}
+import tech.beshu.ror.es.handler.request.context.ModificationResult.{CannotModify, UpdateResponse}
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
 import tech.beshu.ror.es.utils.SqlRequestHelper
+import tech.beshu.ror.exceptions.SecurityPermissionException
 
 class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
                                          esContext: EsContext,
@@ -58,64 +59,51 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
     }
   }
 
-  /** fixme: filter is not applied.
-    * If there is no way to apply filter to request (see e.g. SearchEsRequestContext),
-    * it can be handled just as in GET/MGET (see e.g. GetEsRequestContext) using ModificationResult.UpdateResponse.
-    * */
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
                                 indices: NonEmptyList[ClusterIndexName],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
+    val result = for {
+      _ <- modifyRequestIndices(request, indices)
+      _ <- Right(applyFieldLevelSecurityTo(request, fieldLevelSecurity))
+      _ <- Right(applyFilterTo(request, filter))
+    } yield {
+      UpdateResponse { response =>
+        Task.delay {
+          applyFieldLevelSecurityTo(response, fieldLevelSecurity) match {
+            case Right(modifiedResponse) =>
+              modifiedResponse
+            case Left(SqlRequestHelper.ModificationError.UnexpectedException(ex)) =>
+              throw new SecurityPermissionException("Cannot apply field level security to the SQL response", ex)
+          }
+        }
+      }
+    }
+    result.fold(
+      error => {
+        logger.error(s"[${id.show}] Cannot modify SQL indices of incoming request; error=$error")
+        CannotModify
+      },
+      identity
+    )
+  }
+
+  private def modifyRequestIndices(request: ActionRequest with CompositeIndicesRequest,
+                                   indices: NonEmptyList[ClusterIndexName]): Either[SqlRequestHelper.ModificationError, CompositeIndicesRequest] = {
     sqlIndicesExtractResult match {
       case Right(sqlIndices) =>
         val indicesStrings = indices.map(_.stringify).toList.toSet
         if (indicesStrings != sqlIndices.indices) {
-          val result = for {
-            _ <- SqlRequestHelper.modifyIndicesOf(request, sqlIndices, indicesStrings)
-            _ <- Right(applyFieldLevelSecurityTo(request, fieldLevelSecurity))
-            _ <- Right(applyFilterTo(request, filter))
-          } yield ()
-          result match {
-            case Right(_) =>
-              UpdateResponse { response =>
-                Task.delay {
-                  applyFieldLevelSecurityTo(response, fieldLevelSecurity) match {
-                    case Right(modifiedResponse) => modifiedResponse
-                    case Left(SqlRequestHelper.ModificationError.UnexpectedException(ex)) =>
-                      // todo: log & better ex
-                      throw new IllegalStateException("dd")
-                  }
-                }
-              }
-            case Left(SqlRequestHelper.ModificationError.UnexpectedException(ex)) =>
-              logger.error(s"[${id.show}] Cannot modify SQL indices of incoming request", ex)
-              CannotModify
-          }
+          SqlRequestHelper.modifyIndicesOf(request, sqlIndices, indicesStrings)
         } else {
-          applyFieldLevelSecurityTo(request, fieldLevelSecurity)
-          applyFilterTo(request, filter)
-
-          UpdateResponse { response =>
-            Task.delay {
-              applyFieldLevelSecurityTo(response, fieldLevelSecurity) match {
-                case Right(modifiedResponse) => modifiedResponse
-                case Left(SqlRequestHelper.ModificationError.UnexpectedException(ex)) =>
-                  // todo: log & better ex
-                  throw new IllegalStateException("dd")
-              }
-            }
-          }
+          Right(request)
         }
       case Left(_) =>
         logger.debug(s"[${id.show}] Cannot parse SQL statement - we can pass it though, because ES is going to reject it")
-        Modified
+        Right(request)
     }
   }
 
-  /** TODO fls works because 'CannotExtractFields' value is always returned for sql request,
-    * so fls at lucene level is used. Maybe there is a way to modify used fields in query (see e.g. SearchEsRequestContext)
-    * and abandon lucene approach.
-    */
   private def applyFieldLevelSecurityTo(request: ActionRequest with CompositeIndicesRequest,
                                         fieldLevelSecurity: Option[FieldLevelSecurity]) = {
     fieldLevelSecurity match {
