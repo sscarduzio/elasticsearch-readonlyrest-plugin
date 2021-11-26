@@ -550,41 +550,37 @@ trait XpackApiSuite
           "full index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SELECT * FROM bookstore""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(4)
-            result.columnNames should contain only("author", "name", "price", "release_date")
+            result.queryResult.size should be(3)
+            result.columnNames should contain only("author", "name", "release_date")
             result.rows.size should be(3)
             result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
-            result.column("price").toList should contain only Null
           }
           "full indices names are used and one of them is not allowed" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SELECT * FROM \"bookstore,library\"""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(4)
-            result.columnNames should contain only("author", "name", "price", "release_date")
+            result.queryResult.size should be(3)
+            result.columnNames should contain only("author", "name", "release_date")
             result.rows.size should be(3)
             result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
-            result.column("price").toList should contain only Null
           }
           "wildcard is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SELECT * FROM \"book*\"""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(4)
-            result.columnNames should contain only("author", "name", "price", "release_date")
+            result.queryResult.size should be(3)
+            result.columnNames should contain only("author", "name", "release_date")
             result.rows.size should be(3)
             result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
-            result.column("price").toList should contain only Null
           }
           "alias is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SELECT * FROM \"bookshop\"""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(4)
-            result.columnNames should contain only("author", "name", "price", "release_date")
+            result.queryResult.size should be(3)
+            result.columnNames should contain only("author", "name", "release_date")
             result.rows.size should be(3)
             result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
-            result.column("price").toList should contain only Null
           }
           //todo: filter rule doesn't work now for sql api.
-          "filter in rule is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) ignore {
+          "filter in rule is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
             val result = dev5SqlManager.execute("""SELECT * FROM bookstore""")
             result.isSuccess should be(true)
             result.queryResult.size should be(4)
