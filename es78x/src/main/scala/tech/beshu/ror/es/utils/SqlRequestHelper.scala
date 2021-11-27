@@ -19,8 +19,13 @@ package tech.beshu.ror.es.utils
 import java.lang.reflect.Modifier
 import java.time.ZoneId
 import java.util.regex.Pattern
+import java.util.{List => JList}
 
-import org.elasticsearch.action.CompositeIndicesRequest
+import org.elasticsearch.action.{ActionResponse, CompositeIndicesRequest}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
+import tech.beshu.ror.es.handler.response.FieldsFiltering
+import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
 import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices
 import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices.SqlTableRelated.IndexSqlTable
 import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices.{SqlNotTableRelated, SqlTableRelated}
@@ -55,6 +60,7 @@ object ExtractedIndices {
 }
 
 object SqlRequestHelper {
+
   sealed trait ModificationError
   object ModificationError {
     final case class UnexpectedException(ex: Throwable) extends ModificationError
@@ -70,6 +76,16 @@ object SqlRequestHelper {
         case SqlNotTableRelated =>
           request
       }
+    }
+    result.toEither.left.map(ModificationError.UnexpectedException.apply)
+  }
+
+  def modifyResponseAccordingToFieldLevelSecurity(response: ActionResponse,
+                                                  fieldLevelSecurity: FieldLevelSecurity): Either[ModificationError, ActionResponse] = {
+    val result = Try {
+      implicit val classLoader: ClassLoader = response.getClass.getClassLoader
+      new SqlQueryResponse(response).modifyByApplyingRestrictions(fieldLevelSecurity.restrictions)
+      response
     }
     result.toEither.left.map(ModificationError.UnexpectedException.apply)
   }
@@ -263,3 +279,70 @@ object Command {
   private def commandClass(implicit classLoader: ClassLoader): Class[_] =
     classLoader.loadClass("org.elasticsearch.xpack.sql.plan.logical.command.Command")
 }
+
+final class SqlQueryResponse(val underlyingObject: Any)
+                            (implicit classLoader: ClassLoader) {
+
+  def modifyByApplyingRestrictions(restrictions: FieldsRestrictions): Unit = {
+    val columnsAndValues = getColumns.zip(getRows.transpose)
+    val columnsMap = columnsAndValues.map { case (column, values) => (column.name, (column, values)) }.toMap
+
+    val filteredColumnsAndValues = FieldsFiltering
+      .filterNonMetadataDocumentFields(NonMetadataDocumentFields(columnsMap), restrictions)
+      .value.values
+
+    val filteredColumns = filteredColumnsAndValues.map(_._1).toList
+    val filteredRows = filteredColumnsAndValues.map(_._2).toList.transpose
+
+    modifyColumns(filteredColumns)
+    modifyRows(filteredRows)
+  }
+
+  private def getColumns: List[ColumnInfo] = {
+    ReflecUtils
+      .getMethodOf(sqlQueryResponseClass, Modifier.PUBLIC, "columns", 0)
+      .invoke(underlyingObject)
+      .asInstanceOf[JList[AnyRef]]
+      .asSafeList
+      .map(new ColumnInfo(_))
+  }
+
+  private def getRows: List[List[Value]] = {
+    ReflecUtils
+      .getMethodOf(sqlQueryResponseClass, Modifier.PUBLIC, "rows", 0)
+      .invoke(underlyingObject)
+      .asInstanceOf[JList[JList[AnyRef]]]
+      .asSafeList.map(_.asSafeList.map(new Value(_)))
+  }
+
+  private def modifyColumns(columns: List[ColumnInfo]): Unit = {
+    ReflecUtils
+      .getMethodOf(sqlQueryResponseClass, Modifier.PUBLIC, "columns", 1)
+      .invoke(underlyingObject, columns.map(_.underlyingObject).asJava)
+  }
+
+  private def modifyRows(rows: List[List[Value]]): Unit = {
+    ReflecUtils
+      .getMethodOf(sqlQueryResponseClass, Modifier.PUBLIC, "rows", 1)
+      .invoke(underlyingObject, rows.map(_.map(_.underlyingObject).asJava).asJava)
+  }
+
+  private def sqlQueryResponseClass(implicit classLoader: ClassLoader) =
+    classLoader.loadClass("org.elasticsearch.xpack.sql.action.SqlQueryResponse")
+}
+
+final class ColumnInfo(val underlyingObject: Any)
+                      (implicit classLoader: ClassLoader) {
+
+  val name: String = {
+    ReflecUtils
+      .getMethodOf(columnInfoClass, Modifier.PUBLIC, "name", 0)
+      .invoke(underlyingObject)
+      .asInstanceOf[String]
+  }
+
+  private def columnInfoClass(implicit classLoader: ClassLoader) =
+    classLoader.loadClass("org.elasticsearch.xpack.sql.proto.ColumnInfo")
+}
+
+final class Value(val underlyingObject: Any)

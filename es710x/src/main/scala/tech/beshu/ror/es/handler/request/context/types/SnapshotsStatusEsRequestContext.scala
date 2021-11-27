@@ -66,7 +66,7 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
   }
 
   private def filterOutNotAllowedSnapshotsAndRepositories(response: SnapshotsStatusResponse,
-                                                  blockContext: SnapshotRequestBlockContext): SnapshotsStatusResponse = {
+                                                          blockContext: SnapshotRequestBlockContext): SnapshotsStatusResponse = {
     val allowedRepositoriesMatcher = MatcherWithWildcardsScalaAdapter.create(blockContext.repositories)
     val allowedSnapshotsMatcher = MatcherWithWildcardsScalaAdapter.create(blockContext.snapshots)
 
@@ -78,7 +78,7 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
           snapshotName <- SnapshotName.from(snapshotStatus.getSnapshot.getSnapshotId.getName)
         } yield  {
           allowedRepositoriesMatcher.`match`(repositoryName) &&
-            allowedSnapshotsMatcher.`match`(snapshotName)
+          allowedSnapshotsMatcher.`match`(snapshotName)
         }) getOrElse false
       }
 

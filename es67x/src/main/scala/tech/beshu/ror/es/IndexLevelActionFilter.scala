@@ -52,7 +52,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                              env: Environment,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                              snapshotsServiceSupplier: Supplier[Option[SnapshotsService]],
-                             emptyClusterStateResponse:  ClusterStateResponse,
+                             emptyClusterStateResponse: ClusterStateResponse,
                              esInitListener: EsInitListener)
                             (implicit envVarsProvider: EnvVarsProvider,
                              generator: UniqueIdentifierGenerator)
