@@ -18,6 +18,7 @@ package tech.beshu.ror.es.handler.response
 
 import org.elasticsearch.search.SearchHit
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
+
 import scala.collection.JavaConverters._
 
 object SearchHitOps {
@@ -35,15 +36,24 @@ object SearchHitOps {
     }
 
     def filterDocumentFieldsUsing(fieldsRestrictions: FieldsRestrictions): SearchHit = {
-      Option(searchHit.getFields)
-        .map(_.asScala.toMap)
-        .filter(_.nonEmpty)
-        .map(fields => FieldsFiltering.filterDocumentFields(fields, fieldsRestrictions))
-        .map(newFields => newFields.documentFields ++ newFields.metadataFields)
-        .foreach(allFields => searchHit.fields(allFields.asJava))
+      val (metadataFields, documentFields) = splitMetadataAndNotMetadataFields(searchHit)
 
+      Option(documentFields)
+        .map(fields => FieldsFiltering.NonMetadataDocumentFields(fields.toMap))
+        .filter(_.value.nonEmpty)
+        .map(fields => FieldsFiltering.filterNonMetadataDocumentFields(fields, fieldsRestrictions))
+        .map(_.value)
+        .foreach { newDocumentFields =>
+          val allFields = metadataFields ++ newDocumentFields
+          searchHit.fields(allFields.asJava)
+        }
       searchHit
     }
   }
 
+  private def splitMetadataAndNotMetadataFields(searchHit: SearchHit) = {
+    searchHit
+      .getFields.asScala
+      .partition { case (_, value) => value.isMetadataField }
+  }
 }

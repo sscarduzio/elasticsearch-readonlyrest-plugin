@@ -52,7 +52,8 @@ class RegularRequestHandler(engine: Engine,
   extends Logging {
 
   def handle[B <: BlockContext : BlockContextUpdater](request: RequestContext.Aux[B] with EsRequest[B]): Task[Unit] = {
-    engine.accessControl
+    engine
+      .accessControl
       .handleRegularRequest(request)
       .map { r =>
         threadPool.getThreadContext.stashAndMergeResponseHeaders().bracket { _ =>
@@ -245,7 +246,8 @@ class RegularRequestHandler(engine: Engine,
 }
 
 object RegularRequestHandler {
-  def fromMismatchedCause(cause: Cause): ForbiddenCause = {
+
+  private def fromMismatchedCause(cause: Cause): ForbiddenCause = {
     cause match {
       case Cause.OperationNotAllowed => OperationNotAllowed
       case Cause.ImpersonationNotSupported => ImpersonationNotSupported

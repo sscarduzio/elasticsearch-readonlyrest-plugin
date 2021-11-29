@@ -21,11 +21,18 @@ import org.elasticsearch.common.xcontent.support.XContentMapValues
 import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.AccessMode
+import tech.beshu.ror.fls.FieldsPolicy
 import scala.collection.JavaConverters._
 
 object FieldsFiltering {
 
   final case class NewFilteredSource(bytes: BytesReference)
+
+  final case class NonMetadataDocumentFields[T](value: Map[String, T])
+  final case class MetadataDocumentFields[T](value: Map[String, T])
+
+  final case class NewFilteredDocumentFields[T](nonMetadataDocumentFields: NonMetadataDocumentFields[T],
+                                                metadataDocumentFields: MetadataDocumentFields[T])
 
   def filterSource(sourceAsMap: Map[String, _],
                    fieldsRestrictions: FieldsRestrictions): NewFilteredSource = {
@@ -34,8 +41,19 @@ object FieldsFiltering {
     val newContent = XContentFactory
       .contentBuilder(XContentType.JSON)
       .map(filteredSource)
-
     NewFilteredSource(newContent.bytes())
+  }
+
+  def filterNonMetadataDocumentFields[T](nonMetadataDocumentFields: NonMetadataDocumentFields[T],
+                                         fieldsRestrictions: FieldsRestrictions): NonMetadataDocumentFields[T] = {
+    val policy = new FieldsPolicy(fieldsRestrictions)
+
+    NonMetadataDocumentFields {
+      nonMetadataDocumentFields.value.filter {
+        case (key, _) =>
+          policy.canKeep(key)
+      }
+    }
   }
 
   private def splitFieldsByAccessMode(fields: FieldsRestrictions) = fields.mode match {

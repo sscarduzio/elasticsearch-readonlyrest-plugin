@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.handler.response
 
 import org.elasticsearch.common.bytes.BytesReference
-import org.elasticsearch.common.document.{DocumentField => ESDocumentField}
 import org.elasticsearch.common.xcontent.support.XContentMapValues
 import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
@@ -29,8 +28,11 @@ object FieldsFiltering {
 
   final case class NewFilteredSource(bytes: BytesReference)
 
-  final case class NewFilteredDocumentFields(documentFields: Map[String, ESDocumentField],
-                                             metadataFields: Map[String, ESDocumentField])
+  final case class NonMetadataDocumentFields[T](value: Map[String, T])
+  final case class MetadataDocumentFields[T](value: Map[String, T])
+
+  final case class NewFilteredDocumentFields[T](nonMetadataDocumentFields: NonMetadataDocumentFields[T],
+                                                metadataDocumentFields: MetadataDocumentFields[T])
 
   def filterSource(sourceAsMap: Map[String, _],
                    fieldsRestrictions: FieldsRestrictions): NewFilteredSource = {
@@ -42,20 +44,15 @@ object FieldsFiltering {
     NewFilteredSource(BytesReference.bytes(newContent))
   }
 
-  def filterDocumentFields(documentFields: Map[String, ESDocumentField],
-                           fieldsRestrictions: FieldsRestrictions): NewFilteredDocumentFields = {
-    val (metadataFields, nonMetadataDocumentFields) = partitionFieldsByMetadata(documentFields)
+  def filterNonMetadataDocumentFields[T](nonMetadataDocumentFields: NonMetadataDocumentFields[T],
+                                         fieldsRestrictions: FieldsRestrictions): NonMetadataDocumentFields[T] = {
     val policy = new FieldsPolicy(fieldsRestrictions)
-    val filteredDocumentFields = nonMetadataDocumentFields.filter {
-      case (key, _) => policy.canKeep(key)
-    }
-    NewFilteredDocumentFields(filteredDocumentFields, metadataFields)
-  }
 
-  private def partitionFieldsByMetadata(fields: Map[String, ESDocumentField]) = {
-    fields.partition {
-      case t if t._2.isMetadataField => true
-      case _ => false
+    NonMetadataDocumentFields {
+      nonMetadataDocumentFields.value.filter {
+        case (key, _) =>
+          policy.canKeep(key)
+      }
     }
   }
 

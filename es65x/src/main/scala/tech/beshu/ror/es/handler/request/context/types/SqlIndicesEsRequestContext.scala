@@ -18,8 +18,11 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import org.elasticsearch.action.{ActionRequest, CompositeIndicesRequest}
+import monix.eval.Task
+import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndicesRequest}
+import org.elasticsearch.index.query.QueryBuilder
 import org.elasticsearch.threadpool.ThreadPool
+import org.joor.Reflect._
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
@@ -28,9 +31,10 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import tech.beshu.ror.es.handler.request.context.ModificationResult.{CannotModify, Modified}
+import tech.beshu.ror.es.handler.request.context.ModificationResult.{CannotModify, UpdateResponse}
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
 import tech.beshu.ror.es.utils.SqlRequestHelper
+import tech.beshu.ror.exceptions.SecurityPermissionException
 
 class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
                                          esContext: EsContext,
@@ -39,7 +43,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
                                          override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[ActionRequest with CompositeIndicesRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.CannotExtractFields
+  override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
   private lazy val sqlIndicesExtractResult = SqlRequestHelper.indicesFrom(actionRequest) match {
     case result@Right(_) => result
@@ -55,53 +59,84 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
     }
   }
 
-  /** fixme: filter is not applied.
-      If there is no way to apply filter to request (see e.g. SearchEsRequestContext),
-      it can be handled just as in GET/MGET (see e.g. GetEsRequestContext) using ModificationResult.UpdateResponse.
-   **/
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
                                 indices: NonEmptyList[ClusterIndexName],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
+    val result = for {
+      _ <- modifyRequestIndices(request, indices)
+      _ <- Right(applyFieldLevelSecurityTo(request, fieldLevelSecurity))
+      _ <- Right(applyFilterTo(request, filter))
+    } yield {
+      UpdateResponse { response =>
+        Task.delay {
+          applyFieldLevelSecurityTo(response, fieldLevelSecurity) match {
+            case Right(modifiedResponse) =>
+              modifiedResponse
+            case Left(SqlRequestHelper.ModificationError.UnexpectedException(ex)) =>
+              throw new SecurityPermissionException("Cannot apply field level security to the SQL response", ex)
+          }
+        }
+      }
+    }
+    result.fold(
+      error => {
+        logger.error(s"[${id.show}] Cannot modify SQL indices of incoming request; error=$error")
+        CannotModify
+      },
+      identity
+    )
+  }
+
+  private def modifyRequestIndices(request: ActionRequest with CompositeIndicesRequest,
+                                   indices: NonEmptyList[ClusterIndexName]): Either[SqlRequestHelper.ModificationError, CompositeIndicesRequest] = {
     sqlIndicesExtractResult match {
       case Right(sqlIndices) =>
         val indicesStrings = indices.map(_.stringify).toList.toSet
         if (indicesStrings != sqlIndices.indices) {
-          SqlRequestHelper.modifyIndicesOf(request, sqlIndices, indicesStrings) match {
-            case Right(_) =>
-              applyFieldLevelSecurity(request, fieldLevelSecurity)
-              Modified
-            case Left(SqlRequestHelper.ModificationError.UnexpectedException(ex)) =>
-              logger.error(s"[${id.show}] Cannot modify SQL indices of incoming request", ex)
-              CannotModify
-          }
+          SqlRequestHelper.modifyIndicesOf(request, sqlIndices, indicesStrings)
         } else {
-          applyFieldLevelSecurity(request, fieldLevelSecurity)
-          Modified
+          Right(request)
         }
       case Left(_) =>
         logger.debug(s"[${id.show}] Cannot parse SQL statement - we can pass it though, because ES is going to reject it")
-        Modified
+        Right(request)
     }
   }
 
-  /**  TODO fls works because 'CannotExtractFields' value is always returned for sql request,
-   * so fls at lucene level is used. Maybe there is a way to modify used fields in query (see e.g. SearchEsRequestContext)
-   * and abandon lucene approach.
-   */
-  private def applyFieldLevelSecurity(request: ActionRequest with CompositeIndicesRequest,
-                                      fieldLevelSecurity: Option[FieldLevelSecurity]) =  {
+  private def applyFieldLevelSecurityTo(request: ActionRequest with CompositeIndicesRequest,
+                                        fieldLevelSecurity: Option[FieldLevelSecurity]) = {
     fieldLevelSecurity match {
       case Some(definedFields) =>
         definedFields.strategy match {
           case FlsAtLuceneLevelApproach =>
             FLSContextHeaderHandler.addContextHeader(threadPool, definedFields.restrictions, id)
+            request
           case BasedOnBlockContextOnly.NotAllowedFieldsUsed(_) | BasedOnBlockContextOnly.EverythingAllowed =>
             request
         }
       case None =>
         request
     }
+  }
+
+  private def applyFieldLevelSecurityTo(response: ActionResponse,
+                                        fieldLevelSecurity: Option[FieldLevelSecurity]) = {
+    fieldLevelSecurity match {
+      case Some(fls) =>
+        SqlRequestHelper.modifyResponseAccordingToFieldLevelSecurity(response, fls)
+      case None =>
+        Right(response)
+    }
+  }
+
+  private def applyFilterTo(request: ActionRequest with CompositeIndicesRequest,
+                            filter: Option[Filter]) = {
+    import tech.beshu.ror.es.handler.request.SearchRequestOps._
+    Option(on(request).call("filter").get[QueryBuilder])
+      .wrapQueryBuilder(filter)
+      .foreach { qb => on(request).set("filter", qb) }
+    request
   }
 }
 
