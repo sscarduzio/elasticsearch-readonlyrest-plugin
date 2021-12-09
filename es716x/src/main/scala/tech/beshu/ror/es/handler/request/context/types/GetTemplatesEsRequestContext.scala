@@ -64,7 +64,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
   override def modifyWhenTemplateNotFound: ModificationResult = {
     val nonExistentTemplateNamePattern = TemplateNamePattern.generateNonExistentBasedOn(requestTemplateNamePatterns.head)
     updateRequest(NonEmptyList.one(nonExistentTemplateNamePattern))
-    ModificationResult.Modified
+    ModificationResult.UpdateResponse(a => Task.delay(a))
   }
 
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
