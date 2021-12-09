@@ -49,7 +49,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
         val auditingTool = new AuditingTool(
           AuditingTool.Settings(
             RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
-            new DefaultAuditLogSerializer
+            new DefaultAuditLogSerializer,
+            None
           ),
           mock[AuditSinkService]
         )
@@ -59,7 +60,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
         val auditingTool = new AuditingTool(
           AuditingTool.Settings(
             RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
-            throwingAuditLogSerializer
+            throwingAuditLogSerializer,
+            None
           ),
           mock[AuditSinkService]
         )
@@ -76,7 +78,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
         val auditingTool = new AuditingTool(
           AuditingTool.Settings(
             RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
-            new DefaultAuditLogSerializer
+            new DefaultAuditLogSerializer,
+            None
           ),
           auditSink
         )
@@ -90,7 +93,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
         val auditingTool = new AuditingTool(
           AuditingTool.Settings(
             RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
-            new DefaultAuditLogSerializer
+            new DefaultAuditLogSerializer,
+            None
           ),
           auditSink
         )
@@ -117,7 +121,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
         val auditingTool = new AuditingTool(
           AuditingTool.Settings(
             RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
-            new DefaultAuditLogSerializer
+            new DefaultAuditLogSerializer,
+            None
           ),
           auditSink
         )
@@ -134,7 +139,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
         val auditingTool = new AuditingTool(
           AuditingTool.Settings(
             RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
-            new DefaultAuditLogSerializer
+            new DefaultAuditLogSerializer,
+            None
           ),
           auditSink
         )

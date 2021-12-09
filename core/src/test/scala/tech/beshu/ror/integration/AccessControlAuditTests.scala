@@ -134,7 +134,8 @@ class AccessControlAuditTests extends AnyWordSpec with BaseYamlLoadedAccessContr
     new AccessControlLoggingDecorator(acl, Some(new AuditingTool(
       AuditingTool.Settings(
         RorAuditIndexTemplate.default,
-        new DefaultAuditLogSerializer
+        new DefaultAuditLogSerializer,
+        None
       ),
       auditSinkService
     )))

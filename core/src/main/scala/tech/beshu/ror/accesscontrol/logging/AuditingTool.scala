@@ -17,14 +17,13 @@
 package tech.beshu.ror.accesscontrol.logging
 
 import java.time.{Clock, Instant}
-
 import cats.implicits._
 import monix.eval.Task
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
-import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
 import tech.beshu.ror.accesscontrol.logging.AuditingTool.Settings
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -142,6 +141,7 @@ class AuditingTool(settings: Settings,
 object AuditingTool {
 
   final case class Settings(rorAuditIndexTemplate: RorAuditIndexTemplate,
-                            logSerializer: AuditLogSerializer)
+                            logSerializer: AuditLogSerializer,
+                            auditCluster: Option[AuditCluster])
 
 }
