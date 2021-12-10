@@ -26,9 +26,12 @@ object ThreadRepo {
     threadLocalChannel.set(restChannel)
   }
 
+  def removeRestChannel(restChannel: RorRestChannel): Unit = {
+    if (threadLocalChannel.get() == restChannel) threadLocalChannel.remove()
+  }
+
   def getRorRestChannel: Option[RorRestChannel] = {
     val channel = threadLocalChannel.get
-//    if (channel != null) threadLocalChannel.remove()
     val reqNull =
       if (channel == null) true
       else channel.request == null

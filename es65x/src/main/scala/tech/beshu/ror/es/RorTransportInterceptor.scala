@@ -53,7 +53,7 @@ class RorTransportInterceptor(threadContext: ThreadContext, nodeName: String) ex
     output.writeString("__attach")
     output.writeString("__attach")
     output.writeBoolean(false)
-    Base64.getEncoder().encodeToString(BytesReference.toBytes(output.bytes()));
+    Base64.getEncoder.encodeToString(BytesReference.toBytes(output.bytes()))
   }
 }
 

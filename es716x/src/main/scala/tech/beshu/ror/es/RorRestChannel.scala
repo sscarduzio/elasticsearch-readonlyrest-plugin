@@ -18,6 +18,7 @@ package tech.beshu.ror.es
 
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.rest.{AbstractRestChannel, RestChannel, RestResponse}
+import tech.beshu.ror.es.utils.ThreadRepo
 
 class RorRestChannel(underlying: RestChannel)
   extends AbstractRestChannel(underlying.request(), true)
@@ -25,6 +26,7 @@ class RorRestChannel(underlying: RestChannel)
     with Logging {
 
   override def sendResponse(response: RestResponse): Unit = {
+    ThreadRepo.removeRestChannel(this)
     underlying.sendResponse(filterRestResponse(response))
   }
 }
