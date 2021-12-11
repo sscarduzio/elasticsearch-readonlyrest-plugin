@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.boot
 
 import java.time.Clock
 import java.util.UUID
-
 import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.auto._
@@ -38,7 +37,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{CoreFactory, CoreSettings}
 import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
-import tech.beshu.ror.boot.{ReadonlyRest, StartingFailure}
+import tech.beshu.ror.boot.{AuditSinkCreators, ReadonlyRest, StartingFailure}
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.ReloadingFailed
 import tech.beshu.ror.configuration.SslConfiguration._
@@ -77,7 +76,6 @@ class ReadonlyRestStartingTests
         val result = readonlyRestBoot(coreFactory)
           .start(
             getResourcePath("/boot_tests/no_index_config_file_config_provided/"),
-            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -92,7 +90,6 @@ class ReadonlyRestStartingTests
         val result = readonlyRestBoot(coreFactory)
           .start(
             getResourcePath("/boot_tests/forced_file_loading/"),
-            mock[AuditSinkService],
             mock[IndexJsonContentService]
           )
           .runSyncUnsafe()
@@ -115,7 +112,6 @@ class ReadonlyRestStartingTests
         val result = readonlyRestBoot(coreFactory)
           .start(
             getResourcePath(resourcesPath),
-            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -136,7 +132,6 @@ class ReadonlyRestStartingTests
         val result = readonlyRestBoot(coreFactory)
           .start(
             getResourcePath(resourcesPath),
-            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -163,7 +158,6 @@ class ReadonlyRestStartingTests
         val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
           .start(
             getResourcePath(resourcesPath),
-            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -208,7 +202,6 @@ class ReadonlyRestStartingTests
         val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
           .start(
             getResourcePath(resourcesPath),
-            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -256,7 +249,6 @@ class ReadonlyRestStartingTests
       val result = readonlyRestBoot(coreFactory, refreshInterval = Some(2 seconds))
         .start(
           getResourcePath(resourcesPath),
-          mock[AuditSinkService],
           mockedIndexJsonContentManager
         )
         .flatMap { result =>
@@ -290,7 +282,6 @@ class ReadonlyRestStartingTests
           val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
             .start(
               getResourcePath(resourcesPath),
-              mock[AuditSinkService],
               mockedIndexJsonContentManager
             )
             .runSyncUnsafe()
@@ -321,7 +312,6 @@ class ReadonlyRestStartingTests
           val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
             .start(
               getResourcePath(resourcesPath),
-              mock[AuditSinkService],
               mockedIndexJsonContentManager
             )
             .runSyncUnsafe()
@@ -360,7 +350,6 @@ class ReadonlyRestStartingTests
           val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
             .start(
               getResourcePath(resourcesPath),
-              mock[AuditSinkService],
               mockedIndexJsonContentManager
             )
             .runSyncUnsafe()
@@ -390,7 +379,6 @@ class ReadonlyRestStartingTests
           val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
             .start(
               getResourcePath(resourcesPath),
-              mock[AuditSinkService],
               mockedIndexJsonContentManager
             )
             .runSyncUnsafe()
@@ -429,7 +417,6 @@ class ReadonlyRestStartingTests
           val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
             .start(
               getResourcePath(resourcesPath),
-              mock[AuditSinkService],
               mockedIndexJsonContentManager
             )
             .runSyncUnsafe()
@@ -464,7 +451,6 @@ class ReadonlyRestStartingTests
         val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
           .start(
             getResourcePath(resourcesPath),
-            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -492,7 +478,6 @@ class ReadonlyRestStartingTests
         val result = readonlyRestBoot(mock[CoreFactory])
           .start(
             getResourcePath("/boot_tests/forced_file_loading_malformed_config/"),
-            mock[AuditSinkService],
             mock[IndexJsonContentService]
           )
           .runSyncUnsafe()
@@ -507,7 +492,6 @@ class ReadonlyRestStartingTests
         val result = readonlyRestBoot(coreFactory)
           .start(
             getResourcePath("/boot_tests/forced_file_loading_bad_config/"),
-            mock[AuditSinkService],
             mock[IndexJsonContentService]
           )
           .runSyncUnsafe()
@@ -526,7 +510,6 @@ class ReadonlyRestStartingTests
         val result = readonlyRestBoot(mock[CoreFactory])
           .start(
             getResourcePath("/boot_tests/index_config_not_exists_malformed_file_config/"),
-            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -547,7 +530,6 @@ class ReadonlyRestStartingTests
         val result = readonlyRestBoot(coreFactory)
           .start(
             getResourcePath("/boot_tests/index_config_not_exists_bad_file_config/"),
-            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -566,7 +548,6 @@ class ReadonlyRestStartingTests
         val result = readonlyRestBoot(mock[CoreFactory])
           .start(
             getResourcePath(resourcesPath),
-            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -587,7 +568,6 @@ class ReadonlyRestStartingTests
         val result = readonlyRestBoot(coreFactory)
           .start(
             getResourcePath(resourcesPath),
-            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -735,6 +715,9 @@ class ReadonlyRestStartingTests
   private def readonlyRestBoot(factory: CoreFactory,
                                refreshInterval: Option[FiniteDuration] = None) = {
     new ReadonlyRest {
+
+      override protected def auditSinkCreators: AuditSinkCreators = AuditSinkCreators(() => mock[AuditSinkService], _ => mock[AuditSinkService])
+
       override implicit protected val clock: Clock = Clock.systemUTC()
       override implicit protected val scheduler: Scheduler = monix.execution.Scheduler.global
 

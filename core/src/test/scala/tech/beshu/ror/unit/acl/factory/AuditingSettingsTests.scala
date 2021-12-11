@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.unit.acl.factory
 
+import com.softwaremill.sttp.Uri
+
 import java.time.{Clock, ZoneId, ZonedDateTime}
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
@@ -241,7 +243,9 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[DefaultAuditLogSerializer]
-          auditingSettings.auditCluster shouldBe Some(AuditCluster(Set(Address.from("1.1.1.1").get)))
+          val value1 = Uri.parse("1.1.1.1").get
+          println(value1)
+          auditingSettings.auditCluster shouldBe Some(AuditCluster(Set(value1)))
         }
       }
 

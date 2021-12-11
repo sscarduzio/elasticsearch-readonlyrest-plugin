@@ -39,11 +39,10 @@ private[boot] class MainReloadableEngine(boot: ReadonlyRest,
                                          reloadInProgress: Semaphore[Task],
                                          indexConfigManager: IndexConfigManager,
                                          rorConfigurationIndex: RorConfigurationIndex,
-                                         auditSink: AuditSinkService,
                                          mocksProvider: MocksProvider)
                                         (implicit scheduler: Scheduler)
   extends BaseReloadableEngine(
-    "main", boot, Some(initialEngine), reloadInProgress, rorConfigurationIndex, auditSink, mocksProvider
+    "main", boot, Some(initialEngine), reloadInProgress, rorConfigurationIndex, mocksProvider
   ) {
 
   def forceReloadAndSave(config: RawRorConfig)

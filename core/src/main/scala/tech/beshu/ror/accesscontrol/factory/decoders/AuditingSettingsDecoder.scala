@@ -16,12 +16,14 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders
 
+import com.softwaremill.sttp.Uri
 import io.circe.Decoder
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
-import tech.beshu.ror.accesscontrol.domain.{Address, AuditCluster, RorAuditIndexTemplate}
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.decoders.common.uriDecoder
 import tech.beshu.ror.accesscontrol.logging.AuditingTool
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.audit.AuditLogSerializer
@@ -91,11 +93,9 @@ object AuditingSettingsDecoder extends Logging {
       }
       .decoder
 
-  private implicit val addressDecoder: Decoder[Address] = Decoder.decodeString.emap(v => Address.from(v).toRight("Invalid address"))
-
   private implicit val auditClusterDecoder: Decoder[AuditCluster] =
     SyncDecoderCreator
-      .from(Decoder.decodeSet[Address])
+      .from(Decoder.decodeSet[Uri])
       .map(AuditCluster)
       .decoder
 }

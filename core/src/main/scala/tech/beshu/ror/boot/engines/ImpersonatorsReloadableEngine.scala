@@ -34,11 +34,10 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 private[boot] class ImpersonatorsReloadableEngine(boot: ReadonlyRest,
                                                   reloadInProgress: Semaphore[Task],
                                                   rorConfigurationIndex: RorConfigurationIndex,
-                                                  auditSink: AuditSinkService,
                                                   mocksProvider: MocksProvider)
                                                  (implicit scheduler: Scheduler)
   extends BaseReloadableEngine(
-    "test", boot, None, reloadInProgress, rorConfigurationIndex, auditSink, mocksProvider
+    "test", boot, None, reloadInProgress, rorConfigurationIndex, mocksProvider
   ) {
 
   def forceReloadImpersonatorsEngine(config: RawRorConfig,

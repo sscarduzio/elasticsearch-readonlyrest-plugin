@@ -116,9 +116,10 @@ object ProxyIndexLevelActionFilter {
       instance <- EitherT(
         new Ror(
           mode = RorMode.Proxy,
+          auditSinkCreators = new ProxyAuditSinkService(esClient),
           envVarsProvider = envVarsProvider
         )
-          .start(configFile, new ProxyAuditSinkService(esClient), ProxyIndexJsonContentService)
+          .start(configFile, ProxyIndexJsonContentService)
       )
       _ = RorInstanceSupplier.update(instance)
     } yield new ProxyIndexLevelActionFilter(instance, esClient, threadPool)

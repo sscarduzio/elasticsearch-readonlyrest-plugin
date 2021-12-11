@@ -17,11 +17,14 @@
 package tech.beshu.ror.es
 
 import java.util.function.Supplier
-
 import monix.execution.atomic.Atomic
+import org.apache.http.HttpHost
+import org.apache.http.conn.ssl.NoopHostnameVerifier
+import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
+import org.elasticsearch.client.{RestClient, RestHighLevelClient}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.env.Environment
@@ -29,6 +32,7 @@ import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
+import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot._
@@ -36,13 +40,15 @@ import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.handler.AclAwareRequestFilter
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
-import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
+import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, HighLevelClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
+import java.security.cert.X509Certificate
+import javax.net.ssl.{SSLContext, X509TrustManager}
 import scala.language.postfixOps
 
 class IndexLevelActionFilter(clusterService: ClusterService,
@@ -72,6 +78,13 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   )
 
   private val startingTaskCancellable = startRorInstance()
+
+  private val auditSinkCreators = {
+    AuditSinkCreators(
+      local = () => new EsAuditSinkService(client),
+      externalCluster = cluster => new HighLevelClientAuditSinkService(createEsHighLevelClient(cluster))
+    )
+  }
 
   override def order(): Int = 0
 
@@ -142,7 +155,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   private def startRorInstance() = {
     val startResult = for {
       _ <- esInitListener.waitUntilReady
-      result <- new Ror(RorMode.Plugin).start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
+      result <- new Ror(RorMode.Plugin, auditSinkCreators).start(env.configFile, new EsIndexJsonContentService(client))
     } yield result
     startResult.runAsync {
       case Right(Right(instance)) =>
@@ -158,6 +171,33 @@ class IndexLevelActionFilter(clusterService: ClusterService,
         rorInstanceState.set(RorInstanceStartingState.NotStarted(StartingFailureException.from(startingFailureException)))
     }
   }
+
+  private def createEsHighLevelClient(auditCluster: AuditCluster) = {
+    val hosts = auditCluster.nodes.map { uri =>
+      new HttpHost(uri.host, uri.port.getOrElse(9200), uri.scheme)
+    }.toList
+
+    new RestHighLevelClient(
+      RestClient
+        .builder(hosts: _*)
+        .setHttpClientConfigCallback(
+          (httpClientBuilder: HttpAsyncClientBuilder) => {
+            // todo: at the moment there is no hostname verification and all certs are considered as trusted
+            val trustAllCerts = new X509TrustManager() {
+              override def checkClientTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
+              override def checkServerTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
+              override def getAcceptedIssuers: Array[X509Certificate] = null
+            }
+            val sslContext = SSLContext.getInstance("TLS")
+            sslContext.init(null, Array(trustAllCerts), null)
+            httpClientBuilder
+              .setSSLContext(sslContext)
+              .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+          }
+        )
+    )
+  }
+
 }
 
 private sealed trait RorInstanceStartingState

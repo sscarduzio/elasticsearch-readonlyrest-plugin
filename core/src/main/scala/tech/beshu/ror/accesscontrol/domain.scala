@@ -20,12 +20,12 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
 import java.util.{Base64, Locale, UUID}
-
 import cats.Eq
 import cats.data.NonEmptyList
 import cats.implicits._
 import cats.kernel.Monoid
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
+import com.softwaremill.sttp.Uri
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
@@ -602,7 +602,7 @@ object domain {
 
   final case class RorConfigurationIndex(index: IndexName.Full) extends AnyVal
 
-  final case class AuditCluster(nodes: Set[Address])
+  final case class AuditCluster(nodes: Set[Uri])
 
   final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
                                             rawPattern: String) {
