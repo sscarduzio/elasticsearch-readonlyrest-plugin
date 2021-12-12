@@ -602,7 +602,7 @@ object domain {
 
   final case class RorConfigurationIndex(index: IndexName.Full) extends AnyVal
 
-  final case class AuditCluster(nodes: Set[Uri])
+  final case class AuditCluster(uris: NonEmptyList[Uri])
 
   final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
                                             rawPattern: String) {

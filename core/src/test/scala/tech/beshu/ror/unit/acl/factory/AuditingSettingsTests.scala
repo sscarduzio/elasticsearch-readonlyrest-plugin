@@ -16,16 +16,15 @@
  */
 package tech.beshu.ror.unit.acl.factory
 
+import cats.data.NonEmptyList
 import com.softwaremill.sttp.Uri
-
-import java.time.{Clock, ZoneId, ZonedDateTime}
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.domain.{Address, AuditCluster, IndexName, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{CoreSettings, RawRorConfigBasedCoreFactory}
@@ -35,6 +34,8 @@ import tech.beshu.ror.boot.RorMode
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsUtils._
+
+import java.time.{Clock, ZoneId, ZonedDateTime}
 
 class AuditingSettingsTests extends AnyWordSpec with Inside {
 
@@ -123,7 +124,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[DefaultAuditLogSerializer]
-          auditingSettings.auditCluster shouldBe None
+          auditingSettings.customAuditCluster shouldBe None
         }
       }
       "custom audit index name is set" in {
@@ -153,7 +154,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("custom_template_20181231"))
           auditingSettings.logSerializer shouldBe a[DefaultAuditLogSerializer]
-          auditingSettings.auditCluster shouldBe None
+          auditingSettings.customAuditCluster shouldBe None
         }
       }
       "custom serializer in set" in {
@@ -183,7 +184,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[QueryAuditLogSerializer]
-          auditingSettings.auditCluster shouldBe None
+          auditingSettings.customAuditCluster shouldBe None
         }
       }
       "deprecated custom serializer is set" in {
@@ -213,7 +214,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[DeprecatedAuditLogSerializerAdapter[_]]
-          auditingSettings.auditCluster shouldBe None
+          auditingSettings.customAuditCluster shouldBe None
         }
       }
       "custom audit cluster is set" in {
@@ -243,9 +244,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[DefaultAuditLogSerializer]
-          val value1 = Uri.parse("1.1.1.1").get
-          println(value1)
-          auditingSettings.auditCluster shouldBe Some(AuditCluster(Set(value1)))
+          auditingSettings.customAuditCluster shouldBe Some(AuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1").get)))
         }
       }
 

@@ -173,8 +173,6 @@ trait ReadonlyRest extends Logging {
           .map { coreSettings =>
             implicit val loggingContext: LoggingContext =
               LoggingContext(coreSettings.aclEngine.staticContext.obfuscatedHeaders)
-
-
             val engine = new Engine(
               accessControl = new AccessControlLoggingDecorator(
                 underlying = coreSettings.aclEngine,
@@ -208,20 +206,16 @@ trait ReadonlyRest extends Logging {
 
   private def createAuditingTool(coreSettings: CoreSettings)
                                 (implicit loggingContext: LoggingContext): Option[AuditingTool] = {
-    coreSettings.auditingSettings match {
-      case Some(auditSettings) =>
-        Some(new AuditingTool(auditSettings, createAuditSink(auditSettings)))
-      case None =>
-        None
-    }
+    coreSettings.auditingSettings
+      .map(settings => new AuditingTool(settings, createAuditSink(settings)))
   }
 
   private def createAuditSink(auditSettings: AuditingTool.Settings) = {
-    auditSettings.auditCluster match {
-      case Some(definedCluster) =>
-        auditSinkCreators.externalCluster(definedCluster)
+    auditSettings.customAuditCluster match {
+      case Some(definedCustomCluster) =>
+        auditSinkCreators.customCluster(definedCustomCluster)
       case None =>
-        auditSinkCreators.local()
+        auditSinkCreators.default()
     }
   }
 }
@@ -447,8 +441,8 @@ object RorInstance {
 
 final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
 
-final case class AuditSinkCreators(local: () => AuditSinkService,
-                                   externalCluster: AuditCluster => AuditSinkService)
+final case class AuditSinkCreators(default: () => AuditSinkService,
+                                   customCluster: AuditCluster => AuditSinkService)
 
 sealed trait RorMode
 

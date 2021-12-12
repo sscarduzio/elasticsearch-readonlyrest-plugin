@@ -43,11 +43,11 @@ object AuditingSettingsDecoder extends Logging {
             for {
               auditIndexTemplate <- c.downField("audit_index_template").as[Option[RorAuditIndexTemplate]]
               customAuditSerializer <- c.downField("audit_serializer").as[Option[AuditLogSerializer]]
-              auditCluster <- c.downField("audit_cluster").as[Option[AuditCluster]]
+              customAuditCluster <- c.downField("audit_cluster").as[Option[AuditCluster]]
             } yield Some(AuditingTool.Settings(
               auditIndexTemplate.getOrElse(RorAuditIndexTemplate.default),
               customAuditSerializer.getOrElse(new DefaultAuditLogSerializer),
-              auditCluster
+              customAuditCluster
             ))
           } else {
             Decoder.const(Option.empty[AuditingTool.Settings]).tryDecode(c)
@@ -95,7 +95,7 @@ object AuditingSettingsDecoder extends Logging {
 
   private implicit val auditClusterDecoder: Decoder[AuditCluster] =
     SyncDecoderCreator
-      .from(Decoder.decodeSet[Uri])
+      .from(Decoder.decodeNonEmptyList[Uri])
       .map(AuditCluster)
       .decoder
 }

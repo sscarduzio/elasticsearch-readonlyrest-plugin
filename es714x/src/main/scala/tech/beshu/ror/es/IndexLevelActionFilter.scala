@@ -81,8 +81,8 @@ class IndexLevelActionFilter(clusterService: ClusterService,
 
   private val auditSinkCreators = {
     AuditSinkCreators(
-      local = () => new EsAuditSinkService(client),
-      externalCluster = cluster => new HighLevelClientAuditSinkService(createEsHighLevelClient(cluster))
+      default = () => new EsAuditSinkService(client),
+      customCluster = cluster => new HighLevelClientAuditSinkService(createEsHighLevelClient(cluster))
     )
   }
 
@@ -173,7 +173,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   }
 
   private def createEsHighLevelClient(auditCluster: AuditCluster) = {
-    val hosts = auditCluster.nodes.map { uri =>
+    val hosts = auditCluster.uris.map { uri =>
       new HttpHost(uri.host, uri.port.getOrElse(9200), uri.scheme)
     }.toList
 
@@ -182,7 +182,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
         .builder(hosts: _*)
         .setHttpClientConfigCallback(
           (httpClientBuilder: HttpAsyncClientBuilder) => {
-            // todo: at the moment there is no hostname verification and all certs are considered as trusted
+            //TODO What about cert verification?
             val trustAllCerts = new X509TrustManager() {
               override def checkClientTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
               override def checkServerTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
