@@ -16,8 +16,10 @@
  */
 package tech.beshu.ror.es.utils
 
+import org.elasticsearch.rest.RestRequest
+import org.elasticsearch.tasks.Task
+import tech.beshu.ror.accesscontrol.domain.UriPath
 import tech.beshu.ror.es.RorRestChannel
-import tech.beshu.ror.exceptions.SecurityPermissionException
 
 object ThreadRepo {
   private val threadLocalChannel = new ThreadLocal[RorRestChannel]
@@ -30,22 +32,22 @@ object ThreadRepo {
     if (threadLocalChannel.get() == restChannel) threadLocalChannel.remove()
   }
 
-  def getRorRestChannel: Option[RorRestChannel] = {
-    val channel = threadLocalChannel.get
-    val reqNull =
-      if (channel == null) true
-      else channel.request == null
-    if (shouldSkipACL(channel == null, reqNull)) None
-    else Option(channel)
+  def getRorRestChannel(task: Task): Option[RorRestChannel] = {
+    for {
+      channel <- Option(threadLocalChannel.get)
+      request <- Option(channel.request())
+    } yield {
+      if(!shouldRemovingRestChannelBePostponedFor(request)) threadLocalChannel.remove()
+      channel
+    }
   }
 
-  private def shouldSkipACL(chanNull: Boolean, reqNull: Boolean): Boolean = { // This was not a REST message
-    if (reqNull && chanNull) return true
-    // Bailing out in case of catastrophical misconfiguration that would lead to insecurity
-    if (reqNull != chanNull) {
-      if (chanNull) throw new SecurityPermissionException("Problems analyzing the channel object. " + "Have you checked the security permissions?", null)
-      if (reqNull) throw new SecurityPermissionException("Problems analyzing the request object. " + "Have you checked the security permissions?", null)
-    }
-    false
+  private def shouldRemovingRestChannelBePostponedFor(request: RestRequest) = {
+    // because of the new implementation of RestTemplatesAction in ES 7.16.0 which don't take into consideration
+    // modification of ActionRequest, this workaround has to be introduced - we have to not remove the Rest Channel
+    // from the thread local, so the get composable templates request will be processed by ROR's ACL
+    UriPath
+      .from(request.uri())
+      .exists(_.isCatTemplatePath)
   }
 }
