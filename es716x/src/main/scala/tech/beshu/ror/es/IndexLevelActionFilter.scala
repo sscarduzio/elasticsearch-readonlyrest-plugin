@@ -90,7 +90,6 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                                                                            listener: ActionListener[Response],
                                                                            chain: ActionFilterChain[Request, Response]): Unit = {
     doPrivileged {
-      logger.info(s"RRRR: ${request.getClass.getName}")
       ThreadRepo.getRorRestChannel(task) match {
         case None =>
           chain.proceed(task, action, request, listener)
