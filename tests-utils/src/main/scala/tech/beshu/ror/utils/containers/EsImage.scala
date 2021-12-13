@@ -75,7 +75,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .run("echo 'sleep 30' >> /usr/share/elasticsearch/xpack-setup-entry.sh") // Time needed to bootstrap cluster as elasticsearch-setup-passwords has to be run after cluster is ready
           .run("echo 'export ES_JAVA_OPTS=\"-Xms1g -Xmx1g -Djava.security.egd=file:/dev/./urandoms\"' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
           .run("echo 'echo \"Trying to add assign superuser role to elastic\"' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
-          .runWhen(Version.greaterOrEqualThan(esVersion, 6, 3, 0),"echo \"for i in {1..15}; do curl -X POST -u elastic:elastic \"http://localhost:9200/_security/user/admin?pretty\" -H 'Content-Type: application/json' -d'{\\\"password\\\" : \\\"container\\\",\\\"roles\\\" : [ \\\"superuser\\\"]}'; sleep 2; done\" >> /usr/share/elasticsearch/xpack-setup-entry.sh")
+          .runWhen(Version.greaterOrEqualThan(esVersion, 6, 7, 0),"echo \"for i in {1..15}; do curl -X POST -u elastic:elastic \"http://localhost:9200/_security/user/admin?pretty\" -H 'Content-Type: application/json' -d'{\\\"password\\\" : \\\"container\\\",\\\"roles\\\" : [ \\\"superuser\\\"]}'; sleep 2; done\" >> /usr/share/elasticsearch/xpack-setup-entry.sh")
           .run("echo 'wait' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
           .run("chmod +x /usr/share/elasticsearch/xpack-setup-entry.sh")
           .applyTo(builder)
