@@ -17,24 +17,22 @@
 package tech.beshu.ror.es.handler.response
 
 import org.elasticsearch.common.bytes.BytesReference
-import org.elasticsearch.common.document.{DocumentField => ESDocumentField}
 import org.elasticsearch.common.xcontent.support.XContentMapValues
 import org.elasticsearch.xcontent.{XContentFactory, XContentType}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.AccessMode
 import tech.beshu.ror.fls.FieldsPolicy
-
 import scala.collection.JavaConverters._
 
 object FieldsFiltering {
 
   final case class NewFilteredSource(bytes: BytesReference)
 
-  final case class NonMetadataDocumentFields(value: Map[String, ESDocumentField])
-  final case class MetadataDocumentFields(value: Map[String, ESDocumentField])
+  final case class NonMetadataDocumentFields[T](value: Map[String, T])
+  final case class MetadataDocumentFields[T](value: Map[String, T])
 
-  final case class NewFilteredDocumentFields(nonMetadataDocumentFields: NonMetadataDocumentFields,
-                                             metadataDocumentFields: MetadataDocumentFields)
+  final case class NewFilteredDocumentFields[T](nonMetadataDocumentFields: NonMetadataDocumentFields[T],
+                                                metadataDocumentFields: MetadataDocumentFields[T])
 
   def filterSource(sourceAsMap: Map[String, _],
                    fieldsRestrictions: FieldsRestrictions): NewFilteredSource = {
@@ -46,8 +44,8 @@ object FieldsFiltering {
     NewFilteredSource(BytesReference.bytes(newContent))
   }
 
-  def filterNonMetadataDocumentFields(nonMetadataDocumentFields: NonMetadataDocumentFields,
-                                      fieldsRestrictions: FieldsRestrictions): NonMetadataDocumentFields = {
+  def filterNonMetadataDocumentFields[T](nonMetadataDocumentFields: NonMetadataDocumentFields[T],
+                                         fieldsRestrictions: FieldsRestrictions): NonMetadataDocumentFields[T] = {
     val policy = new FieldsPolicy(fieldsRestrictions)
 
     NonMetadataDocumentFields {

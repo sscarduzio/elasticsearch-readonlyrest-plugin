@@ -3,8 +3,13 @@
  */
 package tech.beshu.ror
 
+import org.elasticsearch.client.{RestClient, RestClientBuilder, RestHighLevelClient}
+
 package object proxy {
 
+  new RestHighLevelClient(
+    RestClient.builder()
+  )
   val launchingBanner: String =
     """
       |
