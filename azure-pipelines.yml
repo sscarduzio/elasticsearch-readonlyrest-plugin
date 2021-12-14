@@ -69,6 +69,8 @@ stages:
 
         IT_PROXY:
           ROR_TASK: integration_proxy
+        IT_es716x:
+          ROR_TASK: integration_es716x
         IT_es714x:
           ROR_TASK: integration_es714x
         IT_es711x:
@@ -93,6 +95,8 @@ stages:
           ROR_TASK: integration_es67x
         IT_es66x:
           ROR_TASK: integration_es66x
+        IT_es65x:
+          ROR_TASK: integration_es65x
         IT_es63x:
           ROR_TASK: integration_es63x
         IT_es62x:
