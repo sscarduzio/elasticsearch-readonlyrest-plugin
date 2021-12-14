@@ -66,7 +66,7 @@ dependencies {
     compile  group: 'org.javassist',                        name: 'javassist',                              version: '3.26.0-GA'
     compile  group: 'org.jooq',                             name: 'joor-java-8',                            version: '0.9.13'
     compile  group: 'org.codelibs.elasticsearch.module',    name: 'lang-mustache',                          version: esVersion
-    compile  group: 'org.apache.logging.log4j',             name: 'log4j-core',                             version: '2.11.0'
+    compile  group: 'org.apache.logging.log4j',             name: 'log4j-core',                             version: '2.15.0'
     compile  group: 'org.codelibs.elasticsearch.module',    name: 'reindex',                                version: esVersion
 }
 

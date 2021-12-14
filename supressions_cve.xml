@@ -41,4 +41,18 @@
         <sha1>6ff2aa22c46cb271116c136e51bc624a3dcdddcb</sha1>
         <cpe>cpe:/a:refined-github_project:refined-github</cpe>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: log4j-api-2.11.2.jar - no log4j-core (it's excluded, and the core is provided by ES)
+   ]]></notes>
+        <sha1>f5e9a2ffca496057d6891a3de65128efc636e26e</sha1>
+        <cpe>cpe:/a:apache:log4j</cpe>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: log4j-slf4j-impl-2.11.2.jar - no log4j-core (it's excluded, and the core is provided by ES)
+   ]]></notes>
+        <sha1>4d44e4edc4a7fb39f09b95b09f560a15976fa1ba</sha1>
+        <cpe>cpe:/a:apache:log4j</cpe>
+    </suppress>
 </suppressions>
