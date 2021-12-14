@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.unit.boot
 
-import java.time.Clock
-import java.util.UUID
 import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.auto._
@@ -37,9 +35,10 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{CoreFactory, CoreSettings}
 import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
-import tech.beshu.ror.boot.{AuditSinkCreators, ReadonlyRest, StartingFailure}
+import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.ReloadingFailed
+import tech.beshu.ror.boot.{ReadonlyRest, StartingFailure}
 import tech.beshu.ror.configuration.SslConfiguration._
 import tech.beshu.ror.configuration.{MalformedSettings, RawRorConfig, RorSsl}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, ContentNotFound, WriteError}
@@ -48,6 +47,8 @@ import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesP
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{getResourceContent, getResourcePath, rorConfigFromResource, _}
 
+import java.time.Clock
+import java.util.UUID
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -716,7 +717,7 @@ class ReadonlyRestStartingTests
                                refreshInterval: Option[FiniteDuration] = None) = {
     new ReadonlyRest {
 
-      override protected def auditSinkCreators: AuditSinkCreators = AuditSinkCreators(() => mock[AuditSinkService], _ => mock[AuditSinkService])
+      override protected def auditSinkCreator: AuditSinkCreator = _ => mock[AuditSinkService]
 
       override implicit protected val clock: Clock = Clock.systemUTC()
       override implicit protected val scheduler: Scheduler = monix.execution.Scheduler.global

@@ -37,6 +37,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, CoreSettings, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.api.{AuthMockApi, ConfigApi}
+import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.engines.{Engines, ImpersonatorsReloadableEngine, MainReloadableEngine}
 import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
 import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
@@ -52,7 +53,7 @@ import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
 class Ror(mode: RorMode,
-          override val auditSinkCreators: AuditSinkCreators,
+          override val auditSinkCreator: AuditSinkCreator,
           override val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
           override val propertiesProvider: PropertiesProvider = JvmPropertiesProvider)
          (implicit override val scheduler: Scheduler)
@@ -71,7 +72,7 @@ trait ReadonlyRest extends Logging {
 
   protected def coreFactory: CoreFactory
 
-  protected def auditSinkCreators: AuditSinkCreators
+  protected def auditSinkCreator: AuditSinkCreator
 
   protected implicit def scheduler: Scheduler
 
@@ -207,17 +208,12 @@ trait ReadonlyRest extends Logging {
   private def createAuditingTool(coreSettings: CoreSettings)
                                 (implicit loggingContext: LoggingContext): Option[AuditingTool] = {
     coreSettings.auditingSettings
-      .map(settings => new AuditingTool(settings, createAuditSink(settings)))
+      .map(settings => new AuditingTool(settings, auditSinkCreator(settings.auditCluster)))
   }
+}
 
-  private def createAuditSink(auditSettings: AuditingTool.Settings) = {
-    auditSettings.customAuditCluster match {
-      case Some(definedCustomCluster) =>
-        auditSinkCreators.customCluster(definedCustomCluster)
-      case None =>
-        auditSinkCreators.default()
-    }
-  }
+object ReadonlyRest {
+  type AuditSinkCreator = AuditCluster => AuditSinkService
 }
 
 class RorInstance private(boot: ReadonlyRest,
@@ -440,9 +436,6 @@ object RorInstance {
 }
 
 final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
-
-final case class AuditSinkCreators(default: () => AuditSinkService,
-                                   customCluster: AuditCluster => AuditSinkService)
 
 sealed trait RorMode
 

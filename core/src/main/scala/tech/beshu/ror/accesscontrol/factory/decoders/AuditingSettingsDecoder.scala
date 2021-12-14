@@ -21,7 +21,7 @@ import io.circe.Decoder
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.AuditingSettingsCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{AuditingSettingsCreationError, ValueLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common.uriDecoder
 import tech.beshu.ror.accesscontrol.logging.AuditingTool
@@ -43,11 +43,11 @@ object AuditingSettingsDecoder extends Logging {
             for {
               auditIndexTemplate <- c.downField("audit_index_template").as[Option[RorAuditIndexTemplate]]
               customAuditSerializer <- c.downField("audit_serializer").as[Option[AuditLogSerializer]]
-              customAuditCluster <- c.downField("audit_cluster").as[Option[AuditCluster]]
+              remoteAuditCluster <- c.downField("audit_cluster").as[Option[AuditCluster.RemoteAuditCluster]]
             } yield Some(AuditingTool.Settings(
               auditIndexTemplate.getOrElse(RorAuditIndexTemplate.default),
               customAuditSerializer.getOrElse(new DefaultAuditLogSerializer),
-              customAuditCluster
+              remoteAuditCluster.getOrElse(AuditCluster.LocalAuditCluster)
             ))
           } else {
             Decoder.const(Option.empty[AuditingTool.Settings]).tryDecode(c)
@@ -93,9 +93,10 @@ object AuditingSettingsDecoder extends Logging {
       }
       .decoder
 
-  private implicit val auditClusterDecoder: Decoder[AuditCluster] =
+  private implicit val remoteAuditClusterDecoder: Decoder[AuditCluster.RemoteAuditCluster] =
     SyncDecoderCreator
       .from(Decoder.decodeNonEmptyList[Uri])
-      .map(AuditCluster)
+      .withError(AuditingSettingsCreationError(Message("Non empty list of valid URI is required")))
+      .map(AuditCluster.RemoteAuditCluster)
       .decoder
 }

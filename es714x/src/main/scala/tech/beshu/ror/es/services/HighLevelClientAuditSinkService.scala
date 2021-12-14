@@ -18,11 +18,18 @@ package tech.beshu.ror.es.services
 
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.http.HttpHost
+import org.apache.http.conn.ssl.NoopHostnameVerifier
+import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.index.IndexRequest
-import org.elasticsearch.client.{RequestOptions, RestHighLevelClient}
+import org.elasticsearch.client.{RequestOptions, RestClient, RestHighLevelClient}
 import org.elasticsearch.common.xcontent.XContentType
+import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.es.AuditSinkService
+
+import java.security.cert.X509Certificate
+import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 
 class HighLevelClientAuditSinkService(client: RestHighLevelClient)
                                      (implicit scheduler: Scheduler)
@@ -38,5 +45,41 @@ class HighLevelClientAuditSinkService(client: RestHighLevelClient)
         case Left(ex) =>
           logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex)
       }
+  }
+}
+
+object HighLevelClientAuditSinkService {
+
+  def create(remoteCluster: AuditCluster.RemoteAuditCluster)
+            (implicit scheduler: Scheduler): HighLevelClientAuditSinkService = {
+    val highLevelClient = createEsHighLevelClient(remoteCluster)
+    new HighLevelClientAuditSinkService(highLevelClient)
+  }
+
+  private def createEsHighLevelClient(auditCluster: AuditCluster.RemoteAuditCluster) = {
+    val hosts = auditCluster.uris.map { uri =>
+      new HttpHost(uri.host, uri.port.getOrElse(9200), uri.scheme)
+    }.toList
+
+    new RestHighLevelClient(
+      RestClient
+        .builder(hosts: _*)
+        .setHttpClientConfigCallback(
+          (httpClientBuilder: HttpAsyncClientBuilder) => {
+            val trustAllCerts = createTrustAllManager()
+            val sslContext = SSLContext.getInstance("TLS")
+            sslContext.init(null, Array(trustAllCerts), null)
+            httpClientBuilder
+              .setSSLContext(sslContext)
+              .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+          }
+        )
+    )
+  }
+
+  private def createTrustAllManager(): TrustManager = new X509TrustManager() {
+    override def checkClientTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
+    override def checkServerTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
+    override def getAcceptedIssuers: Array[X509Certificate] = null
   }
 }

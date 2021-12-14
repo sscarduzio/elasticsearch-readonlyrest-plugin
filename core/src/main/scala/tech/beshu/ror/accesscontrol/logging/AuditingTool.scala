@@ -142,6 +142,6 @@ object AuditingTool {
 
   final case class Settings(rorAuditIndexTemplate: RorAuditIndexTemplate,
                             logSerializer: AuditLogSerializer,
-                            customAuditCluster: Option[AuditCluster])
+                            auditCluster: AuditCluster)
 
 }

@@ -18,17 +18,18 @@ package tech.beshu.ror.integration
 
 import java.time.{Clock, Instant, ZoneId}
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.header
+
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
-
 import monix.execution.Scheduler.Implicits.global
+
 import scala.language.postfixOps
 
 class AccessControlAuditTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest {
@@ -135,7 +136,7 @@ class AccessControlAuditTests extends AnyWordSpec with BaseYamlLoadedAccessContr
       AuditingTool.Settings(
         RorAuditIndexTemplate.default,
         new DefaultAuditLogSerializer,
-        None
+        AuditCluster.LocalAuditCluster
       ),
       auditSinkService
     )))

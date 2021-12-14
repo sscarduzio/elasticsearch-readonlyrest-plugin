@@ -10,7 +10,7 @@ readonlyrest:
   audit_index_template: "'audit_index'"
 
   access_control_rules:
-
+`
     - name: "CONTAINER ADMIN"
       verbosity: error
       type: allow

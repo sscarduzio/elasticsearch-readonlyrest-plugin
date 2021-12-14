@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.logging
 
 import java.time._
-
 import cats.data.{NonEmptyList, NonEmptySet}
 import com.softwaremill.sttp.Method
 import monix.execution.Scheduler.Implicits.global
@@ -30,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.{Policy, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.MethodsRule
-import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
 import tech.beshu.ror.accesscontrol.logging.AuditingTool
 import tech.beshu.ror.accesscontrol.logging.ResponseContext._
 import tech.beshu.ror.accesscontrol.orders._
@@ -50,7 +49,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
           AuditingTool.Settings(
             RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
             new DefaultAuditLogSerializer,
-            None
+            AuditCluster.LocalAuditCluster
           ),
           mock[AuditSinkService]
         )
@@ -61,7 +60,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
           AuditingTool.Settings(
             RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
             throwingAuditLogSerializer,
-            None
+            AuditCluster.LocalAuditCluster
           ),
           mock[AuditSinkService]
         )
@@ -79,7 +78,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
           AuditingTool.Settings(
             RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
             new DefaultAuditLogSerializer,
-            None
+            AuditCluster.LocalAuditCluster
           ),
           auditSink
         )
@@ -94,7 +93,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
           AuditingTool.Settings(
             RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
             new DefaultAuditLogSerializer,
-            None
+            AuditCluster.LocalAuditCluster
           ),
           auditSink
         )
@@ -122,7 +121,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
           AuditingTool.Settings(
             RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
             new DefaultAuditLogSerializer,
-            None
+            AuditCluster.LocalAuditCluster
           ),
           auditSink
         )
@@ -140,7 +139,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
           AuditingTool.Settings(
             RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
             new DefaultAuditLogSerializer,
-            None
+            AuditCluster.LocalAuditCluster
           ),
           auditSink
         )

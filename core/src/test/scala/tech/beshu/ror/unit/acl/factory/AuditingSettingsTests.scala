@@ -124,7 +124,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[DefaultAuditLogSerializer]
-          auditingSettings.customAuditCluster shouldBe None
+          auditingSettings.auditCluster shouldBe AuditCluster.LocalAuditCluster
         }
       }
       "custom audit index name is set" in {
@@ -154,7 +154,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("custom_template_20181231"))
           auditingSettings.logSerializer shouldBe a[DefaultAuditLogSerializer]
-          auditingSettings.customAuditCluster shouldBe None
+          auditingSettings.auditCluster shouldBe AuditCluster.LocalAuditCluster
         }
       }
       "custom serializer in set" in {
@@ -184,7 +184,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[QueryAuditLogSerializer]
-          auditingSettings.customAuditCluster shouldBe None
+          auditingSettings.auditCluster shouldBe AuditCluster.LocalAuditCluster
         }
       }
       "deprecated custom serializer is set" in {
@@ -214,7 +214,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[DeprecatedAuditLogSerializerAdapter[_]]
-          auditingSettings.customAuditCluster shouldBe None
+          auditingSettings.auditCluster shouldBe AuditCluster.LocalAuditCluster
         }
       }
       "custom audit cluster is set" in {
@@ -244,7 +244,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[DefaultAuditLogSerializer]
-          auditingSettings.customAuditCluster shouldBe Some(AuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1").get)))
+          auditingSettings.auditCluster shouldBe AuditCluster.RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1").get))
         }
       }
 
@@ -308,6 +308,34 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
           errors.head should be(AuditingSettingsCreationError(Message(
             "Illegal pattern specified for audit_index_template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
           )))
+        }
+      }
+      "remote cluster is empty list" in {
+        val config = rorConfigFromUnsafe(
+          """
+            |readonlyrest:
+            |  audit_collector: true
+            |  audit_cluster: []
+            |
+            |  access_control_rules:
+            |
+            |  - name: test_block
+            |    type: allow
+            |    auth_key: admin:container
+            |
+          """.stripMargin)
+        val core = factory
+          .createCoreFrom(
+            config,
+            RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+            MockHttpClientsFactory,
+            MockLdapConnectionPoolProvider,
+            NoOpMocksProvider
+          )
+          .runSyncUnsafe()
+        inside(core) { case Left(errors) =>
+          errors.length should be(1)
+          errors.head should be(AuditingSettingsCreationError(Message("Non empty list of valid URI is required")))
         }
       }
     }
