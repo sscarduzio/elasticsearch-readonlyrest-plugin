@@ -55,7 +55,6 @@ dependencies {
     compile project(path: ':core')
     compile             group: 'org.elasticsearch',                 name: 'elasticsearch' ,             version: esVersion
     compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',    version: esVersion
-    compile             group: 'org.apache.logging.log4j',          name: 'log4j-core',                 version: '2.11.1'
 }
 
 license {

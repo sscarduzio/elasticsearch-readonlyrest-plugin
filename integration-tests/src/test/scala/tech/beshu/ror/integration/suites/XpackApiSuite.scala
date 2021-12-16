@@ -579,7 +579,6 @@ trait XpackApiSuite
             result.rows.size should be(3)
             result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
           }
-          //todo: filter rule doesn't work now for sql api.
           "filter in rule is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
             val result = dev5SqlManager.execute("""SELECT * FROM bookstore""")
             result.isSuccess should be(true)
