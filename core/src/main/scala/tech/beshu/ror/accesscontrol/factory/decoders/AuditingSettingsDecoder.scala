@@ -17,11 +17,11 @@
 package tech.beshu.ror.accesscontrol.factory.decoders
 
 import com.softwaremill.sttp.Uri
-import io.circe.Decoder
+import io.circe.{Decoder, HCursor}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{AuditingSettingsCreationError, ValueLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common.uriDecoder
 import tech.beshu.ror.accesscontrol.logging.AuditingTool
@@ -36,23 +36,17 @@ object AuditingSettingsDecoder extends Logging {
 
   lazy val instance: Decoder[Option[AuditingTool.Settings]] =
     Decoder.instance { c =>
-      for {
-        auditCollectorEnabled <- c.downField("audit_collector").as[Option[Boolean]]
-        settings <-
-          if (auditCollectorEnabled.getOrElse(false)) {
-            for {
-              auditIndexTemplate <- c.downField("audit_index_template").as[Option[RorAuditIndexTemplate]]
-              customAuditSerializer <- c.downField("audit_serializer").as[Option[AuditLogSerializer]]
-              remoteAuditCluster <- c.downField("audit_cluster").as[Option[AuditCluster.RemoteAuditCluster]]
-            } yield Some(AuditingTool.Settings(
-              auditIndexTemplate.getOrElse(RorAuditIndexTemplate.default),
-              customAuditSerializer.getOrElse(new DefaultAuditLogSerializer),
-              remoteAuditCluster.getOrElse(AuditCluster.LocalAuditCluster)
-            ))
-          } else {
-            Decoder.const(Option.empty[AuditingTool.Settings]).tryDecode(c)
-          }
-      } yield settings
+      whenEnabled(c) {
+        for {
+          auditIndexTemplate <- decodeOptionalSetting[RorAuditIndexTemplate](c)("index_template", fallbackKey = "audit_index_template")
+          customAuditSerializer <- decodeOptionalSetting[AuditLogSerializer](c)("serializer", fallbackKey = "audit_serializer")
+          remoteAuditCluster <- decodeOptionalSetting[AuditCluster.RemoteAuditCluster](c)("cluster", fallbackKey = "audit_cluster")
+        } yield AuditingTool.Settings(
+          auditIndexTemplate.getOrElse(RorAuditIndexTemplate.default),
+          customAuditSerializer.getOrElse(new DefaultAuditLogSerializer),
+          remoteAuditCluster.getOrElse(AuditCluster.LocalAuditCluster)
+        )
+      }
     }
 
   private implicit val rorAuditIndexTemplateDecoder: Decoder[RorAuditIndexTemplate] =
@@ -99,4 +93,19 @@ object AuditingSettingsDecoder extends Logging {
       .withError(AuditingSettingsCreationError(Message("Non empty list of valid URI is required")))
       .map(AuditCluster.RemoteAuditCluster)
       .decoder
+
+  private def whenEnabled(cursor: HCursor)(decoding: => Decoder.Result[AuditingTool.Settings]) = {
+    for {
+      isEnabled <- decodeOptionalSetting[Boolean](cursor)("collector", fallbackKey = "audit_collector")
+      result <- if (isEnabled.getOrElse(false)) decoding.map(Some.apply) else Right(None)
+    } yield result
+  }
+
+  private def decodeOptionalSetting[T: Decoder](cursor: HCursor)(key: String, fallbackKey: String): Decoder.Result[Option[T]] = {
+    cursor.downField("audit").get[Option[T]](key)
+      .flatMap {
+        case Some(value) => Right(Some(value))
+        case None => cursor.get[Option[T]](fallbackKey)
+      }
+  }
 }

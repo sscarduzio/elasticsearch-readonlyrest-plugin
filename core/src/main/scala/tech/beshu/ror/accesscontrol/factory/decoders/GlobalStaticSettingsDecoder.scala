@@ -28,8 +28,7 @@ import tech.beshu.ror.boot.RorMode
 object GlobalStaticSettingsDecoder {
 
   def instance(rorMode: RorMode,
-               rorConfigurationIndex: RorConfigurationIndex,
-               rorAuditIndexTemplate: Option[RorAuditIndexTemplate]): Decoder[GlobalSettings] = {
+               rorConfigurationIndex: RorConfigurationIndex): Decoder[GlobalSettings] = {
     Decoder
       .instance { c =>
         for {
@@ -42,8 +41,7 @@ object GlobalStaticSettingsDecoder {
           forbiddenMessage.getOrElse(GlobalSettings.defaultForbiddenRequestMessage),
           flsEngine,
           rorConfigurationIndex,
-          caseMapping,
-          rorAuditIndexTemplate
+          caseMapping
         )
       }
   }

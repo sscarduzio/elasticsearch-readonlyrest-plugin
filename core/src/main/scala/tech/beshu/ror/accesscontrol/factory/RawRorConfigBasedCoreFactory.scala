@@ -129,8 +129,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
           auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
           globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(
             rorMode,
-            rorConfigurationIndex,
-            auditingTools.map(_.rorAuditIndexTemplate)
+            rorConfigurationIndex
           ))
           acl <- aclDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings, mocksProvider)
         } yield CoreSettings(

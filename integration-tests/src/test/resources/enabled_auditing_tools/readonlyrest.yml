@@ -6,11 +6,13 @@ readonlyrest:
     key_pass: readonlyrest
 
   prompt_for_basic_auth: false
-  audit_collector: true
-  audit_index_template: "'audit_index'"
+
+  audit:
+    collector: true
+    index_template: "'audit_index'"
 
   access_control_rules:
-`
+
     - name: "CONTAINER ADMIN"
       verbosity: error
       type: allow

@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.logging
 
-import java.time.{Clock, Instant}
 import cats.implicits._
 import monix.eval.Task
 import org.json.JSONObject
@@ -29,6 +28,8 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.es.AuditSinkService
+
+import java.time.{Clock, Instant}
 
 class AuditingTool(settings: Settings,
                    auditSink: AuditSinkService)

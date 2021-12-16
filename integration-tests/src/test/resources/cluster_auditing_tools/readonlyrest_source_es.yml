@@ -6,9 +6,11 @@ readonlyrest:
     key_pass: readonlyrest
 
   prompt_for_basic_auth: false
-  audit_collector: true
-  audit_index_template: "'audit_index'"
-  audit_cluster: ["https://ROR2_1:9200"]
+
+  audit:
+    collector: true
+    index_template: "'audit_index'"
+    cluster: ["https://ROR2_1:9200"]
 
   access_control_rules:
 
