@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.integration.proxy
 
-import tech.beshu.ror.integration.suites.EnabledAuditingToolsSuite
+import tech.beshu.ror.integration.suites.LocalClusterAuditingToolsSuite
 import tech.beshu.ror.integration.utils.ProxyTestSupport
 
-class EnabledAuditingToolsProxyTests extends EnabledAuditingToolsSuite with ProxyTestSupport
+class LocalClusterAuditingToolsProxyTests extends LocalClusterAuditingToolsSuite with ProxyTestSupport

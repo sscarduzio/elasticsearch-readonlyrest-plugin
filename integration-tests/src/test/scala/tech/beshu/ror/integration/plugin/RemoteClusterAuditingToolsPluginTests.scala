@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.suites.EnabledAuditingToolsSuite
+import tech.beshu.ror.integration.suites.RemoteClusterAuditingToolsSuite
 import tech.beshu.ror.integration.utils.PluginTestSupport
 
-class EnabledAuditingToolsPluginTests extends EnabledAuditingToolsSuite with PluginTestSupport
+class RemoteClusterAuditingToolsPluginTests extends RemoteClusterAuditingToolsSuite with PluginTestSupport
