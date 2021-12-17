@@ -27,14 +27,16 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.env.Environment
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
+import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.boot.{Ror, RorInstance, RorMode}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
-import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
+import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, HighLevelClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
@@ -82,6 +84,13 @@ class IndexLevelActionFilter(settings: Settings,
   )
 
   private val startingTaskCancellable = startRorInstance()
+
+  private val auditSinkCreator: AuditSinkCreator = {
+    case AuditCluster.LocalAuditCluster =>
+      new EsAuditSinkService(client)
+    case remote: AuditCluster.RemoteAuditCluster =>
+      HighLevelClientAuditSinkService.create(remote)
+  }
 
   override def order(): Int = 0
 
@@ -150,8 +159,8 @@ class IndexLevelActionFilter(settings: Settings,
   }
 
   private def startRorInstance() = doPrivileged {
-    new Ror(RorMode.Plugin)
-      .start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
+    new Ror(RorMode.Plugin, auditSinkCreator)
+      .start(env.configFile, new EsIndexJsonContentService(client))
       .runAsync {
         case Right(Right(instance)) =>
           RorInstanceSupplier.update(instance)

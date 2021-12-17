@@ -58,8 +58,9 @@ dependencies {
         // because of https://github.com/elastic/elasticsearch/issues/68889 (for ES 7.11.0)
         exclude group: 'org.elasticsearch', module: 'elasticsearch-plugin-classloader'
     }
-    compileClasspath    group: 'org.locationtech.spatial4j',        name: 'spatial4j',                  version: '0.7'
-    compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',    version: esVersion
+    compile             group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-high-level-client',   version: esVersion
+    compileClasspath    group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
+    compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: esVersion
 }
 
 license {

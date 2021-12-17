@@ -17,7 +17,6 @@
 package tech.beshu.ror.es
 
 import java.util.function.Supplier
-
 import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
@@ -29,14 +28,16 @@ import org.elasticsearch.snapshots.SnapshotsService
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
+import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
+import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot._
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.handler.AclAwareRequestFilter
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
-import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
+import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, HighLevelClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -72,6 +73,13 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   )
 
   private val startingTaskCancellable = startRorInstance()
+
+  private val auditSinkCreator: AuditSinkCreator = {
+    case AuditCluster.LocalAuditCluster =>
+      new EsAuditSinkService(client)
+    case remote: AuditCluster.RemoteAuditCluster =>
+      HighLevelClientAuditSinkService.create(remote)
+  }
 
   override def order(): Int = 0
 
@@ -142,7 +150,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   private def startRorInstance() = {
     val startResult = for {
       _ <- esInitListener.waitUntilReady
-      result <- new Ror(RorMode.Plugin).start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
+      result <- new Ror(RorMode.Plugin, auditSinkCreator).start(env.configFile, new EsIndexJsonContentService(client))
     } yield result
     startResult.runAsync {
       case Right(Right(instance)) =>
