@@ -16,17 +16,17 @@
  */
 package tech.beshu.ror.es.services
 
-import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.http.HttpHost
 import org.apache.http.conn.ssl.NoopHostnameVerifier
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.index.IndexRequest
+import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.client.{RequestOptions, RestClient, RestHighLevelClient}
 import org.elasticsearch.common.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.es.AuditSinkService
+import tech.beshu.ror.es.utils.GenericResponseListener
 
 import java.security.cert.X509Certificate
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
@@ -37,7 +37,13 @@ class HighLevelClientAuditSinkService(client: RestHighLevelClient)
     with Logging {
 
   override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
-    Task(client.index(new IndexRequest(indexName).id(documentId).source(jsonRecord, XContentType.JSON), RequestOptions.DEFAULT))
+    val request = new IndexRequest(indexName).id(documentId).source(jsonRecord, XContentType.JSON)
+    val options = RequestOptions.DEFAULT
+    val listener = new GenericResponseListener[IndexResponse]
+
+    client.indexAsync(request, options, listener)
+
+    listener.result
       .runAsync {
         case Right(resp) if resp.status().getStatus / 100 == 2 =>
         case Right(resp) =>
