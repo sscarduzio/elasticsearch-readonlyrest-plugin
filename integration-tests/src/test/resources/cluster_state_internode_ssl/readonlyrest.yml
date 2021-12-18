@@ -19,6 +19,5 @@ readonlyrest:
 
     # ES containter initializer need this rule to configure ES instance after startup
     - name: "CONTAINER ADMIN"
-      verbosity: error
       type: allow
       auth_key: admin:container

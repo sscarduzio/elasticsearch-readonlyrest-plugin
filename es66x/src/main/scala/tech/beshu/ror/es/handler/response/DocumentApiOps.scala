@@ -22,6 +22,8 @@ import org.elasticsearch.index.get.GetResult
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DocumentId, DocumentWithIndex}
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
+import tech.beshu.ror.es.handler.response.FieldsFiltering.{MetadataDocumentFields, NewFilteredDocumentFields}
+
 import scala.collection.JavaConverters._
 
 object DocumentApiOps {
@@ -50,7 +52,7 @@ object DocumentApiOps {
 
       def filterFieldsUsing(fieldsRestrictions: FieldsRestrictions): GetResponse = {
         val newSource = filterSourceFieldsUsing(fieldsRestrictions)
-        val allNewFields = filterDocumentFieldsUsing(fieldsRestrictions)
+        val newFields = filterDocumentFieldsUsing(fieldsRestrictions)
 
         val newResult = new GetResult(
           response.getIndex,
@@ -61,7 +63,7 @@ object DocumentApiOps {
           response.getVersion,
           true,
           newSource,
-          allNewFields.asJava
+          (newFields.nonMetadataDocumentFields.value ++ newFields.metadataDocumentFields.value).asJava
         )
         new GetResponse(newResult)
       }
@@ -77,8 +79,18 @@ object DocumentApiOps {
       }
 
       private def filterDocumentFieldsUsing(fieldsRestrictions: FieldsRestrictions) = {
-        val newFields = FieldsFiltering.filterDocumentFields(response.getFields.asScala.toMap, fieldsRestrictions)
-        newFields.metadataFields ++ newFields.documentFields
+        val (originalMetadataFields, originalNonMetadataFields) =
+          response
+            .getFields.asScala
+            .toMap
+            .partition(_._2.isMetadataField)
+
+        val filteredNonMetadataFields = FieldsFiltering.filterNonMetadataDocumentFields(
+          FieldsFiltering.NonMetadataDocumentFields(originalNonMetadataFields),
+          fieldsRestrictions
+        )
+
+        NewFilteredDocumentFields(filteredNonMetadataFields, MetadataDocumentFields(originalMetadataFields))
       }
     }
   }

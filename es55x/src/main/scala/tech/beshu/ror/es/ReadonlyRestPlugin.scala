@@ -18,7 +18,6 @@ package tech.beshu.ror.es
 
 import java.util
 import java.util.function.{Supplier, UnaryOperator}
-
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException

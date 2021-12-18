@@ -58,9 +58,8 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
 
   private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
                                       (actionResponse: ActionResponse): ActionResponse = {
-
     (actionResponse, fieldLevelSecurity) match {
-      case (response: SearchResponse, Some(FieldLevelSecurity(restrictions, _: BasedOnBlockContextOnly)))  =>
+      case (response: SearchResponse, Some(FieldLevelSecurity(restrictions, _: BasedOnBlockContextOnly))) =>
         response.getHits.getHits
           .foreach { hit =>
             hit

@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.es.ssl;
 
+
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
@@ -100,7 +101,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
       @Override
       public void mkSSLContext(InputStream certChain, InputStream privateKey) {
         try {
-          // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
+          // #TODO: expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null);
 
           logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider().name());

@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.es.handler.response
 
-import org.elasticsearch.search.{SearchHit, SearchHitField}
+import org.elasticsearch.search.SearchHit
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
-import tech.beshu.ror.fls.FieldsPolicy
+
 import scala.collection.JavaConverters._
 
 object SearchHitOps {
@@ -36,32 +36,25 @@ object SearchHitOps {
     }
 
     def filterDocumentFieldsUsing(fieldsRestrictions: FieldsRestrictions): SearchHit = {
-      Option(searchHit.getFields)
-        .map(_.asScala.toMap)
-        .filter(_.nonEmpty)
-        .map(fields => filterNonMetadataDocumentFieldsOnly(fields, fieldsRestrictions))
-        .foreach(allFields => searchHit.fields(allFields.asJava))
+      val (metadataFields, documentFields) = splitMetadataAndNotMetadataFields(searchHit)
 
+      Option(documentFields)
+        .map(fields => FieldsFiltering.NonMetadataDocumentFields(fields.toMap))
+        .filter(_.value.nonEmpty)
+        .map(fields => FieldsFiltering.filterNonMetadataDocumentFields(fields, fieldsRestrictions))
+        .map(_.value)
+        .foreach { newDocumentFields =>
+          val allFields = metadataFields ++ newDocumentFields
+          searchHit.fields(allFields.asJava)
+        }
       searchHit
     }
+  }
 
-    private def filterNonMetadataDocumentFieldsOnly(fields: Map[String, SearchHitField],
-                                                    fieldsRestrictions: FieldsRestrictions) = {
-      val (metadataFields, nonMetadataDocumentFields) = partitionFieldsByMetadata(fields)
-      val policy = new FieldsPolicy(fieldsRestrictions)
-      val filteredDocumentFields = nonMetadataDocumentFields.filter {
-        case (key, _) => policy.canKeep(key)
-      }
-      metadataFields ++ filteredDocumentFields
-    }
-
-    private def partitionFieldsByMetadata(fields: Map[String, SearchHitField]) = {
-      fields.partition {
-        case t if t._2.isMetadataField => true
-        case _ => false
-      }
-    }
-
+  private def splitMetadataAndNotMetadataFields(searchHit: SearchHit) = {
+    searchHit
+      .getFields.asScala
+      .partition { case (_, value) => value.isMetadataField }
   }
 
 }
