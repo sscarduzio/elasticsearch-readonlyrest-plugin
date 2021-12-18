@@ -5,7 +5,6 @@ package tech.beshu.ror.proxy.es
 
 import java.util
 import java.util.function.{Supplier, UnaryOperator}
-
 import better.files.File
 import cats.data.EitherT
 import com.google.common.collect.Maps
@@ -34,6 +33,7 @@ import org.elasticsearch.tasks.TaskManager
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.usage.UsageService
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
+import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.StartingFailure
 import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.actions.rradmin._
@@ -285,13 +285,14 @@ object EsRestServiceSimulator {
 
   def create(esClient: RestHighLevelClientAdapter,
              esConfigFile: File,
-             threadPool: ThreadPool)
+             threadPool: ThreadPool,
+             auditSinkCreator: AuditSinkCreator)
             (implicit scheduler: Scheduler,
              envVarsProvider: EnvVarsProvider,
              generator: UniqueIdentifierGenerator): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
     val simulatorEsSettingsFolder = esConfigFile.parent.path
     val result = for {
-      filter <- EitherT(ProxyIndexLevelActionFilter.create(simulatorEsSettingsFolder, esClient, threadPool))
+      filter <- EitherT(ProxyIndexLevelActionFilter.create(simulatorEsSettingsFolder, esClient, threadPool, auditSinkCreator))
     } yield new EsRestServiceSimulator(esConfigFile, filter, esClient, new RRAdminActionHandler(), threadPool)
     result.value
   }

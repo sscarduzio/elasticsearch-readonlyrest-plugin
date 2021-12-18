@@ -23,7 +23,7 @@ import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.client.{RequestOptions, RestClient, RestHighLevelClient}
-import org.elasticsearch.common.xcontent.XContentType
+import org.elasticsearch.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.es.utils.GenericResponseListener

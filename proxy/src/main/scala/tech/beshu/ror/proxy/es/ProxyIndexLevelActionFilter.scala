@@ -4,7 +4,6 @@
 package tech.beshu.ror.proxy.es
 
 import java.nio.file.Path
-
 import cats.data.EitherT
 import monix.eval.{Task => MTask}
 import monix.execution.Scheduler
@@ -14,6 +13,7 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
+import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance, RorMode, StartingFailure}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter
@@ -108,7 +108,8 @@ object ProxyIndexLevelActionFilter {
 
   def create(configFile: Path,
              esClient: RestHighLevelClientAdapter,
-             threadPool: ThreadPool)
+             threadPool: ThreadPool,
+             auditSinkCreator: AuditSinkCreator)
             (implicit scheduler: Scheduler,
              generator: UniqueIdentifierGenerator,
              envVarsProvider: EnvVarsProvider): MTask[Either[StartingFailure, ProxyIndexLevelActionFilter]] = {
@@ -116,7 +117,7 @@ object ProxyIndexLevelActionFilter {
       instance <- EitherT(
         new Ror(
           mode = RorMode.Proxy,
-          auditSinkCreator = new ProxyAuditSinkService(esClient),
+          auditSinkCreator = auditSinkCreator,
           envVarsProvider = envVarsProvider
         )
           .start(configFile, ProxyIndexJsonContentService)
