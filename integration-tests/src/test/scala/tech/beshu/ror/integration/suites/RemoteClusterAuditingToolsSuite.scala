@@ -18,39 +18,37 @@ package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.integration.suites.base.BaseAuditingToolsSuite
-import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
+import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.utils.containers.dependencies._
 import tech.beshu.ror.utils.containers.providers.ClientProvider
-import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings, EsContainer, EsContainerCreator}
+import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer
 
 trait RemoteClusterAuditingToolsSuite
   extends BaseAuditingToolsSuite
-    with BaseManyEsClustersIntegrationTest
-    with MultipleClientsSupport {
+    with BaseEsClusterIntegrationTest
+    with SingleClientSupport {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/cluster_auditing_tools/readonlyrest_source_es.yml"
-  private val destRorConfigFileName = "/cluster_auditing_tools/readonlyrest_dest_es.yml"
 
-  private lazy val sourceEsCluster: EsClusterContainer = createLocalClusterContainer(
+  private lazy val auditEsContainer: EsContainer =
+    EsWithoutSecurityPluginContainerCreator.create(
+      name = "AUDIT_1",
+      NonEmptyList.one("AUDIT_1"),
+      EsClusterSettings(name = "AUDIT", xPackSupport = false),
+      StartedClusterDependencies(List.empty)
+    )
+
+  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = ElasticsearchTweetsInitializer,
-      xPackSupport = false
-    )(rorConfigFileName)
+      xPackSupport = false,
+      dependentServicesContainers = List(es("AUDIT_1", auditEsContainer))
+    )
   )
 
-  private lazy val destEsCluster: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR2",
-      xPackSupport = false
-    )(destRorConfigFileName)
-  )
-
-  override lazy val clusterContainers: NonEmptyList[EsClusterContainer] = NonEmptyList.of(sourceEsCluster, destEsCluster)
-  override lazy val esTargets: NonEmptyList[EsContainer] = NonEmptyList.of(sourceEsCluster.nodes.head, destEsCluster.nodes.head)
-
-  override lazy val sourceNodeClientProvider: ClientProvider = clients.head
-  override lazy val destNodeClientProvider: ClientProvider = clients.last
-
+  override lazy val targetEs: EsContainer = container.nodes.head
+  override lazy val destNodeClientProvider: ClientProvider = auditEsContainer
 }

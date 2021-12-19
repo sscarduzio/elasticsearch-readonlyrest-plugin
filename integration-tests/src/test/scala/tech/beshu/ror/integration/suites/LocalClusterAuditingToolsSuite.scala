@@ -17,29 +17,19 @@
 package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseAuditingToolsSuite
-import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.providers.ClientProvider
-import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer
 
 trait LocalClusterAuditingToolsSuite
   extends BaseAuditingToolsSuite
-    with BaseEsClusterIntegrationTest
-    with SingleClientSupport {
+    with BaseSingleNodeEsClusterTest  {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/enabled_auditing_tools/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodes.head
+  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 
-  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      nodeDataInitializer = ElasticsearchTweetsInitializer,
-      xPackSupport = false,
-    )
-  )
-
-  override lazy val sourceNodeClientProvider: ClientProvider = this
   override lazy val destNodeClientProvider: ClientProvider = this
 }

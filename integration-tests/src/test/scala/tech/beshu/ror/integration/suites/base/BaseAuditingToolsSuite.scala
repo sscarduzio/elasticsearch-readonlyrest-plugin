@@ -21,6 +21,7 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.integration.suites.base.support.SingleClientSupport
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.containers.providers.ClientProvider
@@ -31,12 +32,12 @@ import java.util.UUID
 trait BaseAuditingToolsSuite
   extends AnyWordSpec
     with ESVersionSupportForAnyWordSpecLike
+    with SingleClientSupport
     with BeforeAndAfterEach
     with Matchers
     with Eventually {
   this: EsContainerCreator =>
 
-  protected def sourceNodeClientProvider: ClientProvider
   protected def destNodeClientProvider: ClientProvider
 
   private lazy val adminAuditIndexManager = new AuditIndexManager(destNodeClientProvider.rorAdminClient, esVersionUsed, "audit_index")
@@ -52,7 +53,7 @@ trait BaseAuditingToolsSuite
   "Regular ES request" should {
     "be audited" when {
       "rule 1 is matched with logged user" in {
-        val indexManager = new IndexManager(sourceNodeClientProvider.basicAuthClient("username", "dev"), esVersionUsed)
+        val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 200
 
@@ -68,7 +69,7 @@ trait BaseAuditingToolsSuite
       }
       "no rule is matched with username from auth header" in {
         val indexManager = new IndexManager(
-          sourceNodeClientProvider.basicAuthClient("username", "wrong"), esVersionUsed
+          basicAuthClient("username", "wrong"), esVersionUsed
         )
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 403
@@ -83,7 +84,7 @@ trait BaseAuditingToolsSuite
         }
       }
       "no rule is matched with raw auth header as user" in {
-        val indexManager = new IndexManager(sourceNodeClientProvider.tokenAuthClient("user_token"), esVersionUsed)
+        val indexManager = new IndexManager(tokenAuthClient("user_token"), esVersionUsed)
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 403
 
@@ -100,7 +101,7 @@ trait BaseAuditingToolsSuite
         "two requests were sent and correlationId is the same for both of them" in {
           val correlationId = UUID.randomUUID().toString
           val indexManager = new IndexManager(
-            sourceNodeClientProvider.basicAuthClient("username", "dev"),
+            basicAuthClient("username", "dev"),
             esVersionUsed,
             additionalHeaders = Map("x-ror-correlation-id" -> correlationId)
           )
@@ -120,14 +121,14 @@ trait BaseAuditingToolsSuite
           }
         }
         "two requests were sent and the first one is user metadata request" in {
-          val userMetadataManager = new RorApiManager(sourceNodeClientProvider.basicAuthClient("username", "dev"), esVersionUsed)
+          val userMetadataManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
           val userMetadataResponse = userMetadataManager.fetchMetadata()
 
           userMetadataResponse.responseCode should be(200)
           val correlationId = userMetadataResponse.responseJson("x-ror-logging-id").str
 
           val indexManager = new IndexManager(
-            sourceNodeClientProvider.basicAuthClient("username", "dev"),
+            basicAuthClient("username", "dev"),
             esVersionUsed,
             additionalHeaders = Map("x-ror-correlation-id" -> correlationId)
           )
@@ -146,7 +147,7 @@ trait BaseAuditingToolsSuite
         "two metadata requests were sent, one with correlationId" in {
           def fetchMetadata(correlationId: Option[String] = None) = {
             val userMetadataManager = new RorApiManager(
-              client = sourceNodeClientProvider.basicAuthClient("username", "dev"),
+              client = basicAuthClient("username", "dev"),
               esVersion = esVersionUsed,
               additionalHeaders = correlationId.map(("x-ror-correlation-id", _)).toMap
             )
@@ -174,7 +175,7 @@ trait BaseAuditingToolsSuite
     }
     "not be audited" when {
       "rule 2 is matched" in {
-        val indexManager = new IndexManager(sourceNodeClientProvider.basicAuthClient("username", "dev"), esVersionUsed)
+        val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
         val response = indexManager.getIndex("facebook")
         response.responseCode shouldBe 200
 
@@ -190,7 +191,7 @@ trait BaseAuditingToolsSuite
     "be audited" when {
       "rule 3 is matched" when {
         "no JSON kay attribute from request body payload is defined in audit serializer" in {
-          val rorApiManager = new RorApiManager(sourceNodeClientProvider.basicAuthClient("username", "dev"), esVersionUsed)
+          val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
           val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }""")).force()
 
@@ -203,7 +204,7 @@ trait BaseAuditingToolsSuite
           }
         }
         "user JSON key attribute from request doesn't override the defined in audit serializer" in {
-          val rorApiManager = new RorApiManager(sourceNodeClientProvider.basicAuthClient("username", "dev"), esVersionUsed)
+          val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
           val response = rorApiManager.sendAuditEvent(ujson.read("""{ "user": "unknown" }"""))
 
@@ -216,7 +217,7 @@ trait BaseAuditingToolsSuite
           }
         }
         "new JSON key attribute from request body as a JSON value" in {
-          val rorApiManager = new RorApiManager(sourceNodeClientProvider.basicAuthClient("username", "dev"), esVersionUsed)
+          val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
           val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": { "field1": 1, "fields2": "f2" } }"""))
 
@@ -232,7 +233,7 @@ trait BaseAuditingToolsSuite
     }
     "not be audited" when {
       "admin rule is matched" in {
-        val rorApiManager = new RorApiManager(sourceNodeClientProvider.rorAdminClient, esVersionUsed)
+        val rorApiManager = new RorApiManager(rorAdminClient, esVersionUsed)
 
         val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }"""))
         response.responseCode shouldBe 204
@@ -243,7 +244,7 @@ trait BaseAuditingToolsSuite
         }
       }
       "request JSON is malformed" in {
-        val rorApiManager = new RorApiManager(sourceNodeClientProvider.basicAuthClient("username", "dev"), esVersionUsed)
+        val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
         val response = rorApiManager.sendAuditEvent(ujson.read("""[]"""))
         response.responseCode shouldBe 400
@@ -270,7 +271,7 @@ trait BaseAuditingToolsSuite
         }
       }
       "request JSON is too large (>5KB)" in {
-        val rorApiManager = new RorApiManager(sourceNodeClientProvider.basicAuthClient("username", "dev"), esVersionUsed)
+        val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
         val response = rorApiManager.sendAuditEvent(ujson.read(s"""{ "event": "${Stream.continually("!").take(5000).mkString}" }"""))
         response.responseCode shouldBe 413
