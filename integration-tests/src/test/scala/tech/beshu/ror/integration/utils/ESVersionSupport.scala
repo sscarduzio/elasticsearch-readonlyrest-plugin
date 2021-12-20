@@ -47,7 +47,7 @@ sealed trait ESVersionSupport {
   this: TestSuite =>
 
   type T
-  
+
   val allEs6x = "^es6\\dx$".r
   val allEs6xBelowEs63x = "^es6[0-2]x$".r
   val allEs6xBelowEs65x = "^es6[0-4]x$".r
