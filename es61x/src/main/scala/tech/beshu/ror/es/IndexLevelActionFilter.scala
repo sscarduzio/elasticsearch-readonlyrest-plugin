@@ -78,7 +78,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
 
   private val startingTaskCancellable = startRorInstance()
 
-  private val auditSinkCreator: AuditSinkCreator = {
+  private def auditSinkCreator: AuditSinkCreator = {
     case AuditCluster.LocalAuditCluster =>
       new EsAuditSinkService(client)
     case remote: AuditCluster.RemoteAuditCluster =>
