@@ -135,7 +135,7 @@ trait FieldRuleQueryDSLSuite
 
               assertNoSearchHitsReturnedFor("test-index", query)
             }
-            "is 'terms set' query" excludeES("es55x", "es60x") in  {
+            "is 'terms set' query" excludeES("es60x") in  {
               val query =
                 """
                   |{
@@ -333,7 +333,7 @@ trait FieldRuleQueryDSLSuite
       "old approach with context header is used" when {
         "not allowed fields are used in unmodifiable by new approach query" that {
           "belongs to 'term-level' group" which {
-            "is 'exists' query with wildcard" excludeES "es55x" in {
+            "is 'exists' query with wildcard" in {
               val query =
                 """
                   |{

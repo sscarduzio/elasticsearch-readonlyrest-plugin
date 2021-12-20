@@ -105,8 +105,6 @@ stages:
           ROR_TASK: integration_es61x
         IT_es60x:
           ROR_TASK: integration_es60x
-        IT_es55x:
-          ROR_TASK: integration_es55x
 
 - stage: BLD_TEST
   dependsOn:
@@ -131,8 +129,6 @@ stages:
           ROR_TASK: package_es7xx
         PKG_es6xx:
           ROR_TASK: package_es6xx
-        PKG_es5xx:
-          ROR_TASK: package_es5xx
 
 - stage: S3_UP
   dependsOn:
@@ -190,8 +186,6 @@ stages:
           ROR_TASK: package_es7xx
         PKG_es6xx:
           ROR_TASK: package_es6xx
-        PKG_es5xx:
-          ROR_TASK: package_es5xx
 
 - stage: MVN_PUB
   dependsOn:
