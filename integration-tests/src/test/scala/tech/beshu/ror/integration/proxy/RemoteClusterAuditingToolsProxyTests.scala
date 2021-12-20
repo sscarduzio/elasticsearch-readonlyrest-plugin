@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.RemoteClusterAuditingToolsSuite
-import tech.beshu.ror.integration.utils.ProxyTestSupport
+import tech.beshu.ror.integration.utils.OssEsClusterProxyTestSupport
 
-class RemoteClusterAuditingToolsProxyTests extends RemoteClusterAuditingToolsSuite with ProxyTestSupport
+class RemoteClusterAuditingToolsProxyTests extends RemoteClusterAuditingToolsSuite with OssEsClusterProxyTestSupport

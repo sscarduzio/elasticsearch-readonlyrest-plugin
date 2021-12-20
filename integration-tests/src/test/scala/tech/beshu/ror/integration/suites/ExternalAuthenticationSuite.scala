@@ -18,35 +18,27 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.dependencies.wiremock
-import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManager}
 
 //TODO change test names. Current names are copies from old java integration tests
 trait ExternalAuthenticationSuite
   extends AnyWordSpec
-    with BaseEsClusterIntegrationTest
+    with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike
-    with SingleClientSupport
     with Matchers {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/external_authentication/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodes.head
+  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 
-  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      dependentServicesContainers = List(
-        wiremock(name = "EXT1", mappings = "/external_authentication/wiremock_service1_cartman.json", "/external_authentication/wiremock_service1_morgan.json"),
-        wiremock(name = "EXT2", mappings = "/external_authentication/wiremock_service2_cartman.json")
-      ),
-      nodeDataInitializer = ElasticsearchTweetsInitializer,
-      xPackSupport = false,
-    )
+  override def clusterDependencies: List[DependencyDef] = List(
+    wiremock(name = "EXT1", mappings = "/external_authentication/wiremock_service1_cartman.json", "/external_authentication/wiremock_service1_morgan.json"),
+    wiremock(name = "EXT2", mappings = "/external_authentication/wiremock_service2_cartman.json")
   )
 
   "testAuthenticationSuccessWithService1" in {

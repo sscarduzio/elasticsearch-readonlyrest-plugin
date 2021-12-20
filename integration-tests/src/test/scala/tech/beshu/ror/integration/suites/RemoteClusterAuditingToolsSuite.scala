@@ -18,37 +18,31 @@ package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.integration.suites.base.BaseAuditingToolsSuite
-import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.suites.base.support.{BaseSingleNodeEsClusterTest, SingleClientSupport}
+import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.dependencies._
 import tech.beshu.ror.utils.containers.providers.ClientProvider
-import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer
 
 trait RemoteClusterAuditingToolsSuite
   extends BaseAuditingToolsSuite
-    with BaseEsClusterIntegrationTest
+    with BaseSingleNodeEsClusterTest
     with SingleClientSupport {
   this: EsContainerCreator =>
 
-  override implicit val rorConfigFileName = "/cluster_auditing_tools/readonlyrest_source_es.yml"
+  override implicit val rorConfigFileName = "/cluster_auditing_tools/readonlyrest.yml"
 
   private lazy val auditEsContainer: EsContainer =
     EsWithoutSecurityPluginContainerCreator.create(
       name = "AUDIT_1",
-      NonEmptyList.one("AUDIT_1"),
+      nodeNames = NonEmptyList.one("AUDIT_1"),
       EsClusterSettings(name = "AUDIT", xPackSupport = false),
       StartedClusterDependencies(List.empty)
     )
 
-  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      nodeDataInitializer = ElasticsearchTweetsInitializer,
-      xPackSupport = false,
-      dependentServicesContainers = List(es("AUDIT_1", auditEsContainer))
-    )
-  )
+  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 
-  override lazy val targetEs: EsContainer = container.nodes.head
+  override def clusterDependencies: List[DependencyDef] = List(es("AUDIT_1", auditEsContainer))
+
   override lazy val destNodeClientProvider: ClientProvider = auditEsContainer
 }

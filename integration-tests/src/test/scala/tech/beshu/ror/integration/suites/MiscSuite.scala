@@ -35,6 +35,7 @@ trait MiscSuite
 
   override lazy val targetEs = container.nodes.head
 
+  //TODO change to singleton?
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",

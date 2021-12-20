@@ -45,8 +45,8 @@ object SingletonEsContainer
     snapshotManager.deleteAllRepositories()
   }
 
-  def updateConfig(rorConfigFileName: String): Unit = {
-    adminApiManager.updateRorInIndexConfig(getResourceContent(rorConfigFileName)).force()
+  def updateConfig(rorConfig: String): Unit = {
+    adminApiManager.updateRorInIndexConfig(rorConfig).force()
   }
 
   def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer): Unit = {
