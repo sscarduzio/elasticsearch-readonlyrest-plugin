@@ -138,19 +138,19 @@ trait CrossClusterCallsSuite
   "A cluster _async_search for given index" should {
     "return 200 and allow user to its content" when {
       "user has permission to do so" when {
-        "he queries local and remote indices" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
+        "he queries local and remote indices" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
           val result = user3SearchManager.asyncSearch("etl1:etl*", "metrics*")
           result.responseCode should be(200)
           result.searchHits.map(i => i("_index").str).toSet should be(
             Set("metrics_monitoring_2020-03-26", "metrics_monitoring_2020-03-27", "etl1:etl_usage_2020-03-26", "etl1:etl_usage_2020-03-27")
           )
         }
-        "he queries remote indices only" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
+        "he queries remote indices only" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
           val result = user1SearchManager.asyncSearch("etl2:test1_index")
           result.responseCode should be(200)
           result.searchHits.arr.size should be(2)
         }
-        "he queries remote index which is not forbidden in 'pub' remote cluster" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
+        "he queries remote index which is not forbidden in 'pub' remote cluster" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
           val result = user4SearchManager.asyncSearch("pu*:*logs*")
           result.responseCode should be(200)
           result.searchHits.arr.size should be(3)
@@ -159,12 +159,12 @@ trait CrossClusterCallsSuite
     }
     "return empty response" when {
       "user has no permission to do so" when {
-        "he queries local and remote indices patterns" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
+        "he queries local and remote indices patterns" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
           val result = user2SearchManager.asyncSearch("etl1:etl*", "metrics*")
           result.responseCode should be(200)
           result.searchHits.map(i => i("_index").str).toSet should be (Set.empty)
         }
-        "he queries remote indices patterns only" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
+        "he queries remote indices patterns only" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
           val result = user2SearchManager.asyncSearch("etl1:etl*")
           result.responseCode should be(200)
           result.searchHits.map(i => i("_index").str).toSet should be (Set.empty)
@@ -173,11 +173,11 @@ trait CrossClusterCallsSuite
     }
     "return 404" when {
       "user has no permission to do so" when {
-        "he queries local and remote indices" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
+        "he queries local and remote indices" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
           val result = user2SearchManager.asyncSearch("etl1:etl_usage_2020-03-26", "metrics_monitoring_2020-03-26")
           result.responseCode should be(404)
         }
-        "he queries remote indices only" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
+        "he queries remote indices only" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
           val result = user2SearchManager.asyncSearch("etl2:test1_index")
           result.responseCode should be(404)
         }
@@ -186,37 +186,37 @@ trait CrossClusterCallsSuite
     "be forbidden" when {
       "we want to forbid certain names of indices for a given user" when {
         "local indices are used" when {
-          "requested index name with wildcard is the same as configured index name with wildcard" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
+          "requested index name with wildcard is the same as configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
             val result = user4SearchManager.asyncSearch("*-logs-smg-stats-*")
             result.responseCode should be(403)
           }
-          "requested index name with wildcard is more general version of the configured index name with wildcard" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
+          "requested index name with wildcard is more general version of the configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
             val result = user4SearchManager.asyncSearch("*-logs-smg-*")
             result.responseCode should be(403)
           }
-          "requested index name with wildcard is more specialized version of the configured index name with wildcard" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy)in {
+          "requested index name with wildcard is more specialized version of the configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy)in {
             val result = user4SearchManager.asyncSearch("*-logs-smg-stats-2020*")
             result.responseCode should be(403)
           }
-          "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
+          "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
             val result = user4SearchManager.asyncSearch("c0*")
             result.responseCode should be(403)
           }
         }
         "remote indices are used" when {
-          "requested index name with wildcard is the same as configured index name with wildcard" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
+          "requested index name with wildcard is the same as configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
             val result = user4SearchManager.asyncSearch("e*:*-logs-smg-stats-*")
             result.responseCode should be(403)
           }
-          "requested index name with wildcard is more general version of the configured index name with wildcard" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
+          "requested index name with wildcard is more general version of the configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
             val result = user4SearchManager.asyncSearch("e*:*-logs-smg-*")
             result.responseCode should be(403)
           }
-          "requested index name with wildcard is more specialized version of the configured index name with wildcard" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
+          "requested index name with wildcard is more specialized version of the configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
             val result = user4SearchManager.asyncSearch("e*:*-logs-smg-stats-2020*")
             result.responseCode should be(403)
           }
-          "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
+          "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
             val result = user4SearchManager.asyncSearch("e*:c0*")
             result.responseCode should be(403)
           }

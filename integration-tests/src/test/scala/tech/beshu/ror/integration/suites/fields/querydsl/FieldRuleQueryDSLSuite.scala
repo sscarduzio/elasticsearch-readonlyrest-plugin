@@ -263,7 +263,7 @@ trait FieldRuleQueryDSLSuite
 
               assertNoSearchHitsReturnedFor("test-index", query)
             }
-            "is 'match bool prefix' query" excludeES(allEs5x, allEs6x, "^es70x$".r)in {
+            "is 'match bool prefix' query" excludeES(allEs6x, "^es70x$".r)in {
               val query =
                 """
                   |{

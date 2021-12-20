@@ -385,7 +385,7 @@ trait BaseIndexApiSuite
     }
     "Resolve index API is used" should {
       "be allowed" when {
-        "user has access to the requested index" excludeES (allEs5x, allEs6x, allEs7xBelowEs79x) in {
+        "user has access to the requested index" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = dev7IndexManager.resolve("index7-000001")
 
           result.responseCode should be (200)
@@ -396,7 +396,7 @@ trait BaseIndexApiSuite
 
           result.aliases.size should be (0)
         }
-        "user has access to the requested index pattern" excludeES (allEs5x, allEs6x, allEs7xBelowEs79x) in {
+        "user has access to the requested index pattern" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = dev7IndexManager.resolve("index7*")
 
           result.responseCode should be (200)
@@ -411,7 +411,7 @@ trait BaseIndexApiSuite
           result.aliases.head.name should be ("index7")
           result.aliases.head.indices should be (List("index7-000001"))
         }
-        "user has access to narrowed index pattern" excludeES (allEs5x, allEs6x, allEs7xBelowEs79x) in {
+        "user has access to narrowed index pattern" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = dev7IndexManager.resolve("*")
 
           result.responseCode should be (200)
@@ -428,14 +428,14 @@ trait BaseIndexApiSuite
         }
       }
       "return empty result" when {
-        "user has no access to requested index pattern" excludeES (allEs5x, allEs6x, allEs7xBelowEs79x) in {
+        "user has no access to requested index pattern" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = dev7IndexManager.resolve("index2*")
 
           result.responseCode should be (200)
           result.indices.size should be (0)
           result.aliases.size should be (0)
         }
-        "user has no access to the requested index" excludeES (allEs5x, allEs6x, allEs7xBelowEs79x) in {
+        "user has no access to the requested index" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = dev7IndexManager.resolve("index2")
 
           result.responseCode should be (200)
