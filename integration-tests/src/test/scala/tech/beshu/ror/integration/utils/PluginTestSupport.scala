@@ -17,17 +17,11 @@
 package tech.beshu.ror.integration.utils
 
 import better.files.File
-import com.dimafeng.testcontainers.SingleContainer
-import monix.eval.Task
 import org.scalatest.{BeforeAndAfterAll, Suite}
-import org.testcontainers.containers.GenericContainer
-import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.providers._
-import tech.beshu.ror.utils.containers.{DependencyDef, EsContainer, EsWithSecurityPluginContainerCreator, RorConfigAdjuster, SingletonEsContainer, StartedClusterDependencies, StartedDependency}
+import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.misc.Resources.getResourcePath
-
-import scala.collection.immutable.Seq
 
 trait PluginTestSupport extends EsWithSecurityPluginContainerCreator with CallingEsDirectly {
   this: MultipleEsTargets =>
@@ -38,15 +32,14 @@ trait SingletonPluginTestSupport extends PluginTestSupport with BeforeAndAfterAl
 
   override lazy val targetEs: EsContainer = SingletonEsContainer.singleton.nodes.head
 
-  private lazy val depsContainers: Seq[(DependencyDef, SingleContainer[GenericContainer[_]])] =
-    clusterDependencies.map(d => (d, d.containerCreator.apply()))
+  private var startedDependencies = StartedClusterDependencies(Nil)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
 
-    val startedClusterDependencies = startDependencies()
+    startedDependencies = DependencyRunner.startDependencies(clusterDependencies)
     val configFile = File.apply(getResourcePath(rorConfigFileName))
-    val configAdjusted = RorConfigAdjuster.adjustUsingDependencies(configFile, startedClusterDependencies, RorConfigAdjuster.Mode.Plugin)
+    val configAdjusted = RorConfigAdjuster.adjustUsingDependencies(configFile, startedDependencies, RorConfigAdjuster.Mode.Plugin)
 
     SingletonEsContainer.cleanUpContainer()
     SingletonEsContainer.updateConfig(configAdjusted.contentAsString)
@@ -55,27 +48,6 @@ trait SingletonPluginTestSupport extends PluginTestSupport with BeforeAndAfterAl
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    depsContainers.foreach(_._2.stop())
+    startedDependencies.values.foreach(started => started.container.stop())
   }
-
-  //from EsClusterContainer
-  private def startDependencies() = {
-    startContainersAsynchronously(depsContainers.map(_._2))
-    StartedClusterDependencies {
-      depsContainers
-        .map { case (dependencyDef, container) =>
-          StartedDependency(dependencyDef.name, container, dependencyDef.originalPort)
-        }
-        .toList
-    }
-  }
-
-  private def startContainersAsynchronously(containers: Iterable[SingleContainer[_]]): Unit = {
-    Task
-      .gatherUnordered {
-        containers.map(c => Task(c.start()))
-      }
-      .runSyncUnsafe()
-  }
-
 }

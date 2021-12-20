@@ -43,12 +43,12 @@ trait ClusterApiSuite
     )
   )
 
-  private lazy val adminCatManager = new CatManager(esTargets.head.basicAuthClient("admin", "container"), esVersion = esVersionUsed)
-  private lazy val adminClusterManager = new ClusterManager(esTargets.head.basicAuthClient("admin", "container"), esVersion = esVersionUsed)
-  private lazy val dev1ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev1", "test"), esVersion = esVersionUsed)
-  private lazy val dev2ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
-  private lazy val dev3ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev3", "test"), esVersion = esVersionUsed)
-  private lazy val dev4ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev4", "test"), esVersion = esVersionUsed)
+  private lazy val adminCatManager = new CatManager(basicAuthClient("admin", "container"), esVersion = esVersionUsed)
+  private lazy val adminClusterManager = new ClusterManager(basicAuthClient("admin", "container"), esVersion = esVersionUsed)
+  private lazy val dev1ClusterManager = new ClusterManager(basicAuthClient("dev1", "test"), esVersion = esVersionUsed)
+  private lazy val dev2ClusterManager = new ClusterManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
+  private lazy val dev3ClusterManager = new ClusterManager(basicAuthClient("dev3", "test"), esVersion = esVersionUsed)
+  private lazy val dev4ClusterManager = new ClusterManager(basicAuthClient("dev4", "test"), esVersion = esVersionUsed)
 
   "Cluster allocation explain API" should {
     "allow to be used" when {
