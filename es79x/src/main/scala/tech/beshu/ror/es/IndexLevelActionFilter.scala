@@ -40,7 +40,7 @@ import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYe
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, HighLevelClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
-import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, PropertiesProvider}
 import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
@@ -54,8 +54,11 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                              repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
                              esInitListener: EsInitListener)
                             (implicit envVarsProvider: EnvVarsProvider,
+                             propertiesProvider: PropertiesProvider,
                              generator: UniqueIdentifierGenerator)
   extends ActionFilter with Logging {
+
+  private val ror = new Ror(RorMode.Plugin, new EsIndexJsonContentService(client), auditSinkCreator, env.configFile)
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
@@ -150,7 +153,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   private def startRorInstance() = {
     val startResult = for {
       _ <- esInitListener.waitUntilReady
-      result <- new Ror(RorMode.Plugin, new EsIndexJsonContentService(client), auditSinkCreator, env.configFile).start()
+      result <- ror.start()
     } yield result
     startResult.runAsync {
       case Right(Right(instance)) =>

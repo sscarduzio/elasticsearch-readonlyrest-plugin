@@ -518,6 +518,9 @@ class ReadonlyRestStartingTests
   }
 
   "A ReadonlyREST ES API SSL settings" should {
+
+    implicit val propertiesProvider = TestsPropertiesProvider.default
+
     "be loaded from elasticsearch config file" when {
       "all properties contain at least one non-digit" in {
         val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
@@ -595,6 +598,8 @@ class ReadonlyRestStartingTests
   }
 
   "A ReadonlyREST internode SSL settings" should {
+    implicit val propertiesProvider = TestsPropertiesProvider.default
+
     "be loaded from elasticsearch config file" in {
       val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
       inside(ssl.interNodeSsl) {

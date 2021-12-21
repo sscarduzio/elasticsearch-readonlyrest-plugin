@@ -55,10 +55,10 @@ import scala.language.{implicitConversions, postfixOps}
 class Ror(mode: RorMode,
           indexContentService: IndexJsonContentService,
           override val auditSinkCreator: AuditSinkCreator,
-          override val esConfigPath: Path,
-          override val propertiesProvider: PropertiesProvider = JvmPropertiesProvider)
+          override val esConfigPath: Path)
          (implicit override val scheduler: Scheduler,
-          override val envVarsProvider: EnvVarsProvider)
+          override val envVarsProvider: EnvVarsProvider,
+          override val propertiesProvider: PropertiesProvider)
   extends ReadonlyRest {
 
   override lazy val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService)
@@ -252,7 +252,7 @@ class RorInstance private(boot: ReadonlyRest,
   private val configRestApi = new ConfigApi(
     rorInstance = this,
     boot.indexConfigManager,
-    new FileConfigLoader(boot.esConfigPath, propertiesProvider),
+    new FileConfigLoader(boot.esConfigPath),
     rorConfigurationIndex
   )
 
