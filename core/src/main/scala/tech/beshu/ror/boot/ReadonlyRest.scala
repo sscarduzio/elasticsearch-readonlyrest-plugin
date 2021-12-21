@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.boot
 
-import java.nio.file.Path
-import java.time.Clock
 import cats.data.EitherT
 import cats.effect.Resource
 import cats.implicits._
@@ -49,21 +47,22 @@ import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, FileConfig
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers._
 
+import java.nio.file.Path
+import java.time.Clock
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
 class Ror(mode: RorMode,
           override val auditSinkCreator: AuditSinkCreator,
-          override val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
           override val propertiesProvider: PropertiesProvider = JvmPropertiesProvider)
-         (implicit override val scheduler: Scheduler)
+         (implicit override val scheduler: Scheduler,
+          override val envVarsProvider: EnvVarsProvider)
   extends ReadonlyRest {
 
   override protected implicit val clock: Clock = Clock.systemUTC()
 
   override protected lazy val coreFactory: CoreFactory = {
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val envVarsProviderImplicit: EnvVarsProvider = envVarsProvider
     new RawRorConfigBasedCoreFactory(mode)
   }
 }
@@ -83,8 +82,7 @@ trait ReadonlyRest extends Logging {
   protected implicit def clock: Clock
 
   def start(esConfigPath: Path,
-            indexContentService: IndexJsonContentService)
-           (implicit envVarsProvider: EnvVarsProvider): Task[Either[StartingFailure, RorInstance]] = {
+            indexContentService: IndexJsonContentService): Task[Either[StartingFailure, RorInstance]] = {
     val indexConfigManager = new IndexConfigManager(indexContentService)
     (for {
       esConfig <- loadEsConfig(esConfigPath, indexConfigManager)
@@ -94,16 +92,14 @@ trait ReadonlyRest extends Logging {
   }
 
   private def loadEsConfig(esConfigPath: Path,
-                           indexConfigManager: IndexConfigManager)
-                          (implicit envVarsProvider: EnvVarsProvider) = {
+                           indexConfigManager: IndexConfigManager) = {
     val action = ConfigLoading.loadEsConfig(esConfigPath)
     runStartingFailureProgram(indexConfigManager, action)
   }
 
   private def loadRorConfig(esConfigPath: Path,
                             esConfig: EsConfig,
-                            indexConfigManager: IndexConfigManager)
-                           (implicit envVarsProvider: EnvVarsProvider) = {
+                            indexConfigManager: IndexConfigManager) = {
     val action = LoadRawRorConfig.load(esConfigPath, esConfig, esConfig.rorIndex.index)
     runStartingFailureProgram(indexConfigManager, action)
   }
