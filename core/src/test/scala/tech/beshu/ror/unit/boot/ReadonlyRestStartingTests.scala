@@ -47,6 +47,7 @@ import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesP
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{getResourceContent, getResourcePath, rorConfigFromResource, _}
 
+import java.nio.file.Path
 import java.time.Clock
 import java.util.UUID
 import scala.collection.JavaConverters._
@@ -73,12 +74,9 @@ class ReadonlyRestStartingTests
           .returns(Task.now(Left(CannotReachContentSource)))
 
         val coreFactory = mockCoreFactory(mock[CoreFactory], "/boot_tests/no_index_config_file_config_provided/readonlyrest.yml")
+        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, "/boot_tests/no_index_config_file_config_provided/")
 
-        val result = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager)
-          .start(
-            getResourcePath("/boot_tests/no_index_config_file_config_provided/")
-          )
-          .runSyncUnsafe()
+        val result = readonlyRest.start().runSyncUnsafe()
 
         val acl = result.right.value.engines.value.mainEngine.accessControl
         acl shouldBe a[AccessControlLoggingDecorator]
@@ -86,12 +84,9 @@ class ReadonlyRestStartingTests
       }
       "file loading is forced in elasticsearch.yml" in {
         val coreFactory = mockCoreFactory(mock[CoreFactory], "/boot_tests/forced_file_loading/readonlyrest.yml")
+        val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexJsonContentService], "/boot_tests/forced_file_loading/")
 
-        val result = readonlyRestBoot(coreFactory, mock[IndexJsonContentService])
-          .start(
-            getResourcePath("/boot_tests/forced_file_loading/")
-          )
-          .runSyncUnsafe()
+        val result = readonlyRest.start().runSyncUnsafe()
 
         val acl = result.right.value.engines.value.mainEngine.accessControl
         acl shouldBe a[AccessControlLoggingDecorator]
@@ -107,12 +102,9 @@ class ReadonlyRestStartingTests
         mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
 
         val coreFactory = mockCoreFactory(mock[CoreFactory], resourcesPath + indexConfigFile)
+        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath)
 
-        val result = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager)
-          .start(
-            getResourcePath(resourcesPath)
-          )
-          .runSyncUnsafe()
+        val result = readonlyRest.start().runSyncUnsafe()
 
         val acl = result.right.value.engines.value.mainEngine.accessControl
         acl shouldBe a[AccessControlLoggingDecorator]
@@ -127,11 +119,9 @@ class ReadonlyRestStartingTests
 
         val coreFactory = mockCoreFactory(mock[CoreFactory], resourcesPath + indexConfigFile)
 
-        val result = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager)
-          .start(
-            getResourcePath(resourcesPath)
-          )
-          .runSyncUnsafe()
+        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath)
+
+        val result = readonlyRest.start().runSyncUnsafe()
 
         val acl = result.right.value.engines.value.mainEngine.accessControl
         acl shouldBe a[AccessControlLoggingDecorator]
@@ -152,11 +142,9 @@ class ReadonlyRestStartingTests
         mockCoreFactory(coreFactory, resourcesPath + newIndexConfigFile)
         mockIndexJsonContentManagerSaveCall(mockedIndexJsonContentManager, resourcesPath + newIndexConfigFile)
 
-        val result = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, refreshInterval = Some(0 seconds))
-          .start(
-            getResourcePath(resourcesPath)
-          )
-          .runSyncUnsafe()
+        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+
+        val result = readonlyRest.start().runSyncUnsafe()
 
         val instance = result.right.value
         val mainEngine = instance.engines.value.mainEngine
@@ -195,11 +183,9 @@ class ReadonlyRestStartingTests
           Task.sleep(500 millis).map(_ => Right(())) // very long saving
         )
 
-        val result = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, refreshInterval = Some(0 seconds))
-          .start(
-            getResourcePath(resourcesPath)
-          )
-          .runSyncUnsafe()
+        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+
+        val result = readonlyRest.start().runSyncUnsafe()
 
         val instance = result.right.value
         val acl = eventually {
@@ -241,19 +227,17 @@ class ReadonlyRestStartingTests
       mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + updatedIndexConfigFile)
       mockCoreFactory(coreFactory, resourcesPath + updatedIndexConfigFile)
 
-      val result = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, refreshInterval = Some(2 seconds))
-        .start(
-          getResourcePath(resourcesPath)
-        )
-        .flatMap { result =>
-          val acl = result.right.value.engines.value.mainEngine.accessControl
-          acl shouldBe a[AccessControlLoggingDecorator]
-          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[DisabledAcl]
+      val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
 
-          Task
-            .sleep(4 seconds)
-            .map(_ => result)
-        }
+      val result = readonlyRest.start().flatMap { result =>
+        val acl = result.right.value.engines.value.mainEngine.accessControl
+        acl shouldBe a[AccessControlLoggingDecorator]
+        acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[DisabledAcl]
+
+        Task
+          .sleep(4 seconds)
+          .map(_ => result)
+      }
         .runSyncUnsafe()
 
       val acl = result.right.value.engines.value.mainEngine.accessControl
@@ -273,11 +257,9 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
-          val result = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, refreshInterval = Some(0 seconds))
-            .start(
-              getResourcePath(resourcesPath)
-            )
-            .runSyncUnsafe()
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+
+          val result = readonlyRest.start().runSyncUnsafe()
 
           val rorInstance = result.right.value
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
@@ -302,11 +284,9 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
           mockCoreFactory(coreFactory, testConfig2, mockEnabledAccessControl)
 
-          val result = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, refreshInterval = Some(0 seconds))
-            .start(
-              getResourcePath(resourcesPath)
-            )
-            .runSyncUnsafe()
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+
+          val result = readonlyRest.start().runSyncUnsafe()
 
           val rorInstance = result.right.value
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
@@ -339,12 +319,9 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
           mockFailedCoreFactory(coreFactory, testConfigMalformed)
 
-          val result = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, refreshInterval = Some(0 seconds))
-            .start(
-              getResourcePath(resourcesPath)
-            )
-            .runSyncUnsafe()
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
 
+          val result = readonlyRest.start().runSyncUnsafe()
           val rorInstance = result.right.value
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
@@ -367,11 +344,9 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
-          val result = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, refreshInterval = Some(0 seconds))
-            .start(
-              getResourcePath(resourcesPath)
-            )
-            .runSyncUnsafe()
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+
+          val result = readonlyRest.start().runSyncUnsafe()
 
           val rorInstance = result.right.value
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
@@ -404,11 +379,9 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
-          val result = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, refreshInterval = Some(0 seconds))
-            .start(
-              getResourcePath(resourcesPath)
-            )
-            .runSyncUnsafe()
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+
+          val result = readonlyRest.start().runSyncUnsafe()
 
           val rorInstance = result.right.value
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
@@ -437,11 +410,9 @@ class ReadonlyRestStartingTests
         mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
         mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
-        val result = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, refreshInterval = Some(0 seconds))
-          .start(
-            getResourcePath(resourcesPath)
-          )
-          .runSyncUnsafe()
+        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+
+        val result = readonlyRest.start().runSyncUnsafe()
 
         val rorInstance = result.right.value
         rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
@@ -463,11 +434,9 @@ class ReadonlyRestStartingTests
     }
     "failed to load" when {
       "force load from file is set and config is malformed" in {
-        val result = readonlyRestBoot(mock[CoreFactory], mock[IndexJsonContentService])
-          .start(
-            getResourcePath("/boot_tests/forced_file_loading_malformed_config/")
-          )
-          .runSyncUnsafe()
+        val readonlyRest = readonlyRestBoot(mock[CoreFactory], mock[IndexJsonContentService], "/boot_tests/forced_file_loading_malformed_config/")
+
+        val result = readonlyRest.start().runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
           failure.message should startWith("Settings file is malformed:")
@@ -475,12 +444,9 @@ class ReadonlyRestStartingTests
       }
       "force load from file is set and config cannot be loaded" in {
         val coreFactory = mockFailedCoreFactory(mock[CoreFactory], "/boot_tests/forced_file_loading_bad_config/readonlyrest.yml")
+        val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexJsonContentService], "/boot_tests/forced_file_loading_bad_config/")
 
-        val result = readonlyRestBoot(coreFactory, mock[IndexJsonContentService])
-          .start(
-            getResourcePath("/boot_tests/forced_file_loading_bad_config/")
-          )
-          .runSyncUnsafe()
+        val result = readonlyRest.start().runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
           failure.message shouldBe "Errors:\nfailed"
@@ -493,11 +459,9 @@ class ReadonlyRestStartingTests
           .repeated(5)
           .returns(Task.now(Left(ContentNotFound)))
 
-        val result = readonlyRestBoot(mock[CoreFactory], mockedIndexJsonContentManager)
-          .start(
-            getResourcePath("/boot_tests/index_config_not_exists_malformed_file_config/")
-          )
-          .runSyncUnsafe()
+        val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexJsonContentManager, "/boot_tests/index_config_not_exists_malformed_file_config/")
+
+        val result = readonlyRest.start().runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
           failure.message should startWith("Settings content is malformed.")
@@ -511,12 +475,9 @@ class ReadonlyRestStartingTests
           .returns(Task.now(Left(ContentNotFound)))
 
         val coreFactory = mockFailedCoreFactory(mock[CoreFactory], "/boot_tests/index_config_not_exists_bad_file_config/readonlyrest.yml")
+        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, "/boot_tests/index_config_not_exists_bad_file_config/")
 
-        val result = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager)
-          .start(
-            getResourcePath("/boot_tests/index_config_not_exists_bad_file_config/")
-          )
-          .runSyncUnsafe()
+        val result = readonlyRest.start().runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
           failure.message shouldBe "Errors:\nfailed"
@@ -529,11 +490,9 @@ class ReadonlyRestStartingTests
         val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
 
-        val result = readonlyRestBoot(mock[CoreFactory], mockedIndexJsonContentManager)
-          .start(
-            getResourcePath(resourcesPath)
-          )
-          .runSyncUnsafe()
+        val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexJsonContentManager, resourcesPath)
+
+        val result = readonlyRest.start().runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
           failure.message should startWith("Settings content is malformed.")
@@ -547,12 +506,9 @@ class ReadonlyRestStartingTests
         mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
 
         val coreFactory = mockFailedCoreFactory(mock[CoreFactory], resourcesPath + indexConfigFile)
+        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath)
 
-        val result = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager)
-          .start(
-            getResourcePath(resourcesPath)
-          )
-          .runSyncUnsafe()
+        val result = readonlyRest.start().runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
           failure.message shouldBe "Errors:\nfailed"
@@ -696,9 +652,11 @@ class ReadonlyRestStartingTests
 
   private def readonlyRestBoot(factory: CoreFactory,
                                indexJsonContentService: IndexJsonContentService,
+                               configPath: String,
                                refreshInterval: Option[FiniteDuration] = None) = {
     new ReadonlyRest {
 
+      override val esConfigPath: Path = getResourcePath(configPath)
       override val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexJsonContentService)
 
       override protected def auditSinkCreator: AuditSinkCreator = _ => mock[AuditSinkService]
@@ -861,5 +819,6 @@ class ReadonlyRestStartingTests
   )
 
   private abstract class EnabledAcl extends AccessControl
+
   private abstract class DisabledAcl extends AccessControl
 }
