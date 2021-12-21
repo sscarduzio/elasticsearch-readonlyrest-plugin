@@ -44,6 +44,7 @@ import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, Propert
 import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
+import java.time.Clock
 import scala.language.postfixOps
 
 class IndexLevelActionFilter(clusterService: ClusterService,
@@ -58,7 +59,14 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                              generator: UniqueIdentifierGenerator)
   extends ActionFilter with Logging {
 
-  private val ror = new Ror(RorMode.Plugin, new EsIndexJsonContentService(client), auditSinkCreator, env.configFile)
+  private implicit val clock: Clock = Clock.systemUTC()
+
+  private val ror = ReadonlyRest.create(
+    RorMode.Plugin,
+    new EsIndexJsonContentService(client),
+    auditSinkCreator,
+    env.configFile
+  )
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)

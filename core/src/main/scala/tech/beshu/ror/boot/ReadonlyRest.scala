@@ -52,45 +52,15 @@ import java.time.Clock
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
-class Ror(mode: RorMode,
-          indexContentService: IndexJsonContentService,
-          override val auditSinkCreator: AuditSinkCreator,
-          override val esConfigPath: Path)
-         (implicit override val scheduler: Scheduler,
-          override val envVarsProvider: EnvVarsProvider,
-          override val propertiesProvider: PropertiesProvider)
-  extends ReadonlyRest {
-
-  override lazy val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService)
-  override lazy val mocksProvider = new MutableMocksProviderWithCachePerRequest(NoOpMocksProvider)
-
-  override protected implicit val clock: Clock = Clock.systemUTC()
-
-  override protected lazy val coreFactory: CoreFactory = {
-    implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    new RawRorConfigBasedCoreFactory(mode)
-  }
-}
-
-trait ReadonlyRest extends Logging {
-
-  def indexConfigManager: IndexConfigManager
-
-  def esConfigPath: Path
-
-  def mocksProvider: MutableMocksProviderWithCachePerRequest
-
-  protected def coreFactory: CoreFactory
-
-  protected def auditSinkCreator: AuditSinkCreator
-
-  protected implicit def scheduler: Scheduler
-
-  protected implicit def envVarsProvider: EnvVarsProvider
-
-  protected implicit def propertiesProvider: PropertiesProvider
-
-  protected implicit def clock: Clock
+class ReadonlyRest(coreFactory: CoreFactory,
+                   auditSinkCreator: AuditSinkCreator,
+                   val indexConfigManager: IndexConfigManager,
+                   val mocksProvider: MutableMocksProviderWithCachePerRequest,
+                   val esConfigPath: Path)
+                  (implicit scheduler: Scheduler,
+                   envVarsProvider: EnvVarsProvider,
+                   propertiesProvider: PropertiesProvider,
+                   clock: Clock) extends Logging {
 
   def start(): Task[Either[StartingFailure, RorInstance]] = {
     (for {
@@ -208,6 +178,34 @@ trait ReadonlyRest extends Logging {
 
 object ReadonlyRest {
   type AuditSinkCreator = AuditCluster => AuditSinkService
+
+  def create(mode: RorMode,
+             indexContentService: IndexJsonContentService,
+             auditSinkCreator: AuditSinkCreator,
+             esConfigPath: Path)
+            (implicit scheduler: Scheduler,
+             envVarsProvider: EnvVarsProvider,
+             propertiesProvider: PropertiesProvider,
+             clock: Clock): ReadonlyRest = {
+    implicit val uuidProvider: UuidProvider = JavaUuidProvider
+    val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory(mode)
+
+    create(coreFactory, indexContentService, auditSinkCreator, esConfigPath)
+  }
+
+  def create(coreFactory: CoreFactory,
+             indexContentService: IndexJsonContentService,
+             auditSinkCreator: AuditSinkCreator,
+             esConfigPath: Path)
+            (implicit scheduler: Scheduler,
+             envVarsProvider: EnvVarsProvider,
+             propertiesProvider: PropertiesProvider,
+             clock: Clock): ReadonlyRest = {
+    val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService)
+    val mocksProvider = new MutableMocksProviderWithCachePerRequest(NoOpMocksProvider)
+
+    new ReadonlyRest(coreFactory, auditSinkCreator, indexConfigManager, mocksProvider, esConfigPath)
+  }
 }
 
 class RorInstance private(boot: ReadonlyRest,

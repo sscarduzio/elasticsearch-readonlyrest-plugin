@@ -20,7 +20,6 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.auto._
 import monix.eval.Task
-import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.Eventually
@@ -31,24 +30,21 @@ import org.scalatest.{EitherValues, Inside, OptionValues}
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.blocks.mocks.{MutableMocksProviderWithCachePerRequest, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{CoreFactory, CoreSettings}
 import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
-import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.ReloadingFailed
 import tech.beshu.ror.boot.{ReadonlyRest, StartingFailure}
 import tech.beshu.ror.configuration.SslConfiguration._
-import tech.beshu.ror.configuration.{IndexConfigManager, MalformedSettings, RawRorConfig, RorSsl}
+import tech.beshu.ror.configuration.{MalformedSettings, RawRorConfig, RorSsl}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{getResourceContent, getResourcePath, rorConfigFromResource, _}
 
-import java.nio.file.Path
 import java.time.Clock
 import java.util.UUID
 import scala.collection.JavaConverters._
@@ -660,34 +656,26 @@ class ReadonlyRestStartingTests
                                indexJsonContentService: IndexJsonContentService,
                                configPath: String,
                                refreshInterval: Option[FiniteDuration] = None) = {
-    new ReadonlyRest {
+    implicit val clock: Clock = Clock.systemUTC()
+    implicit def propertiesProvider: PropertiesProvider =
+      TestsPropertiesProvider.usingMap(
+        mapWithIntervalFrom(refreshInterval) ++
+          Map(
+            "com.readonlyrest.settings.loading.delay" -> "0"
+          )
+      )
 
-      override implicit protected val clock: Clock = Clock.systemUTC()
-      override implicit protected val scheduler: Scheduler = monix.execution.Scheduler.global
+    def mapWithIntervalFrom(refreshInterval: Option[FiniteDuration]) =
+      refreshInterval
+        .map(i => "com.readonlyrest.settings.refresh.interval" -> i.toSeconds.toString)
+        .toMap
 
-      override val esConfigPath = getResourcePath(configPath)
-      override val indexConfigManager = new IndexConfigManager(indexJsonContentService)
-      override val mocksProvider = new MutableMocksProviderWithCachePerRequest(NoOpMocksProvider)(scheduler, clock)
-
-      override protected def auditSinkCreator: AuditSinkCreator = _ => mock[AuditSinkService]
-
-      override protected val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
-
-      override protected def coreFactory: CoreFactory = factory
-
-      override implicit protected def propertiesProvider: PropertiesProvider =
-        TestsPropertiesProvider.usingMap(
-          mapWithIntervalFrom(refreshInterval) ++
-            Map(
-              "com.readonlyrest.settings.loading.delay" -> "0"
-            )
-        )
-
-      private def mapWithIntervalFrom(refreshInterval: Option[FiniteDuration]) =
-        refreshInterval
-          .map(i => "com.readonlyrest.settings.refresh.interval" -> i.toSeconds.toString)
-          .toMap
-    }
+    ReadonlyRest.create(
+      factory,
+      indexJsonContentService,
+      _ => mock[AuditSinkService],
+      getResourcePath(configPath)
+    )
   }
 
   private def mockIndexJsonContentManagerSourceOfCall(mockedManager: IndexJsonContentService,
