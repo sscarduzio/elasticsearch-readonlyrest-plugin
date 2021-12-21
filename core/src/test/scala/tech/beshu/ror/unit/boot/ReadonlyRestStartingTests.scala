@@ -31,6 +31,7 @@ import org.scalatest.{EitherValues, Inside, OptionValues}
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.mocks.{MutableMocksProviderWithCachePerRequest, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{CoreFactory, CoreSettings}
@@ -661,13 +662,14 @@ class ReadonlyRestStartingTests
                                refreshInterval: Option[FiniteDuration] = None) = {
     new ReadonlyRest {
 
-      override val esConfigPath: Path = getResourcePath(configPath)
-      override val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexJsonContentService)
-
-      override protected def auditSinkCreator: AuditSinkCreator = _ => mock[AuditSinkService]
-
       override implicit protected val clock: Clock = Clock.systemUTC()
       override implicit protected val scheduler: Scheduler = monix.execution.Scheduler.global
+
+      override val esConfigPath = getResourcePath(configPath)
+      override val indexConfigManager = new IndexConfigManager(indexJsonContentService)
+      override val mocksProvider = new MutableMocksProviderWithCachePerRequest(NoOpMocksProvider)(scheduler, clock)
+
+      override protected def auditSinkCreator: AuditSinkCreator = _ => mock[AuditSinkService]
 
       override protected val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 

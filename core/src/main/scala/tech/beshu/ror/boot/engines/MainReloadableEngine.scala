@@ -37,11 +37,10 @@ import tech.beshu.ror.utils.ScalaOps.value
 private[boot] class MainReloadableEngine(boot: ReadonlyRest,
                                          initialEngine: (Engine, RawRorConfig),
                                          reloadInProgress: Semaphore[Task],
-                                         rorConfigurationIndex: RorConfigurationIndex,
-                                         mocksProvider: MocksProvider)
+                                         rorConfigurationIndex: RorConfigurationIndex)
                                         (implicit scheduler: Scheduler)
   extends BaseReloadableEngine(
-    "main", boot, Some(initialEngine), reloadInProgress, rorConfigurationIndex, mocksProvider
+    "main", boot, Some(initialEngine), reloadInProgress, rorConfigurationIndex
   ) {
 
   def forceReloadAndSave(config: RawRorConfig)

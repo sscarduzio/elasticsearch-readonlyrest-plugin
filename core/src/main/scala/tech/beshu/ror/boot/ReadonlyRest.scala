@@ -28,7 +28,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, MutableMocksProviderWithCachePerRequest, NoOpMocksProvider}
+import tech.beshu.ror.accesscontrol.blocks.mocks.{MutableMocksProviderWithCachePerRequest, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
@@ -62,6 +62,7 @@ class Ror(mode: RorMode,
   extends ReadonlyRest {
 
   override lazy val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService)
+  override lazy val mocksProvider = new MutableMocksProviderWithCachePerRequest(NoOpMocksProvider)
 
   override protected implicit val clock: Clock = Clock.systemUTC()
 
@@ -76,6 +77,8 @@ trait ReadonlyRest extends Logging {
   def indexConfigManager: IndexConfigManager
 
   def esConfigPath: Path
+
+  def mocksProvider: MutableMocksProviderWithCachePerRequest
 
   protected def coreFactory: CoreFactory
 
@@ -132,32 +135,29 @@ trait ReadonlyRest extends Logging {
 
   private def startRor(esConfig: EsConfig,
                        loadedConfig: LoadedRorConfig[RawRorConfig]) = {
-    val mocksProvider = new MutableMocksProviderWithCachePerRequest(NoOpMocksProvider)
     for {
-      engine <- EitherT(loadRorCore(loadedConfig.value, esConfig.rorIndex.index, mocksProvider))
-      rorInstance <- createRorInstance(esConfig.rorIndex.index, engine, loadedConfig, mocksProvider)
+      engine <- EitherT(loadRorCore(loadedConfig.value, esConfig.rorIndex.index))
+      rorInstance <- createRorInstance(esConfig.rorIndex.index, engine, loadedConfig)
     } yield rorInstance
   }
 
   private def createRorInstance(rorConfigurationIndex: RorConfigurationIndex,
                                 engine: Engine,
-                                loadedConfig: LoadedRorConfig[RawRorConfig],
-                                mocksProvider: MutableMocksProviderWithCachePerRequest) = {
+                                loadedConfig: LoadedRorConfig[RawRorConfig]) = {
     EitherT.right[StartingFailure] {
       loadedConfig match {
         case LoadedRorConfig.FileConfig(config) =>
-          RorInstance.createWithPeriodicIndexCheck(this, engine, config, rorConfigurationIndex, mocksProvider)
+          RorInstance.createWithPeriodicIndexCheck(this, engine, config, rorConfigurationIndex)
         case LoadedRorConfig.ForcedFileConfig(config) =>
-          RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, rorConfigurationIndex, mocksProvider)
+          RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, rorConfigurationIndex)
         case LoadedRorConfig.IndexConfig(_, config) =>
-          RorInstance.createWithPeriodicIndexCheck(this, engine, config, rorConfigurationIndex, mocksProvider)
+          RorInstance.createWithPeriodicIndexCheck(this, engine, config, rorConfigurationIndex)
       }
     }
   }
 
   private[ror] def loadRorCore(config: RawRorConfig,
-                               rorIndexNameConfiguration: RorConfigurationIndex,
-                               mocksProvider: MocksProvider): Task[Either[StartingFailure, Engine]] = {
+                               rorIndexNameConfiguration: RorConfigurationIndex): Task[Either[StartingFailure, Engine]] = {
     val httpClientsFactory = new AsyncHttpClientsFactory
     val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
     coreFactory
@@ -214,8 +214,7 @@ class RorInstance private(boot: ReadonlyRest,
                           mode: RorInstance.Mode,
                           initialEngine: (Engine, RawRorConfig),
                           reloadInProgress: Semaphore[Task],
-                          rorConfigurationIndex: RorConfigurationIndex,
-                          mocksProvider: MutableMocksProviderWithCachePerRequest)
+                          rorConfigurationIndex: RorConfigurationIndex)
                          (implicit propertiesProvider: PropertiesProvider,
                           scheduler: Scheduler)
   extends Logging {
@@ -240,13 +239,11 @@ class RorInstance private(boot: ReadonlyRest,
     initialEngine,
     reloadInProgress,
     rorConfigurationIndex,
-    mocksProvider
   )
   private val anImpersonatorsEngine = new ImpersonatorsReloadableEngine(
     boot,
     reloadInProgress,
-    rorConfigurationIndex,
-    mocksProvider
+    rorConfigurationIndex
   )
 
   private val configRestApi = new ConfigApi(
@@ -256,9 +253,7 @@ class RorInstance private(boot: ReadonlyRest,
     rorConfigurationIndex
   )
 
-  private val authMockRestApi = new AuthMockApi(
-    mocksProvider
-  )
+  private val authMockRestApi = new AuthMockApi(boot.mocksProvider)
 
   def engines: Option[Engines] = aMainEngine.engine.map(Engines(_, anImpersonatorsEngine.engine))
 
@@ -373,29 +368,26 @@ object RorInstance {
   def createWithPeriodicIndexCheck(boot: ReadonlyRest,
                                    engine: Engine,
                                    config: RawRorConfig,
-                                   rorConfigurationIndex: RorConfigurationIndex,
-                                   mocksProvider: MutableMocksProviderWithCachePerRequest)
+                                   rorConfigurationIndex: RorConfigurationIndex)
                                   (implicit propertiesProvider: PropertiesProvider,
                                    scheduler: Scheduler): Task[RorInstance] = {
-    create(boot, Mode.WithPeriodicIndexCheck, engine, config, rorConfigurationIndex, mocksProvider)
+    create(boot, Mode.WithPeriodicIndexCheck, engine, config, rorConfigurationIndex)
   }
 
   def createWithoutPeriodicIndexCheck(boot: ReadonlyRest,
                                       engine: Engine,
                                       config: RawRorConfig,
-                                      rorConfigurationIndex: RorConfigurationIndex,
-                                      mocksProvider: MutableMocksProviderWithCachePerRequest)
+                                      rorConfigurationIndex: RorConfigurationIndex)
                                      (implicit propertiesProvider: PropertiesProvider,
                                       scheduler: Scheduler): Task[RorInstance] = {
-    create(boot, Mode.NoPeriodicIndexCheck, engine, config, rorConfigurationIndex, mocksProvider)
+    create(boot, Mode.NoPeriodicIndexCheck, engine, config, rorConfigurationIndex)
   }
 
   private def create(boot: ReadonlyRest,
                      mode: RorInstance.Mode,
                      engine: Engine,
                      config: RawRorConfig,
-                     rorConfigurationIndex: RorConfigurationIndex,
-                     mocksProvider: MutableMocksProviderWithCachePerRequest)
+                     rorConfigurationIndex: RorConfigurationIndex)
                     (implicit propertiesProvider: PropertiesProvider,
                      scheduler: Scheduler) = {
     Semaphore[Task](1)
@@ -405,8 +397,7 @@ object RorInstance {
           mode,
           (engine, config),
           isReloadInProgressSemaphore,
-          rorConfigurationIndex,
-          mocksProvider
+          rorConfigurationIndex
         )
       }
   }

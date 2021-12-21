@@ -40,8 +40,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
                                                      boot: ReadonlyRest,
                                                      initialEngine: Option[(Engine, RawRorConfig)],
                                                      reloadInProgress: Semaphore[Task],
-                                                     rorConfigurationIndex: RorConfigurationIndex,
-                                                     mocksProvider: MocksProvider)
+                                                     rorConfigurationIndex: RorConfigurationIndex)
                                                     (implicit scheduler: Scheduler)
   extends Logging {
 
@@ -134,7 +133,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   }
 
   private def tryToLoadRorCore(config: RawRorConfig) =
-    boot.loadRorCore(config, rorConfigurationIndex, mocksProvider)
+    boot.loadRorCore(config, rorConfigurationIndex)
 
   private def replaceCurrentEngine(newEngineWithConfig: EngineWithConfig)
                                   (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Option[EngineWithConfig]] = {
