@@ -53,11 +53,14 @@ import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
 class Ror(mode: RorMode,
+          indexContentService: IndexJsonContentService,
           override val auditSinkCreator: AuditSinkCreator,
           override val propertiesProvider: PropertiesProvider = JvmPropertiesProvider)
          (implicit override val scheduler: Scheduler,
           override val envVarsProvider: EnvVarsProvider)
   extends ReadonlyRest {
+
+  override lazy val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService)
 
   override protected implicit val clock: Clock = Clock.systemUTC()
 
@@ -68,6 +71,8 @@ class Ror(mode: RorMode,
 }
 
 trait ReadonlyRest extends Logging {
+
+  def indexConfigManager: IndexConfigManager
 
   protected def coreFactory: CoreFactory
 
@@ -81,31 +86,26 @@ trait ReadonlyRest extends Logging {
 
   protected implicit def clock: Clock
 
-  def start(esConfigPath: Path,
-            indexContentService: IndexJsonContentService): Task[Either[StartingFailure, RorInstance]] = {
-    val indexConfigManager = new IndexConfigManager(indexContentService)
+  def start(esConfigPath: Path): Task[Either[StartingFailure, RorInstance]] = {
     (for {
-      esConfig <- loadEsConfig(esConfigPath, indexConfigManager)
-      loadedRorConfig <- loadRorConfig(esConfigPath, esConfig, indexConfigManager)
-      instance <- startRor(esConfigPath, esConfig, loadedRorConfig, indexConfigManager)
+      esConfig <- loadEsConfig(esConfigPath)
+      loadedRorConfig <- loadRorConfig(esConfigPath, esConfig)
+      instance <- startRor(esConfigPath, esConfig, loadedRorConfig)
     } yield instance).value
   }
 
-  private def loadEsConfig(esConfigPath: Path,
-                           indexConfigManager: IndexConfigManager) = {
+  private def loadEsConfig(esConfigPath: Path) = {
     val action = ConfigLoading.loadEsConfig(esConfigPath)
-    runStartingFailureProgram(indexConfigManager, action)
+    runStartingFailureProgram(action)
   }
 
   private def loadRorConfig(esConfigPath: Path,
-                            esConfig: EsConfig,
-                            indexConfigManager: IndexConfigManager) = {
+                            esConfig: EsConfig) = {
     val action = LoadRawRorConfig.load(esConfigPath, esConfig, esConfig.rorIndex.index)
-    runStartingFailureProgram(indexConfigManager, action)
+    runStartingFailureProgram(action)
   }
 
-  private def runStartingFailureProgram[A](indexConfigManager: IndexConfigManager,
-                                           action: LoadRorConfig[ErrorOr[A]]) = {
+  private def runStartingFailureProgram[A](action: LoadRorConfig[ErrorOr[A]]) = {
     val compiler = ConfigLoadingInterpreter.create(indexConfigManager, RorProperties.rorIndexSettingLoadingDelay)
     EitherT(action.foldMap(compiler))
       .leftMap(toStartingFailure)
@@ -130,17 +130,15 @@ trait ReadonlyRest extends Logging {
 
   private def startRor(esConfigPath: Path,
                        esConfig: EsConfig,
-                       loadedConfig: LoadedRorConfig[RawRorConfig],
-                       indexConfigManager: IndexConfigManager) = {
+                       loadedConfig: LoadedRorConfig[RawRorConfig]) = {
     val mocksProvider = new MutableMocksProviderWithCachePerRequest(NoOpMocksProvider)
     for {
       engine <- EitherT(loadRorCore(loadedConfig.value, esConfig.rorIndex.index, mocksProvider))
-      rorInstance <- createRorInstance(indexConfigManager, esConfigPath, esConfig.rorIndex.index, engine, loadedConfig, mocksProvider)
+      rorInstance <- createRorInstance(esConfigPath, esConfig.rorIndex.index, engine, loadedConfig, mocksProvider)
     } yield rorInstance
   }
 
-  private def createRorInstance(indexConfigManager: IndexConfigManager,
-                                esConfigPath: Path,
+  private def createRorInstance(esConfigPath: Path,
                                 rorConfigurationIndex: RorConfigurationIndex,
                                 engine: Engine,
                                 loadedConfig: LoadedRorConfig[RawRorConfig],
@@ -148,11 +146,11 @@ trait ReadonlyRest extends Logging {
     EitherT.right[StartingFailure] {
       loadedConfig match {
         case LoadedRorConfig.FileConfig(config) =>
-          RorInstance.createWithPeriodicIndexCheck(this, engine, config, indexConfigManager, esConfigPath, rorConfigurationIndex, mocksProvider)
+          RorInstance.createWithPeriodicIndexCheck(this, engine, config, esConfigPath, rorConfigurationIndex, mocksProvider)
         case LoadedRorConfig.ForcedFileConfig(config) =>
-          RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, indexConfigManager, esConfigPath, rorConfigurationIndex, mocksProvider)
+          RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, esConfigPath, rorConfigurationIndex, mocksProvider)
         case LoadedRorConfig.IndexConfig(_, config) =>
-          RorInstance.createWithPeriodicIndexCheck(this, engine, config, indexConfigManager, esConfigPath, rorConfigurationIndex, mocksProvider)
+          RorInstance.createWithPeriodicIndexCheck(this, engine, config, esConfigPath, rorConfigurationIndex, mocksProvider)
       }
     }
   }
@@ -216,7 +214,6 @@ class RorInstance private(boot: ReadonlyRest,
                           mode: RorInstance.Mode,
                           initialEngine: (Engine, RawRorConfig),
                           reloadInProgress: Semaphore[Task],
-                          indexConfigManager: IndexConfigManager,
                           esConfigPath: Path,
                           rorConfigurationIndex: RorConfigurationIndex,
                           mocksProvider: MutableMocksProviderWithCachePerRequest)
@@ -243,7 +240,6 @@ class RorInstance private(boot: ReadonlyRest,
     boot,
     initialEngine,
     reloadInProgress,
-    indexConfigManager,
     rorConfigurationIndex,
     mocksProvider
   )
@@ -256,7 +252,7 @@ class RorInstance private(boot: ReadonlyRest,
 
   private val configRestApi = new ConfigApi(
     rorInstance = this,
-    indexConfigManager,
+    boot.indexConfigManager,
     new FileConfigLoader(esConfigPath, propertiesProvider),
     rorConfigurationIndex
   )
@@ -378,32 +374,29 @@ object RorInstance {
   def createWithPeriodicIndexCheck(boot: ReadonlyRest,
                                    engine: Engine,
                                    config: RawRorConfig,
-                                   indexConfigManager: IndexConfigManager,
                                    esConfigPath: Path,
                                    rorConfigurationIndex: RorConfigurationIndex,
                                    mocksProvider: MutableMocksProviderWithCachePerRequest)
                                   (implicit propertiesProvider: PropertiesProvider,
                                    scheduler: Scheduler): Task[RorInstance] = {
-    create(boot, Mode.WithPeriodicIndexCheck, engine, config, indexConfigManager, esConfigPath, rorConfigurationIndex, mocksProvider)
+    create(boot, Mode.WithPeriodicIndexCheck, engine, config, esConfigPath, rorConfigurationIndex, mocksProvider)
   }
 
   def createWithoutPeriodicIndexCheck(boot: ReadonlyRest,
                                       engine: Engine,
                                       config: RawRorConfig,
-                                      indexConfigManager: IndexConfigManager,
                                       esConfigPath: Path,
                                       rorConfigurationIndex: RorConfigurationIndex,
                                       mocksProvider: MutableMocksProviderWithCachePerRequest)
                                      (implicit propertiesProvider: PropertiesProvider,
                                       scheduler: Scheduler): Task[RorInstance] = {
-    create(boot, Mode.NoPeriodicIndexCheck, engine, config, indexConfigManager, esConfigPath, rorConfigurationIndex, mocksProvider)
+    create(boot, Mode.NoPeriodicIndexCheck, engine, config, esConfigPath, rorConfigurationIndex, mocksProvider)
   }
 
   private def create(boot: ReadonlyRest,
                      mode: RorInstance.Mode,
                      engine: Engine,
                      config: RawRorConfig,
-                     indexConfigManager: IndexConfigManager,
                      esConfigPath: Path,
                      rorConfigurationIndex: RorConfigurationIndex,
                      mocksProvider: MutableMocksProviderWithCachePerRequest)
@@ -416,7 +409,6 @@ object RorInstance {
           mode,
           (engine, config),
           isReloadInProgressSemaphore,
-          indexConfigManager,
           esConfigPath,
           rorConfigurationIndex,
           mocksProvider

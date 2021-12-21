@@ -150,7 +150,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   private def startRorInstance() = {
     val startResult = for {
       _ <- esInitListener.waitUntilReady
-      result <- new Ror(RorMode.Plugin, auditSinkCreator).start(env.configFile, new EsIndexJsonContentService(client))
+      result <- new Ror(RorMode.Plugin, new EsIndexJsonContentService(client), auditSinkCreator).start(env.configFile)
     } yield result
     startResult.runAsync {
       case Right(Right(instance)) =>

@@ -37,7 +37,6 @@ import tech.beshu.ror.utils.ScalaOps.value
 private[boot] class MainReloadableEngine(boot: ReadonlyRest,
                                          initialEngine: (Engine, RawRorConfig),
                                          reloadInProgress: Semaphore[Task],
-                                         indexConfigManager: IndexConfigManager,
                                          rorConfigurationIndex: RorConfigurationIndex,
                                          mocksProvider: MocksProvider)
                                         (implicit scheduler: Scheduler)
@@ -117,12 +116,12 @@ private[boot] class MainReloadableEngine(boot: ReadonlyRest,
 
   private def saveConfig(newConfig: RawRorConfig): EitherT[Task, IndexConfigReloadWithUpdateError, Unit] = EitherT {
     for {
-      saveResult <- indexConfigManager.save(newConfig, rorConfigurationIndex)
+      saveResult <- boot.indexConfigManager.save(newConfig, rorConfigurationIndex)
     } yield saveResult.left.map(IndexConfigReloadWithUpdateError.IndexConfigSavingError.apply)
   }
 
   private def loadRorConfigFromIndex() = {
-    indexConfigManager
+    boot.indexConfigManager
       .load(rorConfigurationIndex)
       .map(_.left.map(IndexConfigReloadError.LoadingConfigError.apply))
   }
