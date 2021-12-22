@@ -17,13 +17,13 @@
 package tech.beshu.ror.accesscontrol.factory.decoders
 
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.domain.{RorAuditIndexTemplate, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
-import tech.beshu.ror.boot.RorMode
+import tech.beshu.ror.boot.ReadonlyRest.RorMode
 
 object GlobalStaticSettingsDecoder {
 

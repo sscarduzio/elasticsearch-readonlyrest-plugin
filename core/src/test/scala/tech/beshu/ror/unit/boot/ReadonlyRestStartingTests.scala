@@ -36,7 +36,8 @@ import tech.beshu.ror.accesscontrol.factory.{CoreFactory, CoreSettings}
 import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.ReloadingFailed
-import tech.beshu.ror.boot.{ReadonlyRest, StartingFailure}
+import tech.beshu.ror.boot.ReadonlyRest
+import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
