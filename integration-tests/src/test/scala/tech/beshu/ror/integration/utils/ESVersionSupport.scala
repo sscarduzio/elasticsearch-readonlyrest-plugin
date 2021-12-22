@@ -48,7 +48,6 @@ sealed trait ESVersionSupport {
 
   type T
 
-  val allEs5x = "^es5\\dx$".r
   val allEs6x = "^es6\\dx$".r
   val allEs6xBelowEs63x = "^es6[0-2]x$".r
   val allEs6xBelowEs65x = "^es6[0-4]x$".r

@@ -58,7 +58,7 @@ trait MiscSuite
     }
   }
   "Warning response header" should {
-    "be exposed in ror response" excludeES(allEs5x, allEs6x, rorProxy) in {
+    "be exposed in ror response" excludeES(allEs6x, rorProxy) in {
       // headers are used only for deprecation. Deprecated features change among versions es8xx modules should use other method to test deprecation warnings
       // proxy cares warning printing it in logs, and it's not passed to ror.
       val indexResponse = adminIndexManager.createIndex(

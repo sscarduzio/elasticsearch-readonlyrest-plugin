@@ -194,6 +194,7 @@ nexusPublishing {
             password = System.getenv('MAVEN_REPO_PASSWORD')
         }
     }
+    clientTimeout = java.time.Duration.ofSeconds(120)
 }
 
 nexusStaging {
