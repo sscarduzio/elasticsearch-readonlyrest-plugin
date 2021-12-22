@@ -51,6 +51,7 @@ class HighLevelClientAuditSinkService(client: RestHighLevelClient)
           logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex)
       }
   }
+
   override def close(): Unit = {
     client.close()
   }
