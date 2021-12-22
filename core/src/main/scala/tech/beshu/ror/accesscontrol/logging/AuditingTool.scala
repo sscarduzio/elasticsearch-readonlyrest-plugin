@@ -49,6 +49,10 @@ class AuditingTool(settings: Settings,
       }
   }
 
+  def close(): Unit = {
+    auditSink.close()
+  }
+
   private def safeRunSerializer[B <: BlockContext](response: ResponseContext[B]) = {
     Task(settings.logSerializer.onResponse(toAuditResponse(response)))
   }

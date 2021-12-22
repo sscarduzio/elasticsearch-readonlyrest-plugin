@@ -58,8 +58,7 @@ trait RorProxy {
         .put(Node.NODE_NAME_SETTING.getKey, "proxy")
         .build()
     )
-    val localEsClient = createEsHighLevelClient(config)
-    val localEsClientAdapter = new RestHighLevelClientAdapter(localEsClient)
+    val localEsClientAdapter = new RestHighLevelClientAdapter(createEsHighLevelClient(config))
     val auditSinkCreator: AuditSinkCreator = ProxyAuditSinkService.create(localEsClientAdapter)
 
       val result = for {
@@ -69,7 +68,7 @@ trait RorProxy {
       for {
         _ <- twitterFutureToIo(server.close())
         _ <- simulator.stop()
-        _ <- Task(localEsClient.close())
+        _ <- Task(localEsClientAdapter.close())
         _ <- Task(threadPool.shutdownNow())
       } yield ()
     result.value

@@ -163,6 +163,8 @@ class AccessControlAuditTests extends AnyWordSpec with BaseYamlLoadedAccessContr
       submittedIndexAndJson.trySuccess(indexName, jsonRecord)
     }
 
+    override def close(): Unit = ()
+
     def result: Future[(String, String)] = submittedIndexAndJson.future
   }
 }

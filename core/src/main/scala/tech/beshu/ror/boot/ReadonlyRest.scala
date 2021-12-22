@@ -137,15 +137,17 @@ class ReadonlyRest(coreFactory: CoreFactory,
                            ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                            coreSettings: CoreSettings) = {
     implicit val loggingContext: LoggingContext = LoggingContext(coreSettings.aclEngine.staticContext.obfuscatedHeaders)
+    val auditingTool = createAuditingTool(coreSettings)
     val loggingDecorator = new AccessControlLoggingDecorator(
       underlying = coreSettings.aclEngine,
-      auditingTool = createAuditingTool(coreSettings)
+      auditingTool = auditingTool
     )
 
     new Engine(
       accessControl = loggingDecorator,
       httpClientsFactory = httpClientsFactory,
-      ldapConnectionPoolProvider
+      ldapConnectionPoolProvider,
+      auditingTool
     )
   }
 
@@ -190,12 +192,14 @@ object ReadonlyRest {
 
   final class Engine(val accessControl: AccessControl,
                      httpClientsFactory: AsyncHttpClientsFactory,
-                     ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider)
+                     ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
+                     auditingTool: Option[AuditingTool])
                     (implicit scheduler: Scheduler) {
 
     private[ror] def shutdown(): Unit = {
       httpClientsFactory.shutdown()
       ldapConnectionPoolProvider.close().runAsyncAndForget
+      auditingTool.foreach(_.close())
     }
   }
 
