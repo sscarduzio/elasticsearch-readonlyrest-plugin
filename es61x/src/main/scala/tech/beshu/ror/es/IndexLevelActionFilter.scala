@@ -31,7 +31,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
-import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
+import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, RorMode}
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot._
 import tech.beshu.ror.boot.engines.Engines
@@ -41,10 +41,11 @@ import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYe
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, HighLevelClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
-import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
+import java.time.Clock
 import scala.language.postfixOps
 
 class IndexLevelActionFilter(clusterService: ClusterService,
@@ -56,8 +57,18 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                              emptyClusterStateResponse: ClusterStateResponse,
                              esInitListener: EsInitListener)
                             (implicit envVarsProvider: EnvVarsProvider,
+                             propertiesProvider: PropertiesProvider,
                              generator: UniqueIdentifierGenerator)
   extends ActionFilter with Logging {
+
+  private implicit val clock: Clock = Clock.systemUTC()
+
+  private val ror = ReadonlyRest.create(
+    RorMode.Plugin,
+    new EsIndexJsonContentService(client),
+    auditSinkCreator,
+    env.configFile
+  )
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
@@ -154,7 +165,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   private def startRorInstance() = {
     val startResult = for {
       _ <- esInitListener.waitUntilReady
-      result <- new Ror(RorMode.Plugin, auditSinkCreator).start(env.configFile, new EsIndexJsonContentService(client))
+      result <- ror.start()
     } yield result
     startResult.runAsync {
       case Right(Right(instance)) =>

@@ -98,7 +98,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   private implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
-
   private implicit val uniqueIdentifierGenerator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator
 
   private val environment = new Environment(s, p)
