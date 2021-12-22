@@ -3,7 +3,6 @@
  */
 package tech.beshu.ror.proxy.es
 
-import java.nio.file.Path
 import cats.data.EitherT
 import monix.eval.{Task => MTask}
 import monix.execution.Scheduler
@@ -13,19 +12,21 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
-import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
+import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, Engine, RorMode, StartingFailure}
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.boot.{Engine, Ror, RorInstance, RorMode, StartingFailure}
+import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createRorNotReadyYetResponse
 import tech.beshu.ror.exceptions.SecurityPermissionException
-import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter.ThreadRepoChannelRenewalOnChainProceed
 import tech.beshu.ror.proxy.es.clients.{ProxyFilterable, RestHighLevelClientAdapter}
-import tech.beshu.ror.proxy.es.services.{EsRestClientBasedRorClusterService, ProxyAuditSinkService, ProxyIndexJsonContentService}
+import tech.beshu.ror.proxy.es.services.{EsRestClientBasedRorClusterService, ProxyIndexJsonContentService}
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
+import java.nio.file.Path
+import java.time.Clock
 import scala.util.{Failure, Success, Try}
 
 class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
@@ -112,16 +113,19 @@ object ProxyIndexLevelActionFilter {
              auditSinkCreator: AuditSinkCreator)
             (implicit scheduler: Scheduler,
              generator: UniqueIdentifierGenerator,
-             envVarsProvider: EnvVarsProvider): MTask[Either[StartingFailure, ProxyIndexLevelActionFilter]] = {
+             envVarsProvider: EnvVarsProvider,
+             propertiesProvider: PropertiesProvider,
+             clock: Clock): MTask[Either[StartingFailure, ProxyIndexLevelActionFilter]] = {
+
+    val ror = ReadonlyRest.create(
+      RorMode.Proxy,
+      ProxyIndexJsonContentService,
+      auditSinkCreator,
+      configFile
+    )
+
     val result = for {
-      instance <- EitherT(
-        new Ror(
-          mode = RorMode.Proxy,
-          auditSinkCreator = auditSinkCreator,
-          envVarsProvider = envVarsProvider
-        )
-          .start(configFile, ProxyIndexJsonContentService)
-      )
+      instance <- EitherT(ror.start())
       _ = RorInstanceSupplier.update(instance)
     } yield new ProxyIndexLevelActionFilter(instance, esClient, threadPool)
     result.value

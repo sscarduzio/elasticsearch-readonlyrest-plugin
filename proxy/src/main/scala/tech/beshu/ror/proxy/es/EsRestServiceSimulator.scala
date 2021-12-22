@@ -3,8 +3,6 @@
  */
 package tech.beshu.ror.proxy.es
 
-import java.util
-import java.util.function.{Supplier, UnaryOperator}
 import better.files.File
 import cats.data.EitherT
 import com.google.common.collect.Maps
@@ -33,21 +31,20 @@ import org.elasticsearch.tasks.TaskManager
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.usage.UsageService
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
-import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
-import tech.beshu.ror.boot.StartingFailure
+import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, StartingFailure}
 import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.actions.rradmin._
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
-import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
 import tech.beshu.ror.es.actions.rrauditevent._
+import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
 import tech.beshu.ror.es.actions.rrauthmock.rest.RestRRAuthMockAction
-import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionHandler, RRAuthMockActionType, RRAuthMockRequest, RRAuthMockResponse, TransportRRAuthMockAction}
+import tech.beshu.ror.es.actions.rrauthmock._
 import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 import tech.beshu.ror.es.utils.ThreadRepo
-import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
 import tech.beshu.ror.proxy.es.EsRestServiceSimulator.ProcessingResult
 import tech.beshu.ror.proxy.es.clients.{EsRestNodeClient, RestHighLevelClientAdapter}
@@ -55,6 +52,9 @@ import tech.beshu.ror.proxy.es.proxyaction.{ByProxyProcessedRequest, ByProxyProc
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.TaskOps._
 
+import java.time.Clock
+import java.util
+import java.util.function.{Supplier, UnaryOperator}
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
@@ -289,7 +289,9 @@ object EsRestServiceSimulator {
              auditSinkCreator: AuditSinkCreator)
             (implicit scheduler: Scheduler,
              envVarsProvider: EnvVarsProvider,
-             generator: UniqueIdentifierGenerator): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
+             generator: UniqueIdentifierGenerator,
+             propertiesProvider: PropertiesProvider,
+             clock: Clock): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
     val simulatorEsSettingsFolder = esConfigFile.parent.path
     val result = for {
       filter <- EitherT(ProxyIndexLevelActionFilter.create(simulatorEsSettingsFolder, esClient, threadPool, auditSinkCreator))

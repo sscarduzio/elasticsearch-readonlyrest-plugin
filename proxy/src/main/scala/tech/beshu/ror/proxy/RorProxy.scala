@@ -19,9 +19,8 @@ import org.elasticsearch.node.Node
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.{BasicAuth, Credentials, Header}
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
-import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
-import tech.beshu.ror.boot.StartingFailure
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, StartingFailure}
+import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.proxy.RorProxy.CloseHandler
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
 import tech.beshu.ror.proxy.es.services.ProxyAuditSinkService
@@ -31,6 +30,7 @@ import tech.beshu.ror.proxy.utils.TwitterFutureOps.twitterFutureToIo
 import tech.beshu.ror.utils.ScalaOps._
 
 import java.security.cert.X509Certificate
+import java.time.Clock
 import javax.net.ssl.{SSLContext, X509TrustManager}
 
 trait RorProxy {
@@ -39,7 +39,9 @@ trait RorProxy {
 
   implicit protected def contextShift: ContextShift[IO]
 
+  implicit def clock: Clock = Clock.systemUTC()
   implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+  implicit def propertiesProvider: PropertiesProvider = JvmPropertiesProvider
   implicit def generator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator
 
   def start(config: RorProxy.Config): IO[Either[StartingFailure, CloseHandler]] = {
