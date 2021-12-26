@@ -144,7 +144,7 @@ task generateVersionsFile() {
 
 task resolvePluginDescriptorTemplate(type: Copy, dependsOn: configureEsVersion) {
     outputs.upToDateWhen { false }
-    from '../plugin-metadata'
+    from './plugin-metadata'
     into 'build/tmp/' + pluginFullName
     expand([
             'descriptor': [

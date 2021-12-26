@@ -31,8 +31,8 @@ import tech.beshu.ror.es.utils.GenericResponseListener
 import java.security.cert.X509Certificate
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 
-class HighLevelClientAuditSinkService(client: RestHighLevelClient)
-                                     (implicit scheduler: Scheduler)
+class HighLevelClientAuditSinkService private(client: RestHighLevelClient)
+                                             (implicit scheduler: Scheduler)
   extends AuditSinkService
     with Logging {
 

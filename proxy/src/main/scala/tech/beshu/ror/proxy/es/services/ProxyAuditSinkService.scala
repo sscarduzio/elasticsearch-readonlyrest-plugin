@@ -18,8 +18,8 @@ import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
 import java.security.cert.X509Certificate
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 
-class ProxyAuditSinkService(client: RestHighLevelClientAdapter)
-                           (implicit scheduler: Scheduler)
+class ProxyAuditSinkService private(client: RestHighLevelClientAdapter)
+                                   (implicit scheduler: Scheduler)
   extends AuditSinkService
     with Logging {
 
@@ -47,7 +47,7 @@ object ProxyAuditSinkService {
             (implicit scheduler: Scheduler): ProxyAuditSinkService = {
     val clientAdapter = auditCluster match {
       case AuditCluster.LocalAuditCluster =>
-          localClusterClient
+        localClusterClient
       case remote: AuditCluster.RemoteAuditCluster =>
         new RestHighLevelClientAdapter(createEsHighLevelClient(remote))
     }
