@@ -18,4 +18,5 @@ package tech.beshu.ror.es
 
 trait AuditSinkService {
   def submit(indexName: String, documentId: String, jsonRecord: String): Unit
+  def close(): Unit
 }

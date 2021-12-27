@@ -7,9 +7,10 @@ readonlyrest:
 
   prompt_for_basic_auth: false
 
-  audit_collector: true
-  audit_index_template: "'audit_index'"
-  audit_serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
+  audit:
+    collector: true
+    index_template: "'audit_index'"
+    serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
 
   access_control_rules:
 

@@ -17,33 +17,22 @@
 package tech.beshu.ror.integration.suites
 
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait MiscSuite
   extends AnyWordSpec
-    with BaseEsClusterIntegrationTest
-    with SingleClientSupport
+    with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/misc/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodes.head
-
-  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      numberOfInstances = 2,
-      nodeDataInitializer = MiscSuite.nodeDataInitializer(),
-      xPackSupport = false,
-    )
-  )
-
+  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(MiscSuite.nodeDataInitializer())
 
   private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"), esVersionUsed)
 

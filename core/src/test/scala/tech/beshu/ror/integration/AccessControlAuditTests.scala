@@ -18,17 +18,18 @@ package tech.beshu.ror.integration
 
 import java.time.{Clock, Instant, ZoneId}
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.header
+
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
-
 import monix.execution.Scheduler.Implicits.global
+
 import scala.language.postfixOps
 
 class AccessControlAuditTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest {
@@ -134,7 +135,8 @@ class AccessControlAuditTests extends AnyWordSpec with BaseYamlLoadedAccessContr
     new AccessControlLoggingDecorator(acl, Some(new AuditingTool(
       AuditingTool.Settings(
         RorAuditIndexTemplate.default,
-        new DefaultAuditLogSerializer
+        new DefaultAuditLogSerializer,
+        AuditCluster.LocalAuditCluster
       ),
       auditSinkService
     )))
@@ -160,6 +162,8 @@ class AccessControlAuditTests extends AnyWordSpec with BaseYamlLoadedAccessContr
     override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
       submittedIndexAndJson.trySuccess(indexName, jsonRecord)
     }
+
+    override def close(): Unit = ()
 
     def result: Future[(String, String)] = submittedIndexAndJson.future
   }

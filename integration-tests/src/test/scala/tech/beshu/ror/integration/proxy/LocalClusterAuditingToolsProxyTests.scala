@@ -14,9 +14,9 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.integration.proxy
 
-import tech.beshu.ror.integration.suites.EnabledAuditingToolsSuite
-import tech.beshu.ror.integration.utils.PluginTestSupport
+import tech.beshu.ror.integration.suites.LocalClusterAuditingToolsSuite
+import tech.beshu.ror.integration.utils.OssEsClusterProxyTestSupport
 
-class EnabledAuditingToolsPluginTests extends EnabledAuditingToolsSuite with PluginTestSupport
+class LocalClusterAuditingToolsProxyTests extends LocalClusterAuditingToolsSuite with OssEsClusterProxyTestSupport

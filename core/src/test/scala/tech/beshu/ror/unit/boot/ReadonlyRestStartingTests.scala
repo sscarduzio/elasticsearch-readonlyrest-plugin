@@ -16,14 +16,10 @@
  */
 package tech.beshu.ror.unit.boot
 
-import java.time.Clock
-import java.util.UUID
-
 import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.auto._
 import monix.eval.Task
-import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.Eventually
@@ -38,17 +34,19 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{CoreFactory, CoreSettings}
 import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
-import tech.beshu.ror.boot.{ReadonlyRest, StartingFailure}
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.ReloadingFailed
-import tech.beshu.ror.configuration.SslConfiguration._
-import tech.beshu.ror.configuration.{MalformedSettings, RawRorConfig, RorSsl}
+import tech.beshu.ror.boot.ReadonlyRest
+import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
+import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{getResourceContent, getResourcePath, rorConfigFromResource, _}
 
+import java.time.Clock
+import java.util.UUID
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -73,14 +71,9 @@ class ReadonlyRestStartingTests
           .returns(Task.now(Left(CannotReachContentSource)))
 
         val coreFactory = mockCoreFactory(mock[CoreFactory], "/boot_tests/no_index_config_file_config_provided/readonlyrest.yml")
+        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, "/boot_tests/no_index_config_file_config_provided/")
 
-        val result = readonlyRestBoot(coreFactory)
-          .start(
-            getResourcePath("/boot_tests/no_index_config_file_config_provided/"),
-            mock[AuditSinkService],
-            mockedIndexJsonContentManager
-          )
-          .runSyncUnsafe()
+        val result = readonlyRest.start().runSyncUnsafe()
 
         val acl = result.right.value.engines.value.mainEngine.accessControl
         acl shouldBe a[AccessControlLoggingDecorator]
@@ -88,14 +81,9 @@ class ReadonlyRestStartingTests
       }
       "file loading is forced in elasticsearch.yml" in {
         val coreFactory = mockCoreFactory(mock[CoreFactory], "/boot_tests/forced_file_loading/readonlyrest.yml")
+        val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexJsonContentService], "/boot_tests/forced_file_loading/")
 
-        val result = readonlyRestBoot(coreFactory)
-          .start(
-            getResourcePath("/boot_tests/forced_file_loading/"),
-            mock[AuditSinkService],
-            mock[IndexJsonContentService]
-          )
-          .runSyncUnsafe()
+        val result = readonlyRest.start().runSyncUnsafe()
 
         val acl = result.right.value.engines.value.mainEngine.accessControl
         acl shouldBe a[AccessControlLoggingDecorator]
@@ -111,14 +99,9 @@ class ReadonlyRestStartingTests
         mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
 
         val coreFactory = mockCoreFactory(mock[CoreFactory], resourcesPath + indexConfigFile)
+        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath)
 
-        val result = readonlyRestBoot(coreFactory)
-          .start(
-            getResourcePath(resourcesPath),
-            mock[AuditSinkService],
-            mockedIndexJsonContentManager
-          )
-          .runSyncUnsafe()
+        val result = readonlyRest.start().runSyncUnsafe()
 
         val acl = result.right.value.engines.value.mainEngine.accessControl
         acl shouldBe a[AccessControlLoggingDecorator]
@@ -133,13 +116,9 @@ class ReadonlyRestStartingTests
 
         val coreFactory = mockCoreFactory(mock[CoreFactory], resourcesPath + indexConfigFile)
 
-        val result = readonlyRestBoot(coreFactory)
-          .start(
-            getResourcePath(resourcesPath),
-            mock[AuditSinkService],
-            mockedIndexJsonContentManager
-          )
-          .runSyncUnsafe()
+        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath)
+
+        val result = readonlyRest.start().runSyncUnsafe()
 
         val acl = result.right.value.engines.value.mainEngine.accessControl
         acl shouldBe a[AccessControlLoggingDecorator]
@@ -160,13 +139,9 @@ class ReadonlyRestStartingTests
         mockCoreFactory(coreFactory, resourcesPath + newIndexConfigFile)
         mockIndexJsonContentManagerSaveCall(mockedIndexJsonContentManager, resourcesPath + newIndexConfigFile)
 
-        val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
-          .start(
-            getResourcePath(resourcesPath),
-            mock[AuditSinkService],
-            mockedIndexJsonContentManager
-          )
-          .runSyncUnsafe()
+        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+
+        val result = readonlyRest.start().runSyncUnsafe()
 
         val instance = result.right.value
         val mainEngine = instance.engines.value.mainEngine
@@ -205,13 +180,9 @@ class ReadonlyRestStartingTests
           Task.sleep(500 millis).map(_ => Right(())) // very long saving
         )
 
-        val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
-          .start(
-            getResourcePath(resourcesPath),
-            mock[AuditSinkService],
-            mockedIndexJsonContentManager
-          )
-          .runSyncUnsafe()
+        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+
+        val result = readonlyRest.start().runSyncUnsafe()
 
         val instance = result.right.value
         val acl = eventually {
@@ -253,21 +224,17 @@ class ReadonlyRestStartingTests
       mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + updatedIndexConfigFile)
       mockCoreFactory(coreFactory, resourcesPath + updatedIndexConfigFile)
 
-      val result = readonlyRestBoot(coreFactory, refreshInterval = Some(2 seconds))
-        .start(
-          getResourcePath(resourcesPath),
-          mock[AuditSinkService],
-          mockedIndexJsonContentManager
-        )
-        .flatMap { result =>
-          val acl = result.right.value.engines.value.mainEngine.accessControl
-          acl shouldBe a[AccessControlLoggingDecorator]
-          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[DisabledAcl]
+      val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
 
-          Task
-            .sleep(4 seconds)
-            .map(_ => result)
-        }
+      val result = readonlyRest.start().flatMap { result =>
+        val acl = result.right.value.engines.value.mainEngine.accessControl
+        acl shouldBe a[AccessControlLoggingDecorator]
+        acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[DisabledAcl]
+
+        Task
+          .sleep(4 seconds)
+          .map(_ => result)
+      }
         .runSyncUnsafe()
 
       val acl = result.right.value.engines.value.mainEngine.accessControl
@@ -287,13 +254,9 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
-          val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
-            .start(
-              getResourcePath(resourcesPath),
-              mock[AuditSinkService],
-              mockedIndexJsonContentManager
-            )
-            .runSyncUnsafe()
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+
+          val result = readonlyRest.start().runSyncUnsafe()
 
           val rorInstance = result.right.value
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
@@ -318,13 +281,9 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
           mockCoreFactory(coreFactory, testConfig2, mockEnabledAccessControl)
 
-          val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
-            .start(
-              getResourcePath(resourcesPath),
-              mock[AuditSinkService],
-              mockedIndexJsonContentManager
-            )
-            .runSyncUnsafe()
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+
+          val result = readonlyRest.start().runSyncUnsafe()
 
           val rorInstance = result.right.value
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
@@ -357,14 +316,9 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
           mockFailedCoreFactory(coreFactory, testConfigMalformed)
 
-          val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
-            .start(
-              getResourcePath(resourcesPath),
-              mock[AuditSinkService],
-              mockedIndexJsonContentManager
-            )
-            .runSyncUnsafe()
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
 
+          val result = readonlyRest.start().runSyncUnsafe()
           val rorInstance = result.right.value
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
@@ -374,7 +328,7 @@ class ReadonlyRestStartingTests
             .runSyncUnsafe()
 
           testEngineReloadResult should be(Left(ReloadingFailed(StartingFailure("Errors:\nfailed"))))
-          rorInstance.engines.value.impersonatorsEngine should be (Option.empty)
+          rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
         }
         "the same config is trying to be loaded" in {
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
@@ -387,13 +341,9 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
-          val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
-            .start(
-              getResourcePath(resourcesPath),
-              mock[AuditSinkService],
-              mockedIndexJsonContentManager
-            )
-            .runSyncUnsafe()
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+
+          val result = readonlyRest.start().runSyncUnsafe()
 
           val rorInstance = result.right.value
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
@@ -426,13 +376,9 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
-          val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
-            .start(
-              getResourcePath(resourcesPath),
-              mock[AuditSinkService],
-              mockedIndexJsonContentManager
-            )
-            .runSyncUnsafe()
+          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+
+          val result = readonlyRest.start().runSyncUnsafe()
 
           val rorInstance = result.right.value
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
@@ -461,13 +407,9 @@ class ReadonlyRestStartingTests
         mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
         mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
-        val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
-          .start(
-            getResourcePath(resourcesPath),
-            mock[AuditSinkService],
-            mockedIndexJsonContentManager
-          )
-          .runSyncUnsafe()
+        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+
+        val result = readonlyRest.start().runSyncUnsafe()
 
         val rorInstance = result.right.value
         rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
@@ -489,13 +431,9 @@ class ReadonlyRestStartingTests
     }
     "failed to load" when {
       "force load from file is set and config is malformed" in {
-        val result = readonlyRestBoot(mock[CoreFactory])
-          .start(
-            getResourcePath("/boot_tests/forced_file_loading_malformed_config/"),
-            mock[AuditSinkService],
-            mock[IndexJsonContentService]
-          )
-          .runSyncUnsafe()
+        val readonlyRest = readonlyRestBoot(mock[CoreFactory], mock[IndexJsonContentService], "/boot_tests/forced_file_loading_malformed_config/")
+
+        val result = readonlyRest.start().runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
           failure.message should startWith("Settings file is malformed:")
@@ -503,14 +441,9 @@ class ReadonlyRestStartingTests
       }
       "force load from file is set and config cannot be loaded" in {
         val coreFactory = mockFailedCoreFactory(mock[CoreFactory], "/boot_tests/forced_file_loading_bad_config/readonlyrest.yml")
+        val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexJsonContentService], "/boot_tests/forced_file_loading_bad_config/")
 
-        val result = readonlyRestBoot(coreFactory)
-          .start(
-            getResourcePath("/boot_tests/forced_file_loading_bad_config/"),
-            mock[AuditSinkService],
-            mock[IndexJsonContentService]
-          )
-          .runSyncUnsafe()
+        val result = readonlyRest.start().runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
           failure.message shouldBe "Errors:\nfailed"
@@ -523,13 +456,9 @@ class ReadonlyRestStartingTests
           .repeated(5)
           .returns(Task.now(Left(ContentNotFound)))
 
-        val result = readonlyRestBoot(mock[CoreFactory])
-          .start(
-            getResourcePath("/boot_tests/index_config_not_exists_malformed_file_config/"),
-            mock[AuditSinkService],
-            mockedIndexJsonContentManager
-          )
-          .runSyncUnsafe()
+        val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexJsonContentManager, "/boot_tests/index_config_not_exists_malformed_file_config/")
+
+        val result = readonlyRest.start().runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
           failure.message should startWith("Settings content is malformed.")
@@ -543,14 +472,9 @@ class ReadonlyRestStartingTests
           .returns(Task.now(Left(ContentNotFound)))
 
         val coreFactory = mockFailedCoreFactory(mock[CoreFactory], "/boot_tests/index_config_not_exists_bad_file_config/readonlyrest.yml")
+        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, "/boot_tests/index_config_not_exists_bad_file_config/")
 
-        val result = readonlyRestBoot(coreFactory)
-          .start(
-            getResourcePath("/boot_tests/index_config_not_exists_bad_file_config/"),
-            mock[AuditSinkService],
-            mockedIndexJsonContentManager
-          )
-          .runSyncUnsafe()
+        val result = readonlyRest.start().runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
           failure.message shouldBe "Errors:\nfailed"
@@ -563,13 +487,9 @@ class ReadonlyRestStartingTests
         val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
 
-        val result = readonlyRestBoot(mock[CoreFactory])
-          .start(
-            getResourcePath(resourcesPath),
-            mock[AuditSinkService],
-            mockedIndexJsonContentManager
-          )
-          .runSyncUnsafe()
+        val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexJsonContentManager, resourcesPath)
+
+        val result = readonlyRest.start().runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
           failure.message should startWith("Settings content is malformed.")
@@ -583,14 +503,9 @@ class ReadonlyRestStartingTests
         mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
 
         val coreFactory = mockFailedCoreFactory(mock[CoreFactory], resourcesPath + indexConfigFile)
+        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath)
 
-        val result = readonlyRestBoot(coreFactory)
-          .start(
-            getResourcePath(resourcesPath),
-            mock[AuditSinkService],
-            mockedIndexJsonContentManager
-          )
-          .runSyncUnsafe()
+        val result = readonlyRest.start().runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
           failure.message shouldBe "Errors:\nfailed"
@@ -599,162 +514,30 @@ class ReadonlyRestStartingTests
     }
   }
 
-  "A ReadonlyREST ES API SSL settings" should {
-    "be loaded from elasticsearch config file" when {
-      "all properties contain at least one non-digit" in {
-        val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
-        inside(ssl.externalSsl) {
-          case Some(ExternalSslConfiguration(keystoreFile, Some(keystorePassword), Some(keyPass), None, Some(truststoreFile), Some(truststorePassword), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
-            keystoreFile.value.getName should be("keystore.jks")
-            keystorePassword should be(KeystorePassword("readonlyrest1"))
-            keyPass should be(KeyPass("readonlyrest2"))
-            truststoreFile.value.getName should be("truststore.jks")
-            truststorePassword should be(TruststorePassword("readonlyrest3"))
-            allowedProtocols should be(Set.empty)
-            allowedCiphers should be(Set.empty)
-            clientAuthenticationEnabled should be(false)
-        }
-        ssl.interNodeSsl should be(None)
-      }
-      "some properties contains only digits" in {
-        val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_elasticsearch_config_only_digits/")).runSyncUnsafe().right.get
-        inside(ssl.externalSsl) {
-          case Some(ExternalSslConfiguration(keystoreFile, Some(keystorePassword), Some(keyPass), None, Some(truststoreFile), Some(truststorePassword), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
-            keystoreFile.value.getName should be("keystore.jks")
-            keystorePassword should be(KeystorePassword("123456"))
-            keyPass should be(KeyPass("12"))
-            truststoreFile.value.getName should be("truststore.jks")
-            truststorePassword should be(TruststorePassword("1234"))
-            allowedProtocols should be(Set.empty)
-            allowedCiphers should be(Set.empty)
-            clientAuthenticationEnabled should be(false)
-        }
-        ssl.interNodeSsl should be(None)
-      }
-    }
-    "be loaded from readonlyrest config file" when {
-      "elasticsearch config file doesn't contain ROR ssl section" in {
-        val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_readonlyrest_config/")).runSyncUnsafe().right.get
-        inside(ssl.externalSsl) {
-          case Some(ExternalSslConfiguration(keystoreFile, Some(keystorePassword), Some(keyPass), None, Some(truststoreFile), Some(truststorePassword), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
-            keystoreFile.value.getName should be("keystore.jks")
-            keystorePassword should be(KeystorePassword("readonlyrest1"))
-            keyPass should be(KeyPass("readonlyrest2"))
-            truststoreFile.value.getName should be("truststore.jks")
-            truststorePassword should be(TruststorePassword("readonlyrest3"))
-            allowedProtocols should be(Set.empty)
-            allowedCiphers should be(Set.empty)
-            clientAuthenticationEnabled should be(false)
-        }
-        ssl.interNodeSsl should be(None)
-      }
-    }
-    "be disabled" when {
-      "no ssl section is provided" in {
-        val ssl = RorSsl.load(getResourcePath("/boot_tests/no_es_api_ssl_settings/")).runSyncUnsafe().right.get
-        ssl.externalSsl should be(None)
-        ssl.interNodeSsl should be(None)
-      }
-      "it's disabled by proper settings" in {
-        val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_disabled/")).runSyncUnsafe().right.get
-        ssl.externalSsl should be(None)
-        ssl.interNodeSsl should be(None)
-      }
-    }
-    "not be able to load" when {
-      "SSL settings are malformed" when {
-        "keystore_file entry is missing" in {
-          RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_malformed/")).runSyncUnsafe() shouldBe Left {
-            MalformedSettings("Invalid ROR SSL configuration")
-          }
-        }
-      }
-      "file content is not valid yaml" in {
-        val error = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_file_invalid_yaml/")).runSyncUnsafe().left.get
-        error.message should startWith("Cannot parse file")
-      }
-    }
-  }
-
-  "A ReadonlyREST internode SSL settings" should {
-    "be loaded from elasticsearch config file" in {
-      val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
-      inside(ssl.interNodeSsl) {
-        case Some(InternodeSslConfiguration(keystoreFile, Some(keystorePassword), Some(keyPass), None, truststoreFile, truststorePassword, allowedProtocols, allowedCiphers, certificateVerificationEnabled)) =>
-          keystoreFile.value.getName should be("keystore.jks")
-          keystorePassword should be(KeystorePassword("readonlyrest1"))
-          keyPass should be(KeyPass("readonlyrest2"))
-          truststoreFile should be(None)
-          truststorePassword should be(None)
-          allowedProtocols should be(Set.empty)
-          allowedCiphers should be(Set.empty)
-          certificateVerificationEnabled should be(true)
-      }
-      ssl.externalSsl should be(None)
-    }
-    "be loaded from readonlyrest config file" when {
-      "elasticsearch config file doesn't contain ROR ssl section" in {
-        val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_readonlyrest_config/")).runSyncUnsafe().right.get
-        inside(ssl.interNodeSsl) {
-          case Some(InternodeSslConfiguration(keystoreFile, Some(keystorePassword), Some(keyPass), None, Some(truststoreFile), Some(truststorePassword), allowedProtocols, allowedCiphers, certificateVerificationEnabled)) =>
-            keystoreFile.value.getName should be("keystore.jks")
-            keystorePassword should be(KeystorePassword("readonlyrest1"))
-            keyPass should be(KeyPass("readonlyrest2"))
-            truststoreFile.value.getName should be("truststore.jks")
-            truststorePassword should be(TruststorePassword("readonlyrest3"))
-            allowedProtocols should be(Set.empty)
-            allowedCiphers should be(Set.empty)
-            certificateVerificationEnabled should be(true)
-        }
-        ssl.externalSsl should be(None)
-      }
-    }
-    "be disabled" when {
-      "no ssl section is provided" in {
-        val ssl = RorSsl.load(getResourcePath("/boot_tests/no_internode_ssl_settings/")).runSyncUnsafe().right.get
-        ssl.externalSsl should be(None)
-        ssl.interNodeSsl should be(None)
-      }
-      "it's disabled by proper settings" in {
-        val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_disabled/")).runSyncUnsafe().right.get
-        ssl.externalSsl should be(None)
-        ssl.interNodeSsl should be(None)
-      }
-    }
-    "not be able to load" when {
-      "SSL settings are malformed" when {
-        "keystore_file entry is missing" in {
-          RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_malformed/")).runSyncUnsafe() shouldBe Left {
-            MalformedSettings("Invalid ROR SSL configuration")
-          }
-        }
-      }
-    }
-  }
-
   private def readonlyRestBoot(factory: CoreFactory,
+                               indexJsonContentService: IndexJsonContentService,
+                               configPath: String,
                                refreshInterval: Option[FiniteDuration] = None) = {
-    new ReadonlyRest {
-      override implicit protected val clock: Clock = Clock.systemUTC()
-      override implicit protected val scheduler: Scheduler = monix.execution.Scheduler.global
+    implicit val clock: Clock = Clock.systemUTC()
+    implicit def propertiesProvider: PropertiesProvider =
+      TestsPropertiesProvider.usingMap(
+        mapWithIntervalFrom(refreshInterval) ++
+          Map(
+            "com.readonlyrest.settings.loading.delay" -> "0"
+          )
+      )
 
-      override protected val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+    def mapWithIntervalFrom(refreshInterval: Option[FiniteDuration]) =
+      refreshInterval
+        .map(i => "com.readonlyrest.settings.refresh.interval" -> i.toSeconds.toString)
+        .toMap
 
-      override protected def coreFactory: CoreFactory = factory
-
-      override implicit protected def propertiesProvider: PropertiesProvider =
-        TestsPropertiesProvider.usingMap(
-          mapWithIntervalFrom(refreshInterval) ++
-            Map(
-              "com.readonlyrest.settings.loading.delay" -> "0"
-            )
-        )
-
-      private def mapWithIntervalFrom(refreshInterval: Option[FiniteDuration]) =
-        refreshInterval
-          .map(i => "com.readonlyrest.settings.refresh.interval" -> i.toSeconds.toString)
-          .toMap
-    }
+    ReadonlyRest.create(
+      factory,
+      indexJsonContentService,
+      _ => mock[AuditSinkService],
+      getResourcePath(configPath)
+    )
   }
 
   private def mockIndexJsonContentManagerSourceOfCall(mockedManager: IndexJsonContentService,
@@ -893,5 +676,6 @@ class ReadonlyRestStartingTests
   )
 
   private abstract class EnabledAcl extends AccessControl
+
   private abstract class DisabledAcl extends AccessControl
 }

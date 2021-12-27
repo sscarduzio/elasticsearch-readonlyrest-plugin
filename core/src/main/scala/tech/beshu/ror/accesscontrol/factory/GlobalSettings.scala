@@ -16,14 +16,13 @@
  */
 package tech.beshu.ror.accesscontrol.factory
 
-import tech.beshu.ror.accesscontrol.domain.{RorAuditIndexTemplate, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 
 final case class GlobalSettings(showBasicAuthPrompt: Boolean,
                                 forbiddenRequestMessage: String,
                                 flsEngine: GlobalSettings.FlsEngine,
                                 configurationIndex: RorConfigurationIndex,
-                                usernameCaseMapping: GlobalSettings.UsernameCaseMapping,
-                                indexAuditTemplate: Option[RorAuditIndexTemplate])
+                                usernameCaseMapping: GlobalSettings.UsernameCaseMapping)
 
 object GlobalSettings {
   sealed trait UsernameCaseMapping
