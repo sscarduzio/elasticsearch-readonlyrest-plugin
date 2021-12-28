@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.factory
 
 import cats.data.NonEmptyList
-import com.softwaremill.sttp.Uri
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
@@ -37,8 +36,10 @@ import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsUtils._
-
 import java.time.{Clock, ZoneId, ZonedDateTime}
+
+import io.lemonlabs.uri.Uri
+
 import scala.reflect.ClassTag
 
 class AuditingSettingsTests extends AnyWordSpec with Inside {
@@ -216,7 +217,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
           assertSettingsPresent[DefaultAuditLogSerializer](
             config,
             expectedIndexName = "readonlyrest_audit-2018-12-31",
-            expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1").get))
+            expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
           )
         }
         "all audit settings are custom" in {
@@ -240,7 +241,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
           assertSettingsPresent[QueryAuditLogSerializer](
             config,
             expectedIndexName = "custom_template_20181231",
-            expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1").get))
+            expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
           )
         }
       }
@@ -333,7 +334,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
             """
               |readonlyrest:
               |  audit_collector: true
-              |  audit_cluster: ["1.1.1.1"]
+              |  audit_cluster: ["user:test@1.1.1.1"]
               |
               |  access_control_rules:
               |
@@ -346,7 +347,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
           assertSettingsPresent[DefaultAuditLogSerializer](
             config,
             expectedIndexName = "readonlyrest_audit-2018-12-31",
-            expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1").get))
+            expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("user:test@1.1.1.1")))
           )
         }
         "all audit settings are custom" in {
@@ -369,7 +370,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
           assertSettingsPresent[QueryAuditLogSerializer](
             config,
             expectedIndexName = "custom_template_20181231",
-            expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1").get))
+            expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
           )
         }
 

@@ -20,16 +20,17 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
 import java.util.{Base64, Locale, UUID}
+
 import cats.Eq
 import cats.data.NonEmptyList
 import cats.implicits._
 import cats.kernel.Monoid
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
-import com.softwaremill.sttp.Uri
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
+import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.Action._
