@@ -21,14 +21,14 @@ import monix.eval.Task
 import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedRorConfig}
 import tech.beshu.ror.configuration.{ConfigLoading, IndexConfigManager, RawRorConfig, RorProperties}
 import tech.beshu.ror.es.IndexJsonContentService
-import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, PropertiesProvider}
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 
-object RawRorConfigLoadingAction{
+object RawRorConfigLoadingAction {
+
   def load(esConfigPath: java.nio.file.Path,
            indexJsonContentService: IndexJsonContentService)
           (implicit envVarsProvider: EnvVarsProvider,
-          propertiesProvider: PropertiesProvider): Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]] = {
-
+           propertiesProvider: PropertiesProvider): Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]] = {
     val compiler = ConfigLoadingInterpreter.create(new IndexConfigManager(indexJsonContentService), RorProperties.rorIndexSettingLoadingDelay)
     (for {
       esConfig <- EitherT(ConfigLoading.loadEsConfig(esConfigPath))
