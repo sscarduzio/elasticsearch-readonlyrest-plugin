@@ -1,0 +1,77 @@
+openapi: 3.0.3
+info:
+  title: ROR Internal API
+  description: The API is designed for ROR KBN plugin. It should be treated as internal. It means that backward compatibility won't be a first-class thing for us.
+  version: 1.0.0
+paths:
+  /_readonlyrest/admin/authmock:
+    get:
+      summary: Getting currently configured Auth Services mocks
+      description: ???
+      tags:
+        - Configuration
+        - Auth Services Mocks
+      parameters:
+        - $ref: '#/components/parameters/XRorCorrelationIdHeader'
+      responses:
+        200:
+          description: Contains authentication services mocks definitions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetAuthMocksResponse'
+
+components:
+  securitySchemes:
+    http:
+      type: http
+      scheme: basic
+
+  schemas:
+    XRorCorrelationId:
+      type: string
+      description: "Correlation ID to correlate requests/reponses logs within one ROR KBN session"
+      example: "CED054A0-9881-401E-AEED-4FB4C5915DD6"
+
+    GetAuthMocksResponse:
+      type: object
+      required:
+        - authServicesMocks
+      properties:
+        authServicesMocks:
+          type: array
+          description: list of authentication of authorization services mocks definitions
+          items:
+            $ref: '#/components/schemas/AuthServiceMock'
+
+    AuthServiceMock:
+      oneOf:
+        - $ref: '#/components/schemas/LdapAuthorizationService'
+      discriminator:
+        propertyName: type
+        mapping:
+          LDAP: '#/components/schemas/LdapAuthorizationService'
+
+    LdapAuthorizationService:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Name of the LDAP connector defined in ReadonlyREST settings
+          example: "LDAP 1"
+
+
+  parameters:
+    XRorCorrelationIdHeader:
+      name: X-ROR-Correlation-ID
+      in: header
+      required: false
+      description: ID to correlate requests/reponses logs within one ROR KBN session
+      schema:
+        $ref: '#/components/schemas/XRorCorrelationId'
+
+security:
+  - http: []
+      
