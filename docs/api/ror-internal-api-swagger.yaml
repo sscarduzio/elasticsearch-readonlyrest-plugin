@@ -7,7 +7,7 @@ paths:
   /_readonlyrest/admin/authmock:
     get:
       summary: Getting currently configured Auth Services mocks
-      description: ???
+      description: The endpoint can be used to fetch mocks for Auth Services defined in ReadonlyREST's Tests settings. If Test settings are not configured, the endpoint returns proper error.
       tags:
         - Configuration
         - Auth Services Mocks
@@ -15,11 +15,94 @@ paths:
         - $ref: '#/components/parameters/XRorCorrelationIdHeader'
       responses:
         200:
-          description: Contains authentication services mocks definitions
+          description: Contains authentication services mocks definitions or business error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/GetAuthMocksResponse'
+              examples:
+                AllTypesOfAuthServicesConfiguredResponseExample:
+                  $ref: "#/components/examples/AllTypesOfAuthServicesConfiguredResponseExample"
+                NoAuthServiceConfiguredResponseExample:
+                  $ref: "#/components/examples/NoAuthServiceConfiguredResponseExample"
+                OnlySomeAuthServicesConfiguredResponseExample:
+                  $ref: "#/components/examples/OnlySomeAuthServicesConfiguredResponseExample"
+                TestSettingsNotConfiguredResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredResponseExample"
+        403:
+          description: The request was forbidden by ROR's ACL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenRorResponse'
+              examples:
+                NoAclBlockWasMatchedForbiddenResponseExample:
+                  $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
+                ForbidBlockMatchedResponseExample:
+                  $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                ImpersonationNotSupportedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
+                ImpersonationNotAllowedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotAllowedResponseExample"
+                RorIsNotStartedYetResponseExample:
+                  $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
+                RorFailedToStartResponseExample:
+                  $ref: "#/components/examples/RorFailedToStartResponseExample"
+
+    post:
+      summary: Configuring Auth Services mocks
+      description: The endpoint can be used to update mocks for Auth Services defined in ReadonlyREST's Tests settings. If Test settings are not configured, the endpoint returns proper error.
+      tags:
+        - Configuration
+        - Auth Services Mocks
+      parameters:
+        - $ref: '#/components/parameters/XRorCorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAuthMockRequest'
+            examples:
+              AllTypesOfAuthServicesConfiguredResponseExample:
+                $ref: "#/components/examples/AllTypesOfAuthServicesConfiguredRequestExample"
+              NoAuthServiceConfiguredResponseExample:
+                $ref: "#/components/examples/NoAuthServiceConfiguredRequestExample"
+              OnlySomeAuthServicesConfiguredResponseExample:
+                $ref: "#/components/examples/OnlySomeAuthServicesConfiguredRequestExample"
+      responses:
+        200:
+          description: Auth Services Mocks were configured or business error was returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateAuthMocksResponse'
+              examples:
+                AuthMocksUpdatedResponseExample:
+                  $ref: "#/components/examples/AuthMocksUpdatedResponseExample"
+                TestSettingsNotConfiguredResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredResponseExample"
+                UnknownAuthServicesDetectedResponseExample:
+                  $ref: "#/components/examples/UnknownAuthServicesDetectedResponseExample"
+        403:
+          description: The request was forbidden by ROR's ACL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenRorResponse'
+              examples:
+                NoAclBlockWasMatchedForbiddenResponseExample:
+                  $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
+                ForbidBlockMatchedResponseExample:
+                  $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                ImpersonationNotSupportedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
+                ImpersonationNotAllowedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotAllowedResponseExample"
+                RorIsNotStartedYetResponseExample:
+                  $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
+                RorFailedToStartResponseExample:
+                  $ref: "#/components/examples/RorFailedToStartResponseExample"
 
 components:
   securitySchemes:
@@ -28,40 +111,280 @@ components:
       scheme: basic
 
   schemas:
+    ForbiddenRorResponse:
+      type: object
+      required:
+        - error
+        - status
+      properties:
+        error:
+          type: object
+          required:
+            - type
+            - reason
+            - due_to
+          properties:
+            type:
+              type: string
+              enum:
+                - forbidden_response
+            reason:
+              type: string
+              enum:
+                - forbidden
+            due_to:
+              type: array
+              items:
+                type: string
+                enum:
+                  - OPERATION_NOT_ALLOWED
+                  - FORBIDDEN_BY_BLOCK
+                  - IMPERSONATION_NOT_SUPPORTED
+                  - IMPERSONATION_NOT_ALLOWED
+                  - READONLYREST_NOT_READY_YET
+                  - READONLYREST_NOT_ENABLED
+                  - READONLYREST_FAILED_TO_START
+        status:
+          type: number
+          example: 403
+
     XRorCorrelationId:
       type: string
       description: "Correlation ID to correlate requests/reponses logs within one ROR KBN session"
       example: "CED054A0-9881-401E-AEED-4FB4C5915DD6"
 
     GetAuthMocksResponse:
+      oneOf:
+        - $ref: '#/components/schemas/CurrentAuthMocksResponse'
+        - $ref: '#/components/schemas/TestSettingsNotConfiguredResponse'
+      discriminator:
+        propertyName: status
+        mapping:
+          PRESENT: '#/components/schemas/CurrentAuthMocksResponse'
+          TEST_SETTINGS_NOT_CONFIGURED: '#/components/schemas/TestSettingsNotConfiguredResponse'
+
+    CurrentAuthMocksResponse:
       type: object
       required:
-        - authServicesMocks
+        - status
+        - services
       properties:
-        authServicesMocks:
+        status:
+          type: string
+          enum:
+            - PRESENT
+        services:
           type: array
-          description: list of authentication of authorization services mocks definitions
           items:
-            $ref: '#/components/schemas/AuthServiceMock'
+            $ref: '#/components/schemas/AuthMockService'
 
-    AuthServiceMock:
+    TestSettingsNotConfiguredResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          enum:
+            - TEST_SETTINGS_NOT_CONFIGURED
+        message:
+          type: string
+          description: Human readable message
+
+    UnknownAuthServicesDetectedResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          enum:
+            - UNKNOWN_AUTH_SERVICES_DETECTED
+        message:
+          type: string
+          description: Human readable message
+
+    UpdateAuthMockRequest:
+      type: object
+      required:
+        - services
+      properties:
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthMockService'
+
+    UpdateAuthMocksResponse:
+      oneOf:
+        - $ref: '#/components/schemas/CurrentAuthMocksResponse'
+        - $ref: '#/components/schemas/TestSettingsNotConfiguredResponse'
+        - $ref: '#/components/schemas/UnknownAuthServicesDetectedResponse'
+      discriminator:
+        propertyName: status
+        mapping:
+          OK: '#/components/schemas/CurrentAuthMocksResponse'
+          TEST_SETTINGS_NOT_CONFIGURED: '#/components/schemas/TestSettingsNotConfiguredResponse'
+          UNKNOWN_AUTH_SERVICES_DETECTED: '#/components/schemas/UnknownAuthServicesDetectedResponse'
+
+    AuthMocksUpdatedResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          enum:
+            - OK
+        message:
+          type: string
+          description: Human readable message
+
+    AuthMockService:
       oneOf:
         - $ref: '#/components/schemas/LdapAuthorizationService'
+        - $ref: '#/components/schemas/ExternalAuthenticationService'
+        - $ref: '#/components/schemas/ExternalAuthortizationService'
       discriminator:
         propertyName: type
         mapping:
           LDAP: '#/components/schemas/LdapAuthorizationService'
+          EXT_AUTHN: '#/components/schemas/ExternalAuthenticationService'
+          EXT_AUTHZ: '#/components/schemas/ExternalAuthortizationService'
 
     LdapAuthorizationService:
       type: object
       required:
+        - type
         - name
       properties:
+        type:
+          type: string
+          enum:
+            - LDAP
         name:
           type: string
           description: Name of the LDAP connector defined in ReadonlyREST settings
           example: "LDAP 1"
+        mock:
+          oneOf:
+            - $ref: '#/components/schemas/LdapAuthorizationServiceMock'
+            - $ref: '#/components/schemas/MockServiceNotConfigured'
 
+    LdapAuthorizationServiceMock:
+      type: object
+      required:
+        - users
+      properties:
+        users:
+          type: array
+          description: The mock defines LDAP user and their roles (groups).
+          items:
+            $ref: '#/components/schemas/MockServiceUserAndGroups'
+
+    ExternalAuthenticationService:
+      type: object
+      required:
+        - type
+        - name
+      properties:
+        type:
+          type: string
+          enum:
+            - EXT_AUTHN
+        name:
+          type: string
+          description: Name of the External Authentication Service defined in ReadonlyREST settings
+          example: "Ext AuthN Service 1"
+        mock:
+          oneOf:
+            - $ref: '#/components/schemas/ExternalAuthenticationServiceMock'
+            - $ref: '#/components/schemas/MockServiceNotConfigured'
+
+    ExternalAuthenticationServiceMock:
+      type: object
+      required:
+        - users
+      properties:
+        users:
+          type: array
+          description: The mock defines External Authentication users.
+          items:
+            $ref: '#/components/schemas/MockServiceUsers'
+
+    ExternalAuthortizationService:
+      type: object
+      required:
+        - type
+        - name
+      properties:
+        type:
+          type: string
+          enum:
+            - LDAP
+        name:
+          type: string
+          description: Name of the LDAP connector defined in ReadonlyREST settings
+          example: "LDAP 1"
+        mock:
+          oneOf:
+            - $ref: '#/components/schemas/ExternalAuthortizationServiceMock'
+            - $ref: '#/components/schemas/MockServiceNotConfigured'
+
+    ExternalAuthortizationServiceMock:
+      type: object
+      required:
+        - users
+      properties:
+        users:
+          type: array
+          description: The mock defines External Grops Provider roles (groups) per user.
+          items:
+            $ref: '#/components/schemas/MockServiceUserAndGroups'
+
+    MockServiceUserAndGroups:
+      type: object
+      description: It describes users and thier groups. Any of these users can be authenticated. The groups related to the authenticated user will be returned during authorization.
+      required:
+        - name
+        - groups
+      properties:
+        name:
+          $ref: '#/components/schemas/MockServiceUserName'
+        groups:
+          type: array
+          description: Groups that the user belongs to
+          items:
+            $ref: '#/components/schemas/MockServiceUserGroup'
+
+    MockServiceUsers:
+      type: object
+      description: It describes users. Any of these users can be authenticated.
+      required:
+        - name
+      properties:
+        name:
+          $ref: '#/components/schemas/MockServiceUserName'
+
+    MockServiceUserName:
+      type: string
+      description: Username returned by mocked Service
+      example: John Doe
+
+    MockServiceUserGroup:
+      type: string
+      description: User's group returned by mocked Service
+      example:
+        - Developer
+        - Manager
+
+    MockServiceNotConfigured:
+      type: string
+      enum:
+        - NOT_CONFIGURED
+      description: It means that given Service's mock has not been configured yet
 
   parameters:
     XRorCorrelationIdHeader:
@@ -72,6 +395,273 @@ components:
       schema:
         $ref: '#/components/schemas/XRorCorrelationId'
 
+  examples:
+    NoAclBlockWasMatchedForbiddenResponseExample:
+      summary: No ACL block was matched
+      value:
+        error:
+          type: forbidden_response
+          reason: forbidden
+          due_to:
+            - OPERATION_NOT_ALLOWED
+        status: 403
+
+    ForbidBlockMatchedResponseExample:
+      summary: Request was forbidden by matching a block with "forbid" type
+      value:
+        error:
+          type: forbidden_response
+          reason: forbidden
+          due_to:
+            - FORBIDDEN_BY_BLOCK
+        status: 403
+
+    ImpersonationNotSupportedResponseExample:
+      summary: No block was matched and at least one block has rule which doesn't support impersonation
+      value:
+        error:
+          type: forbidden_response
+          reason: forbidden
+          due_to:
+            - OPERATION_NOT_ALLOWED
+            - IMPERSONATION_NOT_SUPPORTED
+        status: 403
+
+    ImpersonationNotAllowedResponseExample:
+      summary: User has no impersonation permissions
+      value:
+        error:
+          type: forbidden_response
+          reason: forbidden
+          due_to:
+            - OPERATION_NOT_ALLOWED
+            - IMPERSONATION_NOT_ALLOWED
+        status: 403
+
+    RorIsNotStartedYetResponseExample:
+      summary: ROR was not started yet
+      value:
+        error:
+          type: forbidden_response
+          reason: forbidden
+          due_to:
+            - READONLYREST_NOT_READY_YET
+        status: 403
+
+    RorFailedToStartResponseExample:
+      summary: ROR failed to start
+      value:
+        error:
+          type: forbidden_response
+          reason: forbidden
+          due_to:
+            - READONLYREST_FAILED_TO_START
+        status: 403
+
+    AllTypesOfAuthServicesConfiguredResponseExample:
+      summary: Three types of currently mockable Auth Services are configured
+      value:
+        status: PRESENT
+        services:
+          - type: LDAP
+            name: LDAP 1
+            mock:
+              users:
+                - name: JohnDoe
+                  groups:
+                    - Developer
+                    - DevOps
+                - name: RobertSmith
+                  groups:
+                    - Manager
+          - type: LDAP
+            name: LDAP 2
+            mock:
+              users:
+                - name: JohnDoe
+                  groups:
+                    - DevOps
+                - name: JudyBrown
+                  groups:
+                    - Customer
+          - type: EXT_AUTHN
+            name: ACME1 External Authentication Service
+            mock:
+              users:
+                - name: JaimeRhynes
+                - name: MichaelDavis
+                - name: Johny
+          - type: EXT_AUTHZ
+            name: ACME2 External Authorization Service
+            mock:
+              users:
+                - name: JaimeRhynes
+                  groups:
+                    - Customer
+                - name: Martian
+                  groups:
+                    - Visitor
+
+    AllTypesOfAuthServicesConfiguredRequestExample:
+      summary: Three types of currently mockable Auth Services are configured
+      value:
+        services:
+          - type: LDAP
+            name: LDAP 1
+            mock:
+              users:
+                - name: JohnDoe
+                  groups:
+                    - Developer
+                    - DevOps
+                - name: RobertSmith
+                  groups:
+                    - Manager
+          - type: LDAP
+            name: LDAP 2
+            mock:
+              users:
+                - name: JohnDoe
+                  groups:
+                    - DevOps
+                - name: JudyBrown
+                  groups:
+                    - Customer
+          - type: EXT_AUTHN
+            name: ACME1 External Authentication Service
+            mock:
+              users:
+                - name: JaimeRhynes
+                - name: MichaelDavis
+                - name: Johny
+          - type: EXT_AUTHZ
+            name: ACME2 External Authorization Service
+            mock:
+              users:
+                - name: JaimeRhynes
+                  groups:
+                    - Customer
+                - name: Martian
+                  groups:
+                    - Visitor
+
+    NoAuthServiceConfiguredResponseExample:
+      summary: Three types of currently mockable Auth Services are not configured yet
+      value:
+        status: PRESENT
+        services:
+          - type: LDAP
+            name: LDAP 1
+            mock: NOT_CONFIGURED
+          - type: LDAP
+            name: LDAP 2
+            mock: NOT_CONFIGURED
+          - type: EXT_AUTHN
+            name: ACME1 External Authentication Service
+            mock: NOT_CONFIGURED
+          - type: EXT_AUTHZ
+            name: ACME2 External Authorization Service
+            mock: NOT_CONFIGURED
+
+    NoAuthServiceConfiguredRequestExample:
+      summary: Three types of currently mockable Auth Services are not configured yet
+      value:
+        services:
+          - type: LDAP
+            name: LDAP 1
+            mock: NOT_CONFIGURED
+          - type: LDAP
+            name: LDAP 2
+            mock: NOT_CONFIGURED
+          - type: EXT_AUTHN
+            name: ACME1 External Authentication Service
+            mock: NOT_CONFIGURED
+          - type: EXT_AUTHZ
+            name: ACME2 External Authorization Service
+            mock: NOT_CONFIGURED
+
+    OnlySomeAuthServicesConfiguredResponseExample:
+      summary: Some of currently mockable Auth Services are configured
+      value:
+        status: PRESENT
+        services:
+          - type: LDAP
+            name: LDAP 1
+            mock:
+              users:
+                - name: JohnDoe
+                  groups:
+                    - Developer
+                    - DevOps
+                - name: RobertSmith
+                  groups:
+                    - Manager
+          - type: LDAP
+            name: LDAP 2
+            mock:
+              users:
+                - name: JohnDoe
+                  groups:
+                    - DevOps
+                - name: JudyBrown
+                  groups:
+                    - Customer
+          - type: EXT_AUTHN
+            name: ACME1 External Authentication Service
+            mock: NOT_CONFIGURED
+          - type: EXT_AUTHZ
+            name: ACME2 External Authorization Service
+            mock: NOT_CONFIGURED
+
+    OnlySomeAuthServicesConfiguredRequestExample:
+      summary: Some of currently mockable Auth Services are configured
+      value:
+        services:
+          - type: LDAP
+            name: LDAP 1
+            mock:
+              users:
+                - name: JohnDoe
+                  groups:
+                    - Developer
+                    - DevOps
+                - name: RobertSmith
+                  groups:
+                    - Manager
+          - type: LDAP
+            name: LDAP 2
+            mock:
+              users:
+                - name: JohnDoe
+                  groups:
+                    - DevOps
+                - name: JudyBrown
+                  groups:
+                    - Customer
+          - type: EXT_AUTHN
+            name: ACME1 External Authentication Service
+            mock: NOT_CONFIGURED
+          - type: EXT_AUTHZ
+            name: ACME2 External Authorization Service
+            mock: NOT_CONFIGURED
+
+    TestSettingsNotConfiguredResponseExample:
+      summary: ROR Test settings are not configured
+      value:
+        status: TEST_SETTINGS_NOT_CONFIGURED
+        message: ROR Test settings are not configured. To use Auth Services Mock ROR has to have Test settings active.
+
+    UnknownAuthServicesDetectedResponseExample:
+      summary: Unknown Auth Services detected
+      value:
+        status: UNKNOWN_AUTH_SERVICES_DETECTED
+        message: ROR doesn't allow to configure unknown Auth Services. Only the ones used in ROR's Test settings can be configured.
+
+    AuthMocksUpdatedResponseExample:
+      summary: Auth Services mocks were updated
+      value:
+        status: OK
+        message: Auth Services mocks were updated
+
 security:
   - http: []
-      
