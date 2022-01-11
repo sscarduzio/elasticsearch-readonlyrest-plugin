@@ -3,32 +3,31 @@ info:
   title: ROR Internal API
   description: The API is designed for ROR KBN plugin. It should be treated as internal. It means that backward compatibility won't be a first-class thing for us.
   version: 1.0.0
+
 paths:
-  /_readonlyrest/admin/authmock:
+  /_readonlyrest/admin/config/test:
     get:
-      summary: Getting currently configured Auth Services mocks
-      description: The endpoint can be used to fetch mocks for Auth Services defined in ReadonlyREST's Tests settings. If Test settings are not configured, the endpoint returns proper error.
+      summary: Getting currently applied Test Settings
+      description: The endpoint can be used to fetch currently configured Test settings. If Test settings are not configured, the endpoint returns proper error.
       tags:
-        - Configuration
-        - Auth Services Mocks
+        - Settings
+        - Test Settings
       parameters:
         - $ref: '#/components/parameters/XRorCorrelationIdHeader'
       responses:
         200:
-          description: Contains authentication services mocks definitions or business error
+          description: Contains currenlty configured Test Settings or business error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetAuthMocksResponse'
+                $ref: '#/components/schemas/GetTestSettingsResponse'
               examples:
-                AllTypesOfAuthServicesConfiguredResponseExample:
-                  $ref: "#/components/examples/AllTypesOfAuthServicesConfiguredResponseExample"
-                NoAuthServiceConfiguredResponseExample:
-                  $ref: "#/components/examples/NoAuthServiceConfiguredResponseExample"
-                OnlySomeAuthServicesConfiguredResponseExample:
-                  $ref: "#/components/examples/OnlySomeAuthServicesConfiguredResponseExample"
+                TestSettingsAreConfiguredResponseExample:
+                  $ref: "#/components/examples/TestSettingsAreConfiguredResponseExample"
                 TestSettingsNotConfiguredResponseExample:
                   $ref: "#/components/examples/TestSettingsNotConfiguredResponseExample"
+                TestSettingsNotConfiguredWithRecentSettingsResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredWithRecentSettingsResponseExample"
         403:
           description: The request was forbidden by ROR's ACL
           content:
@@ -48,12 +47,137 @@ paths:
                   $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
                 RorFailedToStartResponseExample:
                   $ref: "#/components/examples/RorFailedToStartResponseExample"
-
+    post:
+      summary: Configuring Test Settings
+      description: The endpoint can be used to configure Test Settings.
+      tags:
+        - Settings
+        - Test Settings
+      parameters:
+        - $ref: '#/components/parameters/XRorCorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTestSettingsRequest'
+      responses:
+        200:
+          description: Test Settings were configured or business error was returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateTestSettingsResponse'
+              examples:
+                TestSettingsUpdatedResponseExample:
+                  $ref: "#/components/examples/TestSettingsUpdatedResponseExample"
+                TestSettingsUpdateFailedResponseExample:
+                  $ref: "#/components/examples/TestSettingsUpdateFailedResponseExample"
+        403:
+          description: The request was forbidden by ROR's ACL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenRorResponse'
+              examples:
+                NoAclBlockWasMatchedForbiddenResponseExample:
+                  $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
+                ForbidBlockMatchedResponseExample:
+                  $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                ImpersonationNotSupportedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
+                ImpersonationNotAllowedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotAllowedResponseExample"
+                RorIsNotStartedYetResponseExample:
+                  $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
+                RorFailedToStartResponseExample:
+                  $ref: "#/components/examples/RorFailedToStartResponseExample"
+    delete:
+      summary: Invalidating Test Settings
+      description: The endpoint can be used to invalidate Test Settings early
+      tags:
+        - Settings
+        - Test Settings
+      parameters:
+        - $ref: '#/components/parameters/XRorCorrelationIdHeader'
+      responses:
+        200:
+          description: Contains confirmation of Test Settings invalidation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvalidateTestSettingsResponse'
+              examples:
+                InvalidateTestSettingsResponseExample:
+                  $ref: "#/components/examples/InvalidateTestSettingsResponseExample"
+        403:
+          description: The request was forbidden by ROR's ACL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenRorResponse'
+              examples:
+                NoAclBlockWasMatchedForbiddenResponseExample:
+                  $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
+                ForbidBlockMatchedResponseExample:
+                  $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                ImpersonationNotSupportedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
+                ImpersonationNotAllowedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotAllowedResponseExample"
+                RorIsNotStartedYetResponseExample:
+                  $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
+                RorFailedToStartResponseExample:
+                  $ref: "#/components/examples/RorFailedToStartResponseExample"
+  /_readonlyrest/admin/authmock:
+    get:
+      summary: Getting currently configured Auth Services mocks
+      description: The endpoint can be used to fetch mocks for Auth Services defined in ReadonlyREST's Tests settings. If Test settings are not configured, the endpoint returns proper error.
+      tags:
+        - Test Settings
+        - Auth Services Mocks
+      parameters:
+        - $ref: '#/components/parameters/XRorCorrelationIdHeader'
+      responses:
+        200:
+          description: Contains authentication services mocks definitions or business error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetAuthMocksResponse'
+              examples:
+                AllTypesOfAuthServicesConfiguredResponseExample:
+                  $ref: "#/components/examples/AllTypesOfAuthServicesConfiguredResponseExample"
+                NoAuthServiceConfiguredResponseExample:
+                  $ref: "#/components/examples/NoAuthServiceConfiguredResponseExample"
+                OnlySomeAuthServicesConfiguredResponseExample:
+                  $ref: "#/components/examples/OnlySomeAuthServicesConfiguredResponseExample"
+                TestSettingsNotConfiguredAuthServicesResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredAuthServicesResponseExample"
+        403:
+          description: The request was forbidden by ROR's ACL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenRorResponse'
+              examples:
+                NoAclBlockWasMatchedForbiddenResponseExample:
+                  $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
+                ForbidBlockMatchedResponseExample:
+                  $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                ImpersonationNotSupportedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
+                ImpersonationNotAllowedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotAllowedResponseExample"
+                RorIsNotStartedYetResponseExample:
+                  $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
+                RorFailedToStartResponseExample:
+                  $ref: "#/components/examples/RorFailedToStartResponseExample"
     post:
       summary: Configuring Auth Services mocks
       description: The endpoint can be used to update mocks for Auth Services defined in ReadonlyREST's Tests settings. If Test settings are not configured, the endpoint returns proper error.
       tags:
-        - Configuration
+        - Test Settings
         - Auth Services Mocks
       parameters:
         - $ref: '#/components/parameters/XRorCorrelationIdHeader'
@@ -80,8 +204,8 @@ paths:
               examples:
                 AuthMocksUpdatedResponseExample:
                   $ref: "#/components/examples/AuthMocksUpdatedResponseExample"
-                TestSettingsNotConfiguredResponseExample:
-                  $ref: "#/components/examples/TestSettingsNotConfiguredResponseExample"
+                TestSettingsNotConfiguredAuthServicesResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredAuthServicesResponseExample"
                 UnknownAuthServicesDetectedResponseExample:
                   $ref: "#/components/examples/UnknownAuthServicesDetectedResponseExample"
         403:
@@ -153,15 +277,132 @@ components:
       description: "Correlation ID to correlate requests/reponses logs within one ROR KBN session"
       example: "CED054A0-9881-401E-AEED-4FB4C5915DD6"
 
-    GetAuthMocksResponse:
+    GetTestSettingsResponse:
       oneOf:
-        - $ref: '#/components/schemas/CurrentAuthMocksResponse'
+        - $ref: '#/components/schemas/CurrentTestSettingsResponse'
         - $ref: '#/components/schemas/TestSettingsNotConfiguredResponse'
       discriminator:
         propertyName: status
         mapping:
-          PRESENT: '#/components/schemas/CurrentAuthMocksResponse'
+          PRESENT: '#/components/schemas/CurrentTestSettingsResponse'
           TEST_SETTINGS_NOT_CONFIGURED: '#/components/schemas/TestSettingsNotConfiguredResponse'
+
+    TestSettingsNotConfiguredResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          enum:
+            - TEST_SETTINGS_NOT_CONFIGURED
+        message:
+          type: string
+          description: Human readable message
+        recent_settings:
+          type: string
+          description: Recently configured Test Settings that are not longer valid, because the TTL was reached or the settings were invalidated.
+
+    CurrentTestSettingsResponse:
+      type: object
+      required:
+        - status
+        - ttl
+        - valid_to
+        - services
+      properties:
+        status:
+          type: string
+          enum:
+            - PRESENT
+        ttl:
+          $ref: '#/components/schemas/RorSettingsTtl'
+        valid_to:
+          type: string
+          format: date-time
+          description: "It says how long the Test Settings will be valid. After that date, the Settings will be invalidated"
+          example: "2022-01-12T07:20:50.52Z"
+        settings:
+          $ref: '#/components/schemas/RorSettings'
+
+    RorSettingsTtl:
+      type: string
+      description: "ROR Settings Time To Live value. Available units: d, day, h, hr, hour m, min, minute s, sec, second"
+      example: 30 m
+
+    UpdateTestSettingsRequest:
+      type: object
+      required:
+        - ttl
+        - settings
+      properties:
+        ttl:
+          $ref: '#/components/schemas/RorSettingsTtl'
+        settings:
+          $ref: '#/components/schemas/RorSettings'
+
+    UpdateTestSettingsResponse:
+      oneOf:
+        - $ref: '#/components/schemas/UpdateTestSettingsSuccessResponse'
+        - $ref: '#/components/schemas/UpdateTestSettingsFailedResponse'
+      discriminator:
+        propertyName: status
+        mapping:
+          OK: '#/components/schemas/UpdateTestSettingsSuccessResponse'
+          FAILED: '#/components/schemas/UpdateTestSettingsFailedResponse'
+
+    UpdateTestSettingsSuccessResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          enum:
+            - OK
+        message:
+          type: string
+          description: Human readable message
+
+    UpdateTestSettingsFailedResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          enum:
+            - FAILED
+        message:
+          type: string
+          description: Human readable message (cause)
+
+    InvalidateTestSettingsResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          enum:
+            - OK
+        message:
+          type: string
+          description: Human readable message (cause)
+
+    GetAuthMocksResponse:
+      oneOf:
+        - $ref: '#/components/schemas/CurrentAuthMocksResponse'
+        - $ref: '#/components/schemas/AuthMockTestSettingsNotConfiguredResponse'
+      discriminator:
+        propertyName: status
+        mapping:
+          PRESENT: '#/components/schemas/CurrentAuthMocksResponse'
+          TEST_SETTINGS_NOT_CONFIGURED: '#/components/schemas/AuthMockTestSettingsNotConfiguredResponse'
 
     CurrentAuthMocksResponse:
       type: object
@@ -178,7 +419,7 @@ components:
           items:
             $ref: '#/components/schemas/AuthMockService'
 
-    TestSettingsNotConfiguredResponse:
+    AuthMockTestSettingsNotConfiguredResponse:
       type: object
       required:
         - status
@@ -218,14 +459,14 @@ components:
 
     UpdateAuthMocksResponse:
       oneOf:
-        - $ref: '#/components/schemas/CurrentAuthMocksResponse'
-        - $ref: '#/components/schemas/TestSettingsNotConfiguredResponse'
+        - $ref: '#/components/schemas/AuthMocksUpdatedResponse'
+        - $ref: '#/components/schemas/AuthMockTestSettingsNotConfiguredResponse'
         - $ref: '#/components/schemas/UnknownAuthServicesDetectedResponse'
       discriminator:
         propertyName: status
         mapping:
-          OK: '#/components/schemas/CurrentAuthMocksResponse'
-          TEST_SETTINGS_NOT_CONFIGURED: '#/components/schemas/TestSettingsNotConfiguredResponse'
+          OK: '#/components/schemas/AuthMocksUpdatedResponse'
+          TEST_SETTINGS_NOT_CONFIGURED: '#/components/schemas/AuthMockTestSettingsNotConfiguredResponse'
           UNKNOWN_AUTH_SERVICES_DETECTED: '#/components/schemas/UnknownAuthServicesDetectedResponse'
 
     AuthMocksUpdatedResponse:
@@ -386,6 +627,12 @@ components:
         - NOT_CONFIGURED
       description: It means that given Service's mock has not been configured yet
 
+    RorSettings:
+      type: string
+      description: ROR Settings escaped YAML
+      example: |
+        readonlyrest:\\r\\n    access_control_rules:\\r\\n\\r\\n    - name: | \\""Require HTTP Basic | Auth\\""\\r\\n      type: allow\\r\\n      indices: | [\\""test\\""]\\r\\n\\r\\n    - name: | \\""other\\""\\r\\n      auth_key: \\""admin:test\\""
+
   parameters:
     XRorCorrelationIdHeader:
       name: X-ROR-Correlation-ID
@@ -396,6 +643,7 @@ components:
         $ref: '#/components/schemas/XRorCorrelationId'
 
   examples:
+
     NoAclBlockWasMatchedForbiddenResponseExample:
       summary: No ACL block was matched
       value:
@@ -457,6 +705,47 @@ components:
           due_to:
             - READONLYREST_FAILED_TO_START
         status: 403
+
+    TestSettingsAreConfiguredResponseExample:
+      summary: Test settings are configured and valid
+      value:
+        status: PRESENT
+        ttl: 30 m
+        valid_to: "2022-01-12T07:20:50.52Z"
+        settings: |
+          readonlyrest:\\r\\n    access_control_rules:\\r\\n\\r\\n    - name: | \\""Require HTTP Basic | Auth\\""\\r\\n      type: allow\\r\\n      indices: | [\\""test\\""]\\r\\n\\r\\n    - name: | \\""other\\""\\r\\n      auth_key: \\""admin:test\\""
+
+    TestSettingsNotConfiguredResponseExample:
+      summary: ROR Test settings are not configured yet
+      value:
+        status: TEST_SETTINGS_NOT_CONFIGURED
+        message: ROR Test settings are not configured
+
+    TestSettingsNotConfiguredWithRecentSettingsResponseExample:
+      summary: ROR Test settings are not configured because they were invalidated
+      value:
+        status: TEST_SETTINGS_NOT_CONFIGURED
+        message: ROR Test settings are not configured.
+        recent_settings: |
+          readonlyrest:\\r\\n    access_control_rules:\\r\\n\\r\\n    - name: | \\""Require HTTP Basic | Auth\\""\\r\\n      type: allow\\r\\n      indices: | [\\""test\\""]\\r\\n\\r\\n    - name: | \\""other\\""\\r\\n      auth_key: \\""admin:test\\""
+
+    TestSettingsUpdatedResponseExample:
+      summary: ROR Test settings was updated and configured with success
+      value:
+        status: OK
+        message: updated settings
+
+    TestSettingsUpdateFailedResponseExample:
+      summary: ROR Test settings update failed
+      value:
+        status: FAILED
+        message: Current settings are already loaded
+
+    InvalidateTestSettingsResponseExample:
+      summary: ROR Test settings were invalidated
+      value:
+        status: OK
+        message: test settings invalidated
 
     AllTypesOfAuthServicesConfiguredResponseExample:
       summary: Three types of currently mockable Auth Services are configured
@@ -645,7 +934,7 @@ components:
             name: ACME2 External Authorization Service
             mock: NOT_CONFIGURED
 
-    TestSettingsNotConfiguredResponseExample:
+    TestSettingsNotConfiguredAuthServicesResponseExample:
       summary: ROR Test settings are not configured
       value:
         status: TEST_SETTINGS_NOT_CONFIGURED
