@@ -10,7 +10,6 @@ paths:
       summary: Getting currently applied Test Settings
       description: The endpoint can be used to fetch currently configured Test settings. If Test settings are not configured, the endpoint returns proper error.
       tags:
-        - Settings
         - Test Settings
       parameters:
         - $ref: '#/components/parameters/XRorCorrelationIdHeader'
@@ -51,7 +50,6 @@ paths:
       summary: Configuring Test Settings
       description: The endpoint can be used to configure Test Settings.
       tags:
-        - Settings
         - Test Settings
       parameters:
         - $ref: '#/components/parameters/XRorCorrelationIdHeader'
@@ -96,7 +94,6 @@ paths:
       summary: Invalidating Test Settings
       description: The endpoint can be used to invalidate Test Settings early
       tags:
-        - Settings
         - Test Settings
       parameters:
         - $ref: '#/components/parameters/XRorCorrelationIdHeader'
@@ -129,13 +126,51 @@ paths:
                   $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
                 RorFailedToStartResponseExample:
                   $ref: "#/components/examples/RorFailedToStartResponseExample"
-  /_readonlyrest/admin/authmock:
+  /_readonlyrest/admin/config/test/localusers:
+    get:
+      summary: Getting list of local users
+      description: The endpoint can be used to fetch local users' names defined in currenlty configured Test settings. If Test settings are not configured, the endpoint returns proper error.
+      tags:
+        - Test Settings
+      parameters:
+        - $ref: '#/components/parameters/XRorCorrelationIdHeader'
+      responses:
+        200:
+          description: Contains local users or business error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetLocalUsersFromTestSettingsResponse'
+              examples:
+                GetLocalUsersFromTestSettingsResponseExample:
+                  $ref: "#/components/examples/GetLocalUsersFromTestSettingsResponseExample"
+                TestSettingsNotConfiguredResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredResponseExample"
+        403:
+          description: The request was forbidden by ROR's ACL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenRorResponse'
+              examples:
+                NoAclBlockWasMatchedForbiddenResponseExample:
+                  $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
+                ForbidBlockMatchedResponseExample:
+                  $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                ImpersonationNotSupportedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
+                ImpersonationNotAllowedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotAllowedResponseExample"
+                RorIsNotStartedYetResponseExample:
+                  $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
+                RorFailedToStartResponseExample:
+                  $ref: "#/components/examples/RorFailedToStartResponseExample"
+  /_readonlyrest/admin/config/test/authmock:
     get:
       summary: Getting currently configured Auth Services mocks
       description: The endpoint can be used to fetch mocks for Auth Services defined in ReadonlyREST's Tests settings. If Test settings are not configured, the endpoint returns proper error.
       tags:
         - Test Settings
-        - Auth Services Mocks
       parameters:
         - $ref: '#/components/parameters/XRorCorrelationIdHeader'
       responses:
@@ -178,7 +213,6 @@ paths:
       description: The endpoint can be used to update mocks for Auth Services defined in ReadonlyREST's Tests settings. If Test settings are not configured, the endpoint returns proper error.
       tags:
         - Test Settings
-        - Auth Services Mocks
       parameters:
         - $ref: '#/components/parameters/XRorCorrelationIdHeader'
       requestBody:
@@ -393,6 +427,36 @@ components:
         message:
           type: string
           description: Human readable message (cause)
+
+    GetLocalUsersFromTestSettingsResponse:
+      oneOf:
+        - $ref: '#/components/schemas/GetLocalUsersFromPresentTestSettingsResponse'
+        - $ref: '#/components/schemas/TestSettingsNotConfiguredResponse'
+      discriminator:
+        propertyName: status
+        mapping:
+          OK: '#/components/schemas/GetLocalUsersFromPresentTestSettingsResponse'
+          TEST_SETTINGS_NOT_CONFIGURED: '#/components/schemas/TestSettingsNotConfiguredResponse'
+
+    GetLocalUsersFromPresentTestSettingsResponse:
+      type: object
+      required:
+        - status
+        - users
+      properties:
+        status:
+          type: string
+          enum:
+            - OK
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/LocalUserName'
+
+    LocalUserName:
+      type: string
+      description: Local user name
+      example: John Doe
 
     GetAuthMocksResponse:
       oneOf:
@@ -746,6 +810,15 @@ components:
       value:
         status: OK
         message: test settings invalidated
+
+    GetLocalUsersFromTestSettingsResponseExample:
+      summary: Local users list response
+      value:
+        status: OK
+        users:
+          - john
+          - tom
+          - mark
 
     AllTypesOfAuthServicesConfiguredResponseExample:
       summary: Three types of currently mockable Auth Services are configured
