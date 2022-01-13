@@ -89,7 +89,7 @@ trait RorProxy {
             override def checkServerTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
             override def getAcceptedIssuers: Array[X509Certificate] = null
           }
-          val sslContext = SSLContext.getInstance("TLS")
+          val sslContext = SSLContext.getInstance("TLSv1.2")
           sslContext.init(null, Array(trustAllCerts), null)
           httpClientBuilder
             .setSSLContext(sslContext)
