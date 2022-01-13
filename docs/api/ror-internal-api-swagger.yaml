@@ -21,8 +21,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetTestSettingsResponse'
               examples:
-                TestSettingsAreConfiguredResponseExample:
-                  $ref: "#/components/examples/TestSettingsAreConfiguredResponseExample"
+                TestSettingsAreConfiguredAndValidResponseExample:
+                  $ref: "#/components/examples/TestSettingsAreConfiguredAndValidResponseExample"
+                TestSettingsAreConfiguredAndValidButWithWarningsResponseExample:
+                  $ref: "#/components/examples/TestSettingsAreConfiguredAndValidButWithWarningsResponseExample"
                 TestSettingsNotConfiguredResponseExample:
                   $ref: "#/components/examples/TestSettingsNotConfiguredResponseExample"
                 TestSettingsNotConfiguredWithRecentSettingsResponseExample:
@@ -345,6 +347,7 @@ components:
         - ttl
         - valid_to
         - services
+        - warnings
       properties:
         status:
           type: string
@@ -359,11 +362,37 @@ components:
           example: "2022-01-12T07:20:50.52Z"
         settings:
           $ref: '#/components/schemas/RorSettings'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/TestSettingsImperonationWarnings'
 
     RorSettingsTtl:
       type: string
       description: "ROR Settings Time To Live value. Available units: d, day, h, hr, hour m, min, minute s, sec, second"
       example: 30 m
+
+    TestSettingsImperonationWarnings:
+      description: "It warns about problems with impersonation in given block"
+      type: object
+      required:
+        - block_name
+        - rule_name
+        - message
+        - hint
+      properties:
+        block_name:
+          type: string
+          description: Block name in ROR's ACL
+        rule_name:
+          type: string
+          description: Rule name in the block
+        message:
+          type: string
+          description: It's human readable message with the fact what's wrong with that block and rule
+        hint:
+          type: string
+          description: It's human readable message about possible solution of the problem
 
     UpdateTestSettingsRequest:
       type: object
@@ -770,14 +799,29 @@ components:
             - READONLYREST_FAILED_TO_START
         status: 403
 
-    TestSettingsAreConfiguredResponseExample:
-      summary: Test settings are configured and valid
+    TestSettingsAreConfiguredAndValidResponseExample:
+      summary: Test settings are configured and valid (no warnings)
       value:
         status: PRESENT
         ttl: 30 m
         valid_to: "2022-01-12T07:20:50.52Z"
         settings: |
           readonlyrest:\\r\\n    access_control_rules:\\r\\n\\r\\n    - name: | \\""Require HTTP Basic | Auth\\""\\r\\n      type: allow\\r\\n      indices: | [\\""test\\""]\\r\\n\\r\\n    - name: | \\""other\\""\\r\\n      auth_key: \\""admin:test\\""
+        warnings: []
+
+    TestSettingsAreConfiguredAndValidButWithWarningsResponseExample:
+      summary: Test settings are configured and valid (with warnings)
+      value:
+        status: PRESENT
+        ttl: 30 m
+        valid_to: "2022-01-12T07:20:50.52Z"
+        settings: |
+          readonlyrest:\\r\\n    access_control_rules:\\r\\n\\r\\n    - name: | \\""Require HTTP Basic | Auth\\""\\r\\n      type: allow\\r\\n      indices: | [\\""test\\""]\\r\\n\\r\\n    - name: | \\""other\\""\\r\\n      auth_key_sha1: \\""d27aaf7fa3c1603948bb29b7339f2559dc02019a\\""
+        warnings:
+          - block_name: other
+            rule_name: auth_key_sha1
+            message: "The rule contains fully hashed username and password. It doesn't support impersonation in this configuration"
+            hint: "You can use second version of the rule and use not hashed username. Like that: `auth_key_sha1: USER_NAME:hash(PASSWORD)"
 
     TestSettingsNotConfiguredResponseExample:
       summary: ROR Test settings are not configured yet
