@@ -101,7 +101,7 @@ object ProxyAuditSinkService {
 
   private def configureSsl(): HttpAsyncClientBuilder => HttpAsyncClientBuilder = (httpClientBuilder: HttpAsyncClientBuilder) => {
     val trustAllCerts = createTrustAllManager()
-    val sslContext = SSLContext.getInstance("TLS")
+    val sslContext = SSLContext.getInstance("TLSv1.2")
     sslContext.init(null, Array(trustAllCerts), null)
     httpClientBuilder
       .setSSLContext(sslContext)
