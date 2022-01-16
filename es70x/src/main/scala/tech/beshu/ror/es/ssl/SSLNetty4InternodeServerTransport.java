@@ -26,6 +26,7 @@ import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider;
 import org.elasticsearch.Version;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
@@ -40,11 +41,14 @@ import tech.beshu.ror.configuration.SslConfiguration;
 import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration;
 import tech.beshu.ror.utils.SSLCertParser;
 
+import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.TrustManagerFactory;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.net.SocketAddress;
 import java.security.AccessController;
+import java.security.KeyStore;
 import java.security.PrivilegedAction;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -138,10 +142,22 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
       public void mkSSLContext(InputStream certChain, InputStream privateKey) {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-          SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null);
+          SslContextBuilder sslCtxBuilder;
+          if (ssl.fipsCompliant()) {
+            InputStream keyStoreFile = new FileInputStream("/usr/share/elasticsearch/config/keystore.bcfks");
+            KeyStore keystore = java.security.KeyStore.getInstance("BCFKS", "BCFIPS");
+            String keystorePassword = "readonlyrest";
 
-          logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);
+            keystore.load(keyStoreFile, keystorePassword.toCharArray());
+            keyStoreFile.close();
+            KeyManagerFactory kmf = KeyManagerFactory.getInstance("X509", BouncyCastleJsseProvider.PROVIDER_NAME);
+            kmf.init(keystore, keystorePassword.toCharArray());
+            sslCtxBuilder = SslContextBuilder.forServer(kmf);
+            logger.info("ROR Internode using SSL provider: " + BouncyCastleJsseProvider.PROVIDER_NAME);
+          } else {
+            sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null);
+            logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider().name());
+          }
 
           if(ssl.allowedCiphers().size() > 0) {
             sslCtxBuilder.ciphers(

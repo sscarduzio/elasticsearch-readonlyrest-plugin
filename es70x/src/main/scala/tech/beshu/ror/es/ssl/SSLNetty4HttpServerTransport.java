@@ -27,6 +27,7 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
@@ -39,10 +40,15 @@ import tech.beshu.ror.configuration.SslConfiguration;
 import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration;
 import tech.beshu.ror.utils.SSLCertParser;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.security.AccessController;
+import java.security.KeyStore;
 import java.security.PrivilegedAction;
+import java.security.Security;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -103,9 +109,22 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
       public void mkSSLContext(InputStream certChain, InputStream privateKey) {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-          SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null);
+          SslContextBuilder sslCtxBuilder;
+          if (ssl.fipsCompliant()) {
+            InputStream keyStoreFile = new FileInputStream("/usr/share/elasticsearch/config/keystore.bcfks");
+            KeyStore keystore = java.security.KeyStore.getInstance("BCFKS", "BCFIPS");
+            String keystorePassword = "readonlyrest";
 
-          logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider().name());
+            keystore.load(keyStoreFile, keystorePassword.toCharArray());
+            keyStoreFile.close();
+            KeyManagerFactory kmf = KeyManagerFactory.getInstance("X509", BouncyCastleJsseProvider.PROVIDER_NAME);
+            kmf.init(keystore, keystorePassword.toCharArray());
+            sslCtxBuilder = SslContextBuilder.forServer(kmf);
+            logger.info("ROR SSL HTTP: Using SSL provider: " + BouncyCastleJsseProvider.PROVIDER_NAME);
+          } else {
+            sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null);
+            logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider().name());
+          }
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);
 
           if(ssl.allowedCiphers().size() > 0) {

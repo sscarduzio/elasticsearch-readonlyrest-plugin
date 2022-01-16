@@ -17,9 +17,10 @@
 package tech.beshu.ror.es
 
 import java.util.function.Supplier
-
 import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
+import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider
+import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
 import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
@@ -44,6 +45,7 @@ import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
+import java.security.Security
 import scala.language.postfixOps
 
 class IndexLevelActionFilter(clusterService: ClusterService,
@@ -143,6 +145,10 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   }
 
   private def startRorInstance() = {
+    Security.insertProviderAt(new BouncyCastleFipsProvider(),1) // basic encryption provider
+    Security.insertProviderAt(new BouncyCastleJsseProvider("fips:BCFIPS"),2) // tls
+    Security.removeProvider("SunRsaSign")
+    Security.removeProvider("SunJSSE")
     val startResult = for {
       _ <- esInitListener.waitUntilReady
       result <- new Ror(RorMode.Plugin).start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))

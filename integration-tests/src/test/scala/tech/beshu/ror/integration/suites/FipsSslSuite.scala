@@ -24,7 +24,7 @@ import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterProvider, EsClusterSettings, EsContainer, EsContainerCreator, _}
 import tech.beshu.ror.utils.elasticsearch.CatManager
 
-trait ClusterStateWithInternodeSslSuite
+trait FipsSslSuite
   extends AnyWordSpec
     with BaseEsClusterIntegrationTest
     with ESVersionSupportForAnyWordSpecLike
@@ -32,7 +32,7 @@ trait ClusterStateWithInternodeSslSuite
     with BeforeAndAfterAll {
   this: EsContainerCreator =>
 
-  override implicit val rorConfigFileName = "/cluster_state_internode_ssl/readonlyrest.yml"
+  override implicit val rorConfigFileName = "/fips_ssl/readonlyrest.yml"
 
 
   override def clusterContainer: EsClusterContainer = generalClusterContainer
@@ -41,36 +41,13 @@ trait ClusterStateWithInternodeSslSuite
   override def targetEs: EsContainer = generalClusterContainer.nodes.head
 
 
-  lazy val generalClusterContainer: EsClusterContainer = createFrom(
-    if (executedOn(allEs5x, allEs6xBelowEs63x)) {
-      // ROR for ES below 6.3 doesn't support internode SSL with XPack, so we test it only using ROR nodes.
-      NonEmptyList.of(
-        EsClusterSettings(
-          name = "ROR1",
-          numberOfInstances = 3,
-          internodeSslEnabled = true,
-          xPackSupport = false,
-        )
-      )
-    } else {
-      NonEmptyList.of(
-        EsClusterSettings(
-          name = "xpack_cluster",
-          numberOfInstances = 2,
-          useXpackSecurityInsteadOfRor = true,
-          xPackSupport = true,
-          externalSslEnabled = false,
-          configHotReloadingEnabled = true,
-          enableXPackSsl = true
-        ),
-        EsClusterSettings(
-          name = "xpack_cluster",
-          internodeSslEnabled = true,
-          xPackSupport = false,
-          forceNonOssImage = true
-        )
-      )
-    }
+  lazy val generalClusterContainer: EsClusterContainer = createLocalClusterContainer(
+    EsClusterSettings(
+      name = "fips_cluster",
+      numberOfInstances = 2,
+      internodeSslEnabled = true,
+      xPackSupport = false,
+    )
   )
 
   private lazy val rorClusterAdminStateManager = new CatManager(clients.last.rorAdminClient, esVersion = esVersionUsed)
@@ -86,3 +63,4 @@ trait ClusterStateWithInternodeSslSuite
   }
 }
 
+object ElasticWithoutRorClusterProvider extends EsClusterProvider with EsWithoutSecurityPluginContainerCreator

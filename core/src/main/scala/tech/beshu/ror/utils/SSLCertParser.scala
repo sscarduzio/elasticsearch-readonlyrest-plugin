@@ -21,10 +21,11 @@ import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import java.security.cert.Certificate
 import java.util.Base64
-
 import cats.effect.{IO, Resource}
+
 import javax.net.ssl.{SSLEngine, TrustManagerFactory}
 import org.apache.logging.log4j.scala.Logging
+import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
 import tech.beshu.ror.configuration.SslConfiguration
 
 import scala.util.{Failure, Success, Try}
@@ -82,8 +83,13 @@ object SSLCertParser extends Logging {
 
   private def loadKeystore(config: SslConfiguration) =
     Resource.fromAutoCloseable(IO(new FileInputStream(config.keystoreFile.value))).map { keystoreInputStream =>
-      logger.info("ROR SSL: attempting with JKS keystore..")
-      val keystore = java.security.KeyStore.getInstance("JKS")
+      val keystore = if (config.fipsCompliant) {
+        logger.info("ROR SSL: attempting with BCFKS keystore..")
+        java.security.KeyStore.getInstance("BCFKS", "BCFIPS")
+      } else {
+        logger.info("ROR SSL: attempting with JKS keystore..")
+        java.security.KeyStore.getInstance("JKS")
+      }
       keystore.load(
         keystoreInputStream,
         config.keystorePassword.map(_.value.toCharArray).orNull
@@ -120,7 +126,7 @@ object SSLCertParser extends Logging {
          |${Base64.getEncoder.encodeToString(key.getEncoded)}
          |---END PRIVATE KEY---
        """.stripMargin
-    logger.info("ROR SSL: Discovered key from JKS")
+    logger.info(s"ROR SSL: Discovered key from keystore $privateKey")
     Resource.fromAutoCloseable(IO(new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8))))
   }
 
@@ -133,17 +139,27 @@ object SSLCertParser extends Logging {
          |-----END CERTIFICATE-----
        """.stripMargin
     val certChain = keystore.getCertificateChain(alias).map(certString).mkString("\n")
-    logger.info("ROR SSL: Discovered cert chain from JKS")
+    logger.info(s"ROR SSL: Discovered cert chain from keystore $certChain")
     Resource.fromAutoCloseable(IO(new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8))))
   }
 
   private def loadTrustedCerts(config: SslConfiguration)(truststoreInputStream: InputStream) = IO {
-    val truststore = KeyStore.getInstance(KeyStore.getDefaultType)
+    val truststore = if (config.fipsCompliant) {
+      java.security.KeyStore.getInstance("BCFKS", "BCFIPS")
+    } else {
+      java.security.KeyStore.getInstance(KeyStore.getDefaultType)
+    }
     truststore.load(
       truststoreInputStream,
       config.truststorePassword.map(_.value.toCharArray).orNull
     )
-    val trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
+    val trustManagerFactory = if (config.fipsCompliant) {
+      logger.info("Using TrustManagerFactory with BouncyCastle provider")
+      TrustManagerFactory.getInstance("X509", BouncyCastleJsseProvider.PROVIDER_NAME)
+    } else {
+      TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
+    }
+
     trustManagerFactory.init(truststore)
     trustManagerFactory
   }
