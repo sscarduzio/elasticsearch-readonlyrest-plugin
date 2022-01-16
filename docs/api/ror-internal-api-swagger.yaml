@@ -27,8 +27,8 @@ paths:
                   $ref: "#/components/examples/TestSettingsAreConfiguredAndValidButWithWarningsResponseExample"
                 TestSettingsNotConfiguredResponseExample:
                   $ref: "#/components/examples/TestSettingsNotConfiguredResponseExample"
-                TestSettingsNotConfiguredWithRecentSettingsResponseExample:
-                  $ref: "#/components/examples/TestSettingsNotConfiguredWithRecentSettingsResponseExample"
+                TestSettingsInvalidatedResponseExample:
+                  $ref: "#/components/examples/TestSettingsInvalidatedResponseExample"
         403:
           description: The request was forbidden by ROR's ACL
           content:
@@ -317,11 +317,13 @@ components:
       oneOf:
         - $ref: '#/components/schemas/CurrentTestSettingsResponse'
         - $ref: '#/components/schemas/TestSettingsNotConfiguredResponse'
+        - $ref: '#/components/schemas/TestSettingsInvalidatedResponse'
       discriminator:
         propertyName: status
         mapping:
-          PRESENT: '#/components/schemas/CurrentTestSettingsResponse'
+          TEST_SETTINGS_PRESENT: '#/components/schemas/CurrentTestSettingsResponse'
           TEST_SETTINGS_NOT_CONFIGURED: '#/components/schemas/TestSettingsNotConfiguredResponse'
+          TEST_SETTINGS_INVALIDATED: '#/components/schemas/TestSettingsInvalidatedResponse'
 
     TestSettingsNotConfiguredResponse:
       type: object
@@ -336,9 +338,23 @@ components:
         message:
           type: string
           description: Human readable message
-        recent_settings:
+
+    TestSettingsInvalidatedResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
           type: string
-          description: Recently configured Test Settings that are not longer valid, because the TTL was reached or the settings were invalidated.
+          enum:
+            - TEST_SETTINGS_INVALIDATED
+        message:
+          type: string
+          description: Human readable message
+        settings:
+          type: string
+          description: Recently configured Test Settings that are not longer valid, because they were invalidated
 
     CurrentTestSettingsResponse:
       type: object
@@ -352,7 +368,7 @@ components:
         status:
           type: string
           enum:
-            - PRESENT
+            - TEST_SETTINGS_PRESENT
         ttl:
           $ref: '#/components/schemas/RorSettingsTtl'
         valid_to:
@@ -369,7 +385,7 @@ components:
 
     RorSettingsTtl:
       type: string
-      description: "ROR Settings Time To Live value. Available units: d, day, h, hr, hour m, min, minute s, sec, second"
+      description: "ROR Settings Time To Live value. After this time the Test Setting will be automatically invalidated. Available units: d, day, h, hr, hour m, min, minute s, sec, second"
       example: 30 m
 
     TestSettingsImperonationWarnings:
@@ -479,8 +495,12 @@ components:
             - OK
         users:
           type: array
+          description: It contains a list of locally (in ROR Settings) defined usernames.
           items:
             $ref: '#/components/schemas/LocalUserName'
+        unknown_users:
+          type: boolean
+          description: It is 'true' when some usernames cannot be returned but they are defined (the users names cannot be resolved or exposed)
 
     LocalUserName:
       type: string
@@ -494,7 +514,7 @@ components:
       discriminator:
         propertyName: status
         mapping:
-          PRESENT: '#/components/schemas/CurrentAuthMocksResponse'
+          TEST_SETTINGS_PRESENT: '#/components/schemas/CurrentAuthMocksResponse'
           TEST_SETTINGS_NOT_CONFIGURED: '#/components/schemas/AuthMockTestSettingsNotConfiguredResponse'
 
     CurrentAuthMocksResponse:
@@ -506,7 +526,7 @@ components:
         status:
           type: string
           enum:
-            - PRESENT
+            - TEST_SETTINGS_PRESENT
         services:
           type: array
           items:
@@ -802,7 +822,7 @@ components:
     TestSettingsAreConfiguredAndValidResponseExample:
       summary: Test settings are configured and valid (no warnings)
       value:
-        status: PRESENT
+        status: TEST_SETTINGS_PRESENT
         ttl: 30 m
         valid_to: "2022-01-12T07:20:50.52Z"
         settings: |
@@ -812,7 +832,7 @@ components:
     TestSettingsAreConfiguredAndValidButWithWarningsResponseExample:
       summary: Test settings are configured and valid (with warnings)
       value:
-        status: PRESENT
+        status: TEST_SETTINGS_PRESENT
         ttl: 30 m
         valid_to: "2022-01-12T07:20:50.52Z"
         settings: |
@@ -829,11 +849,11 @@ components:
         status: TEST_SETTINGS_NOT_CONFIGURED
         message: ROR Test settings are not configured
 
-    TestSettingsNotConfiguredWithRecentSettingsResponseExample:
-      summary: ROR Test settings are not configured because they were invalidated
+    TestSettingsInvalidatedResponseExample:
+      summary: ROR Test settings are invalidated
       value:
-        status: TEST_SETTINGS_NOT_CONFIGURED
-        message: ROR Test settings are not configured.
+        status: TEST_SETTINGS_INVALIDATED
+        message: ROR Test settings are invalidated
         recent_settings: |
           readonlyrest:\\r\\n    access_control_rules:\\r\\n\\r\\n    - name: | \\""Require HTTP Basic | Auth\\""\\r\\n      type: allow\\r\\n      indices: | [\\""test\\""]\\r\\n\\r\\n    - name: | \\""other\\""\\r\\n      auth_key: \\""admin:test\\""
 
@@ -863,11 +883,12 @@ components:
           - john
           - tom
           - mark
+        unknown_users: false
 
     AllTypesOfAuthServicesConfiguredResponseExample:
       summary: Three types of currently mockable Auth Services are configured
       value:
-        status: PRESENT
+        status: TEST_SETTINGS_PRESENT
         services:
           - type: LDAP
             name: LDAP 1
@@ -954,7 +975,7 @@ components:
     NoAuthServiceConfiguredResponseExample:
       summary: Three types of currently mockable Auth Services are not configured yet
       value:
-        status: PRESENT
+        status: TEST_SETTINGS_PRESENT
         services:
           - type: LDAP
             name: LDAP 1
@@ -989,7 +1010,7 @@ components:
     OnlySomeAuthServicesConfiguredResponseExample:
       summary: Some of currently mockable Auth Services are configured
       value:
-        status: PRESENT
+        status: TEST_SETTINGS_PRESENT
         services:
           - type: LDAP
             name: LDAP 1
