@@ -7,7 +7,8 @@ readonlyrest:
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
-  audit_collector: true
+  audit:
+    collector: true
 
   access_control_rules:
 

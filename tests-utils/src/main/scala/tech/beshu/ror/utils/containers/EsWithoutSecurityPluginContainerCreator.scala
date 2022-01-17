@@ -54,3 +54,5 @@ trait EsWithoutSecurityPluginContainerCreator extends EsContainerCreator {
     )
   }
 }
+
+object EsWithoutSecurityPluginContainerCreator extends EsWithoutSecurityPluginContainerCreator

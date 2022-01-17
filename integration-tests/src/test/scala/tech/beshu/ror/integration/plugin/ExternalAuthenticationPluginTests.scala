@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.ExternalAuthenticationSuite
-import tech.beshu.ror.integration.utils.PluginTestSupport
+import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
-class ExternalAuthenticationPluginTests extends ExternalAuthenticationSuite with PluginTestSupport
+class ExternalAuthenticationPluginTests extends ExternalAuthenticationSuite with SingletonPluginTestSupport

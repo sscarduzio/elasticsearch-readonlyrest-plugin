@@ -16,20 +16,20 @@
  */
 package tech.beshu.ror.accesscontrol.logging
 
-import java.time.{Clock, Instant}
-
 import cats.implicits._
 import monix.eval.Task
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
-import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
 import tech.beshu.ror.accesscontrol.logging.AuditingTool.Settings
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.es.AuditSinkService
+
+import java.time.{Clock, Instant}
 
 class AuditingTool(settings: Settings,
                    auditSink: AuditSinkService)
@@ -47,6 +47,10 @@ class AuditingTool(settings: Settings,
           )
         case None =>
       }
+  }
+
+  def close(): Unit = {
+    auditSink.close()
   }
 
   private def safeRunSerializer[B <: BlockContext](response: ResponseContext[B]) = {
@@ -142,6 +146,7 @@ class AuditingTool(settings: Settings,
 object AuditingTool {
 
   final case class Settings(rorAuditIndexTemplate: RorAuditIndexTemplate,
-                            logSerializer: AuditLogSerializer)
+                            logSerializer: AuditLogSerializer,
+                            auditCluster: AuditCluster)
 
 }

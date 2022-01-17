@@ -62,7 +62,7 @@ import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfig
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.es.utils.ThreadRepo
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, TransportRRAuditEventAction}
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
@@ -95,6 +95,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+  private implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
   private implicit val uniqueIdentifierGenerator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator
 
   private val environment = new Environment(s, p)

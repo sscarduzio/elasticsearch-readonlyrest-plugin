@@ -75,12 +75,18 @@ sealed trait BasicEsClusterProxyTestSupport extends ProxyTestSupport {
 
   protected def xpackSupport: Boolean
 
-  override lazy val container = createLocalClusterContainer(
-    nodeDataInitializer.foldLeft(EsClusterSettings.basic.copy(xPackSupport = xpackSupport)) {
-      case (settings, definedInitializer) => settings.copy(nodeDataInitializer = definedInitializer)
-    }
-  )
+  private def clusterSettings = {
+    val enhancedSettings = EsClusterSettings.basic
+      .copy(xPackSupport = xpackSupport)
+      .copy(dependentServicesContainers = clusterDependencies)
 
+    nodeDataInitializer match {
+      case Some(definedInitializer) => enhancedSettings.copy(nodeDataInitializer = definedInitializer)
+      case None => enhancedSettings
+    }
+  }
+
+  override lazy val container = createLocalClusterContainer(clusterSettings)
   override lazy val targetEs = container.nodes.head
 }
 

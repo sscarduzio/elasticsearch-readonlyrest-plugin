@@ -45,7 +45,7 @@ trait RemoteReindexSuite
       name = "ROR_SOURCE_ES",
       nodeDataInitializer = RemoteReindexSuite.sourceEsDataInitializer(),
       xPackSupport = false,
-      esVersion = EsVersion.SpecificVersion("es55x"),
+      esVersion = EsVersion.SpecificVersion("es60x"),
       externalSslEnabled = false
     )(sourceEsRorConfigFileName)
   )

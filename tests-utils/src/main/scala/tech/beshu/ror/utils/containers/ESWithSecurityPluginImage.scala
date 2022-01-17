@@ -29,7 +29,6 @@ object ESWithSecurityPluginImage extends EsImage[EsWithSecurityPluginContainer.C
   private val truststoreFileName = "truststore.jks"
   private val xpackTruststoreFileName = "shield.jks"
   private val pkcsCerts = "elastic-certificates.p12"
-  private val elasticsearchKeystore = "elasticsearch.keystore"
   private val configDir = "/config"
 
   override protected def copyNecessaryFiles(builder: DockerfileBuilder, config: EsWithSecurityPluginContainer.Config): DockerfileBuilder = {

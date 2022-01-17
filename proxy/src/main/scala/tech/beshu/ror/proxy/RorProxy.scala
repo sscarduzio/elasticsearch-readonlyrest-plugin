@@ -3,13 +3,10 @@
  */
 package tech.beshu.ror.proxy
 
-import java.security.cert.X509Certificate
-
 import better.files.File
 import cats.data.EitherT
 import cats.effect.{ContextShift, IO}
 import com.twitter.finagle.Http
-import javax.net.ssl.{SSLContext, X509TrustManager}
 import monix.eval.Task
 import monix.execution.schedulers.SchedulerService
 import org.apache.http.conn.ssl.NoopHostnameVerifier
@@ -20,16 +17,21 @@ import org.elasticsearch.client.{RestClient, RestHighLevelClient}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.node.Node
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.domain.{BasicAuth, Credentials, Header}
-import tech.beshu.ror.boot.StartingFailure
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
+import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, StartingFailure}
+import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.proxy.RorProxy.CloseHandler
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
+import tech.beshu.ror.proxy.es.services.ProxyAuditSinkService
 import tech.beshu.ror.proxy.es.{EsCode, EsRestServiceSimulator}
 import tech.beshu.ror.proxy.server.ProxyRestInterceptorService
 import tech.beshu.ror.proxy.utils.TwitterFutureOps.twitterFutureToIo
 import tech.beshu.ror.utils.ScalaOps._
+
+import java.security.cert.X509Certificate
+import java.time.Clock
+import javax.net.ssl.{SSLContext, X509TrustManager}
 
 trait RorProxy {
 
@@ -37,7 +39,9 @@ trait RorProxy {
 
   implicit protected def contextShift: ContextShift[IO]
 
+  implicit def clock: Clock = Clock.systemUTC()
   implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+  implicit def propertiesProvider: PropertiesProvider = JvmPropertiesProvider
   implicit def generator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator
 
   def start(config: RorProxy.Config): IO[Either[StartingFailure, CloseHandler]] = {
@@ -54,15 +58,17 @@ trait RorProxy {
         .put(Node.NODE_NAME_SETTING.getKey, "proxy")
         .build()
     )
-    val esClient = createEsHighLevelClient(config)
-    val result = for {
-      simulator <- EitherT(EsRestServiceSimulator.create(new RestHighLevelClientAdapter(esClient), config.esConfigFile, threadPool))
+    val localEsClientAdapter = new RestHighLevelClientAdapter(createEsHighLevelClient(config))
+    val auditSinkCreator: AuditSinkCreator = ProxyAuditSinkService.create(localEsClientAdapter)
+
+      val result = for {
+      simulator <- EitherT(EsRestServiceSimulator.create(localEsClientAdapter, config.esConfigFile, threadPool, auditSinkCreator))
       server = Http.server.serve(s":${config.proxyPort}", new ProxyRestInterceptorService(simulator, config))
     } yield () =>
       for {
         _ <- twitterFutureToIo(server.close())
         _ <- simulator.stop()
-        _ <- Task(esClient.close())
+        _ <- Task(localEsClientAdapter.close())
         _ <- Task(threadPool.shutdownNow())
       } yield ()
     result.value
@@ -83,7 +89,7 @@ trait RorProxy {
             override def checkServerTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
             override def getAcceptedIssuers: Array[X509Certificate] = null
           }
-          val sslContext = SSLContext.getInstance("TLS")
+          val sslContext = SSLContext.getInstance("TLSv1.2")
           sslContext.init(null, Array(trustAllCerts), null)
           httpClientBuilder
             .setSSLContext(sslContext)

@@ -18,35 +18,27 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonLdapContainers}
 import tech.beshu.ror.utils.containers.dependencies.ldap
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait LdapIntegrationSuite
   extends AnyWordSpec
-    with BaseEsClusterIntegrationTest
+    with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike
-    with SingleClientSupport
     with Matchers {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/ldap_integration/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodes.head
+  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(LdapIntegrationSuite.nodeDataInitializer())
 
-  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      dependentServicesContainers = List(
-        ldap(name = "LDAP1", SingletonLdapContainers.ldap1),
-        ldap(name = "LDAP2", SingletonLdapContainers.ldap2)
-      ),
-      nodeDataInitializer = LdapIntegrationSuite.nodeDataInitializer(),
-      xPackSupport = false,
-    )
+  override def clusterDependencies: List[DependencyDef] = List(
+    ldap(name = "LDAP1", SingletonLdapContainers.ldap1),
+    ldap(name = "LDAP2", SingletonLdapContainers.ldap2)
   )
 
   private lazy val cartmanIndexManager = new IndexManager(basicAuthClient("cartman", "user2"), esVersionUsed)
