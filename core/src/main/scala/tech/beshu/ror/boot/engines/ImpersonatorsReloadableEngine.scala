@@ -20,25 +20,22 @@ import cats.implicits._
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.boot.{ReadonlyRest, StartingFailure}
+import tech.beshu.ror.boot.ReadonlyRest
+import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
+import tech.beshu.ror.boot.engines.ConfigHash._
 import tech.beshu.ror.configuration.RawRorConfig
-import tech.beshu.ror.es.AuditSinkService
-import ConfigHash._
 
 import scala.concurrent.duration.FiniteDuration
-import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 
 private[boot] class ImpersonatorsReloadableEngine(boot: ReadonlyRest,
                                                   reloadInProgress: Semaphore[Task],
-                                                  rorConfigurationIndex: RorConfigurationIndex,
-                                                  auditSink: AuditSinkService,
-                                                  mocksProvider: MocksProvider)
+                                                  rorConfigurationIndex: RorConfigurationIndex)
                                                  (implicit scheduler: Scheduler)
   extends BaseReloadableEngine(
-    "test", boot, None, reloadInProgress, rorConfigurationIndex, auditSink, mocksProvider
+    "test", boot, None, reloadInProgress, rorConfigurationIndex
   ) {
 
   def forceReloadImpersonatorsEngine(config: RawRorConfig,

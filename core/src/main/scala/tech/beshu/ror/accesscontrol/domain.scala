@@ -30,6 +30,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
+import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.Action._
@@ -601,6 +602,12 @@ object domain {
   }
 
   final case class RorConfigurationIndex(index: IndexName.Full) extends AnyVal
+
+  sealed trait AuditCluster
+  object AuditCluster {
+    case object LocalAuditCluster extends AuditCluster
+    final case class RemoteAuditCluster(uris: NonEmptyList[Uri]) extends AuditCluster
+  }
 
   final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
                                             rawPattern: String) {

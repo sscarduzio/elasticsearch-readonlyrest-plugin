@@ -25,17 +25,16 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{Parsi
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError.FileNotExist
 import tech.beshu.ror.configuration.{RawRorConfig, RorProperties}
-import tech.beshu.ror.providers.{JvmPropertiesProvider, PropertiesProvider}
+import tech.beshu.ror.providers.PropertiesProvider
 
-class FileConfigLoader(esConfigFile: File,
-                       propertiesProvider: PropertiesProvider)
+class FileConfigLoader(esConfigPath: Path)
+                      (implicit propertiesProvider: PropertiesProvider)
   extends ConfigLoader[FileConfigError] {
 
   def rawConfigFile: File = {
-    implicit val _ = propertiesProvider
     RorProperties.rorConfigCustomFile match {
       case Some(customRorFile) => customRorFile
-      case None => File(s"${esConfigFile.path.toAbsolutePath}/readonlyrest.yml")
+      case None => File(s"${esConfigPath.toAbsolutePath}/readonlyrest.yml")
     }
   }
 
@@ -65,6 +64,4 @@ object FileConfigLoader {
       case FileNotExist(file) => s"Cannot find settings file: ${file.pathAsString}"
     }
   }
-
-  def create(esConfigFolderPath: Path): FileConfigLoader = new FileConfigLoader(File(esConfigFolderPath), JvmPropertiesProvider)
 }

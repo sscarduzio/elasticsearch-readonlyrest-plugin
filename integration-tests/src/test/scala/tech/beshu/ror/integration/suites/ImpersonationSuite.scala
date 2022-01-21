@@ -18,38 +18,30 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.freespec.AnyFreeSpec
-import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonLdapContainers}
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait ImpersonationSuite
   extends AnyFreeSpec
-    with BaseEsClusterIntegrationTest
+    with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyFreeSpecLike
-    with SingleClientSupport
     with BeforeAndAfterEach {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/impersonation/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodes.head
+  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ImpersonationSuite.nodeDataInitializer())
 
-  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      dependentServicesContainers = List(
-        ldap(name = "LDAP1", SingletonLdapContainers.ldap1),
-        ldap(name = "LDAP2", SingletonLdapContainers.ldap2),
-        wiremock(name = "EXT1", mappings = "/impersonation/wiremock_service1_ext_user_1.json", "/impersonation/wiremock_group_provider1_gpa_user_1.json"),
-        wiremock(name = "EXT1", mappings = "/impersonation/wiremock_service2_ext_user_2.json", "/impersonation/wiremock_group_provider2_gpa_user_2.json"),
-      ),
-      nodeDataInitializer = ImpersonationSuite.nodeDataInitializer(),
-      xPackSupport = false,
-    )
+  override def clusterDependencies: List[DependencyDef] = List(
+    ldap(name = "LDAP1", SingletonLdapContainers.ldap1),
+    ldap(name = "LDAP2", SingletonLdapContainers.ldap2),
+    wiremock(name = "EXT1", mappings = "/impersonation/wiremock_service1_ext_user_1.json", "/impersonation/wiremock_group_provider1_gpa_user_1.json"),
+    wiremock(name = "EXT1", mappings = "/impersonation/wiremock_service2_ext_user_2.json", "/impersonation/wiremock_group_provider2_gpa_user_2.json"),
   )
 
   private lazy val rorApiManager = new RorApiManager(rorAdminClient, esVersionUsed)

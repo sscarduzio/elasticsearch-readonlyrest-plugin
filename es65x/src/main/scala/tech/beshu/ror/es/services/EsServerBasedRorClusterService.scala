@@ -34,6 +34,7 @@ import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.snapshots.SnapshotsService
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.show.logs._
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
@@ -41,13 +42,12 @@ import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
-import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
+import tech.beshu.ror.utils.ScalaOps._
 
 import scala.util.{Failure, Success, Try}
 

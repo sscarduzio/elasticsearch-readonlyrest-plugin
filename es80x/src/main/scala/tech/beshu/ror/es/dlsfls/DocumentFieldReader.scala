@@ -109,7 +109,7 @@ private class DocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fields
 
       override def hashCode: Int = visitor.hashCode
 
-      override def stringField(fieldInfo: FieldInfo, value: Array[Byte]): Unit = visitor.stringField(fieldInfo, value)
+      override def stringField(fieldInfo: FieldInfo, value: String): Unit = visitor.stringField(fieldInfo, value)
 
       override def equals(obj: Any): Boolean = visitor == obj
 

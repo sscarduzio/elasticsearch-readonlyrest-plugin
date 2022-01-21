@@ -66,7 +66,7 @@ trait XpackApiSuite
   private lazy val dev5SqlManager = new SqlApiManager(basicAuthClient("dev5sql", "test"), esVersionUsed)
 
   "Async search" should {
-    "be allowed for dev1 and test1_index_a" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
+    "be allowed for dev1 and test1_index_a" excludeES(allEs6x, allEs7xBelowEs77x) in {
       val result = dev1SearchManager.asyncSearch("test1_index_a")
 
       result.responseCode should be (200)
@@ -74,12 +74,12 @@ trait XpackApiSuite
         Set("test1_index_a")
       )
     }
-    "not be allowed for dev2 and test1_index_a" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
+    "not be allowed for dev2 and test1_index_a" excludeES(allEs6x, allEs7xBelowEs77x) in {
       val result = dev2SearchManager.asyncSearch("test1_index_a")
 
       result.responseCode should be (404)
     }
-    "support filter and fields rule" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, rorProxy) in {
+    "support filter and fields rule" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
       val result = dev2SearchManager.asyncSearch("test2_index")
 
       result.responseCode should be (200)
@@ -269,7 +269,7 @@ trait XpackApiSuite
   "Rollup API" when {
     "create rollup job method is used" should {
       "be allowed to be used" when {
-        "there is no indices rule defined" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "there is no indices rule defined" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName = NextRollupJobName.get
           val result = adminXpackApiManager.rollup(jobName, "test3*", "admin_t3")
 
@@ -278,7 +278,7 @@ trait XpackApiSuite
           rollupJobsResult.responseCode should be(200)
           rollupJobsResult.jobs.size should be(1)
         }
-        "user has access to both: index pattern and rollup_index" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "user has access to both: index pattern and rollup_index" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName = NextRollupJobName.get
           val result = dev3XpackApiManager.rollup(jobName, "test3*", s"rollup_test3_$jobName")
 
@@ -289,17 +289,17 @@ trait XpackApiSuite
         }
       }
       "not be allowed to be used" when {
-        "user has no access to rollup_index" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "user has no access to rollup_index" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val result = dev3XpackApiManager.rollup(NextRollupJobName.get, "test3*", "rollup_index")
 
           result.responseCode should be(403)
         }
-        "user has no access to passed index" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "user has no access to passed index" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val result = dev3XpackApiManager.rollup(NextRollupJobName.get, "test1_index", "rollup_index")
 
           result.responseCode should be(403)
         }
-        "user has no access to given index pattern" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "user has no access to given index pattern" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val result = dev3XpackApiManager.rollup(NextRollupJobName.get, "test*", "rollup_index")
 
           result.responseCode should be(403)
@@ -308,7 +308,7 @@ trait XpackApiSuite
     }
     "get rollup job capabilities method is used" should {
       "return non-empty list" when {
-        "there is not indices rule defined" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "there is not indices rule defined" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test4*", "admin_t4").force()
 
@@ -318,7 +318,7 @@ trait XpackApiSuite
           val jobs = result.capabilities.values.toList.flatten
           jobs.map(_("job_id").str) should contain (jobName)
         }
-        "user has access to requested indices" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "user has access to requested indices" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName1, "test4_index_a", s"rollup_test4_$jobName1").force()
@@ -334,7 +334,7 @@ trait XpackApiSuite
             job("index_pattern").str should startWith ("test4")
           }
         }
-        "user has access to requested index pattern" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "user has access to requested index pattern" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           val jobName3 = NextRollupJobName.get
@@ -353,7 +353,7 @@ trait XpackApiSuite
             job("index_pattern").str should startWith ("test4")
           }
         }
-        "user has access to one index of requested index patten" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "user has access to one index of requested index patten" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           val jobName3 = NextRollupJobName.get
@@ -374,7 +374,7 @@ trait XpackApiSuite
         }
       }
       "return empty list" when {
-        "user has no access to requested index" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "user has no access to requested index" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test3_index_a", s"rollup_test3_$jobName").force()
 
@@ -384,7 +384,7 @@ trait XpackApiSuite
           val jobs = result.capabilities.values.toList.flatten
           jobs.size should be (0)
         }
-        "user had no access to requested index pattern" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "user had no access to requested index pattern" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test4*", s"rollup_test4_$jobName").force()
 
@@ -398,7 +398,7 @@ trait XpackApiSuite
     }
     "get rollup index capabilities method is used" should {
       "return non-empty list" when {
-        "there is not indices rule defined" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "there is not indices rule defined" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test5*", "admin_t5").force()
 
@@ -408,7 +408,7 @@ trait XpackApiSuite
           val jobs = result.capabilities.values.toList.flatten
           jobs.map(_("job_id").str) should contain (jobName)
         }
-        "user has access to requested indices" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "user has access to requested indices" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName1, "test5_index_a", s"rollup_test5_$jobName1").force()
@@ -424,7 +424,7 @@ trait XpackApiSuite
             job("index_pattern").str should startWith ("test5")
           }
         }
-        "user has access to requested index pattern" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "user has access to requested index pattern" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName1, "test5_index_a", s"rollup_test5_$jobName1").force()
@@ -440,7 +440,7 @@ trait XpackApiSuite
             job("index_pattern").str should startWith ("test5")
           }
         }
-        "user has access to one index of requested index patten" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "user has access to one index of requested index patten" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName1, "test5_index_a", s"rollup_test5_$jobName1").force()
@@ -458,7 +458,7 @@ trait XpackApiSuite
         }
       }
       "return empty list" when {
-        "user had no access to requested index pattern" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "user had no access to requested index pattern" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test5*", s"rollup_test5_$jobName").force()
 
@@ -470,7 +470,7 @@ trait XpackApiSuite
         }
       }
       "return 404" when {
-        "user has no access to requested index" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "user has no access to requested index" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test3_index_a", s"rollup_test3_$jobName").force()
 
@@ -482,7 +482,7 @@ trait XpackApiSuite
     }
     "rollup search method is used" should {
       "be allowed to be used" when {
-        "user has access to called rollup index" excludeES(allEs5x, allEs6xBelowEs63x, rorProxy) in {
+        "user has access to called rollup index" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           val rollupIndex6a = s"rollup_test6_$jobName1"
@@ -495,7 +495,7 @@ trait XpackApiSuite
         }
       }
       "return 404" when {
-        "user has no access to called rollup index" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+        "user has no access to called rollup index" excludeES(allEs6xBelowEs65x, rorProxy) in {
           val jobName = NextRollupJobName.get
           val rollupIndex = s"rollup_test4_$jobName"
           adminXpackApiManager.rollup(jobName, "test4*", rollupIndex).force()
@@ -512,7 +512,7 @@ trait XpackApiSuite
     "SELECT query is used" should {
       "be allowed" when {
         "user has no indices rule (has access to any index)" when {
-          "full index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SELECT * FROM library""")
             result.isSuccess should be(true)
             result.queryResult.size should be(4)
@@ -521,7 +521,7 @@ trait XpackApiSuite
             result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"))
             result.column("internal_id").toList should contain only(Num(1), Num(2))
           }
-          "full indices names are used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full indices names are used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SELECT * FROM \"bookstore,library\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(5)
@@ -530,7 +530,7 @@ trait XpackApiSuite
             )
             result.column("internal_id").toList should contain only(Num(1), Num(2), Null)
           }
-          "wildcard is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "wildcard is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SELECT * FROM \"*\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(5)
@@ -539,7 +539,7 @@ trait XpackApiSuite
             )
             result.column("internal_id").toList should contain only(Num(1), Num(2), Null)
           }
-          "alias is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "alias is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SELECT * FROM bookshop""")
             result.isSuccess should be(true)
             result.queryResult.size should be(4)
@@ -550,44 +550,39 @@ trait XpackApiSuite
           }
         }
         "user has access to given index" when {
-          "full index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SELECT * FROM bookstore""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(4)
-            result.columnNames should contain only("author", "name", "price", "release_date")
+            result.queryResult.size should be(3)
+            result.columnNames should contain only("author", "name", "release_date")
             result.rows.size should be(3)
             result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
-            result.column("price").toList should contain only Null
           }
-          "full indices names are used and one of them is not allowed" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full indices names are used and one of them is not allowed" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SELECT * FROM \"bookstore,library\"""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(4)
-            result.columnNames should contain only("author", "name", "price", "release_date")
+            result.queryResult.size should be(3)
+            result.columnNames should contain only("author", "name", "release_date")
             result.rows.size should be(3)
             result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
-            result.column("price").toList should contain only Null
           }
-          "wildcard is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "wildcard is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SELECT * FROM \"book*\"""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(4)
-            result.columnNames should contain only("author", "name", "price", "release_date")
+            result.queryResult.size should be(3)
+            result.columnNames should contain only("author", "name", "release_date")
             result.rows.size should be(3)
             result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
-            result.column("price").toList should contain only Null
           }
-          "alias is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "alias is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SELECT * FROM \"bookshop\"""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(4)
-            result.columnNames should contain only("author", "name", "price", "release_date")
+            result.queryResult.size should be(3)
+            result.columnNames should contain only("author", "name", "release_date")
             result.rows.size should be(3)
             result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
-            result.column("price").toList should contain only Null
           }
-          //todo: filter rule doesn't work now for sql api.
-          "filter in rule is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) ignore {
+          "filter in rule is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev5SqlManager.execute("""SELECT * FROM bookstore""")
             result.isSuccess should be(true)
             result.queryResult.size should be(4)
@@ -596,29 +591,29 @@ trait XpackApiSuite
             result.column("author").toList should contain only Str("Frank Herbert")
           }
         }
-        "sql query is malformed" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+        "sql query is malformed" excludeES(allEs6xBelowEs65x, rorProxy) in {
           val result = adminSqlManager.execute("""SELECT * FROM unescaped-index.name""")
           result.isBadRequest should be(true)
         }
       }
       "be forbidden" when {
         "user doesn't have access to given index" when {
-          "full index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev4SqlManager.execute("""SELECT * FROM bookstore""")
             result.isBadRequest should be(true)
             result.responseJson("error").obj("reason").str should include("Unknown index")
           }
-          "wildcard is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "wildcard is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev4SqlManager.execute("""SELECT * FROM \"book*\"""")
             result.isBadRequest should be(true)
             result.responseJson("error").obj("reason").str should include("Unknown index")
           }
-          "alias is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "alias is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev4SqlManager.execute("""SELECT * FROM bookshop""")
             result.isBadRequest should be(true)
             result.responseJson("error").obj("reason").str should include("Unknown index")
           }
-          "not-existent index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "not-existent index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev4SqlManager.execute("""SELECT * FROM flea_market""")
             result.isBadRequest should be(true)
             result.responseJson("error").obj("reason").str should include("Unknown index")
@@ -627,7 +622,7 @@ trait XpackApiSuite
       }
       "be malformed" when {
         "user rule is not used" when {
-          "not-existent index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "not-existent index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SELECT * FROM unknown""")
             result.isSuccess should be(false)
             result.responseCode should be(400)
@@ -638,7 +633,7 @@ trait XpackApiSuite
     "DESCRIBE TABLE command is used" should {
       "be allowed" when {
         "user has no indices rule (has access to any index)" when {
-          "full index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""DESCRIBE library""")
             result.isSuccess should be(true)
             result.queryResult.keys should contain allOf ("column", "type")
@@ -646,7 +641,7 @@ trait XpackApiSuite
               "author", "author.keyword", "internal_id", "name", "name.keyword", "release_date"
             )
           }
-          "full indices names are used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full indices names are used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""DESCRIBE \"bookstore,library\"""")
             result.isSuccess should be(true)
             result.queryResult.keys should contain allOf ("column", "type")
@@ -654,7 +649,7 @@ trait XpackApiSuite
               "author", "author.keyword", "internal_id", "name", "name.keyword", "price", "release_date"
             )
           }
-          "wildcard is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "wildcard is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""DESCRIBE \"*\"""")
             result.isSuccess should be(true)
             result.queryResult.keys should contain allOf ("column", "type")
@@ -662,7 +657,7 @@ trait XpackApiSuite
               "author", "author.keyword", "internal_id", "name", "name.keyword", "price", "release_date"
             )
           }
-          "alias is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "alias is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""DESCRIBE bookshop""")
             result.isSuccess should be(true)
             result.queryResult.keys should contain allOf ("column", "type")
@@ -670,14 +665,14 @@ trait XpackApiSuite
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
           }
-          "not-existent index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "not-existent index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""DESCRIBE unknown""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
           }
         }
         "user has access to given index" when {
-          "full index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""DESCRIBE bookstore""")
             result.isSuccess should be(true)
             result.queryResult.keys should contain allOf ("column", "type")
@@ -685,7 +680,7 @@ trait XpackApiSuite
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
           }
-          "full indices names are used and one of them is not allowed" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full indices names are used and one of them is not allowed" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""DESCRIBE \"bookstore,library\"""")
             result.isSuccess should be(true)
             result.queryResult.keys should contain allOf ("column", "type")
@@ -693,7 +688,7 @@ trait XpackApiSuite
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
           }
-          "wildcard is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "wildcard is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""DESCRIBE \"*\"""")
             result.isSuccess should be(true)
             result.queryResult.keys should contain allOf ("column", "type")
@@ -701,7 +696,7 @@ trait XpackApiSuite
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
           }
-          "alias is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "alias is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""DESCRIBE \"bookshop\"""")
             result.isSuccess should be(true)
             result.queryResult.keys should contain allOf ("column", "type")
@@ -713,22 +708,22 @@ trait XpackApiSuite
       }
       "be forbidden" when {
         "user doesn't have access to given index" when {
-          "full index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev4SqlManager.execute("""DESCRIBE bookstore""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
           }
-          "wildcard is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "wildcard is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev4SqlManager.execute("""DESCRIBE \"book*\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
           }
-          "alias is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "alias is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev4SqlManager.execute("""DESCRIBE bookshop""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
           }
-          "not-existent index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "not-existent index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev4SqlManager.execute("""DESCRIBE flea_market""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
@@ -739,7 +734,7 @@ trait XpackApiSuite
     "SHOW COLUMNS command is used" should {
       "be allowed" when {
         "user has no indices rule (has access to any index)" when {
-          "full index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN library""")
             result.isSuccess should be(true)
             result.queryResult.keys should contain allOf ("column", "type")
@@ -747,7 +742,7 @@ trait XpackApiSuite
               "author", "author.keyword", "internal_id", "name", "name.keyword", "release_date"
             )
           }
-          "full indices names are used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full indices names are used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN \"bookstore,library\"""")
             result.isSuccess should be(true)
             result.queryResult.keys should contain allOf ("column", "type")
@@ -755,7 +750,7 @@ trait XpackApiSuite
               "author", "author.keyword", "internal_id", "name", "name.keyword", "price", "release_date"
             )
           }
-          "wildcard is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "wildcard is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN \"*\"""")
             result.isSuccess should be(true)
             result.queryResult.keys should contain allOf ("column", "type")
@@ -763,7 +758,7 @@ trait XpackApiSuite
               "author", "author.keyword", "internal_id", "name", "name.keyword", "price", "release_date"
             )
           }
-          "alias is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "alias is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN bookshop""")
             result.isSuccess should be(true)
             result.queryResult.keys should contain allOf ("column", "type")
@@ -771,14 +766,14 @@ trait XpackApiSuite
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
           }
-          "not-existent index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "not-existent index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN unknown""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
           }
         }
         "user has access to given index" when {
-          "full index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SHOW COLUMNS IN bookstore""")
             result.isSuccess should be(true)
             result.queryResult.keys should contain allOf ("column", "type")
@@ -786,7 +781,7 @@ trait XpackApiSuite
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
           }
-          "full indices names are used and one of them is not allowed" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full indices names are used and one of them is not allowed" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SHOW COLUMNS FROM \"bookstore,library\"""")
             result.isSuccess should be(true)
             result.queryResult.keys should contain allOf ("column", "type")
@@ -794,7 +789,7 @@ trait XpackApiSuite
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
           }
-          "wildcard is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "wildcard is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SHOW COLUMNS FROM \"*\"""")
             result.isSuccess should be(true)
             result.queryResult.keys should contain allOf ("column", "type")
@@ -802,7 +797,7 @@ trait XpackApiSuite
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
           }
-          "alias is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "alias is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SHOW COLUMNS FROM \"bookshop\"""")
             result.isSuccess should be(true)
             result.queryResult.keys should contain allOf ("column", "type")
@@ -814,22 +809,22 @@ trait XpackApiSuite
       }
       "be forbidden" when {
         "user doesn't have access to given index" when {
-          "full index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev4SqlManager.execute("""SHOW COLUMNS FROM bookstore""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
           }
-          "wildcard is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "wildcard is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev4SqlManager.execute("""SHOW COLUMNS FROM \"book*\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
           }
-          "alias is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "alias is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev4SqlManager.execute("""SHOW COLUMNS FROM bookshop""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
           }
-          "not-existent index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "not-existent index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev4SqlManager.execute("""SHOW COLUMNS FROM flea_market""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
@@ -840,59 +835,59 @@ trait XpackApiSuite
     "SHOW TABLES command is used" should {
       "be allowed" when {
         "user has no indices rule (has access to any index)" when {
-          "full index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SHOW TABLES library""")
             result.isSuccess should be(true)
             result.column("name").map(_.str).headOption should be(Some("library"))
           }
-          "full indices names are used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full indices names are used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SHOW TABLES \"bookstore,library\"""")
             result.isSuccess should be(true)
             result.column("name").map(_.str) should contain only("bookstore", "library")
           }
-          "wildcard is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "wildcard is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SHOW TABLES \"*\"""")
             result.isSuccess should be(true)
             result.column("name").map(_.str) should contain only("bookshop", "bookstore", "library")
           }
-          "all tables are requested" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "all tables are requested" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SHOW TABLES""")
             result.isSuccess should be(true)
             result.column("name").map(_.str) should contain only("bookshop", "bookstore", "library")
           }
-          "alias is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "alias is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SHOW TABLES bookshop""")
             result.isSuccess should be(true)
             result.column("name").map(_.str).headOption should be(Some("bookshop"))
           }
-          "not-existent index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "not-existent index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SHOW TABLES unknown""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
           }
         }
         "user has access to given index" when {
-          "full index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SHOW TABLES bookstore""")
             result.isSuccess should be(true)
             result.column("name").map(_.str).headOption should be(Some("bookstore"))
           }
-          "full indices names are used and one of them is not allowed" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full indices names are used and one of them is not allowed" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SHOW TABLES \"bookstore,library\"""")
             result.isSuccess should be(true)
             result.column("name").map(_.str).headOption should be(Some("bookstore"))
           }
-          "wildcard is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "wildcard is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SHOW TABLES \"*\"""")
             result.isSuccess should be(true)
             result.column("name").map(_.str).headOption should be(Some("bookstore"))
           }
-          "all tables are requested" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "all tables are requested" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SHOW TABLES""")
             result.isSuccess should be(true)
             result.column("name").map(_.str).headOption should be(Some("bookstore"))
           }
-          "alias is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "alias is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SHOW TABLES \"bookshop\"""")
             result.isSuccess should be(true)
             result.column("name").map(_.str).headOption should be(Some("bookstore"))
@@ -901,22 +896,22 @@ trait XpackApiSuite
       }
       "be forbidden" when {
         "user doesn't have access to given index" when {
-          "full index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "full index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev4SqlManager.execute("""SHOW TABLES bookstore""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
           }
-          "wildcard is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "wildcard is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev4SqlManager.execute("""SHOW TABLES \"book*\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
           }
-          "alias is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "alias is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev4SqlManager.execute("""SHOW TABLES bookshop""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
           }
-          "not-existent index name is used" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+          "not-existent index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev4SqlManager.execute("""SHOW TABLES flea_market""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
@@ -926,11 +921,11 @@ trait XpackApiSuite
     }
     "SHOW FUNCTIONS command is used" should {
       "be allowed" when {
-        "user has no indices rule (has access to any index)" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+        "user has no indices rule (has access to any index)" excludeES(allEs6xBelowEs65x, rorProxy) in {
           val result = adminSqlManager.execute("""SHOW FUNCTIONS""")
           result.isSuccess should be(true)
         }
-        "user has one index" excludeES(allEs5x, allEs6xBelowEs65x, rorProxy) in {
+        "user has one index" excludeES(allEs6xBelowEs65x, rorProxy) in {
           val result = dev4SqlManager.execute("""SHOW FUNCTIONS""")
           result.isSuccess should be(true)
         }

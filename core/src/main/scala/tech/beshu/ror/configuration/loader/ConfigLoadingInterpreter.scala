@@ -17,11 +17,12 @@
 package tech.beshu.ror.configuration.loader
 
 import cats.data.EitherT
-import cats.~>
 import cats.implicits._
+import cats.~>
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.configuration.ConfigLoading.LoadConfigAction
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
@@ -30,17 +31,17 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.loader.LoadedRorConfig._
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.configuration.{ConfigLoading, EsConfig, IndexConfigManager}
-import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 
-import language.postfixOps
+import scala.language.postfixOps
 
 object ConfigLoadingInterpreter extends Logging {
 
   def create(indexConfigManager: IndexConfigManager,
              inIndexLoadingDelay: LoadingDelay)
-            (implicit envVarsProvider: EnvVarsProvider): LoadConfigAction ~> Task = new (LoadConfigAction ~> Task) {
+            (implicit envVarsProvider: EnvVarsProvider,
+             propertiesProvider: PropertiesProvider): LoadConfigAction ~> Task = new (LoadConfigAction ~> Task) {
     override def apply[A](fa: LoadConfigAction[A]): Task[A] = fa match {
       case ConfigLoading.LoadConfigAction.LoadEsConfig(esConfigPath) =>
         logger.info(s"Loading Elasticsearch settings from file: $esConfigPath")
@@ -54,7 +55,7 @@ object ConfigLoadingInterpreter extends Logging {
           })
       case ConfigLoading.LoadConfigAction.ForceLoadRorConfigFromFile(path) =>
         logger.info(s"Loading ReadonlyREST settings forced loading from file: $path")
-        EitherT(FileConfigLoader.create(path).load())
+        EitherT(new FileConfigLoader(path).load())
           .bimap(convertFileError, ForcedFileConfig(_))
           .leftMap { error =>
             logger.error(s"Loading ReadonlyREST from file failed: $error")
@@ -62,7 +63,7 @@ object ConfigLoadingInterpreter extends Logging {
           }.value
       case ConfigLoading.LoadConfigAction.LoadRorConfigFromFile(path) =>
         logger.info(s"Loading ReadonlyREST settings from file: $path, because index not exist")
-        EitherT(FileConfigLoader.create(path).load())
+        EitherT(new FileConfigLoader(path).load())
           .bimap(convertFileError, FileConfig(_))
           .leftMap { error =>
             logger.error(s"Loading ReadonlyREST from file failed: $error")

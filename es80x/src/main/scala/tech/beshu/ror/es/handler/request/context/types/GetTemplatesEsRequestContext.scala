@@ -63,14 +63,14 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
 
   override def modifyWhenTemplateNotFound: ModificationResult = {
     val nonExistentTemplateNamePattern = TemplateNamePattern.generateNonExistentBasedOn(requestTemplateNamePatterns.head)
-    actionRequest.names(nonExistentTemplateNamePattern.value.value)
-    ModificationResult.Modified
+    updateRequest(NonEmptyList.one(nonExistentTemplateNamePattern))
+    ModificationResult.UpdateResponse(a => Task.delay(a))
   }
 
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
     blockContext.templateOperation match {
       case GettingLegacyTemplates(namePatterns) =>
-        actionRequest.names(namePatterns.map(_.value.value).toList: _*)
+        updateRequest(namePatterns)
         updateResponse(using = blockContext)
       case other =>
         logger.error(
@@ -78,6 +78,11 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
              | type [${other.getClass}]]. Please report the issue!""".oneLiner)
         ModificationResult.ShouldBeInterrupted
     }
+  }
+
+  private def updateRequest(templateNamePatterns: NonEmptyList[TemplateNamePattern]): Unit = {
+    import org.joor.Reflect._
+    on(actionRequest).set("names", templateNamePatterns.map(_.value.value).toList.toArray)
   }
 
   private def updateResponse(using: TemplateRequestBlockContext) = {

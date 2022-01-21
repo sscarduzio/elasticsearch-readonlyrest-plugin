@@ -18,10 +18,10 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
+import org.joor.Reflect.on
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.snapshots.status.{SnapshotsStatusRequest, SnapshotsStatusResponse}
 import org.elasticsearch.threadpool.ThreadPool
-import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
@@ -30,7 +30,6 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
-
 import scala.collection.JavaConverters._
 
 class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
@@ -79,7 +78,7 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
           snapshotName <- SnapshotName.from(snapshotStatus.getSnapshot.getSnapshotId.getName)
         } yield  {
           allowedRepositoriesMatcher.`match`(repositoryName) &&
-            allowedSnapshotsMatcher.`match`(snapshotName)
+          allowedSnapshotsMatcher.`match`(snapshotName)
         }) getOrElse false
       }
 
@@ -148,4 +147,3 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
     (repositories.isEmpty || repositories == Set(RepositoryName.all)) && snapshotsFrom(actionRequest).isEmpty
   }
 }
-

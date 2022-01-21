@@ -22,6 +22,8 @@ import org.elasticsearch.index.get.GetResult
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DocumentId, DocumentWithIndex}
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
+import tech.beshu.ror.es.handler.response.FieldsFiltering.{MetadataDocumentFields, NewFilteredDocumentFields}
+
 import scala.collection.JavaConverters._
 
 object DocumentApiOps {
@@ -62,8 +64,8 @@ object DocumentApiOps {
           response.getVersion,
           true,
           newSource,
-          newFields.documentFields.asJava,
-          newFields.metadataFields.asJava
+          newFields.nonMetadataDocumentFields.value.asJava,
+          newFields.metadataDocumentFields.value.asJava
         )
         new GetResponse(newResult)
       }
@@ -79,7 +81,18 @@ object DocumentApiOps {
       }
 
       private def filterDocumentFieldsUsing(fieldsRestrictions: FieldsRestrictions) = {
-        FieldsFiltering.filterDocumentFields(response.getFields.asScala.toMap, fieldsRestrictions)
+        val (originalMetadataFields, originalNonMetadataFields) =
+          response
+            .getFields.asScala
+            .toMap
+            .partition(_._2.isMetadataField)
+
+        val filteredNonMetadataFields = FieldsFiltering.filterNonMetadataDocumentFields(
+          FieldsFiltering.NonMetadataDocumentFields(originalNonMetadataFields),
+          fieldsRestrictions
+        )
+
+        NewFilteredDocumentFields(filteredNonMetadataFields, MetadataDocumentFields(originalMetadataFields))
       }
     }
   }

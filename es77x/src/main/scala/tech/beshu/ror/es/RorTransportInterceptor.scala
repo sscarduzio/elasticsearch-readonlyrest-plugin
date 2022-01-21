@@ -57,7 +57,7 @@ class RorTransportInterceptor(threadContext: ThreadContext, nodeName: String) ex
       output.writeVInt(4) // Internal
       output.writeMap(Map[String, Object]().asJava)
     }
-    Base64.getEncoder().encodeToString(BytesReference.toBytes(output.bytes()));
+    Base64.getEncoder.encodeToString(BytesReference.toBytes(output.bytes()))
   }
 }
 

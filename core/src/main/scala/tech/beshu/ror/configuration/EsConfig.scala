@@ -18,14 +18,13 @@ package tech.beshu.ror.configuration
 
 
 import java.nio.file.Path
-
 import better.files.File
 import cats.data.EitherT
 import io.circe.Decoder
 import monix.eval.Task
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.{FileNotFound, MalformedContent}
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings
-import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.yaml.JsonFile
 
 final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings,
@@ -35,7 +34,8 @@ final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings,
 object EsConfig {
 
   def from(esConfigFolderPath: Path)
-          (implicit envVarsProvider:EnvVarsProvider): Task[Either[LoadEsConfigError, EsConfig]] = {
+          (implicit envVarsProvider: EnvVarsProvider,
+           propertiesProvider: PropertiesProvider): Task[Either[LoadEsConfigError, EsConfig]] = {
     val configFile = File(s"${esConfigFolderPath.toAbsolutePath}/elasticsearch.yml")
     (for {
       _ <- EitherT.fromEither[Task](Either.cond(configFile.exists, (), FileNotFound(configFile)))
@@ -51,7 +51,8 @@ object EsConfig {
   }
 
   private def loadSslSettings(esConfigFolderPath: Path, configFile: File)
-                             (implicit envVarsProvider:EnvVarsProvider): EitherT[Task, LoadEsConfigError, RorSsl] = {
+                             (implicit envVarsProvider:EnvVarsProvider,
+                              propertiesProvider: PropertiesProvider): EitherT[Task, LoadEsConfigError, RorSsl] = {
     EitherT(RorSsl.load(esConfigFolderPath).map(_.left.map(error => MalformedContent(configFile, error.message))))
   }
 
