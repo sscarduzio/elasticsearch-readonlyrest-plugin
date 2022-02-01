@@ -56,7 +56,7 @@ object JwtDefinitionsDecoder {
         } yield JwtDef(
           name,
           AuthorizationTokenDef(
-            headerName.getOrElse(Header.Name.authorization),
+            headerName.getOrElse(Header.Name.rorAuthorization),
             authTokenPrefix.getOrElse("Bearer ")
           ),
           checkMethod,

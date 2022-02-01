@@ -55,6 +55,7 @@ class EsIndexJsonContentService(client: NodeClient,
             .setId(id)
             .request()
         )
+
         .actionGet())
       .map { response =>
         Option(response.getSourceAsMap) match {

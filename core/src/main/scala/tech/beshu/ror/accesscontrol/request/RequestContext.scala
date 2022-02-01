@@ -202,10 +202,10 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
       .flatten
   }
 
-  def rawAuthHeader: Option[Header] = findHeader(Header.Name.authorization)
+  def rawAuthHeader: Option[Header] = findHeader(Header.Name.rorAuthorization)
 
   def bearerToken: Option[AuthorizationToken] = authorizationToken {
-    AuthorizationTokenDef(Header.Name.authorization, "Bearer ")
+    AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer ")
   }
 
   def authorizationToken(config: AuthorizationTokenDef): Option[AuthorizationToken] = {

@@ -267,7 +267,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
   private val obfuscatedHeadersAsyncDecoder: Decoder[Set[Header.Name]] = {
     import tech.beshu.ror.accesscontrol.factory.decoders.common.headerName
     Decoder.instance(_.downField("obfuscated_headers").as[Option[Set[Header.Name]]])
-      .map(_.getOrElse(Set(Header.Name.authorization)))
+      .map(_.getOrElse(Set(Header.Name.rorAuthorization)))
   }
 
   private def aclDecoder(httpClientFactory: HttpClientsFactory,

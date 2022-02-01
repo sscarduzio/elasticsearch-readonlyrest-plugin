@@ -62,7 +62,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(None)
             rule.settings.jwt.groupsClaim should be(None)
@@ -90,7 +90,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(None)
             rule.settings.jwt.groupsClaim should be(None)
@@ -119,7 +119,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(None)
             rule.settings.jwt.groupsClaim should be(None)
@@ -204,7 +204,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "MyPrefix "))
+            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.rorAuthorization, "MyPrefix "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(None)
             rule.settings.jwt.groupsClaim should be(None)
@@ -261,7 +261,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(Some(ClaimName(JsonPath.compile("user"))))
             rule.settings.jwt.groupsClaim should be(None)
@@ -289,7 +289,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(None)
             rule.settings.jwt.groupsClaim should be(Some(ClaimName(JsonPath.compile("groups"))))
@@ -317,7 +317,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(None)
             rule.settings.jwt.groupsClaim should be(Some(ClaimName(JsonPath.compile("https://{domain}/claims/roles"))))
@@ -347,7 +347,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
             rule.settings.jwt.userClaim should be(None)
             rule.settings.jwt.groupsClaim should be(Some(ClaimName(JsonPath.compile("groups"))))
@@ -376,7 +376,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
             rule.settings.jwt.userClaim should be(None)
             rule.settings.jwt.groupsClaim should be(Some(ClaimName(JsonPath.compile("groups"))))
@@ -407,7 +407,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
             rule.settings.jwt.userClaim should be(None)
             rule.settings.jwt.groupsClaim should be(Some(ClaimName(JsonPath.compile("groups"))))
@@ -437,7 +437,7 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Ec]
             rule.settings.jwt.userClaim should be(None)
             rule.settings.jwt.groupsClaim should be(Some(ClaimName(JsonPath.compile("groups"))))
@@ -471,7 +471,7 @@ class JwtAuthRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
             rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.NoCheck]
             rule.settings.jwt.checkMethod.asInstanceOf[SignatureCheckMethod.NoCheck].service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
             rule.settings.jwt.userClaim should be(None)
@@ -509,7 +509,7 @@ class JwtAuthRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
             rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.NoCheck]
             rule.settings.jwt.checkMethod.asInstanceOf[SignatureCheckMethod.NoCheck].service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
             rule.settings.jwt.userClaim should be(None)
