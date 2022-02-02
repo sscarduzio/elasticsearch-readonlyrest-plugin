@@ -45,7 +45,8 @@ import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
 import scala.language.postfixOps
 
-class IndexLevelActionFilter(clusterService: ClusterService,
+class IndexLevelActionFilter(nodeName: String,
+                             clusterService: ClusterService,
                              client: NodeClient,
                              threadPool: ThreadPool,
                              env: Environment,
@@ -142,7 +143,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   private def startRorInstance() = {
     val startResult = for {
       _ <- esInitListener.waitUntilReady
-      result <- new Ror(RorMode.Plugin).start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
+      result <- new Ror(RorMode.Plugin).start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client, nodeName, threadPool))
     } yield result
     startResult.runAsync {
       case Right(Right(instance)) =>

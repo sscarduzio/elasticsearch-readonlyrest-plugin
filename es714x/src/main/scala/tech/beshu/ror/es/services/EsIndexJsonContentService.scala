@@ -17,36 +17,71 @@
 package tech.beshu.ror.es.services
 
 import java.util
-
 import cats.implicits._
 import com.google.common.collect.Maps
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.ResourceNotFoundException
+import org.elasticsearch.{ResourceNotFoundException, Version}
 import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
 import org.elasticsearch.client.node.NodeClient
+import org.elasticsearch.common.bytes.BytesReference
 import org.elasticsearch.common.inject.{Inject, Singleton}
+import org.elasticsearch.common.io.stream.BytesStreamOutput
+import org.elasticsearch.common.util.concurrent.ThreadContext
 import org.elasticsearch.common.xcontent.XContentType
+import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService._
 
+import java.util.Base64
+import scala.collection.JavaConverters._
+
 @Singleton
 class EsIndexJsonContentService(client: NodeClient,
+                                nodeName: String,
+                                threadPool: ThreadPool,
                                 ignore: Unit) // hack!
   extends IndexJsonContentService
     with Logging {
 
   @Inject
-  def this(client: NodeClient) {
-    this(client, ())
+  def this(client: NodeClient, nodeName: String, threadPool: ThreadPool) {
+    this(client, nodeName, threadPool, ())
+  }
+
+  private def getAuthenticationHeaderValue: String = {
+    val output = new BytesStreamOutput()
+    val currentVersion = Version.CURRENT
+    output.setVersion(currentVersion)
+    Version.writeVersion(currentVersion, output)
+    output.writeBoolean(true)
+    output.writeString("_xpack")
+    output.writeString(nodeName)
+    output.writeString("__attach")
+    output.writeString("__attach")
+    output.writeBoolean(false)
+    if (output.getVersion.onOrAfter(Version.V_6_7_0)) {
+      output.writeVInt(4) // Internal
+      output.writeMap(Map[String, Object]().asJava)
+    }
+    Base64.getEncoder.encodeToString(BytesReference.toBytes(output.bytes()))
+  }
+
+  private def addXpackSecurityHeader() = {
+    val tc = threadPool.getThreadContext
+    Option(tc.getHeader("_xpack_security_authentication")) match {
+      case Some(_) =>
+      case None => threadPool.getThreadContext.putHeader("_xpack_security_authentication", getAuthenticationHeaderValue)
+    }
   }
 
   override def sourceOf(index: IndexName.Full,
                         id: String): Task[Either[ReadError, util.Map[String, AnyRef]]] = {
-    Task(
+    Task {
+      addXpackSecurityHeader()
       client
         .get(
           client
@@ -55,8 +90,8 @@ class EsIndexJsonContentService(client: NodeClient,
             .setId(id)
             .request()
         )
-
-        .actionGet())
+        .actionGet()
+    }
       .map { response =>
         Option(response.getSourceAsMap) match {
           case Some(map) =>
@@ -78,7 +113,8 @@ class EsIndexJsonContentService(client: NodeClient,
   override def saveContent(index: IndexName.Full,
                            id: String,
                            content: util.Map[String, String]): Task[Either[WriteError, Unit]] = {
-    Task(
+    Task {
+      addXpackSecurityHeader
       client
         .index(
           client
@@ -90,7 +126,7 @@ class EsIndexJsonContentService(client: NodeClient,
             .request()
         )
         .actionGet()
-    )
+    }
       .map { response =>
         response.status().getStatus match {
           case status if status / 100 == 2 =>
