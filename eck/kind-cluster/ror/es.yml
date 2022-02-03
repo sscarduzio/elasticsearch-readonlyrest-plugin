@@ -1,0 +1,49 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: 7.15.0
+  image: coutopl/es_7.15.0_ror_1.38.0-eck-poc
+  auth:
+    roles:
+    - secretName: amin-role-secret
+  nodeSets:
+  - name: default
+    count: 2
+    config:
+      xpack.security.authc.anonymous.username: anonymous
+      xpack.security.authc.anonymous.roles: superuser, admins
+      xpack.security.authc.anonymous.authz_exception: false
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 1Gi
+              cpu: 1024m
+          env:
+          - name: INTERNAL_USR_PASS
+            valueFrom:
+              secretKeyRef:
+                name: quickstart-es-internal-users
+                key: elastic-internal
+          - name: INTERNAL_PROBE_PASS
+            valueFrom:
+              secretKeyRef:
+                name: quickstart-es-internal-users
+                key: elastic-internal-probe
+          - name: KIBANA_USER_PASS
+            valueFrom:
+              secretKeyRef:
+                name: quickstart-kibana-user
+                key: default-quickstart-kibana-user
+          volumeMounts:
+          - name: config
+            mountPath: /usr/share/elasticsearch/config/readonlyrest.yml
+            subPath: readonlyrest.yml
+        volumes:
+        - name: config
+          configMap:
+            name: ror-config

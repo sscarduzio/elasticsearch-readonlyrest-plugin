@@ -1,8 +1,0 @@
-readonlyrest:
-  access_control_rules:
-  - name: "::KIBANA-SRV::"
-    auth_key: kibana:kibana
-
-  - name: "CONTAINER ADMIN - file"
-    type: "allow"
-    auth_key: "admin:container"

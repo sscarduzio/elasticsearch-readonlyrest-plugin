@@ -1,0 +1,29 @@
+apiVersion: v1
+data:
+   readonlyrest.yml: |
+     readonlyrest:
+       access_control_rules:
+       
+       - name: "::KIBANA-SRV::"
+         verbosity: error
+         auth_key: kibana:kibana
+
+       - name: "DEFAULT KIBANA USER"
+         verbosity: error
+         auth_key: "default-quickstart-kibana-user:${KIBANA_USER_PASS}"
+ 
+       - name: "PROBE"
+         verbosity: error
+         auth_key: "elastic-internal-probe:${INTERNAL_PROBE_PASS}"
+
+       - name: "ELASTIC-INTERNAL"
+         verbosity: error
+         auth_key: "elastic-internal:${INTERNAL_USR_PASS}"
+
+       - name: "CONTAINER ADMIN - file"
+         type: "allow"
+         auth_key: "admin:container"
+
+kind: ConfigMap
+metadata:
+  name: ror-config
