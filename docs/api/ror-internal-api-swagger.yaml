@@ -378,7 +378,7 @@ components:
         - status
         - ttl
         - valid_to
-        - services
+        - settings
         - warnings
       properties:
         status:

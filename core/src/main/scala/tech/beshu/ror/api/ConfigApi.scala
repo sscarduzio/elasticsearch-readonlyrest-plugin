@@ -20,6 +20,7 @@ import cats.data.{EitherT, NonEmptyList}
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.api.ConfigApi.ConfigRequest.Type
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
@@ -30,12 +31,8 @@ import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexCon
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
-import tech.beshu.ror.utils.HttpOps
-import tech.beshu.ror.{Constants, RequestId}
 
-import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.util.Try
 
 class ConfigApi(rorInstance: RorInstance,
                 indexConfigManager: IndexConfigManager,
@@ -52,8 +49,6 @@ class ConfigApi(rorInstance: RorInstance,
       case Type.ProvideIndexConfig => provideRorIndexConfig()
       case Type.ProvideFileConfig => provideRorFileConfig()
       case Type.UpdateIndexConfig => updateIndexConfiguration(request.body)
-      case Type.UpdateTestConfig => updateTestConfiguration(request.body, testConfigTtlFrom(request.headers))
-      case Type.InvalidateTestConfig => invalidateTestConfiguration()
     }
     ConfigResponse
       .executeOn(RorSchedulers.restApiScheduler)
@@ -82,28 +77,6 @@ class ConfigApi(rorInstance: RorInstance,
       case Right(_) => Success("updated settings")
       case Left(failure) => failure
     }
-  }
-
-  private def updateTestConfiguration(body: String,
-                                      ttl: Option[FiniteDuration])
-                                     (implicit requestId: RequestId): Task[ConfigResponse] = {
-    val result = for {
-      config <- rorConfigFrom(body)
-      _ <- forceReloadTestConfig(config, ttl)
-    } yield ()
-    result.value.map {
-      case Right(_) => Success("updated settings")
-      case Left(failure) => failure
-    }
-  }
-
-  private def invalidateTestConfiguration()
-                                         (implicit requestId: RequestId): Task[ConfigResponse] = {
-    rorInstance
-      .invalidateImpersonationEngine()
-      .map { _ =>
-        Success("test settings invalidated")
-      }
   }
 
   private def provideRorFileConfig()
@@ -170,32 +143,6 @@ class ConfigApi(rorInstance: RorInstance,
           Failure(s"Cannot reload new settings: ${failure.message}")
       }
   }
-
-  private def forceReloadTestConfig(config: RawRorConfig,
-                                    ttl: Option[FiniteDuration])
-                                   (implicit requestId: RequestId) = {
-    EitherT(
-      rorInstance
-        .forceReloadImpersonatorsEngine(
-          config,
-          ttl.getOrElse(defaults.testConfigEngineDefaultTtl)
-        )
-        .map {
-          _.leftMap {
-            case RawConfigReloadError.ReloadingFailed(failure) =>
-              Failure(s"Cannot reload new settings: ${failure.message}")
-            case RawConfigReloadError.ConfigUpToDate(_) =>
-              Failure(s"Current settings are already loaded")
-            case RawConfigReloadError.RorInstanceStopped =>
-              Failure(s"ROR instance is being stopped")
-          }
-        }
-    )
-  }
-
-  private def testConfigTtlFrom(headers: Map[String, NonEmptyList[String]]) = {
-    HttpOps.finiteDurationHeaderValueFrom(headers, Constants.HEADER_TEST_CONFIG_TTL)
-  }
 }
 
 object ConfigApi {
@@ -212,8 +159,6 @@ object ConfigApi {
       case object ProvideIndexConfig extends Type
       case object ProvideFileConfig extends Type
       case object UpdateIndexConfig extends Type
-      case object UpdateTestConfig extends Type
-      case object InvalidateTestConfig extends Type
     }
   }
   
@@ -226,8 +171,4 @@ object ConfigApi {
   final case class Success(message: String) extends ConfigResponse
   final case class ConfigNotFound(message: String) extends ConfigResponse
   final case class Failure(message: String) extends ConfigResponse
-
-  object defaults {
-    val testConfigEngineDefaultTtl: FiniteDuration = 30 minutes
-  }
 }

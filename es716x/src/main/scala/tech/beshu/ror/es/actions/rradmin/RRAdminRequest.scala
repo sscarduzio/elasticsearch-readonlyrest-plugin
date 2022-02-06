@@ -47,6 +47,8 @@ object RRAdminRequest {
         ConfigApi.ConfigRequest.Type.ProvideIndexConfig
       case (Constants.UPDATE_INDEX_CONFIG_PATH, POST) =>
         ConfigApi.ConfigRequest.Type.UpdateIndexConfig
+      case (Constants.PROVIDE_TEST_CONFIG_PATH, GET) =>
+        ConfigApi.ConfigRequest.Type.ProvideTestConfig
       case (Constants.UPDATE_TEST_CONFIG_PATH, POST) =>
         ConfigApi.ConfigRequest.Type.UpdateTestConfig
       case (Constants.DELETE_TEST_CONFIG_PATH, DELETE) =>

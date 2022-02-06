@@ -27,7 +27,7 @@ import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.api.{AuthMockApi, ConfigApi}
+import tech.beshu.ror.api.{AuthMockApi, ConfigApi, TestSettingsApi}
 import tech.beshu.ror.boot.engines.{Engines, ImpersonatorsReloadableEngine, MainReloadableEngine}
 import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
@@ -36,6 +36,7 @@ import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig, RorProperties}
 import tech.beshu.ror.providers.{JavaUuidProvider, PropertiesProvider}
 
+import java.time.{Clock, Instant}
 import scala.concurrent.duration.FiniteDuration
 
 class RorInstance private(boot: ReadonlyRest,
@@ -44,7 +45,8 @@ class RorInstance private(boot: ReadonlyRest,
                           reloadInProgress: Semaphore[Task],
                           rorConfigurationIndex: RorConfigurationIndex)
                          (implicit propertiesProvider: PropertiesProvider,
-                          scheduler: Scheduler)
+                          scheduler: Scheduler,
+                          clock: Clock)
   extends Logging {
 
   import RorInstance.ScheduledReloadError.{EngineReloadError, ReloadingInProgress}
@@ -83,11 +85,15 @@ class RorInstance private(boot: ReadonlyRest,
 
   private val authMockRestApi = new AuthMockApi(boot.mocksProvider)
 
+  private val testSettingsRestApi = new TestSettingsApi(this)
+
   def engines: Option[Engines] = aMainEngine.engine.map(Engines(_, anImpersonatorsEngine.engine))
 
   def configApi: ConfigApi = configRestApi
 
   def authMockApi: AuthMockApi = authMockRestApi
+
+  def testSettingsApi: TestSettingsApi = testSettingsRestApi
 
   def forceReloadFromIndex()
                           (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, Unit]] =
@@ -96,6 +102,11 @@ class RorInstance private(boot: ReadonlyRest,
   def forceReloadAndSave(config: RawRorConfig)
                         (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, Unit]] =
     aMainEngine.forceReloadAndSave(config)
+
+  def currentTestSettings()
+                         (implicit requestId: RequestId): Task[TestSettings] = {
+    anImpersonatorsEngine.currentTestSettings()
+  }
 
   def forceReloadImpersonatorsEngine(config: RawRorConfig,
                                      ttl: FiniteDuration)
@@ -193,12 +204,20 @@ object RorInstance {
     final case class EngineReloadError(underlying: IndexConfigReloadError) extends ScheduledReloadError
   }
 
+  sealed trait TestSettings
+  object TestSettings {
+    case object NotConfigured extends TestSettings
+    final case class Present(config: RawRorConfig, configuredTtl: FiniteDuration, validTo: Instant) extends TestSettings
+    final case class Invalidated(recent: RawRorConfig) extends TestSettings
+  }
+
   def createWithPeriodicIndexCheck(boot: ReadonlyRest,
                                    engine: ReadonlyRest.Engine,
                                    config: RawRorConfig,
                                    rorConfigurationIndex: RorConfigurationIndex)
                                   (implicit propertiesProvider: PropertiesProvider,
-                                   scheduler: Scheduler): Task[RorInstance] = {
+                                   scheduler: Scheduler,
+                                   clock: Clock): Task[RorInstance] = {
     create(boot, Mode.WithPeriodicIndexCheck, engine, config, rorConfigurationIndex)
   }
 
@@ -207,7 +226,8 @@ object RorInstance {
                                       config: RawRorConfig,
                                       rorConfigurationIndex: RorConfigurationIndex)
                                      (implicit propertiesProvider: PropertiesProvider,
-                                      scheduler: Scheduler): Task[RorInstance] = {
+                                      scheduler: Scheduler,
+                                      clock: Clock): Task[RorInstance] = {
     create(boot, Mode.NoPeriodicIndexCheck, engine, config, rorConfigurationIndex)
   }
 
@@ -217,7 +237,8 @@ object RorInstance {
                      config: RawRorConfig,
                      rorConfigurationIndex: RorConfigurationIndex)
                     (implicit propertiesProvider: PropertiesProvider,
-                     scheduler: Scheduler) = {
+                     scheduler: Scheduler,
+                     clock: Clock) = {
     Semaphore[Task](1)
       .map { isReloadInProgressSemaphore =>
         new RorInstance(

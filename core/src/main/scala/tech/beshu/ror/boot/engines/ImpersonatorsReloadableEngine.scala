@@ -20,23 +20,34 @@ import cats.implicits._
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
+import monix.execution.atomic.AtomicAny
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
-import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
+import tech.beshu.ror.boot.RorInstance.{RawConfigReloadError, TestSettings}
+import tech.beshu.ror.boot.engines.BaseReloadableEngine.EngineWithConfig
 import tech.beshu.ror.boot.engines.ConfigHash._
 import tech.beshu.ror.configuration.RawRorConfig
 
+import java.time.Clock
 import scala.concurrent.duration.FiniteDuration
 
 private[boot] class ImpersonatorsReloadableEngine(boot: ReadonlyRest,
                                                   reloadInProgress: Semaphore[Task],
                                                   rorConfigurationIndex: RorConfigurationIndex)
-                                                 (implicit scheduler: Scheduler)
+                                                 (implicit scheduler: Scheduler,
+                                                  clock: Clock)
   extends BaseReloadableEngine(
     "test", boot, None, reloadInProgress, rorConfigurationIndex
   ) {
+
+  private val testSettings = AtomicAny[TestSettings](TestSettings.NotConfigured)
+
+  def currentTestSettings()
+                         (implicit requestId: RequestId): Task[TestSettings] = {
+    Task.delay(testSettings.get())
+  }
 
   def forceReloadImpersonatorsEngine(config: RawRorConfig,
                                      ttl: FiniteDuration)
@@ -64,5 +75,18 @@ private[boot] class ImpersonatorsReloadableEngine(boot: ReadonlyRest,
   def invalidateImpersonationEngine()
                                    (implicit requestId: RequestId): Task[Unit] = {
     invalidate()
+  }
+
+  override protected def onSuccessLoad(c: EngineWithConfig): Unit = {
+    val ttl = c.ttl.getOrElse(throw new IllegalStateException("Impersonators engine should have ttl defined"))
+    testSettings.set(TestSettings.Present(c.config, ttl, clock.instant().plusMillis(ttl.toMillis)))
+  }
+
+  override protected def onStop(): Unit = {
+    testSettings.transform {
+      case settings@TestSettings.NotConfigured => settings
+      case TestSettings.Present(config, _, _) => TestSettings.Invalidated(config)
+      case settings: TestSettings.Invalidated => settings
+    }
   }
 }

@@ -301,6 +301,7 @@ object domain {
     // ROR actions
     val rorUserMetadataAction = Action("cluster:ror/user_metadata/get")
     val rorConfigAction = Action("cluster:ror/config/manage")
+    val rorTestSettingsAction = Action("cluster:ror/testsettings/manage")
     val rorAuthMockAction = Action("cluster:ror/authmock/manage")
     val rorAuditEventAction = Action("cluster:ror/audit_event/put")
     val rorOldConfigAction = Action("cluster:ror/config/refreshsettings")

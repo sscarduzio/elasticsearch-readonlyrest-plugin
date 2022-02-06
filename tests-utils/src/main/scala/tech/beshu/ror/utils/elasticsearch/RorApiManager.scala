@@ -23,6 +23,7 @@ import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
 
+import java.util.concurrent.TimeUnit
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
 
@@ -61,12 +62,20 @@ class RorApiManager(client: RestClient,
     call(createUpdateRorInIndexConfigRequest(config), new JsonResponse(_))
   }
 
-  def updateRorTestConfig(config: String, ttl: Option[FiniteDuration] = None): JsonResponse = {
+  def currentRorTestSettings: JsonResponse = {
+    call(createGetTestSettingsRequest, new JsonResponse(_))
+  }
+
+  def updateRorTestSettings(config: String, ttl: FiniteDuration = FiniteDuration(30, TimeUnit.MINUTES)): JsonResponse = {
     call(createUpdateRorTestConfigRequest(config, ttl), new JsonResponse(_))
   }
 
-  def invalidateRorTestConfig(): JsonResponse = {
+  def invalidateRorTestSettings(): JsonResponse = {
     call(createInvalidateRorTestConfigRequest(), new JsonResponse(_))
+  }
+
+  def currentRorLocalUsers: JsonResponse = {
+    call(createProvideLocalUsersRequest(), new JsonResponse(_))
   }
 
   def reloadRorConfig(): JsonResponse = {
@@ -111,12 +120,16 @@ class RorApiManager(client: RestClient,
     request
   }
 
+  private def createGetTestSettingsRequest = {
+    new HttpGet(client.from("/_readonlyrest/admin/config/test"))
+  }
+
   private def createUpdateRorTestConfigRequest(config: String,
-                                               ttl: Option[FiniteDuration] = None) = {
+                                               ttl: FiniteDuration) = {
     val request = new HttpPost(client.from("/_readonlyrest/admin/config/test"))
+
     request.addHeader("Content-Type", "application/json")
-    ttl.foreach(t => request.addHeader("x-ror-test-settings-ttl", t.toString()))
-    request.setEntity(new StringEntity(rorConfigIndexDocumentContentFrom(config)))
+    request.setEntity(new StringEntity(rorTestConfig(config, ttl)))
     request
   }
 
@@ -124,8 +137,16 @@ class RorApiManager(client: RestClient,
     s"""{"settings": "${escapeJava(config)}"}"""
   }
 
+  private def rorTestConfig(config: String, ttl: FiniteDuration) = {
+    s"""{"settings": "${escapeJava(config)}", "ttl": "${ttl.toString()}"}"""
+  }
+
   private def createInvalidateRorTestConfigRequest() = {
     new HttpDelete(client.from("/_readonlyrest/admin/config/test"))
+  }
+
+  private def createProvideLocalUsersRequest() = {
+    new HttpGet(client.from("/_readonlyrest/admin/config/test/localusers"))
   }
 
   private def createGetRorFileConfigRequest() = {

@@ -101,6 +101,10 @@ private[boot] class MainReloadableEngine(boot: ReadonlyRest,
     }
   }
 
+  override protected def onSuccessLoad(c: BaseReloadableEngine.EngineWithConfig): Unit = ()
+
+  override protected def onStop(): Unit = ()
+
   private [boot] def reloadEngineUsingIndexConfigWithoutPermit()
                                                               (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, RawRorConfig]] = {
     val result = for {

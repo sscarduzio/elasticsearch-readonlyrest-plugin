@@ -102,6 +102,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
       _ <- canBeReloaded(newConfig)
       newEngineWithConfig <- reloadWith(newConfig, newConfigEngineTtl)
       _ <- replaceCurrentEngine(newEngineWithConfig)
+      _ <- EitherT.right(Task.delay(onSuccessLoad(newEngineWithConfig)))
     } yield ()
   }
 
@@ -189,9 +190,14 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
 
   private def stop(engineWithConfig: EngineWithConfig)
                   (implicit requestId: RequestId): Unit = {
+    onStop()
     engineWithConfig.engine.shutdown()
     logger.info(s"[${requestId.show}] ROR $name engine (id=${engineWithConfig.config.hashString()}) stopped!")
   }
+
+  protected def onSuccessLoad(c: EngineWithConfig): Unit
+
+  protected def onStop(): Unit
 }
 
 object BaseReloadableEngine {

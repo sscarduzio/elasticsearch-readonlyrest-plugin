@@ -14,40 +14,39 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rradmin.rest
-
-import java.util
+package tech.beshu.ror.es.actions.rrtestsettings.rest
 
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
-import org.elasticsearch.rest.RestRequest.Method._
-import org.elasticsearch.rest._
+import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
 import org.elasticsearch.rest.action.RestToXContentListener
+import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestHandler, RestRequest}
 import tech.beshu.ror.Constants
-import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, RRAdminRequest, RRAdminResponse}
+import tech.beshu.ror.es.actions.rrtestsettings.{RRTestSettingsActionType, RRTestSettingsRequest, RRTestSettingsResponse}
 
+import java.util
 import scala.collection.JavaConverters._
 
 @Inject
-class RestRRAdminAction()
+class RestRRTestSettingsAction()
   extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(
-    new Route(POST, Constants.FORCE_RELOAD_CONFIG_PATH),
-    new Route(GET, Constants.PROVIDE_FILE_CONFIG_PATH),
-    new Route(GET, Constants.PROVIDE_INDEX_CONFIG_PATH),
-    new Route(POST, Constants.UPDATE_INDEX_CONFIG_PATH),
+    new Route(GET, Constants.PROVIDE_TEST_SETTINGS_PATH),
+    new Route(POST, Constants.UPDATE_TEST_SETTINGS_PATH),
+    new Route(DELETE, Constants.DELETE_TEST_SETTINGS_PATH),
+    new Route(GET, Constants.PROVIDE_LOCAL_USERS_PATH)
   ).asJava
 
-  override val getName: String = "ror-admin-handler"
+  override val getName: String = "ror-test-settings-handler"
 
   override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = new RestChannelConsumer {
-    private val rorAdminRequest = RRAdminRequest.createFrom(request)
+    private val rorTestSettingsRequest = RRTestSettingsRequest.createFrom(request)
 
     override def accept(channel: RestChannel): Unit = {
-      client.execute(new RRAdminActionType, rorAdminRequest, new RestToXContentListener[RRAdminResponse](channel))
+      client.execute(new RRTestSettingsActionType, rorTestSettingsRequest, new RestToXContentListener[RRTestSettingsResponse](channel))
     }
   }
 }
