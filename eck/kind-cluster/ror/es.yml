@@ -43,6 +43,11 @@ spec:
           - name: config
             mountPath: /usr/share/elasticsearch/config/readonlyrest.yml
             subPath: readonlyrest.yml
+        initContainers:
+        - name: sysctl
+          securityContext:
+            privileged: true
+          command: [ 'sh', '-c', 'sysctl -w vm.max_map_count=262144' ]
         volumes:
         - name: config
           configMap:
