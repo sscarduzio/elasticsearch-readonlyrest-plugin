@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+
+  es: 
+    image: coutopl/es_7.15.0_ror_1.38.0-pre2
+    ports: 
+    - 9202:9200
+    environment:
+    - discovery.type=single-node
+    volumes:
+    - ./readonlyrest.yml:/usr/share/elasticsearch/config/readonlyrest.yml
+
+  kbn:
+    image: coutopl/kibna_readonlyrest_kbn_enterprise-1.38.0-pre1_es7.15.0
+    depends_on:
+    - es
+    ports:
+    - 5602:5601
+    volumes:
+    - ./kibana.yml:/usr/share/kibana/config/kibana.yml

@@ -1,0 +1,23 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: quickstart
+spec:
+  version: 7.15.0
+  image: coutopl/kbn_7.15.0_ror_1.38.0-eck-poc
+  count: 1
+  elasticsearchRef:
+    name: quickstart
+  config:
+    elasticsearch.username: "kibana"
+    elasticsearch.password: "kibana"
+    xpack.security.enabled: false
+    readonlyrest_kbn.logLevel: debug
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 0.5
