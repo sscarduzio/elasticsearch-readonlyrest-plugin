@@ -65,7 +65,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
-import tech.beshu.ror.boot.Engine
+import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest

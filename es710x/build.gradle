@@ -25,7 +25,6 @@ buildscript {
     repositories {
         mavenLocal()
         mavenCentral()
-        jcenter()
         maven { url "https://plugins.gradle.org/m2/" }
     }
     dependencies {
@@ -54,10 +53,11 @@ compileScala {
 
 dependencies {
     compile project(path: ':core')
-    compile             group: 'org.elasticsearch',                 name: 'elasticsearch' ,             version: esVersion
-    compileClasspath    group: 'org.codelibs.elasticsearch.lib',    name: 'plugin-classloader',         version: esVersion
-    compileClasspath    group: 'org.locationtech.spatial4j',        name: 'spatial4j',                  version: '0.7'
-    compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',    version: esVersion
+    compile             group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: esVersion
+    compile             group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-high-level-client',   version: esVersion
+    compileClasspath    group: 'org.codelibs.elasticsearch.lib',    name: 'plugin-classloader',                     version: esVersion
+    compileClasspath    group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
+    compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: esVersion
 }
 
 license {
@@ -143,7 +143,7 @@ task generateVersionsFile() {
 
 task resolvePluginDescriptorTemplate(type: Copy, dependsOn: configureEsVersion) {
     outputs.upToDateWhen { false }
-    from '../plugin-metadata'
+    from './plugin-metadata'
     into 'build/tmp/' + pluginFullName
     expand([
             'descriptor': [

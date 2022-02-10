@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{BlocksLevelCreationError, DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.{CoreSettings, HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.boot.RorMode
+import tech.beshu.ror.boot.ReadonlyRest.RorMode
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers._

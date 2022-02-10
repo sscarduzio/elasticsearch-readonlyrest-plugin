@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataReque
 import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataValue, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.boot.Engine
+import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.EsRequest
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createRorNotEnabledResponse

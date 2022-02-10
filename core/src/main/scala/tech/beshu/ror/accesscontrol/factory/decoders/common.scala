@@ -23,12 +23,13 @@ import cats.Show
 import cats.data.NonEmptySet
 import cats.implicits._
 import com.comcast.ip4s.{IpAddress, Port, SocketAddress}
-import com.softwaremill.sttp.Uri
+import com.softwaremill._
 import eu.timepit.refined.api.{Refined, Validate}
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
+import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
@@ -98,12 +99,23 @@ object common extends Logging {
       }
       .decoder
 
-  implicit val uriDecoder: Decoder[Uri] =
+  implicit val lemonLabsUriDecoder: Decoder[Uri] =
+    SyncDecoderCreator
+      .from(Decoder.decodeString)
+      .emapE { value =>
+        Try(Uri.parse(value)) match {
+          case Success(uri) => Right(uri)
+          case Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '$value' to url")))
+        }
+      }
+      .decoder
+
+  implicit val sttpUriDecoder: Decoder[sttp.Uri] =
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .emapE { value =>
         Try(new URI(value)) match {
-          case Success(javaUri) => Right(Uri(javaUri))
+          case Success(javaUri) => Right(sttp.Uri(javaUri))
           case Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '$value' to url")))
         }
       }

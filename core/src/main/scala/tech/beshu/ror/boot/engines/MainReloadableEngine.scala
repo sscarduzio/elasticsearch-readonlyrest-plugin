@@ -22,28 +22,24 @@ import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.boot.ReadonlyRest
+import tech.beshu.ror.boot.ReadonlyRest._
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.{ConfigUpToDate, ReloadingFailed, RorInstanceStopped}
 import tech.beshu.ror.boot.RorInstance._
 import tech.beshu.ror.boot.engines.ConfigHash._
-import tech.beshu.ror.boot.{Engine, ReadonlyRest, StartingFailure}
 import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError.CannotSaveConfig
-import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
-import tech.beshu.ror.es.AuditSinkService
+import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.ScalaOps.value
 
 private[boot] class MainReloadableEngine(boot: ReadonlyRest,
                                          initialEngine: (Engine, RawRorConfig),
                                          reloadInProgress: Semaphore[Task],
-                                         indexConfigManager: IndexConfigManager,
-                                         rorConfigurationIndex: RorConfigurationIndex,
-                                         auditSink: AuditSinkService,
-                                         mocksProvider: MocksProvider)
+                                         rorConfigurationIndex: RorConfigurationIndex)
                                         (implicit scheduler: Scheduler)
   extends BaseReloadableEngine(
-    "main", boot, Some(initialEngine), reloadInProgress, rorConfigurationIndex, auditSink, mocksProvider
+    "main", boot, Some(initialEngine), reloadInProgress, rorConfigurationIndex
   ) {
 
   def forceReloadAndSave(config: RawRorConfig)
@@ -118,12 +114,12 @@ private[boot] class MainReloadableEngine(boot: ReadonlyRest,
 
   private def saveConfig(newConfig: RawRorConfig): EitherT[Task, IndexConfigReloadWithUpdateError, Unit] = EitherT {
     for {
-      saveResult <- indexConfigManager.save(newConfig, rorConfigurationIndex)
+      saveResult <- boot.indexConfigManager.save(newConfig, rorConfigurationIndex)
     } yield saveResult.left.map(IndexConfigReloadWithUpdateError.IndexConfigSavingError.apply)
   }
 
   private def loadRorConfigFromIndex() = {
-    indexConfigManager
+    boot.indexConfigManager
       .load(rorConfigurationIndex)
       .map(_.left.map(IndexConfigReloadError.LoadingConfigError.apply))
   }

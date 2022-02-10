@@ -21,7 +21,7 @@ import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import org.scalatest.Suite
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.providers._
-import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterProvider, EsContainerCreator, EsRemoteClustersContainer}
+import tech.beshu.ror.utils.containers.{DependencyDef, EsClusterContainer, EsClusterProvider, EsContainerCreator, EsRemoteClustersContainer}
 
 object support {
 
@@ -74,6 +74,8 @@ object support {
       with TestSuiteWithClosedTaskAssertion
       with NodeInitializerProvider {
     this: Suite with EsContainerCreator with ESVersionSupport =>
+
+    def clusterDependencies: List[DependencyDef] = List.empty
   }
 
   trait SingleClientSupport extends SingleClient with SingleEsTarget

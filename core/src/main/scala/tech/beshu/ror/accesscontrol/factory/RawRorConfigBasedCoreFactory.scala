@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.factory
 
-import java.time.Clock
-
 import cats.data.{NonEmptyList, State, Validated}
 import cats.implicits._
 import cats.kernel.Monoid
@@ -47,12 +45,14 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps, _}
 import tech.beshu.ror.accesscontrol.utils._
-import tech.beshu.ror.boot.RorMode
+import tech.beshu.ror.boot.ReadonlyRest.RorMode
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.providers.{EnvVarsProvider, UuidProvider}
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.yaml.YamlOps
+
+import java.time.Clock
 
 final case class CoreSettings(aclEngine: AccessControl,
                               auditingSettings: Option[AuditingTool.Settings])
@@ -129,8 +129,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
           auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
           globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(
             rorMode,
-            rorConfigurationIndex,
-            auditingTools.map(_.rorAuditIndexTemplate)
+            rorConfigurationIndex
           ))
           acl <- aclDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings, mocksProvider)
         } yield CoreSettings(

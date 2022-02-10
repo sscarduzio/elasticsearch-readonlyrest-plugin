@@ -39,7 +39,7 @@ trait ClusterStateWithInternodeSslSuite
   override def targetEs: EsContainer = generalClusterContainer.nodes.head
 
   lazy val generalClusterContainer: EsClusterContainer = createFrom(
-    if (executedOn(allEs5x, allEs6xExceptEs67x)) {
+    if (executedOn(allEs6xExceptEs67x)) {
       // ROR for ES below 6.7 doesn't support internode SSL with XPack, so we test it only using ROR nodes.
       NonEmptyList.of(
         EsClusterSettings(

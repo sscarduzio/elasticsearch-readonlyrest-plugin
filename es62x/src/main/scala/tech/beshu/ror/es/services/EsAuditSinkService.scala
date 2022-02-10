@@ -45,6 +45,9 @@ class EsAuditSinkService(client: Client) extends AuditSinkService with Logging {
         .source(jsonRecord, XContentType.JSON)
     )
   }
+  override def close(): Unit = {
+    client.close()
+  }
 
   private class AuditSinkBulkProcessorListener extends BulkProcessor.Listener {
     override def beforeBulk(executionId: Long, request: BulkRequest): Unit = {

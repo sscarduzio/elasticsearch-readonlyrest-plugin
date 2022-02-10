@@ -63,8 +63,7 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
               forbiddenRequestMessage = "Forbidden",
               flsEngine = FlsEngine.default,
               configurationIndex = RorConfigurationIndex(IndexName.Full(".readonlyrest")),
-              usernameCaseMapping = UsernameCaseMapping.CaseSensitive,
-              indexAuditTemplate = None
+              usernameCaseMapping = UsernameCaseMapping.CaseSensitive
             ),
             Set.empty
           )
