@@ -153,7 +153,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
-    //indexModule.setReaderWrapper(RoleIndexSearcherWrapper.instance)
+    //indexModule.setReaderWrapper(RoleIndexSearcherWrapper.instance) // todo: fixme
   }
 
   override def getSettings: util.List[Setting[_]] = {
@@ -233,6 +233,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     ).asJava
   }
 
+  // todo: to remove?
 //  override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
 //    restHandler: RestHandler =>
 //      (request: RestRequest, channel: RestChannel, client: NodeClient) => {
@@ -257,8 +258,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     extends RestHandler {
 
     override def handleRequest(request: RestRequest, channel: RestChannel, client: NodeClient): Unit = {
-      // todo: remove
-      println(s"REQ: ${request.path()}; H: [${request.getHeaders.asScala.map { case (v, l) => s"$v:${l.asScala.mkString(",")}" }.mkString(";")}]")
       val rorRestChannel = new RorRestChannel(channel)
       ThreadRepo.setRestChannel(rorRestChannel)
       underlying.handleRequest(request, rorRestChannel, client)
