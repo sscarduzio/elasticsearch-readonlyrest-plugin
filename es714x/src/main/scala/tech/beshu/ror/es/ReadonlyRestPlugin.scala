@@ -16,9 +16,6 @@
  */
 package tech.beshu.ror.es
 
-import java.nio.file.Path
-import java.util
-import java.util.function.{Supplier, UnaryOperator}
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
@@ -48,31 +45,35 @@ import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.{SharedGroupFactory, Transport, TransportInterceptor}
 import org.elasticsearch.transport.netty4.Netty4Utils
+import org.elasticsearch.transport.{SharedGroupFactory, Transport, TransportInterceptor}
 import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.boot.EsInitListener
+import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.configuration.RorSsl
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
-import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
+import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
+import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, TransportRRAuditEventAction}
+import tech.beshu.ror.es.actions.rrauthmock.rest.RestRRAuthMockAction
+import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionType, TransportRRAuthMockAction}
 import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
+import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
+import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
+import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
-import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.es.utils.RestControllerOps._
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
-import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
-import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, TransportRRAuditEventAction}
-import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
-import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionType, TransportRRAuthMockAction}
-import tech.beshu.ror.es.actions.rrauthmock.rest.RestRRAuthMockAction
-import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
-import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SetOnce
 
+import java.nio.file.Path
+import java.util
+import java.util.function.Supplier
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -124,6 +125,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                 repositoriesServiceSupplier: Supplier[RepositoriesService]): util.Collection[AnyRef] = {
     doPrivileged {
       ilaf = new IndexLevelActionFilter(
+        client.settings().get("node.name"),
         clusterService,
         client.asInstanceOf[NodeClient],
         threadPool,
@@ -152,7 +154,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
-    indexModule.setReaderWrapper(RoleIndexSearcherWrapper.instance)
+    import tech.beshu.ror.es.utils.IndexModuleOps._
+    indexModule.overwrite(RoleIndexSearcherWrapper.instance)
   }
 
   override def getSettings: util.List[Setting[_]] = {
@@ -222,6 +225,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                settingsFilter: SettingsFilter,
                                indexNameExpressionResolver: IndexNameExpressionResolver,
                                nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
+    restController.decorateRestHandlersWith(new ChannelInterceptingRestHandlerDecorator(_))
     List[RestHandler](
       new RestRRAdminAction(),
       new RestRRAuthMockAction(),
@@ -231,14 +235,15 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     ).asJava
   }
 
-  override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
-    restHandler: RestHandler =>
-      (request: RestRequest, channel: RestChannel, client: NodeClient) => {
-        val rorRestChannel = new RorRestChannel(channel)
-        ThreadRepo.setRestChannel(rorRestChannel)
-        restHandler.handleRequest(request, rorRestChannel, client)
-      }
-  }
+  // todo: to remove?
+//  override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
+//    restHandler: RestHandler =>
+//      (request: RestRequest, channel: RestChannel, client: NodeClient) => {
+//        val rorRestChannel = new RorRestChannel(channel)
+//        ThreadRepo.setRestChannel(rorRestChannel)
+//        restHandler.handleRequest(request, rorRestChannel, client)
+//      }
+//  }
 
   override def getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry, threadContext: ThreadContext): util.List[TransportInterceptor] = {
     List[TransportInterceptor](new RorTransportInterceptor(threadContext, s.get("node.name"))).asJava
@@ -248,6 +253,16 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     super.onNodeStarted()
     doPrivileged {
       esInitListener.onEsReady()
+    }
+  }
+
+  private class ChannelInterceptingRestHandlerDecorator(underlying: RestHandler)
+    extends RestHandler {
+
+    override def handleRequest(request: RestRequest, channel: RestChannel, client: NodeClient): Unit = {
+      val rorRestChannel = new RorRestChannel(channel)
+      ThreadRepo.setRestChannel(rorRestChannel)
+      underlying.handleRequest(request, rorRestChannel, client)
     }
   }
 }

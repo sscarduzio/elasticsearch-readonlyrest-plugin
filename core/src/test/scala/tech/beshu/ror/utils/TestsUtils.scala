@@ -56,7 +56,7 @@ object TestsUtils {
 
   def basicAuthHeader(value: String): Header =
     new Header(
-      Header.Name.authorization,
+      Header.Name.rorAuthorization,
       NonEmptyString.unsafeFrom("Basic " + Base64.getEncoder.encodeToString(value.getBytes))
     )
 

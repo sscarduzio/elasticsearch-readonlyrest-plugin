@@ -64,10 +64,10 @@ private[boot] class MainReloadableEngine(boot: ReadonlyRest,
         case Left(ReloadError(ReloadingFailed(StartingFailure(message, None)))) =>
           logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: $message")
         case Left(ReloadError(RorInstanceStopped)) =>
-          logger.warn(s"[${requestId.show}] ROR is being stopped! Loading tests settings skipped!")
+          logger.warn(s"[${requestId.show}] ROR is being stopped! Loading main settings skipped!")
         case Left(IndexConfigSavingError(CannotSaveConfig)) =>
           // todo: invalidate created core?
-          logger.warn(s"[${requestId.show}] ROR is being stopped! Loading tests settings skipped!")
+          logger.warn(s"[${requestId.show}] ROR is being stopped! Loading main settings skipped!")
       })
     } yield reloadResult
   }
@@ -87,7 +87,7 @@ private[boot] class MainReloadableEngine(boot: ReadonlyRest,
         case Left(IndexConfigReloadError.ReloadError(ReloadingFailed(StartingFailure(message, None)))) =>
           logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: $message")
         case Left(IndexConfigReloadError.ReloadError(RorInstanceStopped)) =>
-          logger.warn(s"[${requestId.show}] ROR is being stopped! Loading tests settings skipped!")
+          logger.warn(s"[${requestId.show}] ROR is being stopped! Loading main settings skipped!")
         case Left(IndexConfigReloadError.LoadingConfigError(error)) =>
           logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: ${error.show}")
       })

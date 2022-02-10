@@ -36,8 +36,7 @@ trait ActionsSuite
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
-  }
-  }
+  }}
 
   private lazy val actionManager = new DocumentManager(basicAuthClient("any", "whatever"), esVersionUsed)
 

@@ -100,6 +100,7 @@ object domain {
       val currentGroup = Name(Constants.HEADER_GROUP_CURRENT)
       val availableGroups = Name(Constants.HEADER_GROUPS_AVAILABLE)
       val userAgent = Name("User-Agent")
+      val rorAuthorization = Name("ROR-Authorization")
       val authorization = Name("Authorization")
       val rorUser = Name(Constants.HEADER_USER_ROR)
       val kibanaAccess = Name(Constants.HEADER_KIBANA_ACCESS)
@@ -119,7 +120,7 @@ object domain {
     def fromAuthorizationValue(value: NonEmptyString): Either[AuthorizationValueError, NonEmptyList[Header]] = {
       value.value.splitBy("ror_metadata=") match {
         case (_, None) =>
-          Right(NonEmptyList.one(new Header(Name.authorization, value)))
+          Right(NonEmptyList.one(new Header(Name.rorAuthorization, value)))
         case (basicAuthStr, Some(rorMetadata)) =>
           for {
             authorizationHeader <- createHeaderFromAuthorizationString(basicAuthStr)
@@ -134,7 +135,7 @@ object domain {
       val sanitized = if (trimmed.endsWith(",")) trimmed.substring(0, trimmed.length - 1) else trimmed
       NonEmptyString
         .from(sanitized)
-        .map(new Header(Name.authorization, _))
+        .map(new Header(Name.rorAuthorization, _))
         .left.map(_ => EmptyAuthorizationValue)
     }
 
@@ -184,13 +185,14 @@ object domain {
   }
   final case class BasicAuth private(credentials: Credentials) {
     def header: Header = new Header(
-      Header.Name.authorization,
+      Header.Name.rorAuthorization,
       NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(s"${credentials.user.value}:${credentials.secret.value}".getBytes(UTF_8))}")
     )
   }
   object BasicAuth extends Logging {
     def fromHeader(header: Header): Option[BasicAuth] = {
       header.name match {
+        case name if name === Header.Name.rorAuthorization => parse(header.value)
         case name if name === Header.Name.authorization => parse(header.value)
         case _ => None
       }

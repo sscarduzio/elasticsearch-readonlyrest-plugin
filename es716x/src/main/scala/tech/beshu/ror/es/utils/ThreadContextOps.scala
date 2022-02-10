@@ -20,6 +20,7 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.util.concurrent.ThreadContext
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.utils.JavaConverters
+import scala.collection.JavaConverters._
 
 import scala.language.implicitConversions
 
@@ -27,8 +28,15 @@ final class ThreadContextOps(threadContext: ThreadContext) extends Logging {
   def stashAndMergeResponseHeaders(esContext: EsContext): ThreadContext.StoredContext = {
     val responseHeaders =
       JavaConverters.flattenPair(threadContext.getResponseHeaders).toSet ++ esContext.threadContextResponseHeaders
+    val requestHeaders = threadContext.getRequestHeadersOnly.asScala.toSet
     val storedContext = threadContext.stashContext()
     responseHeaders.foreach { case (k, v) => threadContext.addResponseHeader(k, v) }
+    requestHeaders.foreach { case (k, v) =>
+      Option(threadContext.getHeader(k)) match {
+        case Some(_) =>
+        case None => threadContext.putHeader(k, v)
+      }
+    }
     storedContext
   }
 }

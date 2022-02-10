@@ -33,6 +33,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.client.StandardHttpRequestRetryHandler;
+import org.apache.http.message.BasicHeader;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.EntityUtils;
@@ -128,7 +129,8 @@ public class RestClient {
   }
 
   private Header createBasicAuthHeader(String user, String password) {
-    return BasicScheme.authenticate(new UsernamePasswordCredentials(user, password), "UTF-8", false);
+    Header authenticate = BasicScheme.authenticate(new UsernamePasswordCredentials(user, password), "UTF-8", false);
+    return new BasicHeader("ROR-Authorization", authenticate.getValue());
   }
 
   public HttpClient getUnderlyingClient() {

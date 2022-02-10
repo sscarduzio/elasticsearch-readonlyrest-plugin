@@ -47,12 +47,20 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
         copyNecessaryFiles(builder, config)
 
         RunCommandCombiner.empty
-          .runWhen(!useXpackSecurityInsteadOfRor, "/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
-          .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
-          .runWhen(shouldDisableXpack(config),
-            command = "echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
-          )
-          .runWhen(externalSslEnabled, "echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+//          .runWhen(!useXpackSecurityInsteadOfRor, "/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
+//          .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
+//          .runWhen(shouldDisableXpack(config),
+//            command = "echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
+//          )
+          // todo: added
+          .run("echo 'xpack.security.enabled: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          .run("echo 'xpack.security.http.ssl.enabled: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          .run("echo 'xpack.security.http.ssl.keystore.path: http.p12' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          .run("echo 'xpack.security.authc.anonymous.username: anonymous' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          .run("echo 'xpack.security.authc.anonymous.roles: transport_client, _system, superuser, admins' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          .run("echo 'xpack.security.authc.anonymous.authz_exception: false' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+
+//          .runWhen(externalSslEnabled, "echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(internodeSslEnabled, "echo 'transport.type: ror_ssl_internode' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(!configHotReloadingEnabled, "echo 'readonlyrest.force_load_from_file: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(customRorIndexName.isDefined, s"echo 'readonlyrest.settings_index: ${customRorIndexName.get}' >> /usr/share/elasticsearch/config/elasticsearch.yml")
@@ -68,7 +76,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .runWhen(useXpackSecurityInsteadOfRor,"printf 'readonlyrest\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore add xpack.security.transport.ssl.keystore.secure_password")
           .runWhen(useXpackSecurityInsteadOfRor, "printf 'readonlyrest\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore add xpack.security.transport.ssl.truststore.secure_password")
           .runWhen(useXpackSecurityInsteadOfRor && Version.greaterOrEqualThan(esVersion, 6, 6, 0), "printf 'elastic\\n' | /usr/share/elasticsearch/bin/elasticsearch-keystore add bootstrap.password")
-          .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
+//          .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties") // todo: fixme
           .runWhen(Version.greaterOrEqualThan(esVersion, 6, 0, 0),
             command = "echo '/usr/local/bin/docker-entrypoint.sh &' > /usr/share/elasticsearch/xpack-setup-entry.sh",
             orElse = "echo '/usr/share/elasticsearch/bin/es-docker &' > /usr/share/elasticsearch/xpack-setup-entry.sh")

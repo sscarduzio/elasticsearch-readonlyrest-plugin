@@ -29,6 +29,8 @@ object ESWithSecurityPluginImage extends EsImage[EsWithSecurityPluginContainer.C
   private val truststoreFileName = "truststore.jks"
   private val xpackTruststoreFileName = "shield.jks"
   private val pkcsCerts = "elastic-certificates.p12"
+  private val httpCerts = "http.p12"
+  private val rolesFileName = "roles.yml"
   private val configDir = "/config"
 
   override protected def copyNecessaryFiles(builder: DockerfileBuilder, config: EsWithSecurityPluginContainer.Config): DockerfileBuilder = {
@@ -47,6 +49,8 @@ object ESWithSecurityPluginImage extends EsImage[EsWithSecurityPluginContainer.C
       .withFileFromFile(s"$configDir/$javaOptionsFileName", ContainerUtils.getResourceFile("/" + javaOptionsFileName))
       .withFileFromFile(s"$configDir/$xpackTruststoreFileName", ContainerUtils.getResourceFile("/" + xpackTruststoreFileName))
       .withFileFromFile(s"$configDir/$pkcsCerts", ContainerUtils.getResourceFile("/" + pkcsCerts))
+      .withFileFromFile(s"$configDir/$httpCerts", ContainerUtils.getResourceFile("/" + httpCerts))
+      .withFileFromFile(s"$configDir/$rolesFileName", ContainerUtils.getResourceFile("/" + rolesFileName))
   }
 
   override protected def install(builder: DockerfileBuilder,

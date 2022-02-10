@@ -47,7 +47,8 @@ import java.time.Clock
 import java.util.function.Supplier
 import scala.language.postfixOps
 
-class IndexLevelActionFilter(clusterService: ClusterService,
+class IndexLevelActionFilter(nodeName: String,
+                             clusterService: ClusterService,
                              client: NodeClient,
                              threadPool: ThreadPool,
                              env: Environment,
@@ -63,7 +64,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
 
   private val ror = ReadonlyRest.create(
     RorMode.Plugin,
-    new EsIndexJsonContentService(client),
+    new EsIndexJsonContentService(client, nodeName, threadPool),
     auditSinkCreator,
     env.configFile
   )
