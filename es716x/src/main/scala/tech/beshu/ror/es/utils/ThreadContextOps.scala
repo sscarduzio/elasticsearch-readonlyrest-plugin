@@ -31,7 +31,12 @@ final class ThreadContextOps(threadContext: ThreadContext) extends Logging {
     val requestHeaders = threadContext.getRequestHeadersOnly.asScala.toSet
     val storedContext = threadContext.stashContext()
     responseHeaders.foreach { case (k, v) => threadContext.addResponseHeader(k, v) }
-    requestHeaders.foreach { case (k, v) => threadContext.putHeader(k, v) }
+    requestHeaders.foreach { case (k, v) =>
+      Option(threadContext.getHeader(k)) match {
+        case Some(_) =>
+        case None => threadContext.putHeader(k, v)
+      }
+    }
     storedContext
   }
 }

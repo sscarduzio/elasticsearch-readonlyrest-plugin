@@ -3,7 +3,7 @@ version: '3'
 services:
 
   es: 
-    image: coutopl/es_7.15.0_ror_1.38.0-pre2
+    image: coutopl/es_7.17.0_ror_1.38.0-eck-poc
     ports: 
     - 9202:9200
     environment:
@@ -12,7 +12,7 @@ services:
     - ./readonlyrest.yml:/usr/share/elasticsearch/config/readonlyrest.yml
 
   kbn:
-    image: coutopl/kibna_readonlyrest_kbn_enterprise-1.38.0-pre1_es7.15.0
+    image: coutopl/kbn_7.17.0_ror_1.38.0-eck-poc
     depends_on:
     - es
     ports:

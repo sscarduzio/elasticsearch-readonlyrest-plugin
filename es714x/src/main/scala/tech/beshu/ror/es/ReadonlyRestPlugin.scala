@@ -153,9 +153,10 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
-    //indexModule.setReaderWrapper(RoleIndexSearcherWrapper.instance) // todo: fixme
+    import tech.beshu.ror.es.utils.IndexModuleOps._
+    indexModule.overwrite(RoleIndexSearcherWrapper.instance)
   }
-
+  
   override def getSettings: util.List[Setting[_]] = {
     List[Setting[_]](Setting.groupSetting("readonlyrest.", Setting.Property.Dynamic, Setting.Property.NodeScope)).asJava
   }
