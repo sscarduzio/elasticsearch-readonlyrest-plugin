@@ -55,10 +55,11 @@ compileScala {
 dependencies {
     compile project(path: ':core')
     compile             group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: esVersion
-    compile             group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-high-level-client',   version: '7.16.3' // fixme:
-    compileClasspath    group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
-    compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4',                       version: esVersion
+    compile             group: 'co.elastic.clients',                name: 'elasticsearch-java',                     version: esVersion
+    compile             group: 'com.fasterxml.jackson.core',        name: 'jackson-databind',                       version: '2.12.3'
     compile             group: 'org.apache.logging.log4j',          name: 'log4j-core',                             version: '2.11.1'
+    compileClasspath    group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
+    compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: "7.17.0"
 }
 
 license {

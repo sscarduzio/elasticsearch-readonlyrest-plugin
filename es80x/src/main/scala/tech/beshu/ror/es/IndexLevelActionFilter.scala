@@ -87,7 +87,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
 
   private def auditSinkCreator: AuditSinkCreator = {
     case AuditCluster.LocalAuditCluster =>
-      new EsAuditSinkService(client)
+      new EsAuditSinkService(client, threadPool)
     case remote: AuditCluster.RemoteAuditCluster =>
       HighLevelClientAuditSinkService.create(remote)
   }
