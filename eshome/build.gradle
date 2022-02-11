@@ -25,6 +25,7 @@ buildscript {
 
 repositories {
     mavenCentral()
+    mavenLocal()
 }
 
 group = 'org.elasticsearch.plugin'
@@ -39,14 +40,14 @@ configurations {
 }
 
 dependencies {
-    ror project(path: ':es79x')
+    ror project(path: ':es80x')
     runtime('org.elasticsearch:elasticsearch:' + esVersion) {
 //        // because of https://github.com/elastic/elasticsearch/issues/68889 (for ES 7.11.0)
 //        exclude group: 'org.elasticsearch', module: 'elasticsearch-plugin-classloader'
     }
-    runtime group: 'org.apache.logging.log4j',          name: 'log4j-core',                 version: '2.15.0'
-    runtime group: 'org.codelibs.elasticsearch.lib',    name: 'plugin-classloader',         version: esVersion // g(for ES < 7.11.0)
-    netty   group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',    version: esVersion
+    runtime group: 'org.apache.logging.log4j',          name: 'log4j-core',                         version: '2.15.0'
+    runtime group: 'org.elasticsearch',                 name: 'elasticsearch-plugin-classloader',   version: esVersion // g(for ES < 7.11.0)
+    netty   group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',            version: esVersion
 }
 
 task copyRorJar(type: Copy) {

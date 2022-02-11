@@ -69,6 +69,8 @@ stages:
 
         IT_PROXY:
           ROR_TASK: integration_proxy
+        IT_es80x:
+          ROR_TASK: integration_es80x
         IT_es716x:
           ROR_TASK: integration_es716x
         IT_es714x:
@@ -125,6 +127,8 @@ stages:
     strategy:
       maxParallel: 99
       matrix:
+        PKG_es8xx:
+          ROR_TASK: package_es8xx
         PKG_es7xx:
           ROR_TASK: package_es7xx
         PKG_es6xx:
@@ -182,6 +186,8 @@ stages:
     strategy:
       maxParallel: 99
       matrix:
+        PKG_es8xx:
+          ROR_TASK: package_es8xx
         PKG_es7xx:
           ROR_TASK: package_es7xx
         PKG_es6xx:
