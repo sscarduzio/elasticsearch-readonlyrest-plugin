@@ -250,9 +250,9 @@ object TestSettingsApi {
       }
     }
 
-   final case class Failure(message: String) extends TestSettingsResponse {
-     override val status: String = "FAILED"
-   }
+    final case class Failure(message: String) extends TestSettingsResponse {
+      override val status: String = "FAILED"
+    }
 
     def notAvailable: TestSettingsResponse = Failure("Service not available")
     def internalError: TestSettingsResponse = Failure("Internal error")
