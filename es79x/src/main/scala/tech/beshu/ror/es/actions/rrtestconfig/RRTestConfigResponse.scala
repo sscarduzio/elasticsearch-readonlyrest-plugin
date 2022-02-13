@@ -14,28 +14,28 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rrtestsettings
+package tech.beshu.ror.es.actions.rrtestconfig
 
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
-import tech.beshu.ror.api.TestSettingsApi
-import tech.beshu.ror.api.TestSettingsApi.TestSettingsResponse.{Failure, InvalidateTestSettings, ProvideLocalUsers, ProvideTestSettings, UpdateTestSettings}
+import tech.beshu.ror.api.TestConfigApi
+import tech.beshu.ror.api.TestConfigApi.TestConfigResponse._
 
-import scala.collection.JavaConverters._
+import java.time.ZoneOffset
 
-class RRTestSettingsResponse(response: TestSettingsApi.TestSettingsResponse)
+class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
   extends ActionResponse with ToXContentObject with Logging {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
     response match {
-      case res: ProvideTestSettings.CurrentTestSettings => currentSettingsJson(builder, res)
-      case ProvideTestSettings.TestSettingsNotConfigured(message) => addResponseJson(builder, response.status, message)
-      case res: ProvideTestSettings.TestSettingsInvalidated => invalidatedSettingsJson(builder, res)
-      case UpdateTestSettings.SuccessResponse(message) => addResponseJson(builder, response.status, message)
-      case UpdateTestSettings.FailedResponse(message) => addResponseJson(builder, response.status, message)
-      case InvalidateTestSettings.SuccessResponse(message) => addResponseJson(builder, response.status, message)
+      case res: ProvideTestConfig.CurrentTestSettings => currentSettingsJson(builder, res)
+      case ProvideTestConfig.TestSettingsNotConfigured(message) => addResponseJson(builder, response.status, message)
+      case res: ProvideTestConfig.TestSettingsInvalidated => invalidatedSettingsJson(builder, res)
+      case UpdateTestConfig.SuccessResponse(message) => addResponseJson(builder, response.status, message)
+      case UpdateTestConfig.FailedResponse(message) => addResponseJson(builder, response.status, message)
+      case InvalidateTestConfig.SuccessResponse(message) => addResponseJson(builder, response.status, message)
       case res: ProvideLocalUsers.SuccessResponse => provideLocalUsersJson(builder, res)
       case ProvideLocalUsers.TestSettingsNotConfigured(message) => addResponseJson(builder, response.status, message)
       case Failure(message) => addResponseJson(builder, response.status, message)
@@ -52,12 +52,12 @@ class RRTestSettingsResponse(response: TestSettingsApi.TestSettingsResponse)
     builder.endObject
   }
 
-  private def currentSettingsJson(builder: XContentBuilder, response: ProvideTestSettings.CurrentTestSettings): Unit = {
+  private def currentSettingsJson(builder: XContentBuilder, response: ProvideTestConfig.CurrentTestSettings): Unit = {
     builder.startObject
     builder.field("status", response.status)
     builder.field("ttl", response.ttl.toString())
     builder.field("settings", response.settings.raw)
-    builder.field("valid_to", response.validTo.toString)
+    builder.field("valid_to", response.validTo.atOffset(ZoneOffset.UTC).toString)
     builder.startArray("warnings")
     response.warnings.foreach { warning =>
       builder.startObject()
@@ -71,7 +71,7 @@ class RRTestSettingsResponse(response: TestSettingsApi.TestSettingsResponse)
     builder.endObject
   }
 
-  private def invalidatedSettingsJson(builder: XContentBuilder, response: ProvideTestSettings.TestSettingsInvalidated): Unit = {
+  private def invalidatedSettingsJson(builder: XContentBuilder, response: ProvideTestConfig.TestSettingsInvalidated): Unit = {
     builder.startObject
     builder.field("status", response.status)
     builder.field("message", response.message)
@@ -92,15 +92,14 @@ class RRTestSettingsResponse(response: TestSettingsApi.TestSettingsResponse)
   }
 }
 
-object RRTestSettingsResponse extends Logging {
-  def apply(response: Either[Throwable, TestSettingsApi.TestSettingsResponse]): RRTestSettingsResponse = {
+object RRTestConfigResponse extends Logging {
+  def apply(response: Either[Throwable, TestConfigApi.TestConfigResponse]): RRTestConfigResponse = {
     response match {
       case Left(ex) =>
         logger.error("RRAdmin internal error", ex)
-        new RRTestSettingsResponse(TestSettingsApi.TestSettingsResponse.internalError)
+        new RRTestConfigResponse(TestConfigApi.TestConfigResponse.internalError)
       case Right(value) =>
-        new RRTestSettingsResponse(value)
-
+        new RRTestConfigResponse(value)
     }
   }
 }

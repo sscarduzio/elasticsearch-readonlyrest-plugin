@@ -18,6 +18,7 @@ package tech.beshu.ror.api
 
 import cats.data.{EitherT, NonEmptyList}
 import cats.implicits._
+import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
@@ -41,6 +42,8 @@ class ConfigApi(rorInstance: RorInstance,
   extends Logging {
 
   import ConfigApi._
+  import ConfigApi.Utils._
+  import ConfigApi.Utils.decoders._
 
   def call(request: ConfigRequest)
           (implicit requestId: RequestId): Task[ConfigResponse] = {
@@ -106,9 +109,18 @@ class ConfigApi(rorInstance: RorInstance,
 
   private def rorConfigFrom(payload: String) = {
     for {
-      json <- EitherT.fromEither[Task](io.circe.parser.parse(payload).left.map(_ => Failure("JSON body malformed")))
-      rorConfig <- settingsValue(json)
+      request <- EitherT.fromEither[Task](decodeUpdateRequest(payload))
+      rorConfig <- testConfig(request.configString)
     } yield rorConfig
+  }
+
+  private def decodeUpdateRequest(payload: String): Either[Failure, UpdateConfigRequest] = {
+    io.circe.parser.decode[UpdateConfigRequest](payload)
+      .left.map(error => Failure(s"JSON body malformed: [${error.getMessage}]"))
+  }
+
+  private def testConfig(configString: String): EitherT[Task, Failure, RawRorConfig] = EitherT {
+    RawRorConfig.fromString(configString).map(_.left.map(error => Failure(error.show)))
   }
 
   private def settingsValue(json: io.circe.Json) = {
@@ -171,4 +183,13 @@ object ConfigApi {
   final case class Success(message: String) extends ConfigResponse
   final case class ConfigNotFound(message: String) extends ConfigResponse
   final case class Failure(message: String) extends ConfigResponse
+
+  private object Utils {
+    final case class UpdateConfigRequest(configString: String)
+
+    object decoders {
+      implicit val updateConfigRequestDecoder: Decoder[UpdateConfigRequest] =
+        Decoder.forProduct1("settings")(UpdateConfigRequest.apply)
+    }
+  }
 }

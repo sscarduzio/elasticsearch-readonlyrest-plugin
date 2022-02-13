@@ -69,7 +69,7 @@ import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
-import tech.beshu.ror.es.actions.rrtestsettings.RRTestSettingsRequest
+import tech.beshu.ror.es.actions.rrtestconfig.RRTestConfigRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.types._
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
@@ -104,7 +104,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
     esContext.actionRequest match {
       case request: RRAdminRequest =>
         regularRequestHandler.handle(new GeneralNonIndexEsRequestContext(request, esContext, clusterService, threadPool))
-      case request: RRTestSettingsRequest =>
+      case request: RRTestConfigRequest =>
         regularRequestHandler.handle(new GeneralNonIndexEsRequestContext(request, esContext, clusterService, threadPool))
       case request: RRAuditEventRequest =>
         regularRequestHandler.handle(new AuditEventESRequestContext(request, esContext, clusterService, threadPool))

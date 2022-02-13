@@ -62,15 +62,15 @@ class RorApiManager(client: RestClient,
     call(createUpdateRorInIndexConfigRequest(config), new JsonResponse(_))
   }
 
-  def currentRorTestSettings: JsonResponse = {
-    call(createGetTestSettingsRequest, new JsonResponse(_))
+  def currentRorTestConfig: JsonResponse = {
+    call(createGetTestConfigRequest, new JsonResponse(_))
   }
 
-  def updateRorTestSettings(config: String, ttl: FiniteDuration = FiniteDuration(30, TimeUnit.MINUTES)): JsonResponse = {
+  def updateRorTestConfig(config: String, ttl: FiniteDuration = FiniteDuration(30, TimeUnit.MINUTES)): JsonResponse = {
     call(createUpdateRorTestConfigRequest(config, ttl), new JsonResponse(_))
   }
 
-  def invalidateRorTestSettings(): JsonResponse = {
+  def invalidateRorTestConfig(): JsonResponse = {
     call(createInvalidateRorTestConfigRequest(), new JsonResponse(_))
   }
 
@@ -120,7 +120,7 @@ class RorApiManager(client: RestClient,
     request
   }
 
-  private def createGetTestSettingsRequest = {
+  private def createGetTestConfigRequest = {
     new HttpGet(client.from("/_readonlyrest/admin/config/test"))
   }
 

@@ -19,10 +19,10 @@ package tech.beshu.ror.es.actions.rradmin
 import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
-import tech.beshu.ror.{Constants, RequestId}
+import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
 import tech.beshu.ror.api.ConfigApi
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.{Constants, RequestId}
 
 import scala.collection.JavaConverters._
 

@@ -14,37 +14,37 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rrtestsettings
+package tech.beshu.ror.es.actions.rrtestconfig
 
 import monix.execution.Scheduler
 import org.elasticsearch.action.ActionListener
 import tech.beshu.ror.RequestId
-import tech.beshu.ror.api.TestSettingsApi.TestSettingsResponse
+import tech.beshu.ror.api.TestConfigApi.TestConfigResponse
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RorInstanceSupplier
 
 import scala.language.postfixOps
 
-class RRTestSettingsActionHandler() {
+class RRTestConfigActionHandler() {
 
   private implicit val rorRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
 
-  def handle(request: RRTestSettingsRequest, listener: ActionListener[RRTestSettingsResponse]): Unit = {
+  def handle(request: RRTestConfigRequest, listener: ActionListener[RRTestConfigResponse]): Unit = {
     getApi match {
       case Some(api) => doPrivileged {
         implicit val requestId: RequestId = request.requestContextId
         api
-          .call(request.getTestSettingsRequest)
+          .call(request.getTestConfigRequest)
           .runAsync { response =>
-            listener.onResponse(RRTestSettingsResponse(response))
+            listener.onResponse(RRTestConfigResponse(response))
           }
       }
       case None =>
-        listener.onResponse(new RRTestSettingsResponse(TestSettingsResponse.notAvailable))
+        listener.onResponse(new RRTestConfigResponse(TestConfigResponse.notAvailable))
     }
   }
 
   private def getApi =
-    RorInstanceSupplier.get().map(_.testSettingsApi)
+    RorInstanceSupplier.get().map(_.testConfigApi)
 }

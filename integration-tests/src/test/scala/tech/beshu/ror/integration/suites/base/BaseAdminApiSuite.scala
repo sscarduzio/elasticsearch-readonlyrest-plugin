@@ -241,10 +241,10 @@ trait BaseAdminApiSuite
     "provide a method for get current test settings" which {
       "return info that test settings are not configured" when {
         "get current test settings" in {
-          val testSettingsResponse = ror1WithIndexConfigAdminActionManager.currentRorTestSettings
-          testSettingsResponse.responseCode should be(200)
-          testSettingsResponse.responseJson("status").str should be("TEST_SETTINGS_NOT_CONFIGURED")
-          testSettingsResponse.responseJson("message").str should be("ROR Test settings are not configured")
+          val testConfigResponse = ror1WithIndexConfigAdminActionManager.currentRorTestConfig
+          testConfigResponse.responseCode should be(200)
+          testConfigResponse.responseJson("status").str should be("TEST_SETTINGS_NOT_CONFIGURED")
+          testConfigResponse.responseJson("message").str should be("ROR Test settings are not configured")
         }
         "get local users" in {
           val localUsersResponse = ror1WithIndexConfigAdminActionManager.currentRorLocalUsers
@@ -257,19 +257,19 @@ trait BaseAdminApiSuite
         "configuration is valid and response without warnings" in {
           def forceReload(rorSettingsResource: String) = {
             val testSettings = getResourceContent(rorSettingsResource)
-            val result = ror1WithIndexConfigAdminActionManager.updateRorTestSettings(testSettings)
+            val result = ror1WithIndexConfigAdminActionManager.updateRorTestConfig(testSettings)
 
             result.responseCode should be(200)
             result.responseJson("status").str should be("OK")
             result.responseJson("message").str should be("updated settings")
 
-            val testSettingsResponse = ror1WithIndexConfigAdminActionManager.currentRorTestSettings
-            testSettingsResponse.responseCode should be(200)
-            testSettingsResponse.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
-            testSettingsResponse.responseJson("settings").str should be(testSettings)
-            testSettingsResponse.responseJson("ttl").str.matches("""^(0|[1-9][0-9]*) seconds$""") should be(true)
-            isIsoDateTime(testSettingsResponse.responseJson("valid_to").str) should be(true)
-            testSettingsResponse.responseJson("warnings").arr should be(empty)
+            val testConfigResponse = ror1WithIndexConfigAdminActionManager.currentRorTestConfig
+            testConfigResponse.responseCode should be(200)
+            testConfigResponse.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
+            testConfigResponse.responseJson("settings").str should be(testSettings)
+            testConfigResponse.responseJson("ttl").str.matches("""^(0|[1-9][0-9]*) seconds$""") should be(true)
+            isIsoDateTime(testConfigResponse.responseJson("valid_to").str) should be(true)
+            testConfigResponse.responseJson("warnings").arr should be(empty)
           }
 
           val dev1Ror1stInstanceSearchManager = new SearchManager(
@@ -327,7 +327,7 @@ trait BaseAdminApiSuite
 
         }
         "return local users" in {
-          val updateResult = ror1WithIndexConfigAdminActionManager.updateRorTestSettings(getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml"))
+          val updateResult = ror1WithIndexConfigAdminActionManager.updateRorTestConfig(getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml"))
           updateResult.responseJson("status").str should be("OK")
           updateResult.responseJson("message").str should be("updated settings")
 
@@ -339,7 +339,7 @@ trait BaseAdminApiSuite
       }
       "return info that configuration was invalidated" in {
         def forceReload(rorSettingsResource: String) = {
-          val result = ror1WithIndexConfigAdminActionManager.updateRorTestSettings(getResourceContent(rorSettingsResource))
+          val result = ror1WithIndexConfigAdminActionManager.updateRorTestConfig(getResourceContent(rorSettingsResource))
 
           result.responseCode should be(200)
           result.responseJson("status").str should be("OK")
@@ -399,18 +399,18 @@ trait BaseAdminApiSuite
         val dev2ror2After2ndReloadResults = dev2Ror2ndInstanceSearchManager.search("test2_index")
         dev2ror2After2ndReloadResults.responseCode should be(200)
 
-        val result = ror1WithIndexConfigAdminActionManager.invalidateRorTestSettings()
+        val result = ror1WithIndexConfigAdminActionManager.invalidateRorTestConfig()
         result.responseCode should be(200)
         result.responseJson("status").str should be("OK")
         result.responseJson("message").str should be("ROR Test settings are invalidated")
 
         Thread.sleep(12000) // wait for old engine shutdown
 
-        val testSettingsResponse = ror1WithIndexConfigAdminActionManager.currentRorTestSettings
-        testSettingsResponse.responseCode should be(200)
-        testSettingsResponse.responseJson("status").str should be("TEST_SETTINGS_INVALIDATED")
-        testSettingsResponse.responseJson("message").str should be("ROR Test settings are invalidated")
-        testSettingsResponse.responseJson("settings").str should be(getResourceContent("/admin_api/readonlyrest_second_update_with_impersonation.yml"))
+        val testConfigResponse = ror1WithIndexConfigAdminActionManager.currentRorTestConfig
+        testConfigResponse.responseCode should be(200)
+        testConfigResponse.responseJson("status").str should be("TEST_SETTINGS_INVALIDATED")
+        testConfigResponse.responseJson("message").str should be("ROR Test settings are invalidated")
+        testConfigResponse.responseJson("settings").str should be(getResourceContent("/admin_api/readonlyrest_second_update_with_impersonation.yml"))
 
         // after test core invalidation, main core should handle these requests
         val dev1ror1AfterTestEngineAutoDestruction = dev1Ror1stInstanceSearchManager.search("test1_index")
@@ -427,7 +427,7 @@ trait BaseAdminApiSuite
       "is going to reload ROR test core" when {
         "configuration is new and correct" in {
           def forceReload(rorSettingsResource: String) = {
-            val result = ror1WithIndexConfigAdminActionManager.updateRorTestSettings(getResourceContent(rorSettingsResource))
+            val result = ror1WithIndexConfigAdminActionManager.updateRorTestConfig(getResourceContent(rorSettingsResource))
 
             result.responseCode should be(200)
             result.responseJson("status").str should be("OK")
@@ -492,7 +492,7 @@ trait BaseAdminApiSuite
       "is going to reload ROR test core with TTL" when {
         "configuration is new and correct" in {
           def forceReload(rorSettingsResource: String, ttl: FiniteDuration) = {
-            val result = ror1WithIndexConfigAdminActionManager.updateRorTestSettings(
+            val result = ror1WithIndexConfigAdminActionManager.updateRorTestConfig(
               getResourceContent(rorSettingsResource),
               ttl
             )
@@ -576,11 +576,11 @@ trait BaseAdminApiSuite
       "return info that config is up to date" when {
         "test config is the same as provided one" in {
           ror1WithIndexConfigAdminActionManager
-            .updateRorTestSettings(getResourceContent("/admin_api/readonlyrest_index.yml"))
+            .updateRorTestConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
             .force()
 
           val result = ror1WithIndexConfigAdminActionManager
-            .updateRorTestSettings(getResourceContent("/admin_api/readonlyrest_index.yml"))
+            .updateRorTestConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
             .force()
 
           result.responseCode should be(200)
@@ -591,7 +591,7 @@ trait BaseAdminApiSuite
       "return info that config is malformed" when {
         "invalid YAML is provided" in {
           val result = ror1WithIndexConfigAdminActionManager
-            .updateRorTestSettings(getResourceContent("/admin_api/readonlyrest_malformed.yml"))
+            .updateRorTestConfig(getResourceContent("/admin_api/readonlyrest_malformed.yml"))
 
           result.responseCode should be(200)
           result.responseJson("status").str should be("FAILED")
@@ -601,7 +601,7 @@ trait BaseAdminApiSuite
       "return info that cannot reload" when {
         "ROR core cannot be reloaded" in {
           val result = ror1WithIndexConfigAdminActionManager
-            .updateRorTestSettings(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))
+            .updateRorTestConfig(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))
 
           result.responseCode should be(200)
           result.responseJson("status").str should be("FAILED")
@@ -612,7 +612,7 @@ trait BaseAdminApiSuite
     "provide a method for test config engine invalidation" which {
       "will destruct the engine on demand" in {
         def forceReload(rorSettingsResource: String) = {
-          val result = ror1WithIndexConfigAdminActionManager.updateRorTestSettings(getResourceContent(rorSettingsResource))
+          val result = ror1WithIndexConfigAdminActionManager.updateRorTestConfig(getResourceContent(rorSettingsResource))
 
           result.responseCode should be(200)
           result.responseJson("status").str should be("OK")
@@ -672,7 +672,7 @@ trait BaseAdminApiSuite
         val dev2ror2After2ndReloadResults = dev2Ror2ndInstanceSearchManager.search("test2_index")
         dev2ror2After2ndReloadResults.responseCode should be(200)
 
-        val result = ror1WithIndexConfigAdminActionManager.invalidateRorTestSettings()
+        val result = ror1WithIndexConfigAdminActionManager.invalidateRorTestConfig()
         result.responseCode should be(200)
         result.responseJson("status").str should be("OK")
         result.responseJson("message").str should be("ROR Test settings are invalidated")
@@ -697,7 +697,7 @@ trait BaseAdminApiSuite
       .force()
 
     rorWithNoIndexConfigAdminActionManager
-      .invalidateRorTestSettings()
+      .invalidateRorTestConfig()
       .force()
 
     val indexManager = new IndexManager(ror2_1Node.rorAdminClient, esVersionUsed)
@@ -708,7 +708,7 @@ trait BaseAdminApiSuite
       .force()
 
     ror1WithIndexConfigAdminActionManager
-      .invalidateRorTestSettings()
+      .invalidateRorTestConfig()
       .force()
   }
 

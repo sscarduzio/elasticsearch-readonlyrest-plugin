@@ -33,11 +33,14 @@ import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError.Ca
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.ScalaOps.value
 
+import java.time.Clock
+
 private[boot] class MainReloadableEngine(boot: ReadonlyRest,
                                          initialEngine: (Engine, RawRorConfig),
                                          reloadInProgress: Semaphore[Task],
                                          rorConfigurationIndex: RorConfigurationIndex)
-                                        (implicit scheduler: Scheduler)
+                                        (implicit scheduler: Scheduler,
+                                         clock: Clock)
   extends BaseReloadableEngine(
     "main", boot, Some(initialEngine), reloadInProgress, rorConfigurationIndex
   ) {
@@ -100,10 +103,6 @@ private[boot] class MainReloadableEngine(boot: ReadonlyRest,
       reloadEngineUsingIndexConfigWithoutPermit()
     }
   }
-
-  override protected def onSuccessLoad(c: BaseReloadableEngine.EngineWithConfig): Unit = ()
-
-  override protected def onStop(): Unit = ()
 
   private [boot] def reloadEngineUsingIndexConfigWithoutPermit()
                                                               (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, RawRorConfig]] = {

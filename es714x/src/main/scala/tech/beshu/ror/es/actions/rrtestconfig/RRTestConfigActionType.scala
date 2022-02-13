@@ -14,22 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rrtestsettings
+package tech.beshu.ror.es.actions.rrtestconfig
 
 import org.elasticsearch.action.ActionType
 import org.elasticsearch.common.io.stream.Writeable
 import tech.beshu.ror.accesscontrol.domain
 
-class RRTestSettingsActionType extends ActionType[RRTestSettingsResponse](
-  RRTestSettingsActionType.name, RRTestSettingsActionType.exceptionReader
+class RRTestConfigActionType extends ActionType[RRTestConfigResponse](
+  RRTestConfigActionType.name, RRTestConfigActionType.exceptionReader
 )
 
-object RRTestSettingsActionType {
-  val name = domain.Action.rorTestSettingsAction.value
-  val instance = new RRTestSettingsActionType()
+object RRTestConfigActionType {
+  val name = domain.Action.rorTestConfigAction.value
+  val instance = new RRTestConfigActionType()
 
-  final case object RRTestSettingsActionCannotBeTransported extends Exception
+  final case object RRTestConfigActionCannotBeTransported extends Exception
 
-  private [rrtestsettings] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRTestSettingsActionCannotBeTransported
+  private [rrtestconfig] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRTestConfigActionCannotBeTransported
 }
 

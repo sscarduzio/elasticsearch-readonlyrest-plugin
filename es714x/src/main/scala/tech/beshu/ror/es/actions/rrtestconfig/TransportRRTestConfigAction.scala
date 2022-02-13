@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rrtestsettings
+package tech.beshu.ror.es.actions.rrtestconfig
 
 import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
@@ -22,11 +22,11 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.transport.TransportService
 
-class TransportRRTestSettingsAction(transportService: TransportService,
-                                    actionFilters: ActionFilters,
-                                    constructorDiscriminator: Unit)
-  extends HandledTransportAction[RRTestSettingsRequest, RRTestSettingsResponse](
-    RRTestSettingsActionType.name, transportService, actionFilters, RRTestSettingsActionType.exceptionReader
+class TransportRRTestConfigAction(transportService: TransportService,
+                                  actionFilters: ActionFilters,
+                                  constructorDiscriminator: Unit)
+  extends HandledTransportAction[RRTestConfigRequest, RRTestConfigResponse](
+    RRTestConfigActionType.name, transportService, actionFilters, RRTestConfigActionType.exceptionReader
   ) {
 
   @Inject
@@ -34,9 +34,9 @@ class TransportRRTestSettingsAction(transportService: TransportService,
            actionFilters: ActionFilters) =
     this(transportService, actionFilters, ())
 
-  private val handler = new RRTestSettingsActionHandler()
+  private val handler = new RRTestConfigActionHandler()
 
-  override def doExecute(task: Task, request: RRTestSettingsRequest, listener: ActionListener[RRTestSettingsResponse]): Unit = {
+  override def doExecute(task: Task, request: RRTestConfigRequest, listener: ActionListener[RRTestConfigResponse]): Unit = {
     handler.handle(request, listener)
   }
 }

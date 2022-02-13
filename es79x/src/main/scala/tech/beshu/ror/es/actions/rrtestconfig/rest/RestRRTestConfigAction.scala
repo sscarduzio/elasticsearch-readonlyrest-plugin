@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rrtestsettings.rest
+package tech.beshu.ror.es.actions.rrtestconfig.rest
 
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
@@ -24,29 +24,29 @@ import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
 import org.elasticsearch.rest.action.RestToXContentListener
 import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestHandler, RestRequest}
 import tech.beshu.ror.Constants
-import tech.beshu.ror.es.actions.rrtestsettings.{RRTestSettingsActionType, RRTestSettingsRequest, RRTestSettingsResponse}
+import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, RRTestConfigRequest, RRTestConfigResponse}
 
 import java.util
 import scala.collection.JavaConverters._
 
 @Inject
-class RestRRTestSettingsAction()
+class RestRRTestConfigAction()
   extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(
-    new Route(GET, Constants.PROVIDE_TEST_SETTINGS_PATH),
-    new Route(POST, Constants.UPDATE_TEST_SETTINGS_PATH),
-    new Route(DELETE, Constants.DELETE_TEST_SETTINGS_PATH),
+    new Route(GET, Constants.PROVIDE_TEST_CONFIG_PATH),
+    new Route(POST, Constants.UPDATE_TEST_CONFIG_PATH),
+    new Route(DELETE, Constants.DELETE_TEST_CONFIG_PATH),
     new Route(GET, Constants.PROVIDE_LOCAL_USERS_PATH)
   ).asJava
 
-  override val getName: String = "ror-test-settings-handler"
+  override val getName: String = "ror-test-config-handler"
 
   override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = new RestChannelConsumer {
-    private val rorTestSettingsRequest = RRTestSettingsRequest.createFrom(request)
+    private val rorTestConfigRequest = RRTestConfigRequest.createFrom(request)
 
     override def accept(channel: RestChannel): Unit = {
-      client.execute(new RRTestSettingsActionType, rorTestSettingsRequest, new RestToXContentListener[RRTestSettingsResponse](channel))
+      client.execute(new RRTestConfigActionType, rorTestConfigRequest, new RestToXContentListener[RRTestConfigResponse](channel))
     }
   }
 }
