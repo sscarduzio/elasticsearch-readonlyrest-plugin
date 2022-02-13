@@ -69,7 +69,7 @@ trait ClusterStateWithInternodeSslSuite
           xPackSupport = false,
           forceNonOssImage = true
         )
-      )
+    )
     }
   )
 
