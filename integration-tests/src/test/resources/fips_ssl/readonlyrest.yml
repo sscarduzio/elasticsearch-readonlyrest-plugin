@@ -1,4 +1,6 @@
 readonlyrest:
+  fips_mode: SSL_ONLY
+
   ssl:
     enable: true
     keystore_file: "elastic-certificates.bcfks"
@@ -6,7 +8,6 @@ readonlyrest:
     truststore_file: "elastic-certificates.bcfks"
     truststore_pass: readonlyrest
     key_pass: readonlyrest
-    fips_compliant: true
 
   ssl_internode:
     enable: true
@@ -15,7 +16,6 @@ readonlyrest:
     key_pass: readonlyrest
     truststore_file: "truststore.bcfks"
     truststore_pass: readonlyrest
-    fips_compliant: true
     certificate_verification: true
 
   access_control_rules:

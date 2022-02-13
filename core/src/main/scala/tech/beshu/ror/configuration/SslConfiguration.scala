@@ -77,7 +77,6 @@ sealed trait SslConfiguration {
   def truststorePassword: Option[SslConfiguration.TruststorePassword]
   def allowedProtocols: Set[SslConfiguration.Protocol]
   def allowedCiphers: Set[SslConfiguration.Cipher]
-  def fipsCompliant: Boolean
 }
 
 object SslConfiguration {
@@ -99,8 +98,7 @@ object SslConfiguration {
                                             truststorePassword: Option[SslConfiguration.TruststorePassword],
                                             allowedProtocols: Set[SslConfiguration.Protocol],
                                             allowedCiphers: Set[SslConfiguration.Cipher],
-                                            clientAuthenticationEnabled: Boolean,
-                                            fipsCompliant: Boolean) extends SslConfiguration
+                                            clientAuthenticationEnabled: Boolean) extends SslConfiguration
 
   final case class InternodeSslConfiguration(keystoreFile: KeystoreFile,
                                              keystorePassword: Option[SslConfiguration.KeystorePassword],
@@ -110,8 +108,7 @@ object SslConfiguration {
                                              truststorePassword: Option[SslConfiguration.TruststorePassword],
                                              allowedProtocols: Set[SslConfiguration.Protocol],
                                              allowedCiphers: Set[SslConfiguration.Cipher],
-                                             certificateVerificationEnabled: Boolean,
-                                             fipsCompliant: Boolean) extends SslConfiguration
+                                             certificateVerificationEnabled: Boolean) extends SslConfiguration
 }
 
 private object SslDecoders {
@@ -133,7 +130,6 @@ private object SslDecoders {
     val clientAuthentication = "client_authentication"
     val verification = "verification"
     val enable = "enable"
-    val fipsCompliant = "fips_compliant"
   }
 
   final case class CommonSslProperties(keystoreFile: KeystoreFile,
@@ -144,8 +140,7 @@ private object SslDecoders {
                                        truststorePassword: Option[SslConfiguration.TruststorePassword],
                                        allowedProtocols: Set[SslConfiguration.Protocol],
                                        allowedCiphers: Set[SslConfiguration.Cipher],
-                                       verification: Option[Boolean],
-                                       fipsCompliant: Option[Boolean])
+                                       verification: Option[Boolean])
 
   private implicit val keystorePasswordDecoder: Decoder[KeystorePassword] = DecoderHelpers.decodeStringLike.map(KeystorePassword.apply)
   private implicit val truststorePasswordDecoder: Decoder[TruststorePassword] = DecoderHelpers.decodeStringLike.map(TruststorePassword.apply)
@@ -178,8 +173,8 @@ private object SslDecoders {
           truststorePassword = sslCommonProperties.truststorePassword,
           allowedProtocols = sslCommonProperties.allowedProtocols,
           allowedCiphers = sslCommonProperties.allowedCiphers,
-          certificateVerificationEnabled = certificateVerification.orElse(sslCommonProperties.verification).getOrElse(false),
-          fipsCompliant = sslCommonProperties.fipsCompliant.getOrElse(false))
+          certificateVerificationEnabled = certificateVerification.orElse(sslCommonProperties.verification).getOrElse(false)
+        )
     }
   }
 
@@ -198,8 +193,7 @@ private object SslDecoders {
           truststorePassword = sslCommonProperties.truststorePassword,
           allowedProtocols = sslCommonProperties.allowedProtocols,
           allowedCiphers = sslCommonProperties.allowedCiphers,
-          clientAuthenticationEnabled = clientAuthentication.orElse(sslCommonProperties.verification).getOrElse(false),
-          fipsCompliant = sslCommonProperties.fipsCompliant.getOrElse(false)
+          clientAuthenticationEnabled = clientAuthentication.orElse(sslCommonProperties.verification).getOrElse(false)
         )
     }
   }
@@ -218,7 +212,6 @@ private object SslDecoders {
       ciphers <- c.downField(consts.allowedCiphers).as[Option[Set[Cipher]]]
       protocols <- c.downField(consts.allowedProtocols).as[Option[Set[Protocol]]]
       verification <- c.downField(consts.verification).as[Option[Boolean]]
-      fipsCompliant <- c.downField(consts.fipsCompliant).as[Option[Boolean]]
     } yield
       CommonSslProperties(
         keystoreFile = keystoreFile,
@@ -229,8 +222,8 @@ private object SslDecoders {
         truststorePassword = truststorePassword,
         allowedProtocols = protocols.getOrElse(Set.empty[Protocol]),
         allowedCiphers = ciphers.getOrElse(Set.empty[Cipher]),
-        verification = verification,
-        fipsCompliant = fipsCompliant)
+        verification = verification
+      )
   }
 
   private def whenEnabled[T <: SslConfiguration](cursor: HCursor)(decoding: => Either[DecodingFailure, T]) = {

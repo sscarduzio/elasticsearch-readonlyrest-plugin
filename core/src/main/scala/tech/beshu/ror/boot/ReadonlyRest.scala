@@ -18,7 +18,6 @@ package tech.beshu.ror.boot
 
 import java.nio.file.Path
 import java.time.Clock
-
 import cats.data.EitherT
 import cats.effect.Resource
 import cats.implicits._
@@ -28,6 +27,8 @@ import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
+import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider
+import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
@@ -40,6 +41,7 @@ import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, Audi
 import tech.beshu.ror.api.{AuthMockApi, ConfigApi}
 import tech.beshu.ror.boot.engines.{Engines, ImpersonatorsReloadableEngine, MainReloadableEngine}
 import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
+import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
 import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration._
@@ -49,6 +51,7 @@ import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, FileConfig
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers._
 
+import java.security.Security
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
@@ -137,9 +140,22 @@ trait ReadonlyRest extends Logging {
                        auditSink: AuditSinkService) = {
     val mocksProvider = new MutableMocksProviderWithCachePerRequest(NoOpMocksProvider)
     for {
+      _ <- EitherT(configureJavaSecurityProvider(esConfig))
       engine <- EitherT(loadRorCore(loadedConfig.value, esConfig.rorIndex.index, auditSink, mocksProvider))
       rorInstance <- createRorInstance(indexConfigManager, esConfigPath, esConfig.rorIndex.index, auditSink, engine, loadedConfig, mocksProvider)
     } yield rorInstance
+  }
+
+  private def configureJavaSecurityProvider(esConfig: EsConfig): Task[Either[StartingFailure, Unit]] = Task {
+    esConfig.fipsConfiguration.fipsMode match {
+      case FipsMode.SslOnly =>
+        Security.insertProviderAt(new BouncyCastleFipsProvider(), 1) // basic encryption provider
+        Security.insertProviderAt(new BouncyCastleJsseProvider("fips:BCFIPS"), 2) // tls
+        Security.removeProvider("SunRsaSign")
+        Security.removeProvider("SunJSSE")
+      case FipsMode.NonFips =>
+    }
+    Right(())
   }
 
   private def createRorInstance(indexConfigManager: IndexConfigManager,
@@ -350,28 +366,45 @@ class RorInstance private(boot: ReadonlyRest,
 object RorInstance {
 
   sealed trait RawConfigReloadError
+
   object RawConfigReloadError {
+
     final case class ReloadingFailed(failure: StartingFailure) extends RawConfigReloadError
+
     final case class ConfigUpToDate(config: RawRorConfig) extends RawConfigReloadError
+
     object RorInstanceStopped extends RawConfigReloadError
+
   }
 
   sealed trait IndexConfigReloadWithUpdateError
+
   object IndexConfigReloadWithUpdateError {
+
     final case class ReloadError(undefined: RawConfigReloadError) extends IndexConfigReloadWithUpdateError
+
     final case class IndexConfigSavingError(underlying: SavingIndexConfigError) extends IndexConfigReloadWithUpdateError
+
   }
 
   sealed trait IndexConfigReloadError
+
   object IndexConfigReloadError {
+
     final case class LoadingConfigError(underlying: ConfigLoaderError[IndexConfigManager.IndexConfigError]) extends IndexConfigReloadError
+
     final case class ReloadError(underlying: RawConfigReloadError) extends IndexConfigReloadError
+
   }
 
   private sealed trait ScheduledReloadError
+
   private object ScheduledReloadError {
+
     case object ReloadingInProgress extends ScheduledReloadError
+
     final case class EngineReloadError(underlying: IndexConfigReloadError) extends ScheduledReloadError
+
   }
 
   def createWithPeriodicIndexCheck(boot: ReadonlyRest,
@@ -428,10 +461,15 @@ object RorInstance {
   }
 
   private sealed trait Mode
+
   private object Mode {
+
     case object WithPeriodicIndexCheck extends Mode
+
     case object NoPeriodicIndexCheck extends Mode
+
   }
+
 }
 
 final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
@@ -439,8 +477,11 @@ final case class StartingFailure(message: String, throwable: Option[Throwable] =
 sealed trait RorMode
 
 object RorMode {
+
   case object Plugin extends RorMode
+
   case object Proxy extends RorMode
+
 }
 
 final class Engine(val accessControl: AccessControl,

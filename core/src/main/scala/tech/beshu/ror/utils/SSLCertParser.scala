@@ -82,20 +82,21 @@ object SSLCertParser extends Logging {
   }
 
   private def loadKeystore(config: SslConfiguration) =
-    Resource.fromAutoCloseable(IO(new FileInputStream(config.keystoreFile.value))).map { keystoreInputStream =>
-      val keystore = if (config.fipsCompliant) {
-        logger.info("ROR SSL: attempting with BCFKS keystore..")
-        java.security.KeyStore.getInstance("BCFKS", "BCFIPS")
-      } else {
-        logger.info("ROR SSL: attempting with JKS keystore..")
-        java.security.KeyStore.getInstance("JKS")
+    Resource.fromAutoCloseable(IO(new FileInputStream(config.keystoreFile.value)))
+      .map { keystoreInputStream =>
+//        val keystore = if (config.fipsCompliant) {
+          logger.info("ROR SSL: attempting with BCFKS keystore..")
+        val keystore = java.security.KeyStore.getInstance("BCFKS", "BCFIPS")
+//        } else {
+//          logger.info("ROR SSL: attempting with JKS keystore..")
+//          java.security.KeyStore.getInstance("JKS")
+//        }
+        keystore.load(
+          keystoreInputStream,
+          config.keystorePassword.map(_.value.toCharArray).orNull
+        )
+        keystore
       }
-      keystore.load(
-        keystoreInputStream,
-        config.keystorePassword.map(_.value.toCharArray).orNull
-      )
-      keystore
-    }
 
   private def prepareAlias(keystore: KeyStore, config: SslConfiguration) = Resource.pure[IO, String] {
     config.keyAlias match {
@@ -144,20 +145,17 @@ object SSLCertParser extends Logging {
   }
 
   private def loadTrustedCerts(config: SslConfiguration)(truststoreInputStream: InputStream) = IO {
-    val truststore = if (config.fipsCompliant) {
+    val truststore =
       java.security.KeyStore.getInstance("BCFKS", "BCFIPS")
-    } else {
-      java.security.KeyStore.getInstance(KeyStore.getDefaultType)
-    }
+
     truststore.load(
       truststoreInputStream,
       config.truststorePassword.map(_.value.toCharArray).orNull
     )
-    val trustManagerFactory = if (config.fipsCompliant) {
+    val trustManagerFactory = {
       logger.info("Using TrustManagerFactory with BouncyCastle provider")
+
       TrustManagerFactory.getInstance("X509", BouncyCastleJsseProvider.PROVIDER_NAME)
-    } else {
-      TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
     }
 
     trustManagerFactory.init(truststore)

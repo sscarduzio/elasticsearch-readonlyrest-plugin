@@ -17,7 +17,6 @@
 
 package tech.beshu.ror.es.ssl;
 
-import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.handler.ssl.NotSslRecordException;
 import io.netty.handler.ssl.SslContext;
@@ -26,7 +25,6 @@ import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider;
 import org.elasticsearch.Version;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
@@ -36,19 +34,17 @@ import org.elasticsearch.common.util.PageCacheRecycler;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.netty4.Netty4Transport;
+import scala.Option;
 import scala.collection.JavaConverters$;
 import tech.beshu.ror.configuration.SslConfiguration;
 import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration;
-import tech.beshu.ror.utils.SSLCertParser;
+import tech.beshu.ror.utils.SSLCertHelper;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.TrustManagerFactory;
-import java.io.FileInputStream;
-import java.io.InputStream;
 import java.net.SocketAddress;
 import java.security.AccessController;
-import java.security.KeyStore;
 import java.security.PrivilegedAction;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -57,6 +53,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
   private final Logger logger = LogManager.getLogger(this.getClass());
   private final InternodeSslConfiguration ssl;
+  private final Boolean fipsCompliant;
 
   public SSLNetty4InternodeServerTransport(Settings settings,
                                            ThreadPool threadPool,
@@ -64,9 +61,11 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
                                            CircuitBreakerService circuitBreakerService,
                                            NamedWriteableRegistry namedWriteableRegistry,
                                            NetworkService networkService,
-                                           InternodeSslConfiguration ssl) {
+                                           InternodeSslConfiguration ssl,
+                                           Boolean fipsCompliant) {
     super(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService);
     this.ssl = ssl;
+    this.fipsCompliant = fipsCompliant;
   }
 
   @Override
@@ -78,9 +77,8 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
       protected void initChannel(Channel ch) throws Exception {
         super.initChannel(ch);
         logger.info(">> internode SSL channel initializing");
-
         TrustManagerFactory usedTrustManager = ssl.certificateVerificationEnabled() ?
-                SSLCertParser.customTrustManagerFrom(ssl).getOrElse(null) : InsecureTrustManagerFactory.INSTANCE;
+                SSLCertHelper.getTrustManagerFactory(ssl, fipsCompliant) : InsecureTrustManagerFactory.INSTANCE;
 
         SslContext sslCtx = SslContextBuilder.forClient()
                 .trustManager(usedTrustManager)
@@ -123,7 +121,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
     public SslChannelInitializer(String name) {
       super(name);
       AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-        SSLCertParser.run(new SSLContextCreatorImpl(), ssl);
+        context = Optional.of(SSLCertHelper.prepareSSLContext(ssl, fipsCompliant));
         return null;
       });
     }
@@ -135,58 +133,6 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
       context.ifPresent(sslCtx -> {
         ch.pipeline().addFirst("ror_internode_ssl_handler", sslCtx.newHandler(ch.alloc()));
       });
-    }
-
-    private class SSLContextCreatorImpl implements SSLCertParser.SSLContextCreator {
-      @Override
-      public void mkSSLContext(InputStream certChain, InputStream privateKey) {
-        try {
-          // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-          SslContextBuilder sslCtxBuilder;
-          if (ssl.fipsCompliant()) {
-            InputStream keyStoreFile = new FileInputStream("/usr/share/elasticsearch/config/keystore.bcfks");
-            KeyStore keystore = java.security.KeyStore.getInstance("BCFKS", "BCFIPS");
-            String keystorePassword = "readonlyrest";
-
-            keystore.load(keyStoreFile, keystorePassword.toCharArray());
-            keyStoreFile.close();
-            KeyManagerFactory kmf = KeyManagerFactory.getInstance("X509", BouncyCastleJsseProvider.PROVIDER_NAME);
-            kmf.init(keystore, keystorePassword.toCharArray());
-            sslCtxBuilder = SslContextBuilder.forServer(kmf);
-            logger.info("ROR Internode using SSL provider: " + BouncyCastleJsseProvider.PROVIDER_NAME);
-          } else {
-            sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null);
-            logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider().name());
-          }
-
-          if(ssl.allowedCiphers().size() > 0) {
-            sslCtxBuilder.ciphers(
-                JavaConverters$.MODULE$
-                    .setAsJavaSet(ssl.allowedCiphers())
-                    .stream()
-                    .map(SslConfiguration.Cipher::value)
-                    .collect(Collectors.toList())
-            );
-          }
-
-          if(ssl.allowedProtocols().size() > 0) {
-            sslCtxBuilder.protocols(
-                JavaConverters$.MODULE$
-                    .setAsJavaSet(ssl.allowedProtocols())
-                    .stream()
-                    .map(SslConfiguration.Protocol::value)
-                    .toArray(String[]::new)
-            );
-          }
-
-          context = Optional.of(sslCtxBuilder.build());
-
-        } catch (Exception e) {
-          context = Optional.empty();
-          logger.error("Failed to load SSL CertChain & private key from Keystore! "
-              + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
-        }
-      }
     }
   }
 
