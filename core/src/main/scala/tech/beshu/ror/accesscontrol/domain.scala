@@ -100,7 +100,7 @@ object domain {
       val currentGroup = Name(Constants.HEADER_GROUP_CURRENT)
       val availableGroups = Name(Constants.HEADER_GROUPS_AVAILABLE)
       val userAgent = Name("User-Agent")
-      val rorAuthorization = Name("ROR-Authorization")
+      val rorAuthorization = Name("X-ROR-Authorization")
       val authorization = Name("Authorization")
       val rorUser = Name(Constants.HEADER_USER_ROR)
       val kibanaAccess = Name(Constants.HEADER_KIBANA_ACCESS)

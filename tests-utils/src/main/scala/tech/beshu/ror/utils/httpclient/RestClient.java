@@ -130,7 +130,7 @@ public class RestClient {
 
   private Header createBasicAuthHeader(String user, String password) {
     Header authenticate = BasicScheme.authenticate(new UsernamePasswordCredentials(user, password), "UTF-8", false);
-    return new BasicHeader("ROR-Authorization", authenticate.getValue());
+    return new BasicHeader("X-ROR-Authorization", authenticate.getValue());
   }
 
   public HttpClient getUnderlyingClient() {
