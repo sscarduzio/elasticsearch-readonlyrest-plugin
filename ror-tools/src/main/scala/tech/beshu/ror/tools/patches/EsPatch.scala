@@ -14,34 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.tools.patches
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'core'
-include 'es60x'
-include 'es61x'
-include 'es62x'
-include 'es63x'
-include 'es65x'
-include 'es66x'
-include 'es67x'
-include 'es70x'
-include 'es72x'
-include 'es73x'
-include 'es74x'
-include 'es77x'
-include 'es78x'
-include 'es79x'
-include 'es710x'
-include 'es711x'
-include 'es714x'
-include 'es716x'
-include 'es80x'
-include 'proxy'
-include 'ror-tools'
-include 'tests-utils'
-include 'integration-tests'
-include 'eshome'
-include 'ror-tools'
+import scala.util.Try
 
+trait EsPatch {
+
+  def assertIsNotPatched(): Try[Unit]
+
+  def assertIsPatched(): Try[Unit]
+
+  def backup(): Try[Unit]
+
+  def restore(): Try[Unit]
+
+  def execute(): Try[Unit]
+}

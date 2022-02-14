@@ -21,6 +21,9 @@ buildscript {
         pluginVersion = rootProject.properties['pluginVersion']
         esVersion = project.properties['esVersion']
         pluginName = rootProject.properties['pluginName']
+        awsAccessKeyId = System.env.aws_access_key_id ?: "unknown"
+        awsSecretAccessKey = System.env.aws_secret_access_key ?: "unknown"
+        s3BucketName = System.env.BUCKET ?: "unknown"
     }
     repositories {
         mavenLocal()
@@ -36,6 +39,13 @@ buildscript {
 repositories {
     mavenCentral()
     mavenLocal()
+    maven {
+        url = "s3://" + s3BucketName + "/build"
+        credentials(AwsCredentials) {
+            accessKey = awsAccessKeyId
+            secretKey = awsSecretAccessKey
+        }
+    }
 }
 
 group = 'org.elasticsearch.plugin'
@@ -54,12 +64,13 @@ compileScala {
 
 dependencies {
     compile project(path: ':core')
+    compile project(path: ':ror-tools', configuration: 'shadow')
     compile             group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: esVersion
     compile             group: 'co.elastic.clients',                name: 'elasticsearch-java',                     version: esVersion
     compile             group: 'com.fasterxml.jackson.core',        name: 'jackson-databind',                       version: '2.12.3'
     compile             group: 'org.apache.logging.log4j',          name: 'log4j-core',                             version: '2.11.1'
     compileClasspath    group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
-    compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: "7.17.0"
+    compileOnly         group: 'org.elasticsearch.plugin',          name: 'transport-netty4',                       version: esVersion
 }
 
 license {
@@ -170,3 +181,43 @@ task ror(type: Zip, dependsOn: [cleanOldData, jarHellCheck, toJar, resolvePlugin
                 from 'build/tmp/' + pluginFullName
             }
 }
+
+apply plugin: 'maven-publish'
+publishing {
+    publications {
+        pub(MavenPublication) {
+            artifact layout.buildDirectory.file("transport-netty4-" + esVersion + ".jar")
+            artifactId "transport-netty4"
+            groupId 'org.elasticsearch.plugin'
+            version esVersion
+        }
+    }
+    repositories {
+        maven {
+            url = "s3://" + s3BucketName + "/build"
+            credentials(AwsCredentials) {
+                accessKey = awsAccessKeyId
+                secretKey = awsSecretAccessKey
+            }
+        }
+    }
+}
+
+task getArtifactsFromEsBinaries {
+    doLast {
+        def f = new File("/tmp/test/es.tar.gz")
+        if (!f.exists()) {
+            new URL('https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-' + esVersion + '-linux-x86_64.tar.gz').withInputStream{ i -> f.withOutputStream{ it << i }}
+        }
+        copy {
+            from tarTree("/tmp/test/es.tar.gz")
+            into "/tmp/test/es"
+        }
+        copy {
+            from "/tmp/test/es/elasticsearch-" + esVersion + "/modules/transport-netty4/transport-netty4-" + esVersion +".jar"
+            into layout.buildDirectory
+        }
+    }
+}
+
+publish.dependsOn getArtifactsFromEsBinaries
