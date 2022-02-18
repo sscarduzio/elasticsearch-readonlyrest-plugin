@@ -61,7 +61,7 @@ public class Constants {
   public static final String HEADER_KIBANA_TEMPLATE_INDEX = "x-ror-kibana_template_index";
   public static final String HEADER_USER_ORIGIN           = "x-ror-origin";
   public static final String HEADER_CORRELATION_ID        = "x-ror-correlation-id";
-  public static final String HEADER_TEST_CONFIG_TTL       = "x-ror-test-settings-ttl";
+  public static final String HEADER_IMPERSONATING         = "x-ror-impersonating";
   public static final String HEADER_AUTH_MOCK_TTL         = "x-ror-auth-mock-ttl";
 
   public static final Set<String> RO_ACTIONS = Sets.newHashSet(

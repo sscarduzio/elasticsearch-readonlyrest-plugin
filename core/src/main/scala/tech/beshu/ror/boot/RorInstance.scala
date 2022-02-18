@@ -103,8 +103,8 @@ class RorInstance private(boot: ReadonlyRest,
                         (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, Unit]] =
     aMainEngine.forceReloadAndSave(config)
 
-  def currentTestSettings()
-                         (implicit requestId: RequestId): Task[TestConfig] = {
+  def currentTestConfig()
+                       (implicit requestId: RequestId): Task[TestConfig] = {
     anImpersonatorsEngine.currentTestConfig()
   }
 

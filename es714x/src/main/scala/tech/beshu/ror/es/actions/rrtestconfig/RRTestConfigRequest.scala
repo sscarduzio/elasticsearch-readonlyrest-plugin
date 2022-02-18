@@ -23,10 +23,10 @@ import tech.beshu.ror.api.TestConfigApi
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.{Constants, RequestId}
 
-class RRTestConfigRequest(testSettingsApiRequest: TestConfigApi.TestConfigRequest,
+class RRTestConfigRequest(testConfigApiRequest: TestConfigApi.TestConfigRequest,
                           esRestRequest: RestRequest) extends ActionRequest {
 
-  val getTestConfigRequest: TestConfigApi.TestConfigRequest = testSettingsApiRequest
+  val getTestConfigRequest: TestConfigApi.TestConfigRequest = testConfigApiRequest
   lazy val requestContextId: RequestId = RequestId(s"${esRestRequest.hashCode()}-${this.hashCode()}")
 
   override def validate(): ActionRequestValidationException = null

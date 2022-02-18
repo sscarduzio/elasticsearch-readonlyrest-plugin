@@ -253,11 +253,11 @@ trait BaseAdminApiSuite
           localUsersResponse.responseJson("message").str should be("ROR Test settings are not configured")
         }
       }
-      "return current configuration" when {
+      "return current test settings" when {
         "configuration is valid and response without warnings" in {
           def forceReload(rorSettingsResource: String) = {
-            val testSettings = getResourceContent(rorSettingsResource)
-            val result = ror1WithIndexConfigAdminActionManager.updateRorTestConfig(testSettings)
+            val testConfig = getResourceContent(rorSettingsResource)
+            val result = ror1WithIndexConfigAdminActionManager.updateRorTestConfig(testConfig)
 
             result.responseCode should be(200)
             result.responseJson("status").str should be("OK")
@@ -266,27 +266,27 @@ trait BaseAdminApiSuite
             val testConfigResponse = ror1WithIndexConfigAdminActionManager.currentRorTestConfig
             testConfigResponse.responseCode should be(200)
             testConfigResponse.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
-            testConfigResponse.responseJson("settings").str should be(testSettings)
-            testConfigResponse.responseJson("ttl").str.matches("""^(0|[1-9][0-9]*) seconds$""") should be(true)
+            testConfigResponse.responseJson("settings").str should be(testConfig)
+            testConfigResponse.responseJson("ttl").str.matches("""^(0|[1-9][0-9]*) minutes""") should be(true)
             isIsoDateTime(testConfigResponse.responseJson("valid_to").str) should be(true)
             testConfigResponse.responseJson("warnings").arr should be(empty)
           }
 
           val dev1Ror1stInstanceSearchManager = new SearchManager(
             clients.head.basicAuthClient("admin1", "pass"),
-            Map("IMPERSONATE_AS" -> "dev1")
+            Map("x-ror-impersonating" -> "dev1")
           )
           val dev2Ror1stInstanceSearchManager = new SearchManager(
             clients.head.basicAuthClient("admin1", "pass"),
-            Map("IMPERSONATE_AS" -> "dev2")
+            Map("x-ror-impersonating" -> "dev2")
           )
           val dev1Ror2ndInstanceSearchManager = new SearchManager(
             clients.head.basicAuthClient("admin1", "pass"),
-            Map("IMPERSONATE_AS" -> "dev1")
+            Map("x-ror-impersonating" -> "dev1")
           )
           val dev2Ror2ndInstanceSearchManager = new SearchManager(
             clients.head.basicAuthClient("admin1", "pass"),
-            Map("IMPERSONATE_AS" -> "dev2")
+            Map("x-ror-impersonating" -> "dev2")
           )
 
           // before first reload no user can access indices
@@ -348,19 +348,19 @@ trait BaseAdminApiSuite
 
         val dev1Ror1stInstanceSearchManager = new SearchManager(
           clients.head.basicAuthClient("admin1", "pass"),
-          Map("IMPERSONATE_AS" -> "dev1")
+          Map("x-ror-impersonating" -> "dev1")
         )
         val dev2Ror1stInstanceSearchManager = new SearchManager(
           clients.head.basicAuthClient("admin1", "pass"),
-          Map("IMPERSONATE_AS" -> "dev2")
+          Map("x-ror-impersonating" -> "dev2")
         )
         val dev1Ror2ndInstanceSearchManager = new SearchManager(
           clients.head.basicAuthClient("admin1", "pass"),
-          Map("IMPERSONATE_AS" -> "dev1")
+          Map("x-ror-impersonating" -> "dev1")
         )
         val dev2Ror2ndInstanceSearchManager = new SearchManager(
           clients.head.basicAuthClient("admin1", "pass"),
-          Map("IMPERSONATE_AS" -> "dev2")
+          Map("x-ror-impersonating" -> "dev2")
         )
 
         // before first reload no user can access indices
@@ -436,19 +436,19 @@ trait BaseAdminApiSuite
 
           val dev1Ror1stInstanceSearchManager = new SearchManager(
             clients.head.basicAuthClient("admin1", "pass"),
-            Map("IMPERSONATE_AS" -> "dev1")
+            Map("x-ror-impersonating" -> "dev1")
           )
           val dev2Ror1stInstanceSearchManager = new SearchManager(
             clients.head.basicAuthClient("admin1", "pass"),
-            Map("IMPERSONATE_AS" -> "dev2")
+            Map("x-ror-impersonating" -> "dev2")
           )
           val dev1Ror2ndInstanceSearchManager = new SearchManager(
             clients.head.basicAuthClient("admin1", "pass"),
-            Map("IMPERSONATE_AS" -> "dev1")
+            Map("x-ror-impersonating" -> "dev1")
           )
           val dev2Ror2ndInstanceSearchManager = new SearchManager(
             clients.head.basicAuthClient("admin1", "pass"),
-            Map("IMPERSONATE_AS" -> "dev2")
+            Map("x-ror-impersonating" -> "dev2")
           )
 
           // before first reload no user can access indices
@@ -504,19 +504,19 @@ trait BaseAdminApiSuite
 
           val dev1Ror1stInstanceSearchManager = new SearchManager(
             clients.head.basicAuthClient("admin1", "pass"),
-            Map("IMPERSONATE_AS" -> "dev1")
+            Map("x-ror-impersonating" -> "dev1")
           )
           val dev2Ror1stInstanceSearchManager = new SearchManager(
             clients.head.basicAuthClient("admin1", "pass"),
-            Map("IMPERSONATE_AS" -> "dev2")
+            Map("x-ror-impersonating" -> "dev2")
           )
           val dev1Ror2ndInstanceSearchManager = new SearchManager(
             clients.head.basicAuthClient("admin1", "pass"),
-            Map("IMPERSONATE_AS" -> "dev1")
+            Map("x-ror-impersonating" -> "dev1")
           )
           val dev2Ror2ndInstanceSearchManager = new SearchManager(
             clients.head.basicAuthClient("admin1", "pass"),
-            Map("IMPERSONATE_AS" -> "dev2")
+            Map("x-ror-impersonating" -> "dev2")
           )
 
           // before first reload no user can access indices
@@ -621,19 +621,19 @@ trait BaseAdminApiSuite
 
         val dev1Ror1stInstanceSearchManager = new SearchManager(
           clients.head.basicAuthClient("admin1", "pass"),
-          Map("IMPERSONATE_AS" -> "dev1")
+          Map("x-ror-impersonating" -> "dev1")
         )
         val dev2Ror1stInstanceSearchManager = new SearchManager(
           clients.head.basicAuthClient("admin1", "pass"),
-          Map("IMPERSONATE_AS" -> "dev2")
+          Map("x-ror-impersonating" -> "dev2")
         )
         val dev1Ror2ndInstanceSearchManager = new SearchManager(
           clients.head.basicAuthClient("admin1", "pass"),
-          Map("IMPERSONATE_AS" -> "dev1")
+          Map("x-ror-impersonating" -> "dev1")
         )
         val dev2Ror2ndInstanceSearchManager = new SearchManager(
           clients.head.basicAuthClient("admin1", "pass"),
-          Map("IMPERSONATE_AS" -> "dev2")
+          Map("x-ror-impersonating" -> "dev2")
         )
 
         // before first reload no user can access indices

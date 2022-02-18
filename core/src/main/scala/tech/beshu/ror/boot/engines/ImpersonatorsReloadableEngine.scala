@@ -20,13 +20,12 @@ import cats.implicits._
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.execution.atomic.AtomicAny
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.RorInstance.{RawConfigReloadError, TestConfig}
-import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineState, EngineWithConfig}
+import tech.beshu.ror.boot.engines.BaseReloadableEngine.EngineState
 import tech.beshu.ror.boot.engines.ConfigHash._
 import tech.beshu.ror.configuration.RawRorConfig
 
@@ -46,15 +45,15 @@ private[boot] class ImpersonatorsReloadableEngine(boot: ReadonlyRest,
                        (implicit requestId: RequestId): Task[TestConfig] = {
     Task.delay {
       currentEngineState match {
-        case EngineState.NotStartedYet =>
+        case EngineState.NotStartedYet(None) =>
           TestConfig.NotSet
-        case EngineState.Working(engineWithConfig, _) =>
-          val expiration = engineWithConfig.expirationConfig.getOrElse(throw new IllegalStateException("Impersonators engine should have ttl defined"))
-          TestConfig.Present(engineWithConfig.config, expiration.ttl, expiration.validTo)
-        case EngineState.Stopped(None) =>
-          TestConfig.NotSet
-        case EngineState.Stopped(Some(recentConfig)) =>
+        case EngineState.NotStartedYet(Some(recentConfig)) =>
           TestConfig.Invalidated(recentConfig)
+        case EngineState.Working(engineWithConfig, _) =>
+          val expiration = engineWithConfig.expirationConfig.getOrElse(throw new IllegalStateException("Impersonators engine should have expiration config defined"))
+          TestConfig.Present(engineWithConfig.config, expiration.ttl, expiration.validTo)
+        case EngineState.Stopped =>
+          TestConfig.NotSet
       }
     }
   }

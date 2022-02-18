@@ -123,24 +123,6 @@ class ConfigApi(rorInstance: RorInstance,
     RawRorConfig.fromString(configString).map(_.left.map(error => Failure(error.show)))
   }
 
-  private def settingsValue(json: io.circe.Json) = {
-    def liftFailure(failureMessage: String) = EitherT.leftT[Task, RawRorConfig](Failure(failureMessage))
-
-    json \\ "settings" match {
-      case Nil =>
-        liftFailure("Malformed settings payload - no settings key")
-      case configJsonValue :: Nil =>
-        configJsonValue.asString match {
-          case Some(configString) =>
-            EitherT(RawRorConfig.fromString(configString).map(_.left.map(error => Failure(error.show))))
-          case None =>
-            liftFailure("Malformed settings payload - settings key value is not string")
-        }
-      case _ =>
-        liftFailure("Malformed settings payload - only one settings value allowed")
-    }
-  }
-
   private def forceReloadAndSaveNewConfig(config: RawRorConfig)
                                          (implicit requestId: RequestId) = {
     EitherT(rorInstance.forceReloadAndSave(config))

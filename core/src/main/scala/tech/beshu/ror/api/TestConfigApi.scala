@@ -54,9 +54,9 @@ class TestConfigApi(rorInstance: RorInstance)
   private def updateTestConfig(body: String)
                               (implicit requestId: RequestId): Task[TestConfigResponse] = {
     val result = for {
-      updateRequest <- EitherT.fromEither[Task](decodeUpdateRequest(body))
-      rorConfig <- testConfig(updateRequest.configString)
-      _ <- forceReloadTestSettings(rorConfig, updateRequest.ttl)
+      updateRequest <- EitherT.fromEither[Task](decodeUpdateConfigRequest(body))
+      rorConfig <- rorTestConfig(updateRequest.configString)
+      _ <- forceReloadTestConfig(rorConfig, updateRequest.ttl)
     } yield ()
     result.value.map {
       case Right(_) => TestConfigResponse.UpdateTestConfig.SuccessResponse("updated settings")
@@ -64,12 +64,12 @@ class TestConfigApi(rorInstance: RorInstance)
     }
   }
 
-  private def decodeUpdateRequest(payload: String): Either[UpdateTestConfig.FailedResponse, UpdateTestConfigRequest] = {
+  private def decodeUpdateConfigRequest(payload: String): Either[UpdateTestConfig.FailedResponse, UpdateTestConfigRequest] = {
     io.circe.parser.decode[UpdateTestConfigRequest](payload)
       .left.map(error => TestConfigResponse.UpdateTestConfig.FailedResponse(s"JSON body malformed: [${error.getMessage}]"))
   }
 
-  private def testConfig(configString: String): EitherT[Task, UpdateTestConfig.FailedResponse, RawRorConfig] = EitherT {
+  private def rorTestConfig(configString: String): EitherT[Task, UpdateTestConfig.FailedResponse, RawRorConfig] = EitherT {
     RawRorConfig.fromString(configString).map(_.left.map(error => TestConfigResponse.UpdateTestConfig.FailedResponse(error.show)))
   }
 
@@ -85,7 +85,7 @@ class TestConfigApi(rorInstance: RorInstance)
   private def loadCurrentTestConfig()
                                      (implicit requestId: RequestId): Task[TestConfigResponse] = {
     rorInstance
-      .currentTestSettings()
+      .currentTestConfig()
       .map {
         case TestConfig.NotSet =>
           TestConfigResponse.ProvideTestConfig.TestSettingsNotConfigured("ROR Test settings are not configured")
@@ -104,7 +104,7 @@ class TestConfigApi(rorInstance: RorInstance)
   private def provideLocalUsers()
                                (implicit requestId: RequestId): Task[TestConfigResponse] = {
     rorInstance
-      .currentTestSettings()
+      .currentTestConfig()
       .map {
         case TestConfig.NotSet =>
           TestConfigResponse.ProvideLocalUsers.TestSettingsNotConfigured("ROR Test settings are not configured")
@@ -115,7 +115,7 @@ class TestConfigApi(rorInstance: RorInstance)
       }
   }
 
-  private def forceReloadTestSettings(config: RawRorConfig,
+  private def forceReloadTestConfig(config: RawRorConfig,
                                       ttl: FiniteDuration)
                                      (implicit requestId: RequestId) = {
     EitherT(
@@ -185,31 +185,18 @@ object TestConfigApi {
       final case class SuccessResponse(users: List[String], unknownUsers: Boolean) extends ProvideLocalUsers
       final case class TestSettingsNotConfigured(message: String) extends ProvideLocalUsers
     }
-
-    final case class Failure(message: String) extends TestConfigResponse
-    def notAvailable: TestConfigResponse = Failure("Service not available")
-    def internalError: TestConfigResponse = Failure("Internal error")
   }
 
   implicit class StatusFromTestConfigResponse(val response: TestConfigResponse) extends AnyVal {
     def status: String = response match {
-      case config: ProvideTestConfig => config match {
-        case _:ProvideTestConfig.CurrentTestSettings => "TEST_SETTINGS_PRESENT"
-        case _:ProvideTestConfig.TestSettingsNotConfigured => "TEST_SETTINGS_NOT_CONFIGURED"
-        case _:ProvideTestConfig.TestSettingsInvalidated => "TEST_SETTINGS_INVALIDATED"
-      }
-      case config: UpdateTestConfig => config match {
-        case _:UpdateTestConfig.SuccessResponse => "OK"
-        case _:UpdateTestConfig.FailedResponse => "FAILED"
-      }
-      case config: InvalidateTestConfig => config match {
-        case _:InvalidateTestConfig.SuccessResponse => "OK"
-      }
-      case users: ProvideLocalUsers => users match {
-        case _:ProvideLocalUsers.SuccessResponse => "OK"
-        case _:ProvideLocalUsers.TestSettingsNotConfigured => "TEST_SETTINGS_NOT_CONFIGURED"
-      }
-      case TestConfigResponse.Failure(message) => "TODO"
+      case _: ProvideTestConfig.CurrentTestSettings => "TEST_SETTINGS_PRESENT"
+      case _: ProvideTestConfig.TestSettingsNotConfigured => "TEST_SETTINGS_NOT_CONFIGURED"
+      case _: ProvideTestConfig.TestSettingsInvalidated => "TEST_SETTINGS_INVALIDATED"
+      case _: UpdateTestConfig.SuccessResponse => "OK"
+      case _: UpdateTestConfig.FailedResponse => "FAILED"
+      case _: InvalidateTestConfig.SuccessResponse => "OK"
+      case _: ProvideLocalUsers.SuccessResponse => "OK"
+      case _: ProvideLocalUsers.TestSettingsNotConfigured => "TEST_SETTINGS_NOT_CONFIGURED"
     }
   }
 

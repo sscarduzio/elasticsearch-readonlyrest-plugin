@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.actions.rrtestconfig
 
 import monix.execution.Scheduler
+import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionListener
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.api.TestConfigApi.TestConfigResponse
@@ -26,7 +27,7 @@ import tech.beshu.ror.utils.RorInstanceSupplier
 
 import scala.language.postfixOps
 
-class RRTestConfigActionHandler() {
+class RRTestConfigActionHandler() extends Logging {
 
   private implicit val rorRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
 
@@ -36,13 +37,22 @@ class RRTestConfigActionHandler() {
         implicit val requestId: RequestId = request.requestContextId
         api
           .call(request.getTestConfigRequest)
-          .runAsync { response =>
-            listener.onResponse(RRTestConfigResponse(response))
+          .runAsync { result =>
+            handle(result, listener)
           }
       }
       case None =>
-        listener.onResponse(new RRTestConfigResponse(TestConfigResponse.notAvailable))
+        listener.onFailure(new Exception("TestConfig API is not available"))
     }
+  }
+
+  private def handle(result: Either[Throwable, TestConfigResponse],
+                     listener: ActionListener[RRTestConfigResponse]): Unit = result match {
+    case Right(response) =>
+      listener.onResponse(new RRTestConfigResponse(response))
+    case Left(ex) =>
+      logger.error("RRTestConfig internal error", ex)
+      listener.onFailure(new Exception(ex))
   }
 
   private def getApi =

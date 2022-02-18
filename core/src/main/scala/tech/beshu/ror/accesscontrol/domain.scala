@@ -103,7 +103,7 @@ object domain {
       val authorization = Name("Authorization")
       val rorUser = Name(Constants.HEADER_USER_ROR)
       val kibanaAccess = Name(Constants.HEADER_KIBANA_ACCESS)
-      val impersonateAs = Name("impersonate_as")
+      val impersonateAs = Name(Constants.HEADER_IMPERSONATING)
       val correlationId = Name(Constants.HEADER_CORRELATION_ID)
 
       implicit val eqName: Eq[Name] = Eq.by(_.value.value.toLowerCase(Locale.US))

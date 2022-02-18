@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.actions.rrtestconfig
 
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
@@ -26,19 +25,26 @@ import tech.beshu.ror.api.TestConfigApi.TestConfigResponse._
 import java.time.ZoneOffset
 
 class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
-  extends ActionResponse with ToXContentObject with Logging {
+  extends ActionResponse with ToXContentObject{
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
     response match {
-      case res: ProvideTestConfig.CurrentTestSettings => currentSettingsJson(builder, res)
-      case ProvideTestConfig.TestSettingsNotConfigured(message) => addResponseJson(builder, response.status, message)
-      case res: ProvideTestConfig.TestSettingsInvalidated => invalidatedSettingsJson(builder, res)
-      case UpdateTestConfig.SuccessResponse(message) => addResponseJson(builder, response.status, message)
-      case UpdateTestConfig.FailedResponse(message) => addResponseJson(builder, response.status, message)
-      case InvalidateTestConfig.SuccessResponse(message) => addResponseJson(builder, response.status, message)
-      case res: ProvideLocalUsers.SuccessResponse => provideLocalUsersJson(builder, res)
-      case ProvideLocalUsers.TestSettingsNotConfigured(message) => addResponseJson(builder, response.status, message)
-      case Failure(message) => addResponseJson(builder, response.status, message)
+      case provideConfigResponse: ProvideTestConfig => provideConfigResponse match {
+        case res: ProvideTestConfig.CurrentTestSettings => currentConfigJson(builder, res)
+        case ProvideTestConfig.TestSettingsNotConfigured(message) => addResponseJson(builder, response.status, message)
+        case res: ProvideTestConfig.TestSettingsInvalidated => invalidatedConfigJson(builder, res)
+      }
+      case updateConfigResponse: UpdateTestConfig => updateConfigResponse match {
+        case UpdateTestConfig.SuccessResponse(message) => addResponseJson(builder, response.status, message)
+        case UpdateTestConfig.FailedResponse(message) => addResponseJson(builder, response.status, message)
+      }
+      case invalidateConfigResponse: InvalidateTestConfig => invalidateConfigResponse match {
+        case InvalidateTestConfig.SuccessResponse(message) => addResponseJson(builder, response.status, message)
+      }
+      case provideUsersResponse: ProvideLocalUsers => provideUsersResponse match {
+        case res: ProvideLocalUsers.SuccessResponse => provideLocalUsersJson(builder, res)
+        case ProvideLocalUsers.TestSettingsNotConfigured(message) => addResponseJson(builder, response.status, message)
+      }
     }
     builder
   }
@@ -52,7 +58,7 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
     builder.endObject
   }
 
-  private def currentSettingsJson(builder: XContentBuilder, response: ProvideTestConfig.CurrentTestSettings): Unit = {
+  private def currentConfigJson(builder: XContentBuilder, response: ProvideTestConfig.CurrentTestSettings): Unit = {
     builder.startObject
     builder.field("status", response.status)
     builder.field("ttl", response.ttl.toString())
@@ -71,7 +77,7 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
     builder.endObject
   }
 
-  private def invalidatedSettingsJson(builder: XContentBuilder, response: ProvideTestConfig.TestSettingsInvalidated): Unit = {
+  private def invalidatedConfigJson(builder: XContentBuilder, response: ProvideTestConfig.TestSettingsInvalidated): Unit = {
     builder.startObject
     builder.field("status", response.status)
     builder.field("message", response.message)
@@ -91,16 +97,3 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
     builder.endObject
   }
 }
-
-object RRTestConfigResponse extends Logging {
-  def apply(response: Either[Throwable, TestConfigApi.TestConfigResponse]): RRTestConfigResponse = {
-    response match {
-      case Left(ex) =>
-        logger.error("RRAdmin internal error", ex)
-        new RRTestConfigResponse(TestConfigApi.TestConfigResponse.internalError)
-      case Right(value) =>
-        new RRTestConfigResponse(value)
-    }
-  }
-}
-
