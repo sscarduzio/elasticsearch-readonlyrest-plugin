@@ -28,7 +28,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.api.{AuthMockApi, ConfigApi, TestConfigApi}
-import tech.beshu.ror.boot.engines.{Engines, ImpersonatorsReloadableEngine, MainReloadableEngine}
+import tech.beshu.ror.boot.engines.{Engines, TestConfigBasedReloadableEngine, MainConfigBasedReloadableEngine}
 import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
@@ -64,13 +64,13 @@ class RorInstance private(boot: ReadonlyRest,
     case Mode.NoPeriodicIndexCheck => Cancelable.empty
   }
 
-  private val aMainEngine = new MainReloadableEngine(
+  private val aMainConfigEngine = new MainConfigBasedReloadableEngine(
     boot,
     initialEngine,
     reloadInProgress,
     rorConfigurationIndex,
   )
-  private val anImpersonatorsEngine = new ImpersonatorsReloadableEngine(
+  private val anTestConfigEngine = new TestConfigBasedReloadableEngine(
     boot,
     reloadInProgress,
     rorConfigurationIndex
@@ -87,7 +87,7 @@ class RorInstance private(boot: ReadonlyRest,
 
   private val testConfigRestApi = new TestConfigApi(this)
 
-  def engines: Option[Engines] = aMainEngine.engine.map(Engines(_, anImpersonatorsEngine.engine))
+  def engines: Option[Engines] = aMainConfigEngine.engine.map(Engines(_, anTestConfigEngine.engine))
 
   def configApi: ConfigApi = configRestApi
 
@@ -97,33 +97,33 @@ class RorInstance private(boot: ReadonlyRest,
 
   def forceReloadFromIndex()
                           (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, Unit]] =
-    aMainEngine.forceReloadFromIndex()
+    aMainConfigEngine.forceReloadFromIndex()
 
   def forceReloadAndSave(config: RawRorConfig)
                         (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, Unit]] =
-    aMainEngine.forceReloadAndSave(config)
+    aMainConfigEngine.forceReloadAndSave(config)
 
   def currentTestConfig()
                        (implicit requestId: RequestId): Task[TestConfig] = {
-    anImpersonatorsEngine.currentTestConfig()
+    anTestConfigEngine.currentTestConfig()
   }
 
-  def forceReloadImpersonatorsEngine(config: RawRorConfig,
-                                     ttl: FiniteDuration)
-                                    (implicit requestId: RequestId): Task[Either[RawConfigReloadError, Unit]] = {
-    anImpersonatorsEngine.forceReloadImpersonatorsEngine(config, ttl)
+  def forceReloadTestConfigEngine(config: RawRorConfig,
+                                  ttl: FiniteDuration)
+                                 (implicit requestId: RequestId): Task[Either[RawConfigReloadError, Unit]] = {
+    anTestConfigEngine.forceReloadTestConfigEngine(config, ttl)
   }
 
-  def invalidateImpersonationEngine()
-                                   (implicit requestId: RequestId): Task[Unit] = {
-    anImpersonatorsEngine.invalidateImpersonationEngine()
+  def invalidateTestConfigEngine()
+                                (implicit requestId: RequestId): Task[Unit] = {
+    anTestConfigEngine.invalidateTestConfigEngine()
   }
 
   def stop(): Task[Unit] = {
     implicit val requestId: RequestId = RequestId("ES sigterm")
     for {
-      _ <- anImpersonatorsEngine.stop()
-      _ <- aMainEngine.stop()
+      _ <- anTestConfigEngine.stop()
+      _ <- aMainConfigEngine.stop()
     } yield ()
   }
 
@@ -167,7 +167,7 @@ class RorInstance private(boot: ReadonlyRest,
     }
     criticalSection.use {
       case true =>
-        aMainEngine
+        aMainConfigEngine
           .reloadEngineUsingIndexConfigWithoutPermit()
           .map(_.leftMap(ScheduledReloadError.EngineReloadError.apply))
       case false =>

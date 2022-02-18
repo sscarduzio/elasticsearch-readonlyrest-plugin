@@ -25,7 +25,7 @@ import tech.beshu.ror.api.TestConfigApi.TestConfigResponse._
 import java.time.ZoneOffset
 
 class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
-  extends ActionResponse with ToXContentObject{
+  extends ActionResponse with ToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
     response match {

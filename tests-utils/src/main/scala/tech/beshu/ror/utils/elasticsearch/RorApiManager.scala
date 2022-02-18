@@ -70,6 +70,10 @@ class RorApiManager(client: RestClient,
     call(createUpdateRorTestConfigRequest(config, ttl), new JsonResponse(_))
   }
 
+  def updateRorTestConfigRaw(rawRequestBody: String): JsonResponse = {
+    call(createUpdateRorTestConfigRequest(rawRequestBody), new JsonResponse(_))
+  }
+
   def invalidateRorTestConfig(): JsonResponse = {
     call(createInvalidateRorTestConfigRequest(), new JsonResponse(_))
   }
@@ -130,6 +134,14 @@ class RorApiManager(client: RestClient,
 
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(rorTestConfig(config, ttl)))
+    request
+  }
+
+  private def createUpdateRorTestConfigRequest(rawRequestJson: String) = {
+    val request = new HttpPost(client.from("/_readonlyrest/admin/config/test"))
+
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(rawRequestJson))
     request
   }
 

@@ -32,6 +32,7 @@ import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexCon
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
+import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 
 import scala.language.postfixOps
 
@@ -116,7 +117,7 @@ class ConfigApi(rorInstance: RorInstance,
 
   private def decodeUpdateRequest(payload: String): Either[Failure, UpdateConfigRequest] = {
     io.circe.parser.decode[UpdateConfigRequest](payload)
-      .left.map(error => Failure(s"JSON body malformed: [${error.getMessage}]"))
+      .left.map(error => Failure(s"JSON body malformed: [${error.getPrettyMessage}]"))
   }
 
   private def testConfig(configString: String): EitherT[Task, Failure, RawRorConfig] = EitherT {

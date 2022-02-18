@@ -17,6 +17,7 @@
 package tech.beshu.ror.integration.suites.base
 
 import cats.data.NonEmptyList
+import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
@@ -586,6 +587,40 @@ trait BaseAdminApiSuite
           result.responseCode should be(200)
           result.responseJson("status").str should be("FAILED")
           result.responseJson("message").str should be("Current settings are already loaded")
+        }
+      }
+      "return info that request is malformed" when {
+        "ttl missing" in {
+          val config = getResourceContent("/admin_api/readonlyrest_index.yml")
+          val requestBody = s"""{"settings": "${escapeJava(config)}"}"""
+          val result = ror1WithIndexConfigAdminActionManager
+            .updateRorTestConfigRaw(rawRequestBody = requestBody)
+            .force()
+
+          result.responseCode should be(400)
+          result.responseJson("status").str should be("FAILED")
+          result.responseJson("message").str should be("JSON body malformed: [Could not parse at .ttl: [Attempt to decode value on failed cursor: DownField(ttl)]]")
+        }
+        "settings key missing" in {
+          val requestBody = s"""{"ttl": "30 m"}"""
+          val result = ror1WithIndexConfigAdminActionManager
+            .updateRorTestConfigRaw(rawRequestBody = requestBody)
+            .force()
+
+          result.responseCode should be(400)
+          result.responseJson("status").str should be("FAILED")
+          result.responseJson("message").str should be("JSON body malformed: [Could not parse at .settings: [Attempt to decode value on failed cursor: DownField(settings)]]")
+        }
+        "ttl value in invalid format" in {
+          val config = getResourceContent("/admin_api/readonlyrest_index.yml")
+          val requestBody = s"""{"settings": "${escapeJava(config)}", "ttl": "30 mins"}"""
+          val result = ror1WithIndexConfigAdminActionManager
+            .updateRorTestConfigRaw(rawRequestBody = requestBody)
+            .force()
+
+          result.responseCode should be(400)
+          result.responseJson("status").str should be("FAILED")
+          result.responseJson("message").str should be("JSON body malformed: [Could not parse at .ttl: [Cannot parse '30 mins' as duration.: DownField(ttl)]]")
         }
       }
       "return info that config is malformed" when {

@@ -35,12 +35,12 @@ import tech.beshu.ror.utils.ScalaOps.value
 
 import java.time.Clock
 
-private[boot] class MainReloadableEngine(boot: ReadonlyRest,
-                                         initialEngine: (Engine, RawRorConfig),
-                                         reloadInProgress: Semaphore[Task],
-                                         rorConfigurationIndex: RorConfigurationIndex)
-                                        (implicit scheduler: Scheduler,
-                                         clock: Clock)
+private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
+                                                    initialEngine: (Engine, RawRorConfig),
+                                                    reloadInProgress: Semaphore[Task],
+                                                    rorConfigurationIndex: RorConfigurationIndex)
+                                                   (implicit scheduler: Scheduler,
+                                                    clock: Clock)
   extends BaseReloadableEngine(
     "main", boot, Some(initialEngine), reloadInProgress, rorConfigurationIndex
   ) {
@@ -104,8 +104,8 @@ private[boot] class MainReloadableEngine(boot: ReadonlyRest,
     }
   }
 
-  private [boot] def reloadEngineUsingIndexConfigWithoutPermit()
-                                                              (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, RawRorConfig]] = {
+  private[boot] def reloadEngineUsingIndexConfigWithoutPermit()
+                                                             (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, RawRorConfig]] = {
     val result = for {
       newConfig <- EitherT(loadRorConfigFromIndex())
       _ <- reloadEngine(newConfig)

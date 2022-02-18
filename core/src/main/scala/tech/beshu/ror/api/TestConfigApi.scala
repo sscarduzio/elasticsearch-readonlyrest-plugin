@@ -27,6 +27,7 @@ import tech.beshu.ror.api.TestConfigApi.{TestConfigRequest, TestConfigResponse}
 import tech.beshu.ror.boot.RorInstance.{RawConfigReloadError, TestConfig}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 
 import java.time.{Clock, Instant}
 import scala.concurrent.duration.{FiniteDuration, _}
@@ -66,7 +67,7 @@ class TestConfigApi(rorInstance: RorInstance)
 
   private def decodeUpdateConfigRequest(payload: String): Either[UpdateTestConfig.FailedResponse, UpdateTestConfigRequest] = {
     io.circe.parser.decode[UpdateTestConfigRequest](payload)
-      .left.map(error => TestConfigResponse.UpdateTestConfig.FailedResponse(s"JSON body malformed: [${error.getMessage}]"))
+      .left.map(error => TestConfigResponse.UpdateTestConfig.FailedResponse(s"JSON body malformed: [${error.getPrettyMessage}]"))
   }
 
   private def rorTestConfig(configString: String): EitherT[Task, UpdateTestConfig.FailedResponse, RawRorConfig] = EitherT {
@@ -74,16 +75,16 @@ class TestConfigApi(rorInstance: RorInstance)
   }
 
   private def invalidateTestConfig()
-                                    (implicit requestId: RequestId): Task[TestConfigResponse] = {
+                                  (implicit requestId: RequestId): Task[TestConfigResponse] = {
     rorInstance
-      .invalidateImpersonationEngine()
+      .invalidateTestConfigEngine()
       .map { _ =>
         TestConfigResponse.InvalidateTestConfig.SuccessResponse("ROR Test settings are invalidated")
       }
   }
 
   private def loadCurrentTestConfig()
-                                     (implicit requestId: RequestId): Task[TestConfigResponse] = {
+                                   (implicit requestId: RequestId): Task[TestConfigResponse] = {
     rorInstance
       .currentTestConfig()
       .map {
@@ -116,11 +117,11 @@ class TestConfigApi(rorInstance: RorInstance)
   }
 
   private def forceReloadTestConfig(config: RawRorConfig,
-                                      ttl: FiniteDuration)
-                                     (implicit requestId: RequestId) = {
+                                    ttl: FiniteDuration)
+                                   (implicit requestId: RequestId) = {
     EitherT(
       rorInstance
-        .forceReloadImpersonatorsEngine(config, ttl)
+        .forceReloadTestConfigEngine(config, ttl)
         .map {
           _.leftMap {
             case RawConfigReloadError.ReloadingFailed(failure) =>

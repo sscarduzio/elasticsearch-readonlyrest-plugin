@@ -263,7 +263,7 @@ class ReadonlyRestStartingTests
 
           implicit val requestId: RequestId = RequestId("test")
           val testEngineReloadResult = rorInstance
-            .forceReloadImpersonatorsEngine(testConfig1, 1 minute)
+            .forceReloadTestConfigEngine(testConfig1, 1 minute)
             .runSyncUnsafe()
 
           testEngineReloadResult should be(Right(()))
@@ -290,14 +290,14 @@ class ReadonlyRestStartingTests
 
           implicit val requestId: RequestId = RequestId("test")
           val testEngineReloadResult1stAttempt = rorInstance
-            .forceReloadImpersonatorsEngine(testConfig1, 1 minute)
+            .forceReloadTestConfigEngine(testConfig1, 1 minute)
             .runSyncUnsafe()
 
           testEngineReloadResult1stAttempt should be(Right(()))
           rorInstance.engines.value.impersonatorsEngine.value.accessControl shouldBe a[AccessControlLoggingDecorator]
 
           val testEngineReloadResult2ndAttempt = rorInstance
-            .forceReloadImpersonatorsEngine(testConfig2, 1 minute)
+            .forceReloadTestConfigEngine(testConfig2, 1 minute)
             .runSyncUnsafe()
 
           testEngineReloadResult2ndAttempt should be(Right(()))
@@ -324,7 +324,7 @@ class ReadonlyRestStartingTests
 
           implicit val requestId: RequestId = RequestId("test")
           val testEngineReloadResult = rorInstance
-            .forceReloadImpersonatorsEngine(testConfigMalformed, 1 minute)
+            .forceReloadTestConfigEngine(testConfigMalformed, 1 minute)
             .runSyncUnsafe()
 
           testEngineReloadResult should be(Left(ReloadingFailed(StartingFailure("Errors:\nfailed"))))
@@ -350,14 +350,14 @@ class ReadonlyRestStartingTests
 
           implicit val requestId: RequestId = RequestId("test")
           val testEngineReloadResult1stAttempt = rorInstance
-            .forceReloadImpersonatorsEngine(testConfig1, 1 minute)
+            .forceReloadTestConfigEngine(testConfig1, 1 minute)
             .runSyncUnsafe()
 
           testEngineReloadResult1stAttempt should be(Right(()))
           rorInstance.engines.value.impersonatorsEngine.value.accessControl shouldBe a[AccessControlLoggingDecorator]
 
           val testEngineReloadResult2ndAttempt = rorInstance
-            .forceReloadImpersonatorsEngine(testConfig1, 1 minute)
+            .forceReloadTestConfigEngine(testConfig1, 1 minute)
             .runSyncUnsafe()
 
           testEngineReloadResult2ndAttempt should be(Left(RawConfigReloadError.ConfigUpToDate(testConfig1)))
@@ -385,7 +385,7 @@ class ReadonlyRestStartingTests
 
           implicit val requestId: RequestId = RequestId("test")
           val testEngineReloadResult = rorInstance
-            .forceReloadImpersonatorsEngine(testConfig1, 3 seconds)
+            .forceReloadTestConfigEngine(testConfig1, 3 seconds)
             .runSyncUnsafe()
 
           testEngineReloadResult should be(Right(()))
@@ -416,14 +416,14 @@ class ReadonlyRestStartingTests
 
         implicit val requestId: RequestId = RequestId("test")
         val testEngineReloadResult = rorInstance
-          .forceReloadImpersonatorsEngine(testConfig1, 1 minute)
+          .forceReloadTestConfigEngine(testConfig1, 1 minute)
           .runSyncUnsafe()
 
         testEngineReloadResult should be(Right(()))
         rorInstance.engines.value.impersonatorsEngine.value.accessControl shouldBe a[AccessControlLoggingDecorator]
 
         rorInstance
-          .invalidateImpersonationEngine()
+          .invalidateTestConfigEngine()
           .runSyncUnsafe()
 
         rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
