@@ -63,7 +63,7 @@ import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, Transport
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.ThreadRepo
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import scala.collection.JavaConverters._
@@ -90,6 +90,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+  private implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
 
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds

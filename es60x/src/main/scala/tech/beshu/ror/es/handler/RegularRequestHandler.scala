@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext._
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater._
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, FilteredResponseFields, ResponseTransformation}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.boot.Engine
+import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RegularRequestHandler.fromMismatchedCause
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CustomResponse, UpdateResponse}
@@ -52,7 +52,8 @@ class RegularRequestHandler(engine: Engine,
   extends Logging {
 
   def handle[B <: BlockContext : BlockContextUpdater](request: RequestContext.Aux[B] with EsRequest[B]): Task[Unit] = {
-    engine.accessControl
+    engine
+      .accessControl
       .handleRegularRequest(request)
       .map { r =>
         threadPool.getThreadContext.stashAndMergeResponseHeaders().bracket { _ =>
@@ -245,7 +246,8 @@ class RegularRequestHandler(engine: Engine,
 }
 
 object RegularRequestHandler {
-  def fromMismatchedCause(cause: Cause): ForbiddenCause = {
+
+  private def fromMismatchedCause(cause: Cause): ForbiddenCause = {
     cause match {
       case Cause.OperationNotAllowed => OperationNotAllowed
       case Cause.ImpersonationNotSupported => ImpersonationNotSupported

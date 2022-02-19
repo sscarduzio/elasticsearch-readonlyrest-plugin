@@ -300,7 +300,7 @@ trait IndexTemplatesManagementSuite
             templates.responseCode should be(200)
             templates.templates should be(List(Template("temp1", Set("custom_dev1_*"), Set("dev1_index"))))
           }
-          "at least one template index pattern matches user's allowed indices" excludeES (allEs5x) in {
+          "at least one template index pattern matches user's allowed indices" in {
             adminTemplateManager.putTemplateAndWaitForIndexing(
               templateName = "temp1",
               indexPatterns = NonEmptyList.of("custom_dev1_*", "custom_dev2_*"),
@@ -388,7 +388,7 @@ trait IndexTemplatesManagementSuite
               }
             }
           }
-          "template applies to generic index pattern (ES >= 6.0.0)" excludeES (allEs5x) in {
+          "template applies to generic index pattern (ES >= 6.0.0)" in {
             val result = dev1TemplateManager.putTemplate(
               templateName = "new_template",
               indexPatterns = NonEmptyList.one("custom_dev1_index_*"),
@@ -545,7 +545,7 @@ trait IndexTemplatesManagementSuite
               }
             }
           }
-          "all indices patterns defined in template are allowed to the user" excludeES (allEs5x) in {
+          "all indices patterns defined in template are allowed to the user" in {
             adminTemplateManager.putTemplateAndWaitForIndexing(
               templateName = "temp",
               indexPatterns = NonEmptyList.of("custom_dev1_index_*", "dev1_index"),
@@ -851,7 +851,7 @@ trait IndexTemplatesManagementSuite
 
             result.responseCode should be(401)
           }
-          "template applies to allowed index and not allowed index patterns" excludeES (allEs5x) in {
+          "template applies to allowed index and not allowed index patterns" in {
             val result = dev2TemplateManager.putTemplate(
               templateName = "new_template",
               indexPatterns = NonEmptyList.of("custom_dev1_index_*"),
@@ -997,7 +997,7 @@ trait IndexTemplatesManagementSuite
               }
             }
           }
-          "not all index patterns defined in template are allowed to the user" excludeES (allEs5x) in {
+          "not all index patterns defined in template are allowed to the user" in {
             adminTemplateManager.putTemplateAndWaitForIndexing(
               templateName = "temp",
               indexPatterns = NonEmptyList.of("custom_dev1_index_*", "custom_dev2_index_*"),
@@ -1220,7 +1220,7 @@ trait IndexTemplatesManagementSuite
 
     "A simulate template API" should {
       "be allowed for a user" which {
-        "has an access to the given existing template" excludeES(allEs5x, allEs6x, allEs7xBelowEs79x, rorProxy) in {
+        "has an access to the given existing template" excludeES(allEs6x, allEs7xBelowEs79x, rorProxy) in {
           adminIndexTemplateManager
             .putTemplateAndWaitForIndexing(
               templateName = "temp1",
@@ -1242,7 +1242,7 @@ trait IndexTemplatesManagementSuite
           result.templateAliases should be(Set("dev1_index"))
           result.overlappingTemplates should be(List.empty)
         }
-        "has an access to given non-existing template" excludeES(allEs5x, allEs6x, allEs7xBelowEs79x, rorProxy) in {
+        "has an access to given non-existing template" excludeES(allEs6x, allEs7xBelowEs79x, rorProxy) in {
           adminIndexTemplateManager
             .putTemplateAndWaitForIndexing(
               templateName = "temp2",
@@ -1264,7 +1264,7 @@ trait IndexTemplatesManagementSuite
         }
       }
       "not to be allowed for a user" which {
-        "has no access to the given existing template" excludeES(allEs5x, allEs6x, allEs7xBelowEs79x, rorProxy) in {
+        "has no access to the given existing template" excludeES(allEs6x, allEs7xBelowEs79x, rorProxy) in {
           adminIndexTemplateManager
             .putTemplateAndWaitForIndexing(
               templateName = "temp1",
@@ -1276,7 +1276,7 @@ trait IndexTemplatesManagementSuite
 
           result.responseCode should be(400)
         }
-        "has no access to the given non-existing template" excludeES(allEs5x, allEs6x, allEs7xBelowEs79x, rorProxy) in {
+        "has no access to the given non-existing template" excludeES(allEs6x, allEs7xBelowEs79x, rorProxy) in {
           adminIndexTemplateManager
             .putTemplateAndWaitForIndexing(
               templateName = "temp1",

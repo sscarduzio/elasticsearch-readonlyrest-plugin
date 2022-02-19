@@ -38,4 +38,10 @@ object dependencies {
       containerCreator = Coeval(new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))),
       originalPort = WireMockContainer.WIRE_MOCK_PORT)
   }
+
+  def es(name: String, container: EsContainer): DependencyDef = DependencyDef(
+    name = name,
+    containerCreator = Coeval(container),
+    originalPort = 9200
+  )
 }

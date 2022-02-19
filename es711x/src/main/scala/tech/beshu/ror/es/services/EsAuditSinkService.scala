@@ -47,6 +47,10 @@ class EsAuditSinkService(client: Client) extends AuditSinkService with Logging {
     )
   }
 
+  override def close(): Unit = {
+    client.close()
+  }
+
   private class AuditSinkBulkProcessorListener extends BulkProcessor.Listener {
     override def beforeBulk(executionId: Long, request: BulkRequest): Unit = {
       logger.debug(s"Flushing ${request.numberOfActions} bulk actions ...")

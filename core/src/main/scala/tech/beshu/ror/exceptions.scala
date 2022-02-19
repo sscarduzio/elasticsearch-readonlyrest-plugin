@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror
 
-import tech.beshu.ror.boot.StartingFailure
+import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 
 object exceptions {
 

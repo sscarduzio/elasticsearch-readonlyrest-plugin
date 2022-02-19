@@ -17,7 +17,6 @@
 
 package tech.beshu.ror.es.ssl;
 
-import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.handler.ssl.NotSslRecordException;
 import io.netty.handler.ssl.SslContext;
@@ -35,20 +34,15 @@ import org.elasticsearch.common.util.PageCacheRecycler;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.netty4.Netty4Transport;
-import scala.collection.JavaConverters$;
-import tech.beshu.ror.configuration.SslConfiguration;
 import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration;
 import tech.beshu.ror.utils.SSLCertHelper;
-import tech.beshu.ror.utils.SSLCertParser;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.TrustManagerFactory;
-import java.io.InputStream;
 import java.net.SocketAddress;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 

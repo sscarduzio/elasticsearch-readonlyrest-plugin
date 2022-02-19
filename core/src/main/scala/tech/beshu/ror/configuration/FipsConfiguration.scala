@@ -1,3 +1,19 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
 package tech.beshu.ror.configuration
 
 import better.files.File
@@ -5,7 +21,7 @@ import io.circe.Decoder
 import monix.eval.Task
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
 import tech.beshu.ror.configuration.loader.FileConfigLoader
-import tech.beshu.ror.providers.OsEnvVarsProvider
+import tech.beshu.ror.providers.{OsEnvVarsProvider, PropertiesProvider}
 
 import java.nio.file.Path
 
@@ -13,8 +29,9 @@ final case class FipsConfiguration(fipsMode: FipsMode)
 
 object FipsConfiguration {
 
-  def load(esConfigFolderPath: Path): Task[Either[MalformedSettings, FipsConfiguration]] = {
-    val rorConfig = FileConfigLoader.create(esConfigFolderPath).rawConfigFile
+  def load(esConfigFolderPath: Path)
+          (implicit propertiesProvider: PropertiesProvider): Task[Either[MalformedSettings, FipsConfiguration]] = {
+    val rorConfig = new FileConfigLoader(esConfigFolderPath).rawConfigFile
     load(rorConfig)
   }
 

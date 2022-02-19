@@ -34,16 +34,13 @@ trait ClusterStateWithInternodeSslSuite
 
   override implicit val rorConfigFileName = "/cluster_state_internode_ssl/readonlyrest.yml"
 
-
   override def clusterContainer: EsClusterContainer = generalClusterContainer
-
 
   override def targetEs: EsContainer = generalClusterContainer.nodes.head
 
-
   lazy val generalClusterContainer: EsClusterContainer = createFrom(
-    if (executedOn(allEs5x, allEs6xBelowEs63x)) {
-      // ROR for ES below 6.3 doesn't support internode SSL with XPack, so we test it only using ROR nodes.
+    if (executedOn(allEs6xExceptEs67x)) {
+      // ROR for ES below 6.7 doesn't support internode SSL with XPack, so we test it only using ROR nodes.
       NonEmptyList.of(
         EsClusterSettings(
           name = "ROR1",
@@ -56,28 +53,28 @@ trait ClusterStateWithInternodeSslSuite
       NonEmptyList.of(
         EsClusterSettings(
           name = "xpack_cluster",
+          internodeSslEnabled = true,
+          xPackSupport = false,
+          forceNonOssImage = true
+        ),
+        EsClusterSettings(
+          name = "xpack_cluster",
           numberOfInstances = 2,
           useXpackSecurityInsteadOfRor = true,
           xPackSupport = true,
           externalSslEnabled = false,
           configHotReloadingEnabled = true,
           enableXPackSsl = true
-        ),
-        EsClusterSettings(
-          name = "xpack_cluster",
-          internodeSslEnabled = true,
-          xPackSupport = false,
-          forceNonOssImage = true
         )
     )
     }
   )
 
-  private lazy val rorClusterAdminStateManager = new CatManager(clients.last.rorAdminClient, esVersion = esVersionUsed)
-
   "Health check" should {
     "be successful" when {
       "internode ssl is enabled" in {
+        val rorClusterAdminStateManager = new CatManager(clusterContainer.nodes.head.rorAdminClient, esVersion = esVersionUsed)
+
         val response = rorClusterAdminStateManager.healthCheck()
 
         response.responseCode should be(200)

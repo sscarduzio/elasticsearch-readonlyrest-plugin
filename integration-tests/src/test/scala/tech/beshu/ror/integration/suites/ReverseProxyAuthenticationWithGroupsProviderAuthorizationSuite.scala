@@ -18,7 +18,7 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.dependencies.wiremock
@@ -27,36 +27,28 @@ import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, Index
 //TODO: change test names. Current names are copies from old java integration tests
 trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
   extends AnyWordSpec
-    with BaseEsClusterIntegrationTest
+    with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike
-    with SingleClientSupport
     with Matchers {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/rev_proxy_groups_provider/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodes.head
+  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 
-  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      dependentServicesContainers = List(
-        wiremock(
-          name = "GROUPS1",
-          mappings =
-            "/rev_proxy_groups_provider/wiremock_service1_cartman.json",
-            "/rev_proxy_groups_provider/wiremock_service1_morgan.json",
-            "/rev_proxy_groups_provider/wiremock_service1_anyuser.json"
-        ),
-        wiremock(
-          name = "GROUPS2",
-          mappings =
-            "/rev_proxy_groups_provider/wiremock_service2_token.json",
-            "/rev_proxy_groups_provider/wiremock_service2_anytoken.json",
-        )
-      ),
-      nodeDataInitializer = ElasticsearchTweetsInitializer,
-      xPackSupport = false,
+  override def clusterDependencies: List[DependencyDef] = List(
+    wiremock(
+      name = "GROUPS1",
+      mappings =
+        "/rev_proxy_groups_provider/wiremock_service1_cartman.json",
+      "/rev_proxy_groups_provider/wiremock_service1_morgan.json",
+      "/rev_proxy_groups_provider/wiremock_service1_anyuser.json"
+    ),
+    wiremock(
+      name = "GROUPS2",
+      mappings =
+        "/rev_proxy_groups_provider/wiremock_service2_token.json",
+      "/rev_proxy_groups_provider/wiremock_service2_anytoken.json",
     )
   )
 

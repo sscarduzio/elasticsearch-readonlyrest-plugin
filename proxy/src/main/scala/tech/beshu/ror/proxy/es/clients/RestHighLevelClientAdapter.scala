@@ -411,6 +411,10 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
     executeAsync(client.scroll(request, RequestOptions.DEFAULT))
   }
 
+  def close(): Unit = {
+    client.close()
+  }
+
   private def executeAsync[T](action: => T): Task[T] =
     Task(action).recoverWithSpecializedException
 

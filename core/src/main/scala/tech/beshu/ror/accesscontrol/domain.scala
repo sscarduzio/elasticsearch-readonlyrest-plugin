@@ -30,6 +30,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
+import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.Action._
@@ -602,6 +603,12 @@ object domain {
 
   final case class RorConfigurationIndex(index: IndexName.Full) extends AnyVal
 
+  sealed trait AuditCluster
+  object AuditCluster {
+    case object LocalAuditCluster extends AuditCluster
+    final case class RemoteAuditCluster(uris: NonEmptyList[Uri]) extends AuditCluster
+  }
+
   final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
                                             rawPattern: String) {
 
@@ -820,13 +827,22 @@ object domain {
     }
 
     def findMostGenericTemplateNamePatten(in: NonEmptyList[TemplateNamePattern]): TemplateNamePattern = {
-      def allTheSame(letters: List[Char]) = letters.size > 1 && letters.distinct.size == 1
+      def allTheSame(letters: List[Char]) = {
+        letters.size > 1 && letters.distinct.size == 1
+      }
+      def minTemplateNameLength() = {
+        in.foldLeft(Int.MaxValue) {
+          case (minLength, elem) if elem.value.length < minLength => elem.value.length
+          case (minLength, _) => minLength
+        }
+      }
 
       if (in.size > 1) {
         TemplateNamePattern
           .fromString {
+            val minLength = minTemplateNameLength()
             in
-              .toList.map(_.value.value.toCharArray)
+              .toList.map(_.value.value.substring(0, minLength).toCharArray)
               .transpose
               .foldLeft((false, StringBuilder.newBuilder)) {
                 case ((false, builder), letters) if allTheSame(letters) =>

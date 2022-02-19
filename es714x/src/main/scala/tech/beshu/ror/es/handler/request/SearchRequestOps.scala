@@ -35,19 +35,6 @@ import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
 
 object SearchRequestOps extends Logging {
 
-  implicit class FilterOps(val request: SearchRequest) extends AnyVal {
-
-    def applyFilterToQuery(filter: Option[Filter])
-                          (implicit requestId: RequestContext.Id): SearchRequest = {
-      Option(request.source().query())
-        .wrapQueryBuilder(filter)
-        .foreach { newQueryBuilder =>
-          request.source().query(newQueryBuilder)
-        }
-      request
-    }
-  }
-
   implicit class QueryBuilderOps(val builder: Option[QueryBuilder]) extends AnyVal {
 
     def wrapQueryBuilder(filter: Option[Filter])
@@ -73,6 +60,19 @@ object SearchRequestOps extends Logging {
         case None =>
           QueryBuilders.constantScoreQuery(filterQuery)
       }
+    }
+  }
+
+  implicit class FilterOps(val request: SearchRequest) extends AnyVal {
+
+    def applyFilterToQuery(filter: Option[Filter])
+                          (implicit requestId: RequestContext.Id): SearchRequest = {
+      Option(request.source().query())
+        .wrapQueryBuilder(filter)
+        .foreach { newQueryBuilder =>
+          request.source().query(newQueryBuilder)
+        }
+      request
     }
   }
 
@@ -112,7 +112,6 @@ object SearchRequestOps extends Logging {
       request.source().query(newQuery)
       request
     }
-
 
     private def checkQueryFields(): RequestFieldsUsage = {
       Option(request.source()).flatMap(s => Option(s.query()))
