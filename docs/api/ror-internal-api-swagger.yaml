@@ -378,7 +378,7 @@ components:
         - status
         - ttl
         - valid_to
-        - services
+        - settings
         - warnings
       properties:
         status:
@@ -401,7 +401,7 @@ components:
 
     RorSettingsTtl:
       type: string
-      description: "ROR Settings Time To Live value. After this time the Test Setting will be automatically invalidated. Available units: d, day, h, hr, hour m, min, minute s, sec, second"
+      description: "Configured ROR Settings Time To Live value. After this time the Test Setting will be automatically invalidated. Available units: d, day, h, hr, hour m, min, minute s, sec, second"
       example: 30 m
 
     TestSettingsImperonationWarnings:

@@ -19,10 +19,10 @@ package tech.beshu.ror.es.actions.rradmin
 import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
-import tech.beshu.ror.{Constants, RequestId}
+import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
 import tech.beshu.ror.api.ConfigApi
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.{Constants, RequestId}
 
 import scala.collection.JavaConverters._
 
@@ -47,10 +47,6 @@ object RRAdminRequest {
         ConfigApi.ConfigRequest.Type.ProvideIndexConfig
       case (Constants.UPDATE_INDEX_CONFIG_PATH, POST) =>
         ConfigApi.ConfigRequest.Type.UpdateIndexConfig
-      case (Constants.UPDATE_TEST_CONFIG_PATH, POST) =>
-        ConfigApi.ConfigRequest.Type.UpdateTestConfig
-      case (Constants.DELETE_TEST_CONFIG_PATH, DELETE) =>
-        ConfigApi.ConfigRequest.Type.InvalidateTestConfig
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }

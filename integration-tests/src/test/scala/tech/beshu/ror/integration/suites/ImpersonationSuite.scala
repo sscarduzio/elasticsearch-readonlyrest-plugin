@@ -57,7 +57,7 @@ trait ImpersonationSuite
         "impersonator can be properly authenticated" in {
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
-            Map("impersonate_as" -> "dev1")
+            Map("x-ror-impersonating" -> "dev1")
           )
 
           val result = searchManager.search("test1_index")
@@ -68,7 +68,7 @@ trait ImpersonationSuite
       "is not supported when rule uses full hashed auth credentials" in {
         val searchManager = new SearchManager(
           basicAuthClient("admin1", "pass"),
-          Map("impersonate_as" -> "dev1")
+          Map("x-ror-impersonating" -> "dev1")
         )
 
         val result = searchManager.search("test2_index")
@@ -83,7 +83,7 @@ trait ImpersonationSuite
         "impersonator can be properly authenticated" in {
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
-            Map("impersonate_as" -> "proxy_user_1")
+            Map("x-ror-impersonating" -> "proxy_user_1")
           )
 
           val result = searchManager.search("test2_index")
@@ -97,7 +97,7 @@ trait ImpersonationSuite
         "by default" in {
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
-            Map("impersonate_as" -> "ldap_user_1")
+            Map("x-ror-impersonating" -> "ldap_user_1")
           )
 
           val result = searchManager.search("test3_index")
@@ -127,7 +127,7 @@ trait ImpersonationSuite
 
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
-            Map("impersonate_as" -> "ldap_user_1")
+            Map("x-ror-impersonating" -> "ldap_user_1")
           )
 
           val result = searchManager.search("test3_index")
@@ -159,7 +159,7 @@ trait ImpersonationSuite
 
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
-            Map("impersonate_as" -> "ldap_user_1")
+            Map("x-ror-impersonating" -> "ldap_user_1")
           )
 
           val result = searchManager.search("test3_index")
@@ -173,7 +173,7 @@ trait ImpersonationSuite
         "by default" in {
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
-            Map("impersonate_as" -> "ext_user_1")
+            Map("x-ror-impersonating" -> "ext_user_1")
           )
 
           val result = searchManager.search("test3_index")
@@ -201,7 +201,7 @@ trait ImpersonationSuite
 
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
-            Map("impersonate_as" -> "ext_user_1")
+            Map("x-ror-impersonating" -> "ext_user_1")
           )
 
           val result = searchManager.search("test3_index")
@@ -231,7 +231,7 @@ trait ImpersonationSuite
 
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
-            Map("impersonate_as" -> "ext_user_1")
+            Map("x-ror-impersonating" -> "ext_user_1")
           )
 
           val result = searchManager.search("test3_index")
@@ -245,7 +245,7 @@ trait ImpersonationSuite
         "by default" in {
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
-            Map("impersonate_as" -> "gpa_user_1")
+            Map("x-ror-impersonating" -> "gpa_user_1")
           )
 
           val result = searchManager.search("test3_index")
@@ -273,7 +273,7 @@ trait ImpersonationSuite
 
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
-            Map("impersonate_as" -> "gpa_user_1")
+            Map("x-ror-impersonating" -> "gpa_user_1")
           )
 
           val result = searchManager.search("test3_index")
@@ -303,7 +303,7 @@ trait ImpersonationSuite
 
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
-            Map("impersonate_as" -> "gpa_user_1")
+            Map("x-ror-impersonating" -> "gpa_user_1")
           )
 
           val result = searchManager.search("test3_index")
@@ -336,7 +336,7 @@ trait ImpersonationSuite
 
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
-            Map("impersonate_as" -> "ldap_user_1")
+            Map("x-ror-impersonating" -> "ldap_user_1")
           )
 
           val result = searchManager.search("test4_index")
@@ -349,7 +349,7 @@ trait ImpersonationSuite
         "by default when internal auth rule with " in {
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
-            Map("impersonate_as" -> "dev2")
+            Map("x-ror-impersonating" -> "dev2")
           )
 
           val result = searchManager.search("test4_index")
@@ -378,7 +378,7 @@ trait ImpersonationSuite
 
           val searchManager = new SearchManager(
             basicAuthClient("admin1", "pass"),
-            Map("impersonate_as" -> "ldap_user_1")
+            Map("x-ror-impersonating" -> "ldap_user_1")
           )
 
           val result = searchManager.search("test4_index")
@@ -393,7 +393,7 @@ trait ImpersonationSuite
     "there is no such user with admin privileges" in {
       val searchManager = new SearchManager(
         basicAuthClient("unknown", "pass"),
-        Map("impersonate_as" -> "dev1")
+        Map("x-ror-impersonating" -> "dev1")
       )
 
       val result = searchManager.search("test1_index")
@@ -405,7 +405,7 @@ trait ImpersonationSuite
     "user with admin privileges cannot be authenticated" in {
       val searchManager = new SearchManager(
         basicAuthClient("admin1", "wrong_pass"),
-        Map("impersonate_as" -> "dev1")
+        Map("x-ror-impersonating" -> "dev1")
       )
 
       val result = searchManager.search("test1_index")
@@ -417,7 +417,7 @@ trait ImpersonationSuite
     "admin user is authenticated but cannot impersonate given user" in {
       val searchManager = new SearchManager(
         basicAuthClient("admin2", "pass"),
-        Map("impersonate_as" -> "dev1")
+        Map("x-ror-impersonating" -> "dev1")
       )
 
       val result = searchManager.search("test1_index")
@@ -448,7 +448,7 @@ trait ImpersonationSuite
 
       val searchManager = new SearchManager(
         basicAuthClient("admin1", "pass"),
-        Map("impersonate_as" -> "ldap_user_1")
+        Map("x-ror-impersonating" -> "ldap_user_1")
       )
 
       val result1 = searchManager.search("test3_index")

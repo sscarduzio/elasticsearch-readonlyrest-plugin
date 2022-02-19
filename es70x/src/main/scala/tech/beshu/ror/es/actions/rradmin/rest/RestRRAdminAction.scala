@@ -33,8 +33,6 @@ class RestRRAdminAction(settings: Settings, controller: RestController)
   register("GET", Constants.PROVIDE_INDEX_CONFIG_PATH)
   register("POST", Constants.UPDATE_INDEX_CONFIG_PATH)
   register("GET", Constants.PROVIDE_FILE_CONFIG_PATH)
-  register("POST", Constants.UPDATE_TEST_CONFIG_PATH)
-  register("DELETE", Constants.DELETE_TEST_CONFIG_PATH)
 
   override val getName: String = "ror-admin-handler"
 

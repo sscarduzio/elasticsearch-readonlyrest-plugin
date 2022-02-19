@@ -39,8 +39,6 @@ class RestRRAdminAction()
     new Route(GET, Constants.PROVIDE_FILE_CONFIG_PATH),
     new Route(GET, Constants.PROVIDE_INDEX_CONFIG_PATH),
     new Route(POST, Constants.UPDATE_INDEX_CONFIG_PATH),
-    new Route(POST, Constants.UPDATE_TEST_CONFIG_PATH),
-    new Route(DELETE, Constants.DELETE_TEST_CONFIG_PATH),
   ).asJava
 
   override val getName: String = "ror-admin-handler"
