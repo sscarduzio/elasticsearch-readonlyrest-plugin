@@ -36,11 +36,15 @@ class RestRRTestConfigAction(settings: Settings, controller: RestController)
 
   override val getName: String = "ror-test-config-handler"
 
+  class Listener(channel: RestChannel) extends RestToXContentListener[RRTestConfigResponse](channel) {
+    override def getStatus(response: RRTestConfigResponse): RestStatus = response.status()
+  }
+
   override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = new RestChannelConsumer {
     private val rorTestConfigRequest = RRTestConfigRequest.createFrom(request)
 
     override def accept(channel: RestChannel): Unit = {
-      client.execute(new RRTestConfigActionType, rorTestConfigRequest, new RestToXContentListener[RRTestConfigResponse](channel))
+      client.execute(new RRTestConfigActionType, rorTestConfigRequest, new Listener(channel))
     }
   }
 

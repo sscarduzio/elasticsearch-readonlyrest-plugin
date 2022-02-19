@@ -22,7 +22,7 @@ import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
 import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
 import org.elasticsearch.rest.action.RestToXContentListener
-import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestHandler, RestRequest, RestStatus}
+import org.elasticsearch.rest._
 import tech.beshu.ror.Constants
 import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, RRTestConfigRequest, RRTestConfigResponse}
 

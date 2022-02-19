@@ -18,14 +18,19 @@ package tech.beshu.ror.es.actions.rrtestconfig
 
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
-import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
+import org.elasticsearch.common.xcontent.{StatusToXContentObject, ToXContent, XContentBuilder}
+import org.elasticsearch.rest.RestStatus
 import tech.beshu.ror.api.TestConfigApi
 import tech.beshu.ror.api.TestConfigApi.TestConfigResponse._
 
 import java.time.ZoneOffset
 
 class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
-  extends ActionResponse with ToXContentObject {
+  extends ActionResponse with StatusToXContentObject {
+
+  def this() = {
+    this(null)
+  }
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
     response match {
@@ -45,11 +50,24 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
         case res: ProvideLocalUsers.SuccessResponse => provideLocalUsersJson(builder, res)
         case ProvideLocalUsers.TestSettingsNotConfigured(message) => addResponseJson(builder, response.status, message)
       }
+      case failure: Failure => failure match {
+        case Failure.BadRequest(message) => addResponseJson(builder, response.status, message)
+      }
     }
     builder
   }
 
   override def writeTo(out: StreamOutput): Unit = ()
+
+  override def status(): RestStatus = response match {
+    case _: ProvideTestConfig => RestStatus.OK
+    case _: UpdateTestConfig => RestStatus.OK
+    case _: InvalidateTestConfig => RestStatus.OK
+    case _: ProvideLocalUsers => RestStatus.OK
+    case failure: Failure => failure match {
+      case Failure.BadRequest(_) => RestStatus.BAD_REQUEST
+    }
+  }
 
   private def addResponseJson(builder: XContentBuilder, status: String, message: String): Unit = {
     builder.startObject

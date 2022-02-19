@@ -55,6 +55,16 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
 
   override def writeTo(out: StreamOutput): Unit = ()
 
+  override def status(): RestStatus = response match {
+    case _: ProvideTestConfig => RestStatus.OK
+    case _: UpdateTestConfig => RestStatus.OK
+    case _: InvalidateTestConfig => RestStatus.OK
+    case _: ProvideLocalUsers => RestStatus.OK
+    case failure: Failure => failure match {
+      case Failure.BadRequest(_) => RestStatus.BAD_REQUEST
+    }
+  }
+
   private def addResponseJson(builder: XContentBuilder, status: String, message: String): Unit = {
     builder.startObject
     builder.field("status", status)
@@ -99,15 +109,5 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
     builder.endArray()
     builder.field("unknown_users", response.unknownUsers)
     builder.endObject
-  }
-
-  override def status(): RestStatus = response match {
-    case _: ProvideTestConfig => RestStatus.OK
-    case _: UpdateTestConfig => RestStatus.OK
-    case _: InvalidateTestConfig => RestStatus.OK
-    case _: ProvideLocalUsers => RestStatus.OK
-    case failure: Failure => failure match {
-      case Failure.BadRequest(_) => RestStatus.BAD_REQUEST
-    }
   }
 }

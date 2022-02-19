@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.actions.rrtestconfig
 
+import cats.implicits.toShow
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionListener
@@ -47,11 +48,12 @@ class RRTestConfigActionHandler() extends Logging {
   }
 
   private def handle(result: Either[Throwable, TestConfigResponse],
-                     listener: ActionListener[RRTestConfigResponse]): Unit = result match {
+                     listener: ActionListener[RRTestConfigResponse])
+                    (implicit requestId: RequestId): Unit = result match {
     case Right(response) =>
       listener.onResponse(new RRTestConfigResponse(response))
     case Left(ex) =>
-      logger.error("RRTestConfig internal error", ex)
+      logger.error(s"[${requestId.show}] RRTestConfig internal error", ex)
       listener.onFailure(new Exception(ex))
   }
 

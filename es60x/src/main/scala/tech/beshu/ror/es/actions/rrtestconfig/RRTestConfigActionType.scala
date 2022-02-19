@@ -25,7 +25,7 @@ class RRTestConfigActionType extends Action[RRTestConfigRequest, RRTestConfigRes
   RRTestConfigActionType.name
 ) {
 
-  override def newResponse(): RRTestConfigResponse = new RRTestConfigResponse(TestConfigApi.TestConfigResponse.ProvideTestConfig.TestSettingsNotConfigured("TODO"))
+  override def newResponse(): RRTestConfigResponse = new RRTestConfigResponse()
 
   override def newRequestBuilder(client: ElasticsearchClient): RRTestConfigActionType.RequestBuilder =
     new RRTestConfigActionType.RequestBuilder(client, this, new RRTestConfigRequest())
