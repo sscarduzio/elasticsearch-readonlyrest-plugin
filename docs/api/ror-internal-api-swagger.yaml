@@ -40,6 +40,8 @@ paths:
                   $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
                 ForbidBlockMatchedResponseExample:
                   $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                TestSettingsNotConfiguredForbiddenResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredForbiddenResponseExample"
                 ImpersonationNotSupportedResponseExample:
                   $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
                 ImpersonationNotAllowedResponseExample:
@@ -84,6 +86,8 @@ paths:
                   $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
                 ForbidBlockMatchedResponseExample:
                   $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                TestSettingsNotConfiguredForbiddenResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredForbiddenResponseExample"
                 ImpersonationNotSupportedResponseExample:
                   $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
                 ImpersonationNotAllowedResponseExample:
@@ -120,6 +124,8 @@ paths:
                   $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
                 ForbidBlockMatchedResponseExample:
                   $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                TestSettingsNotConfiguredForbiddenResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredForbiddenResponseExample"
                 ImpersonationNotSupportedResponseExample:
                   $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
                 ImpersonationNotAllowedResponseExample:
@@ -159,6 +165,8 @@ paths:
                   $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
                 ForbidBlockMatchedResponseExample:
                   $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                TestSettingsNotConfiguredForbiddenResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredForbiddenResponseExample"
                 ImpersonationNotSupportedResponseExample:
                   $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
                 ImpersonationNotAllowedResponseExample:
@@ -202,6 +210,8 @@ paths:
                   $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
                 ForbidBlockMatchedResponseExample:
                   $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                TestSettingsNotConfiguredForbiddenResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredForbiddenResponseExample"
                 ImpersonationNotSupportedResponseExample:
                   $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
                 ImpersonationNotAllowedResponseExample:
@@ -255,6 +265,8 @@ paths:
                   $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
                 ForbidBlockMatchedResponseExample:
                   $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                TestSettingsNotConfiguredForbiddenResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredForbiddenResponseExample"
                 ImpersonationNotSupportedResponseExample:
                   $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
                 ImpersonationNotAllowedResponseExample:
@@ -294,11 +306,15 @@ components:
                 - forbidden
             due_to:
               type: array
+              description: |
+                It's an array of causes why ROR's ACL forbade the request. 
+                WARNING: Please notice, that one element array ES used to print as a string!!!
               items:
                 type: string
                 enum:
                   - OPERATION_NOT_ALLOWED
                   - FORBIDDEN_BY_BLOCK
+                  - TEST_SETTINGS_NOT_CONFIGURED
                   - IMPERSONATION_NOT_SUPPORTED
                   - IMPERSONATION_NOT_ALLOWED
                   - READONLYREST_NOT_READY_YET
@@ -775,6 +791,16 @@ components:
           reason: forbidden
           due_to:
             - FORBIDDEN_BY_BLOCK
+        status: 403
+
+    TestSettingsNotConfiguredForbiddenResponseExample:
+      summary: Request was forbidden because impersonation feature is disbaled when Test Settings are not configured
+      value:
+        error:
+          type: forbidden_response
+          reason: forbidden
+          due_to:
+            - TEST_SETTINGS_NOT_CONFIGURED
         status: 403
 
     ImpersonationNotSupportedResponseExample:
