@@ -17,19 +17,20 @@
 package tech.beshu.ror.utils
 
 import cats.effect.{IO, Resource}
+import cats.implicits._
+import io.netty.buffer.ByteBufAllocator
+import io.netty.handler.ssl.{SslContext, SslContextBuilder}
 import org.apache.logging.log4j.scala.Logging
 import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
 import tech.beshu.ror.configuration.SslConfiguration
 import tech.beshu.ror.configuration.SslConfiguration.{KeystoreFile, KeystorePassword, TruststorePassword}
 
 import java.io.{FileInputStream, IOException}
-import java.security.{KeyStore, UnrecoverableKeyException}
+import java.security.KeyStore
 import javax.net.ssl.{KeyManagerFactory, TrustManagerFactory}
 import scala.collection.JavaConverters._
 import scala.language.{existentials, implicitConversions}
 import scala.util.{Failure, Success, Try}
-import cats.implicits._
-import io.netty.handler.ssl.{SslContext, SslContextBuilder}
 
 object SSLCertHelper extends Logging {
 
@@ -137,7 +138,7 @@ object SSLCertHelper extends Logging {
       case Success(keyManagerFactory) =>
         val sslCtxBuilder = SslContextBuilder.forServer(keyManagerFactory)
         logger.info("ROR Internode using SSL provider: " + keyManagerFactory.getProvider.getName)
-
+        validateProtocolAndCiphers(sslCtxBuilder, sslConfiguration)
         if (sslConfiguration.allowedCiphers.nonEmpty) {
           sslCtxBuilder.ciphers(sslConfiguration.allowedCiphers.map(_.value).asJava)
         }
@@ -153,9 +154,34 @@ object SSLCertHelper extends Logging {
     }
   }
 
+  def validateProtocolAndCiphers(sslContextBuilder: SslContextBuilder, config: SslConfiguration): Boolean =
+    trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder, config)
+      .fold(
+        ex => {
+          logger.error("ROR SSL: cannot validate SSL protocols and ciphers! " + ex.getClass.getSimpleName + ": " + ex.getMessage, ex)
+          false
+        },
+        _ => true
+      )
+
+  private def trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder, config: SslConfiguration) = Try {
+    val sslEngine = sslContextBuilder.build().newEngine(ByteBufAllocator.DEFAULT)
+    logger.info("ROR SSL: Available ciphers: " + sslEngine.getEnabledCipherSuites.mkString(","))
+    if (config.allowedCiphers.nonEmpty) {
+      sslEngine.setEnabledCipherSuites(config.allowedCiphers.map(_.value).toArray)
+      logger.info("ROR SSL: Restricting to ciphers: " + sslEngine.getEnabledCipherSuites.mkString(","))
+    }
+    logger.info("ROR SSL: Available SSL protocols: " + sslEngine.getEnabledProtocols.mkString(","))
+    if (config.allowedProtocols.nonEmpty) {
+      sslEngine.setEnabledProtocols(config.allowedProtocols.map(_.value).toArray)
+      logger.info("ROR SSL: Restricting to SSL protocols: " + sslEngine.getEnabledProtocols.mkString(","))
+    }
+  }
+
   final case class UnableToLoadDataFromProvidedKeystoreException(keystoreName: KeystoreFile, exceptionMessage: String) extends Exception(s"Unable to load data from provided keystore [${keystoreName.value.getName}]. $exceptionMessage")
   final case class UnableToInitializeKeyManagerFactoryUsingProvidedKeystore(exceptionMessage: String) extends Exception(s"Unable to initialize Key Manager Factory using provided keystore. $exceptionMessage")
   final case class UnableToInitializeTrustManagerFactoryUsingProvidedTruststore(exceptionMessage: String) extends Exception(s"Unable to initialize Trust Manager Factory using provided truststore. $exceptionMessage")
+  final case class MalformedSslSettings(str: String) extends Exception(str)
   case object TrustManagerNotConfiguredException extends Exception("Trust manager has not been configured!")
 
   private implicit def optionalKeystorePasswordToCharArray(keystorePassword: Option[KeystorePassword]): Array[Char] = {

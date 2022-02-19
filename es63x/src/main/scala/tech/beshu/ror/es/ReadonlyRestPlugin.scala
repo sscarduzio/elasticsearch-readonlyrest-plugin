@@ -19,7 +19,6 @@ package tech.beshu.ror.es
 import java.nio.file.Path
 import java.util
 import java.util.function.{Supplier, UnaryOperator}
-
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
 import org.elasticsearch.{ElasticsearchException, Version}
@@ -57,7 +56,7 @@ import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.boot.EsInitListener
-import tech.beshu.ror.configuration.RorSsl
+import tech.beshu.ror.configuration.{FipsConfiguration, RorSsl}
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
@@ -68,6 +67,7 @@ import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
+import tech.beshu.ror.configuration.FipsConfiguration.FipsMode.NonFips
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, TransportRRAuditEventAction}
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
 import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionType, TransportRRAuthMockAction}
@@ -104,6 +104,10 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds
   private val sslConfig = RorSsl
+    .load(environment.configFile)
+    .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
+    .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
+  private val fipsConfig = FipsConfiguration
     .load(environment.configFile)
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
@@ -171,11 +175,15 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                  xContentRegistry: NamedXContentRegistry,
                                  networkService: NetworkService,
                                  dispatcher: HttpServerTransport.Dispatcher): util.Map[String, Supplier[HttpServerTransport]] = {
+    val fipsCompliant = fipsConfig.fipsMode match {
+      case NonFips => false
+      case _ => true
+    }
     sslConfig
       .externalSsl
       .map(ssl =>
         "ssl_netty4" -> new Supplier[HttpServerTransport] {
-          override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, ssl)
+          override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, ssl, fipsCompliant)
         }
       )
       .toMap
@@ -189,11 +197,15 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                              circuitBreakerService: CircuitBreakerService,
                              namedWriteableRegistry: NamedWriteableRegistry,
                              networkService: NetworkService): util.Map[String, Supplier[Transport]] = {
+    val fipsCompliant = fipsConfig.fipsMode match {
+      case NonFips => false
+      case _ => true
+    }
     sslConfig
       .interNodeSsl
       .map(ssl =>
         "ror_ssl_internode" -> new Supplier[Transport] {
-          override def get(): Transport = new SSLNetty4InternodeServerTransport(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService, ssl)
+          override def get(): Transport = new SSLNetty4InternodeServerTransport(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService, ssl, fipsCompliant)
         }
       )
       .toMap

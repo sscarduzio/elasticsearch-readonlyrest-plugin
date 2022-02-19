@@ -132,7 +132,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                 environment: Environment,
                                 nodeEnvironment: NodeEnvironment,
                                 namedWriteableRegistry: NamedWriteableRegistry): util.Collection[AnyRef] = {
-    println("---CreateComponents")
     doPrivileged {
       ilaf = new IndexLevelActionFilter(
         clusterService,
