@@ -41,6 +41,16 @@ stages:
       env: 
        ROR_TASK: cve_check
 
+- stage: ES_S3_UP
+  dependsOn: []
+  jobs:
+  - job:
+    steps:
+    - script: |
+        bin/upload_es_artifacts.sh
+      continueOnError: true
+
+
 - stage: TEST
   jobs:
   - job:
