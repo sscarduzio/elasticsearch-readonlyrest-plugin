@@ -22,7 +22,7 @@ import io.circe.Decoder
 import monix.eval.Task
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.api.TestConfigApi.TestConfigRequest.Type
-import tech.beshu.ror.api.TestConfigApi.TestConfigResponse.{InvalidateTestConfig, ProvideLocalUsers, ProvideTestConfig, UpdateTestConfig}
+import tech.beshu.ror.api.TestConfigApi.TestConfigResponse.{Failure, InvalidateTestConfig, ProvideLocalUsers, ProvideTestConfig, UpdateTestConfig}
 import tech.beshu.ror.api.TestConfigApi.{TestConfigRequest, TestConfigResponse}
 import tech.beshu.ror.boot.RorInstance.{RawConfigReloadError, TestConfig}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
@@ -58,19 +58,16 @@ class TestConfigApi(rorInstance: RorInstance)
       updateRequest <- EitherT.fromEither[Task](decodeUpdateConfigRequest(body))
       rorConfig <- rorTestConfig(updateRequest.configString)
       _ <- forceReloadTestConfig(rorConfig, updateRequest.ttl)
-    } yield ()
-    result.value.map {
-      case Right(_) => TestConfigResponse.UpdateTestConfig.SuccessResponse("updated settings")
-      case Left(failure) => failure
-    }
+    } yield TestConfigResponse.UpdateTestConfig.SuccessResponse("updated settings")
+    result.value.map(_.merge)
   }
 
-  private def decodeUpdateConfigRequest(payload: String): Either[UpdateTestConfig.FailedResponse, UpdateTestConfigRequest] = {
+  private def decodeUpdateConfigRequest(payload: String): Either[Failure, UpdateTestConfigRequest] = {
     io.circe.parser.decode[UpdateTestConfigRequest](payload)
-      .left.map(error => TestConfigResponse.UpdateTestConfig.FailedResponse(s"JSON body malformed: [${error.getPrettyMessage}]"))
+      .left.map(error => TestConfigResponse.Failure.BadRequest(s"JSON body malformed: [${error.getPrettyMessage}]"))
   }
 
-  private def rorTestConfig(configString: String): EitherT[Task, UpdateTestConfig.FailedResponse, RawRorConfig] = EitherT {
+  private def rorTestConfig(configString: String): EitherT[Task, TestConfigResponse, RawRorConfig] = EitherT {
     RawRorConfig.fromString(configString).map(_.left.map(error => TestConfigResponse.UpdateTestConfig.FailedResponse(error.show)))
   }
 
@@ -118,7 +115,7 @@ class TestConfigApi(rorInstance: RorInstance)
 
   private def forceReloadTestConfig(config: RawRorConfig,
                                     ttl: FiniteDuration)
-                                   (implicit requestId: RequestId) = {
+                                   (implicit requestId: RequestId): EitherT[Task, TestConfigResponse, Unit] = {
     EitherT(
       rorInstance
         .forceReloadTestConfigEngine(config, ttl)
@@ -186,6 +183,11 @@ object TestConfigApi {
       final case class SuccessResponse(users: List[String], unknownUsers: Boolean) extends ProvideLocalUsers
       final case class TestSettingsNotConfigured(message: String) extends ProvideLocalUsers
     }
+
+    sealed trait Failure extends TestConfigResponse
+    object Failure {
+      final case class BadRequest(message: String) extends Failure
+    }
   }
 
   implicit class StatusFromTestConfigResponse(val response: TestConfigResponse) extends AnyVal {
@@ -198,6 +200,7 @@ object TestConfigApi {
       case _: InvalidateTestConfig.SuccessResponse => "OK"
       case _: ProvideLocalUsers.SuccessResponse => "OK"
       case _: ProvideLocalUsers.TestSettingsNotConfigured => "TEST_SETTINGS_NOT_CONFIGURED"
+      case _: Failure.BadRequest => "FAILED"
     }
   }
 

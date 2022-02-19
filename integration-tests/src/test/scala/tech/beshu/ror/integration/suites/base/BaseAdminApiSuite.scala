@@ -595,7 +595,6 @@ trait BaseAdminApiSuite
           val requestBody = s"""{"settings": "${escapeJava(config)}"}"""
           val result = ror1WithIndexConfigAdminActionManager
             .updateRorTestConfigRaw(rawRequestBody = requestBody)
-            .force()
 
           result.responseCode should be(400)
           result.responseJson("status").str should be("FAILED")
@@ -605,7 +604,6 @@ trait BaseAdminApiSuite
           val requestBody = s"""{"ttl": "30 m"}"""
           val result = ror1WithIndexConfigAdminActionManager
             .updateRorTestConfigRaw(rawRequestBody = requestBody)
-            .force()
 
           result.responseCode should be(400)
           result.responseJson("status").str should be("FAILED")
@@ -616,7 +614,6 @@ trait BaseAdminApiSuite
           val requestBody = s"""{"settings": "${escapeJava(config)}", "ttl": "30 mins"}"""
           val result = ror1WithIndexConfigAdminActionManager
             .updateRorTestConfigRaw(rawRequestBody = requestBody)
-            .force()
 
           result.responseCode should be(400)
           result.responseJson("status").str should be("FAILED")
