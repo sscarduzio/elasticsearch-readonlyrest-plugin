@@ -62,6 +62,10 @@ class RorApiManager(client: RestClient,
     call(createUpdateRorInIndexConfigRequest(config), new JsonResponse(_))
   }
 
+  def updateRorInIndexConfigRaw(rawRequestBody: String): JsonResponse = {
+    call(createUpdateRorInIndexConfigRequestFromRaw(rawRequestBody), new JsonResponse(_))
+  }
+
   def currentRorTestConfig: JsonResponse = {
     call(createGetTestConfigRequest, new JsonResponse(_))
   }
@@ -121,6 +125,13 @@ class RorApiManager(client: RestClient,
     val request = new HttpPost(client.from("/_readonlyrest/admin/config"))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(rorConfigIndexDocumentContentFrom(config)))
+    request
+  }
+
+  private def createUpdateRorInIndexConfigRequestFromRaw(rawRequestJson: String) = {
+    val request = new HttpPost(client.from("/_readonlyrest/admin/config"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(rawRequestJson))
     request
   }
 

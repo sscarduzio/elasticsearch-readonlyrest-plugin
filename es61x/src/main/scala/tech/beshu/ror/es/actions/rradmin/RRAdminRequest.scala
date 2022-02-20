@@ -57,16 +57,6 @@ object RRAdminRequest {
     new RRAdminRequest(
       new ConfigApi.ConfigRequest(
         requestType,
-        request.method.name,
-        request.path,
-        request
-          .getHeaders.asScala
-          .flatMap { case (name, values) =>
-            NonEmptyList
-              .fromList(values.asScala.toList)
-              .map((name, _))
-          }
-          .toMap,
         request.content.utf8ToString
       ),
       request

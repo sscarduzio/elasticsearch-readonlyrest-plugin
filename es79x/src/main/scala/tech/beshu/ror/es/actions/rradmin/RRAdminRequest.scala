@@ -16,15 +16,12 @@
  */
 package tech.beshu.ror.es.actions.rradmin
 
-import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
 import tech.beshu.ror.api.ConfigApi
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.{Constants, RequestId}
-
-import scala.collection.JavaConverters._
 
 class RRAdminRequest(adminApiRequest: ConfigApi.ConfigRequest,
                      esRestRequest: RestRequest) extends ActionRequest {
@@ -53,16 +50,6 @@ object RRAdminRequest {
     new RRAdminRequest(
       new ConfigApi.ConfigRequest(
         requestType,
-        request.method.name,
-        request.path,
-        request
-          .getHeaders.asScala
-          .flatMap { case (name, values) =>
-            NonEmptyList
-              .fromList(values.asScala.toList)
-              .map((name, _))
-          }
-          .toMap,
         request.content.utf8ToString
       ),
       request

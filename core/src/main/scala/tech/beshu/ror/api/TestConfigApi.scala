@@ -59,6 +59,7 @@ class TestConfigApi(rorInstance: RorInstance)
       rorConfig <- rorTestConfig(updateRequest.configString)
       _ <- forceReloadTestConfig(rorConfig, updateRequest.ttl)
     } yield TestConfigResponse.UpdateTestConfig.SuccessResponse("updated settings")
+
     result.value.map(_.merge)
   }
 

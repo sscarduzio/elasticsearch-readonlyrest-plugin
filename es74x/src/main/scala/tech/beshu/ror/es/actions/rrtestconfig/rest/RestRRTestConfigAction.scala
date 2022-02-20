@@ -18,12 +18,11 @@ package tech.beshu.ror.es.actions.rrtestconfig.rest
 
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest._
-import org.elasticsearch.rest.action.RestToXContentListener
 import tech.beshu.ror.Constants
 import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, RRTestConfigRequest, RRTestConfigResponse}
+import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
 @Inject
 class RestRRTestConfigAction(controller: RestController)
@@ -36,15 +35,11 @@ class RestRRTestConfigAction(controller: RestController)
 
   override val getName: String = "ror-test-config-handler"
 
-  class Listener(channel: RestChannel) extends RestToXContentListener[RRTestConfigResponse](channel) {
-    override def getStatus(response: RRTestConfigResponse): RestStatus = response.status()
-  }
-
   override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = new RestChannelConsumer {
     private val rorTestConfigRequest = RRTestConfigRequest.createFrom(request)
 
     override def accept(channel: RestChannel): Unit = {
-      client.execute(new RRTestConfigActionType, rorTestConfigRequest, new Listener(channel))
+      client.execute(new RRTestConfigActionType, rorTestConfigRequest, new RestToXContentWithStatusListener[RRTestConfigResponse](channel))
     }
   }
 
