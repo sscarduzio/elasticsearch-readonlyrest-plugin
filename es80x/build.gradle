@@ -40,7 +40,7 @@ repositories {
     mavenCentral()
     mavenLocal()
     maven {
-        url = "s3://" + s3BucketName + "/releases"
+        url = "s3://" + s3BucketName
         credentials(AwsCredentials) {
             accessKey = awsAccessKeyId
             secretKey = awsSecretAccessKey
