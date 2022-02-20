@@ -193,6 +193,16 @@ trait BaseAdminApiSuite
           result.responseJson("message").str should startWith("Settings content is malformed")
         }
       }
+      "return info that request is malformed" when {
+        "settings key missing" in {
+          val result = ror1WithIndexConfigAdminActionManager
+            .updateRorInIndexConfigRaw(rawRequestBody = "{}")
+
+          result.responseCode should be(400)
+          result.responseJson("status").str should be("ko")
+          result.responseJson("message").str should be("JSON body malformed: [Could not parse at .settings: [Attempt to decode value on failed cursor: DownField(settings)]]")
+        }
+      }
       "return info that cannot reload" when {
         "ROR core cannot be reloaded" in {
           val result = ror1WithIndexConfigAdminActionManager

@@ -21,8 +21,7 @@ import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.api.ConfigApi
 
 class RRAdminActionType extends Action[RRAdminResponse](RRAdminActionType.name) {
-  override def newResponse(): RRAdminResponse =
-    new RRAdminResponse(ConfigApi.ConfigResponse.notAvailable)
+  override def newResponse(): RRAdminResponse = new RRAdminResponse
 }
 object RRAdminActionType {
   val name = domain.Action.rorOldConfigAction.value
