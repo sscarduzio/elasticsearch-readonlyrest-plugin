@@ -19,24 +19,47 @@ package tech.beshu.ror.configuration
 import better.files.File
 import io.circe.Decoder
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
+import tech.beshu.ror.configuration.RorSsl.{fallbackToRorConfig, loadSslConfigFromFile, logger}
 import tech.beshu.ror.configuration.loader.FileConfigLoader
-import tech.beshu.ror.providers.{OsEnvVarsProvider, PropertiesProvider}
+import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
 
 import java.nio.file.Path
+import java.io.{File => JFile}
 
 final case class FipsConfiguration(fipsMode: FipsMode)
 
-object FipsConfiguration {
+object FipsConfiguration extends Logging {
 
   def load(esConfigFolderPath: Path)
-          (implicit propertiesProvider: PropertiesProvider): Task[Either[MalformedSettings, FipsConfiguration]] = {
-    val rorConfig = new FileConfigLoader(esConfigFolderPath).rawConfigFile
-    load(rorConfig)
+          (implicit propertiesProvider: PropertiesProvider): Task[Either[MalformedSettings, FipsConfiguration]] = Task {
+    val esConfig = File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
+    loadFipsConfigFromFile(esConfig)
+      .fold(
+        error => Left(error),
+        {
+          case FipsConfiguration(FipsMode.NonFips) => fallbackToRorConfig(esConfigFolderPath)
+          case ssl => Right(ssl)
+        }
+      )
   }
 
-  def load(config: File): Task[Either[MalformedSettings, FipsConfiguration]] = Task {
-    new EsConfigFileLoader[FipsConfiguration]().loadConfigFromFile(config, "ROR FIPS Configuration")
+  private def fallbackToRorConfig(esConfigFolderPath: Path)
+                                 (implicit envVarsProvider: EnvVarsProvider,
+                                  propertiesProvider: PropertiesProvider) = {
+    val rorConfig = new FileConfigLoader(esConfigFolderPath).rawConfigFile
+    logger.info(s"Cannot find FIPS configuration in elasticsearch.yml, trying: ${rorConfig.pathAsString}")
+    if (rorConfig.exists) {
+      loadFipsConfigFromFile(rorConfig)
+    } else {
+      Right(FipsConfiguration(FipsMode.NonFips))
+    }
+  }
+
+
+  def loadFipsConfigFromFile(configFile: File): Either[MalformedSettings, FipsConfiguration] = {
+    new EsConfigFileLoader[FipsConfiguration]().loadConfigFromFile(configFile, "ROR FIPS Configuration")
   }
 
   private implicit val envVarsProvider: OsEnvVarsProvider.type = OsEnvVarsProvider
