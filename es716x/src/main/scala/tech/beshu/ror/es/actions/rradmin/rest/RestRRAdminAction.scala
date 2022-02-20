@@ -16,18 +16,17 @@
  */
 package tech.beshu.ror.es.actions.rradmin.rest
 
-import java.util
-
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
 import org.elasticsearch.rest.RestRequest.Method._
 import org.elasticsearch.rest._
-import org.elasticsearch.rest.action.RestToXContentListener
 import tech.beshu.ror.Constants
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, RRAdminRequest, RRAdminResponse}
+import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
+import java.util
 import scala.collection.JavaConverters._
 
 @Inject
@@ -47,7 +46,7 @@ class RestRRAdminAction()
     private val rorAdminRequest = RRAdminRequest.createFrom(request)
 
     override def accept(channel: RestChannel): Unit = {
-      client.execute(new RRAdminActionType, rorAdminRequest, new RestToXContentListener[RRAdminResponse](channel))
+      client.execute(new RRAdminActionType, rorAdminRequest, new RestToXContentWithStatusListener[RRAdminResponse](channel))
     }
   }
 }
