@@ -189,6 +189,9 @@ task getArtifactsFromEsBinaries {
     doLast {
         def esTar = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion + ".tar.gz")
         if (!esTar.exists()) {
+            if(!layout.buildDirectory.asFile.get().exists()) {
+                project.mkdir(layout.buildDirectory.asFile.get())
+            }
             def esLinuxBinaries = "elasticsearch-" + esVersion + "-linux-x86_64.tar.gz"
             project.logger.info("Downloading " + esLinuxBinaries + " ...")
             new URL("https://artifacts.elastic.co/downloads/elasticsearch/" + esLinuxBinaries)
