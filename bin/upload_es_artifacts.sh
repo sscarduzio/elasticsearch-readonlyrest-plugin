@@ -4,4 +4,4 @@ set -xe
 
 echo ">>> ($0) UPLOADING ES ARTIFACTS ..."
 
-./gradlew clean es80x:publish
+./gradlew --stacktrace clean es80x:publish
