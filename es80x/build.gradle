@@ -23,7 +23,7 @@ buildscript {
         pluginName = rootProject.properties['pluginName']
         awsAccessKeyId = System.env.aws_access_key_id ?: "unknown"
         awsSecretAccessKey = System.env.aws_secret_access_key ?: "unknown"
-        s3BucketName = System.env.BUCKET ?: "unknown"
+        s3BucketName = System.env.BUCKET ?: "readonlyrest-data"
     }
     repositories {
         mavenLocal()
