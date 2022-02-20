@@ -2,6 +2,7 @@ node.name: n1_it
 cluster.initial_master_nodes: n1_it
 
 readonlyrest:
+  fips_mode: SSL_ONLY
   ssl:
     enable: true
     keystore_file: "keystore.jks"
