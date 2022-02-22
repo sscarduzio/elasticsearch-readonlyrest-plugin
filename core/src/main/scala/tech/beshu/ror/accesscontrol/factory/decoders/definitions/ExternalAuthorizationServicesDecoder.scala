@@ -48,7 +48,7 @@ object ExternalAuthorizationServicesDecoder extends Logging {
   }
 
   implicit val serviceNameDecoder: Decoder[ExternalAuthorizationService.Name] =
-    DecoderHelpers.decodeStringLike.map(ExternalAuthorizationService.Name.apply)
+    DecoderHelpers.decodeStringLikeNonEmpty.map(ExternalAuthorizationService.Name.apply)
 
   private implicit val authTokenNameDecoder: Decoder[AuthTokenName] =
     DecoderHelpers.decodeStringLikeNonEmpty.map(AuthTokenName.apply)

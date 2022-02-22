@@ -33,7 +33,6 @@ public class Constants {
   public static final Integer AUDIT_SINK_MAX_RETRIES = 3;
   public static final Integer MAX_AUDIT_EVENT_REQUEST_CONTENT_IN_BYTES = 5 * 1000;
   public final static String CURRENT_USER_METADATA_PATH = "/_readonlyrest/metadata/current_user/";
-  public final static String CONFIGURE_AUTH_MOCK_PATH = "/_readonlyrest/admin/authmock/";
   public final static String AUDIT_EVENT_COLLECTOR_PATH = "/_readonlyrest/admin/audit/event/";
   public final static String FORCE_RELOAD_CONFIG_PATH = "/_readonlyrest/admin/refreshconfig/";
   public final static String UPDATE_INDEX_CONFIG_PATH = "/_readonlyrest/admin/config/";
@@ -41,6 +40,8 @@ public class Constants {
   public final static String UPDATE_TEST_CONFIG_PATH = "/_readonlyrest/admin/config/test/";
   public final static String DELETE_TEST_CONFIG_PATH = "/_readonlyrest/admin/config/test/";
   public final static String PROVIDE_LOCAL_USERS_PATH = "/_readonlyrest/admin/config/test/localusers/";
+  public final static String CONFIGURE_AUTH_MOCK_PATH = "/_readonlyrest/admin/config/test/authmock/";
+  public final static String PROVIDE_AUTH_MOCK_PATH = "/_readonlyrest/admin/config/test/authmock/";
   public final static String PROVIDE_INDEX_CONFIG_PATH = "/_readonlyrest/admin/config/";
   public final static String PROVIDE_FILE_CONFIG_PATH = "/_readonlyrest/admin/config/file/";
   public final static String MANAGE_ROR_CONFIG_PATH = "/_readonlyrest/admin/config/load";
@@ -62,7 +63,6 @@ public class Constants {
   public static final String HEADER_USER_ORIGIN           = "x-ror-origin";
   public static final String HEADER_CORRELATION_ID        = "x-ror-correlation-id";
   public static final String HEADER_IMPERSONATING         = "x-ror-impersonating";
-  public static final String HEADER_AUTH_MOCK_TTL         = "x-ror-auth-mock-ttl";
 
   public static final Set<String> RO_ACTIONS = Sets.newHashSet(
       "indices:admin/exists",

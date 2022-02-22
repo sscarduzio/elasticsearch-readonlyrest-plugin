@@ -164,7 +164,7 @@ object show {
     implicit val fullIndexNameShow: Show[IndexName.Full] = Show.show(_.name.value)
     implicit val indexPatternShow: Show[IndexPattern] = Show.show(_.value.show)
     implicit val aliasPlaceholderShow: Show[AliasPlaceholder] = Show.show(_.alias.show)
-    implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value)
+    implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value.value)
     implicit val groupShow: Show[Group] = Show.show(_.value.value)
     implicit val tokenShow: Show[AuthorizationToken] = Show.show(_.value.value)
     implicit val jwtTokenShow: Show[JwtToken] = Show.show(_.value.value)

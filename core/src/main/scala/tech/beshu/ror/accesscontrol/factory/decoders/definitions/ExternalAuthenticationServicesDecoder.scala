@@ -43,7 +43,7 @@ object ExternalAuthenticationServicesDecoder {
   }
 
   implicit val serviceNameDecoder: Decoder[ExternalAuthenticationService.Name] =
-    DecoderHelpers.decodeStringLike.map(ExternalAuthenticationService.Name.apply)
+    DecoderHelpers.decodeStringLikeNonEmpty.map(ExternalAuthenticationService.Name.apply)
 
   private implicit def basicAuthExternalAuthenticationServiceDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[ExternalAuthenticationService] = {
     cacheableAuthenticationServiceDecoder(

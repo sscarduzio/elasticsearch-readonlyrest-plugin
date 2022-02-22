@@ -447,7 +447,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
           |""".stripMargin)
 
       inside(createCore(config)) {
-        case Right(CoreSettings(acl: AccessControlList, _)) =>
+        case Right(CoreSettings(acl: AccessControlList, _, _)) =>
           val firstBlock = acl.blocks.head
           firstBlock.name should be(Block.Name("test_block1"))
           firstBlock.policy should be(Block.Policy.Forbid)
@@ -478,7 +478,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |""".stripMargin)
 
         inside(createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))) {
-          case Right(CoreSettings(acl: AccessControlList, _)) =>
+          case Right(CoreSettings(acl: AccessControlList, _, _)) =>
             val firstBlock = acl.blocks.head
             firstBlock.name should be(Block.Name("test_block1"))
             firstBlock.rules should have size 2

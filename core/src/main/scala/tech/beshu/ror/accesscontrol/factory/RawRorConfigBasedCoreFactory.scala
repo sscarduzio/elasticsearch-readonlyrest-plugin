@@ -46,7 +46,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResul
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps, _}
 import tech.beshu.ror.accesscontrol.utils._
 import tech.beshu.ror.boot.ReadonlyRest.RorMode
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
 import tech.beshu.ror.providers.{EnvVarsProvider, UuidProvider}
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.UserIdEq
@@ -55,6 +55,7 @@ import tech.beshu.ror.utils.yaml.YamlOps
 import java.time.Clock
 
 final case class CoreSettings(aclEngine: AccessControl,
+                              rorConfig: RorConfig,
                               auditingSettings: Option[AuditingTool.Settings])
 
 trait CoreFactory {
@@ -123,7 +124,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
       core <-
       if (!enabled) {
         AsyncDecoderCreator
-          .from(Decoder.const(CoreSettings(DisabledAccessControl, None)))
+          .from(Decoder.const(CoreSettings(DisabledAccessControl, RorConfig(RorConfig.Services()), None)))
       } else {
         for {
           auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
@@ -133,7 +134,8 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
           ))
           acl <- aclDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings, mocksProvider)
         } yield CoreSettings(
-          aclEngine = acl,
+          aclEngine = acl.accessControl,
+          rorConfig = acl.rorConfig,
           auditingSettings = auditingTools
         )
       }
@@ -272,9 +274,9 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
   private def aclDecoder(httpClientFactory: HttpClientsFactory,
                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                          globalSettings: GlobalSettings,
-                         mocksProvider: MocksProvider): AsyncDecoder[AccessControl] = {
+                         mocksProvider: MocksProvider): AsyncDecoder[AclCreationResult] = {
     val caseMappingEquality: UserIdCaseMappingEquality = createUserMappingEquality(globalSettings)
-    AsyncDecoderCreator.instance[AccessControl] { c =>
+    AsyncDecoderCreator.instance[AclCreationResult] { c =>
       val decoder = for {
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
@@ -336,7 +338,12 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
         implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
         val upgradedBlocks = CrossBlockContextBlocksUpgrade.upgrade(blocks)
         upgradedBlocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
-        new AccessControlList(
+        val rorConfig = RorConfig(RorConfig.Services(
+          authenticationServices = authenticationServices.items.map(_.id),
+          authorizationServices = authorizationServices.items.map(_.id),
+          ldaps = ldapServices.items.map(_.id)
+        ))
+        val accessControl = new AccessControlList(
           upgradedBlocks,
           new AccessControlListStaticContext(
             blocks,
@@ -344,6 +351,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
             obfuscatedHeaders
           )
         ): AccessControl
+        AclCreationResult(accessControl, rorConfig)
       }
       decoder.apply(c)
     }
@@ -381,6 +389,8 @@ object RawRorConfigBasedCoreFactory {
     }
 
   }
+
+  final case class AclCreationResult(accessControl: AccessControl, rorConfig: RorConfig)
 
   private sealed trait RuleDecodingResult
   private object RuleDecodingResult {

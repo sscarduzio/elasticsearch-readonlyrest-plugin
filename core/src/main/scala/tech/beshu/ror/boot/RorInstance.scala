@@ -28,12 +28,12 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.api.{AuthMockApi, ConfigApi, TestConfigApi}
-import tech.beshu.ror.boot.engines.{Engines, TestConfigBasedReloadableEngine, MainConfigBasedReloadableEngine}
+import tech.beshu.ror.boot.engines.{Engines, MainConfigBasedReloadableEngine, TestConfigBasedReloadableEngine}
 import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.FileConfigLoader
-import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig, RorProperties}
+import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig, RorConfig, RorProperties}
 import tech.beshu.ror.providers.{JavaUuidProvider, PropertiesProvider}
 
 import java.time.{Clock, Instant}
@@ -83,7 +83,10 @@ class RorInstance private(boot: ReadonlyRest,
     rorConfigurationIndex
   )
 
-  private val authMockRestApi = new AuthMockApi(boot.mocksProvider)
+  private val authMockRestApi = new AuthMockApi(
+    rorInstance = this,
+    mockProvider = boot.mocksProvider
+  )
 
   private val testConfigRestApi = new TestConfigApi(this)
 
@@ -108,6 +111,11 @@ class RorInstance private(boot: ReadonlyRest,
     anTestConfigEngine.currentTestConfig()
   }
 
+  def currentServices()
+                     (implicit requestId: RequestId): Task[TestEngineServices] = {
+    anTestConfigEngine.currentServices()
+  }
+
   def forceReloadTestConfigEngine(config: RawRorConfig,
                                   ttl: FiniteDuration)
                                  (implicit requestId: RequestId): Task[Either[RawConfigReloadError, Unit]] = {
@@ -116,7 +124,10 @@ class RorInstance private(boot: ReadonlyRest,
 
   def invalidateTestConfigEngine()
                                 (implicit requestId: RequestId): Task[Unit] = {
-    anTestConfigEngine.invalidateTestConfigEngine()
+    for {
+      _ <- anTestConfigEngine.invalidateTestConfigEngine()
+      _ <- Task.delay(boot.mocksProvider.invalidate())
+    } yield ()
   }
 
   def stop(): Task[Unit] = {
@@ -209,6 +220,12 @@ object RorInstance {
     case object NotSet extends TestConfig
     final case class Present(config: RawRorConfig, configuredTtl: FiniteDuration, validTo: Instant) extends TestConfig
     final case class Invalidated(recent: RawRorConfig) extends TestConfig
+  }
+
+  sealed trait TestEngineServices
+  object TestEngineServices {
+    case object NotSet extends TestEngineServices
+    final case class Present(services: RorConfig.Services) extends TestEngineServices
   }
 
   def createWithPeriodicIndexCheck(boot: ReadonlyRest,

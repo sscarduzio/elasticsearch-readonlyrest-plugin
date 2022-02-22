@@ -70,8 +70,8 @@ class RorApiManager(client: RestClient,
     call(createGetTestConfigRequest, new JsonResponse(_))
   }
 
-  def updateRorTestConfig(config: String, ttl: FiniteDuration = FiniteDuration(30, TimeUnit.MINUTES)): JsonResponse = {
-    call(createUpdateRorTestConfigRequest(config, ttl), new JsonResponse(_))
+  def updateRorTestConfig(config: String, ttl: FiniteDuration = FiniteDuration(30, TimeUnit.MINUTES)): RorApiResponse = {
+    call(createUpdateRorTestConfigRequest(config, ttl), new RorApiResponse(_))
   }
 
   def updateRorTestConfigRaw(rawRequestBody: String): JsonResponse = {
@@ -94,8 +94,19 @@ class RorApiManager(client: RestClient,
     call(createConfigureImpersonationMocksRequest(payload), new RorApiResponse(_))
   }
 
+  def currentMockedServices(): RorApiResponse = {
+    call(provideAuthMocksRequest(), new RorApiResponse(_))
+  }
+
   def invalidateImpersonationMocks(): RorApiResponse = {
-    call(createInvalidateImpersonationMocksRequest(), new RorApiResponse(_))
+    val payload = ujson.read(
+      s"""
+         | {
+         |   "services": []
+         | }
+         |""".stripMargin
+    )
+    call(createConfigureImpersonationMocksRequest(payload), new RorApiResponse(_))
   }
 
   def insertInIndexConfigDirectlyToRorIndex(rorConfigIndex: String,
@@ -187,14 +198,14 @@ class RorApiManager(client: RestClient,
   }
 
   private def createConfigureImpersonationMocksRequest(payload: JSON) = {
-    val request = new HttpPost(client.from("/_readonlyrest/admin/authmock"))
+    val request = new HttpPost(client.from("/_readonlyrest/admin/config/test/authmock"))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(payload)))
     request
   }
 
-  private def createInvalidateImpersonationMocksRequest() = {
-    new HttpDelete(client.from("/_readonlyrest/admin/authmock"))
+  private def provideAuthMocksRequest() = {
+    new HttpGet(client.from("/_readonlyrest/admin/config/test/authmock"))
   }
 
   private def createLoadRorCurrentConfigRequest(additionalParams: Map[String, String]) = {
@@ -206,7 +217,7 @@ class RorApiManager(client: RestClient,
     def forceOk(): this.type = {
       force()
       val status = responseJson("status").str
-      if (status != "ok") throw new IllegalStateException(s"Expected business status 'ok' but got '$status'}; Message: '${responseJson.obj.get("message").map(_.str).getOrElse("[none]")}'")
+      if (status != "OK") throw new IllegalStateException(s"Expected business status 'OK' but got '$status'}; Message: '${responseJson.obj.get("message").map(_.str).getOrElse("[none]")}'")
       this
     }
   }

@@ -32,13 +32,14 @@ import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.{CoreFactory, CoreSettings}
 import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.ReloadingFailed
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
@@ -172,7 +173,7 @@ class ReadonlyRestStartingTests
           createCoreResult =
             Task
               .sleep(100 millis)
-              .map(_ => Right(CoreSettings(mockEnabledAccessControl, None))) // very long creation
+              .map(_ => Right(CoreSettings(mockEnabledAccessControl, RorConfig(RorConfig.Services()), None))) // very long creation
         )
         mockIndexJsonContentManagerSaveCall(
           mockedIndexJsonContentManager,
@@ -576,7 +577,7 @@ class ReadonlyRestStartingTests
         (config: RawRorConfig, _, _, _, _) => config == rawRorConfig
       })
       .once()
-      .returns(Task.now(Right(CoreSettings(accessControlMock, None))))
+      .returns(Task.now(Right(CoreSettings(accessControlMock, RorConfig(RorConfig.Services()), None))))
     mockedCoreFactory
   }
 

@@ -74,7 +74,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
           mocksProvider
         )
         .runSyncUnsafe()
-    ) { case Right(CoreSettings(acl: AccessControlList, _)) =>
+    ) { case Right(CoreSettings(acl: AccessControlList, _, _)) =>
       val rule = acl.blocks.head.rules.collect { case r: T => r }.headOption
         .getOrElse(throw new IllegalStateException("There was no expected rule in decoding result"))
       rule shouldBe a[T]

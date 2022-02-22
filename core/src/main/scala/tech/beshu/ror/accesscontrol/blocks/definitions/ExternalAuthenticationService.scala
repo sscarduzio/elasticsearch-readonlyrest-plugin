@@ -17,13 +17,13 @@
 package tech.beshu.ror.accesscontrol.blocks.definitions
 
 import java.nio.charset.Charset
-
 import cats.implicits._
 import cats.{Eq, Show}
 import com.google.common.hash.Hashing
 import com.softwaremill.sttp._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.CacheableExternalAuthenticationServiceDecorator.HashedUserCredentials
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.Name
@@ -43,10 +43,10 @@ trait ExternalAuthenticationService extends Item {
 }
 object ExternalAuthenticationService {
 
-  final case class Name(value: String) extends AnyVal
+  final case class Name(value: NonEmptyString)
   object Name {
     implicit val nameEq: Eq[Name] = Eq.fromUniversalEquals
-    implicit val nameShow: Show[Name] = Show.show(_.value)
+    implicit val nameShow: Show[Name] = Show.show(_.value.value)
   }
 }
 
