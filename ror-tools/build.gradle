@@ -21,6 +21,9 @@ version = pluginVersion
 buildscript {
     ext {
         pluginVersion = rootProject.properties['pluginVersion']
+        awsAccessKeyId = System.env.aws_access_key_id ?: "unknown"
+        awsSecretAccessKey = System.env.aws_secret_access_key ?: "unknown"
+        s3BucketName = System.env.BUCKET ?: "readonlyrest-data"
     }
     repositories {
         mavenLocal()
@@ -29,6 +32,7 @@ buildscript {
     }
 
     dependencies {
+        classpath group: 'com.amazonaws',                                name: 'aws-java-sdk',             version: '1.11.163'
         classpath group: 'org.owasp',                                    name: 'dependency-check-gradle',  version: '6.4.1.1'
         classpath group: 'com.star-zero.gradle',                         name: 'githook',                  version: '1.2.1'
         classpath group: 'gradle.plugin.com.github.maiflai',             name: 'gradle-scalatest',         version: '0.24'
@@ -142,3 +146,20 @@ task relocateShadowJar(type: ConfigureShadowRelocation) {
 }
 
 tasks.shadowJar.dependsOn tasks.relocateShadowJar
+
+task uploadArtifactsFromEsBinaries {
+    doLast {
+        com.amazonaws.services.s3.AmazonS3ClientBuilder
+                .standard()
+                .withCredentials(new com.amazonaws.auth.AWSStaticCredentialsProvider(
+                        new com.amazonaws.auth.BasicAWSCredentials(awsAccessKeyId, awsSecretAccessKey)
+                ))
+                .withRegion(com.amazonaws.regions.Regions.EU_WEST_1)
+                .build()
+                .putObject(
+                        s3BucketName,
+                        "build/transport-netty4-es8.0.0.zip",
+                        new File("es80x/build/transport-netty4-8.0.0.jar")
+                );
+    }
+}

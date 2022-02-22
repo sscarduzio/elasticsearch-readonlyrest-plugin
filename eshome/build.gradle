@@ -40,7 +40,7 @@ configurations {
 }
 
 dependencies {
-    ror project(path: ':es80x')
+//    ror project(path: ':es80x') // todo: fixme
     runtime('org.elasticsearch:elasticsearch:' + esVersion) {
 //        // because of https://github.com/elastic/elasticsearch/issues/68889 (for ES 7.11.0)
 //        exclude group: 'org.elasticsearch', module: 'elasticsearch-plugin-classloader'

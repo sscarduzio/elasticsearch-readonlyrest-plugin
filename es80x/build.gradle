@@ -31,9 +31,9 @@ buildscript {
         maven { url "https://plugins.gradle.org/m2/" }
     }
     dependencies {
+        classpath group: 'com.amazonaws',                                name: 'aws-java-sdk',             version: '1.11.163'
         classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins',  name: 'license-gradle-plugin', version: '0.15.0'
         classpath group: 'com.star-zero.gradle',                         name: 'githook',               version: '1.2.1'
-//        classpath group: 'com.amazonaws',                                name: 'aws-java-sdk',          version: '1.12.162'
     }
 }
 
@@ -215,10 +215,20 @@ task getArtifactsFromEsBinaries {
     }
 }
 
-
 task uploadArtifactsFromEsBinaries {
     doLast {
-
+        com.amazonaws.services.s3.AmazonS3ClientBuilder
+                .standard()
+                .withCredentials(new com.amazonaws.auth.AWSStaticCredentialsProvider(
+                        new com.amazonaws.auth.BasicAWSCredentials(awsAccessKeyId, awsSecretAccessKey)
+                ))
+                .withRegion(com.amazonaws.regions.Regions.EU_WEST_1)
+                .build()
+                .putObject(
+                        s3BucketName,
+                        "build/" + netty4TransportArtifactName,
+                        new File(layout.buildDirectory.get().asFile.path + "/" + netty4TransportArtifactName)
+                )
     }
 }
 
