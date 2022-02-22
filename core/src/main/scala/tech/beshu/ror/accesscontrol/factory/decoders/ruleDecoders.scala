@@ -56,6 +56,7 @@ object ruleDecoders {
       case ResponseFieldsRule.Name.name => Some(ResponseFieldsRuleDecoder)
       case FilterRule.Name.name => Some(FilterRuleDecoder)
       case GroupsRule.Name.name => Some(new GroupsRuleDecoder(definitions.users, caseMappingEquality))
+      case GroupsAndRule.Name.name => Some(new GroupsRuleDecoder(definitions.users, caseMappingEquality))
       case HeadersAndRule.Name.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.Name))
       case HeadersAndRule.DeprecatedName.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.DeprecatedName))
       case HeadersOrRule.Name.name => Some(HeadersOrRuleDecoder)

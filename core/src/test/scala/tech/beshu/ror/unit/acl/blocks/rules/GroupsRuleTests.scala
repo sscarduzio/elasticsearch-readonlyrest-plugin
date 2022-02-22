@@ -23,6 +23,7 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
+import org.scalatest.Inside.inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
@@ -47,6 +48,7 @@ import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.unit.acl.blocks.rules.GroupsRuleTests.RuleCreator
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -57,6 +59,8 @@ import scala.language.postfixOps
 class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion {
 
   implicit val provider: EnvVarsProvider = OsEnvVarsProvider
+
+  val rc: RuleCreator = (settings: GroupsRule.Settings, caseSensitivity: UserIdCaseMappingEquality) => new GroupsRule(settings, caseSensitivity)
 
   import tech.beshu.ror.unit.acl.blocks.rules.GroupsRuleTests._
 
@@ -85,7 +89,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                   group = groupFrom("g1"),
                   availableGroups = UniqueList.of(groupFrom("g1"))
                 )
-              )
+              )(rc)
             }
             "authentication rule also matches and case insensitivity is configured" in {
               assertMatchRule(
@@ -108,7 +112,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                   group = groupFrom("g1"),
                   availableGroups = UniqueList.of(groupFrom("g1"))
                 )
-              )
+              )(rc)
             }
           }
           "user ID is matched by user definition with username with wildcard" when {
@@ -132,7 +136,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                   group = groupFrom("g1"),
                   availableGroups = UniqueList.of(groupFrom("g1"))
                 )
-              )
+              )(rc)
             }
             "authentication rule also matches and and case insensitivity is configured" in {
               assertMatchRule(
@@ -155,7 +159,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                   group = groupFrom("g1"),
                   availableGroups = UniqueList.of(groupFrom("g1"))
                 )
-              )
+              )(rc)
             }
           }
         }
@@ -190,7 +194,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                   group = groupFrom("g1"),
                   availableGroups = UniqueList.of(groupFrom("g1"))
                 )
-              )
+              )(rc)
             }
           }
         }
@@ -223,7 +227,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                 group = groupFrom("g1"),
                 availableGroups = UniqueList.of(groupFrom("g1"))
               )
-            )
+            )(rc)
           }
         }
         "separate authentication and authorization rules are used" when {
@@ -256,7 +260,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                 group = groupFrom("g1"),
                 availableGroups = UniqueList.of(groupFrom("g1"))
               )
-            )
+            )(rc)
           }
         }
       }
@@ -274,7 +278,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
             ),
             loggedUser = None,
             preferredGroup = None
-          )
+          )(rc)
         }
         "resolved groups don't contain preferred group" in {
           assertNotMatchRule(
@@ -287,7 +291,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
             ),
             loggedUser = None,
             preferredGroup = Some(groupFrom("g2"))
-          )
+          )(rc)
         }
         "there is no user definition for given logged user" in {
           assertNotMatchRule(
@@ -300,7 +304,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
             ),
             loggedUser = Some(User.Id("user2")),
             preferredGroup = None
-          )
+          )(rc)
         }
         "there is no matching auth rule for given user" in {
           assertNotMatchRule(
@@ -313,7 +317,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
             ),
             loggedUser = Some(User.Id("user1")),
             preferredGroup = None
-          )
+          )(rc)
         }
         "case sensitivity is configured, but authentication rule authenticates user with name with a capital letter at the beginning" in {
           assertNotMatchRule(
@@ -326,7 +330,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
             ),
             loggedUser = None,
             preferredGroup = None
-          )
+          )(rc)
         }
         "one auth rule available is throwing an exception" in {
           assertNotMatchRule(
@@ -339,7 +343,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
             ),
             loggedUser = Some(User.Id("user1")),
             preferredGroup = None
-          )
+          )(rc)
         }
       }
       "groups mapping is configured" when {
@@ -354,7 +358,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
             ),
             loggedUser = None,
             preferredGroup = None
-          )
+          )(rc)
         }
         "user cannot be authorized by authentication with authorization rule" in {
           assertNotMatchRule(
@@ -373,31 +377,45 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
             ),
             loggedUser = None,
             preferredGroup = None
-          )
+          )(rc)
         }
       }
     }
   }
 
-  private def assertMatchRule(settings: GroupsRule.Settings,
-                              loggedUser: Option[User.Id],
-                              preferredGroup: Option[Group],
-                              caseSensitivity: Boolean = true)
-                             (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(settings, loggedUser, preferredGroup, Some(blockContextAssertion), caseSensitivity)
+  def defaultOutputBlockContextAssertion(user: User.Id, group: Group, availableGroups: UniqueList[Group]): BlockContext => Unit =
+    (blockContext: BlockContext) => {
+      assertBlockContext(
+        loggedUser = Some(DirectlyLoggedUser(user)),
+        currentGroup = Some(group),
+        availableGroups = availableGroups
+      )(blockContext)
+    }
+}
 
-  private def assertNotMatchRule(settings: GroupsRule.Settings,
-                                 loggedUser: Option[User.Id],
-                                 preferredGroup: Option[Group],
-                                 caseSensitivity: Boolean = true): Unit =
-    assertRule(settings, loggedUser, preferredGroup, blockContextAssertion = None, caseSensitivity)
+object GroupsRuleTests extends MockFactory {
 
-  private def assertRule(settings: GroupsRule.Settings,
+  type RuleCreator = (GroupsRule.Settings, UserIdCaseMappingEquality) => GroupsRule
+
+  def assertMatchRule(settings: GroupsRule.Settings,
+                      loggedUser: Option[User.Id],
+                      preferredGroup: Option[Group],
+                      caseSensitivity: Boolean = true)
+                     (blockContextAssertion: BlockContext => Unit)(ruleCreator: RuleCreator): Unit =
+    assertRule(settings, loggedUser, preferredGroup, Some(blockContextAssertion), caseSensitivity)(ruleCreator)
+
+  def assertNotMatchRule(settings: GroupsRule.Settings,
                          loggedUser: Option[User.Id],
                          preferredGroup: Option[Group],
-                         blockContextAssertion: Option[BlockContext => Unit],
-                         caseSensitivity: Boolean): Unit = {
-    val rule = new GroupsRule(
+                         caseSensitivity: Boolean = true)(ruleCreator: RuleCreator): Unit =
+    assertRule(settings, loggedUser, preferredGroup, blockContextAssertion = None, caseSensitivity)(ruleCreator)
+
+  def assertRule(settings: GroupsRule.Settings,
+                 loggedUser: Option[User.Id],
+                 preferredGroup: Option[Group],
+                 blockContextAssertion: Option[BlockContext => Unit],
+                 caseSensitivity: Boolean)(ruleCreator: RuleCreator): Unit = {
+    val rule = ruleCreator(
       settings,
       if (caseSensitivity) UserIdEq.caseSensitive else UserIdEq.caseInsensitive
     )
@@ -424,18 +442,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
     }
   }
 
-  private def defaultOutputBlockContextAssertion(user: User.Id,
-                                                 group: Group,
-                                                 availableGroups: UniqueList[Group]): BlockContext => Unit =
-    (blockContext: BlockContext) => {
-      assertBlockContext(
-        loggedUser = Some(DirectlyLoggedUser(user)),
-        currentGroup = Some(group),
-        availableGroups = availableGroups
-      )(blockContext)
-    }
-
-  private def userIdPatterns(id: String, ids: String*) = {
+  def userIdPatterns(id: String, ids: String*): UserIdPatterns = {
     UserIdPatterns(
       UniqueNonEmptyList.unsafeFromList(
         (id :: ids.toList).map(str => UserIdPattern(NonEmptyString.unsafeFrom(str)))
@@ -443,14 +450,11 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
     )
   }
 
-  private def groups(g1: String, gs: String*) = {
+  def groups(g1: String, gs: String*): UniqueNonEmptyList[Group] = {
     UniqueNonEmptyList.of(groupFrom(g1), gs.map(groupFrom): _*)
   }
-}
 
-object GroupsRuleTests extends MockFactory {
-
-  private object authenticationRule {
+  object authenticationRule {
 
     def matching(user: User.Id): AuthenticationRule = new AuthenticationRule with AuthenticationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
@@ -480,7 +484,7 @@ object GroupsRuleTests extends MockFactory {
     }
   }
 
-  private object authorizationRule {
+  object authorizationRule {
 
     def matching(groups: NonEmptyList[Group]): AuthorizationRule = new AuthorizationRule with AuthorizationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
@@ -500,7 +504,7 @@ object GroupsRuleTests extends MockFactory {
     }
   }
 
-  private object authRule {
+  object authRule {
 
     def matching(user: User.Id, groups: NonEmptyList[Group]): AuthRule = new AuthRule with AuthenticationRule with AuthorizationRule with AuthorizationImpersonationCustomSupport with AuthenticationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
