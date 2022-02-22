@@ -246,3 +246,4 @@ publishing {
 }
 
 publish.dependsOn getArtifactsFromEsBinaries
+publishToMavenLocal.dependsOn getArtifactsFromEsBinaries
