@@ -142,7 +142,7 @@ tasks.shadowJar.dependsOn tasks.relocateShadowJar
 def netty4TransportArtifactName = "transport-netty4-" + esVersion + ".jar"
 
 task uploadArtifactsFromEsBinaries(type: Exec) {
-    commandLine '../ci/upload-file-to-s3.sh', layout.buildDirectory.get().asFile.path + "/" + netty4TransportArtifactName, "build/org/elasticsearch/plugin/transport-netty4/" + netty4TransportArtifactName
+    commandLine '../ci/upload-file-to-s3.sh', layout.buildDirectory.get().asFile.path + "/" + netty4TransportArtifactName, "build/" + netty4TransportArtifactName
 }
 
 task getArtifactsFromEsBinaries {
