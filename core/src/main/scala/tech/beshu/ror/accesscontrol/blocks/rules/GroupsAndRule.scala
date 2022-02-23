@@ -16,29 +16,30 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import tech.beshu.ror.accesscontrol.blocks.rules.GroupsRule.orderingByStringValue
+import cats.implicits._
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule._
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.collection.immutable.SortedSet
-
-final class GroupsAndRule(override val settings: GroupsRule.Settings,
+final class GroupsAndRule(override val settings: AbstractGroupsRule.Settings,
                           implicit override val caseMappingEquality: UserIdCaseMappingEquality)
-  extends GroupsRule(settings, caseMappingEquality) {
+  extends AbstractGroupsRule(settings, caseMappingEquality) {
 
-  override def intersect(set1: Set[Group], set2: Set[Group]): SortedSet[Group] = {
-    if (set1.equals(set2)) {
-      return SortedSet.empty[Group] ++ set2
-    }
-    SortedSet.empty
+  override val name: Rule.Name = GroupsAndRule.Name.name
+
+  override def availableGroupsFrom(localGroups: Set[Group], resolvedRuleGroups: Set[Group]): Option[UniqueNonEmptyList[Group]] = {
+    UniqueNonEmptyList.fromSet(
+      if (localGroups === resolvedRuleGroups) {
+        localGroups
+      } else Set.empty
+    )
   }
 }
 
 object GroupsAndRule {
   implicit case object Name extends RuleName[GroupsRule] {
-    override val name: Name = Rule.Name("groups_all")
+    override val name: Name = Rule.Name("groups_and")
   }
-
 }

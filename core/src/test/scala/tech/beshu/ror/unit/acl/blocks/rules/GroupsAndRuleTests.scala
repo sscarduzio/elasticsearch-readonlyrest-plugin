@@ -18,31 +18,29 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import cats.data.NonEmptyList
 import eu.timepit.refined.auto._
-import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
-import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
-import tech.beshu.ror.accesscontrol.blocks.rules.{GroupsAndRule, GroupsRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.AbstractGroupsRule.{Settings => GroupsRulesSettings}
+import tech.beshu.ror.accesscontrol.blocks.rules.{AbstractGroupsRule, GroupsAndRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.unit.acl.blocks.rules.GroupsRuleTests.{RuleCreator, assertMatchRule, assertNotMatchRule, authenticationRule, groups, userIdPatterns}
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.language.postfixOps
 
-class GroupsAndRuleTests extends AnyWordSpec with Inside with BlockContextAssertion {
+class GroupsAndRuleTests extends BaseGroupsRuleTests {
 
-  val rc: RuleCreator = (settings: GroupsRule.Settings, caseSensitivity: UserIdCaseMappingEquality) => new GroupsAndRule(settings, caseSensitivity)
+  override def createRule(settings: GroupsRulesSettings, caseSensitivity: UserIdCaseMappingEquality): AbstractGroupsRule = {
+    new GroupsAndRule(settings, caseSensitivity)
+  }
 
   "A GroupsAndRule" should {
     "not match" when {
       "user has not all groups" in {
-        val ruleSettings = GroupsRule.Settings(
+        val ruleSettings = GroupsRulesSettings(
           groups = UniqueNonEmptyList.of(
             AlreadyResolved(groupFrom("g1").nel),
             AlreadyResolved(groupFrom("g2").nel),
@@ -61,13 +59,13 @@ class GroupsAndRuleTests extends AnyWordSpec with Inside with BlockContextAssert
           loggedUser = usr,
           caseSensitivity = false,
           preferredGroup = None
-        )(rc)
+        )
       }
     }
 
     "match" when {
       "user has all groups" in {
-        val ruleSettings = GroupsRule.Settings(
+        val ruleSettings = GroupsRulesSettings(
           groups = UniqueNonEmptyList.of(
             AlreadyResolved(groupFrom("g1").nel),
             AlreadyResolved(groupFrom("g2").nel),
@@ -93,17 +91,9 @@ class GroupsAndRuleTests extends AnyWordSpec with Inside with BlockContextAssert
             group = groupFrom("g1"),
             availableGroups = UniqueList.of(groupFrom("g1"), groupFrom("g2"))
           )
-        )(rc)
+        )
       }
     }
   }
 
-  def defaultOutputBlockContextAssertion(user: User.Id, group: Group, availableGroups: UniqueList[Group]): BlockContext => Unit =
-    (blockContext: BlockContext) => {
-      assertBlockContext(
-        loggedUser = Some(DirectlyLoggedUser(user)),
-        currentGroup = Some(group),
-        availableGroups = availableGroups
-      )(blockContext)
-    }
 }
