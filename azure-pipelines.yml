@@ -32,6 +32,9 @@ stages:
           - script: |
               bin/upload_es_artifacts.sh
             continueOnError: true
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
 
   - stage: CVE
     dependsOn: [ ] # run in parallel
