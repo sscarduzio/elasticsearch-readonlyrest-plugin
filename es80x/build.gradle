@@ -31,7 +31,6 @@ buildscript {
         maven { url "https://plugins.gradle.org/m2/" }
     }
     dependencies {
-        classpath group: 'com.amazonaws',                                name: 'aws-java-sdk',             version: '1.11.163'
         classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins',  name: 'license-gradle-plugin', version: '0.15.0'
         classpath group: 'com.star-zero.gradle',                         name: 'githook',               version: '1.2.1'
     }
@@ -41,7 +40,7 @@ repositories {
     mavenCentral()
     mavenLocal()
     maven {
-        url = "s3://" + s3BucketName
+        url = "s3://" + s3BucketName + "/build"
         credentials(AwsCredentials) {
             accessKey = awsAccessKeyId
             secretKey = awsSecretAccessKey
@@ -183,77 +182,3 @@ task ror(type: Zip, dependsOn: [cleanOldData, jarHellCheck, toJar, resolvePlugin
                 from 'build/tmp/' + pluginFullName
             }
 }
-
-def netty4TransportArtifactName = "transport-netty4-" + esVersion + ".jar"
-
-task getArtifactsFromEsBinaries {
-    doLast {
-        def esTar = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion + ".tar.gz")
-        if (!esTar.exists()) {
-            if(!layout.buildDirectory.asFile.get().exists()) {
-                project.mkdir(layout.buildDirectory.asFile.get())
-            }
-            def esLinuxBinaries = "elasticsearch-" + esVersion + "-linux-x86_64.tar.gz"
-            project.logger.info("Downloading " + esLinuxBinaries + " ...")
-            new URL("https://artifacts.elastic.co/downloads/elasticsearch/" + esLinuxBinaries)
-                    .withInputStream{ i -> esTar.withOutputStream{ it << i }}
-        }
-        def esDir = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion)
-        project.logger.info("Extracring " + esTar.path + " to " + esDir.path + "...")
-        copy {
-            from tarTree(esTar)
-            into esDir
-        }
-        def netty4TransportArtifactPath = esDir.path + "/elasticsearch-" + esVersion + "/modules/transport-netty4/" + netty4TransportArtifactName
-        def netty4TransportDestPath = layout.buildDirectory
-        project.logger.info("Coping " + netty4TransportArtifactPath + " to " + netty4TransportDestPath.get().asFile.path + "...")
-        copy {
-            from netty4TransportArtifactPath
-            into netty4TransportDestPath
-        }
-        project.delete(esTar, esDir)
-    }
-}
-
-task uploadArtifactsFromEsBinaries {
-    doLast {
-        com.amazonaws.services.s3.AmazonS3ClientBuilder
-                .standard()
-                .withCredentials(new com.amazonaws.auth.AWSStaticCredentialsProvider(
-                        new com.amazonaws.auth.BasicAWSCredentials(awsAccessKeyId, awsSecretAccessKey)
-                ))
-                .withRegion(com.amazonaws.regions.Regions.EU_WEST_1)
-                .build()
-                .putObject(
-                        s3BucketName,
-                        "build/" + netty4TransportArtifactName,
-                        new File(layout.buildDirectory.get().asFile.path + "/" + netty4TransportArtifactName)
-                )
-    }
-}
-
-uploadArtifactsFromEsBinaries.dependsOn getArtifactsFromEsBinaries
-
-apply plugin: 'maven-publish'
-publishing {
-    publications {
-        pub(MavenPublication) {
-            artifact layout.buildDirectory.file(netty4TransportArtifactName)
-            artifactId "transport-netty4"
-            groupId 'org.elasticsearch.plugin'
-            version esVersion
-        }
-    }
-//    repositories {
-//        maven {
-//            url = "s3://" + s3BucketName
-//            credentials(AwsCredentials) {
-//                accessKey = awsAccessKeyId
-//                secretKey = awsSecretAccessKey
-//            }
-//        }
-//    }
-}
-
-publish.dependsOn getArtifactsFromEsBinaries
-publishToMavenLocal.dependsOn getArtifactsFromEsBinaries

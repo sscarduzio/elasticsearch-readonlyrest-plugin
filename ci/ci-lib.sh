@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 # TAGGING
 function tag {
     GIT_TAG="$1"
@@ -27,9 +27,9 @@ function upload {
     CONF_FILE="conf.json"
     BUCKET="readonlyrest-data"
 
-    S3CLI="ci/dummy-s3cmd.sh"
+    S3CLI="$(dirname "$0")/dummy-s3cmd.sh"
     if [[ "$(uname -s)" == *"Linux"* ]]; then
-        S3CLI="ci/s3cli"
+        S3CLI="$(dirname "$0")/s3cli"
     fi
 
 cat > $CONF_FILE <<- EOM
