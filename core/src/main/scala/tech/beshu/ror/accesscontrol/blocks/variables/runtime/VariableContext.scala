@@ -48,7 +48,8 @@ object VariableContext {
     case object NotUsingVariable extends VariableUsage[Nothing]
 
     implicit val filterRule: VariableUsage[FilterRule] = UsingVariable[FilterRule](rule => NonEmptyList.one(rule.settings.filter))
-    implicit val groupsRule: VariableUsage[GroupsRule] = UsingVariable[GroupsRule](rule => rule.settings.groups.toNonEmptyList)
+    implicit val groupsOrRule: VariableUsage[GroupsRule] = UsingVariable[GroupsRule](rule => rule.settings.groups.toNonEmptyList)
+    implicit val groupsAndRule: VariableUsage[GroupsAndRule] = UsingVariable[GroupsAndRule](rule => rule.settings.groups.toNonEmptyList)
     implicit val hostsRule: VariableUsage[HostsRule] = UsingVariable[HostsRule](rule => rule.settings.allowedHosts.toNonEmptyList)
     implicit val indicesRule: VariableUsage[IndicesRule] = UsingVariable[IndicesRule](rule => rule.settings.allowedIndices.toNonEmptyList)
     implicit val kibanaIndexRule: VariableUsage[KibanaIndexRule] = UsingVariable[KibanaIndexRule](rule => NonEmptyList.one(rule.settings.kibanaIndex))
