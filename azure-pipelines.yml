@@ -8,8 +8,10 @@ trigger:
   batch: false
   branches:
     include:
-      - master
-      - develop
+    - master
+    - develop
+    - epic/*
+    - RORDEV*
   tags:
     exclude:
       - '*'
