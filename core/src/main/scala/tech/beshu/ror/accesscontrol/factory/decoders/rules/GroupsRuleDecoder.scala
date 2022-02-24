@@ -48,12 +48,12 @@ class GroupsAndRuleDecoder(usersDefinitions: Definitions[UserDef], override impl
   }
 }
 
-abstract class BaseGroupsRuleDecoder(usersDefinitions: Definitions[UserDef], implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends RuleBaseDecoderWithoutAssociatedFields[GroupsRule] {
+abstract class BaseGroupsRuleDecoder[R<:BaseGroupsRule](usersDefinitions: Definitions[UserDef], implicit val caseMappingEquality: UserIdCaseMappingEquality)
+  extends RuleBaseDecoderWithoutAssociatedFields[R] {
 
-  def createRule(settings: BaseGroupsRule.Settings, caseMappingEquality: UserIdCaseMappingEquality): BaseGroupsRule
+  def createRule(settings: BaseGroupsRule.Settings, caseMappingEquality: UserIdCaseMappingEquality): R
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[GroupsRule]] = {
+  override protected def decoder = {
     DecoderHelpers
       .decoderStringLikeOrUniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]]
       .toSyncDecoder
@@ -61,9 +61,9 @@ abstract class BaseGroupsRuleDecoder(usersDefinitions: Definitions[UserDef], imp
       .emapE { groups =>
         NonEmptyList.fromList(usersDefinitions.items) match {
           case Some(userDefs) =>
-            Right(RuleWithVariableUsageDefinition.create(new GroupsRule(BaseGroupsRule.Settings(groups, userDefs), caseMappingEquality)))
+            Right(RuleWithVariableUsageDefinition.create(createRule(BaseGroupsRule.Settings(groups, userDefs), caseMappingEquality)))
           case None =>
-            Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${GroupsRule.Name.show}` requires them.")))
+            Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${ruleName.show}` requires them.")))
         }
       }
       .decoder
