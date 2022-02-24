@@ -30,8 +30,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth.{SeparateRules, SingleRule}
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.{WithGroupsMapping, WithoutGroupsMapping}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.AbstractGroupsRule
-import tech.beshu.ror.accesscontrol.blocks.rules.AbstractGroupsRule.{Settings => GroupsRulesSettings}
+import tech.beshu.ror.accesscontrol.blocks.rules.BaseGroupsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.BaseGroupsRule.{Settings => GroupsRulesSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
@@ -58,7 +58,7 @@ abstract class BaseGroupsRuleTests extends AnyWordSpec with Inside with BlockCon
 
   implicit val provider: EnvVarsProvider = OsEnvVarsProvider
 
-  def createRule(settings: GroupsRulesSettings, caseSensitivity: UserIdCaseMappingEquality): AbstractGroupsRule
+  def createRule(settings: GroupsRulesSettings, caseSensitivity: UserIdCaseMappingEquality): BaseGroupsRule
 
   // Common tests
 

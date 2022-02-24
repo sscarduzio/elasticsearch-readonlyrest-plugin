@@ -50,7 +50,11 @@ class GroupsRuleAccessControlTests
       |
       |  access_control_rules:
       |
-      |  - name: "Allowed only for group3 and group4"
+      |  - name: "Allowed only for group3 AND group4"
+      |    groups_and: [group3, group4]
+      |    indices: ["g34_index"]
+      |
+      |  - name: "Allowed only for group3 OR group4"
       |    groups: [group3, group4]
       |    indices: ["g34_index"]
       |
@@ -122,6 +126,21 @@ class GroupsRuleAccessControlTests
     """.stripMargin
 
   "An ACL" when {
+    "auth_key is used with local groups" should {
+      "allow when authorization satisfies all groups" in {
+        val request = MockRequestContext.indices.copy(
+          headers = Set(header("Authorization", "Basic " + Base64.getEncoder.encodeToString("user2:pass".getBytes))),
+          filteredIndices = Set(clusterIndexName("g34_index")),
+        )
+        val result = acl.handleRegularRequest(request).runSyncUnsafe()
+        result.history should have size 1
+        inside (result.result) {
+          case Allow(blockContext, _) =>
+            blockContext.userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2"))))
+            blockContext.userMetadata.availableGroups should be (UniqueList.of(Group("group3"), Group("group4")))
+        }
+      }
+    }
     "proxy auth is used together with groups" should {
       "allow to proceed" when {
         "proxy auth user is correct one" in {

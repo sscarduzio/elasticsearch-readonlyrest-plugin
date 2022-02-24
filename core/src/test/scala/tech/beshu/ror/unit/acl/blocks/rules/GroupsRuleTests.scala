@@ -21,8 +21,8 @@ import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
-import tech.beshu.ror.accesscontrol.blocks.rules.AbstractGroupsRule.{Settings => GroupsRuleSettings}
-import tech.beshu.ror.accesscontrol.blocks.rules.{AbstractGroupsRule, GroupsRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.BaseGroupsRule.{Settings => GroupsRuleSettings}
+import tech.beshu.ror.accesscontrol.blocks.rules.{BaseGroupsRule, GroupsRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain._
@@ -33,7 +33,7 @@ import scala.language.postfixOps
 
 class GroupsRuleTests extends BaseGroupsRuleTests {
 
-  override def createRule(settings: GroupsRuleSettings, caseSensitivity: UserIdCaseMappingEquality): AbstractGroupsRule = {
+  override def createRule(settings: GroupsRuleSettings, caseSensitivity: UserIdCaseMappingEquality): BaseGroupsRule = {
     new GroupsRule(settings, caseSensitivity)
   }
 

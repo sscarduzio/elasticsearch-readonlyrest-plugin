@@ -21,8 +21,8 @@ import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
-import tech.beshu.ror.accesscontrol.blocks.rules.AbstractGroupsRule.{Settings => GroupsRulesSettings}
-import tech.beshu.ror.accesscontrol.blocks.rules.{AbstractGroupsRule, GroupsAndRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.BaseGroupsRule.{Settings => GroupsRulesSettings}
+import tech.beshu.ror.accesscontrol.blocks.rules.{BaseGroupsRule, GroupsAndRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain._
@@ -33,7 +33,7 @@ import scala.language.postfixOps
 
 class GroupsAndRuleTests extends BaseGroupsRuleTests {
 
-  override def createRule(settings: GroupsRulesSettings, caseSensitivity: UserIdCaseMappingEquality): AbstractGroupsRule = {
+  override def createRule(settings: GroupsRulesSettings, caseSensitivity: UserIdCaseMappingEquality): BaseGroupsRule = {
     new GroupsAndRule(settings, caseSensitivity)
   }
 
@@ -64,7 +64,7 @@ class GroupsAndRuleTests extends BaseGroupsRuleTests {
     }
 
     "match" when {
-      "user has all groups" in {
+      "user has exactly all groups" in {
         val ruleSettings = GroupsRulesSettings(
           groups = UniqueNonEmptyList.of(
             AlreadyResolved(groupFrom("g1").nel),
@@ -76,6 +76,35 @@ class GroupsAndRuleTests extends BaseGroupsRuleTests {
             mode = WithoutGroupsMapping(
               authenticationRule.matching(User.Id("user1")),
               groups("g1", "g2")
+            )
+          ))
+        )
+        val usr = Some(User.Id("user1"))
+        assertMatchRule(
+          settings = ruleSettings,
+          loggedUser = usr,
+          caseSensitivity = false,
+          preferredGroup = None
+        )(
+          blockContextAssertion = defaultOutputBlockContextAssertion(
+            user = User.Id("user1"),
+            group = groupFrom("g1"),
+            availableGroups = UniqueList.of(groupFrom("g1"), groupFrom("g2"))
+          )
+        )
+      }
+      "user has an excess of all required groups" in {
+        val ruleSettings = GroupsRulesSettings(
+          groups = UniqueNonEmptyList.of(
+            AlreadyResolved(groupFrom("g1").nel),
+            AlreadyResolved(groupFrom("g2").nel),
+          ),
+
+          usersDefinitions = NonEmptyList.of(UserDef(
+            usernames = userIdPatterns("user1"),
+            mode = WithoutGroupsMapping(
+              authenticationRule.matching(User.Id("user1")),
+              groups("g1", "g2", "g3")
             )
           ))
         )
