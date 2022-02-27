@@ -39,8 +39,8 @@ import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-
-abstract class BaseGroupsRule(val settings: Settings, implicit override val caseMappingEquality: UserIdCaseMappingEquality)
+abstract class BaseGroupsRule(val settings: Settings,
+                              implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthRule
     with AuthenticationImpersonationCustomSupport
     with AuthorizationImpersonationCustomSupport

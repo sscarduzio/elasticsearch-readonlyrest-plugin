@@ -17,14 +17,13 @@
 package tech.beshu.ror.integration
 
 import java.util.Base64
-
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, ForbiddenByMismatched}
+import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, ForbiddenByMismatched, IndexNotFound}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{FullLocalIndexWithAliases, Group, User}
@@ -50,17 +49,17 @@ class GroupsRuleAccessControlTests
       |
       |  access_control_rules:
       |
-      |  - name: "Allowed only for group3 AND group4"
-      |    groups_and: [group3, group4]
-      |    indices: ["g34_index"]
-      |
       |  - name: "Allowed only for group3 OR group4"
       |    groups: [group3, group4]
       |    indices: ["g34_index"]
       |
-      |  - name: "Allowed only for group1 and group2"
+      |  - name: "Allowed only for group1 OR group2"
       |    groups: [group1, group2]
       |    indices: ["g12_index"]
+      |
+      |  - name: "Allowed only for group1 AND group43"
+      |    groups_and: [group1, group3]
+      |    indices: ["g13_index"]
       |
       |  - name: "Allowed only for group5"
       |    groups: ["@explode{jwt:roles}"]
@@ -165,10 +164,8 @@ class GroupsRuleAccessControlTests
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 4
-          inside(result.result) { case ForbiddenByMismatched(causes) =>
-            causes.toNonEmptyList.toList should have size 1
-            causes.toNonEmptyList.head should be (Cause.OperationNotAllowed)
+          result.history should have size 5
+          inside(result.result) { case IndexNotFound() =>
           }
         }
       }
@@ -186,7 +183,7 @@ class GroupsRuleAccessControlTests
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 3
+          result.history should have size 4
           inside(result.result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user3"))))
             blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group5")))
@@ -206,7 +203,7 @@ class GroupsRuleAccessControlTests
             allIndicesAndAliases = Set(FullLocalIndexWithAliases(fullIndexName(".kibana"), Set.empty))
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 4
+          result.history should have size 5
           inside(result.result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("morgan"))))
             blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("admin")))
@@ -218,6 +215,7 @@ class GroupsRuleAccessControlTests
 
   private def allIndicesAndAliasesInTheTestCase() = Set(
     FullLocalIndexWithAliases(fullIndexName("g12_index"), Set.empty),
+    FullLocalIndexWithAliases(fullIndexName("g13_index"), Set.empty),
     FullLocalIndexWithAliases(fullIndexName("g34_index"), Set.empty),
     FullLocalIndexWithAliases(fullIndexName("g5_index"), Set.empty)
   )

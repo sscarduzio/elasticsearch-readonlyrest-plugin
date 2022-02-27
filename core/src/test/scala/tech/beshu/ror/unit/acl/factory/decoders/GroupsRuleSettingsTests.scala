@@ -37,7 +37,7 @@ import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class GroupsRuleSettingsTests
-  extends BaseRuleSettingsDecoderTest[GroupsRule]
+  extends BaseRuleSettingsDecoderTest[GroupsOrRule]
     with Inside {
 
   "A GroupsRule" should {

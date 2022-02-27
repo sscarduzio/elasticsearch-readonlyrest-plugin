@@ -22,18 +22,19 @@ import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-final class GroupsRule(override val settings: BaseGroupsRule.Settings, implicit override val caseMappingEquality: UserIdCaseMappingEquality)
+final class GroupsOrRule(override val settings: BaseGroupsRule.Settings,
+                         implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BaseGroupsRule(settings, caseMappingEquality) {
 
-  override val name: Rule.Name = GroupsRule.Name.name
+  override val name: Rule.Name = GroupsOrRule.Name.name
 
   override def availableGroupsFrom(userGroups: Set[Group], ruleGroups: Set[Group]): Option[UniqueNonEmptyList[Group]] = {
     UniqueNonEmptyList.fromSet(userGroups intersect ruleGroups)
   }
 }
 
-object GroupsRule {
-  implicit case object Name extends RuleName[GroupsRule] {
+object GroupsOrRule {
+  implicit case object Name extends RuleName[GroupsOrRule] {
     override val name: Name = Rule.Name("groups")
   }
 }

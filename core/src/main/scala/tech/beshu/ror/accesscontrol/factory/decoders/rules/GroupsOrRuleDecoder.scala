@@ -22,7 +22,7 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
-import tech.beshu.ror.accesscontrol.blocks.rules.{BaseGroupsRule, GroupsAndRule, GroupsRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.{BaseGroupsRule, GroupsAndRule, GroupsOrRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.domain.Group
@@ -35,13 +35,13 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
-class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef],
-                        override implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends BaseGroupsRuleDecoder[GroupsRule](usersDefinitions, caseMappingEquality) {
+class GroupsOrRuleDecoder(usersDefinitions: Definitions[UserDef],
+                          override implicit val caseMappingEquality: UserIdCaseMappingEquality)
+  extends BaseGroupsRuleDecoder[GroupsOrRule](usersDefinitions, caseMappingEquality) {
 
   override protected def createRule(settings: BaseGroupsRule.Settings,
-                                    caseMappingEquality: UserIdCaseMappingEquality): GroupsRule = {
-    new GroupsRule(settings, caseMappingEquality)
+                                    caseMappingEquality: UserIdCaseMappingEquality): GroupsOrRule = {
+    new GroupsOrRule(settings, caseMappingEquality)
   }
 }
 
