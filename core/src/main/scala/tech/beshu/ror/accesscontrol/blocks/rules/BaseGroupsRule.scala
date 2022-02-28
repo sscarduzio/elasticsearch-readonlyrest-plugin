@@ -23,7 +23,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, Mode}
-import tech.beshu.ror.accesscontrol.blocks.rules.GroupsRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.BaseGroupsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
@@ -34,18 +34,19 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
+import tech.beshu.ror.accesscontrol.orders.groupOrder
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-final class GroupsRule(val settings: Settings,
-                       implicit override val caseMappingEquality: UserIdCaseMappingEquality)
+abstract class BaseGroupsRule(val settings: Settings,
+                              implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthRule
     with AuthenticationImpersonationCustomSupport
     with AuthorizationImpersonationCustomSupport
     with Logging {
 
-  override val name: Rule.Name = GroupsRule.Name.name
+  protected def availableGroupsFrom(userGroups: Set[Group], ruleGroups: Set[Group]): Option[UniqueNonEmptyList[Group]]
 
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
@@ -110,7 +111,7 @@ final class GroupsRule(val settings: Settings,
   private def authorizeAndAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                 resolvedGroups: UniqueNonEmptyList[Group])
                                                                                (userDef: UserDef): Task[Option[B]] = {
-    UniqueNonEmptyList.fromSortedSet(userDef.localGroups.intersect(resolvedGroups)) match {
+    availableGroupsFrom(userDef.localGroups.toSet, resolvedGroups.toSet) match {
       case None =>
         Task.now(None)
       case Some(availableGroups) =>
@@ -233,8 +234,8 @@ final class GroupsRule(val settings: Settings,
     val externalAvailableGroups = sourceBlockContext.userMetadata.availableGroups
     for {
       externalGroupsMappedToLocalGroups <- mapExternalGroupsToLocalGroups(groupMappings, externalAvailableGroups)
-      availableLocalGroups <- UniqueNonEmptyList.fromSet {
-        potentiallyAvailableGroups.toSet.intersect(externalGroupsMappedToLocalGroups)
+      availableLocalGroups <- {
+        availableGroupsFrom(potentiallyAvailableGroups.toSet, externalGroupsMappedToLocalGroups.toSet)
       }
       loggedUser <- sourceBlockContext.userMetadata.loggedUser
     } yield destinationBlockContext.withUserMetadata(_
@@ -285,14 +286,9 @@ final class GroupsRule(val settings: Settings,
   private def resolveGroups[B <: BlockContext](blockContext: B) = {
     resolveAll(settings.groups.toNonEmptyList, blockContext)
   }
-
 }
 
-object GroupsRule {
-
-  implicit case object Name extends RuleName[GroupsRule] {
-    override val name = Rule.Name("groups")
-  }
+object BaseGroupsRule {
 
   final case class Settings(groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]],
                             usersDefinitions: NonEmptyList[UserDef])
