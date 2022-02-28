@@ -38,7 +38,7 @@ trait FieldRuleEngineSuite
   protected def unmodifableQueryAssertion(user: String, query: String): Assertion
 
   "Search request with field rule defined" when {
-    "specifc FLS engine is used" should {
+    "specific FLS engine is used" should {
       "match and return filtered document source" when {
         "modifiable at ES level query using not allowed field is passed in request" in {
           assertNoSearchHitsReturnedFor("user", modifiableAtEsLevelQuery)

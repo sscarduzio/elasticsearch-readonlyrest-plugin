@@ -133,27 +133,43 @@ trait FiltersAndFieldsSecuritySuite
     response.body.contains("c2") shouldBe false
     response.body.contains("dummy") shouldBe false
   }
+
+  "mSearch with filter" in {
+    val searchManager = new SearchManager(basicAuthClient("dev", "test"))
+    val response = searchManager.mSearch(
+      """{"index":"index-01"}""",
+      """{"query" : {"match_all" : {}}}""",
+      """{"index":"index-02"}""",
+      """{"query" : {"match_all" : {}}}"""
+    )
+
+    response.responseCode should be (200)
+  }
 }
 
 object FiltersAndFieldsSecuritySuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    insertDoc("a1", "a", "title")
-    insertDoc("a2", "a", "title")
-    insertDoc("b1", "bandc", "title")
-    insertDoc("b2", "bandc", "title")
-    insertDoc("c1", "bandc", "title")
-    insertDoc("c2", "bandc", "title")
-    insertDoc("d1", "d", "title")
-    insertDoc("d2", "d", "title")
-    insertDoc("d1", "d", "nottitle")
-    insertDoc("d2", "d", "nottitle")
+    insertTestFilterDoc("a1", "a", "title")
+    insertTestFilterDoc("a2", "a", "title")
+    insertTestFilterDoc("b1", "bandc", "title")
+    insertTestFilterDoc("b2", "bandc", "title")
+    insertTestFilterDoc("c1", "bandc", "title")
+    insertTestFilterDoc("c2", "bandc", "title")
+    insertTestFilterDoc("d1", "d", "title")
+    insertTestFilterDoc("d2", "d", "title")
+    insertTestFilterDoc("d1", "d", "nottitle")
+    insertTestFilterDoc("d2", "d", "nottitle")
+    insertDoc("1", "index-01", "plugins_name")
 
+    def insertTestFilterDoc(docName: String, idx: String, field: String): Unit = {
+      insertDoc(docName, s"testfilter$idx", field)
+    }
     def insertDoc(docName: String, idx: String, field: String): Unit = {
       val entity = ujson.read(s"""{"$field": "$docName", "dummy": true}""")
 
       documentManager
-        .createDoc(s"testfilter$idx", "documents", s"doc-$docName${Math.random().toString}", entity)
+        .createDoc(idx, "documents", s"doc-$docName${Math.random().toString}", entity)
         .force()
     }
   }
