@@ -51,10 +51,6 @@ stages:
             clean: false
             persistCredentials: true
           - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key 
-              
               echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
               echo "[CVE] executing ROR_TASK=$ROR_TASK"
               bin/build.sh
@@ -71,6 +67,10 @@ stages:
             clean: false
             persistCredentials: true
           - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key 
+              
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
               bin/build.sh
             env:
@@ -82,8 +82,6 @@ stages:
               testRunTitle: "$(ROR_TASK) results"
               testResultsFiles: "**/TEST*xml"
               mergeTestResults: true
-
-
         strategy:
           maxParallel: 99
           matrix:
