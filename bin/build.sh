@@ -41,6 +41,9 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_proxy" ]]; then
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es80x" ]]; then
+    # Translate back env vars to avoid cyclical reference :/
+    export aws_access_key_id=$var_aws_access_key_id
+    export aws_secret_access_key=$var_aws_secret_access_key
     echo ">>> es80x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es80x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
