@@ -95,7 +95,9 @@ class TransportRRConfigAction(actionName: String,
     new RRConfigsResponse(clusterService.getClusterName, responses, failures)
   }
 
-  override def newNodeResponse(streamInput: StreamInput, discoveryNode: DiscoveryNode): RRConfig = ??? // todo: fixme
+  override def newNodeResponse(streamInput: StreamInput, discoveryNode: DiscoveryNode): RRConfig = {
+    new RRConfig(discoveryNode, streamInput)
+  }
 
   override def newNodeRequest(request: RRConfigsRequest): RRConfigRequest =
     new RRConfigRequest(request.getNodeConfigRequest)

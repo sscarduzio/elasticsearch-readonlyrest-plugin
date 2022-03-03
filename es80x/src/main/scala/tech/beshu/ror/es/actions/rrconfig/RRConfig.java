@@ -40,6 +40,11 @@ public class RRConfig extends BaseNodeResponse {
         this.nodeConfig = nodeConfig;
     }
 
+    public RRConfig(DiscoveryNode discoveryNode, StreamInput in) throws IOException {
+        super(discoveryNode);
+        this.nodeConfig = NodeConfigSerializer.parse(in.readString());
+    }
+
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         super.writeTo(out);
