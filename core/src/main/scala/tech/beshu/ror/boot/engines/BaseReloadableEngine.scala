@@ -163,6 +163,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
       engineWithConfig,
       engineWithConfig.ttl.map { ttl =>
         scheduler.scheduleOnce(ttl) {
+          logger.info(s"[${requestId.show}] ROR $name engine (id=${engineWithConfig.config.hashString()}) is being stopped after TTL were reached ...") // todo: debug
           stop(engineWithConfig)
           currentEngine.transform {
             case EngineState.NotStartedYet => EngineState.NotStartedYet
@@ -177,12 +178,14 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
                        (implicit requestId: RequestId): Unit = {
     engineState.scheduledShutdownJob.foreach(_.cancel())
     scheduler.scheduleOnce(BaseReloadableEngine.delayOfOldEngineShutdown) {
+      logger.info(s"[${requestId.show}] ROR $name engine (id=${engineState.engineWithConfig.config.hashString()}) is being stopped early ...") // todo: debug
       stop(engineState.engineWithConfig)
     }
   }
 
   private def stopNow(engineState: EngineState.Working)
                      (implicit requestId: RequestId): Unit = {
+    logger.info(s"[${requestId.show}] ROR $name engine (id=${engineState.engineWithConfig.config.hashString()}) is being stopped now ...") // todo: debug
     engineState.scheduledShutdownJob.foreach(_.cancel())
     stop(engineState.engineWithConfig)
   }
