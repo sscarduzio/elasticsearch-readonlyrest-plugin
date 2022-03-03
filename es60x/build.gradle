@@ -94,6 +94,9 @@ tasks.withType(Zip) { task ->
 
 configurations {
     wagon
+    implementation {
+        exclude group: 'org.bouncycastle'
+    }
     distJars {
         extendsFrom runtime
         exclude group: 'org.elasticsearch'
