@@ -43,5 +43,4 @@ include 'ror-tools'
 include 'tests-utils'
 include 'integration-tests'
 include 'eshome'
-include 'ror-tools'
 

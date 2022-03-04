@@ -101,7 +101,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     for {
       _ <- canBeReloaded(newConfig)
       newEngineWithConfig <- reloadWith(newConfig, newConfigEngineTtl)
-      a <- replaceCurrentEngine(newEngineWithConfig)
+      _ <- replaceCurrentEngine(newEngineWithConfig)
     } yield ()
   }
 

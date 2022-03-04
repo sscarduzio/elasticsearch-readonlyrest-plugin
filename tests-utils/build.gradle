@@ -12,6 +12,7 @@ buildscript {
 
 apply plugin: "com.github.hierynomus.license"
 apply plugin: "com.star-zero.gradle.githook"
+apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'scala'
 
@@ -21,10 +22,10 @@ repositories {
     maven { url 'https://jitpack.io' }
 }
 
-//compileScala {
-//    sourceCompatibility = 1.8
-//    targetCompatibility = 1.8
-//}
+compileScala {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+}
 
 configurations {
     scalaCompilerPlugin {
@@ -65,12 +66,12 @@ dependencies {
     compile group: 'com.jayway.jsonpath',            name: 'json-path',                     version: '2.5.0'
     compile group: 'io.monix',                       name: 'monix_2.12',                    version: '3.0.0-RC3'
     compile group: 'com.lihaoyi',                    name: 'os-lib_2.12',                   version: '0.7.0'
-    compile group: 'org.scala-lang',                 name: 'scala-library',                 version: '2.12.15'
+    compile group: 'org.scala-lang',                 name: 'scala-library',                 version: '2.12.4'
     compile group: 'org.scala-lang.modules',         name: 'scala-java8-compat_2.12',       version: '0.9.0'
     compile group: 'com.typesafe.scala-logging',     name: 'scala-logging_2.12',            version: '3.9.2'
     compile group: 'org.scalatest',                  name: 'scalatest_2.12',                version: '3.1.0'
-    compile group: 'com.dimafeng',                   name: 'testcontainers-scala_2.12',     version: '0.40.1'
-    compile group: 'org.testcontainers',             name: 'testcontainers',                version: "1.16.2"
+    compile group: 'com.dimafeng',                   name: 'testcontainers-scala_2.12',     version: '0.39.0'
+    compile group: 'org.testcontainers',             name: 'testcontainers',                version: "1.15.0"
     compile group: 'eu.rekawek.toxiproxy',           name: 'toxiproxy-java',                version: "2.1.4"
     compile group: 'com.unboundid',                  name: 'unboundid-ldapsdk',             version: '4.0.9'
     compile group: 'com.mashape.unirest',            name: 'unirest-java',                  version: '1.4.9'

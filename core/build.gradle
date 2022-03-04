@@ -65,10 +65,10 @@ dependencyCheck {
     suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
 }
 
-//compileScala {
-//    sourceCompatibility = 1.8
-//    targetCompatibility = 1.8
-//}
+compileScala {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+}
 
 test {
     testLogging {
@@ -83,7 +83,7 @@ test {
 }
 
 configurations {
-    scalaCompilerPlugin {
+    scalaCompilerPlugin{
         transitive = false
     }
     all*.exclude group: 'org.hdrhistogram', module: 'HdrHistogram'
@@ -95,10 +95,10 @@ dependencies {
     compile project(':audit')
     compile project(path: ':ror-shadowed-libs', configuration: 'shadow')
 
-    scalaCompilerPlugin     "org.scalamacros:paradise_2.12.15:2.1.1"
-    compileClasspath        "com.github.ghik:silencer-lib_2.12.15:1.7.8"
-    testCompileClasspath    "com.github.ghik:silencer-lib_2.12.15:1.7.8"
-    scalaCompilerPlugin     "com.github.ghik:silencer-plugin_2.12.15:1.7.8"
+    scalaCompilerPlugin     "org.scalamacros:paradise_2.12.8:2.1.1"
+    compileClasspath        "com.github.ghik:silencer-lib_2.12.8:1.6.0"
+    testCompileClasspath    "com.github.ghik:silencer-lib_2.12.8:1.6.0"
+    scalaCompilerPlugin     "com.github.ghik:silencer-plugin_2.12.8:1.6.0"
 
     compile(group: 'com.softwaremill.sttp',                 name: 'async-http-client-backend-cats_2.12',    version: '1.7.2') {
         exclude group: 'io.netty', module: 'netty-tcnative-classes'
@@ -128,7 +128,7 @@ dependencies {
     compile group: 'org.reflections',                       name: 'reflections',                            version: '0.9.11'
     compile group: 'com.github.blemale',                    name: 'scaffeine_2.12',                         version: '3.1.0'
     compile group: 'com.github.tototoshi',                  name: 'scala-csv_2.12',                         version: '1.3.6'
-    compile group: 'org.scala-lang',                        name: 'scala-library',                          version: '2.12.15'
+    compile group: 'org.scala-lang',                        name: 'scala-library',                          version: '2.12.8'
     compile group: 'org.scala-lang.modules',                name: 'scala-java8-compat_2.12',                version: '0.9.0'
     compile group: 'io.lemonlabs',                          name: 'scala-uri_2.12',                         version: '1.4.1'
     compile group: 'org.typelevel',                         name: 'squants_2.12',                           version: '1.4.0'
