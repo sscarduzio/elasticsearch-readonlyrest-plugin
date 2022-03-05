@@ -61,7 +61,6 @@ stages:
   - stage: TEST
     jobs:
       - job:
-        container: maven:3.8.1-openjdk-17-slim
         steps:
           - checkout: self
             fetchDepth: 1
