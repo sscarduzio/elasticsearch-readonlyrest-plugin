@@ -92,8 +92,59 @@ stages:
 
             IT_PROXY:
               ROR_TASK: integration_proxy
+      - job:
+        container: maven:3.8.1-openjdk-17-slim
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key 
+              
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              bin/build.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
             IT_es80x:
               ROR_TASK: integration_es80x
+      - job:
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key 
+              
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              bin/build.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
             IT_es716x:
               ROR_TASK: integration_es716x
             IT_es714x:
