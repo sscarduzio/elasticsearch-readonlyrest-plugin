@@ -34,7 +34,7 @@ object providers {
 
     def tokenAuthClient(token: String): RestClient = client(Credentials.Token(token))
 
-    def authHeader(header:String, value:String): RestClient = client(Credentials.Header(header, value))
+    def authHeader(header: String, value: String): RestClient = client(Credentials.Header(header, value))
 
     def noBasicAuthClient: RestClient = client(Credentials.None)
 

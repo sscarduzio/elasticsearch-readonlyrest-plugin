@@ -35,7 +35,7 @@ import scala.language.{implicitConversions, postfixOps}
 
 class LdapContainer private[containers] (name: String, ldapInitScript: InitScriptSource)
   extends GenericContainer(
-    dockerImage = "osixia/openldap:1.1.7",
+    dockerImage = "osixia/openldap:1.5.0",
     env = Map(
       "LDAP_ORGANISATION" -> defaults.ldap.organisation,
       "LDAP_DOMAIN" -> defaults.ldap.domain,

@@ -21,8 +21,10 @@ import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
-import tech.beshu.ror.accesscontrol.blocks.rules.GroupsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.rules.{BaseGroupsRule, GroupsAndRule, GroupsOrRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -33,11 +35,33 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
-class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef],
-                        implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends RuleBaseDecoderWithoutAssociatedFields[GroupsRule] {
+class GroupsOrRuleDecoder(usersDefinitions: Definitions[UserDef],
+                          override implicit val caseMappingEquality: UserIdCaseMappingEquality)
+  extends BaseGroupsRuleDecoder[GroupsOrRule](usersDefinitions, caseMappingEquality) {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[GroupsRule]] = {
+  override protected def createRule(settings: BaseGroupsRule.Settings,
+                                    caseMappingEquality: UserIdCaseMappingEquality): GroupsOrRule = {
+    new GroupsOrRule(settings, caseMappingEquality)
+  }
+}
+
+class GroupsAndRuleDecoder(usersDefinitions: Definitions[UserDef],
+                           override implicit val caseMappingEquality: UserIdCaseMappingEquality)
+  extends BaseGroupsRuleDecoder[GroupsAndRule](usersDefinitions, caseMappingEquality) {
+
+  override protected def createRule(settings: BaseGroupsRule.Settings,
+                                    caseMappingEquality: UserIdCaseMappingEquality): GroupsAndRule = {
+    new GroupsAndRule(settings, caseMappingEquality)
+  }
+}
+
+abstract class BaseGroupsRuleDecoder[R <: BaseGroupsRule : RuleName : VariableUsage](usersDefinitions: Definitions[UserDef],
+                                                                                     implicit val caseMappingEquality: UserIdCaseMappingEquality)
+  extends RuleBaseDecoderWithoutAssociatedFields[R] {
+
+  protected def createRule(settings: BaseGroupsRule.Settings, caseMappingEquality: UserIdCaseMappingEquality): R
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[R]] = {
     DecoderHelpers
       .decoderStringLikeOrUniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]]
       .toSyncDecoder
@@ -45,9 +69,9 @@ class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef],
       .emapE { groups =>
         NonEmptyList.fromList(usersDefinitions.items) match {
           case Some(userDefs) =>
-            Right(RuleWithVariableUsageDefinition.create(new GroupsRule(GroupsRule.Settings(groups, userDefs), caseMappingEquality)))
+            Right(RuleWithVariableUsageDefinition.create(createRule(BaseGroupsRule.Settings(groups, userDefs), caseMappingEquality)))
           case None =>
-            Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${GroupsRule.Name.show}` requires them.")))
+            Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${ruleName.show}` requires them.")))
         }
       }
       .decoder
