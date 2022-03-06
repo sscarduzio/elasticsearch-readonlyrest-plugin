@@ -32,8 +32,8 @@ import tech.beshu.ror.es.AuditSinkService
 import java.security.cert.X509Certificate
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 
-class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestClient])
-                                             (implicit scheduler: Scheduler)
+class RestClientAuditSinkService private(clients: NonEmptyList[RestClient])
+                                        (implicit scheduler: Scheduler)
   extends AuditSinkService
     with Logging {
 
@@ -74,12 +74,12 @@ class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestClient])
     }
 }
 
-object HighLevelClientAuditSinkService {
+object RestClientAuditSinkService {
 
   def create(remoteCluster: AuditCluster.RemoteAuditCluster)
-            (implicit scheduler: Scheduler): HighLevelClientAuditSinkService = {
+            (implicit scheduler: Scheduler): RestClientAuditSinkService = {
     val clients = remoteCluster.uris.map(createRestClient)
-    new HighLevelClientAuditSinkService(clients)
+    new RestClientAuditSinkService(clients)
   }
 
   private def createRestClient(uri: Uri) = {
