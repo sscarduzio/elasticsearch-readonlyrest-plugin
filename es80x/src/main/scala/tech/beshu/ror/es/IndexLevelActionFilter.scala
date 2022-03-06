@@ -37,7 +37,7 @@ import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.handler.AclAwareRequestFilter
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
-import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, HighLevelClientAuditSinkService}
+import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, RestClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
@@ -89,7 +89,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     case AuditCluster.LocalAuditCluster =>
       new EsAuditSinkService(client, threadPool)
     case remote: AuditCluster.RemoteAuditCluster =>
-      HighLevelClientAuditSinkService.create(remote)
+      RestClientAuditSinkService.create(remote)
   }
 
   override def order(): Int = 0
