@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient
 import co.elastic.clients.elasticsearch._types.Result
 import co.elastic.clients.elasticsearch.core.CreateRequest
-import co.elastic.clients.json.jackson.JacksonJsonpMapper
+import co.elastic.clients.json.jsonb.JsonbJsonpMapper
 import co.elastic.clients.transport.rest_client.RestClientTransport
 import co.elastic.clients.util.ObjectBuilder
 import io.lemonlabs.uri.Uri
@@ -102,7 +102,7 @@ object HighLevelClientAuditSinkService {
       )
       .build()
 
-    new RestClientTransport(restClient, new JacksonJsonpMapper())
+    new RestClientTransport(restClient, new JsonbJsonpMapper())
   }
 
   private def configureCredentials(credentials: Option[Credentials]): HttpAsyncClientBuilder => HttpAsyncClientBuilder = (httpClientBuilder: HttpAsyncClientBuilder) => {

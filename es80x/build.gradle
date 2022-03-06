@@ -67,7 +67,12 @@ dependencies {
     compile project(path: ':ror-tools', configuration: 'shadow')
     compile             group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: esVersion
     compile             group: 'co.elastic.clients',                name: 'elasticsearch-java',                     version: esVersion
-    compile             group: 'com.fasterxml.jackson.core',        name: 'jackson-databind',                       version: '2.12.3'
+
+//    compile group: 'javax.json', name: 'javax.json-api', version: '1.1'
+    compile group: 'org.glassfish', name: 'javax.json', version: '1.1'
+
+    compile  group: 'org.eclipse', name: 'yasson', version: '2.0.4'
+//    compile             group: 'com.fasterxml.jackson.core',        name: 'jackson-databind',                       version: '2.12.3'
     compile             group: 'org.apache.logging.log4j',          name: 'log4j-core',                             version: '2.11.1'
     compileClasspath    group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
     // if you don't have this dependency in local maven, please run publishToMavenLocal task first
