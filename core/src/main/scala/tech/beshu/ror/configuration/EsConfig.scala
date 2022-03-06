@@ -55,7 +55,7 @@ object EsConfig {
   }
 
   private def loadSslSettings(esConfigFolderPath: Path, configFile: File)
-                             (implicit envVarsProvider:EnvVarsProvider,
+                             (implicit envVarsProvider: EnvVarsProvider,
                               propertiesProvider: PropertiesProvider): EitherT[Task, LoadEsConfigError, RorSsl] = {
     EitherT(RorSsl.load(esConfigFolderPath).map(_.left.map(error => MalformedContent(configFile, error.message))))
   }
@@ -65,7 +65,8 @@ object EsConfig {
   }
 
   private def loadFipsConfiguration(esConfigFolderPath: Path, configFile: File)
-                                   (implicit propertiesProvider: PropertiesProvider): EitherT[Task, LoadEsConfigError, FipsConfiguration] = {
+                                   (implicit envVarsProvider: EnvVarsProvider,
+                                    propertiesProvider: PropertiesProvider): EitherT[Task, LoadEsConfigError, FipsConfiguration] = {
     EitherT(FipsConfiguration.load(esConfigFolderPath).map(_.left.map(error => MalformedContent(configFile, error.message))))
   }
 

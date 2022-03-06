@@ -21,19 +21,19 @@ import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
-import tech.beshu.ror.configuration.RorSsl.{fallbackToRorConfig, loadSslConfigFromFile, logger}
 import tech.beshu.ror.configuration.loader.FileConfigLoader
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 
-import java.nio.file.Path
 import java.io.{File => JFile}
+import java.nio.file.Path
 
 final case class FipsConfiguration(fipsMode: FipsMode)
 
 object FipsConfiguration extends Logging {
 
   def load(esConfigFolderPath: Path)
-          (implicit propertiesProvider: PropertiesProvider): Task[Either[MalformedSettings, FipsConfiguration]] = Task {
+          (implicit envVarsProvider: EnvVarsProvider,
+           propertiesProvider: PropertiesProvider): Task[Either[MalformedSettings, FipsConfiguration]] = Task {
     val esConfig = File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
     loadFipsConfigFromFile(esConfig)
       .fold(
@@ -58,17 +58,16 @@ object FipsConfiguration extends Logging {
   }
 
 
-  def loadFipsConfigFromFile(configFile: File): Either[MalformedSettings, FipsConfiguration] = {
+  def loadFipsConfigFromFile(configFile: File)
+                            (implicit envVarsProvider: EnvVarsProvider): Either[MalformedSettings, FipsConfiguration] = {
     new EsConfigFileLoader[FipsConfiguration]().loadConfigFromFile(configFile, "ROR FIPS Configuration")
   }
-
-  private implicit val envVarsProvider: OsEnvVarsProvider.type = OsEnvVarsProvider
 
   private implicit val fipsModeDecoder: Decoder[FipsMode] = {
     Decoder.decodeString.emap {
       case "NON_FIPS" => Right(FipsMode.NonFips)
       case "SSL_ONLY" => Right(FipsMode.SslOnly)
-      case _ => Left("Invalid configuration option for FIPS MODE")
+      case _ => Left("Invalid configuration option for FIPS MODE. Valid values are: NON_FIPS, SSL_ONLY")
     }
   }
 

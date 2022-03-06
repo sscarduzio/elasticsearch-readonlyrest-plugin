@@ -21,9 +21,6 @@ import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
-import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider
-import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
-import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MutableMocksProviderWithCachePerRequest, NoOpMocksProvider}
@@ -34,16 +31,11 @@ import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactor
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.boot.ReadonlyRest._
 import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
-import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
-import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
-import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration._
 import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedRorConfig}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers._
 
-import java.security.Security
-import scala.concurrent.duration._
 import java.nio.file.Path
 import java.time.Clock
 import scala.language.{implicitConversions, postfixOps}

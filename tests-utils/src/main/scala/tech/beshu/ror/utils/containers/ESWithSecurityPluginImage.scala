@@ -52,7 +52,6 @@ object ESWithSecurityPluginImage extends EsImage[EsWithSecurityPluginContainer.C
       .withFileFromFile(s"$configDir/$xpackTruststoreFileName", ContainerUtils.getResourceFile("/" + xpackTruststoreFileName))
       .withFileFromFile(s"$configDir/$bcfksKeystoreFileName", ContainerUtils.getResourceFile("/" + bcfksKeystoreFileName))
       .withFileFromFile(s"$configDir/$bcfksTruststoreFileName", ContainerUtils.getResourceFile("/" + bcfksTruststoreFileName))
-
       .withFileFromFile(s"$configDir/$bcfksCerts", ContainerUtils.getResourceFile("/" + bcfksCerts))
       .withFileFromFile(s"$configDir/$pkcsCerts", ContainerUtils.getResourceFile("/" + pkcsCerts))
   }

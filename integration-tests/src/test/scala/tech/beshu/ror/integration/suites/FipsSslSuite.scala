@@ -16,12 +16,11 @@
  */
 package tech.beshu.ror.integration.suites
 
-import cats.data.NonEmptyList
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterProvider, EsClusterSettings, EsContainer, EsContainerCreator, _}
+import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.CatManager
 
 trait FipsSslSuite
@@ -52,12 +51,14 @@ trait FipsSslSuite
 
   private lazy val rorClusterAdminStateManager = new CatManager(clients.last.rorAdminClient, esVersion = esVersionUsed)
 
-  "Health check" should {
-    "be successful" when {
-      "internode ssl is enabled" in {
-        val response = rorClusterAdminStateManager.healthCheck()
+  if(!executedOn(allEs6xBelowEs65x)) {
+    "Health check" should {
+      "be successful" when {
+        "internode ssl is enabled" in {
+          val response = rorClusterAdminStateManager.healthCheck()
 
-        response.responseCode should be(200)
+          response.responseCode should be(200)
+        }
       }
     }
   }

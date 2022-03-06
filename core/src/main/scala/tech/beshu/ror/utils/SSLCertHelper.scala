@@ -105,6 +105,30 @@ object SSLCertHelper extends Logging {
     unnecessaryAliases.foreach(keystore.deleteEntry)
   }
 
+  private def getKeyManagerFactory(sslConfiguration: SslConfiguration, fipsCompliant: Boolean): IO[KeyManagerFactory] = {
+    loadKeystore(sslConfiguration, fipsCompliant)
+      .map { keystore =>
+        removeAllAliasesFromKeystoreBesidesOne(keystore, prepareAlias(keystore, sslConfiguration))
+        val kmf = getKeyManagerFactoryInstance(fipsCompliant)
+        kmf.init(keystore, sslConfiguration.keystorePassword)
+        kmf
+      }
+  }
+
+  private def trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder, config: SslConfiguration) = Try {
+    val sslEngine = sslContextBuilder.build().newEngine(ByteBufAllocator.DEFAULT)
+    logger.info("ROR SSL: Available ciphers: " + sslEngine.getEnabledCipherSuites.mkString(","))
+    if (config.allowedCiphers.nonEmpty) {
+      sslEngine.setEnabledCipherSuites(config.allowedCiphers.map(_.value).toArray)
+      logger.info("ROR SSL: Restricting to ciphers: " + sslEngine.getEnabledCipherSuites.mkString(","))
+    }
+    logger.info("ROR SSL: Available SSL protocols: " + sslEngine.getEnabledProtocols.mkString(","))
+    if (config.allowedProtocols.nonEmpty) {
+      sslEngine.setEnabledProtocols(config.allowedProtocols.map(_.value).toArray)
+      logger.info("ROR SSL: Restricting to SSL protocols: " + sslEngine.getEnabledProtocols.mkString(","))
+    }
+  }
+
   def getTrustManagerFactory(sslConfiguration: SslConfiguration, fipsCompliant: Boolean): TrustManagerFactory = {
     Try(loadTruststore(sslConfiguration, fipsCompliant)
       .map {
@@ -119,16 +143,6 @@ object SSLCertHelper extends Logging {
       case Failure(exception) =>
         throw UnableToInitializeTrustManagerFactoryUsingProvidedTruststore(exception.getMessage)
     }
-  }
-
-  private def getKeyManagerFactory(sslConfiguration: SslConfiguration, fipsCompliant: Boolean): IO[KeyManagerFactory] = {
-    loadKeystore(sslConfiguration, fipsCompliant)
-      .map { keystore =>
-        removeAllAliasesFromKeystoreBesidesOne(keystore, prepareAlias(keystore, sslConfiguration))
-        val kmf = getKeyManagerFactoryInstance(fipsCompliant)
-        kmf.init(keystore, sslConfiguration.keystorePassword)
-        kmf
-      }
   }
 
   def prepareSSLContext(sslConfiguration: SslConfiguration, fipsCompliant: Boolean): SslContext = {
@@ -163,20 +177,6 @@ object SSLCertHelper extends Logging {
         },
         _ => true
       )
-
-  private def trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder, config: SslConfiguration) = Try {
-    val sslEngine = sslContextBuilder.build().newEngine(ByteBufAllocator.DEFAULT)
-    logger.info("ROR SSL: Available ciphers: " + sslEngine.getEnabledCipherSuites.mkString(","))
-    if (config.allowedCiphers.nonEmpty) {
-      sslEngine.setEnabledCipherSuites(config.allowedCiphers.map(_.value).toArray)
-      logger.info("ROR SSL: Restricting to ciphers: " + sslEngine.getEnabledCipherSuites.mkString(","))
-    }
-    logger.info("ROR SSL: Available SSL protocols: " + sslEngine.getEnabledProtocols.mkString(","))
-    if (config.allowedProtocols.nonEmpty) {
-      sslEngine.setEnabledProtocols(config.allowedProtocols.map(_.value).toArray)
-      logger.info("ROR SSL: Restricting to SSL protocols: " + sslEngine.getEnabledProtocols.mkString(","))
-    }
-  }
 
   final case class UnableToLoadDataFromProvidedKeystoreException(keystoreName: KeystoreFile, exceptionMessage: String) extends Exception(s"Unable to load data from provided keystore [${keystoreName.value.getName}]. $exceptionMessage")
   final case class UnableToInitializeKeyManagerFactoryUsingProvidedKeystore(exceptionMessage: String) extends Exception(s"Unable to initialize Key Manager Factory using provided keystore. $exceptionMessage")
