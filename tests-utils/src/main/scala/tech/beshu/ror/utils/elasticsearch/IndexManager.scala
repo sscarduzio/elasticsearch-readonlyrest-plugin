@@ -260,6 +260,10 @@ class IndexManager(client: RestClient,
   private def createReindexRequest(source: ReindexSource, destIndexName: String): HttpPost = {
     def sourceSection(source: ReindexSource) = {
       source match {
+        case ReindexSource.Local(index, _) if Version.greaterOrEqualThan(esVersion, 8, 0, 0) =>
+          s"""
+             |"index": "$index"
+             |""".stripMargin
         case ReindexSource.Local(index, indexType) =>
           s"""
              |"index": "$index",
