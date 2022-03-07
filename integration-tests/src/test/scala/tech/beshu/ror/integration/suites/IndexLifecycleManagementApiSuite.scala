@@ -60,7 +60,7 @@ trait IndexLifecycleManagementApiSuite
   private lazy val dev3IndexLifecycleManager = new IndexLifecycleManager(basicAuthClient("dev3", "test"))
 
   implicit override val patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = scaled(Span(10, Seconds)), interval = scaled(Span(200, Millis)))
+    PatienceConfig(timeout = scaled(Span(30, Seconds)), interval = scaled(Span(200, Millis)))
 
   "Policy management APIs" when {
     "create lifecycle operation is used" should {
