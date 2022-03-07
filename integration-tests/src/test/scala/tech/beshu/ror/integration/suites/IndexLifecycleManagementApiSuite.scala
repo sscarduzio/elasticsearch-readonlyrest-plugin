@@ -439,7 +439,7 @@ object IndexLifecycleManagementApiSuite {
           s"""
              |{
              |  "persistent" : {
-             |    "indices.lifecycle.poll_interval": "100ms"
+             |    "indices.lifecycle.poll_interval": "1s"
              |  }
              |}
        """.stripMargin
