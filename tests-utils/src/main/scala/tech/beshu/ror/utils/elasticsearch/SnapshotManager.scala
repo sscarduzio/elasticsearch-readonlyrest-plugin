@@ -24,8 +24,6 @@ import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.elasticsearch.SnapshotManager.{RepositoriesResult, SnapshotsResult}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-import scala.collection.JavaConverters._
-
 class SnapshotManager(client: RestClient)
   extends BaseManager(client)
     with LazyLogging {
@@ -167,7 +165,7 @@ class SnapshotManager(client: RestClient)
                                        indices: List[String]) = {
     val request = new HttpPut(client.from(
       s"/_snapshot/$repositoryName/$snapshotName",
-      Map("wait_for_completion" -> "true").asJava
+      Map("wait_for_completion" -> "true")
     ))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(
@@ -186,7 +184,7 @@ class SnapshotManager(client: RestClient)
   private def createRestoreSnapshotRequest(repositoryName: String, snapshotName: String, indices: List[String]) = {
     val request = new HttpPost(client.from(
       s"/_snapshot/$repositoryName/$snapshotName/_restore",
-      Map("wait_for_completion" -> "true").asJava
+      Map("wait_for_completion" -> "true")
     ))
     request.addHeader("Content-Type", "application/json")
     indices match {

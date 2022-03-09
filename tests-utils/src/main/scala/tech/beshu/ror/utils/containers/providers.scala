@@ -95,10 +95,10 @@ object providers {
       NonEmptyList.one(createProxyClient(proxy.port))
 
     private def createProxyClient(port: Int): ClientProvider = {
-      case BasicAuth(user, password) => new RestClient(false, "localhost", port, Optional.of(Tuple.from(user, password)))
-      case Token(token) => new RestClient(false, "localhost", port, Optional.empty[Tuple[String, String]](), new BasicHeader("Authorization", token))
-      case Header(name, value) => new RestClient(false, "localhost", port, Optional.empty[Tuple[String, String]](), new BasicHeader(name, value))
-      case Credentials.None => new RestClient(false, "localhost", port, Optional.empty[Tuple[String, String]]())
+      case BasicAuth(user, password) => new RestClient(false, "localhost", port, Some(user, password))
+      case Token(token) => new RestClient(false, "localhost", port, Option.empty, new BasicHeader("Authorization", token))
+      case Header(name, value) => new RestClient(false, "localhost", port, Option.empty, new BasicHeader(name, value))
+      case Credentials.None => new RestClient(false, "localhost", port, Option.empty)
     }
   }
 }

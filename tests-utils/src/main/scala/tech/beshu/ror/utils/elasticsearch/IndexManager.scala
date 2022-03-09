@@ -148,12 +148,12 @@ class IndexManager(client: RestClient,
 
   private def getIndexRequest(indices: Set[String], params: Map[String, String]) = {
     import scala.collection.JavaConverters._
-    new HttpGet(client.from(indices.mkString(","), params.asJava))
+    new HttpGet(client.from(indices.mkString(","), params))
   }
 
   private def createIndexRequest(indices: String, settings: Option[JSON], params: Map[String, String]) = {
     import scala.collection.JavaConverters._
-    val request = new HttpPut(client.from(indices, params.asJava))
+    val request = new HttpPut(client.from(indices, params))
     settings match {
       case Some(s) =>
         request.addHeader("Content-Type", "application/json")

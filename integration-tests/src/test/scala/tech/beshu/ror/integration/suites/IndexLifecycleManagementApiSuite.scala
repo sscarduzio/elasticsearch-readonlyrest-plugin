@@ -29,7 +29,10 @@ import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.{ClusterManager, DocumentManager, IndexLifecycleManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 import tech.beshu.ror.utils.misc.Version
+
+import scala.util.{Failure, Success, Try}
 
 trait IndexLifecycleManagementApiSuite
   extends AnyWordSpec
@@ -60,7 +63,7 @@ trait IndexLifecycleManagementApiSuite
   private lazy val dev3IndexLifecycleManager = new IndexLifecycleManager(basicAuthClient("dev3", "test"))
 
   implicit override val patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = scaled(Span(60, Seconds)), interval = scaled(Span(200, Millis)))
+    PatienceConfig(timeout = scaled(Span(30, Seconds)), interval = scaled(Span(200, Millis)))
 
   "Policy management APIs" when {
     "create lifecycle operation is used" should {
@@ -206,8 +209,7 @@ trait IndexLifecycleManagementApiSuite
     "retry policy operation is used" should {
       "be allowed" when {
         "user has an access to the requested index" excludeES (allEs6xBelowEs66x) in {
-          val index = "dynamic1"
-          createIndexWithAppliedRolloverPolicyWhichCaseErrorStep(index)
+          val index = createIndexWithAppliedRolloverPolicyWhichCauseErrorStep("dynamic_1")
 
           eventually {
             val result = dev3IndexLifecycleManager.retryPolicyExecution(index)
@@ -215,25 +217,11 @@ trait IndexLifecycleManagementApiSuite
             result.responseCode should be(200)
           }
         }
-        "user has and access to all requested indices" excludeES (allEs6xBelowEs66x) in {
-          val index1 = "dynamic_1"
-          createIndexWithAppliedRolloverPolicyWhichCaseErrorStep(index1)
-          val index2 = "dynamic_2"
-          createIndexWithAppliedRolloverPolicyWhichCaseErrorStep(index2)
-
-          eventually {
-            val result = dev3IndexLifecycleManager.retryPolicyExecution(index1, index2)
-
-            result.responseCode should be(200)
-          }
-        }
       }
       "not be allowed" when {
         "user has no access to at least one of requested indices" excludeES (allEs6xBelowEs66x) in {
-          val index1 = "dynamic1"
-          createIndexWithAppliedRolloverPolicyWhichCaseErrorStep(index1)
-          val index2 = "dynamic2"
-          createIndexWithAppliedRolloverPolicyWhichCaseErrorStep(index2)
+          val index1 = createIndexWithAppliedRolloverPolicyWhichCauseErrorStep("dynamic_1")
+          val index2 = createIndexWithAppliedRolloverPolicyWhichCauseErrorStep("not_allowed")
 
           eventually {
             val result = dev3IndexLifecycleManager.retryPolicyExecution(index1, index2)
@@ -397,9 +385,23 @@ trait IndexLifecycleManagementApiSuite
       .force()
   }
 
-  private def createIndexWithAppliedRolloverPolicyWhichCaseErrorStep(index: String): Unit = {
-    val policy = PolicyGenerator.next()
-    adminIndexLifecycleManager.putPolicy(policy, ExamplePolicies.rolloverPolicy).force()
+  private def createIndexWithAppliedRolloverPolicyWhichCauseErrorStep(indexPrefix: String) = {
+    def indexName(i: Int) = s"$indexPrefix$i"
+
+    val policyId = PolicyGenerator.next()
+    adminIndexLifecycleManager.putPolicy(policyId, ExamplePolicies.rolloverPolicy).force()
+    (1 to 15)
+      .find { i =>
+        tryToCreateIndexWithErrorPolicyState(policyId, indexName(i)) match {
+          case Success(_) => true
+          case Failure(_) => false
+        }
+      }
+      .map(indexName)
+      .getOrElse(throw new IllegalStateException("Cannot make the policy to achieve an ERROR state"))
+  }
+
+  private def tryToCreateIndexWithErrorPolicyState(policyId: String, index: String) = {
     adminIndexManager
       .createIndex(
         index,
@@ -407,13 +409,26 @@ trait IndexLifecycleManagementApiSuite
           s"""
              |{
              |  "settings": {
-             |    "index.lifecycle.name": "$policy",
+             |    "index.lifecycle.name": "$policyId",
              |    "index.lifecycle.rollover_alias": "my_data"
              |  }
              |}""".stripMargin
         })
       )
       .force()
+
+    Try {
+      waitForCondition(s"Waiting for ERROR step of policy '$policyId'") {
+        val explain = adminIndexLifecycleManager
+          .ilmExplain(index)
+          .force()
+        val step = explain
+          .indices(index)
+          .obj.get("step")
+          .map(_.str)
+        step.contains("ERROR")
+      }
+    }
   }
 
   override protected def beforeEach(): Unit = {

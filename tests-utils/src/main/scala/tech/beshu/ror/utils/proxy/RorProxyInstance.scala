@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.utils.proxy
 
-import java.util.Optional
-
 import better.files.{Resource => _, _}
 import com.typesafe.scalalogging.LazyLogging
 import monix.eval.Task
@@ -26,7 +24,7 @@ import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.containers.providers.ClientProvider.rorAdminCredentials
 import tech.beshu.ror.utils.gradle.{RorPluginGradleProject, RorProxyGradleProject}
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.{EsStartupChecker, Tuple}
+import tech.beshu.ror.utils.misc.EsStartupChecker
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -91,7 +89,7 @@ object RorProxyInstance extends LazyLogging {
   }
 
   private def createAdminRestClient(port: Int) = {
-    new RestClient(false, "localhost", port, Optional.of(Tuple.from(rorAdminCredentials._1, rorAdminCredentials._2)))
+    new RestClient(false, "localhost", port, Some(rorAdminCredentials._1, rorAdminCredentials._2))
   }
 
 }
