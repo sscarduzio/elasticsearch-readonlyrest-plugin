@@ -33,12 +33,8 @@ trait FipsSslSuite
 
   override implicit val rorConfigFileName = "/fips_ssl/readonlyrest.yml"
 
-
   override def clusterContainer: EsClusterContainer = generalClusterContainer
-
-
   override def targetEs: EsContainer = generalClusterContainer.nodes.head
-
 
   lazy val generalClusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(

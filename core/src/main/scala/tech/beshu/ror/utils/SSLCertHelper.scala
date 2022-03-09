@@ -25,12 +25,12 @@ import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
 import tech.beshu.ror.configuration.SslConfiguration
 import tech.beshu.ror.configuration.SslConfiguration.{KeystoreFile, KeystorePassword, TruststorePassword}
 
-import java.io.{FileInputStream, IOException}
+import java.io.{File, FileInputStream, IOException}
 import java.security.KeyStore
 import javax.net.ssl.{KeyManagerFactory, TrustManagerFactory}
 import scala.collection.JavaConverters._
 import scala.language.{existentials, implicitConversions}
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 object SSLCertHelper extends Logging {
 
@@ -50,41 +50,37 @@ object SSLCertHelper extends Logging {
     }
   }
 
-  private def loadKeystore(sslConfiguration: SslConfiguration, fipsCompliant: Boolean) = {
+  private def loadKeystoreFromFile(keystoreFile: File, password: Array[Char], fipsCompliant: Boolean): IO[KeyStore] = {
     Resource
-      .fromAutoCloseable(IO(new FileInputStream(sslConfiguration.keystoreFile.value)))
+      .fromAutoCloseable(IO(new FileInputStream(keystoreFile)))
       .use { keystoreFile => IO {
         val keystore = if (fipsCompliant) {
-          logger.info("Trying to load keystore in FIPS compliant BCFKS format...")
+          logger.info("Trying to load data in FIPS compliant BCFKS format...")
           java.security.KeyStore.getInstance("BCFKS", "BCFIPS")
         } else {
-          logger.info("Trying to load keystore in JKS or PKCS#12 format...")
+          logger.info("Trying to load data in JKS or PKCS#12 format...")
           java.security.KeyStore.getInstance("JKS")
         }
-        keystore.load(keystoreFile, sslConfiguration.keystorePassword)
+        keystore.load(keystoreFile, password)
         keystore
       }
       }
   }
 
+  private def loadKeystore(sslConfiguration: SslConfiguration, fipsCompliant: Boolean) = {
+    for {
+      _ <- IO(logger.info("Preparing keystore..."))
+      keystore <- loadKeystoreFromFile(sslConfiguration.keystoreFile.value, sslConfiguration.keystorePassword, fipsCompliant)
+    } yield keystore
+  }
+
   private def loadTruststore(sslConfiguration: SslConfiguration, fipsCompliant: Boolean) = {
     sslConfiguration.truststoreFile
       .map { truststoreFileName =>
-        Resource
-          .fromAutoCloseable(IO(new FileInputStream(truststoreFileName.value)))
-          .use { truststoreFile =>
-            IO {
-              val keystore = if (fipsCompliant) {
-                logger.info("Trying to load truststore in FIPS compliant BCFKS format...")
-                java.security.KeyStore.getInstance("BCFKS", "BCFIPS")
-              } else {
-                logger.info("Trying to load truststore in JKS or PKCS#12 format...")
-                java.security.KeyStore.getInstance("JKS")
-              }
-              keystore.load(truststoreFile, sslConfiguration.truststorePassword)
-              keystore
-            }
-          }
+        for {
+          _ <- IO(logger.info("Preparing truststore..."))
+          truststore <- loadKeystoreFromFile(truststoreFileName.value, sslConfiguration.truststorePassword, fipsCompliant)
+        } yield truststore
       }.sequence
   }
 
@@ -95,7 +91,7 @@ object SSLCertHelper extends Logging {
         logger.info(s"ROR SSL: ssl.key_alias not configured, took first alias in keystore: $firstAlias")
         firstAlias
       case None =>
-        throw MalformedSslSettings("No alias found, therefore key found in keystore!")
+        throw MalformedSslSettings("Key not found in provided keystore!")
       case Some(keyAlias) =>
         keyAlias.value
     }
@@ -130,7 +126,7 @@ object SSLCertHelper extends Logging {
   }
 
   def getTrustManagerFactory(sslConfiguration: SslConfiguration, fipsCompliant: Boolean): TrustManagerFactory = {
-    Try(loadTruststore(sslConfiguration, fipsCompliant)
+    loadTruststore(sslConfiguration, fipsCompliant)
       .map {
         _.map { truststore =>
           val tmf = getTrustManagerFactoryInstance(fipsCompliant)
@@ -138,37 +134,41 @@ object SSLCertHelper extends Logging {
           tmf
         }
       }
-      .unsafeRunSync()) match {
-      case Success(kmf) => kmf.getOrElse(throw TrustManagerNotConfiguredException)
-      case Failure(exception) =>
-        throw UnableToInitializeTrustManagerFactoryUsingProvidedTruststore(exception.getMessage)
-    }
+      .attempt
+      .map {
+        case Right(kmf) => kmf.getOrElse(throw TrustManagerNotConfiguredException)
+        case Left(exception) =>
+          throw UnableToInitializeTrustManagerFactoryUsingProvidedTruststore(exception)
+      }
+      .unsafeRunSync()
   }
 
   def prepareSSLContext(sslConfiguration: SslConfiguration, fipsCompliant: Boolean): SslContext = {
-    Try(SSLCertHelper
+    SSLCertHelper
       .getKeyManagerFactory(sslConfiguration, fipsCompliant)
-      .unsafeRunSync()) match {
-      case Success(keyManagerFactory) =>
-        val sslCtxBuilder = SslContextBuilder.forServer(keyManagerFactory)
-        logger.info("ROR Internode using SSL provider: " + keyManagerFactory.getProvider.getName)
-        validateProtocolAndCiphers(sslCtxBuilder, sslConfiguration)
-        if (sslConfiguration.allowedCiphers.nonEmpty) {
-          sslCtxBuilder.ciphers(sslConfiguration.allowedCiphers.map(_.value).asJava)
-        }
+      .attempt
+      .map {
+        case Right(keyManagerFactory) =>
+          val sslCtxBuilder = SslContextBuilder.forServer(keyManagerFactory)
+          logger.info("ROR Internode using SSL provider: " + keyManagerFactory.getProvider.getName)
+          areProtocolAndCiphersValid(sslCtxBuilder, sslConfiguration)
+          if (sslConfiguration.allowedCiphers.nonEmpty) {
+            sslCtxBuilder.ciphers(sslConfiguration.allowedCiphers.map(_.value).asJava)
+          }
 
-        if (sslConfiguration.allowedProtocols.nonEmpty) {
-          sslCtxBuilder.protocols(sslConfiguration.allowedProtocols.map(_.value).asJava)
-        }
-        sslCtxBuilder.build()
-      case Failure(exception: IOException) =>
-        throw UnableToLoadDataFromProvidedKeystoreException(sslConfiguration.keystoreFile, exception.getMessage)
-      case Failure(exception) =>
-        throw UnableToInitializeKeyManagerFactoryUsingProvidedKeystore(exception.getMessage)
-    }
+          if (sslConfiguration.allowedProtocols.nonEmpty) {
+            sslCtxBuilder.protocols(sslConfiguration.allowedProtocols.map(_.value).asJava)
+          }
+          sslCtxBuilder.build()
+        case Left(exception: IOException) =>
+          throw UnableToLoadDataFromProvidedKeystoreException(sslConfiguration.keystoreFile, exception)
+        case Left(exception) =>
+          throw UnableToInitializeKeyManagerFactoryUsingProvidedKeystore(exception)
+      }
+      .unsafeRunSync()
   }
 
-  def validateProtocolAndCiphers(sslContextBuilder: SslContextBuilder, config: SslConfiguration): Boolean =
+  def areProtocolAndCiphersValid(sslContextBuilder: SslContextBuilder, config: SslConfiguration): Boolean =
     trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder, config)
       .fold(
         ex => {
@@ -178,9 +178,9 @@ object SSLCertHelper extends Logging {
         _ => true
       )
 
-  final case class UnableToLoadDataFromProvidedKeystoreException(keystoreName: KeystoreFile, exceptionMessage: String) extends Exception(s"Unable to load data from provided keystore [${keystoreName.value.getName}]. $exceptionMessage")
-  final case class UnableToInitializeKeyManagerFactoryUsingProvidedKeystore(exceptionMessage: String) extends Exception(s"Unable to initialize Key Manager Factory using provided keystore. $exceptionMessage")
-  final case class UnableToInitializeTrustManagerFactoryUsingProvidedTruststore(exceptionMessage: String) extends Exception(s"Unable to initialize Trust Manager Factory using provided truststore. $exceptionMessage")
+  final case class UnableToLoadDataFromProvidedKeystoreException(keystoreName: KeystoreFile, cause: Throwable) extends Exception(s"Unable to load data from provided keystore [${keystoreName.value.getName}]", cause)
+  final case class UnableToInitializeKeyManagerFactoryUsingProvidedKeystore(cause: Throwable) extends Exception(s"Unable to initialize Key Manager Factory using provided keystore.", cause)
+  final case class UnableToInitializeTrustManagerFactoryUsingProvidedTruststore(cause: Throwable) extends Exception(s"Unable to initialize Trust Manager Factory using provided truststore.", cause)
   final case class MalformedSslSettings(str: String) extends Exception(str)
   case object TrustManagerNotConfiguredException extends Exception("Trust manager has not been configured!")
 

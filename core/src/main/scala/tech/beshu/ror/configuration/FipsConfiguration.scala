@@ -21,6 +21,7 @@ import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
+import tech.beshu.ror.configuration.FipsConfiguration.FipsMode.NonFips
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 
@@ -28,6 +29,7 @@ import java.io.{File => JFile}
 import java.nio.file.Path
 
 final case class FipsConfiguration(fipsMode: FipsMode)
+
 
 object FipsConfiguration extends Logging {
 
@@ -83,5 +85,14 @@ object FipsConfiguration extends Logging {
   object FipsMode {
     case object NonFips extends FipsMode
     case object SslOnly extends FipsMode
+  }
+
+  implicit class FipsConfigurationOps(fipsConfiguration: FipsConfiguration) {
+    def isSslFipsCompliant: Boolean = {
+      fipsConfiguration.fipsMode match {
+        case NonFips => false
+        case _ => true
+      }
+    }
   }
 }

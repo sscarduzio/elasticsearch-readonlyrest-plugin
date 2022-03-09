@@ -178,15 +178,11 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                  xContentRegistry: NamedXContentRegistry,
                                  networkService: NetworkService,
                                  dispatcher: HttpServerTransport.Dispatcher): util.Map[String, Supplier[HttpServerTransport]] = {
-    val fipsCompliant = fipsConfig.fipsMode match {
-      case NonFips => false
-      case _ => true
-    }
     sslConfig
       .externalSsl
       .map(ssl =>
         "ssl_netty4" -> new Supplier[HttpServerTransport] {
-          override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, ssl, fipsCompliant)
+          override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, ssl, fipsConfig.isSslFipsCompliant)
         }
       )
       .toMap
@@ -200,15 +196,11 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                              circuitBreakerService: CircuitBreakerService,
                              namedWriteableRegistry: NamedWriteableRegistry,
                              networkService: NetworkService): util.Map[String, Supplier[Transport]] = {
-    val fipsCompliant = fipsConfig.fipsMode match {
-      case NonFips => false
-      case _ => true
-    }
     sslConfig
       .interNodeSsl
       .map(ssl =>
         "ror_ssl_internode" -> new Supplier[Transport] {
-          override def get(): Transport = new SSLNetty4InternodeServerTransport(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService, ssl, fipsCompliant)
+          override def get(): Transport = new SSLNetty4InternodeServerTransport(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService, ssl, fipsConfig.isSslFipsCompliant)
         }
       )
       .toMap

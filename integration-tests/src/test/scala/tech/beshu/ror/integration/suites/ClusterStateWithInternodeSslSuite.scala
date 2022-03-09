@@ -66,7 +66,7 @@ trait ClusterStateWithInternodeSslSuite
           configHotReloadingEnabled = true,
           enableXPackSsl = true
         )
-    )
+      )
     }
   )
 
@@ -82,4 +82,3 @@ trait ClusterStateWithInternodeSslSuite
     }
   }
 }
-

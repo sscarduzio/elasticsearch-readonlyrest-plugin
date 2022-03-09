@@ -175,15 +175,11 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                  networkService: NetworkService,
                                  dispatcher: HttpServerTransport.Dispatcher,
                                  clusterSettings: ClusterSettings): util.Map[String, Supplier[HttpServerTransport]] = {
-    val fipsCompliant = fipsConfig.fipsMode match {
-      case NonFips => false
-      case _ => true
-    }
     sslConfig
       .externalSsl
       .map(ssl =>
         "ssl_netty4" -> new Supplier[HttpServerTransport] {
-          override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, ssl, clusterSettings, getSharedGroupFactory(settings), fipsCompliant)
+          override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, ssl, clusterSettings, getSharedGroupFactory(settings), fipsConfig.isSslFipsCompliant)
         }
       )
       .toMap
@@ -196,15 +192,11 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                              circuitBreakerService: CircuitBreakerService,
                              namedWriteableRegistry: NamedWriteableRegistry,
                              networkService: NetworkService): util.Map[String, Supplier[Transport]] = {
-    val fipsCompliant = fipsConfig.fipsMode match {
-      case NonFips => false
-      case _ => true
-    }
     sslConfig
       .interNodeSsl
       .map(ssl =>
         "ror_ssl_internode" -> new Supplier[Transport] {
-          override def get(): Transport = new SSLNetty4InternodeServerTransport(settings, threadPool, pageCacheRecycler, circuitBreakerService, namedWriteableRegistry, networkService, ssl, getSharedGroupFactory(settings), fipsCompliant)
+          override def get(): Transport = new SSLNetty4InternodeServerTransport(settings, threadPool, pageCacheRecycler, circuitBreakerService, namedWriteableRegistry, networkService, ssl, getSharedGroupFactory(settings), fipsConfig.isSslFipsCompliant)
         }
       )
       .toMap
