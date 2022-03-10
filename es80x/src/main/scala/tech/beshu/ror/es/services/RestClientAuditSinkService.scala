@@ -61,7 +61,7 @@ class RestClientAuditSinkService private(clients: NonEmptyList[RestClient])
                                      documentId: String) =
     new ResponseListener() {
       override def onSuccess(response: Response): Unit = {
-        response.getStatusLine.getStatusCode % 100 match {
+        response.getStatusLine.getStatusCode / 100 match {
           case 2 => // 2xx
           case _ =>
             logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${response.getStatusLine.getStatusCode}")

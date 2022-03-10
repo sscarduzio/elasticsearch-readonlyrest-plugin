@@ -62,7 +62,7 @@ class RestClient(ssl: Boolean,
     Task(underlying.execute(req))
       .onErrorRestartLoop(0) {
         case (ex: HttpHostConnectException, 10, _) =>
-          Task.raiseError(new Exception("Cannot", ex))
+          Task.raiseError(new Exception("Cannot connect to the host", ex))
         case (_: HttpHostConnectException, num, retry) =>
           retry(num + 1).delayExecution(1 second)
         case (ex, _, _) =>
