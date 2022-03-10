@@ -217,5 +217,5 @@ object BaseReloadableEngine {
       extends EngineState
   }
 
-  private[BaseReloadableEngine] val delayOfOldEngineShutdown = 30 seconds
+  private[BaseReloadableEngine] val delayOfOldEngineShutdown = 10 seconds
 }

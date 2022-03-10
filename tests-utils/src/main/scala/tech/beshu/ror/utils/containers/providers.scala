@@ -16,14 +16,12 @@
  */
 package tech.beshu.ror.utils.containers
 
-import java.util.Optional
 import cats.data.NonEmptyList
 import org.apache.http.message.BasicHeader
 import tech.beshu.ror.utils.containers.EsContainer.Credentials
 import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, Token}
 import tech.beshu.ror.utils.containers.providers.ClientProvider.{rorAdminCredentials, xpackAdminCredentials}
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.Tuple
 import tech.beshu.ror.utils.proxy.RorProxyInstance
 
 object providers {
