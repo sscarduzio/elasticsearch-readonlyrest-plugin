@@ -183,10 +183,9 @@ stages:
               ROR_TASK: integration_es60x
 
   - stage: BLD_TEST
-    dependsOn: [ ]
-#    dependsOn:
-#      - TEST
-#    condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
+    dependsOn:
+      - TEST
+    condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
     jobs:
       - job:
         container: maven:3.8.1-openjdk-17-slim
@@ -244,6 +243,7 @@ stages:
     condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
     jobs:
       - job:
+        container: maven:3.8.1-openjdk-17-slim
         steps:
           - checkout: self
             fetchDepth: 1
@@ -292,10 +292,58 @@ stages:
           matrix:
             PKG_es8xx:
               ROR_TASK: package_es8xx
-            PKG_es7xx:
-              ROR_TASK: package_es7xx
-            PKG_es6xx:
-              ROR_TASK: package_es6xx
+
+      - job:
+          steps:
+            - checkout: self
+              fetchDepth: 1
+              clean: false
+              persistCredentials: true
+
+            - task: DownloadSecureFile@1
+              name: ghKey
+              displayName: 'Download gh_deploy_key.priv secret file'
+              inputs:
+                secureFile: 'gh_deploy_key.priv'
+
+            - script: |
+                set -e
+                echo Installing $(ghKey.secureFilePath) to directory...
+                mkdir -p ~/.ssh && chmod 0700 ~/.ssh
+                touch $(ssh_file)
+                sudo cat $(ghKey.secureFilePath) > $(ssh_file)
+                echo "$(ssh_file) MD5SUSM `md5sum $(ssh_file)`"
+                sudo chmod 600 $(ssh_file) && sudo printf "%s\n" \
+                 "Host github.com" \
+                 "  IdentityFile $(ssh_file)" \
+                 "  LogLevel ERROR" >> ~/.ssh/config
+                ls -ltra ~/.ssh
+
+            - script: |
+                set -e
+                # Translate back env vars to avoid cyclical reference :/
+                export aws_access_key_id=$var_aws_access_key_id
+                export aws_secret_access_key=$var_aws_secret_access_key
+                
+                echo ">> ALL VARIABLES NAMES " && export | awk -F= '{print $1}'
+                echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
+                
+                echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
+                chown -R $USER ~/.ssh
+                echo ">>>>>>>>> content of .ssh/" && ls -ltra ~/.ssh
+                echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/build.sh
+                echo ">>> ($ROR_TASK) Tag and upload to S3" && ci/ci-deploy.sh
+              env:
+                var_aws_access_key_id: $(aws_access_key_id)
+                var_aws_secret_access_key: $(aws_secret_access_key)
+
+          strategy:
+            maxParallel: 99
+            matrix:
+              PKG_es7xx:
+                ROR_TASK: package_es7xx
+              PKG_es6xx:
+                ROR_TASK: package_es6xx
 
   - stage: MVN_PUB
     dependsOn:
