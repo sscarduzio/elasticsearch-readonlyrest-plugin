@@ -186,7 +186,7 @@ stages:
     dependsOn: [ ]
 #    dependsOn:
 #      - TEST
-    condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
+#    condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
     jobs:
       - job:
         steps:
