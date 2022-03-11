@@ -41,7 +41,7 @@ tasks.withType(ScalaCompile) {
             }
 
     // Add whatever flags you typically add
-    parameters += ["-Ypartial-unification", "-Ywarn-macros:after", "-feature", "-Xlint:deprecation"]
+    parameters += ["-Ypartial-unification", "-Ywarn-macros:after", "-feature"]
 
     // Finally set the additionalParameters
     scalaCompileOptions.additionalParameters = parameters
