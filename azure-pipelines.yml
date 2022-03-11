@@ -183,6 +183,7 @@ stages:
               ROR_TASK: integration_es60x
 
   - stage: BLD_TEST
+    dependsOn: [ ]
 #    dependsOn:
 #      - TEST
     condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
