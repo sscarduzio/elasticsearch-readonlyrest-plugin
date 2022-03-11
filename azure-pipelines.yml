@@ -183,8 +183,8 @@ stages:
               ROR_TASK: integration_es60x
 
   - stage: BLD_TEST
-    dependsOn:
-      - TEST
+#    dependsOn:
+#      - TEST
     condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
     jobs:
       - job:
@@ -195,8 +195,15 @@ stages:
 
           - script: |
               set -e
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+              
               echo "[BLD_TEST] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Creating deliverables" && bin/build.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
 
         strategy:
           maxParallel: 99
