@@ -189,6 +189,30 @@ stages:
 #    condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
     jobs:
       - job:
+        container: maven:3.8.1-openjdk-17-slim
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+
+          - script: |
+              set -e
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+              
+              echo "[BLD_TEST] executing ROR_TASK = $ROR_TASK"
+              echo ">>> ($ROR_TASK) Creating deliverables" && bin/build.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+
+        strategy:
+            maxParallel: 99
+            matrix:
+              PKG_es8xx:
+                ROR_TASK: package_es8xx
+      - job:
         steps:
           - checkout: self
             fetchDepth: 1
@@ -209,8 +233,6 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            PKG_es8xx:
-              ROR_TASK: package_es8xx
             PKG_es7xx:
               ROR_TASK: package_es7xx
             PKG_es6xx:
