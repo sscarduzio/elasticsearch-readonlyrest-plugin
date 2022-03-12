@@ -19,7 +19,7 @@ package tech.beshu.ror.es.actions.rrauthmock
 import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestRequest.Method.{DELETE, POST}
+import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
 import tech.beshu.ror.api.AuthMockApi
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.{Constants, RequestId}
@@ -43,25 +43,17 @@ object RRAuthMockRequest {
 
   def createFrom(request: RestRequest): RRAuthMockRequest = {
     val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
+      case (Constants.PROVIDE_AUTH_MOCK_PATH, GET) =>
+        AuthMockApi.AuthMockRequest.Type.ProvideAuthMock
       case (Constants.CONFIGURE_AUTH_MOCK_PATH, POST) =>
         AuthMockApi.AuthMockRequest.Type.UpdateAuthMock
-      case (Constants.CONFIGURE_AUTH_MOCK_PATH, DELETE) =>
-        AuthMockApi.AuthMockRequest.Type.InvalidateAuthMock
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }
     new RRAuthMockRequest(
       new AuthMockApi.AuthMockRequest(
         requestType,
-        request.content.utf8ToString,
-        request
-          .getHeaders.asScala
-          .flatMap { case (name, values) =>
-            NonEmptyList
-              .fromList(values.asScala.toList)
-              .map((name, _))
-          }
-          .toMap,
+        request.content.utf8ToString
       ),
       request
     )
