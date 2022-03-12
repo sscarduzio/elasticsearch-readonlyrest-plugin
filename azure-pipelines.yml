@@ -238,9 +238,10 @@ stages:
               ROR_TASK: package_es6xx
 
   - stage: S3_UP
-    dependsOn:
-      - TEST
-    condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
+    dependsOn: []
+#    dependsOn:
+#      - TEST
+#    condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
     jobs:
       - job:
         container: maven:3.8.1-openjdk-17-slim
@@ -249,25 +250,6 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
-
-          - task: DownloadSecureFile@1
-            name: ghKey
-            displayName: 'Download gh_deploy_key.priv secret file'
-            inputs:
-              secureFile: 'gh_deploy_key.priv'
-
-          - script: |
-              set -e
-              echo Installing $(ghKey.secureFilePath) to directory...
-              mkdir -p ~/.ssh && chmod 0700 ~/.ssh
-              touch $(ssh_file)
-              cat $(ghKey.secureFilePath) > $(ssh_file)
-              echo "$(ssh_file) MD5SUSM `md5sum $(ssh_file)`"
-              chmod 600 $(ssh_file) && sudo printf "%s\n" \
-               "Host github.com" \
-               "  IdentityFile $(ssh_file)" \
-               "  LogLevel ERROR" >> ~/.ssh/config
-              ls -ltra ~/.ssh
 
           - script: |
               set -e
