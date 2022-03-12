@@ -261,9 +261,9 @@ stages:
               echo Installing $(ghKey.secureFilePath) to directory...
               mkdir -p ~/.ssh && chmod 0700 ~/.ssh
               touch $(ssh_file)
-              sudo cat $(ghKey.secureFilePath) > $(ssh_file)
+              cat $(ghKey.secureFilePath) > $(ssh_file)
               echo "$(ssh_file) MD5SUSM `md5sum $(ssh_file)`"
-              sudo chmod 600 $(ssh_file) && sudo printf "%s\n" \
+              chmod 600 $(ssh_file) && sudo printf "%s\n" \
                "Host github.com" \
                "  IdentityFile $(ssh_file)" \
                "  LogLevel ERROR" >> ~/.ssh/config
