@@ -22,8 +22,6 @@ import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, Simpl
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.Version
 
-import scala.collection.JavaConverters._
-
 class ClusterManager(client: RestClient,
                      esVersion: String,
                      override val additionalHeaders: Map[String, String] = Map.empty)
@@ -92,7 +90,7 @@ class ClusterManager(client: RestClient,
         case Some(value) => s"_cluster/health/$value"
         case None => "_cluster/health"
       },
-      Map("timeout" -> "2s").asJava
+      Map("timeout" -> "2s")
     ))
   }
 

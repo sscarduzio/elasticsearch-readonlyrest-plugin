@@ -40,6 +40,11 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_proxy" ]]; then
     ./gradlew integration-tests:test '-PesModule=proxy' '-Pmode=proxy' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es80x" ]]; then
+    echo ">>> es80x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es80x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es716x" ]]; then
     echo ">>> es716x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es716x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
@@ -135,11 +140,23 @@ if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; the
     exit 0
 fi
 
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es8xx" ]]; then
+
+    echo ">>> ($0) additional builds of ES module for specified ES version"
+
+    #es80
+#    ./gradlew --stacktrace es80x:ror '-PesVersion=8.1.0'
+    ./gradlew --stacktrace es80x:ror '-PesVersion=8.0.1'
+    ./gradlew --stacktrace es80x:ror '-PesVersion=8.0.0'
+
+fi
+
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
 
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
     #es716x
+    ./gradlew --stacktrace es716x:ror '-PesVersion=7.17.1'
     ./gradlew --stacktrace es716x:ror '-PesVersion=7.17.0'
     ./gradlew --stacktrace es716x:ror '-PesVersion=7.16.3'
     ./gradlew --stacktrace es716x:ror '-PesVersion=7.16.2'

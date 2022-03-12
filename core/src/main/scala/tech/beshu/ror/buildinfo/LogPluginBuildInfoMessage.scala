@@ -17,11 +17,13 @@
 package tech.beshu.ror.buildinfo
 
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.AccessControllerHelper
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import scala.util.{Failure, Success}
 
-trait LogPluginBuildInfoMessage extends Logging {
-  private val buildInfo = BuildInfoReader.create()
+object LogPluginBuildInfoMessage extends Logging {
+  private val buildInfo = doPrivileged { BuildInfoReader.create() }
 
   def logBuildInfoMessage(): Unit = {
     buildInfo match {
@@ -33,8 +35,7 @@ trait LogPluginBuildInfoMessage extends Logging {
   def createLogMessage(buildInfo: BuildInfo): String =
     s"Starting ReadonlyREST plugin v${buildInfo.pluginVersion} on ES v${buildInfo.esVersion}"
 
-}
-
-object LogPluginBuildInfoMessage extends LogPluginBuildInfoMessage {
-  def apply(): Unit = logBuildInfoMessage()
+  def apply(): Unit = {
+    logBuildInfoMessage()
+  }
 }
