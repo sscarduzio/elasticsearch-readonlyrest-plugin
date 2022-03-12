@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.actions.rrauthmock.rest
 
 import java.util
+
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer

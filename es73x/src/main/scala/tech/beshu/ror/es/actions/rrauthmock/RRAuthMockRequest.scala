@@ -16,15 +16,12 @@
  */
 package tech.beshu.ror.es.actions.rrauthmock
 
-import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
+import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
 import tech.beshu.ror.api.AuthMockApi
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.{Constants, RequestId}
-
-import scala.collection.JavaConverters._
 
 class RRAuthMockRequest(authMockApiRequest: AuthMockApi.AuthMockRequest,
                         esRestRequest: RestRequest) extends ActionRequest {
