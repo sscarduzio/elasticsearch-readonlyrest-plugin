@@ -251,6 +251,25 @@ stages:
             clean: false
             persistCredentials: true
 
+#          - task: DownloadSecureFile@1
+#            name: ghKey
+#            displayName: 'Download gh_deploy_key.priv secret file'
+#            inputs:
+#              secureFile: 'gh_deploy_key.priv'
+#
+#          - script: |
+#              set -e
+#              echo Installing $(ghKey.secureFilePath) to directory...
+#              mkdir -p ~/.ssh && chmod 0700 ~/.ssh
+#              touch $(ssh_file)
+#              cat $(ghKey.secureFilePath) > $(ssh_file)
+#              echo "$(ssh_file) MD5SUSM `md5sum $(ssh_file)`"
+#              chmod 600 $(ssh_file) && sudo printf "%s\n" \
+#               "Host github.com" \
+#               "  IdentityFile $(ssh_file)" \
+#               "  LogLevel ERROR" >> ~/.ssh/config
+#              ls -ltra ~/.ssh
+
           - script: |
               set -e
               # Translate back env vars to avoid cyclical reference :/
@@ -261,8 +280,8 @@ stages:
               echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
               
               echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
-              chown -R $USER ~/.ssh
-              echo ">>>>>>>>> content of .ssh/" && ls -ltra ~/.ssh
+#              chown -R $USER ~/.ssh
+#              echo ">>>>>>>>> content of .ssh/" && ls -ltra ~/.ssh
               echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/build.sh
               echo ">>> ($ROR_TASK) Tag and upload to S3" && ci/ci-deploy.sh
             env:
