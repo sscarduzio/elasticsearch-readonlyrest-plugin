@@ -280,8 +280,6 @@ stages:
               echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
               
               echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
-#              chown -R $USER ~/.ssh
-#              echo ">>>>>>>>> content of .ssh/" && ls -ltra ~/.ssh
               echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/build.sh
               echo ">>> ($ROR_TASK) Tag and upload to S3" && ci/ci-deploy.sh
             env:
