@@ -19,12 +19,12 @@ package tech.beshu.ror.es
 import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
+import org.elasticsearch.rest.{BytesRestResponse, RestResponse}
+import org.elasticsearch.xcontent.{NamedXContentRegistry, XContentBuilder, XContentType}
 import org.elasticsearch.xcontent.cbor.CborXContent
 import org.elasticsearch.xcontent.json.JsonXContent
 import org.elasticsearch.xcontent.smile.SmileXContent
 import org.elasticsearch.xcontent.yaml.YamlXContent
-import org.elasticsearch.xcontent.{NamedXContentRegistry, XContentBuilder, XContentType}
-import org.elasticsearch.rest.{BytesRestResponse, RestResponse}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, ResponseFieldsRestrictions}
 
 import scala.collection.JavaConverters._

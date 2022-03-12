@@ -32,7 +32,7 @@ object ThreadRepo {
     if (threadLocalChannel.get() == restChannel) threadLocalChannel.remove()
   }
 
-  def getRorRestChannel(task: Task): Option[RorRestChannel] = {
+  def getRorRestChannel: Option[RorRestChannel] = {
     for {
       channel <- Option(threadLocalChannel.get)
       request <- Option(channel.request())

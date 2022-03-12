@@ -48,13 +48,14 @@ import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 import java.time.Clock
 import scala.language.postfixOps
 
-class IndexLevelActionFilter(clusterService: ClusterService,
+class IndexLevelActionFilter(nodeName: String,
+                             clusterService: ClusterService,
                              client: NodeClient,
                              threadPool: ThreadPool,
                              env: Environment,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                              snapshotsServiceSupplier: Supplier[Option[SnapshotsService]],
-                             emptyClusterStateResponse: ClusterStateResponse,
+                             emptyClusterStateResponse:  ClusterStateResponse,
                              esInitListener: EsInitListener)
                             (implicit envVarsProvider: EnvVarsProvider,
                              propertiesProvider: PropertiesProvider,
@@ -65,7 +66,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
 
   private val ror = ReadonlyRest.create(
     RorMode.Plugin,
-    new EsIndexJsonContentService(client),
+    new EsIndexJsonContentService(client, nodeName, threadPool),
     auditSinkCreator,
     env.configFile
   )

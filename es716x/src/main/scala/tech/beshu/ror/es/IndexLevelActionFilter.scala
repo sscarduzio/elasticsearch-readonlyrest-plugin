@@ -88,7 +88,7 @@ class IndexLevelActionFilter(nodeName: String,
 
   private def auditSinkCreator: AuditSinkCreator = {
     case AuditCluster.LocalAuditCluster =>
-      new EsAuditSinkService(client)
+      new EsAuditSinkService(client, threadPool)
     case remote: AuditCluster.RemoteAuditCluster =>
       HighLevelClientAuditSinkService.create(remote)
   }
@@ -110,7 +110,7 @@ class IndexLevelActionFilter(nodeName: String,
                                                                            listener: ActionListener[Response],
                                                                            chain: ActionFilterChain[Request, Response]): Unit = {
     doPrivileged {
-      ThreadRepo.getRorRestChannel(task) match {
+      ThreadRepo.getRorRestChannel match {
         case None =>
           chain.proceed(task, action, request, listener)
         case Some(_) if action.startsWith("internal:") =>

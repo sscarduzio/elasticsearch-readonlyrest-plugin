@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es
 
+import java.util.function.Supplier
 import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
@@ -44,10 +45,10 @@ import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
 import java.time.Clock
-import java.util.function.Supplier
 import scala.language.postfixOps
 
-class IndexLevelActionFilter(clusterService: ClusterService,
+class IndexLevelActionFilter(nodeName: String,
+                             clusterService: ClusterService,
                              client: NodeClient,
                              threadPool: ThreadPool,
                              env: Environment,
@@ -63,7 +64,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
 
   private val ror = ReadonlyRest.create(
     RorMode.Plugin,
-    new EsIndexJsonContentService(client),
+    new EsIndexJsonContentService(client, nodeName, threadPool),
     auditSinkCreator,
     env.configFile
   )
@@ -87,7 +88,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
 
   private def auditSinkCreator: AuditSinkCreator = {
     case AuditCluster.LocalAuditCluster =>
-      new EsAuditSinkService(client)
+      new EsAuditSinkService(client, threadPool)
     case remote: AuditCluster.RemoteAuditCluster =>
       HighLevelClientAuditSinkService.create(remote)
   }
