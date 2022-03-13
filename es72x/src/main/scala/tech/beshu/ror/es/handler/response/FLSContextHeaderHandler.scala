@@ -32,8 +32,12 @@ object FLSContextHeaderHandler extends Logging {
                        requestId: RequestContext.Id): Unit = {
     val threadContext = threadPool.getThreadContext
     val header = createContextHeader(fieldsRestrictions)
-    logger.debug(s"[${requestId.show}] Adding thread context header required by lucene. Header Value: '${header.value.value}'")
-    threadContext.putHeader(header.name.value.value, header.value.value)
+    Option(threadContext.getHeader(header.name.value.value)) match {
+      case None =>
+        logger.debug(s"[${requestId.show}] Adding thread context header required by lucene. Header Value: '${header.value.value}'")
+        threadContext.putHeader(header.name.value.value, header.value.value)
+      case Some(_) =>
+    }
   }
 
   private def createContextHeader(fieldsRestrictions: FieldsRestrictions) = {

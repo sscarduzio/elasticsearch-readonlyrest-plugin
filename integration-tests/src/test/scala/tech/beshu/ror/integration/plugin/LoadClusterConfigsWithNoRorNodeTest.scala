@@ -70,7 +70,7 @@ final class LoadClusterConfigsWithNoRorNodeTest
 
   private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.rorAdminClient, esVersionUsed)
 
-  "return index config, and a failure" in {
+  "return index config, and a failure" excludeES (allEs8x) in {
     val result = ror1WithIndexConfigAdminActionManager.loadRorCurrentConfig()
 
     result.responseCode should be(200)

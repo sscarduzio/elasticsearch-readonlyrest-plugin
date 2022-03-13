@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, M
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.GroupsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.GroupsOrRule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -204,7 +204,7 @@ object UsersDefinitionsDecoder {
   }
 
   private def oneRuleModeFrom(rule: Rule): Decoder[Mode] = rule match {
-    case _: GroupsRule =>
+    case _: GroupsOrRule =>
       failed(DefinitionsLevelCreationError(Message(s"Cannot use '${rule.name.show}' rule in users definition section")))
     case r: AuthRule =>
       Decoder[GroupMappings].map(UserDef.Mode.WithGroupsMapping(Auth.SingleRule(r), _))

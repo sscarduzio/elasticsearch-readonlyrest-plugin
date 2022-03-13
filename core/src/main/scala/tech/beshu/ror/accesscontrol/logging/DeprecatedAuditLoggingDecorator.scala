@@ -28,10 +28,10 @@ import com.github.ghik.silencer.silent
 final class DeprecatedAuditLoggingDecorator[T](underlying: AuditLogSerializer[T])
   extends AuditLogSerializer[T]
     with Logging {
+
   private val deprecatedSerializerCanonicalName = underlying.getClass.getCanonicalName
   private val defaultSerializerCanonicalName = classOf[DefaultAuditLogSerializer].getCanonicalName
   private val querySerializerCanonicalName = classOf[QueryAuditLogSerializer].getCanonicalName
-
 
   override def createLoggableEntry(context: commons.ResponseContext): T = {
     logger.warn(s"you're using deprecated serializer $deprecatedSerializerCanonicalName, please use $defaultSerializerCanonicalName, or $querySerializerCanonicalName instead")

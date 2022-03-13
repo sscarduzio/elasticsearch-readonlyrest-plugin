@@ -54,8 +54,13 @@ object ESWithSecurityPluginImage extends EsImage[EsWithSecurityPluginContainer.C
     if (config.useXpackSecurityInsteadOfRor) {
       builder
     } else {
-      builder
+      RunCommandCombiner
+        .empty
         .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install file:///tmp/" + config.rorPluginFile.getName)
+        .runWhen(Version.greaterOrEqualThan(config.esVersion, 8, 0, 0),
+          command = s"/usr/share/elasticsearch/jdk/bin/java -jar /usr/share/elasticsearch/plugins/readonlyrest/ror-tools.jar patch"
+        )
+        .applyTo(builder)
     }
   }
 

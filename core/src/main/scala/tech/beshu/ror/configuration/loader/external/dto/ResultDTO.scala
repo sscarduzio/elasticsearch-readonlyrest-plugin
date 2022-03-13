@@ -22,7 +22,9 @@ import tech.beshu.ror.configuration.loader.distributed.Summary
 import tech.beshu.ror.configuration.loader.distributed.Summary.{Error, Result}
 
 @ConfiguredJsonCodec
-final case class ResultDTO(config: Option[LoadedConfigDTO], warnings: List[NodesResponseWaringDTO], error: Option[String])
+final case class ResultDTO(config: Option[LoadedConfigDTO],
+                           warnings: List[NodesResponseWaringDTO],
+                           error: Option[String])
 
 object ResultDTO {
   def create(o: Either[Error, Result]): ResultDTO =

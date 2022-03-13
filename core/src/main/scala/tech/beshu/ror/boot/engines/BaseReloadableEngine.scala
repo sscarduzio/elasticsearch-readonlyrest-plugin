@@ -152,11 +152,14 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
       Task.delay {
         val oldEngineState = currentEngine.getAndTransform {
           case EngineState.NotStartedYet(_) =>
+            logger.info(s"[${requestId.show}] ROR $name engine (id=${newEngineWithConfig.config.hashString()}) is going to be used ...")
             workingStateFrom(newEngineWithConfig)
           case oldWorkingEngine@EngineState.Working(_, _) =>
+            logger.info(s"[${requestId.show}] ROR $name engine (id=${oldWorkingEngine.engineWithConfig.config.hashString()}) will be replaced with engine (id=${newEngineWithConfig.config.hashString()}) ...")
             stopEarly(oldWorkingEngine)
             workingStateFrom(newEngineWithConfig)
           case EngineState.Stopped =>
+            logger.warn(s"[${requestId.show}] ROR $name engine (id=${newEngineWithConfig.config.hashString()}) cannot be used because the ROR is already stopped!")
             newEngineWithConfig.engine.shutdown()
             EngineState.Stopped
         }
@@ -175,6 +178,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
       engineWithConfig,
       engineWithConfig.expirationConfig.map(_.ttl).map { ttl =>
         scheduler.scheduleOnce(ttl) {
+          logger.info(s"[${requestId.show}] ROR $name engine (id=${engineWithConfig.config.hashString()}) is being stopped after TTL were reached ...")
           stop(engineWithConfig)
           currentEngine.transform {
             case EngineState.NotStartedYet(_) => EngineState.NotStartedYet(recentConfig = Some(engineWithConfig.config))
@@ -189,12 +193,14 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
                        (implicit requestId: RequestId): Unit = {
     engineState.scheduledShutdownJob.foreach(_.cancel())
     scheduler.scheduleOnce(BaseReloadableEngine.delayOfOldEngineShutdown) {
+      logger.info(s"[${requestId.show}] ROR $name engine (id=${engineState.engineWithConfig.config.hashString()}) is being stopped early ...")
       stop(engineState.engineWithConfig)
     }
   }
 
   private def stopNow(engineState: EngineState.Working)
                      (implicit requestId: RequestId): Unit = {
+    logger.info(s"[${requestId.show}] ROR $name engine (id=${engineState.engineWithConfig.config.hashString()}) is being stopped now ...")
     engineState.scheduledShutdownJob.foreach(_.cancel())
     stop(engineState.engineWithConfig)
   }

@@ -44,12 +44,12 @@ repositories {
 }
 
 apply plugin: 'com.github.johnrengelman.shadow'
-apply plugin: 'com.github.maiflai.scalatest'
 apply plugin: "com.github.hierynomus.license"
+apply plugin: 'com.github.maiflai.scalatest'
 apply plugin: "com.star-zero.gradle.githook"
-apply plugin: 'scala'
 apply plugin: 'maven'
 apply plugin: 'org.owasp.dependencycheck'
+apply plugin: 'scala'
 
 dependencyCheck {
     /*

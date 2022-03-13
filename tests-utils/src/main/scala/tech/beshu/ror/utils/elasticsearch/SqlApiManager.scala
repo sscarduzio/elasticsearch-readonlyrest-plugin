@@ -24,8 +24,6 @@ import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.Version
 import ujson.Arr
 
-import scala.collection.JavaConverters._
-
 class SqlApiManager(restClient: RestClient, esVersion: String)
   extends BaseManager(restClient) {
 
@@ -35,9 +33,9 @@ class SqlApiManager(restClient: RestClient, esVersion: String)
 
   private def createSqlQueryRequest(query: String) = {
     val request = if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
-      new HttpGetWithEntity(restClient.from("_sql", Map("format" -> "json").asJava))
+      new HttpGetWithEntity(restClient.from("_sql", Map("format" -> "json")))
     } else {
-      new HttpGetWithEntity(restClient.from("_xpack/sql", Map("format" -> "json").asJava))
+      new HttpGetWithEntity(restClient.from("_xpack/sql", Map("format" -> "json")))
     }
     request.setHeader("Content-Type", "application/json")
     request.setHeader("timeout", "50s")
