@@ -53,7 +53,7 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
       case (Some(engines), Some(channel)) =>
         Try {
           handleRequest(
-            engines.mainEngine,
+            engines,
             task,
             action,
             request,
@@ -77,7 +77,7 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
 
   def stop(): MTask[Unit] = rorInstance.stop()
 
-  private def handleRequest(engine: Engine,
+  private def handleRequest(engines: Engines,
                             task: Task,
                             action: String,
                             request: ActionRequest,
@@ -86,7 +86,7 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
                             channel: ProxyRestChannel): Unit = {
     aclAwareRequestFilter
       .handle(
-        Engines(engine, None), // todo: no second engine handling
+        engines,
         EsContext(
           channel,
           "proxy",

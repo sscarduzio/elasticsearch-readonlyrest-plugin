@@ -54,7 +54,6 @@ trait ImpersonationSuite
   }
 
   override protected def beforeEach(): Unit = {
-//    rorApiManager.updateRorTestConfig(resolvedRorConfigFile.contentAsString).forceOk()
     rorApiManager.invalidateImpersonationMocks().forceOk()
     super.beforeEach()
   }
@@ -506,6 +505,44 @@ trait ImpersonationSuite
       result2.responseCode should be(401)
       result2.responseJson should be(impersonationNotSupportedResponse)
     }
+    "test engine is not configured" in {
+      rorApiManager
+        .configureImpersonationMocks(ujson.read(
+          s"""
+             |{
+             |  "services": [
+             |    {
+             |      "type": "LDAP",
+             |      "name": "ldap1",
+             |      "mock": {
+             |        "users" : [
+             |          {
+             |            "name": "ldap_user_1",
+             |            "groups": ["group1", "group2"]
+             |          }
+             |        ]
+             |      }
+             |    }
+             |  ]
+             |}
+             |""".stripMargin
+        ))
+        .forceOk()
+
+      val searchManager = new SearchManager(
+        basicAuthClient("admin1", "pass"),
+        Map("x-ror-impersonating" -> "ldap_user_1")
+      )
+
+      val result1 = searchManager.search("test3_index")
+      result1.responseCode should be(200)
+
+      rorApiManager.invalidateRorTestConfig().forceOk()
+
+      val result2 = searchManager.search("test3_index")
+      result2.responseCode should be(403)
+      result2.responseJson should be(testSettingsNotConfiguredResponse)
+    }
   }
 
   private lazy val impersonationNotSupportedResponse = ujson.read(
@@ -550,6 +587,25 @@ trait ImpersonationSuite
       |  "status":401
       |}
     """.stripMargin)
+
+  private lazy val testSettingsNotConfiguredResponse = ujson.read(
+    """
+      |{
+      |  "error":{
+      |    "root_cause":[
+      |      {
+      |        "type":"forbidden_response",
+      |        "reason":"forbidden",
+      |        "due_to":"TEST_SETTINGS_NOT_CONFIGURED"
+      |      }
+      |    ],
+      |    "type":"forbidden_response",
+      |    "reason":"forbidden",
+      |    "due_to":"TEST_SETTINGS_NOT_CONFIGURED"
+      |  },
+      |  "status":403
+      |}
+      |""".stripMargin)
 }
 
 object ImpersonationSuite {

@@ -78,8 +78,8 @@ class RorApiManager(client: RestClient,
     call(createUpdateRorTestConfigRequest(rawRequestBody), new JsonResponse(_))
   }
 
-  def invalidateRorTestConfig(): JsonResponse = {
-    call(createInvalidateRorTestConfigRequest(), new JsonResponse(_))
+  def invalidateRorTestConfig(): RorApiResponse = {
+    call(createInvalidateRorTestConfigRequest(), new RorApiResponse(_))
   }
 
   def currentRorLocalUsers: JsonResponse = {

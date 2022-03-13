@@ -60,7 +60,7 @@ private[boot] class TestConfigBasedReloadableEngine(boot: ReadonlyRest,
                       (implicit requestId: RequestId): Task[TestEngineRorConfig] = {
     Task.delay {
       engine
-        .map(_.rorConfig)
+        .map(_.core.rorConfig)
         .map(TestEngineRorConfig.Present.apply)
         .getOrElse(TestEngineRorConfig.NotSet)
     }
