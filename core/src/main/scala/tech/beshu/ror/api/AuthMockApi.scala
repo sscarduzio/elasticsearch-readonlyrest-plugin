@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.api
 
+import cats.Eq
 import cats.data.EitherT
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
@@ -113,11 +114,11 @@ class AuthMockApi(rorInstance: RorInstance,
                                   services: RorConfig.Services): Either[AuthMockResponse, Unit] = {
     val allProvidedServicesAreDefinedInConfig = updateRequest.services.forall {
       case LdapAuthorizationService(name, _) =>
-        services.ldaps.exists(_.value == name)
+        services.ldaps.exists(_.value === name)
       case ExternalAuthenticationService(name, _) =>
-        services.authenticationServices.exists(_.value == name)
+        services.authenticationServices.exists(_.value === name)
       case ExternalAuthorizationService(name, _) =>
-        services.authorizationServices.exists(_.value == name)
+        services.authorizationServices.exists(_.value === name)
     }
     if (allProvidedServicesAreDefinedInConfig) {
       Right(())
@@ -125,6 +126,8 @@ class AuthMockApi(rorInstance: RorInstance,
       Left(AuthMockResponse.UpdateAuthMock.UnknownAuthServicesDetected("ROR doesn't allow to configure unknown Auth Services. Only the ones used in ROR's Test settings can be configured."))
     }
   }
+
+  private implicit val eqNonEmptyString: Eq[NonEmptyString] = Eq.fromUniversalEquals
 }
 
 object AuthMockApi {
@@ -310,7 +313,7 @@ object AuthMockApi {
 
       private def mockModeDecoder[T: Decoder]: Decoder[MockMode[T]] = Decoder.instance { c =>
         c.as[NonEmptyString].flatMap { mockType =>
-          if (mockType.value == "NOT_CONFIGURED") {
+          if (mockType.value === "NOT_CONFIGURED") {
             Right(MockMode.NotConfigured)
           } else {
             Left(DecodingFailure(s"Unknown type of mock: ${mockType.value}", ops = c.history))

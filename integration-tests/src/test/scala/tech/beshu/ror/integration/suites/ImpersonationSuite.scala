@@ -16,8 +16,9 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.BeforeAndAfterEach
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import org.scalatest.freespec.AnyFreeSpec
+import tech.beshu.ror.integration.suites.base.BaseTestConfigSuite
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonLdapContainers}
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
@@ -29,8 +30,10 @@ import tech.beshu.ror.utils.httpclient.RestClient
 trait ImpersonationSuite
   extends AnyFreeSpec
     with BaseSingleNodeEsClusterTest
+    with BaseTestConfigSuite
     with ESVersionSupportForAnyFreeSpecLike
-    with BeforeAndAfterEach {
+    with BeforeAndAfterEach
+    with BeforeAndAfterAll {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/impersonation/readonlyrest.yml"
@@ -44,7 +47,14 @@ trait ImpersonationSuite
     wiremock(name = "EXT1", mappings = "/impersonation/wiremock_service2_ext_user_2.json", "/impersonation/wiremock_group_provider2_gpa_user_2.json"),
   )
 
+  override def testDependencies: List[DependencyDef] = clusterDependencies
+
   private lazy val rorApiManager = new RorApiManager(rorAdminClient, esVersionUsed)
+
+  override protected def beforeAll(): Unit = {
+    super.beforeAll()
+    rorApiManager.updateRorTestConfig(testEngineConfig()).forceOk()
+  }
 
   override protected def beforeEach(): Unit = {
     rorApiManager.invalidateImpersonationMocks().forceOk()

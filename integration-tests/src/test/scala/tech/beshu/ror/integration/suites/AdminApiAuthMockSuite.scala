@@ -16,31 +16,36 @@
  */
 package tech.beshu.ror.integration.suites
 
-import better.files.File
+import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
+import tech.beshu.ror.integration.suites.base.BaseTestConfigSuite
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonLdapContainers}
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
 import tech.beshu.ror.utils.elasticsearch.RorApiManager
-import tech.beshu.ror.utils.misc.Resources.getResourcePath
 import ujson.Value.Value
 
 trait AdminApiAuthMockSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with BaseTestConfigSuite
     with ESVersionSupportForAnyWordSpecLike
     with BeforeAndAfterEach
-    with BeforeAndAfterAll
+
     with Matchers {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName: String = "/admin_api_mocks/readonlyrest.yml"
   private lazy val rorApiManager = new RorApiManager(rorAdminClient, esVersionUsed)
 
-  override def clusterDependencies: List[DependencyDef] = List()
+  override def testDependencies: List[DependencyDef] = List(
+    ldap(name = "LDAP1", SingletonLdapContainers.ldap1),
+    ldap(name = "LDAP2", SingletonLdapContainers.ldap2),
+    wiremock(name = "EXT1", mappings = "/admin_api_mocks/wiremock_service1_ext_user_1.json", "/admin_api_mocks/wiremock_group_provider1_gpa_user_1.json"),
+    wiremock(name = "EXT2", mappings = "/admin_api_mocks/wiremock_service2_ext_user_2.json", "/admin_api_mocks/wiremock_group_provider2_gpa_user_2.json"),
+  )
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = None
 
@@ -56,7 +61,7 @@ trait AdminApiAuthMockSuite
       }
       "return info that mocks are not configured" in {
         rorApiManager
-          .updateRorTestConfig(testEngineConfig)
+          .updateRorTestConfig(testEngineConfig())
           .forceOk()
 
         val response = rorApiManager.currentMockedServices()
@@ -100,7 +105,7 @@ trait AdminApiAuthMockSuite
       }
       "return info that some of mocks are configured" in {
         rorApiManager
-          .updateRorTestConfig(testEngineConfig)
+          .updateRorTestConfig(testEngineConfig())
           .forceOk()
 
         val payloadServices = ujson.read(
@@ -179,7 +184,7 @@ trait AdminApiAuthMockSuite
       }
       "return info that all mocks are configured" in {
         rorApiManager
-          .updateRorTestConfig(testEngineConfig)
+          .updateRorTestConfig(testEngineConfig())
           .forceOk()
 
         val payloadServices = ujson.read(
@@ -296,7 +301,7 @@ trait AdminApiAuthMockSuite
         "configuration is correct" when {
           "all services are passed" in {
             rorApiManager
-              .updateRorTestConfig(testEngineConfig)
+              .updateRorTestConfig(testEngineConfig())
               .forceOk()
 
             val payloadServices = ujson.read(
@@ -406,7 +411,7 @@ trait AdminApiAuthMockSuite
           }
           "only some services are passed" in {
             rorApiManager
-              .updateRorTestConfig(testEngineConfig)
+              .updateRorTestConfig(testEngineConfig())
               .forceOk()
 
             val payloadServices = ujson.read(
@@ -443,7 +448,7 @@ trait AdminApiAuthMockSuite
           }
           "any of services are passed" in {
             rorApiManager
-              .updateRorTestConfig(testEngineConfig)
+              .updateRorTestConfig(testEngineConfig())
               .forceOk()
 
             val response = rorApiManager.configureImpersonationMocks(ujson.read(
@@ -478,7 +483,7 @@ trait AdminApiAuthMockSuite
       "return info that unknown services detected" when {
         "unknown service passed" in {
           rorApiManager
-            .updateRorTestConfig(testEngineConfig)
+            .updateRorTestConfig(testEngineConfig())
             .forceOk()
 
           val payloadServices = ujson.read(
@@ -501,7 +506,7 @@ trait AdminApiAuthMockSuite
       "return info that request is malformed" when {
         "unknown service type" in {
           rorApiManager
-            .updateRorTestConfig(testEngineConfig)
+            .updateRorTestConfig(testEngineConfig())
             .forceOk()
 
           val malformedPayload = ujson.read(
@@ -520,7 +525,7 @@ trait AdminApiAuthMockSuite
         }
         "empty JSON is passed" in {
           rorApiManager
-            .updateRorTestConfig(testEngineConfig)
+            .updateRorTestConfig(testEngineConfig())
             .forceOk()
 
           val response = rorApiManager.configureImpersonationMocks("{}")
@@ -579,44 +584,5 @@ trait AdminApiAuthMockSuite
       .invalidateImpersonationMocks()
       .force()
   }
-
-  private def testEngineConfig = LocalDependencyRunner.resolvedConfig
-
-  override protected def beforeAll(): Unit = {
-    super.beforeAll()
-    LocalDependencyRunner.start()
-  }
-
-  override protected def afterAll(): Unit = {
-    super.afterAll()
-    LocalDependencyRunner.stop()
-  }
-
-  protected def mode: RorConfigAdjuster.Mode
-
-  private object LocalDependencyRunner {
-    private var startedDependencies = StartedClusterDependencies(Nil)
-
-    private def dependencies: List[DependencyDef] = List(
-      ldap(name = "LDAP1", SingletonLdapContainers.ldap1),
-      ldap(name = "LDAP2", SingletonLdapContainers.ldap2),
-      wiremock(name = "EXT1", mappings = "/admin_api_mocks/wiremock_service1_ext_user_1.json", "/admin_api_mocks/wiremock_group_provider1_gpa_user_1.json"),
-      wiremock(name = "EXT2", mappings = "/admin_api_mocks/wiremock_service2_ext_user_2.json", "/admin_api_mocks/wiremock_group_provider2_gpa_user_2.json"),
-    )
-
-    def start(): Unit = {
-      startedDependencies = DependencyRunner.startDependencies(dependencies)
-    }
-
-    def stop(): Unit = {
-      startedDependencies.values.foreach(started => started.container.stop())
-    }
-
-    def resolvedConfig: String = {
-      val configFile = File.apply(getResourcePath(rorConfigFileName))
-      RorConfigAdjuster.adjustUsingDependencies(configFile, startedDependencies, mode).contentAsString
-    }
-  }
-
 
 }
