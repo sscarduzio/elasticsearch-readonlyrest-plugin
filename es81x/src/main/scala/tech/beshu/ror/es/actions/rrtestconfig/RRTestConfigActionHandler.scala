@@ -14,49 +14,49 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rradmin
+package tech.beshu.ror.es.actions.rrtestconfig
 
 import cats.implicits.toShow
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionListener
 import tech.beshu.ror.RequestId
-import tech.beshu.ror.api.ConfigApi.ConfigResponse
+import tech.beshu.ror.api.TestConfigApi.TestConfigResponse
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RorInstanceSupplier
 
 import scala.language.postfixOps
 
-class RRAdminActionHandler() extends Logging {
+class RRTestConfigActionHandler() extends Logging {
 
-  private implicit val adminRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
+  private implicit val rorRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
 
-  def handle(request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
+  def handle(request: RRTestConfigRequest, listener: ActionListener[RRTestConfigResponse]): Unit = {
     getApi match {
       case Some(api) => doPrivileged {
         implicit val requestId: RequestId = request.requestContextId
         api
-          .call(request.getAdminRequest)
-          .runAsync { response =>
-            handle(response, listener)
+          .call(request.getTestConfigRequest)
+          .runAsync { result =>
+            handle(result, listener)
           }
       }
       case None =>
-        listener.onFailure(new Exception("Config API is not available"))
+        listener.onFailure(new Exception("TestConfig API is not available"))
     }
   }
 
-  private def handle(result: Either[Throwable, ConfigResponse],
-                     listener: ActionListener[RRAdminResponse])
+  private def handle(result: Either[Throwable, TestConfigResponse],
+                     listener: ActionListener[RRTestConfigResponse])
                     (implicit requestId: RequestId): Unit = result match {
     case Right(response) =>
-      listener.onResponse(new RRAdminResponse(response))
+      listener.onResponse(new RRTestConfigResponse(response))
     case Left(ex) =>
-      logger.error(s"[${requestId.show}] RRAdminAction internal error", ex)
+      logger.error(s"[${requestId.show}] RRTestConfig internal error", ex)
       listener.onFailure(new Exception(ex))
   }
 
   private def getApi =
-    RorInstanceSupplier.get().map(_.configApi)
+    RorInstanceSupplier.get().map(_.testConfigApi)
 }

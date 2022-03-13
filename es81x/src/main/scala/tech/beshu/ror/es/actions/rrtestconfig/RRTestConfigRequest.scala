@@ -14,41 +14,41 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rradmin
+package tech.beshu.ror.es.actions.rrtestconfig
 
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
-import tech.beshu.ror.api.ConfigApi
+import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
+import tech.beshu.ror.api.TestConfigApi
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.{Constants, RequestId}
 
-class RRAdminRequest(adminApiRequest: ConfigApi.ConfigRequest,
-                     esRestRequest: RestRequest) extends ActionRequest {
+class RRTestConfigRequest(testConfigApiRequest: TestConfigApi.TestConfigRequest,
+                          esRestRequest: RestRequest) extends ActionRequest {
 
-  val getAdminRequest: ConfigApi.ConfigRequest = adminApiRequest
+  val getTestConfigRequest: TestConfigApi.TestConfigRequest = testConfigApiRequest
   lazy val requestContextId: RequestId = RequestId(s"${esRestRequest.hashCode()}-${this.hashCode()}")
 
   override def validate(): ActionRequestValidationException = null
 }
 
-object RRAdminRequest {
+object RRTestConfigRequest {
 
-  def createFrom(request: RestRequest): RRAdminRequest = {
+  def createFrom(request: RestRequest): RRTestConfigRequest = {
     val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
-      case (Constants.FORCE_RELOAD_CONFIG_PATH, POST) =>
-        ConfigApi.ConfigRequest.Type.ForceReload
-      case (Constants.PROVIDE_FILE_CONFIG_PATH, GET) =>
-        ConfigApi.ConfigRequest.Type.ProvideFileConfig
-      case (Constants.PROVIDE_INDEX_CONFIG_PATH, GET) =>
-        ConfigApi.ConfigRequest.Type.ProvideIndexConfig
-      case (Constants.UPDATE_INDEX_CONFIG_PATH, POST) =>
-        ConfigApi.ConfigRequest.Type.UpdateIndexConfig
+      case (Constants.PROVIDE_TEST_CONFIG_PATH, GET) =>
+        TestConfigApi.TestConfigRequest.Type.ProvideTestConfig
+      case (Constants.DELETE_TEST_CONFIG_PATH, DELETE) =>
+        TestConfigApi.TestConfigRequest.Type.InvalidateTestConfig
+      case (Constants.UPDATE_TEST_CONFIG_PATH, POST) =>
+        TestConfigApi.TestConfigRequest.Type.UpdateTestConfig
+      case (Constants.PROVIDE_LOCAL_USERS_PATH, GET) =>
+        TestConfigApi.TestConfigRequest.Type.ProvideLocalUsers
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }
-    new RRAdminRequest(
-      new ConfigApi.ConfigRequest(
+    new RRTestConfigRequest(
+      new TestConfigApi.TestConfigRequest(
         requestType,
         request.content.utf8ToString
       ),
@@ -56,3 +56,4 @@ object RRAdminRequest {
     )
   }
 }
+
