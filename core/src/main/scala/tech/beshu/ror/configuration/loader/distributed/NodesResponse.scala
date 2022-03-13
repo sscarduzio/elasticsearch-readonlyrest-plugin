@@ -27,8 +27,7 @@ final case class NodesResponse private(resultDTO: ResultDTO) extends AnyVal
 object NodesResponse {
   def create(localNode: NodeId,
              responses: List[NodeResponse],
-             failures: List[NodeError],
-            ): NodesResponse = {
+             failures: List[NodeError]): NodesResponse = {
     NodesResponse(ResultDTO.create(Summary.create(localNode, responses, failures)))
   }
 

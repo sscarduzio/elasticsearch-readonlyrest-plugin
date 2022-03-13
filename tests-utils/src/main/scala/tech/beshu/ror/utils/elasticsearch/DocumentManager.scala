@@ -43,7 +43,7 @@ class DocumentManager(restClient: RestClient, esVersion: String)
   }
 
   def get(index: String, id: Int, queryParams: Map[String, String]): JsonResponse = {
-    val uri = restClient.from(createDocPathWithDefaultType(index, s"$id"), queryParams.asJava)
+    val uri = restClient.from(createDocPathWithDefaultType(index, s"$id"), queryParams)
     call(new HttpGet(uri), new JsonResponse(_))
   }
 
@@ -108,7 +108,7 @@ class DocumentManager(restClient: RestClient, esVersion: String)
   }
 
   private def createInsertDocRequest(docPath: String, content: JSON, waitForRefresh: Boolean) = {
-    val request = new HttpPut(restClient.from(docPath, waitForRefreshParam(waitForRefresh).asJava))
+    val request = new HttpPut(restClient.from(docPath, waitForRefreshParam(waitForRefresh)))
     request.setHeader("timeout", "50s")
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(content)))
@@ -116,7 +116,7 @@ class DocumentManager(restClient: RestClient, esVersion: String)
   }
 
   private def createDeleteDocRequest(docPath: String, waitForRefresh: Boolean) = {
-    new HttpDelete(restClient.from(docPath, waitForRefreshParam(waitForRefresh).asJava))
+    new HttpDelete(restClient.from(docPath, waitForRefreshParam(waitForRefresh)))
   }
 
   private def createDeleteByQueryRequest(index: String, query: JSON) = {
@@ -132,7 +132,7 @@ class DocumentManager(restClient: RestClient, esVersion: String)
   }
 
   private def createMGetRequest(query: JSON, queryParams: Map[String, String] = Map.empty): HttpUriRequest = {
-    val request = new HttpGetWithEntity(restClient.from("_mget", queryParams.asJava))
+    val request = new HttpGetWithEntity(restClient.from("_mget", queryParams))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(query)))
     request

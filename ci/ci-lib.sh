@@ -1,4 +1,7 @@
-#!/bin/bash
+#!/bin/bash -e
+
+CI_DIR=$(dirname "$0")
+
 # TAGGING
 function tag {
     GIT_TAG="$1"
@@ -21,37 +24,10 @@ function tag {
     return 0
 }
 
-# UPLOADING
-# i.e. upload file.zip build/v123/file.zip
 function upload {
-    CONF_FILE="conf.json"
-    BUCKET="readonlyrest-data"
-
-    S3CLI="ci/dummy-s3cmd.sh"
-    if [[ "$(uname -s)" == *"Linux"* ]]; then
-        S3CLI="ci/s3cli"
-    fi
-
-cat > $CONF_FILE <<- EOM
-{
-  "bucket_name":            "${BUCKET}",
-  "credentials_source":     "static",
-  "access_key_id":          "${aws_access_key_id}",
-  "secret_access_key":      "${aws_secret_access_key}",
-  "region":                 "eu-west-1"
-}
-EOM
-
-    LOCAL_FILE="$1"
-    S3_PATH="$2"
-
-    # s3cli -c config.json  put <path/to/file> <remote-blob>
-    RES=$($S3CLI  -c $CONF_FILE   put $LOCAL_FILE   $S3_PATH || echo fail)
-
-    if [[ $RES != "fail" ]]; then
-      echo ">> uploaded $S3_PATH"
-    else
-      echo ">> could not upload to $S3_PATH"
-    fi
-    rm $CONF_FILE
+  BUCKET="readonlyrest-data"
+  LOCAL_FILE="$1"
+  S3_PATH="$2"
+  # shellcheck disable=SC2154
+  "$CI_DIR"/s3-uploader.sh "$aws_access_key_id" "$aws_secret_access_key" "$BUCKET@eu-west-1" "$LOCAL_FILE" "$S3_PATH"
 }

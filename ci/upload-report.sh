@@ -1,6 +1,7 @@
 #!/bin/bash
 
-. ci/ci-lib.sh
+source "$(dirname "$0")/ci-lib.sh"
+
 UNIT_TEST_REPORT=$(find . | grep report | grep -v integration | grep index.html)
 INT_TEST_REPORT=$(find . | grep report | grep integration | grep index.html)
 

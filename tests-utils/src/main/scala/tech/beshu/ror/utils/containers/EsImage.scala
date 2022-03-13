@@ -111,6 +111,9 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .runWhen(Version.greaterOrEqualThan(esVersion, 7, 14, 0),
             command = s"echo 'ingest.geoip.downloader.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
           )
+          .runWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0),
+            command = s"echo 'action.destructive_requires_name: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
+          )
           .applyTo(builder)
 
         val javaOpts = {

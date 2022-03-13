@@ -16,13 +16,12 @@
  */
 package tech.beshu.ror.integration.suites.fields.querydsl
 
-import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.utils.containers.EsContainerCreator
 
 trait FieldRuleSearchQueryDSLSuite extends FieldRuleQueryDSLSuite {
   this: EsContainerCreator =>
 
-  override protected def assertNoSearchHitsReturnedFor(index: String, query: String) = {
+  override protected def assertNoSearchHitsReturnedFor(index: String, query: String): Unit = {
     val result = searchManager.search(index, ujson.read(query))
     result.responseCode shouldBe 200
     result.searchHits.isEmpty shouldBe true
