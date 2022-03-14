@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.es.services
 
-import java.util
-
 import cats.implicits._
 import com.google.common.collect.Maps
 import monix.eval.Task
@@ -27,26 +25,35 @@ import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.{Inject, Singleton}
 import org.elasticsearch.common.xcontent.XContentType
+import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService._
+import tech.beshu.ror.es.utils.ThreadContextOps._
+
+import java.util
 
 @Singleton
 class EsIndexJsonContentService(client: NodeClient,
+                                nodeName: String,
+                                threadPool: ThreadPool,
                                 ignore: Unit) // hack!
   extends IndexJsonContentService
     with Logging {
 
   @Inject
-  def this(client: NodeClient) {
-    this(client, ())
+  def this(client: NodeClient,
+           nodeName: String,
+           threadPool: ThreadPool) {
+    this(client, nodeName, threadPool, ())
   }
 
   override def sourceOf(index: IndexName.Full,
                         id: String): Task[Either[ReadError, util.Map[String, AnyRef]]] = {
-    Task(
+    Task {
+      threadPool.getThreadContext.addXPackAuthenticationHeader(nodeName)
       client
         .get(
           client
@@ -55,7 +62,8 @@ class EsIndexJsonContentService(client: NodeClient,
             .setId(id)
             .request()
         )
-        .actionGet())
+        .actionGet()
+    }
       .map { response =>
         Option(response.getSourceAsMap) match {
           case Some(map) =>
@@ -77,7 +85,8 @@ class EsIndexJsonContentService(client: NodeClient,
   override def saveContent(index: IndexName.Full,
                            id: String,
                            content: util.Map[String, String]): Task[Either[WriteError, Unit]] = {
-    Task(
+    Task {
+      threadPool.getThreadContext.addXPackAuthenticationHeader(nodeName)
       client
         .index(
           client
@@ -90,7 +99,7 @@ class EsIndexJsonContentService(client: NodeClient,
             .request()
         )
         .actionGet()
-    )
+    }
       .map { response =>
         response.status().getStatus match {
           case status if status / 100 == 2 =>

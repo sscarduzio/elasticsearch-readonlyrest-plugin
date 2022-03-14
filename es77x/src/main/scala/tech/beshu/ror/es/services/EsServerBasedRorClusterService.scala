@@ -221,7 +221,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
     }
   }
 
-  private def legacyTemplates() = {
+  private def legacyTemplates(): Set[Template.LegacyTemplate] = {
     val templates = clusterService.state.metaData().templates()
     templates
       .keysIt().asScala
@@ -238,7 +238,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .toSet
   }
 
-  private def indexTemplates() = {
+  private def indexTemplates(): Set[Template.IndexTemplate] = {
     val templates = clusterService.state.metaData().templatesV2()
     templates
       .keySet().asScala
@@ -256,7 +256,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .toSet
   }
 
-  private def componentTemplates() = {
+  private def componentTemplates(): Set[Template.ComponentTemplate] = {
     val templates = clusterService.state.metaData().componentTemplates()
     templates
       .keySet().asScala
@@ -318,4 +318,5 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .zip(results)
       .toMap
   }
+
 }

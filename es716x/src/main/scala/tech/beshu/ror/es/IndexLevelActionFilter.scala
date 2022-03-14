@@ -47,7 +47,8 @@ import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 import java.time.Clock
 import scala.language.postfixOps
 
-class IndexLevelActionFilter(clusterService: ClusterService,
+class IndexLevelActionFilter(nodeName: String,
+                             clusterService: ClusterService,
                              client: NodeClient,
                              threadPool: ThreadPool,
                              env: Environment,
@@ -63,7 +64,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
 
   private val ror = ReadonlyRest.create(
     RorMode.Plugin,
-    new EsIndexJsonContentService(client),
+    new EsIndexJsonContentService(client, nodeName, threadPool),
     auditSinkCreator,
     env.configFile
   )
@@ -87,7 +88,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
 
   private def auditSinkCreator: AuditSinkCreator = {
     case AuditCluster.LocalAuditCluster =>
-      new EsAuditSinkService(client)
+      new EsAuditSinkService(client, threadPool)
     case remote: AuditCluster.RemoteAuditCluster =>
       HighLevelClientAuditSinkService.create(remote)
   }
@@ -109,7 +110,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                                                                            listener: ActionListener[Response],
                                                                            chain: ActionFilterChain[Request, Response]): Unit = {
     doPrivileged {
-      ThreadRepo.getRorRestChannel(task) match {
+      ThreadRepo.getRorRestChannel match {
         case None =>
           chain.proceed(task, action, request, listener)
         case Some(_) if action.startsWith("internal:") =>

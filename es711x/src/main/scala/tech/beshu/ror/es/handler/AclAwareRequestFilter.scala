@@ -220,7 +220,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
           // rollup
           case PutRollupJobEsRequestContext(request) => regularRequestHandler.handle(request)
           case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)
-          // indices baxwsed
+          // indices based
           case ReflectionBasedIndicesEsRequestContext(request) => regularRequestHandler.handle(request)
           // rest
           case _ =>

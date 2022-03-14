@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.es.handler
 
+import java.time.Instant
+
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
@@ -72,10 +74,9 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.types._
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
-import java.time.Instant
-import scala.collection.JavaConverters._
 import scala.language.postfixOps
 import scala.reflect.ClassTag
+import scala.collection.JavaConverters._
 
 class AclAwareRequestFilter(clusterService: RorClusterService,
                             settings: Settings,

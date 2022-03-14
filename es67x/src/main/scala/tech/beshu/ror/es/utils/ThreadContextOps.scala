@@ -17,16 +17,36 @@
 package tech.beshu.ror.es.utils
 
 import org.elasticsearch.common.util.concurrent.ThreadContext
+import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.utils.JavaConverters
 
 import scala.language.implicitConversions
 
-final class ThreadContextOps(threadContext: ThreadContext) {
-  def stashAndMergeResponseHeaders(): ThreadContext.StoredContext = {
-    val responseHeaders = JavaConverters.flattenPair(threadContext.getResponseHeaders)
+final class ThreadContextOps(val threadContext: ThreadContext) extends AnyVal {
+
+  def stashAndMergeResponseHeaders(esContext: EsContext): ThreadContext.StoredContext = {
+    val responseHeaders =
+      JavaConverters.flattenPair(threadContext.getResponseHeaders).toSet ++ esContext.threadContextResponseHeaders
     val storedContext = threadContext.stashContext()
     responseHeaders.foreach { case (k, v) => threadContext.addResponseHeader(k, v) }
     storedContext
+  }
+
+  def putHeaderIfNotPresent(header: Header): ThreadContext = {
+    Option(threadContext.getHeader(header.name.value.value)) match {
+      case Some(_) =>
+      case None => threadContext.putHeader(header.name.value.value, header.value.value)
+    }
+    threadContext
+  }
+
+  def addXPackAuthenticationHeader(nodeName: String): ThreadContext = {
+    putHeaderIfNotPresent(XPackSecurityAuthenticationHeader.createXpackAuthenticationHeader(nodeName))
+  }
+
+  def addSystemAuthenticationHeader(nodeName: String): ThreadContext = {
+    putHeaderIfNotPresent(XPackSecurityAuthenticationHeader.createSystemAuthenticationHeader(nodeName))
   }
 }
 
