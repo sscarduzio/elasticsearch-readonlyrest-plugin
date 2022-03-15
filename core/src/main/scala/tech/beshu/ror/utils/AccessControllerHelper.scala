@@ -16,13 +16,11 @@
  */
 package tech.beshu.ror.utils
 
-import com.github.ghik.silencer.silent
-
 import java.security.{AccessController, PrivilegedAction}
 
 object AccessControllerHelper {
 
-  @silent("deprecated")
+//  @silent("deprecated")
   def doPrivileged[T](action: => T): T = {
     AccessController.doPrivileged(new PrivilegedAction[T] {
       override def run(): T = action
