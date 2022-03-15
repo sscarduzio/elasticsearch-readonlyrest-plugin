@@ -24,7 +24,6 @@ import org.elasticsearch.ResourceNotFoundException
 import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
 import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.common.inject.{Inject, Singleton}
-import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.show.logs._

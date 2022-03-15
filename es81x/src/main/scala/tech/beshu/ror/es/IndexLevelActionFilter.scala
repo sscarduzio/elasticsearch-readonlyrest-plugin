@@ -141,7 +141,7 @@ class IndexLevelActionFilter(nodeName: String,
             task,
             action,
             request,
-            listener.asInstanceOf[ActionListener[ActionResponse]],
+            listener,
             chain,
             JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toSet
           )
