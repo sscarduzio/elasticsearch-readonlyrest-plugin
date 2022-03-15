@@ -62,7 +62,7 @@ trait MiscSuite
       // headers are used only for deprecation. Deprecated features change among versions es8xx modules should use other method to test deprecation warnings
       // proxy cares warning printing it in logs, and it's not passed to ror.
       val indexResponse = adminIndexManager.createIndex(
-        indices = "typed_index",
+        index = "typed_index",
         params = Map(
           "master_timeout" -> "30s",
           "include_type_name" -> "true",
