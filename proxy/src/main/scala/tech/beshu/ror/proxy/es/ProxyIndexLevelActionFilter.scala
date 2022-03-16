@@ -24,7 +24,6 @@ import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter.ThreadRepoChannelRene
 import tech.beshu.ror.proxy.es.clients.{ProxyFilterable, RestHighLevelClientAdapter}
 import tech.beshu.ror.proxy.es.services.{EsRestClientBasedRorClusterService, ProxyIndexJsonContentService}
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
-
 import java.nio.file.Path
 import java.time.Clock
 import scala.util.{Failure, Success, Try}
