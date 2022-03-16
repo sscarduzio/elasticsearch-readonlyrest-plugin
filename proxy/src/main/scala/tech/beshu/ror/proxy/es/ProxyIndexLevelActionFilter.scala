@@ -16,7 +16,7 @@ import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, Engine, RorMode, Star
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createRorNotReadyYetResponse
 import tech.beshu.ror.exceptions.SecurityPermissionException
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
@@ -90,11 +90,12 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
         Engines(engine, None), // todo: no second engine handling
         EsContext(
           channel,
+          "proxy",
           task,
           action,
           request,
           listener,
-          chain,
+          new EsChain(chain, threadPool),
           JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toSet
         )
       )
