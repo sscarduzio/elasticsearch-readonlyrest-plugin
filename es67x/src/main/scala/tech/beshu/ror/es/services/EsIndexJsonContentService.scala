@@ -25,35 +25,28 @@ import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.{Inject, Singleton}
 import org.elasticsearch.common.xcontent.XContentType
-import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService._
-import tech.beshu.ror.es.utils.ThreadContextOps._
 
 import java.util
 
 @Singleton
 class EsIndexJsonContentService(client: NodeClient,
-                                nodeName: String,
-                                threadPool: ThreadPool,
                                 ignore: Unit) // hack!
   extends IndexJsonContentService
     with Logging {
 
   @Inject
-  def this(client: NodeClient,
-           nodeName: String,
-           threadPool: ThreadPool) {
-    this(client, nodeName, threadPool, ())
+  def this(client: NodeClient) {
+    this(client, ())
   }
 
   override def sourceOf(index: IndexName.Full,
                         id: String): Task[Either[ReadError, util.Map[String, AnyRef]]] = {
     Task {
-      threadPool.getThreadContext.addXPackAuthenticationHeader(nodeName)
       client
         .get(
           client
@@ -86,7 +79,6 @@ class EsIndexJsonContentService(client: NodeClient,
                            id: String,
                            content: util.Map[String, String]): Task[Either[WriteError, Unit]] = {
     Task {
-      threadPool.getThreadContext.addXPackAuthenticationHeader(nodeName)
       client
         .index(
           client

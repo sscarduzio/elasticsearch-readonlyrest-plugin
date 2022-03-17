@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.utils
 
 import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.tasks.Task
 import tech.beshu.ror.accesscontrol.domain.UriPath
 import tech.beshu.ror.es.RorRestChannel
 
