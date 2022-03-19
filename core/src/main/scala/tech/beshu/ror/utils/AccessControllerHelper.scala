@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.utils
 
-import java.security.{AccessController, PrivilegedAction}
+import java.security.{AccessControlContext, AccessController, AllPermission, Permissions, PrivilegedAction, SecurityPermission}
 
 object AccessControllerHelper {
 

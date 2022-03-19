@@ -32,8 +32,6 @@ object SecurityProviderConfiguratorForFips {
         doPrivileged {
           Security.insertProviderAt(new BouncyCastleFipsProvider(), 1) // basic encryption provider
           Security.insertProviderAt(new BouncyCastleJsseProvider("fips:BCFIPS"), 2) // tls
-          Security.removeProvider("SunRsaSign")
-          Security.removeProvider("SunJSSE")
         }
       case FipsMode.NonFips =>
     }
