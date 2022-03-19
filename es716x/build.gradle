@@ -35,6 +35,7 @@ buildscript {
 
 repositories {
     mavenCentral()
+    mavenLocal()
 }
 
 group = 'org.elasticsearch.plugin'

@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.services
 
 import java.util.function.Supplier
-
 import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
@@ -30,7 +29,7 @@ import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.Resolve
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
 import org.elasticsearch.action.support.PlainActionFuture
 import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.cluster.metadata.RepositoriesMetadata
+import org.elasticsearch.cluster.metadata.{Metadata, RepositoriesMetadata}
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
@@ -221,7 +220,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
     }
   }
 
-  private def legacyTemplates() = {
+  private def legacyTemplates(): Set[Template.LegacyTemplate] = {
     val templates = clusterService.state.metadata().templates()
     templates
       .keysIt().asScala
@@ -238,7 +237,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .toSet
   }
 
-  private def indexTemplates() = {
+  private def indexTemplates(): Set[Template.IndexTemplate] = {
     val templates = clusterService.state.metadata().templatesV2()
     templates
       .keySet().asScala
@@ -256,7 +255,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .toSet
   }
 
-  private def componentTemplates() = {
+  private def componentTemplates(): Set[Template.ComponentTemplate] = {
     val templates = clusterService.state.metadata().componentTemplates()
     templates
       .keySet().asScala

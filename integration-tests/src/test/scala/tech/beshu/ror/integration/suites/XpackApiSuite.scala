@@ -45,7 +45,10 @@ trait XpackApiSuite
     EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = XpackApiSuite.nodeDataInitializer(),
-      xPackSupport = true
+      xPackSupport = true,
+      // todo:
+      externalSslEnabled = false,
+      internodeSslEnabled = false
     )
   )
 

@@ -23,8 +23,6 @@ import tech.beshu.ror.utils.elasticsearch.CatManager.{CatNodesResponse, CatRespo
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Arr, Value}
 
-import scala.collection.JavaConverters._
-
 class CatManager(client: RestClient,
                  override val additionalHeaders: Map[String, String] = Map.empty,
                  esVersion: String)
@@ -53,19 +51,19 @@ class CatManager(client: RestClient,
   private def createCatTemplatesRequest(index: Option[String]) = {
     new HttpGet(client.from(
       s"/_cat/templates${index.map(i => s"/$i").getOrElse("")}",
-      Map("format" -> "json").asJava
+      Map("format" -> "json")
     ))
   }
 
   private def createCatIndicesRequest(index: Option[String]) = {
     new HttpGet(client.from(
       s"/_cat/indices${index.map(i => s"/$i").getOrElse("")}",
-      Map("format" -> "json", "s" -> "index:asc").asJava
+      Map("format" -> "json", "s" -> "index:asc")
     ))
   }
 
   private def genericCatRequest(catType: String) = {
-    new HttpGet(client.from(s"/_cat/$catType", Map("format" -> "json").asJava))
+    new HttpGet(client.from(s"/_cat/$catType", Map("format" -> "json")))
   }
 
 }

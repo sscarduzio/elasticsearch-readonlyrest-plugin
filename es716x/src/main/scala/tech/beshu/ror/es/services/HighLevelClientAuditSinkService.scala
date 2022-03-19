@@ -78,7 +78,7 @@ object HighLevelClientAuditSinkService {
       uri.toUrl.port.getOrElse(9200),
       uri.schemeOption.getOrElse("http")
     )
-    val credentials: Option[Credentials] = uri.toUrl.user.map { user =>
+    val credentials = uri.toUrl.user.map { user =>
       new UsernamePasswordCredentials(user, uri.toUrl.password.getOrElse(""))
     }
 

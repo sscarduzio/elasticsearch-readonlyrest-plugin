@@ -31,8 +31,8 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.EsRequest
-import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createRorNotEnabledResponse
+import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.utils.LoggerOps._
 
 import scala.collection.JavaConverters._

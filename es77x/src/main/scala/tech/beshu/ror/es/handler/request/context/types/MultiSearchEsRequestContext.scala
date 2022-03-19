@@ -47,14 +47,14 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     with EsRequest[FilterableMultiRequestBlockContext] {
 
   override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
-    this,
-    UserMetadata.from(this),
-    Set.empty,
-    List.empty,
-    indexPacksFrom(actionRequest),
-    None,
-    None,
-    requestFieldsUsage
+    requestContext = this,
+    userMetadata = UserMetadata.from(this),
+    responseHeaders = Set.empty,
+    responseTransformations = List.empty,
+    indexPacks = indexPacksFrom(actionRequest),
+    filter = None,
+    fieldLevelSecurity = None,
+    requestFieldsUsage = requestFieldsUsage
   )
 
   override protected def modifyRequest(blockContext: FilterableMultiRequestBlockContext): ModificationResult = {

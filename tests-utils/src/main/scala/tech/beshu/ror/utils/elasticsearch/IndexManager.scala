@@ -30,10 +30,10 @@ class IndexManager(client: RestClient,
                    override val additionalHeaders: Map[String, String] = Map.empty)
   extends BaseManager(client) {
 
-  def createIndex(indices: String,
+  def createIndex(index: String,
                   settings: Option[JSON] = None,
                   params: Map[String, String] = Map.empty): JsonResponse = {
-    call(createIndexRequest(indices, settings, params), new JsonResponse(_))
+    call(createIndexRequest(index, settings, params), new JsonResponse(_))
   }
 
   def getIndex(indices: List[String], params: Map[String, String] = Map.empty): GetIndexResponse = {
@@ -148,12 +148,12 @@ class IndexManager(client: RestClient,
 
   private def getIndexRequest(indices: Set[String], params: Map[String, String]) = {
     import scala.collection.JavaConverters._
-    new HttpGet(client.from(indices.mkString(","), params.asJava))
+    new HttpGet(client.from(indices.mkString(","), params))
   }
 
   private def createIndexRequest(indices: String, settings: Option[JSON], params: Map[String, String]) = {
     import scala.collection.JavaConverters._
-    val request = new HttpPut(client.from(indices, params.asJava))
+    val request = new HttpPut(client.from(indices, params))
     settings match {
       case Some(s) =>
         request.addHeader("Content-Type", "application/json")
@@ -260,6 +260,10 @@ class IndexManager(client: RestClient,
   private def createReindexRequest(source: ReindexSource, destIndexName: String): HttpPost = {
     def sourceSection(source: ReindexSource) = {
       source match {
+        case ReindexSource.Local(index, _) if Version.greaterOrEqualThan(esVersion, 8, 0, 0) =>
+          s"""
+             |"index": "$index"
+             |""".stripMargin
         case ReindexSource.Local(index, indexType) =>
           s"""
              |"index": "$index",
