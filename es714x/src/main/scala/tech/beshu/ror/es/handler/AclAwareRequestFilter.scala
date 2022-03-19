@@ -72,6 +72,7 @@ import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.actions.rrtestconfig.RRTestConfigRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.types._
+import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
 import scala.language.postfixOps
@@ -237,11 +238,12 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
 
 object AclAwareRequestFilter {
   final case class EsContext(channel: RestChannel with ResponseFieldsFiltering,
+                             nodeName: String,
                              task: EsTask,
                              actionType: String,
                              actionRequest: ActionRequest,
                              listener: ActionListener[ActionResponse],
-                             chain: ActionFilterChain[ActionRequest, ActionResponse],
+                             chain: EsChain,
                              threadContextResponseHeaders: Set[(String, String)]) {
     lazy val requestContextId = s"${channel.request().hashCode()}-${actionRequest.hashCode()}#${task.getId}"
     val timestamp: Instant = Instant.now()
@@ -262,6 +264,24 @@ object AclAwareRequestFilter {
         .unapply(headerName)
         .map(Header.Name.apply)
         .exists(_ === Header.Name.impersonateAs)
+    }
+  }
+
+  final class EsChain(chain: ActionFilterChain[ActionRequest, ActionResponse],
+                      threadPool: ThreadPool) {
+
+    def continue(exContext: EsContext,
+                 listener: ActionListener[ActionResponse]): Unit = {
+      continue(exContext.nodeName, exContext.task, exContext.actionType, exContext.actionRequest, listener)
+    }
+
+    def continue(nodeName: String,
+                 task: EsTask,
+                 action: String,
+                 request: ActionRequest,
+                 listener: ActionListener[ActionResponse]): Unit = {
+      threadPool.getThreadContext.addXPackAuthenticationHeader(nodeName)
+      chain.proceed(task, action, request, listener)
     }
   }
 }

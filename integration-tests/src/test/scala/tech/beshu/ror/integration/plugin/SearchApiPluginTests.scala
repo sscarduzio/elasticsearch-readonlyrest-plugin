@@ -14,9 +14,9 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.proxy
+package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.suites.SearchWithAliasesSuite
-import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
+import tech.beshu.ror.integration.suites.SearchApiSuite
+import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
-class SearchWithAliasesProxyTests extends SearchWithAliasesSuite with XpackEsClusterProxyTestSupport
+class SearchApiPluginTests extends SearchApiSuite with SingletonPluginTestSupport

@@ -22,9 +22,8 @@ import tech.beshu.ror.commons
 import tech.beshu.ror.requestcontext.AuditLogSerializer
 
 import scala.language.higherKinds
-import com.github.ghik.silencer.silent
 
-@silent("deprecated")
+//@silent("deprecated")
 final class DeprecatedAuditLoggingDecorator[T](underlying: AuditLogSerializer[T])
   extends AuditLogSerializer[T]
     with Logging {

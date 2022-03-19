@@ -21,8 +21,6 @@ buildscript {
         pluginVersion = rootProject.properties['pluginVersion']
         esVersion = project.properties['esVersion']
         pluginName = rootProject.properties['pluginName']
-        awsAccessKeyId = System.env.aws_access_key_id ?: "unknown"
-        awsSecretAccessKey = System.env.aws_secret_access_key ?: "unknown"
         s3BucketName = System.env.BUCKET ?: "readonlyrest-data"
     }
     repositories {
@@ -41,9 +39,8 @@ repositories {
     mavenLocal()
     maven {
         url = "s3://" + s3BucketName + "/build"
-        credentials(AwsCredentials) {
-            accessKey = awsAccessKeyId
-            secretKey = awsSecretAccessKey
+        authentication {
+            awsIm(AwsImAuthentication)
         }
     }
 }
