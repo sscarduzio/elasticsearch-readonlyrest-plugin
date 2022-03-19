@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.utils
 
 import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.tasks.Task
 import tech.beshu.ror.accesscontrol.domain.UriPath
 import tech.beshu.ror.es.RorRestChannel
 
@@ -32,7 +31,7 @@ object ThreadRepo {
     if (threadLocalChannel.get() == restChannel) threadLocalChannel.remove()
   }
 
-  def getRorRestChannel(task: Task): Option[RorRestChannel] = {
+  def getRorRestChannel: Option[RorRestChannel] = {
     for {
       channel <- Option(threadLocalChannel.get)
       request <- Option(channel.request())

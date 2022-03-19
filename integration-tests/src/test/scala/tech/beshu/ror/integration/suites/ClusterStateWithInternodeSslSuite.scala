@@ -22,7 +22,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterProvider, EsClusterSettings, EsContainer, EsContainerCreator, _}
-import tech.beshu.ror.utils.elasticsearch.CatManager
+import tech.beshu.ror.utils.elasticsearch.{CatManager, IndexManager, RorApiManager}
+import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
 trait ClusterStateWithInternodeSslSuite
   extends AnyWordSpec
@@ -78,6 +79,23 @@ trait ClusterStateWithInternodeSslSuite
         val response = rorClusterAdminStateManager.healthCheck()
 
         response.responseCode should be(200)
+      }
+      "ROR config reload can be done" in {
+        val rorApiManager = new RorApiManager(clusterContainer.nodes.head.rorAdminClient, esVersion = esVersionUsed)
+
+        val updateResult = rorApiManager
+          .updateRorInIndexConfig(getResourceContent("/cluster_state_internode_ssl/readonlyrest_update.yml"))
+
+        updateResult.responseCode should be(200)
+        updateResult.responseJson("status").str should be("ok")
+
+        val indexManager = new IndexManager(basicAuthClient("user1", "test"), esVersion = esVersionUsed)
+        indexManager.createIndex("test").force()
+
+        val getIndexResult = indexManager.getIndex("test")
+
+        getIndexResult.responseCode should be(200)
+        getIndexResult.indicesAndAliases.keys.toList should be (List("test"))
       }
     }
   }

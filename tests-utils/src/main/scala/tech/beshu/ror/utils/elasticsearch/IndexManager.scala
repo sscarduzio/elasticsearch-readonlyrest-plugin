@@ -30,10 +30,10 @@ class IndexManager(client: RestClient,
                    override val additionalHeaders: Map[String, String] = Map.empty)
   extends BaseManager(client) {
 
-  def createIndex(indices: String,
+  def createIndex(index: String,
                   settings: Option[JSON] = None,
                   params: Map[String, String] = Map.empty): JsonResponse = {
-    call(createIndexRequest(indices, settings, params), new JsonResponse(_))
+    call(createIndexRequest(index, settings, params), new JsonResponse(_))
   }
 
   def getIndex(indices: List[String], params: Map[String, String] = Map.empty): GetIndexResponse = {
