@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.actions.rrauthmock
 
 import monix.execution.Scheduler
+import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionListener
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.api.AuthMockApi.AuthMockResponse
@@ -26,7 +27,7 @@ import tech.beshu.ror.utils.RorInstanceSupplier
 
 import scala.language.postfixOps
 
-class RRAuthMockActionHandler() {
+class RRAuthMockActionHandler() extends Logging {
 
   private implicit val rorRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
 
@@ -37,11 +38,23 @@ class RRAuthMockActionHandler() {
         api
           .call(request.getAuthMockRequest)
           .runAsync { response =>
-            listener.onResponse(RRAuthMockResponse(response))
+            handle(response, listener)
           }
       }
       case None =>
-        listener.onResponse(new RRAuthMockResponse(AuthMockResponse.notAvailable))
+        listener.onFailure(new Exception("AuthMock API is not available"))
+    }
+  }
+
+  private def handle(result: Either[Throwable, AuthMockResponse],
+                     listener: ActionListener[RRAuthMockResponse])
+                    (implicit requestId: RequestId): Unit = {
+    result match {
+      case Right(response) =>
+        listener.onResponse(new RRAuthMockResponse(response))
+      case Left(ex) =>
+        logger.error(s"[${requestId.show}] RRAuthMock internal error", ex)
+        listener.onFailure(new Exception(ex))
     }
   }
 
