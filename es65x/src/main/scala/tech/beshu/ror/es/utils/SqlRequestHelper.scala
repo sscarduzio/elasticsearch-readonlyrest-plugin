@@ -16,11 +16,6 @@
  */
 package tech.beshu.ror.es.utils
 
-import java.lang.reflect.Modifier
-import java.time.ZoneId
-import java.util.regex.Pattern
-import java.util.{List => JList}
-
 import org.elasticsearch.action.{ActionResponse, CompositeIndicesRequest}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
@@ -32,6 +27,9 @@ import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices.{SqlNotTableRelated, 
 import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ScalaOps._
 
+import java.lang.reflect.Modifier
+import java.util.regex.Pattern
+import java.util.{List => JList}
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 

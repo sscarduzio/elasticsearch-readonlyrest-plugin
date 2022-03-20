@@ -22,7 +22,7 @@ import cats.syntax.all._
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, AuthorizationRule}
-import tech.beshu.ror.accesscontrol.blocks.rules.{ActionsRule, GroupsRule, KibanaAccessRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.{ActionsRule, GroupsOrRule, KibanaAccessRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.RequirementVerifier
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.ComplianceResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.{NotUsingVariable, UsingVariable}
@@ -52,7 +52,7 @@ object BlockValidator {
       .map(_.rule)
       .collect { case a: AuthenticationRule => a }
       .filter {
-        case _: GroupsRule => false
+        case _: GroupsOrRule => false
         case _ => true
       } match {
       case Nil | _ :: Nil =>

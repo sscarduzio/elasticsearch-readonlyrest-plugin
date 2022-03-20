@@ -221,7 +221,7 @@ class RegularRequestHandler(engine: Engine,
 
   private def proceed(listener: ActionListener[ActionResponse] = esContext.listener): Unit = {
     logRequestProcessingTime()
-    esContext.chain.proceed(esContext.task, esContext.actionType, esContext.actionRequest, listener)
+    esContext.chain.continue(esContext, listener)
   }
 
   private def respond(response: ActionResponse): Unit = {

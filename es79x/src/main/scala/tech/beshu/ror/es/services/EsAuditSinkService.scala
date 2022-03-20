@@ -23,15 +23,19 @@ import org.elasticsearch.client.Client
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue, TimeValue}
 import org.elasticsearch.common.xcontent.XContentType
+import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.Constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_SINK_MAX_RETRIES, AUDIT_SINK_MAX_SECONDS}
 import tech.beshu.ror.es.AuditSinkService
 
 @Inject
-class EsAuditSinkService(client: Client) extends AuditSinkService with Logging {
+class EsAuditSinkService(client: Client,
+                         threadPool: ThreadPool)
+  extends AuditSinkService
+    with Logging {
 
   private val bulkProcessor =
     BulkProcessor
-      .builder(client, new AuditSinkBulkProcessorListener)
+      .builder(client, new AuditSinkBulkProcessorListener, threadPool, threadPool, () => ())
       .setBulkActions(AUDIT_SINK_MAX_ITEMS)
       .setBulkSize(new ByteSizeValue(AUDIT_SINK_MAX_KB.toInt, ByteSizeUnit.KB))
       .setFlushInterval(TimeValue.timeValueSeconds(AUDIT_SINK_MAX_SECONDS.toInt))

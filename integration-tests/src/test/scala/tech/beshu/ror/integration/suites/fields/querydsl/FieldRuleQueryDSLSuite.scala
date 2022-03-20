@@ -309,7 +309,7 @@ trait FieldRuleQueryDSLSuite
 
               assertNoSearchHitsReturnedFor("test-index", query)
             }
-            "is 'common terms' query" in {
+            "is 'common terms' query" excludeES (allEs8x) in {
               val query =
                 """
                   |{

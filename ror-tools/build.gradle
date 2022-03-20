@@ -1,0 +1,178 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+buildscript {
+    ext {
+        esVersion = project.properties['esVersion'] ?: "unknown"
+    }
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+
+    dependencies {
+        classpath group: 'org.owasp',                                    name: 'dependency-check-gradle',  version: '6.4.1.1'
+        classpath group: 'com.star-zero.gradle',                         name: 'githook',                  version: '1.2.1'
+        classpath group: 'gradle.plugin.com.github.maiflai',             name: 'gradle-scalatest',         version: '0.24'
+        classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins',  name: 'license-gradle-plugin',    version: '0.15.0'
+        classpath group: 'com.github.jengelman.gradle.plugins',          name: 'shadow',                   version: '4.0.4'
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://repo.gradle.org/gradle/libs-releases' }
+    maven { url 'https://jitpack.io' }
+}
+
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'com.github.maiflai.scalatest'
+apply plugin: "com.github.hierynomus.license"
+apply plugin: "com.star-zero.gradle.githook"
+apply plugin: 'scala'
+apply plugin: 'maven'
+apply plugin: 'org.owasp.dependencycheck'
+
+dependencyCheck {
+    /*
+       Severity	Base Score
+       None     0
+       Low      0.1-3.9
+       Medium   4.0-6.9
+       High     7.0-8.9
+       Critical 9.0-10.0
+     */
+    failBuildOnCVSS = 3
+    scanConfigurations = ['runtime']
+    suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
+}
+
+compileScala {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+}
+
+test {
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+        events "standardOut", "started", "passed", "skipped", "failed"
+    }
+    reports {
+        junitXml.enabled = true
+        html.enabled = false
+    }
+}
+
+configurations {
+    scalaCompilerPlugin {
+        transitive = false
+    }
+    shadowCompile
+    compile.extendsFrom(shadowCompile)
+}
+
+dependencies {
+    shadowCompile group: 'com.lihaoyi',                   name: 'os-lib_2.12',                      version: '0.8.1'
+    shadowCompile group: 'org.scala-lang',                name: 'scala-library',                    version: '2.12.8'
+    shadowCompile group: 'com.github.scopt',              name: 'scopt_2.12',                       version: '4.0.1'
+}
+
+license {
+    header rootProject.file('ReadonlyRESTLicenseHeader.txt')
+    skipExistingHeaders true
+    useDefaultMappings = false
+    mapping {
+        java = 'SLASHSTAR_STYLE'
+        scala = 'SLASHSTAR_STYLE'
+    }
+}
+
+githook {
+    hooks {
+        "pre-commit" {
+            shell = "./gradlew license --rerun-tasks"
+        }
+    }
+}
+
+compileScala {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+    options.compilerArgs << "-Ywarn-macros:after"
+}
+
+tasks.withType(ScalaCompile) {
+    scalaCompileOptions.additionalParameters = ["-Ypartial-unification", "-Ywarn-macros:after", "-feature", "-Xfatal-warnings"]
+}
+
+shadowJar {
+    minimize()
+    manifest {
+        attributes 'Main-Class': 'tech.beshu.ror.tools.RorToolsApp'
+    }
+    archiveName = "ror-tools.${extension}"
+    configurations = [project.configurations.shadowCompile]
+}
+
+// Configure Auto Relocation
+import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
+
+task relocateShadowJar(type: ConfigureShadowRelocation) {
+    target = tasks.shadowJar
+    prefix = "tech.beshu.ror"
+}
+
+tasks.shadowJar.dependsOn tasks.relocateShadowJar
+
+def netty4TransportArtifactName = "transport-netty4-" + esVersion + ".jar"
+def netty4TransportArtifactDestinationPath = "org/elasticsearch/plugin/transport-netty4/" + esVersion + "/" + netty4TransportArtifactName
+
+task uploadArtifactsFromEsBinaries(type: Exec) {
+    commandLine '../ci/upload-file-to-s3.sh', layout.buildDirectory.get().asFile.path + "/" + netty4TransportArtifactName, "build/" + netty4TransportArtifactDestinationPath
+}
+
+task getArtifactsFromEsBinaries {
+    doLast {
+        def esTar = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion + ".tar.gz")
+        if (!esTar.exists()) {
+            if(!layout.buildDirectory.asFile.get().exists()) {
+                project.mkdir(layout.buildDirectory.asFile.get())
+            }
+            def esLinuxBinaries = "elasticsearch-" + esVersion + "-linux-x86_64.tar.gz"
+            project.logger.info("Downloading " + esLinuxBinaries + " ...")
+            new URL("https://artifacts.elastic.co/downloads/elasticsearch/" + esLinuxBinaries)
+                    .withInputStream{ i -> esTar.withOutputStream{ it << i }}
+        }
+        def esDir = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion)
+        project.logger.info("Extracting " + esTar.path + " to " + esDir.path + "...")
+        copy {
+            from tarTree(esTar)
+            into esDir
+        }
+        def netty4TransportArtifactPath = esDir.path + "/elasticsearch-" + esVersion + "/modules/transport-netty4/" + netty4TransportArtifactName
+        def netty4TransportDestPath = layout.buildDirectory
+        project.logger.info("Coping " + netty4TransportArtifactPath + " to " + netty4TransportDestPath.get().asFile.path + " ...")
+        copy {
+            from netty4TransportArtifactPath
+            into netty4TransportDestPath
+        }
+        project.delete(esTar, esDir)
+    }
+}
+
+uploadArtifactsFromEsBinaries.dependsOn getArtifactsFromEsBinaries

@@ -209,7 +209,7 @@ class RorApiManager(client: RestClient,
   }
 
   private def createLoadRorCurrentConfigRequest(additionalParams: Map[String, String]) = {
-    new HttpGet(client.from("/_readonlyrest/admin/config/load", additionalParams.asJava))
+    new HttpGet(client.from("/_readonlyrest/admin/config/load", additionalParams))
   }
 
   final class RorApiResponse(override val response: HttpResponse) extends JsonResponse(response) {

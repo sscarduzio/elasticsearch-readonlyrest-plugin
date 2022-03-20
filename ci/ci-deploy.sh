@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. ci/ci-lib.sh
+source "$(dirname "$0")/ci-lib.sh"
 
 ###############################
 # S3 Artifact Uploader Script #

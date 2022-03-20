@@ -38,6 +38,11 @@ readonlyrest:
     indices: ["testfilterd"]
     filter: "{\"bool\": {\"must\": [{\"term\": {\"title\": {\"value\": \"d1\"}}}]}}"
 
+  - name: real case
+    auth_key: dev:test
+    indices: ["index-*"]
+    fields: ["~plugins_name"]
+
   # ES containter initializer need this rule to configure ES instance after startup
   - name: "CONTAINER ADMIN"
     auth_key: admin:container

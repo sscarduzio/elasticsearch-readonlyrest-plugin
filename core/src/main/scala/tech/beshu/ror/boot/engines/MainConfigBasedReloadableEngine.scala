@@ -48,7 +48,7 @@ private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
   def forceReloadAndSave(config: RawRorConfig)
                         (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, Unit]] = {
     for {
-      _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of provided settings was forced (engine id=${config.hashString()}) ..."))
+      _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of provided settings was forced (new engine id=${config.hashString()}) ..."))
       reloadResult <- reloadInProgress.withPermit {
         value {
           for {
