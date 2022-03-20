@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.actions.rrauthmock
 
+import cats.implicits.toShow
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionListener
