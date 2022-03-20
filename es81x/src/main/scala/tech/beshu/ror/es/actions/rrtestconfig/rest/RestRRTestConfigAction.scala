@@ -18,6 +18,7 @@ package tech.beshu.ror.es.actions.rrtestconfig.rest
 
 import java.util
 
+import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
