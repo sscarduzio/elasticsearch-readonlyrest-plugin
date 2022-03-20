@@ -621,13 +621,13 @@ trait BaseAdminApiSuite
         }
         "ttl value in invalid format" in {
           val config = getResourceContent("/admin_api/readonlyrest_index.yml")
-          val requestBody = s"""{"settings": "${escapeJava(config)}", "ttl": "30 mins"}"""
+          val requestBody = s"""{"settings": "${escapeJava(config)}", "ttl": "30 units"}"""
           val result = ror1WithIndexConfigAdminActionManager
             .updateRorTestConfigRaw(rawRequestBody = requestBody)
 
           result.responseCode should be(400)
           result.responseJson("status").str should be("FAILED")
-          result.responseJson("message").str should be("JSON body malformed: [Could not parse at .ttl: [Cannot parse '30 mins' as duration.: DownField(ttl)]]")
+          result.responseJson("message").str should be("JSON body malformed: [Could not parse at .ttl: [Cannot parse '30 units' as duration.: DownField(ttl)]]")
         }
       }
       "return info that config is malformed" when {
