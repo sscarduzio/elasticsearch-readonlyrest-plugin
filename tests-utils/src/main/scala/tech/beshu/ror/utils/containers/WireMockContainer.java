@@ -87,8 +87,9 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
       protected boolean isReady() {
         try {
           RestClient client = getClient();
-          return client.execute(new HttpGet(client.from("/__admin/")))
-                       .getStatusLine().getStatusCode() == 200;
+          return client
+              .execute(new HttpGet(client.from("/__admin/")))
+              .getStatusLine().getStatusCode() == 200;
         } catch (Exception e) {
           return false;
         }

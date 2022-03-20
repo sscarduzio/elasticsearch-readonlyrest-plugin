@@ -16,7 +16,7 @@ import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, Engine, RorMode, Star
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createRorNotReadyYetResponse
 import tech.beshu.ror.exceptions.SecurityPermissionException
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
@@ -24,7 +24,6 @@ import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter.ThreadRepoChannelRene
 import tech.beshu.ror.proxy.es.clients.{ProxyFilterable, RestHighLevelClientAdapter}
 import tech.beshu.ror.proxy.es.services.{EsRestClientBasedRorClusterService, ProxyIndexJsonContentService}
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
-
 import java.nio.file.Path
 import java.time.Clock
 import scala.util.{Failure, Success, Try}
@@ -90,11 +89,12 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
         Engines(engine, None), // todo: no second engine handling
         EsContext(
           channel,
+          "proxy",
           task,
           action,
           request,
           listener,
-          chain,
+          new EsChain(chain, threadPool),
           JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toSet
         )
       )

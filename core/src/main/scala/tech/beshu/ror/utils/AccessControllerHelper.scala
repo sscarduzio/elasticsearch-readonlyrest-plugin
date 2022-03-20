@@ -20,6 +20,7 @@ import java.security.{AccessControlContext, AccessController, AllPermission, Per
 
 object AccessControllerHelper {
 
+//  @silent("deprecated")
   def doPrivileged[T](action: => T): T = {
     AccessController.doPrivileged(new PrivilegedAction[T] {
       override def run(): T = action

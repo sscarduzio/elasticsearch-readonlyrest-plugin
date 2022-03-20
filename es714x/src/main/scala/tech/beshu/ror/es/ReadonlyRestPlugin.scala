@@ -131,6 +131,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                 repositoriesServiceSupplier: Supplier[RepositoriesService]): util.Collection[AnyRef] = {
     doPrivileged {
       ilaf = new IndexLevelActionFilter(
+        client.settings().get("node.name"),
         clusterService,
         client.asInstanceOf[NodeClient],
         threadPool,

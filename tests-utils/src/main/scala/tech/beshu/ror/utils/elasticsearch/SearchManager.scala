@@ -24,7 +24,6 @@ import tech.beshu.ror.utils.elasticsearch.SearchManager.{AsyncSearchResult, Fiel
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import ujson.Value
 
-import scala.collection.JavaConverters._
 import scala.util.Try
 
 class SearchManager(client: RestClient,
@@ -135,7 +134,7 @@ class SearchManager(client: RestClient,
   }
 
   private def createFieldCapsRequest(indicesStr: String, fieldsStr: String) = {
-    new HttpGet(client.from(s"/$indicesStr/_field_caps", Map("fields" -> fieldsStr).asJava))
+    new HttpGet(client.from(s"/$indicesStr/_field_caps", Map("fields" -> fieldsStr)))
   }
 }
 

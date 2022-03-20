@@ -20,7 +20,7 @@ import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
 
 object RunCommandCombiner {
 
-  def empty = RunCommands(List.empty)
+  def empty: RunCommands = RunCommands(List.empty)
 
   final case class RunCommands(commands: List[String]) {
 

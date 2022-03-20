@@ -14,237 +14,353 @@ trigger:
     - RORDEV*
   tags:
     exclude:
-    - '*'
+      - '*'
   paths:
     include:
-    - '*' 
+      - '*'
     exclude:
-    - 'docs/*'
-    - '*.md'
-    - '*/*/*.md'
+      - 'docs/*'
+      - '*.md'
+      - '*/*/*.md'
 pool:
   vmImage: 'ubuntu-20.04'
 
 stages:
-- stage: CVE
-  dependsOn: [] # run in parallel
-  jobs:
-  - job:
-    steps:
-    - checkout: self
-      fetchDepth: 1
-      clean: false
-      persistCredentials: true
-    - script: |
-        echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
-        echo "[CVE] executing ROR_TASK=$ROR_TASK"
-        bin/build.sh
-      continueOnError: true
-      env: 
-       ROR_TASK: cve_check
+  - stage: ES_S3_UP
+    dependsOn: [ ]
+    jobs:
+      - job:
+        steps:
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key 
+              bin/upload_es_artifacts.sh
+            continueOnError: true
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
 
-- stage: TEST
-  jobs:
-  - job:
-    steps:
-    - checkout: self
-      fetchDepth: 1
-      clean: false
-      persistCredentials: true
-    - script: |
-        echo "[TEST] executing ROR_TASK = $ROR_TASK"
-        bin/build.sh
-    - task: PublishTestResults@2
-      condition: failed()
-      inputs:
-        testRunTitle: "$(ROR_TASK) results"
-        testResultsFiles: "**/TEST*xml"
-        mergeTestResults: true
+  - stage: CVE
+    dependsOn: [ ] # run in parallel
+    jobs:
+      - job:
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
+              echo "[CVE] executing ROR_TASK=$ROR_TASK"
+              bin/build.sh
+            continueOnError: true
+            env:
+              ROR_TASK: cve_check
 
-    strategy:
-      maxParallel: 99
-      matrix: 
-        LICENSE:
-          ROR_TASK: license
-        UNIT:
-          ROR_TASK: core_tests
+  - stage: TEST
+    jobs:
+      - job:
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key 
+              
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              bin/build.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            LICENSE:
+              ROR_TASK: license
+            UNIT:
+              ROR_TASK: core_tests
 
-        IT_PROXY:
-          ROR_TASK: integration_proxy
-        IT_es716x:
-          ROR_TASK: integration_es716x
-        IT_es714x:
-          ROR_TASK: integration_es714x
-        IT_es711x:
-          ROR_TASK: integration_es711x
-        IT_es710x:
-          ROR_TASK: integration_es710x
-        IT_es79x:
-          ROR_TASK: integration_es79x
-        IT_es78x:
-          ROR_TASK: integration_es78x
-        IT_es77x:
-          ROR_TASK: integration_es77x
-        IT_es74x:
-          ROR_TASK: integration_es74x
-        IT_es73x:
-          ROR_TASK: integration_es73x
-        IT_es72x:
-          ROR_TASK: integration_es72x
-        IT_es70x:
-          ROR_TASK: integration_es70x
-        IT_es67x:
-          ROR_TASK: integration_es67x
-        IT_es66x:
-          ROR_TASK: integration_es66x
-        IT_es65x:
-          ROR_TASK: integration_es65x
-        IT_es63x:
-          ROR_TASK: integration_es63x
-        IT_es62x:
-          ROR_TASK: integration_es62x
-        IT_es61x:
-          ROR_TASK: integration_es61x
-        IT_es60x:
-          ROR_TASK: integration_es60x
+            IT_PROXY:
+              ROR_TASK: integration_proxy
+      - job:
+        container: maven:3.8.1-openjdk-17-slim
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key 
+              
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              bin/build.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            IT_es81x:
+              ROR_TASK: integration_es81x
+            IT_es80x:
+              ROR_TASK: integration_es80x
+      - job:
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key 
+              
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              bin/build.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            IT_es716x:
+              ROR_TASK: integration_es716x
+            IT_es714x:
+              ROR_TASK: integration_es714x
+            IT_es711x:
+              ROR_TASK: integration_es711x
+            IT_es710x:
+              ROR_TASK: integration_es710x
+            IT_es79x:
+              ROR_TASK: integration_es79x
+            IT_es78x:
+              ROR_TASK: integration_es78x
+            IT_es77x:
+              ROR_TASK: integration_es77x
+            IT_es74x:
+              ROR_TASK: integration_es74x
+            IT_es73x:
+              ROR_TASK: integration_es73x
+            IT_es72x:
+              ROR_TASK: integration_es72x
+            IT_es70x:
+              ROR_TASK: integration_es70x
+            IT_es67x:
+              ROR_TASK: integration_es67x
+            IT_es66x:
+              ROR_TASK: integration_es66x
+            IT_es65x:
+              ROR_TASK: integration_es65x
+            IT_es63x:
+              ROR_TASK: integration_es63x
+            IT_es62x:
+              ROR_TASK: integration_es62x
+            IT_es61x:
+              ROR_TASK: integration_es61x
+            IT_es60x:
+              ROR_TASK: integration_es60x
 
-- stage: BLD_TEST
-  dependsOn:
-    - TEST
-  condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
-  jobs:
-  - job:
-    steps:
-    - checkout: self
-      fetchDepth: 1
-      clean: false
+  - stage: BLD_TEST
+    dependsOn:
+      - TEST
+    condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
+    jobs:
+      - job:
+        container: maven:3.8.1-openjdk-17-slim
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
 
-    - script: |
-        set -e
-        echo "[BLD_TEST] executing ROR_TASK = $ROR_TASK"
-        echo ">>> ($ROR_TASK) Creating deliverables" && bin/build.sh
+          - script: |
+              set -e
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+              
+              echo "[BLD_TEST] executing ROR_TASK = $ROR_TASK"
+              echo ">>> ($ROR_TASK) Creating deliverables" && bin/build.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
 
-    strategy:
-      maxParallel: 99
-      matrix:
-        PKG_es7xx:
-          ROR_TASK: package_es7xx
-        PKG_es6xx:
-          ROR_TASK: package_es6xx
+        strategy:
+            maxParallel: 99
+            matrix:
+              PKG_es8xx:
+                ROR_TASK: package_es8xx
+      - job:
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
 
-- stage: S3_UP
-  dependsOn:
-    - TEST
-  condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
-  jobs:
-  - job:
-    steps:
-    - checkout: self
-      fetchDepth: 1
-      clean: false
-      persistCredentials: true
+          - script: |
+              set -e
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+              
+              echo "[BLD_TEST] executing ROR_TASK = $ROR_TASK"
+              echo ">>> ($ROR_TASK) Creating deliverables" && bin/build.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
 
-    - task: DownloadSecureFile@1
-      name: ghKey
-      displayName: 'Download gh_deploy_key.priv secret file'
-      inputs:
-        secureFile: 'gh_deploy_key.priv'
+        strategy:
+          maxParallel: 99
+          matrix:
+            PKG_es7xx:
+              ROR_TASK: package_es7xx
+            PKG_es6xx:
+              ROR_TASK: package_es6xx
 
-    - script: |
-        set -e
-        echo Installing $(ghKey.secureFilePath) to directory...
-        mkdir -p ~/.ssh && chmod 0700 ~/.ssh
-        touch $(ssh_file)
-        sudo cat $(ghKey.secureFilePath) > $(ssh_file)
-        echo "$(ssh_file) MD5SUSM `md5sum $(ssh_file)`"
-        sudo chmod 600 $(ssh_file) && sudo printf "%s\n" \
-         "Host github.com" \
-         "  IdentityFile $(ssh_file)" \
-         "  LogLevel ERROR" >> ~/.ssh/config
-        ls -ltra ~/.ssh
+  - stage: S3_UP
+    dependsOn:
+      - TEST
+    condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
+    jobs:
+      - job:
+        container: maven:3.8.1-openjdk-17-slim
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
 
-    - script: |
-        set -e
-        # Translate back env vars to avoid cyclical reference :/
-        export aws_access_key_id=$var_aws_access_key_id
-        export aws_secret_access_key=$var_aws_secret_access_key
+          - script: |
+              set -e
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+              
+              echo ">> ALL VARIABLES NAMES " && export | awk -F= '{print $1}'
+              echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
+              
+              echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
+              echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/build.sh
+              echo ">>> ($ROR_TASK) Tag and upload to S3" && ci/ci-deploy.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
 
-        echo ">> ALL VARIABLES NAMES " && export | awk -F= '{print $1}'
-        echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
+        strategy:
+          maxParallel: 99
+          matrix:
+            PKG_es8xx:
+              ROR_TASK: package_es8xx
 
-        echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
-        chown -R $USER ~/.ssh
-        echo ">>>>>>>>> content of .ssh/" && ls -ltra ~/.ssh
-        echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/build.sh
-        echo ">>> ($ROR_TASK) Tag and upload to S3" && ci/ci-deploy.sh
-      env:
-        var_aws_access_key_id: $(aws_access_key_id)
-        var_aws_secret_access_key: $(aws_secret_access_key)
+      - job:
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
 
-    strategy:
-      maxParallel: 99
-      matrix:
-        PKG_es7xx:
-          ROR_TASK: package_es7xx
-        PKG_es6xx:
-          ROR_TASK: package_es6xx
+          - script: |
+              set -e
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+              
+              echo ">> ALL VARIABLES NAMES " && export | awk -F= '{print $1}'
+              echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
+              
+              echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
+              echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/build.sh
+              echo ">>> ($ROR_TASK) Tag and upload to S3" && ci/ci-deploy.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
 
-- stage: MVN_PUB
-  dependsOn:
-    - TEST
-  condition: and(succeeded('TEST'), eq(variables.isMaster, true))
-  jobs:
-  - job:
-    steps:
-    - checkout: self
-      fetchDepth: 1
-      clean: false
-      persistCredentials: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            PKG_es7xx:
+              ROR_TASK: package_es7xx
+            PKG_es6xx:
+              ROR_TASK: package_es6xx
 
-    # Populate the global variable mvn_status for later
-    - script: |
-       PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
-       URL="https://oss.sonatype.org/service/local/repositories/releases/content/tech/beshu/ror/audit_2.12/$PLUGIN_VER/"
-       echo "Maven artifact URL to check: $URL"
-       MVN_STATUS=$(curl --write-out '%{http_code}' --output /dev/null "$URL")
-       echo "##vso[task.setvariable variable=mvn_status]$MVN_STATUS"
+  - stage: MVN_PUB
+    dependsOn:
+      - TEST
+    condition: and(succeeded('TEST'), eq(variables.isMaster, true))
+    jobs:
+      - job:
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
 
-    - script: |
-       echo ">> MVN_STATUS WAS 200. Artifact already present, no need to proceed further with Maven publishing."
-      condition: eq(200, variables.mvn_status)
+          # Populate the global variable mvn_status for later
+          - script: |
+              PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
+              URL="https://oss.sonatype.org/service/local/repositories/releases/content/tech/beshu/ror/audit_2.12/$PLUGIN_VER/"
+              echo "Maven artifact URL to check: $URL"
+              MVN_STATUS=$(curl --write-out '%{http_code}' --output /dev/null "$URL")
+              echo "##vso[task.setvariable variable=mvn_status]$MVN_STATUS"
 
-    - script: |
-       echo ">> MVN_STATUS WAS 404. Artifact not present in Maven repository, proceeding with publishing."
-      condition: eq(404, variables.mvn_status)
+          - script: |
+              echo ">> MVN_STATUS WAS 200. Artifact already present, no need to proceed further with Maven publishing."
+            condition: eq(200, variables.mvn_status)
 
-    - task: DownloadSecureFile@1
-      name: pgp
-      displayName: 'Download secret.pgp secret file'
-      inputs:
-        secureFile: 'secret.pgp'
+          - script: |
+              echo ">> MVN_STATUS WAS 404. Artifact not present in Maven repository, proceeding with publishing."
+            condition: eq(404, variables.mvn_status)
 
-    - script: |
-        echo Installing $(pgp.secureFilePath) to directory...
-        sudo chown root:root $(pgp.secureFilePath)
-        sudo chmod a+r $(pgp.secureFilePath)
-        mkdir .travis
-        sudo ln -s -t .travis/ $(pgp.secureFilePath)
-        echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
-      condition: eq(404, variables.mvn_status)
+          - task: DownloadSecureFile@1
+            name: pgp
+            displayName: 'Download secret.pgp secret file'
+            inputs:
+              secureFile: 'secret.pgp'
 
-    - script: |
-        echo "[MVN_PUB] executing ROR_TASK=$ROR_TASK"
-        export MAVEN_REPO_PASSWORD=$VAR_MAVEN_REPO_PASSWORD
-        export MAVEN_REPO_USER=$VAR_MAVEN_REPO_USER
-        export MAVEN_STAGING_PROFILE_ID=$VAR_MAVEN_STAGING_PROFILE_ID
-        export GPG_KEY_ID=$VAR_GPG_KEY_ID
-        export GPG_PASSPHRASE=$VAR_GPG_PASSPHRASE
-        echo ">>> ($ROR_TASK) Publishing artifacts" && bin/build.sh 
-      env: 
-       ROR_TASK: publish_artifacts
-       VAR_MAVEN_REPO_PASSWORD: $(MAVEN_REPO_PASSWORD)
-       VAR_MAVEN_REPO_USER: $(MAVEN_REPO_USER)
-       VAR_MAVEN_STAGING_PROFILE_ID: $(MAVEN_STAGING_PROFILE_ID)
-       VAR_GPG_PASSPHRASE: $(GPG_PASSPHRASE)
-       VAR_GPG_KEY_ID: $(GPG_KEY_ID)
-      condition: eq(404, variables.mvn_status)
+          - script: |
+              echo Installing $(pgp.secureFilePath) to directory...
+              sudo chown root:root $(pgp.secureFilePath)
+              sudo chmod a+r $(pgp.secureFilePath)
+              mkdir .travis
+              sudo ln -s -t .travis/ $(pgp.secureFilePath)
+              echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
+            condition: eq(404, variables.mvn_status)
+
+          - script: |
+              echo "[MVN_PUB] executing ROR_TASK=$ROR_TASK"
+              export MAVEN_REPO_PASSWORD=$VAR_MAVEN_REPO_PASSWORD
+              export MAVEN_REPO_USER=$VAR_MAVEN_REPO_USER
+              export MAVEN_STAGING_PROFILE_ID=$VAR_MAVEN_STAGING_PROFILE_ID
+              export GPG_KEY_ID=$VAR_GPG_KEY_ID
+              export GPG_PASSPHRASE=$VAR_GPG_PASSPHRASE
+              echo ">>> ($ROR_TASK) Publishing artifacts" && bin/build.sh
+            env:
+              ROR_TASK: publish_artifacts
+              VAR_MAVEN_REPO_PASSWORD: $(MAVEN_REPO_PASSWORD)
+              VAR_MAVEN_REPO_USER: $(MAVEN_REPO_USER)
+              VAR_MAVEN_STAGING_PROFILE_ID: $(MAVEN_STAGING_PROFILE_ID)
+              VAR_GPG_PASSPHRASE: $(GPG_PASSPHRASE)
+              VAR_GPG_KEY_ID: $(GPG_KEY_ID)
+            condition: eq(404, variables.mvn_status)

@@ -21,8 +21,7 @@ import java.util
 import java.util.function.{Supplier, UnaryOperator}
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
-import org.elasticsearch.{ElasticsearchException, Version}
-import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
+import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.client.Client
@@ -39,7 +38,6 @@ import org.elasticsearch.common.settings._
 import org.elasticsearch.common.util.concurrent.{EsExecutors, ThreadContext}
 import org.elasticsearch.common.util.{BigArrays, PageCacheRecycler}
 import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.discovery.zen.PublishClusterStateAction.serializeFullClusterState
 import org.elasticsearch.env.{Environment, NodeEnvironment}
 import org.elasticsearch.http.HttpServerTransport
 import org.elasticsearch.index.IndexModule
@@ -135,13 +133,13 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                 namedWriteableRegistry: NamedWriteableRegistry): util.Collection[AnyRef] = {
     doPrivileged {
       ilaf = new IndexLevelActionFilter(
+        client.settings().get("node.name"),
         clusterService,
         client.asInstanceOf[NodeClient],
         threadPool,
         environment,
         TransportServiceInterceptor.remoteClusterServiceSupplier,
         SnapshotsServiceInterceptor.snapshotsServiceSupplier,
-        emptyClusterState,
         esInitListener
       )
     }

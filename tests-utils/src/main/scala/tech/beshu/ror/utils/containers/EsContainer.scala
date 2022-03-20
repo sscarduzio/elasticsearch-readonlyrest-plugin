@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.utils.containers
 
-import java.util.Optional
-import java.util.function.Consumer
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.SingleContainer
 import com.typesafe.scalalogging.Logger
@@ -29,11 +27,10 @@ import org.testcontainers.images.builder.ImageFromDockerfile
 import tech.beshu.ror.utils.containers.EsContainer.Credentials
 import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, None, Token}
 import tech.beshu.ror.utils.containers.providers.ClientProvider
-import tech.beshu.ror.utils.containers.providers.ClientProvider.xpackAdminCredentials
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
-import tech.beshu.ror.utils.misc.Tuple
 
+import java.util.function.Consumer
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -57,10 +54,10 @@ abstract class EsContainer(val name: String,
   def getAddressInInternalNetwork = s"${containerInfo.getConfig.getHostName}:9200"
 
   override def client(credentials: Credentials): RestClient = credentials match {
-    case BasicAuth(user, password) => new RestClient(sslEnabled, ip, port, Optional.of(Tuple.from(user, password)))
-    case Token(token) => new RestClient(sslEnabled, "localhost", port, Optional.empty[Tuple[String, String]](), new BasicHeader("Authorization", token))
-    case Header(name, value) => new RestClient(sslEnabled, "localhost", port, Optional.empty[Tuple[String, String]](), new BasicHeader(name, value))
-    case None => new RestClient(sslEnabled, ip, port, Optional.empty[Tuple[String, String]]())
+    case BasicAuth(user, password) => new RestClient(sslEnabled, ip, port, Some(user, password))
+    case Token(token) => new RestClient(sslEnabled, ip, port, Option.empty, new BasicHeader("Authorization", token))
+    case Header(name, value) => new RestClient(sslEnabled, ip, port, Option.empty, new BasicHeader(name, value))
+    case None => new RestClient(sslEnabled, ip, port, Option.empty)
   }
 }
 

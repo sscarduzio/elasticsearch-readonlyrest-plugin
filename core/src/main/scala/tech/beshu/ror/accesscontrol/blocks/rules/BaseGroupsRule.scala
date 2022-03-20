@@ -72,7 +72,7 @@ abstract class BaseGroupsRule(val settings: Settings,
   override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
     Task.now(RuleResult.Fulfilled(blockContext))
 
-  private def continueCheckingWithUserDefinitions[B <: BlockContext : BlockContextUpdater](blockContext: B,
+    private def continueCheckingWithUserDefinitions[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                            resolvedGroups: UniqueNonEmptyList[Group]): Task[RuleResult[B]] = {
     blockContext.userMetadata.loggedUser match {
       case Some(user) =>
