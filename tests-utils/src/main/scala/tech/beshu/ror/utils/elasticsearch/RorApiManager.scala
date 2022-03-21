@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
+import cats.implicits._
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost}
@@ -24,7 +25,6 @@ import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 import java.util.concurrent.TimeUnit
-import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
 
 class RorApiManager(client: RestClient,
@@ -217,7 +217,7 @@ class RorApiManager(client: RestClient,
     def forceOk(): this.type = {
       force()
       val status = responseJson("status").str
-      if (status != "OK") throw new IllegalStateException(s"Expected business status 'OK' but got '$status'}; Message: '${responseJson.obj.get("message").map(_.str).getOrElse("[none]")}'")
+      if (status =!= "OK") throw new IllegalStateException(s"Expected business status 'OK' but got '$status'}; Message: '${responseJson.obj.get("message").map(_.str).getOrElse("[none]")}'")
       this
     }
   }

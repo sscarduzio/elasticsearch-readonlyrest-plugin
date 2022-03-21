@@ -124,10 +124,7 @@ class RorInstance private(boot: ReadonlyRest,
 
   def invalidateTestConfigEngine()
                                 (implicit requestId: RequestId): Task[Unit] = {
-    for {
-      _ <- anTestConfigEngine.invalidateTestConfigEngine()
-      _ <- Task.delay(boot.mocksProvider.invalidate())
-    } yield ()
+    anTestConfigEngine.invalidateTestConfigEngine()
   }
 
   def stop(): Task[Unit] = {

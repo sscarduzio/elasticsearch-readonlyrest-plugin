@@ -33,7 +33,6 @@ trait AdminApiAuthMockSuite
     with BaseTestConfigSuite
     with ESVersionSupportForAnyWordSpecLike
     with BeforeAndAfterEach
-
     with Matchers {
   this: EsContainerCreator =>
 
