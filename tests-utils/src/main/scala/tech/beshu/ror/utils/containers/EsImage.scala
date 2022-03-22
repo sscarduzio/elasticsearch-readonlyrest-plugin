@@ -57,9 +57,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
         RunCommandCombiner.empty
           .runWhen(!useXpackSecurityInsteadOfRor, "/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
           .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
-          .runWhen(shouldDisableXpack(config),
-            command = "printf 'xpack.security.enabled: false\\nxpack.security.transport.ssl.enabled: false\\n' >> /usr/share/elasticsearch/config/elasticsearch.yml"
-          )
+          .runWhen(shouldDisableXpack(config), "echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(externalSslEnabled, "echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(internodeSslEnabled, "echo 'transport.type: ror_ssl_internode' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(!configHotReloadingEnabled, "echo 'readonlyrest.force_load_from_file: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
@@ -86,12 +84,13 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .runWhen(Version.greaterOrEqualThan(esVersion, 6, 7, 0),"echo \"for i in {1..30}; do curl -X POST -u elastic:elastic \"http://localhost:9200/_security/user/admin?pretty\" -H 'Content-Type: application/json' -d'{\\\"password\\\" : \\\"container\\\",\\\"roles\\\" : [ \\\"superuser\\\"]}'; sleep 2; done\" >> /usr/share/elasticsearch/xpack-setup-entry.sh")
           .run("echo 'wait' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
           .run("chmod +x /usr/share/elasticsearch/xpack-setup-entry.sh")
-          .runWhen(Version.greaterOrEqualThan(esVersion, 7, 10, 0),
-            s"printf '${readAdditionalGrantFile}' >> /usr/share/elasticsearch/jdk/conf/security/java.policy")
           .applyTo(builder)
           .user("root")
 
+
         RunCommandCombiner.empty
+          .runWhen(Version.greaterOrEqualThan(esVersion, 7, 10, 0),
+            s"printf '${readAdditionalGrantFile}' >> /usr/share/elasticsearch/jdk/conf/security/java.policy")
           .run("chown elasticsearch:elasticsearch config/*")
           .run("(egrep -v 'node\\.name|cluster\\.initial_master_nodes|cluster\\.name|network\\.host' /usr/share/elasticsearch/config/elasticsearch.yml || echo -n '') > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
           .run(s"echo 'node.name: $nodeName' >> /usr/share/elasticsearch/config/elasticsearch.yml")
