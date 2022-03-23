@@ -11,6 +11,7 @@ trigger:
     - master
     - develop
     - epic/*
+    - '*/pull/*'
   tags:
     exclude:
       - '*'
