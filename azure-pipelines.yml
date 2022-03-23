@@ -22,6 +22,7 @@ trigger:
       - 'docs/*'
       - '*.md'
       - '*/*/*.md'
+      
 pool:
   vmImage: 'ubuntu-20.04'
 
