@@ -60,7 +60,6 @@ object ForbiddenResponse {
   case object RorNotReadyYet extends ForbiddenCause
   case object RorNotEnabled extends ForbiddenCause
   case object RorFailedToStart extends ForbiddenCause
-  case object TestSettingsNotConfigured extends ForbiddenCause
 
   def create(causes: List[ForbiddenCause],
              aclStaticContext: AccessControlStaticContext): ForbiddenResponse =
@@ -75,10 +74,6 @@ object ForbiddenResponse {
   def createRorNotEnabledResponse(): ForbiddenResponse =
     new ForbiddenResponse(None, RorNotEnabled :: Nil)
 
-  def createTestSettingsNotConfiguredResponse(): ForbiddenResponse = {
-    new ForbiddenResponse(None, TestSettingsNotConfigured :: Nil)
-  }
-
   private implicit val forbiddenCauseShow: Show[ForbiddenCause] = Show.show {
     case ForbiddenBlockMatch => "FORBIDDEN_BY_BLOCK"
     case OperationNotAllowed => "OPERATION_NOT_ALLOWED"
@@ -87,6 +82,5 @@ object ForbiddenResponse {
     case RorNotReadyYet => "READONLYREST_NOT_READY_YET"
     case RorNotEnabled => "READONLYREST_NOT_ENABLED"
     case RorFailedToStart => "READONLYREST_FAILED_TO_START"
-    case TestSettingsNotConfigured => "TEST_SETTINGS_NOT_CONFIGURED"
   }
 }
