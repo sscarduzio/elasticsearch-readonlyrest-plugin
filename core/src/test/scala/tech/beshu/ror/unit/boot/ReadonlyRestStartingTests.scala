@@ -30,10 +30,10 @@ import org.scalatest.{EitherValues, Inside, OptionValues}
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
-import tech.beshu.ror.accesscontrol.factory.{CoreFactory, CoreSettings}
+import tech.beshu.ror.accesscontrol.factory.{CoreFactory, Core}
 import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.ReloadingFailed
@@ -173,7 +173,7 @@ class ReadonlyRestStartingTests
           createCoreResult =
             Task
               .sleep(100 millis)
-              .map(_ => Right(CoreSettings(mockEnabledAccessControl, RorConfig(RorConfig.Services()), None))) // very long creation
+              .map(_ => Right(Core(mockEnabledAccessControl, RorConfig(RorConfig.Services.empty, None)))) // very long creation
         )
         mockIndexJsonContentManagerSaveCall(
           mockedIndexJsonContentManager,
@@ -577,13 +577,13 @@ class ReadonlyRestStartingTests
         (config: RawRorConfig, _, _, _, _) => config == rawRorConfig
       })
       .once()
-      .returns(Task.now(Right(CoreSettings(accessControlMock, RorConfig(RorConfig.Services()), None))))
+      .returns(Task.now(Right(Core(accessControlMock, RorConfig(RorConfig.Services.empty, None)))))
     mockedCoreFactory
   }
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
                               resourceFileName: String,
-                              createCoreResult: Task[Either[NonEmptyList[AclCreationError], CoreSettings]]) = {
+                              createCoreResult: Task[Either[NonEmptyList[CoreCreationError], Core]]) = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
         (config: RawRorConfig, _, _, _, _) => config == rorConfigFromResource(resourceFileName)
@@ -605,7 +605,7 @@ class ReadonlyRestStartingTests
         (config: RawRorConfig, _, _, _, _) => config == rawRorConfig
       })
       .once()
-      .returns(Task.now(Left(NonEmptyList.one(AclCreationError.GeneralReadonlyrestSettingsError(Message("failed"))))))
+      .returns(Task.now(Left(NonEmptyList.one(CoreCreationError.GeneralReadonlyrestSettingsError(Message("failed"))))))
     mockedCoreFactory
   }
 

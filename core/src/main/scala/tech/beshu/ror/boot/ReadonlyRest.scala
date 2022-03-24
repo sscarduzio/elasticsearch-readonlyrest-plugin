@@ -25,8 +25,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MutableMocksProviderWithCachePerRequest, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
-import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, CoreSettings, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason
+import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, Core, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.boot.ReadonlyRest._
 import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
@@ -123,8 +123,8 @@ class ReadonlyRest(coreFactory: CoreFactory,
       .map { result =>
         result
           .right
-          .map { coreSettings =>
-            val engine = createEngine(httpClientsFactory, ldapConnectionPoolProvider, coreSettings)
+          .map { core =>
+            val engine = createEngine(httpClientsFactory, ldapConnectionPoolProvider, core)
             inspectFlsEngine(engine)
             engine
           }
@@ -135,26 +135,26 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private def createEngine(httpClientsFactory: AsyncHttpClientsFactory,
                            ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                           coreSettings: CoreSettings) = {
-    implicit val loggingContext: LoggingContext = LoggingContext(coreSettings.aclEngine.staticContext.obfuscatedHeaders)
-    val auditingTool = createAuditingTool(coreSettings)
+                           core: Core) = {
+    implicit val loggingContext: LoggingContext = LoggingContext(core.aclEngine.staticContext.obfuscatedHeaders)
+    val auditingTool = createAuditingTool(core)
     val loggingDecorator = new AccessControlLoggingDecorator(
-      underlying = coreSettings.aclEngine,
+      underlying = core.aclEngine,
       auditingTool = auditingTool
     )
 
     new Engine(
       accessControl = loggingDecorator,
-      rorConfig = coreSettings.rorConfig,
+      rorConfig = core.rorConfig,
       httpClientsFactory = httpClientsFactory,
       ldapConnectionPoolProvider,
       auditingTool
     )
   }
 
-  private def createAuditingTool(coreSettings: CoreSettings)
+  private def createAuditingTool(core: Core)
                                 (implicit loggingContext: LoggingContext): Option[AuditingTool] = {
-    coreSettings.auditingSettings
+    core.rorConfig.auditingSettings
       .map(settings => new AuditingTool(settings, auditSinkCreator(settings.auditCluster)))
   }
 
@@ -167,7 +167,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
     }
   }
 
-  private def handleLoadingCoreErrors(errors: NonEmptyList[RawRorConfigBasedCoreFactory.AclCreationError]) = {
+  private def handleLoadingCoreErrors(errors: NonEmptyList[RawRorConfigBasedCoreFactory.CoreCreationError]) = {
     val errorsMessage = errors
       .map(_.reason)
       .map {

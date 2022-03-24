@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule.Settings
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._

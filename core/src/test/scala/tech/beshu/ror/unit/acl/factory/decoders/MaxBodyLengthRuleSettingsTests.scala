@@ -20,8 +20,8 @@ import org.scalatest.matchers.should.Matchers._
 import squants.information.Bytes
 
 import tech.beshu.ror.accesscontrol.blocks.rules.MaxBodyLengthRule
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 
 class MaxBodyLengthRuleSettingsTests extends BaseRuleSettingsDecoderTest[MaxBodyLengthRule] {
 

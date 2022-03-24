@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.api
 
-import cats.Eq
 import cats.data.EitherT
 import cats.implicits._
+import cats.{Eq, Show}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Decoder, DecodingFailure}
 import monix.eval.Task
@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.{MapsBasedMocksProvider, MocksP
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.api.AuthMockApi.AuthMockResponse.{Failure, ProvideAuthMock, UpdateAuthMock}
 import tech.beshu.ror.api.AuthMockApi.AuthMockService._
-import tech.beshu.ror.boot.RorInstance.TestEngineServices
+import tech.beshu.ror.boot.RorInstance.TestEngineRorConfig
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.RorConfig
 import tech.beshu.ror.utils.CirceOps.CirceErrorOps
@@ -58,12 +58,11 @@ class AuthMockApi(rorInstance: RorInstance,
 
   private def provideAuthMock()
                              (implicit requestId: RequestId): Task[AuthMockResponse] = {
-    rorInstance.currentServices().map {
-      case TestEngineServices.NotSet =>
-        AuthMockResponse.ProvideAuthMock.NotConfigured("ROR Test settings are not configured. To use Auth Services Mock ROR has to have Test settings active.")
-      case TestEngineServices.Present(services) =>
-        readCurrentAuthMocks(services)
-    }
+    withRorConfigAuthServices(
+      action = readCurrentAuthMocks,
+      onNotSet = AuthMockResponse.ProvideAuthMock.NotConfigured.apply
+    )
+      .map(_.merge)
   }
 
   private def readCurrentAuthMocks(services: RorConfig.Services)
@@ -88,7 +87,7 @@ class AuthMockApi(rorInstance: RorInstance,
           .left.map(error => AuthMockResponse.Failure.BadRequest(s"JSON body malformed: [${error.getPrettyMessage}]"))
       )
       authServices <- readCurrentAuthServices()
-      _ <- EitherT.fromEither[Task](verifyProvidedMocks(updateRequest, authServices))
+      _ <- EitherT.fromEither[Task](validateProvidedMocks(updateRequest, authServices))
       result <- EitherT[Task, AuthMockResponse, AuthMockResponse] {
         Task.delay {
           mockProvider.update(mocksProvider = toDomain(updateRequest.services), ttl = None)
@@ -102,32 +101,48 @@ class AuthMockApi(rorInstance: RorInstance,
 
   private def readCurrentAuthServices()
                                      (implicit requestId: RequestId): EitherT[Task, AuthMockResponse, RorConfig.Services] = {
-    EitherT(rorInstance.currentServices().map {
-      case TestEngineServices.NotSet =>
-        Left(AuthMockResponse.UpdateAuthMock.NotConfigured("ROR Test settings are not configured. To use Auth Services Mock ROR has to have Test settings active."))
-      case TestEngineServices.Present(services) =>
-        Right(services)
-    })
+    EitherT(withRorConfigAuthServices(
+      action = identity,
+      onNotSet = AuthMockResponse.UpdateAuthMock.NotConfigured.apply
+    ))
   }
 
-  private def verifyProvidedMocks(updateRequest: UpdateMocksRequest,
-                                  services: RorConfig.Services): Either[AuthMockResponse, Unit] = {
-    val allProvidedServicesAreDefinedInConfig = updateRequest.services.forall {
-      case LdapAuthorizationService(name, _) =>
-        services.ldaps.exists(_.value === name)
-      case ExternalAuthenticationService(name, _) =>
-        services.authenticationServices.exists(_.value === name)
-      case ExternalAuthorizationService(name, _) =>
-        services.authorizationServices.exists(_.value === name)
+  private def withRorConfigAuthServices[A, B](action: RorConfig.Services => B,
+                                              onNotSet: String => A)
+                                             (implicit requestId: RequestId): Task[Either[A, B]] = {
+    rorInstance.currentTestEngineRorConfig().map {
+      case TestEngineRorConfig.NotSet =>
+        Left(onNotSet("ROR Test settings are not configured. To use Auth Services Mock ROR has to have Test settings active."))
+      case TestEngineRorConfig.Present(config) =>
+        Right(action(config.services))
     }
-    if (allProvidedServicesAreDefinedInConfig) {
-      Right(())
-    } else {
-      Left(AuthMockResponse.UpdateAuthMock.UnknownAuthServicesDetected("ROR doesn't allow to configure unknown Auth Services. Only the ones used in ROR's Test settings can be configured."))
-    }
+  }
+
+  private def validateProvidedMocks(updateRequest: UpdateMocksRequest,
+                                    services: RorConfig.Services): Either[AuthMockResponse, Unit] = {
+    updateRequest
+      .services
+      .map {
+        case LdapAuthorizationService(name, _) =>
+          services.ldaps.find(_.value === name).toValidNel(name)
+        case ExternalAuthenticationService(name, _) =>
+          services.authenticationServices.find(_.value === name).toValidNel(name)
+        case ExternalAuthorizationService(name, _) =>
+          services.authorizationServices.find(_.value === name).toValidNel(name)
+      }
+      .sequence
+      .map(_ => ())
+      .leftMap { unknownAuthServices =>
+        val unknownServices = unknownAuthServices.mkString_("[", ",", "]")
+        AuthMockResponse.UpdateAuthMock.UnknownAuthServicesDetected(
+          s"ROR doesn't allow to configure unknown Auth Services. Only the ones used in ROR's Test settings can be configured. Unknown services: $unknownServices"
+        )
+      }
+      .toEither
   }
 
   private implicit val eqNonEmptyString: Eq[NonEmptyString] = Eq.fromUniversalEquals
+  private implicit val showNonEmptyString: Show[NonEmptyString] = Show.show(_.value)
 }
 
 object AuthMockApi {
@@ -312,13 +327,13 @@ object AuthMockApi {
         Decoder.forProduct2("name", "groups")(MockUserWithGroups.apply)
 
       private def mockModeDecoder[T: Decoder]: Decoder[MockMode[T]] = Decoder.instance { c =>
-        c.as[NonEmptyString].flatMap { mockType =>
-          if (mockType.value === "NOT_CONFIGURED") {
-            Right(MockMode.NotConfigured)
-          } else {
-            Left(DecodingFailure(s"Unknown type of mock: ${mockType.value}", ops = c.history))
+        c
+          .as[String]
+          .flatMap {
+            case "NOT_CONFIGURED" => Right(MockMode.NotConfigured)
+            case "" => Left(DecodingFailure(s"Mock type cannot be empty", ops = c.history))
+            case other => Left(DecodingFailure(s"Unknown type of mock: $other", ops = c.history))
           }
-        }
           .orElse(Decoder[T].apply(c).map(MockMode.Enabled.apply))
       }
 

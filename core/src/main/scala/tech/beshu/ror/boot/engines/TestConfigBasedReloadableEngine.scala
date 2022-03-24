@@ -24,7 +24,7 @@ import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
-import tech.beshu.ror.boot.RorInstance.{RawConfigReloadError, TestConfig, TestEngineServices}
+import tech.beshu.ror.boot.RorInstance.{RawConfigReloadError, TestConfig, TestEngineRorConfig}
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.EngineState
 import tech.beshu.ror.boot.engines.ConfigHash._
 import tech.beshu.ror.configuration.RawRorConfig
@@ -56,13 +56,13 @@ private[boot] class TestConfigBasedReloadableEngine(boot: ReadonlyRest,
     }
   }
 
-  def currentServices()
-                     (implicit requestId: RequestId): Task[TestEngineServices] = {
+  def currentRorConfig()
+                      (implicit requestId: RequestId): Task[TestEngineRorConfig] = {
     Task.delay {
       engine
-        .map(_.rorConfig.services)
-        .map(TestEngineServices.Present.apply)
-        .getOrElse(TestEngineServices.NotSet)
+        .map(_.rorConfig)
+        .map(TestEngineRorConfig.Present.apply)
+        .getOrElse(TestEngineRorConfig.NotSet)
     }
   }
 

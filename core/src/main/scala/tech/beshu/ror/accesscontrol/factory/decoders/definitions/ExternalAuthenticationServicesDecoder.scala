@@ -23,11 +23,11 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions._
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 import scala.concurrent.duration.FiniteDuration
@@ -77,7 +77,7 @@ object ExternalAuthenticationServicesDecoder {
       .emapE { case (name, url, httpSuccessCode, cacheTtl, validateOpt, httpClientConfigOpt) =>
         val httpClientConfig = (validateOpt, httpClientConfigOpt) match {
           case (Some(_), Some(_)) =>
-            Left(AclCreationError.RulesLevelCreationError(Message("If 'http_connection_settings' are used, 'validate' should be placed in that section")))
+            Left(CoreCreationError.RulesLevelCreationError(Message("If 'http_connection_settings' are used, 'validate' should be placed in that section")))
           case (Some(validate), None) =>
             Right(HttpClientsFactory.Config.default.copy(validate = validate))
           case (None, Some(config)) =>

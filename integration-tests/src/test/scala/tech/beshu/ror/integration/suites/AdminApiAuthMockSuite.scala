@@ -492,6 +492,11 @@ trait AdminApiAuthMockSuite
                |    "type": "LDAP",
                |    "name": "ldap3",
                |    "mock": "NOT_CONFIGURED"
+               |  },
+               |  {
+               |    "type": "LDAP",
+               |    "name": "ldap4",
+               |    "mock": "NOT_CONFIGURED"
                |  }
                |]
                |""".stripMargin)
@@ -499,7 +504,7 @@ trait AdminApiAuthMockSuite
           val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(payloadServices))
           response.responseCode should be(200)
           response.responseJson("status").str should be("UNKNOWN_AUTH_SERVICES_DETECTED")
-          response.responseJson("message").str should be("ROR doesn't allow to configure unknown Auth Services. Only the ones used in ROR's Test settings can be configured.")
+          response.responseJson("message").str should be("ROR doesn't allow to configure unknown Auth Services. Only the ones used in ROR's Test settings can be configured. Unknown services: [ldap3,ldap4]")
         }
       }
       "return info that request is malformed" when {

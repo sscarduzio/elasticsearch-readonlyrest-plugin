@@ -26,9 +26,9 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ExternalAuthenticationServicesDecoder._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, ExternalAuthenticationServicesDecoder}
@@ -84,7 +84,7 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
   }
 
   private def findAuthenticationService(authenticationServices: List[ExternalAuthenticationService],
-                                        searchedServiceName: ExternalAuthenticationService.Name): Either[AclCreationError, ExternalAuthenticationService] = {
+                                        searchedServiceName: ExternalAuthenticationService.Name): Either[CoreCreationError, ExternalAuthenticationService] = {
     authenticationServices.find(_.id === searchedServiceName) match {
       case Some(service) => Right(service)
       case None => Left(RulesLevelCreationError(Message(s"Cannot find external authentication service with name: ${searchedServiceName.show}")))

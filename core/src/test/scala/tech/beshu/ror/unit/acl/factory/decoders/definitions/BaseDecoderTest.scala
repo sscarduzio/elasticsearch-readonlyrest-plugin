@@ -21,7 +21,7 @@ import cats.{Comonad, Functor}
 import io.circe.DecodingFailure
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.Inside
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.utils.ADecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.utils.yaml
@@ -40,7 +40,7 @@ abstract class BaseDecoderTest[F[_] : Functor, A, B](decoder: ADecoder[F, A])
   }
 
   def assertDecodingFailure(yaml: String,
-                            assertion: AclCreationError => Unit): Unit = {
+                            assertion: CoreCreationError => Unit): Unit = {
     inside(C.extract(decode(yaml))) { case Left(decodingFailure) =>
       decodingFailure.aclCreationError match {
         case Some(error) => assertion(error)

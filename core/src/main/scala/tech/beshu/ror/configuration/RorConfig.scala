@@ -18,11 +18,16 @@ package tech.beshu.ror.configuration
 
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
+import tech.beshu.ror.accesscontrol.logging.AuditingTool
 
-final case class RorConfig(services: RorConfig.Services)
+final case class RorConfig(services: RorConfig.Services,
+                           auditingSettings: Option[AuditingTool.Settings])
 
 object RorConfig {
-  final case class Services(authenticationServices: Seq[ExternalAuthenticationService#Id]= Seq.empty,
-                            authorizationServices: Seq[ExternalAuthorizationService#Id] = Seq.empty,
-                            ldaps: Seq[LdapService#Id] = Seq.empty)
+  final case class Services(authenticationServices: Seq[ExternalAuthenticationService#Id],
+                            authorizationServices: Seq[ExternalAuthorizationService#Id],
+                            ldaps: Seq[LdapService#Id])
+  object Services {
+    def empty: Services = Services(Seq.empty, Seq.empty, Seq.empty)
+  }
 }

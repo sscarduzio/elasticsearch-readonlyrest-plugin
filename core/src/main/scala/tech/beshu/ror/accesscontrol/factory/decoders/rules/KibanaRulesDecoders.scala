@@ -25,9 +25,9 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.createSingleResolvableVariableFrom
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaAccess, KibanaApp, RorConfigurationIndex}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -81,7 +81,7 @@ class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorConfigurationIndex)
       case "ro_strict" => Right(KibanaAccess.ROStrict)
       case "admin" => Right(KibanaAccess.Admin)
       case "unrestricted" => Right(KibanaAccess.Unrestricted)
-      case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
+      case unknown => Left(CoreCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
     }
       .map(KibanaAccessRule.Settings(_, rorIndexNameConfiguration))
       .map(settings => RuleWithVariableUsageDefinition.create(new KibanaAccessRule(settings)))
