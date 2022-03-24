@@ -147,18 +147,17 @@ dependencies {
     testCompile group: 'com.dimafeng',                      name: 'testcontainers-scala_2.12',              version: '0.39.8'
 
     constraints{
-        compile group: 'io.netty',                          name: 'netty-codec-http2',                      version: '4.1.72.Final'
-        compile group: 'io.netty',                          name: 'netty-handler-proxy',                    version: '4.1.72.Final'
-        compile group: 'io.netty',                          name: 'netty-transport-native-unix-common',     version: '4.1.72.Final'
-        compile group: 'io.netty',                          name: 'netty-transport-native-epoll',           version: '4.1.72.Final'
-        compile group: 'io.netty',                          name: 'netty-transport-native-kqueue',          version: '4.1.72.Final'
+        compile group: 'io.netty',                          name: 'netty-codec-http2',                      version: '4.1.73.Final'
+        compile group: 'io.netty',                          name: 'netty-handler-proxy',                    version: '4.1.73.Final'
+        compile group: 'io.netty',                          name: 'netty-transport-native-unix-common',     version: '4.1.73.Final'
+        compile group: 'io.netty',                          name: 'netty-transport-native-epoll',           version: '4.1.73.Final'
+        compile group: 'io.netty',                          name: 'netty-transport-native-kqueue',          version: '4.1.73.Final'
         compile group: 'com.google.guava',                  name: 'guava',                                  version: '30.0-jre'
         compile group: 'io.spray',                          name: 'spray-json_2.12',                        version: '1.3.5'
         compile group: 'org.scala-lang',                    name: 'scala-reflect',                          version: '2.12.10'
         compile group: 'org.asynchttpclient',               name: 'async-http-client',                      version: '2.10.5'
     }
 }
-
 
 license {
     header rootProject.file('ReadonlyRESTLicenseHeader.txt')
