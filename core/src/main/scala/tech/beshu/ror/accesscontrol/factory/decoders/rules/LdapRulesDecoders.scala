@@ -125,18 +125,18 @@ object LdapAuthorizationRuleDecoder {
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .emapE {
-        case (name, Some(ttl), groups) =>
+        case (name, Some(ttl), groupsLogic) =>
 
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthorizationService, LdapAuthorizationRule](ldapDefinitions.items, name)
             .map(new CacheableLdapAuthorizationServiceDecorator(_, ttl))
             .map(new LoggableLdapAuthorizationServiceDecorator(_))
-            .map(LdapAuthorizationRule.Settings(_, groups, groups.getPermittedGroups()))
-        case (name, None, groups) =>
+            .map(LdapAuthorizationRule.Settings(_, groupsLogic, groupsLogic.groups))
+        case (name, None, groupsLogic) =>
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthorizationService, LdapAuthorizationRule](ldapDefinitions.items, name)
             .map(new LoggableLdapAuthorizationServiceDecorator(_))
-            .map(LdapAuthorizationRule.Settings(_, groups, groups.getPermittedGroups()))
+            .map(LdapAuthorizationRule.Settings(_, groupsLogic, groupsLogic.groups))
       }
       .decoder
 }
@@ -188,7 +188,7 @@ object LdapAuthRuleDecoder {
   private def createLdapAuthRule(ldapService: LdapAuthService,
                                  impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                  mocksProvider: MocksProvider,
-                                 groups: GroupsLogic,
+                                 groupsLogic: GroupsLogic,
                                  caseMappingEquality: UserIdCaseMappingEquality) = {
     val impersonation = impersonatorsDef.toImpersonation(mocksProvider)
     new LdapAuthRule(
@@ -198,7 +198,7 @@ object LdapAuthRuleDecoder {
         caseMappingEquality
       ),
       new LdapAuthorizationRule(
-        LdapAuthorizationRule.Settings(ldapService, groups, groups.getPermittedGroups()),
+        LdapAuthorizationRule.Settings(ldapService, groupsLogic, groupsLogic.groups),
         impersonation,
         caseMappingEquality
       )
