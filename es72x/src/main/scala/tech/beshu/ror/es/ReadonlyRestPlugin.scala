@@ -16,9 +16,6 @@
  */
 package tech.beshu.ror.es
 
-import java.nio.file.Path
-import java.util
-import java.util.function.{Supplier, UnaryOperator}
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
@@ -47,31 +44,33 @@ import org.elasticsearch.plugins._
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.{Transport, TransportInterceptor}
 import org.elasticsearch.transport.netty4.Netty4Utils
+import org.elasticsearch.transport.{Transport, TransportInterceptor}
 import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.boot.EsInitListener
+import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.configuration.{FipsConfiguration, RorSsl}
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
-import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
-import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
-import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
-import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
-import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.es.utils.ThreadRepo
-import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
-import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
-import tech.beshu.ror.configuration.FipsConfiguration.FipsMode.NonFips
-import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, TransportRRAuditEventAction}
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
+import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, TransportRRAuditEventAction}
 import tech.beshu.ror.es.actions.rrauthmock.rest.RestRRAuthMockAction
 import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionType, TransportRRAuthMockAction}
-import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
+import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
+import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
+import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
+import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
+import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
+import tech.beshu.ror.es.utils.ThreadRepo
+import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
+import java.nio.file.Path
+import java.util
+import java.util.function.{Supplier, UnaryOperator}
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -109,9 +108,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     .load(environment.configFile)
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
-  private val emptyClusterState = new ClusterStateResponse(
-    ClusterName.CLUSTER_NAME_SETTING.get(s), ClusterState.EMPTY_STATE,false
-  )
   private val esInitListener = new EsInitListener
 
   private var ilaf: IndexLevelActionFilter = _
