@@ -79,8 +79,8 @@ object CrossBlockContextBlocksUpgrade {
       .foldLeft(Map.empty[LdapService#Id, UniqueNonEmptyList[Group]]) {
         case (acc, rule) =>
           val newGroups = acc.get(rule.settings.ldap.id) match {
-            case Some(groups) => UniqueNonEmptyList.unsafeFromList(groups.toList ::: rule.settings.permittedGroups.toList)
-            case None => rule.settings.permittedGroups
+            case Some(groups) => UniqueNonEmptyList.unsafeFromList(groups.toList ::: rule.settings.permittedGroups.getPermittedGroups().toList)
+            case None => rule.settings.permittedGroups.getPermittedGroups()
           }
           acc + (rule.settings.ldap.id -> newGroups)
       }

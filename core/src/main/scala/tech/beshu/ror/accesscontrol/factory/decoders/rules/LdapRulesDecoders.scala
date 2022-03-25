@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
+import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule.GroupsLogic
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
@@ -116,7 +117,8 @@ object LdapAuthorizationRuleDecoder {
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          groups <- c.downField("groups").as[UniqueNonEmptyList[Group]]
+          groups <- c.downField("groups").as[UniqueNonEmptyList[Group]].map(GroupsLogic.Or(_))
+            .orElse(c.downField("groups_and").as[UniqueNonEmptyList[Group]].map(GroupsLogic.And(_)))
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
         } yield (name, ttl, groups)
       }
@@ -124,16 +126,17 @@ object LdapAuthorizationRuleDecoder {
       .mapError(RulesLevelCreationError.apply)
       .emapE {
         case (name, Some(ttl), groups) =>
+
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthorizationService, LdapAuthorizationRule](ldapDefinitions.items, name)
             .map(new CacheableLdapAuthorizationServiceDecorator(_, ttl))
             .map(new LoggableLdapAuthorizationServiceDecorator(_))
-            .map(LdapAuthorizationRule.Settings(_, groups, groups))
+            .map(LdapAuthorizationRule.Settings(_, groups, groups.getPermittedGroups()))
         case (name, None, groups) =>
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthorizationService, LdapAuthorizationRule](ldapDefinitions.items, name)
             .map(new LoggableLdapAuthorizationServiceDecorator(_))
-            .map(LdapAuthorizationRule.Settings(_, groups, groups))
+            .map(LdapAuthorizationRule.Settings(_, groups, groups.getPermittedGroups()))
       }
       .decoder
 }
@@ -160,7 +163,8 @@ object LdapAuthRuleDecoder {
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          groups <- c.downField("groups").as[UniqueNonEmptyList[Group]]
+          groups <- c.downField("groups").as[UniqueNonEmptyList[Group]].map(GroupsLogic.Or(_))
+            .orElse(c.downField("groups_and").as[UniqueNonEmptyList[Group]].map(GroupsLogic.And(_)))
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
         } yield (name, ttl, groups)
       }
@@ -184,7 +188,7 @@ object LdapAuthRuleDecoder {
   private def createLdapAuthRule(ldapService: LdapAuthService,
                                  impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                  mocksProvider: MocksProvider,
-                                 groups: UniqueNonEmptyList[Group],
+                                 groups: GroupsLogic,
                                  caseMappingEquality: UserIdCaseMappingEquality) = {
     val impersonation = impersonatorsDef.toImpersonation(mocksProvider)
     new LdapAuthRule(
@@ -194,7 +198,7 @@ object LdapAuthRuleDecoder {
         caseMappingEquality
       ),
       new LdapAuthorizationRule(
-        LdapAuthorizationRule.Settings(ldapService, groups, groups),
+        LdapAuthorizationRule.Settings(ldapService, groups, groups.getPermittedGroups()),
         impersonation,
         caseMappingEquality
       )

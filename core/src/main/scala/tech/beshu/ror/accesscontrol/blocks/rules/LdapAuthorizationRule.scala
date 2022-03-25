@@ -40,7 +40,7 @@ class LdapAuthorizationRule(val settings: Settings,
   override val name: Rule.Name = LdapAuthorizationRule.Name.name
 
   override protected val groupsPermittedByRule: UniqueNonEmptyList[Group] =
-    settings.permittedGroups
+    settings.permittedGroups.getPermittedGroups()
 
   override protected val groupsPermittedByAllRulesOfThisType: UniqueNonEmptyList[Group] =
     settings.allLdapGroups
@@ -75,6 +75,34 @@ object LdapAuthorizationRule {
   }
 
   final case class Settings(ldap: LdapAuthorizationService,
-                            permittedGroups: UniqueNonEmptyList[Group],
+                            permittedGroups: GroupsLogic,
                             allLdapGroups: UniqueNonEmptyList[Group])
+
+  sealed trait GroupsLogic {
+    def getPermittedGroups(): UniqueNonEmptyList[Group]
+
+    def availableGroupsFrom(userGroups: Set[Group], ruleGroups: Set[Group]): Option[UniqueNonEmptyList[Group]]
+  }
+
+  object GroupsLogic {
+
+    final case class Or(permittedGroups: UniqueNonEmptyList[Group]) extends GroupsLogic {
+      override def getPermittedGroups = permittedGroups
+
+      override def availableGroupsFrom(userGroups: Set[Group], ruleGroups: Set[Group]): Option[UniqueNonEmptyList[Group]] = {
+        UniqueNonEmptyList.fromSet(userGroups intersect ruleGroups)
+      }
+    }
+
+    final case class And(permittedGroups: UniqueNonEmptyList[Group]) extends GroupsLogic {
+      override def getPermittedGroups = permittedGroups
+
+      override def availableGroupsFrom(userGroups: Set[Group], ruleGroups: Set[Group]): Option[UniqueNonEmptyList[Group]] = {
+        val intersection = userGroups intersect ruleGroups
+        UniqueNonEmptyList.fromSet(
+          if (intersection === ruleGroups) ruleGroups else Set.empty
+        )
+      }
+    }
+  }
 }
