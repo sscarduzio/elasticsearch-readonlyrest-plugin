@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.implicits._
 import cats.Eq
+import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
@@ -70,6 +70,9 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
         Groups.CannotCheck
       }
   }
+
+  override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] =
+    UniqueNonEmptyList.fromSet(settings.permittedGroups.toSet.intersect(usersGroups))
 }
 
 object ExternalAuthorizationRule {

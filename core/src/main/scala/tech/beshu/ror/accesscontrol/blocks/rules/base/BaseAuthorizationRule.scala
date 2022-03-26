@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, User}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 trait BaseAuthorizationRule extends AuthorizationRule with SimpleAuthorizationImpersonationSupport {
-
+  protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]]
   protected def caseMappingEquality: UserIdCaseMappingEquality
 
   protected def groupsPermittedByRule: UniqueNonEmptyList[Group]
@@ -104,7 +104,7 @@ trait BaseAuthorizationRule extends AuthorizationRule with SimpleAuthorizationIm
           .map(uniqueList => UniqueNonEmptyList.fromSet(uniqueList.toSet))
           .map {
             case Some(fetchedUserGroups) =>
-              UniqueNonEmptyList.fromSortedSet(groupsPermittedByRule.intersect(fetchedUserGroups.toSet)) match {
+              calculateAllowedGroupsForUser(fetchedUserGroups) match {
                 case Some(_) =>
                   Fulfilled(blockContext.withUserMetadata(
                     _.addAvailableGroups(allGroupsIntersection(fetchedUserGroups))

@@ -72,6 +72,19 @@ class LdapAuthRuleTests
           )
         )
       }
+      "[groups_and] user can be authenticated, but does not have all the LDAP groups" in {
+        assertNotMatchRule(
+          authenticationSettings = LdapAuthenticationRule.Settings(
+            mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(true))
+          ),
+          authorizationSettings = LdapAuthorizationRule.Settings(
+            mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.of(Group("g1")))),
+            GroupsLogic.And(UniqueNonEmptyList.of(Group("g1"), Group("g2"))),
+            UniqueNonEmptyList.of(Group("g1"), Group("g2"))
+          ),
+          basicHeader = Some(basicAuthHeader("user1:pass"))
+        )
+      }
       "user is being impersonated" when {
         "impersonation is enabled" when {
           "mocks provider has a given user with allowed groups" in {
@@ -133,7 +146,7 @@ class LdapAuthRuleTests
           basicHeader = Some(basicAuthHeader("user1:pass"))
         )
       }
-      "user don't have permitted group" in {
+      "user doesn't have any permitted group" in {
         assertNotMatchRule(
           authenticationSettings = LdapAuthenticationRule.Settings(
             mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(true))

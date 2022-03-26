@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder.nameDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, LdapServicesDecoder}
@@ -117,26 +117,32 @@ object LdapAuthorizationRuleDecoder {
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          groups <- c.downField("groups").as[UniqueNonEmptyList[Group]].map(GroupsLogic.Or(_))
-            .orElse(c.downField("groups_and").as[UniqueNonEmptyList[Group]].map(GroupsLogic.And(_)))
+          groups_and <- c.downField("groups_and").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.And))
+          groups_or <- c.downField("groups").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.Or))
+            .orElse(c.downField("groups_or").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.Or)))
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
-        } yield (name, ttl, groups)
+        } yield (name, ttl, groups_or, groups_and)
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .emapE {
-        case (name, Some(ttl), groupsLogic) =>
-
+        case (_, _, None, None) => Left(DefinitionsLevelCreationError(Message(s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rules")))
+        case (_, _, Some(_), Some(_)) => Left(DefinitionsLevelCreationError(Message(s"Please specify either 'groups' or 'groups_and' for LDAP authorization rules")))
+        case (name, Some(ttl), groups_or_opt, groups_and_opt) => {
+          val groupsLogic = groups_or_opt.orElse(groups_and_opt).get
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthorizationService, LdapAuthorizationRule](ldapDefinitions.items, name)
             .map(new CacheableLdapAuthorizationServiceDecorator(_, ttl))
             .map(new LoggableLdapAuthorizationServiceDecorator(_))
             .map(LdapAuthorizationRule.Settings(_, groupsLogic, groupsLogic.groups))
-        case (name, None, groupsLogic) =>
+        }
+        case (name, None, groups_or_opt, groups_and_opt) => {
+          val groupsLogic = groups_or_opt.orElse(groups_and_opt).get
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthorizationService, LdapAuthorizationRule](ldapDefinitions.items, name)
             .map(new LoggableLdapAuthorizationServiceDecorator(_))
             .map(LdapAuthorizationRule.Settings(_, groupsLogic, groupsLogic.groups))
+        }
       }
       .decoder
 }
@@ -163,25 +169,28 @@ object LdapAuthRuleDecoder {
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          groups <- c.downField("groups").as[UniqueNonEmptyList[Group]].map(GroupsLogic.Or(_))
-            .orElse(c.downField("groups_and").as[UniqueNonEmptyList[Group]].map(GroupsLogic.And(_)))
+          groups_and <- c.downField("groups_and").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.And))
+          groups_or <- c.downField("groups").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.Or))
+            .orElse(c.downField("groups_or").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.Or)))
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
-        } yield (name, ttl, groups)
+        } yield (name, ttl, groups_or, groups_and)
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .emapE {
-        case (name, Some(ttl), groups) =>
+        case (_, _, None, None) => Left(DefinitionsLevelCreationError(Message(s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rules")))
+        case (_, _, Some(_), Some(_)) => Left(DefinitionsLevelCreationError(Message(s"Please specify either 'groups' or 'groups_and' for LDAP authorization rules")))
+        case (name, Some(ttl), groups_or_opt, groups_and_opt) =>
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthService, LdapAuthRule](ldapDefinitions.items, name)
             .map(new CacheableLdapServiceDecorator(_, ttl))
             .map(new LoggableLdapServiceDecorator(_))
-            .map(createLdapAuthRule(_, impersonatorsDef, mocksProvider, groups, caseMappingEquality))
-        case (name, None, groups) =>
+            .map(createLdapAuthRule(_, impersonatorsDef, mocksProvider, groups_or_opt.orElse(groups_and_opt).get, caseMappingEquality))
+        case (name, None, groups_or_opt, groups_and_opt) =>
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthService, LdapAuthRule](ldapDefinitions.items, name)
             .map(new LoggableLdapServiceDecorator(_))
-            .map(createLdapAuthRule(_, impersonatorsDef, mocksProvider, groups, caseMappingEquality))
+            .map(createLdapAuthRule(_, impersonatorsDef, mocksProvider, groups_or_opt.orElse(groups_and_opt).get, caseMappingEquality))
       }
       .decoder
 
