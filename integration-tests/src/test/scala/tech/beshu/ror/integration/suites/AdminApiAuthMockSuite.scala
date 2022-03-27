@@ -39,13 +39,14 @@ trait AdminApiAuthMockSuite
   override implicit val rorConfigFileName: String = "/admin_api_mocks/readonlyrest.yml"
   private lazy val rorApiManager = new RorApiManager(rorAdminClient, esVersionUsed)
 
-  override def testDependencies: List[DependencyDef] = List(
+  override def clusterDependencies: List[DependencyDef] = List(
     ldap(name = "LDAP1", SingletonLdapContainers.ldap1),
     ldap(name = "LDAP2", SingletonLdapContainers.ldap2),
-    wiremock(name = "EXT1", mappings = "/admin_api_mocks/wiremock_service1_ext_user_1.json", "/admin_api_mocks/wiremock_group_provider1_gpa_user_1.json"),
-    wiremock(name = "EXT2", mappings = "/admin_api_mocks/wiremock_service2_ext_user_2.json", "/admin_api_mocks/wiremock_group_provider2_gpa_user_2.json"),
+    wiremock(name = "EXT1", mappings = "/impersonation/wiremock_service1_ext_user_1.json", "/impersonation/wiremock_group_provider1_gpa_user_1.json"),
+    wiremock(name = "EXT1", mappings = "/impersonation/wiremock_service2_ext_user_2.json", "/impersonation/wiremock_group_provider2_gpa_user_2.json"),
   )
 
+  override def testDependencies: List[DependencyDef] = clusterDependencies
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = None
 
   "An admin Auth Mock REST API" should {
