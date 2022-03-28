@@ -126,8 +126,8 @@ object LdapAuthorizationRuleDecoder {
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .emapE {
-        case (_, _, None, None) => Left(DefinitionsLevelCreationError(Message(s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rules")))
-        case (_, _, Some(_), Some(_)) => Left(DefinitionsLevelCreationError(Message(s"Please specify either 'groups' or 'groups_and' for LDAP authorization rules")))
+        case (_, _, None, None) => Left(RulesLevelCreationError(Message(s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rules")))
+        case (_, _, Some(_), Some(_)) => Left(RulesLevelCreationError(Message(s"Please specify either 'groups' or 'groups_and' for LDAP authorization rules")))
         case (name, Some(ttl), groups_or_opt, groups_and_opt) => {
           val groupsLogic = groups_or_opt.orElse(groups_and_opt).get
           LdapRulesDecodersHelper
@@ -178,8 +178,8 @@ object LdapAuthRuleDecoder {
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .emapE {
-        case (_, _, None, None) => Left(DefinitionsLevelCreationError(Message(s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rules")))
-        case (_, _, Some(_), Some(_)) => Left(DefinitionsLevelCreationError(Message(s"Please specify either 'groups' or 'groups_and' for LDAP authorization rules")))
+        case (_, _, None, None) => Left(RulesLevelCreationError(Message(s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rules")))
+        case (_, _, Some(_), Some(_)) => Left(RulesLevelCreationError(Message(s"Please specify either 'groups' or 'groups_and' for LDAP authorization rules")))
         case (name, Some(ttl), groups_or_opt, groups_and_opt) =>
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthService, LdapAuthRule](ldapDefinitions.items, name)
