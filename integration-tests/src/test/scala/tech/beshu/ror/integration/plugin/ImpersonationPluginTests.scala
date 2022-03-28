@@ -20,6 +20,4 @@ import tech.beshu.ror.integration.suites.ImpersonationSuite
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.containers.RorConfigAdjuster
 
-class ImpersonationPluginTests extends ImpersonationSuite with SingletonPluginTestSupport {
-  override protected def mode: RorConfigAdjuster.Mode = RorConfigAdjuster.Mode.Plugin
-}
+class ImpersonationPluginTests extends ImpersonationSuite with SingletonPluginTestSupport

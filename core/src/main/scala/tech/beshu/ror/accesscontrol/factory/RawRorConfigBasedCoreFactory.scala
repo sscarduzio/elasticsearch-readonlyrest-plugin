@@ -54,7 +54,7 @@ import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.yaml.YamlOps
 
-final case class Core(aclEngine: AccessControl,
+final case class Core(accessControl: AccessControl,
                       rorConfig: RorConfig)
 
 trait CoreFactory {

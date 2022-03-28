@@ -18,8 +18,5 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.AdminApiAuthMockSuite
 import tech.beshu.ror.integration.utils.OssEsClusterProxyTestSupport
-import tech.beshu.ror.utils.containers.RorConfigAdjuster
 
-class AdminAuthMockApiProxyTests extends AdminApiAuthMockSuite with OssEsClusterProxyTestSupport {
-  override protected def mode: RorConfigAdjuster.Mode = RorConfigAdjuster.Mode.Proxy
-}
+class AdminAuthMockApiProxyTests extends AdminApiAuthMockSuite with OssEsClusterProxyTestSupport

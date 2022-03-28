@@ -22,6 +22,7 @@ import tech.beshu.ror.integration.suites.base.BaseTestConfigSuite
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonLdapContainers}
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
+import tech.beshu.ror.utils.containers.providers.ResolvedRorConfigFileProvider
 import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, RorApiManager, SearchManager}
@@ -30,11 +31,10 @@ import tech.beshu.ror.utils.httpclient.RestClient
 trait ImpersonationSuite
   extends AnyFreeSpec
     with BaseSingleNodeEsClusterTest
-    with BaseTestConfigSuite
     with ESVersionSupportForAnyFreeSpecLike
     with BeforeAndAfterEach
     with BeforeAndAfterAll {
-  this: EsContainerCreator =>
+  this: EsContainerCreator with ResolvedRorConfigFileProvider =>
 
   override implicit val rorConfigFileName = "/impersonation/readonlyrest.yml"
 
@@ -47,16 +47,15 @@ trait ImpersonationSuite
     wiremock(name = "EXT1", mappings = "/impersonation/wiremock_service2_ext_user_2.json", "/impersonation/wiremock_group_provider2_gpa_user_2.json"),
   )
 
-  override def testDependencies: List[DependencyDef] = clusterDependencies
-
   private lazy val rorApiManager = new RorApiManager(rorAdminClient, esVersionUsed)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    rorApiManager.updateRorTestConfig(testEngineConfig()).forceOk()
+    rorApiManager.updateRorTestConfig(resolvedRorConfigFile.contentAsString).forceOk()
   }
 
   override protected def beforeEach(): Unit = {
+//    rorApiManager.updateRorTestConfig(resolvedRorConfigFile.contentAsString).forceOk()
     rorApiManager.invalidateImpersonationMocks().forceOk()
     super.beforeEach()
   }

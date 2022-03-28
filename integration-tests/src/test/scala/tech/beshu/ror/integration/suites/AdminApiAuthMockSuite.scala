@@ -19,22 +19,21 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.integration.suites.base.BaseTestConfigSuite
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonLdapContainers}
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
+import tech.beshu.ror.utils.containers.providers.ResolvedRorConfigFileProvider
 import tech.beshu.ror.utils.elasticsearch.RorApiManager
 import ujson.Value.Value
 
 trait AdminApiAuthMockSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
-    with BaseTestConfigSuite
     with ESVersionSupportForAnyWordSpecLike
     with BeforeAndAfterEach
     with Matchers {
-  this: EsContainerCreator =>
+  this: EsContainerCreator with ResolvedRorConfigFileProvider =>
 
   override implicit val rorConfigFileName: String = "/admin_api_mocks/readonlyrest.yml"
   private lazy val rorApiManager = new RorApiManager(rorAdminClient, esVersionUsed)
@@ -46,7 +45,6 @@ trait AdminApiAuthMockSuite
     wiremock(name = "EXT1", mappings = "/impersonation/wiremock_service2_ext_user_2.json", "/impersonation/wiremock_group_provider2_gpa_user_2.json"),
   )
 
-  override def testDependencies: List[DependencyDef] = clusterDependencies
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = None
 
   "An admin Auth Mock REST API" should {
@@ -579,6 +577,8 @@ trait AdminApiAuthMockSuite
         .stripMargin
     )
   }
+
+  private def testEngineConfig() = resolvedRorConfigFile.contentAsString
 
   override protected def beforeEach(): Unit = {
     rorApiManager

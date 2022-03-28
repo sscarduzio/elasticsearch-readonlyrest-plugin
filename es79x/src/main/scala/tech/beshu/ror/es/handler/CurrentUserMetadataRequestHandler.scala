@@ -45,6 +45,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
 
   def handle(request: RequestContext.Aux[CurrentUserMetadataRequestBlockContext] with EsRequest[CurrentUserMetadataRequestBlockContext]): Task[Unit] = {
     engine
+      .core
       .accessControl
       .handleMetadataRequest(request)
       .map { r => commitResult(r.result, request) }
@@ -74,7 +75,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   }
 
   private def onForbidden(): Unit = {
-    esContext.listener.onFailure(ForbiddenResponse.create(Nil, engine.accessControl.staticContext))
+    esContext.listener.onFailure(ForbiddenResponse.create(Nil, engine.core.accessControl.staticContext))
   }
 
   private def onPassThrough(): Unit = {

@@ -52,8 +52,7 @@ class RegularRequestHandler(engine: Engine,
   extends Logging {
 
   def handle[B <: BlockContext : BlockContextUpdater](request: RequestContext.Aux[B] with EsRequest[B]): Task[Unit] = {
-    engine
-      .accessControl
+    engine.core.accessControl
       .handleRegularRequest(request)
       .map { r =>
         threadPool.getThreadContext.stashAndMergeResponseHeaders().bracket { _ =>
@@ -110,7 +109,7 @@ class RegularRequestHandler(engine: Engine,
   }
 
   private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {
-    esContext.listener.onFailure(ForbiddenResponse.create(causes.toList, engine.accessControl.staticContext))
+    esContext.listener.onFailure(ForbiddenResponse.create(causes.toList, engine.core.accessControl.staticContext))
   }
 
   private def onIndexNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B]): Unit = {

@@ -16,17 +16,19 @@
  */
 package tech.beshu.ror.boot
 
+import java.nio.file.Path
+import java.time.Clock
+
 import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MutableMocksProviderWithCachePerRequest, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason
-import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, Core, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, Core, CoreFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.boot.ReadonlyRest._
 import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
@@ -35,8 +37,6 @@ import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRor
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers._
 
-import java.nio.file.Path
-import java.time.Clock
 import scala.language.{implicitConversions, postfixOps}
 
 class ReadonlyRest(coreFactory: CoreFactory,
@@ -136,15 +136,19 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def createEngine(httpClientsFactory: AsyncHttpClientsFactory,
                            ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                            core: Core) = {
-    implicit val loggingContext: LoggingContext = LoggingContext(core.aclEngine.staticContext.obfuscatedHeaders)
+    implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders)
     val auditingTool = createAuditingTool(core)
-    val loggingDecorator = new AccessControlLoggingDecorator(
-      underlying = core.aclEngine,
-      auditingTool = auditingTool
+
+    val decoratedCore = Core(
+      accessControl = new AccessControlLoggingDecorator(
+        underlying = core.accessControl,
+        auditingTool = auditingTool
+      ),
+      rorConfig = core.rorConfig
     )
 
     new Engine(
-      accessControl = loggingDecorator,
+      core = decoratedCore,
       rorConfig = core.rorConfig,
       httpClientsFactory = httpClientsFactory,
       ldapConnectionPoolProvider,
@@ -159,7 +163,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   private def inspectFlsEngine(engine: Engine) = {
-    engine.accessControl.staticContext.usedFlsEngineInFieldsRule.foreach {
+    engine.core.accessControl.staticContext.usedFlsEngineInFieldsRule.foreach {
       case FlsEngine.Lucene | FlsEngine.ESWithLucene =>
         logger.warn("Defined fls engine relies on lucene. To make it work well, all nodes should have ROR plugin installed.")
       case FlsEngine.ES =>
@@ -191,7 +195,7 @@ object ReadonlyRest {
     case object Proxy extends RorMode
   }
 
-  final class Engine(val accessControl: AccessControl,
+  final class Engine(val core: Core,
                      val rorConfig: RorConfig,
                      httpClientsFactory: AsyncHttpClientsFactory,
                      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,

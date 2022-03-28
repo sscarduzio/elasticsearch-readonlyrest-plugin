@@ -27,23 +27,40 @@ trait PluginTestSupport extends EsWithSecurityPluginContainerCreator with Callin
   this: MultipleEsTargets =>
 }
 
-trait SingletonPluginTestSupport extends PluginTestSupport with BeforeAndAfterAll {
+trait SingletonPluginTestSupport
+  extends PluginTestSupport
+    with BeforeAndAfterAll
+    with ResolvedRorConfigFileProvider {
   this: Suite with BaseSingleNodeEsClusterTest =>
 
   override lazy val targetEs: EsContainer = SingletonEsContainer.singleton.nodes.head
 
   private var startedDependencies = StartedClusterDependencies(Nil)
 
-  override protected def beforeAll(): Unit = {
-    super.beforeAll()
+  override final def resolvedRorConfigFile: File = {
+    resolveConfig.right.get
+  }
 
-    startedDependencies = DependencyRunner.startDependencies(clusterDependencies)
+  private def resolveConfig: Either[String, File] = {
+    Either.cond(
+      test = startedDependencies.values.size === clusterDependencies.size,
+      right = resolvedConfig(startedDependencies),
+      left = "Not all dependencies are started. Cannot read resolved config yet"
+    )
+  }
+
+  private def resolvedConfig(startedDependencies: StartedClusterDependencies) = {
     val configFile = File.apply(getResourcePath(rorConfigFileName))
-    val configAdjusted = RorConfigAdjuster.adjustUsingDependencies(configFile, startedDependencies, RorConfigAdjuster.Mode.Plugin)
+    RorConfigAdjuster.adjustUsingDependencies(configFile, startedDependencies, RorConfigAdjuster.Mode.Plugin)
+  }
 
+  override protected def beforeAll(): Unit = {
+    startedDependencies = DependencyRunner.startDependencies(clusterDependencies)
     SingletonEsContainer.cleanUpContainer()
-    SingletonEsContainer.updateConfig(configAdjusted.contentAsString)
+    SingletonEsContainer.updateConfig(resolvedRorConfigFile.contentAsString)
     nodeDataInitializer.foreach(SingletonEsContainer.initNode)
+
+    super.beforeAll()
   }
 
   override protected def afterAll(): Unit = {
