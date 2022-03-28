@@ -31,11 +31,12 @@ import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthenticati
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder.nameDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, LdapServicesDecoder}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.LdapAuthorizationRuleDecoder.{ERROR_MSG_NO_GROUPS_LIST, ERROR_MSG_ONLY_ONE_GROUPS_LIST}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
@@ -111,6 +112,8 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
 }
 
 object LdapAuthorizationRuleDecoder {
+  def ERROR_MSG_NO_GROUPS_LIST(name:String) = s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
+  def ERROR_MSG_ONLY_ONE_GROUPS_LIST(name:String) = s"Please specify either 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
 
   private def settingsDecoder(ldapDefinitions: Definitions[LdapService]): Decoder[LdapAuthorizationRule.Settings] =
     Decoder
@@ -126,8 +129,8 @@ object LdapAuthorizationRuleDecoder {
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .emapE {
-        case (_, _, None, None) => Left(RulesLevelCreationError(Message(s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rules")))
-        case (_, _, Some(_), Some(_)) => Left(RulesLevelCreationError(Message(s"Please specify either 'groups' or 'groups_and' for LDAP authorization rules")))
+        case (name, _, None, None) => Left(RulesLevelCreationError(Message(ERROR_MSG_NO_GROUPS_LIST(name.value.value))))
+        case (name, _, Some(_), Some(_)) => Left(RulesLevelCreationError(Message(ERROR_MSG_ONLY_ONE_GROUPS_LIST(name.value.value))))
         case (name, Some(ttl), groups_or_opt, groups_and_opt) => {
           val groupsLogic = groups_or_opt.orElse(groups_and_opt).get
           LdapRulesDecodersHelper
@@ -178,8 +181,8 @@ object LdapAuthRuleDecoder {
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .emapE {
-        case (_, _, None, None) => Left(RulesLevelCreationError(Message(s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rules")))
-        case (_, _, Some(_), Some(_)) => Left(RulesLevelCreationError(Message(s"Please specify either 'groups' or 'groups_and' for LDAP authorization rules")))
+        case (name, _, None, None) => Left(RulesLevelCreationError(Message(ERROR_MSG_NO_GROUPS_LIST(name.value.value))))
+        case (name, _, Some(_), Some(_)) => Left(RulesLevelCreationError(Message(ERROR_MSG_ONLY_ONE_GROUPS_LIST(name.value.value))))
         case (name, Some(ttl), groups_or_opt, groups_and_opt) =>
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthService, LdapAuthRule](ldapDefinitions.items, name)
