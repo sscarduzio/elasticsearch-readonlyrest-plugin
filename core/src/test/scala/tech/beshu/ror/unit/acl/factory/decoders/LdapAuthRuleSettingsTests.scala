@@ -20,6 +20,7 @@ import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthRule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.LdapAuthorizationRuleDecoder.ERROR_MSG_NO_GROUPS_LIST
 import tech.beshu.ror.utils.SingletonLdapContainers
 
 class LdapAuthRuleSettingsTests
@@ -132,10 +133,7 @@ class LdapAuthRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
-              """ldap_auth:
-                |  name: "ldap1"
-                |""".stripMargin)))
+            errors.head should be(RulesLevelCreationError(Message(ERROR_MSG_NO_GROUPS_LIST("ldap1"))))
           }
         )
       }
@@ -164,7 +162,7 @@ class LdapAuthRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Non empty list of groups are required")))
+            errors.head should be(RulesLevelCreationError(Message(ERROR_MSG_NO_GROUPS_LIST("ldap1"))))
           }
         )
       }
