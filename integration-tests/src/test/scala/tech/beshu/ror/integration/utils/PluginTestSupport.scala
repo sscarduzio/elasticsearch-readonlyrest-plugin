@@ -38,14 +38,14 @@ trait SingletonPluginTestSupport
   private var startedDependencies = StartedClusterDependencies(Nil)
 
   override final def resolvedRorConfigFile: File = {
-    resolveConfig.right.get
+    resolveConfig.toTry.get
   }
 
-  private def resolveConfig: Either[String, File] = {
+  private def resolveConfig: Either[Throwable, File] = {
     Either.cond(
       test = startedDependencies.values.size === clusterDependencies.size,
       right = resolvedConfig(startedDependencies),
-      left = "Not all dependencies are started. Cannot read resolved config yet"
+      left = new IllegalStateException("Not all dependencies are started. Cannot read resolved config yet")
     )
   }
 
