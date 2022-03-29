@@ -21,8 +21,8 @@ import com.softwaremill.sttp.Method
 import org.scalatest.matchers.should.Matchers._
 
 import tech.beshu.ror.accesscontrol.blocks.rules.MethodsRule
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.orders._
 
 class MethodsRuleSettingsTests extends BaseRuleSettingsDecoderTest[MethodsRule] {

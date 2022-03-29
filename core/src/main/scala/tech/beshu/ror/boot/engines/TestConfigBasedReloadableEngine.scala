@@ -24,7 +24,7 @@ import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
-import tech.beshu.ror.boot.RorInstance.{RawConfigReloadError, TestConfig}
+import tech.beshu.ror.boot.RorInstance.{RawConfigReloadError, TestConfig, TestEngineRorConfig}
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.EngineState
 import tech.beshu.ror.boot.engines.ConfigHash._
 import tech.beshu.ror.configuration.RawRorConfig
@@ -53,6 +53,16 @@ private[boot] class TestConfigBasedReloadableEngine(boot: ReadonlyRest,
           val expiration = engineWithConfig.expirationConfig.getOrElse(throw new IllegalStateException("Test Config based engine should have an expiration config defined"))
           TestConfig.Present(engineWithConfig.config, expiration.ttl, expiration.validTo)
       }
+    }
+  }
+
+  def currentRorConfig()
+                      (implicit requestId: RequestId): Task[TestEngineRorConfig] = {
+    Task.delay {
+      engine
+        .map(_.rorConfig)
+        .map(TestEngineRorConfig.Present.apply)
+        .getOrElse(TestEngineRorConfig.NotSet)
     }
   }
 

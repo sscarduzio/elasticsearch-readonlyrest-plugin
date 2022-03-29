@@ -383,7 +383,7 @@ class ExternalAuthorizationRuleTests
 
   private def mockExternalAuthorizationService(name: NonEmptyString, groups: Map[User.Id, Set[Group]]) =
     new ExternalAuthorizationService {
-      override def id: ExternalAuthorizationService.Name = ExternalAuthorizationService.Name(name.value)
+      override def id: ExternalAuthorizationService.Name = ExternalAuthorizationService.Name(name)
       override def grantsFor(userId: User.Id): Task[UniqueList[Group]] = Task.delay {
         groups.get(userId) match {
           case Some(g) => UniqueList.fromList(g.toList)

@@ -81,7 +81,4 @@ class MutableMocksProviderWithCachePerRequest(initial: MocksProvider)
 
   private sealed case class CurrentMocksProviderConfiguration(mocksProvider: MocksProvider,
                                                               scheduledInvalidateHandler: Option[Cancelable])
-  private object CurrentMocksProviderConfiguration {
-    val default = CurrentMocksProviderConfiguration(NoOpMocksProvider, None)
-  }
 }

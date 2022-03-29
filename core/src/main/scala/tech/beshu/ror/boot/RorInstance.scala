@@ -28,12 +28,12 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.api.{AuthMockApi, ConfigApi, TestConfigApi}
-import tech.beshu.ror.boot.engines.{Engines, TestConfigBasedReloadableEngine, MainConfigBasedReloadableEngine}
+import tech.beshu.ror.boot.engines.{Engines, MainConfigBasedReloadableEngine, TestConfigBasedReloadableEngine}
 import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.FileConfigLoader
-import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig, RorProperties}
+import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig, RorConfig, RorProperties}
 import tech.beshu.ror.providers.{JavaUuidProvider, PropertiesProvider}
 
 import java.time.{Clock, Instant}
@@ -83,7 +83,10 @@ class RorInstance private(boot: ReadonlyRest,
     rorConfigurationIndex
   )
 
-  private val authMockRestApi = new AuthMockApi(boot.mocksProvider)
+  private val authMockRestApi = new AuthMockApi(
+    rorInstance = this,
+    mockProvider = boot.mocksProvider
+  )
 
   private val testConfigRestApi = new TestConfigApi(this)
 
@@ -106,6 +109,11 @@ class RorInstance private(boot: ReadonlyRest,
   def currentTestConfig()
                        (implicit requestId: RequestId): Task[TestConfig] = {
     anTestConfigEngine.currentTestConfig()
+  }
+
+  def currentTestEngineRorConfig()
+                                (implicit requestId: RequestId): Task[TestEngineRorConfig] = {
+    anTestConfigEngine.currentRorConfig()
   }
 
   def forceReloadTestConfigEngine(config: RawRorConfig,
@@ -209,6 +217,12 @@ object RorInstance {
     case object NotSet extends TestConfig
     final case class Present(config: RawRorConfig, configuredTtl: FiniteDuration, validTo: Instant) extends TestConfig
     final case class Invalidated(recent: RawRorConfig) extends TestConfig
+  }
+
+  sealed trait TestEngineRorConfig
+  object TestEngineRorConfig {
+    case object NotSet extends TestEngineRorConfig
+    final case class Present(config: RorConfig) extends TestEngineRorConfig
   }
 
   def createWithPeriodicIndexCheck(boot: ReadonlyRest,

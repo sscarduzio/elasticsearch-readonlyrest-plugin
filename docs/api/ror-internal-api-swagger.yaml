@@ -326,7 +326,7 @@ components:
 
     XRorCorrelationId:
       type: string
-      description: "Correlation ID to correlate requests/reponses logs within one ROR KBN session"
+      description: "Correlation ID to correlate requests/responses logs within one ROR KBN session"
       example: "CED054A0-9881-401E-AEED-4FB4C5915DD6"
 
     GetTestSettingsResponse:

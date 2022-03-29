@@ -18,10 +18,9 @@ package tech.beshu.ror.es.actions.rrauthmock
 
 import org.elasticsearch.action.Action
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.api.AuthMockApi
 
 class RRAuthMockActionType extends Action[RRAuthMockResponse](RRAuthMockActionType.name) {
-  override def newResponse(): RRAuthMockResponse = new RRAuthMockResponse(AuthMockApi.AuthMockResponse.notAvailable)
+  override def newResponse(): RRAuthMockResponse = new RRAuthMockResponse()
 }
 
 object RRAuthMockActionType {

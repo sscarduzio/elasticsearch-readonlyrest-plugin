@@ -1,0 +1,13 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/auth",
+    "basicAuthCredentials": {
+      "username": "ext_user_1",
+      "password": "pass"
+    }
+  },
+  "response": {
+    "status": 200
+  }
+}

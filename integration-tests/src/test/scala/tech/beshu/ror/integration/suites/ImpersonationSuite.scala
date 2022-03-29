@@ -16,11 +16,12 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.BeforeAndAfterEach
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import org.scalatest.freespec.AnyFreeSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonLdapContainers}
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
+import tech.beshu.ror.utils.containers.providers.ResolvedRorConfigFileProvider
 import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, RorApiManager, SearchManager}
@@ -30,8 +31,9 @@ trait ImpersonationSuite
   extends AnyFreeSpec
     with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyFreeSpecLike
-    with BeforeAndAfterEach {
-  this: EsContainerCreator =>
+    with BeforeAndAfterEach
+    with BeforeAndAfterAll {
+  this: EsContainerCreator with ResolvedRorConfigFileProvider =>
 
   override implicit val rorConfigFileName = "/impersonation/readonlyrest.yml"
 
@@ -46,7 +48,13 @@ trait ImpersonationSuite
 
   private lazy val rorApiManager = new RorApiManager(rorAdminClient, esVersionUsed)
 
+  override protected def beforeAll(): Unit = {
+    super.beforeAll()
+    rorApiManager.updateRorTestConfig(resolvedRorConfigFile.contentAsString).forceOk()
+  }
+
   override protected def beforeEach(): Unit = {
+//    rorApiManager.updateRorTestConfig(resolvedRorConfigFile.contentAsString).forceOk()
     rorApiManager.invalidateImpersonationMocks().forceOk()
     super.beforeEach()
   }
@@ -110,16 +118,20 @@ trait ImpersonationSuite
             .configureImpersonationMocks(ujson.read(
               s"""
                  |{
-                 |  "ldaps": {
-                 |    "ldap2": {
-                 |      "users": [
-                 |        {
-                 |          "name": "ldap_user_2",
-                 |          "groups": ["group1", "group3"]
-                 |        }
-                 |      ]
+                 |  "services": [
+                 |    {
+                 |      "type": "LDAP",
+                 |      "name": "ldap2",
+                 |      "mock": {
+                 |        "users" : [
+                 |          {
+                 |            "name": "ldap_user_2",
+                 |            "groups": ["group1", "group3"]
+                 |          }
+                 |        ]
+                 |      }
                  |    }
-                 |  }
+                 |  ]
                  |}
              """.stripMargin
             ))
@@ -142,18 +154,22 @@ trait ImpersonationSuite
             .configureImpersonationMocks(ujson.read(
               s"""
                  |{
-                 |  "ldaps": {
-                 |    "ldap1": {
-                 |      "users": [
-                 |        {
-                 |          "name": "ldap_user_1",
-                 |          "groups": ["group1", "group2"]
-                 |        }
-                 |      ]
+                 |  "services": [
+                 |    {
+                 |      "type": "LDAP",
+                 |      "name": "ldap1",
+                 |      "mock": {
+                 |        "users" : [
+                 |          {
+                 |            "name": "ldap_user_1",
+                 |            "groups": ["group1", "group2"]
+                 |          }
+                 |        ]
+                 |      }
                  |    }
-                 |  }
+                 |  ]
                  |}
-             """.stripMargin
+                 |""".stripMargin
             ))
             .forceOk()
 
@@ -186,16 +202,20 @@ trait ImpersonationSuite
             .configureImpersonationMocks(ujson.read(
               s"""
                  |{
-                 |  "authn_services": {
-                 |    "ext2": {
-                 |      "users": [
-                 |        { "name": "ext_user_2" },
-                 |        { "name": "ext_user_2a" }
-                 |      ]
+                 |  "services": [
+                 |    {
+                 |      "type": "EXT_AUTHN",
+                 |      "name": "ext2",
+                 |      "mock": {
+                 |        "users" : [
+                 |          { "name": "ext_user_2" },
+                 |          { "name": "ext_user_2a" }
+                 |        ]
+                 |      }
                  |    }
-                 |  }
+                 |  ]
                  |}
-             """.stripMargin
+                 |""".stripMargin
             ))
             .forceOk()
 
@@ -216,16 +236,20 @@ trait ImpersonationSuite
             .configureImpersonationMocks(ujson.read(
               s"""
                  |{
-                 |  "authn_services": {
-                 |    "ext1": {
-                 |      "users": [
-                 |        { "name": "ext_user_1" },
-                 |        { "name": "ext_user_2" }
-                 |      ]
+                 |  "services": [
+                 |    {
+                 |      "type": "EXT_AUTHN",
+                 |      "name": "ext1",
+                 |      "mock": {
+                 |        "users": [
+                 |          { "name": "ext_user_1" },
+                 |          { "name": "ext_user_2" }
+                 |        ]
+                 |      }
                  |    }
-                 |  }
+                 |  ]
                  |}
-             """.stripMargin
+                 |""".stripMargin
             ))
             .forceOk()
 
@@ -258,16 +282,20 @@ trait ImpersonationSuite
             .configureImpersonationMocks(ujson.read(
               s"""
                  |{
-                 |  "authz_services": {
-                 |    "grp2": {
-                 |      "users": [
-                 |        { "name": "gpa_user_1",  "groups": ["group4", "group5"]},
-                 |        { "name": "gpa_user_1a", "groups": ["group4a", "group5a"] }
-                 |      ]
+                 |  "services": [
+                 |    {
+                 |      "type": "EXT_AUTHZ",
+                 |      "name": "grp2",
+                 |      "mock": {
+                 |        "users" : [
+                 |          { "name": "gpa_user_1",  "groups": ["group4", "group5"]},
+                 |          { "name": "gpa_user_1a", "groups": ["group4a", "group5a"] }
+                 |        ]
+                 |      }
                  |    }
-                 |  }
+                 |  ]
                  |}
-             """.stripMargin
+                 |""".stripMargin
             ))
             .forceOk()
 
@@ -288,16 +316,20 @@ trait ImpersonationSuite
             .configureImpersonationMocks(ujson.read(
               s"""
                  |{
-                 |  "authz_services": {
-                 |    "grp1": {
-                 |      "users": [
-                 |        { "name": "gpa_user_1",  "groups": ["group4", "group5"]},
-                 |        { "name": "gpa_user_1a", "groups": ["group4a", "group5a"] }
-                 |      ]
+                 |  "services": [
+                 |    {
+                 |      "type": "EXT_AUTHZ",
+                 |      "name": "grp1",
+                 |      "mock": {
+                 |        "users" : [
+                 |          { "name": "gpa_user_1",  "groups": ["group4", "group5"]},
+                 |          { "name": "gpa_user_1a", "groups": ["group4a", "group5a"] }
+                 |        ]
+                 |      }
                  |    }
-                 |  }
+                 |  ]
                  |}
-             """.stripMargin
+                 |""".stripMargin
             ))
             .forceOk()
 
@@ -319,18 +351,22 @@ trait ImpersonationSuite
             .configureImpersonationMocks(ujson.read(
               s"""
                  |{
-                 |  "ldaps": {
-                 |    "ldap2": {
-                 |      "users": [
-                 |        {
-                 |          "name": "ldap_user_2",
-                 |          "groups": ["group1", "group3"]
-                 |        }
-                 |      ]
+                 |  "services": [
+                 |    {
+                 |      "type": "LDAP",
+                 |      "name": "ldap2",
+                 |      "mock": {
+                 |        "users" : [
+                 |          {
+                 |            "name": "ldap_user_2",
+                 |            "groups": ["group1", "group3"]
+                 |          }
+                 |        ]
+                 |      }
                  |    }
-                 |  }
+                 |  ]
                  |}
-             """.stripMargin
+                 |""".stripMargin
             ))
             .forceOk()
 
@@ -361,18 +397,22 @@ trait ImpersonationSuite
             .configureImpersonationMocks(ujson.read(
               s"""
                  |{
-                 |  "ldaps": {
-                 |    "ldap1": {
-                 |      "users": [
-                 |        {
-                 |          "name": "ldap_user_1",
-                 |          "groups": ["group1", "group2"]
-                 |        }
-                 |      ]
+                 |  "services": [
+                 |    {
+                 |      "type": "LDAP",
+                 |      "name": "ldap1",
+                 |      "mock": {
+                 |        "users" : [
+                 |          {
+                 |            "name": "ldap_user_1",
+                 |            "groups": ["group1", "group2"]
+                 |          }
+                 |        ]
+                 |      }
                  |    }
-                 |  }
+                 |  ]
                  |}
-             """.stripMargin
+                 |""".stripMargin
             ))
             .forceOk()
 
@@ -431,18 +471,22 @@ trait ImpersonationSuite
         .configureImpersonationMocks(ujson.read(
           s"""
              |{
-             |  "ldaps": {
-             |    "ldap1": {
-             |      "users": [
-             |        {
-             |          "name": "ldap_user_1",
-             |          "groups": ["group1", "group3"]
-             |        }
-             |      ]
+             |  "services": [
+             |    {
+             |      "type": "LDAP",
+             |      "name": "ldap1",
+             |      "mock": {
+             |        "users" : [
+             |          {
+             |            "name": "ldap_user_1",
+             |            "groups": ["group1", "group2"]
+             |          }
+             |        ]
+             |      }
              |    }
-             |  }
+             |  ]
              |}
-             """.stripMargin
+             |""".stripMargin
         ))
         .forceOk()
 

@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.utils.containers
 
+import better.files.File
 import cats.data.NonEmptyList
 import org.apache.http.message.BasicHeader
 import tech.beshu.ror.utils.containers.EsContainer.Credentials
@@ -50,6 +51,10 @@ object providers {
 
   trait RorConfigFileNameProvider {
     implicit def rorConfigFileName: String
+  }
+
+  trait ResolvedRorConfigFileProvider {
+    def resolvedRorConfigFile: File
   }
 
   trait NodeInitializerProvider {
