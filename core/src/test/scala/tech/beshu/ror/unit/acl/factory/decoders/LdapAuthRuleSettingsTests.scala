@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.LdapAuthorizationRuleDecoder.ERROR_MSG_NO_GROUPS_LIST
 import tech.beshu.ror.utils.SingletonLdapContainers
 
-class LdapAuthRuleSettingsTests
+  class LdapAuthRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[LdapAuthRule] {
 
   "An LdapAuthRule" should {

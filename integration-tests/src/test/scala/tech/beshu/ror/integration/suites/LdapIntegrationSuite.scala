@@ -183,6 +183,22 @@ trait LdapIntegrationSuite
         result.responseCode should be(200)
       }
     }
+
+    "Test6 index" can {
+      "be seen" when {
+        "users, which belong to group2 AND group3, request it" in {
+          val result = morganIndexManager.getIndex("test6")
+          result.responseCode should be(200)
+        }
+      }
+      "not be seen" when {
+        "users, which don't belong to group2 AND group3, request it" in {
+          val result = cartmanIndexManager.getIndex("test6")
+          result.responseCode should be(404)
+        }
+      }
+    }
+
     "not be seen" when {
       "god is not worshiped in europe" in {
         val result = allahIndexManager.getIndex("test5")
@@ -200,5 +216,6 @@ object LdapIntegrationSuite {
     documentManager.createDoc("test3", 1, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("test4", 1, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("test5", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test6", 1, ujson.read("""{"hello":"world"}""")).force()
   }
 }

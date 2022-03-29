@@ -31,8 +31,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthenticati
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder.nameDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, LdapServicesDecoder}
@@ -112,8 +112,9 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
 }
 
 object LdapAuthorizationRuleDecoder {
-  def ERROR_MSG_NO_GROUPS_LIST(name:String) = s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
-  def ERROR_MSG_ONLY_ONE_GROUPS_LIST(name:String) = s"Please specify either 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
+  def ERROR_MSG_NO_GROUPS_LIST(name: String) = s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
+
+  def ERROR_MSG_ONLY_ONE_GROUPS_LIST(name: String) = s"Please specify either 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
 
   private def settingsDecoder(ldapDefinitions: Definitions[LdapService]): Decoder[LdapAuthorizationRule.Settings] =
     Decoder
@@ -122,7 +123,6 @@ object LdapAuthorizationRuleDecoder {
           name <- c.downField("name").as[LdapService.Name]
           groups_and <- c.downField("groups_and").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.And))
           groups_or <- c.downField("groups").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.Or))
-            .orElse(c.downField("groups_or").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.Or)))
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
         } yield (name, ttl, groups_or, groups_and)
       }
@@ -174,7 +174,6 @@ object LdapAuthRuleDecoder {
           name <- c.downField("name").as[LdapService.Name]
           groups_and <- c.downField("groups_and").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.And))
           groups_or <- c.downField("groups").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.Or))
-            .orElse(c.downField("groups_or").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.Or)))
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
         } yield (name, ttl, groups_or, groups_and)
       }
