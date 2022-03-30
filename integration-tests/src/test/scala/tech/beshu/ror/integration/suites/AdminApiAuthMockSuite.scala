@@ -524,6 +524,9 @@ trait AdminApiAuthMockSuite
                |""".stripMargin)
 
           val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(malformedPayload))
+          response.responseCode should be(400)
+          response.responseJson("status").str should be("FAILED")
+          response.responseJson("message").str should be("JSON body malformed: [Could not parse at : [Unknown auth mock service type: EXT_AUTHORIZATION]]")
 
         }
         "empty JSON is passed" in {
@@ -582,12 +585,12 @@ trait AdminApiAuthMockSuite
 
   override protected def beforeEach(): Unit = {
     rorApiManager
-      .invalidateRorTestConfig()
+      .invalidateImpersonationMocks()
       .force()
 
     rorApiManager
-      .invalidateImpersonationMocks()
-      .force()
+      .invalidateRorTestConfig()
+      .forceOk()
   }
 
 }
