@@ -302,13 +302,17 @@ trait BaseAdminApiSuite
 
           // before first reload no user can access indices
           val dev1ror1Results = dev1Ror1stInstanceSearchManager.search("test1_index")
-          dev1ror1Results.responseCode should be(401)
+          dev1ror1Results.responseCode should be(403)
+          dev1ror1Results.responseJson should be(testSettingsNotConfiguredResponse)
           val dev2ror1Results = dev2Ror1stInstanceSearchManager.search("test2_index")
-          dev2ror1Results.responseCode should be(401)
+          dev2ror1Results.responseCode should be(403)
+          dev2ror1Results.responseJson should be(testSettingsNotConfiguredResponse)
           val dev1ror2Results = dev1Ror2ndInstanceSearchManager.search("test1_index")
-          dev1ror2Results.responseCode should be(401)
+          dev1ror2Results.responseCode should be(403)
+          dev1ror2Results.responseJson should be(testSettingsNotConfiguredResponse)
           val dev2ror2Results = dev2Ror2ndInstanceSearchManager.search("test2_index")
-          dev2ror2Results.responseCode should be(401)
+          dev2ror2Results.responseCode should be(403)
+          dev2ror2Results.responseJson should be(testSettingsNotConfiguredResponse)
 
           // first reload
           forceReload("/admin_api/readonlyrest_first_update_with_impersonation.yml")
@@ -376,13 +380,17 @@ trait BaseAdminApiSuite
 
         // before first reload no user can access indices
         val dev1ror1Results = dev1Ror1stInstanceSearchManager.search("test1_index")
-        dev1ror1Results.responseCode should be(401)
+        dev1ror1Results.responseCode should be(403)
+        dev1ror1Results.responseJson should be(testSettingsNotConfiguredResponse)
         val dev2ror1Results = dev2Ror1stInstanceSearchManager.search("test2_index")
-        dev2ror1Results.responseCode should be(401)
+        dev2ror1Results.responseCode should be(403)
+        dev2ror1Results.responseJson should be(testSettingsNotConfiguredResponse)
         val dev1ror2Results = dev1Ror2ndInstanceSearchManager.search("test1_index")
-        dev1ror2Results.responseCode should be(401)
+        dev1ror2Results.responseCode should be(403)
+        dev1ror2Results.responseJson should be(testSettingsNotConfiguredResponse)
         val dev2ror2Results = dev2Ror2ndInstanceSearchManager.search("test2_index")
-        dev2ror2Results.responseCode should be(401)
+        dev2ror2Results.responseCode should be(403)
+        dev2ror2Results.responseJson should be(testSettingsNotConfiguredResponse)
 
         // first reload
         forceReload("/admin_api/readonlyrest_first_update_with_impersonation.yml")
@@ -423,15 +431,19 @@ trait BaseAdminApiSuite
         testConfigResponse.responseJson("message").str should be("ROR Test settings are invalidated")
         testConfigResponse.responseJson("settings").str should be(getResourceContent("/admin_api/readonlyrest_second_update_with_impersonation.yml"))
 
-        // after test core invalidation, main core should handle these requests
+        // after test core invalidation, impersonations requests should be rejected
         val dev1ror1AfterTestEngineAutoDestruction = dev1Ror1stInstanceSearchManager.search("test1_index")
-        dev1ror1AfterTestEngineAutoDestruction.responseCode should be(401)
+        dev1ror1AfterTestEngineAutoDestruction.responseCode should be(403)
+        dev1ror1AfterTestEngineAutoDestruction.responseJson should be(testSettingsNotConfiguredResponse)
         val dev2ror1AfterTestEngineAutoDestruction = dev2Ror1stInstanceSearchManager.search("test2_index")
-        dev2ror1AfterTestEngineAutoDestruction.responseCode should be(401)
+        dev2ror1AfterTestEngineAutoDestruction.responseCode should be(403)
+        dev2ror1AfterTestEngineAutoDestruction.responseJson should be(testSettingsNotConfiguredResponse)
         val dev1ror2AfterTestEngineAutoDestruction = dev1Ror2ndInstanceSearchManager.search("test1_index")
-        dev1ror2AfterTestEngineAutoDestruction.responseCode should be(401)
+        dev1ror2AfterTestEngineAutoDestruction.responseCode should be(403)
+        dev1ror2AfterTestEngineAutoDestruction.responseJson should be(testSettingsNotConfiguredResponse)
         val dev2ror2AfterTestEngineAutoDestruction = dev2Ror2ndInstanceSearchManager.search("test2_index")
-        dev2ror2AfterTestEngineAutoDestruction.responseCode should be(401)
+        dev2ror2AfterTestEngineAutoDestruction.responseCode should be(403)
+        dev2ror2AfterTestEngineAutoDestruction.responseJson should be(testSettingsNotConfiguredResponse)
       }
     }
     "provide a method for reload test config engine" which {
@@ -464,13 +476,13 @@ trait BaseAdminApiSuite
 
           // before first reload no user can access indices
           val dev1ror1Results = dev1Ror1stInstanceSearchManager.search("test1_index")
-          dev1ror1Results.responseCode should be(401)
+          dev1ror1Results.responseCode should be(403)
           val dev2ror1Results = dev2Ror1stInstanceSearchManager.search("test2_index")
-          dev2ror1Results.responseCode should be(401)
+          dev2ror1Results.responseCode should be(403)
           val dev1ror2Results = dev1Ror2ndInstanceSearchManager.search("test1_index")
-          dev1ror2Results.responseCode should be(401)
+          dev1ror2Results.responseCode should be(403)
           val dev2ror2Results = dev2Ror2ndInstanceSearchManager.search("test2_index")
-          dev2ror2Results.responseCode should be(401)
+          dev2ror2Results.responseCode should be(403)
 
           // first reload
           forceReload("/admin_api/readonlyrest_first_update_with_impersonation.yml")
@@ -532,13 +544,16 @@ trait BaseAdminApiSuite
 
           // before first reload no user can access indices
           val dev1ror1Results = dev1Ror1stInstanceSearchManager.search("test1_index")
-          dev1ror1Results.responseCode should be(401)
+          dev1ror1Results.responseCode should be(403)
+          dev1ror1Results.responseJson should be(testSettingsNotConfiguredResponse)
           val dev2ror1Results = dev2Ror1stInstanceSearchManager.search("test2_index")
-          dev2ror1Results.responseCode should be(401)
+          dev2ror1Results.responseCode should be(403)
+          dev2ror1Results.responseJson should be(testSettingsNotConfiguredResponse)
           val dev1ror2Results = dev1Ror2ndInstanceSearchManager.search("test1_index")
-          dev1ror2Results.responseCode should be(401)
+          dev1ror2Results.responseCode should be(403)
+          dev1ror2Results.responseJson should be(testSettingsNotConfiguredResponse)
           val dev2ror2Results = dev2Ror2ndInstanceSearchManager.search("test2_index")
-          dev2ror2Results.responseCode should be(401)
+          dev2ror2Results.responseJson should be(testSettingsNotConfiguredResponse)
 
           // first reload
           forceReload(
@@ -575,13 +590,17 @@ trait BaseAdminApiSuite
           // wait for test engine auto-destruction
           Thread.sleep(3000)
           val dev1ror1AfterTestEngineAutoDestruction = dev1Ror1stInstanceSearchManager.search("test1_index")
-          dev1ror1AfterTestEngineAutoDestruction.responseCode should be(401)
+          dev1ror1AfterTestEngineAutoDestruction.responseCode should be(403)
+          dev1ror1AfterTestEngineAutoDestruction.responseJson should be(testSettingsNotConfiguredResponse)
           val dev2ror1AfterTestEngineAutoDestruction = dev2Ror1stInstanceSearchManager.search("test2_index")
-          dev2ror1AfterTestEngineAutoDestruction.responseCode should be(401)
+          dev2ror1AfterTestEngineAutoDestruction.responseCode should be(403)
+          dev2ror1AfterTestEngineAutoDestruction.responseJson should be(testSettingsNotConfiguredResponse)
           val dev1ror2AfterTestEngineAutoDestruction = dev1Ror2ndInstanceSearchManager.search("test1_index")
-          dev1ror2AfterTestEngineAutoDestruction.responseCode should be(401)
+          dev1ror2AfterTestEngineAutoDestruction.responseCode should be(403)
+          dev1ror2AfterTestEngineAutoDestruction.responseJson should be(testSettingsNotConfiguredResponse)
           val dev2ror2AfterTestEngineAutoDestruction = dev2Ror2ndInstanceSearchManager.search("test2_index")
-          dev2ror2AfterTestEngineAutoDestruction.responseCode should be(401)
+          dev2ror2AfterTestEngineAutoDestruction.responseCode should be(403)
+          dev2ror2AfterTestEngineAutoDestruction.responseJson should be(testSettingsNotConfiguredResponse)
         }
       }
       "return info that config is up to date" when {
@@ -680,13 +699,17 @@ trait BaseAdminApiSuite
 
         // before first reload no user can access indices
         val dev1ror1Results = dev1Ror1stInstanceSearchManager.search("test1_index")
-        dev1ror1Results.responseCode should be(401)
+        dev1ror1Results.responseCode should be(403)
+        dev1ror1Results.responseJson should be(testSettingsNotConfiguredResponse)
         val dev2ror1Results = dev2Ror1stInstanceSearchManager.search("test2_index")
-        dev2ror1Results.responseCode should be(401)
+        dev2ror1Results.responseCode should be(403)
+        dev2ror1Results.responseJson should be(testSettingsNotConfiguredResponse)
         val dev1ror2Results = dev1Ror2ndInstanceSearchManager.search("test1_index")
-        dev1ror2Results.responseCode should be(401)
+        dev1ror2Results.responseCode should be(403)
+        dev1ror2Results.responseJson should be(testSettingsNotConfiguredResponse)
         val dev2ror2Results = dev2Ror2ndInstanceSearchManager.search("test2_index")
-        dev2ror2Results.responseCode should be(401)
+        dev2ror2Results.responseCode should be(403)
+        dev2ror2Results.responseJson should be(testSettingsNotConfiguredResponse)
 
         // first reload
         forceReload("/admin_api/readonlyrest_first_update_with_impersonation.yml")
@@ -719,15 +742,19 @@ trait BaseAdminApiSuite
         result.responseJson("status").str should be("OK")
         result.responseJson("message").str should be("ROR Test settings are invalidated")
 
-        // after test core invalidation, main core should handle these requests
+        // after test core invalidation, impersonations requests should be rejected
         val dev1ror1AfterTestEngineAutoDestruction = dev1Ror1stInstanceSearchManager.search("test1_index")
-        dev1ror1AfterTestEngineAutoDestruction.responseCode should be(401)
+        dev1ror1AfterTestEngineAutoDestruction.responseCode should be(403)
+        dev1ror1AfterTestEngineAutoDestruction.responseJson should be(testSettingsNotConfiguredResponse)
         val dev2ror1AfterTestEngineAutoDestruction = dev2Ror1stInstanceSearchManager.search("test2_index")
-        dev2ror1AfterTestEngineAutoDestruction.responseCode should be(401)
+        dev2ror1AfterTestEngineAutoDestruction.responseCode should be(403)
+        dev2ror1AfterTestEngineAutoDestruction.responseJson should be(testSettingsNotConfiguredResponse)
         val dev1ror2AfterTestEngineAutoDestruction = dev1Ror2ndInstanceSearchManager.search("test1_index")
-        dev1ror2AfterTestEngineAutoDestruction.responseCode should be(401)
+        dev1ror2AfterTestEngineAutoDestruction.responseCode should be(403)
+        dev1ror2AfterTestEngineAutoDestruction.responseJson should be(testSettingsNotConfiguredResponse)
         val dev2ror2AfterTestEngineAutoDestruction = dev2Ror2ndInstanceSearchManager.search("test2_index")
-        dev2ror2AfterTestEngineAutoDestruction.responseCode should be(401)
+        dev2ror2AfterTestEngineAutoDestruction.responseCode should be(403)
+        dev2ror2AfterTestEngineAutoDestruction.responseJson should be(testSettingsNotConfiguredResponse)
       }
     }
   }
@@ -769,5 +796,24 @@ trait BaseAdminApiSuite
   private def isIsoDateTime(str: String): Boolean = {
     Try(DateTimeFormatter.ISO_DATE_TIME.parse(str)).toOption.isDefined
   }
+
+  private lazy val testSettingsNotConfiguredResponse = ujson.read(
+    """
+      |{
+      |  "error":{
+      |    "root_cause":[
+      |      {
+      |        "type":"forbidden_response",
+      |        "reason":"forbidden",
+      |        "due_to":"TEST_SETTINGS_NOT_CONFIGURED"
+      |      }
+      |    ],
+      |    "type":"forbidden_response",
+      |    "reason":"forbidden",
+      |    "due_to":"TEST_SETTINGS_NOT_CONFIGURED"
+      |  },
+      |  "status":403
+      |}
+      |""".stripMargin)
 
 }
