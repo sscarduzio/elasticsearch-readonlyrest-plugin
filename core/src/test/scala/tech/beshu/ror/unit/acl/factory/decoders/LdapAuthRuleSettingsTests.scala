@@ -162,7 +162,7 @@ import tech.beshu.ror.utils.SingletonLdapContainers
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message(ERROR_MSG_NO_GROUPS_LIST("ldap1"))))
+            errors.head should be (RulesLevelCreationError(Message("Non empty list of groups is required")))
           }
         )
       }
