@@ -60,7 +60,7 @@ readonlyrest:
         name: "ldap2"
         groups_and: ["group3", "group2"]
 
-    users:
+  users:
     - username: cartman
       groups: ["local_group1", "local_group3"]
       ldap_authentication: "ldap1"
