@@ -49,7 +49,7 @@ import org.elasticsearch.transport.{Transport, TransportInterceptor}
 import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
-import tech.beshu.ror.boot.EsInitListener
+import tech.beshu.ror.boot.{EsInitListener, SecurityProviderConfiguratorForFips}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.configuration.{FipsConfiguration, RorSsl}
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
@@ -111,6 +111,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   private val esInitListener = new EsInitListener
 
   private var ilaf: IndexLevelActionFilter = _
+
+  SecurityProviderConfiguratorForFips.configureIfRequired(fipsConfig)
 
   override def createComponents(client: Client,
                                 clusterService: ClusterService,
