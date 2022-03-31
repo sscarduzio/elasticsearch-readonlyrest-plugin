@@ -23,6 +23,11 @@ repositories {
     maven { url 'https://artifacts.elastic.co/maven' }
 }
 
+compileScala {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+}
+
 test {
     systemProperty "project.dir", rootProject.projectDir
     enabled = project.hasProperty('esModule') && project.hasProperty('mode')

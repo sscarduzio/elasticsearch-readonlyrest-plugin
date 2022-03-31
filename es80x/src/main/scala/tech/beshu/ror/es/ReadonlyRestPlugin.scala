@@ -43,7 +43,7 @@ import org.elasticsearch.repositories.{RepositoriesService, VerifyNodeRepository
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.netty4.{Netty4Utils, SharedGroupFactory}
+import org.elasticsearch.transport.netty4.{Netty4Plugin, Netty4Utils, SharedGroupFactory}
 import org.elasticsearch.transport.{Transport, TransportInterceptor, TransportService}
 import org.elasticsearch.watcher.ResourceWatcherService
 import org.elasticsearch.xcontent.NamedXContentRegistry
