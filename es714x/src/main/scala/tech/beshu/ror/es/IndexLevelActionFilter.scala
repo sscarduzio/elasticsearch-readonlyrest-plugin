@@ -49,7 +49,7 @@ import scala.language.postfixOps
 
 class IndexLevelActionFilter(nodeName: String,
                              clusterService: ClusterService,
-                             client: NodeClient,
+                             val client: NodeClient,
                              threadPool: ThreadPool,
                              env: Environment,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
@@ -64,7 +64,7 @@ class IndexLevelActionFilter(nodeName: String,
 
   private val ror = ReadonlyRest.create(
     RorMode.Plugin,
-    new EsIndexJsonContentService(client, nodeName, threadPool),
+    new EsIndexJsonContentService(client, nodeName),
     auditSinkCreator,
     env.configFile
   )
