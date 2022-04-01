@@ -19,8 +19,8 @@ package tech.beshu.ror.es
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
-import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain, TransportAction}
-import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse, ActionType}
+import org.elasticsearch.action.support.ActionFilter
+import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.client.Client
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
@@ -44,7 +44,6 @@ import org.elasticsearch.plugins._
 import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
 import org.elasticsearch.script.ScriptService
-import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.transport.{SharedGroupFactory, Transport, TransportInterceptor}
@@ -66,6 +65,7 @@ import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
+import tech.beshu.ror.es.utils.NodeClientOps._
 import tech.beshu.ror.es.utils.RestControllerOps._
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
@@ -227,7 +227,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                indexNameExpressionResolver: IndexNameExpressionResolver,
                                nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
     restController.decorateRestHandlersWith(new ChannelInterceptingRestHandlerDecorator(_))
-    modifyActions(ilaf.client)
+    ilaf.client.deactivateXPackFilter()
     List[RestHandler](
       new RestRRAdminAction(),
       new RestRRAuthMockAction(),
@@ -236,35 +236,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       new RestRRAuditEventAction()
     ).asJava
   }
-
-  private def modifyActions(client: NodeClient): Unit = doPrivileged {
-    import org.joor.Reflect.on
-    val actions = on(client).get[java.util.Map[ActionType[ActionResponse], TransportAction[ActionRequest, ActionResponse]]]("actions").asScala.toMap
-    actions.foreach { case (_, action) =>
-      val filers = on(action).get[Array[ActionFilter]]("filters")
-      val dummy = new ActionFilter {
-        override def order(): Int = 0
-        override def apply[Request <: ActionRequest, Response <: ActionResponse](task: Task,
-                                                                                 action: String,
-                                                                                 request: Request,
-                                                                                 listener: ActionListener[Response],
-                                                                                 chain: ActionFilterChain[Request, Response]): Unit =
-          chain.proceed(task, action, request, listener)
-      }
-      filers.update(0, dummy)
-      filers
-    }
-  }
-
-  // todo: to remove?
-//  override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
-//    restHandler: RestHandler =>
-//      (request: RestRequest, channel: RestChannel, client: NodeClient) => {
-//        val rorRestChannel = new RorRestChannel(channel)
-//        ThreadRepo.setRestChannel(rorRestChannel)
-//        restHandler.handleRequest(request, rorRestChannel, client)
-//      }
-//  }
 
   override def getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry, threadContext: ThreadContext): util.List[TransportInterceptor] = {
     List[TransportInterceptor](new RorTransportInterceptor(threadContext, s.get("node.name"))).asJava

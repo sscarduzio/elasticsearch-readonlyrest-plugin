@@ -27,10 +27,9 @@ import tech.beshu.ror.utils.ScalaOps._
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
-class RestControllerOps(val restController: RestController) {
+class RestControllerOps(restController: RestController) {
 
   def decorateRestHandlersWith(restHandlerDecorator: RestHandler => RestHandler): Unit = doPrivileged {
-//    val wrapper = on(restController).get[UnaryOperator[RestHandler]]("handlerWrapper")
     on(restController).set(
       "handlerWrapper",
       new UnaryOperator[RestHandler] {
@@ -94,5 +93,5 @@ class RestControllerOps(val restController: RestController) {
 
 object RestControllerOps {
 
-  implicit def toOps(restController: RestController): RestControllerOps = new RestControllerOps(restController)
+  implicit def toRestControllerOps(restController: RestController): RestControllerOps = new RestControllerOps(restController)
 }

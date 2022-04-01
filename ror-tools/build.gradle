@@ -148,22 +148,7 @@ task uploadArtifactsFromEsBinaries(type: Exec) {
 
 task getArtifactsFromEsBinaries {
     doLast {
-        def esTar = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion + ".tar.gz")
-        if (!esTar.exists()) {
-            if(!layout.buildDirectory.asFile.get().exists()) {
-                project.mkdir(layout.buildDirectory.asFile.get())
-            }
-            def esLinuxBinaries = "elasticsearch-" + esVersion + "-linux-x86_64.tar.gz"
-            project.logger.info("Downloading " + esLinuxBinaries + " ...")
-            new URL("https://artifacts.elastic.co/downloads/elasticsearch/" + esLinuxBinaries)
-                    .withInputStream{ i -> esTar.withOutputStream{ it << i }}
-        }
         def esDir = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion)
-        project.logger.info("Extracting " + esTar.path + " to " + esDir.path + "...")
-        copy {
-            from tarTree(esTar)
-            into esDir
-        }
         def netty4TransportArtifactPath = esDir.path + "/elasticsearch-" + esVersion + "/modules/transport-netty4/" + netty4TransportArtifactName
         def netty4TransportDestPath = layout.buildDirectory
         project.logger.info("Coping " + netty4TransportArtifactPath + " to " + netty4TransportDestPath.get().asFile.path + " ...")
@@ -171,8 +156,31 @@ task getArtifactsFromEsBinaries {
             from netty4TransportArtifactPath
             into netty4TransportDestPath
         }
-        project.delete(esTar, esDir)
     }
 }
 
 uploadArtifactsFromEsBinaries.dependsOn getArtifactsFromEsBinaries
+
+task downloadEsBinaries {
+    doLast {
+        def esTar = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion + ".tar.gz")
+        if (!esTar.exists()) {
+            if (!layout.buildDirectory.asFile.get().exists()) {
+                project.mkdir(layout.buildDirectory.asFile.get())
+            }
+            def esLinuxBinaries = "elasticsearch-" + esVersion + "-linux-x86_64.tar.gz"
+            project.logger.info("Downloading " + esLinuxBinaries + " ...")
+            new URL("https://artifacts.elastic.co/downloads/elasticsearch/" + esLinuxBinaries)
+                    .withInputStream { i -> esTar.withOutputStream { it << i } }
+        }
+        def esDir = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion)
+        project.logger.info("Extracting " + esTar.path + " to " + esDir.path + "...")
+        copy {
+            from tarTree(esTar)
+            into esDir
+        }
+    }
+}
+
+getArtifactsFromEsBinaries.dependsOn downloadEsBinaries
+
