@@ -36,7 +36,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder.nameDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, LdapServicesDecoder}
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.LdapAuthorizationRuleDecoder.{ERROR_MSG_NO_GROUPS_LIST, ERROR_MSG_ONLY_ONE_GROUPS_LIST}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.LdapRulesDecodersHelper.{ERROR_MSG_NO_GROUPS_LIST, ERROR_MSG_ONLY_ONE_GROUPS_LIST}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.LdapRulesDecodersHelper.findLdapService
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
@@ -45,6 +46,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
+// ------ ldap_authentication
 class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                     impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                     mocksProvider: MocksProvider,
@@ -96,6 +98,7 @@ object LdapAuthenticationRuleDecoder {
   }
 }
 
+// ------ ldap_authorization
 class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                    impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                    mocksProvider: MocksProvider,
@@ -112,44 +115,44 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
 }
 
 object LdapAuthorizationRuleDecoder {
-  def ERROR_MSG_NO_GROUPS_LIST(name: String) = s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
+  def createLdapAuthorizationDecoder(name: LdapService.Name,
+                                     ttl: Option[Refined[FiniteDuration, Positive]],
+                                     groupsLogic: GroupsLogic,
+                                     ldapDefinitions: Definitions[LdapService]
+                                    ) = {
 
-  def ERROR_MSG_ONLY_ONE_GROUPS_LIST(name: String) = s"Please specify either 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
+    findLdapService[LdapAuthorizationService, LdapAuthorizationRule](ldapDefinitions.items, name)
+      .map(x => new LoggableLdapAuthorizationServiceDecorator(x))
+      .map(svc => {
+        ttl match {
+          case Some(ttlValue) => new CacheableLdapAuthorizationServiceDecorator(svc, ttlValue)
+          case _ => svc
+        }
+      })
+      .map(LdapAuthorizationRule.Settings(_, groupsLogic, groupsLogic.groups))
+  }
 
   private def settingsDecoder(ldapDefinitions: Definitions[LdapService]): Decoder[LdapAuthorizationRule.Settings] =
     Decoder
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          groups_and <- c.downField("groups_and").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.And))
-          groups_or <- c.downField("groups").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.Or))
+          groupsAnd <- c.downField("groups_and").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.And))
+          groupsOr <- c.downField("groups").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.Or))
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
-        } yield (name, ttl, groups_or, groups_and)
+        } yield (name, ttl, groupsOr, groupsAnd)
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .emapE {
         case (name, _, None, None) => Left(RulesLevelCreationError(Message(ERROR_MSG_NO_GROUPS_LIST(name.value.value))))
         case (name, _, Some(_), Some(_)) => Left(RulesLevelCreationError(Message(ERROR_MSG_ONLY_ONE_GROUPS_LIST(name.value.value))))
-        case (name, Some(ttl), groups_or_opt, groups_and_opt) => {
-          val groupsLogic = groups_or_opt.orElse(groups_and_opt).get
-          LdapRulesDecodersHelper
-            .findLdapService[LdapAuthorizationService, LdapAuthorizationRule](ldapDefinitions.items, name)
-            .map(new CacheableLdapAuthorizationServiceDecorator(_, ttl))
-            .map(new LoggableLdapAuthorizationServiceDecorator(_))
-            .map(LdapAuthorizationRule.Settings(_, groupsLogic, groupsLogic.groups))
-        }
-        case (name, None, groups_or_opt, groups_and_opt) => {
-          val groupsLogic = groups_or_opt.orElse(groups_and_opt).get
-          LdapRulesDecodersHelper
-            .findLdapService[LdapAuthorizationService, LdapAuthorizationRule](ldapDefinitions.items, name)
-            .map(new LoggableLdapAuthorizationServiceDecorator(_))
-            .map(LdapAuthorizationRule.Settings(_, groupsLogic, groupsLogic.groups))
-        }
-      }
-      .decoder
+        case (name, ttl, Some(groupsOr), None) => createLdapAuthorizationDecoder(name, ttl, groupsOr, ldapDefinitions)
+        case (name, ttl, None, Some(groupsAnd)) => createLdapAuthorizationDecoder(name, ttl, groupsAnd, ldapDefinitions)
+      }.decoder
 }
 
+// ------ ldap_auth
 class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
                           impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                           mocksProvider: MocksProvider,
@@ -163,6 +166,38 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
 }
 
 object LdapAuthRuleDecoder {
+
+  private def createLdapAuthDecoder(name: LdapService.Name,
+                                    ttl: Option[Refined[FiniteDuration, Positive]],
+                                    groupsLogic: GroupsLogic, ldapDefinitions: Definitions[LdapService],
+                                    impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+                                    mocksProvider: MocksProvider,
+                                    caseMappingEquality: UserIdCaseMappingEquality
+                                   ) = {
+
+    findLdapService[LdapAuthService, LdapAuthRule](ldapDefinitions.items, name)
+      .map( svc => {
+        ttl match {
+          case Some(ttlValue) => new CacheableLdapServiceDecorator(svc, ttlValue)
+          case _ => svc
+        }
+      })
+      .map(new LoggableLdapServiceDecorator(_))
+      .map(ldapService => {
+        new LdapAuthRule(
+          new LdapAuthenticationRule(
+            LdapAuthenticationRule.Settings(ldapService),
+            impersonatorsDef.toImpersonation(mocksProvider),
+            caseMappingEquality
+          ),
+          new LdapAuthorizationRule(
+            LdapAuthorizationRule.Settings(ldapService, groupsLogic, groupsLogic.groups),
+            impersonatorsDef.toImpersonation(mocksProvider),
+            caseMappingEquality
+          )
+        )
+      })
+  }
 
   private def instance(ldapDefinitions: Definitions[LdapService],
                        impersonatorsDef: Option[Definitions[ImpersonatorDef]],
@@ -182,42 +217,19 @@ object LdapAuthRuleDecoder {
       .emapE {
         case (name, _, None, None) => Left(RulesLevelCreationError(Message(ERROR_MSG_NO_GROUPS_LIST(name.value.value))))
         case (name, _, Some(_), Some(_)) => Left(RulesLevelCreationError(Message(ERROR_MSG_ONLY_ONE_GROUPS_LIST(name.value.value))))
-        case (name, Some(ttl), groups_or_opt, groups_and_opt) =>
-          LdapRulesDecodersHelper
-            .findLdapService[LdapAuthService, LdapAuthRule](ldapDefinitions.items, name)
-            .map(new CacheableLdapServiceDecorator(_, ttl))
-            .map(new LoggableLdapServiceDecorator(_))
-            .map(createLdapAuthRule(_, impersonatorsDef, mocksProvider, groups_or_opt.orElse(groups_and_opt).get, caseMappingEquality))
-        case (name, None, groups_or_opt, groups_and_opt) =>
-          LdapRulesDecodersHelper
-            .findLdapService[LdapAuthService, LdapAuthRule](ldapDefinitions.items, name)
-            .map(new LoggableLdapServiceDecorator(_))
-            .map(createLdapAuthRule(_, impersonatorsDef, mocksProvider, groups_or_opt.orElse(groups_and_opt).get, caseMappingEquality))
+        case (name, ttl, Some(groupsOr), None) =>
+          createLdapAuthDecoder(name, ttl, groupsOr, ldapDefinitions, impersonatorsDef, mocksProvider, caseMappingEquality)
+        case (name, ttl, None, Some(groupsAnd)) =>
+          createLdapAuthDecoder(name, ttl, groupsAnd, ldapDefinitions, impersonatorsDef, mocksProvider, caseMappingEquality)
       }
       .decoder
-
-  private def createLdapAuthRule(ldapService: LdapAuthService,
-                                 impersonatorsDef: Option[Definitions[ImpersonatorDef]],
-                                 mocksProvider: MocksProvider,
-                                 groupsLogic: GroupsLogic,
-                                 caseMappingEquality: UserIdCaseMappingEquality) = {
-    val impersonation = impersonatorsDef.toImpersonation(mocksProvider)
-    new LdapAuthRule(
-      new LdapAuthenticationRule(
-        LdapAuthenticationRule.Settings(ldapService),
-        impersonation,
-        caseMappingEquality
-      ),
-      new LdapAuthorizationRule(
-        LdapAuthorizationRule.Settings(ldapService, groupsLogic, groupsLogic.groups),
-        impersonation,
-        caseMappingEquality
-      )
-    )
-  }
 }
 
 private object LdapRulesDecodersHelper {
+
+  def ERROR_MSG_NO_GROUPS_LIST(name: String) = s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
+
+  def ERROR_MSG_ONLY_ONE_GROUPS_LIST(name: String) = s"Please specify either 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
 
   def findLdapService[T <: LdapService : ClassTag, R <: Rule : RuleName](ldapServices: List[LdapService],
                                                                          searchedServiceName: LdapService.Name): Either[AclCreationError, T] = {

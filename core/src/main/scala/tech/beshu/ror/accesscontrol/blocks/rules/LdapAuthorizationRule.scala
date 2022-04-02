@@ -33,7 +33,10 @@ import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, User}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-class LdapAuthorizationRule(val settings: Settings, override val impersonation: Impersonation, override val caseMappingEquality: UserIdCaseMappingEquality) extends BaseAuthorizationRule {
+class LdapAuthorizationRule(val settings: Settings,
+                            override val impersonation: Impersonation,
+                            override val caseMappingEquality: UserIdCaseMappingEquality)
+  extends BaseAuthorizationRule {
 
   override val name: Rule.Name = LdapAuthorizationRule.Name.name
 
@@ -43,16 +46,26 @@ class LdapAuthorizationRule(val settings: Settings, override val impersonation: 
 
   override protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[Group]] = settings.ldap.groupsOf(user.id)
 
-  override protected def mockedGroupsOf(user: User.Id, mocksProvider: MocksProvider)(implicit requestId: RequestId, eq: Eq[User.Id]): Groups = {
-    mocksProvider.ldapServiceWith(settings.ldap.id).map { mock =>
-      mock.users.find(_.id === user).map(m => Groups.Present(UniqueList.of(m.groups.toSeq: _*))).getOrElse(Groups.Present(UniqueList.empty))
-    }.getOrElse {
-      Groups.CannotCheck
-    }
+  override protected def mockedGroupsOf(user: User.Id,
+                                        mocksProvider: MocksProvider)
+                                       (implicit requestId: RequestId,
+                                        eq: Eq[User.Id]): Groups = {
+    mocksProvider
+      .ldapServiceWith(settings.ldap.id)
+      .map { mock =>
+        mock
+          .users
+          .find(_.id === user)
+          .map(m => Groups.Present(UniqueList.of(m.groups.toSeq: _*)))
+          .getOrElse(Groups.Present(UniqueList.empty))
+      }
+      .getOrElse {
+        Groups.CannotCheck
+      }
   }
 
   override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] =
-    settings.permittedGroups.availableGroupsFrom(usersGroups) // this is always safe, there's always at least one group in common
+    settings.permittedGroups.availableGroupsFrom(usersGroups)
 }
 
 object LdapAuthorizationRule {
@@ -76,14 +89,12 @@ object LdapAuthorizationRule {
   implicit class GroupsLogicExecutor(val groupsLogic: GroupsLogic) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
       groupsLogic match {
-        case And(groups) => {
+        case And(groups) =>
           val intersection = userGroups intersect groups
           if (intersection == groups) Some(groups) else None
-        }
-        case Or(groups) => {
+        case Or(groups) =>
           val intersection = userGroups.toSet intersect groups
           if (intersection.isEmpty) None else UniqueNonEmptyList.fromSet(intersection)
-        }
       }
     }
   }

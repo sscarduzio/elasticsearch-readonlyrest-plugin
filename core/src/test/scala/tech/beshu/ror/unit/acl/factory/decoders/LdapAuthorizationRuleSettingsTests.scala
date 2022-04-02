@@ -25,12 +25,15 @@ import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule.GroupsLog
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.LdapAuthorizationRuleDecoder.ERROR_MSG_NO_GROUPS_LIST
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class LdapAuthorizationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[LdapAuthorizationRule] {
+
+  def ERROR_MSG_NO_GROUPS_LIST(name: String) = s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
+
+  def ERROR_MSG_ONLY_ONE_GROUPS_LIST(name: String) = s"Please specify either 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
 
   "An LdapAuthorizationRule" should {
     "be able to be loaded from config" when {

@@ -28,7 +28,7 @@ final class GroupsOrRule(override val settings: BaseGroupsRule.Settings,
 
   override val name: Rule.Name = GroupsOrRule.Name.name
 
-  override def availableGroupsFrom(userGroups: Set[Group], ruleGroups: Set[Group]): Option[UniqueNonEmptyList[Group]] = {
+  override def calculateAllowedGroupsForUser(userGroups: Set[Group], ruleGroups: Set[Group]): Option[UniqueNonEmptyList[Group]] = {
     UniqueNonEmptyList.fromSet(userGroups intersect ruleGroups)
   }
 }
