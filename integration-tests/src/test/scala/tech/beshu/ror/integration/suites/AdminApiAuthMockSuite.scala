@@ -62,6 +62,10 @@ trait AdminApiAuthMockSuite
           .updateRorTestConfig(testEngineConfig())
           .forceOk()
 
+        rorApiManager
+          .invalidateImpersonationMocks()
+          .forceOk()
+
         val response = rorApiManager.currentMockedServices()
         response.responseCode should be(200)
         response.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
