@@ -91,7 +91,7 @@ object LdapAuthorizationRule {
       groupsLogic match {
         case And(groups) =>
           val intersection = userGroups intersect groups
-          if (intersection == groups) Some(groups) else None
+          if (intersection == groups.toSet) Some(groups) else None
         case Or(groups) =>
           val intersection = userGroups.toSet intersect groups
           if (intersection.isEmpty) None else UniqueNonEmptyList.fromSet(intersection)

@@ -36,8 +36,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder.nameDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, LdapServicesDecoder}
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.LdapRulesDecodersHelper.{ERROR_MSG_NO_GROUPS_LIST, ERROR_MSG_ONLY_ONE_GROUPS_LIST}
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.LdapRulesDecodersHelper.findLdapService
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.LdapRulesDecodersHelper.{findLdapService, ERROR_MSG_NO_GROUPS_LIST, ERROR_MSG_ONLY_ONE_GROUPS_LIST}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
@@ -122,13 +121,13 @@ object LdapAuthorizationRuleDecoder {
                                     ) = {
 
     findLdapService[LdapAuthorizationService, LdapAuthorizationRule](ldapDefinitions.items, name)
-      .map(x => new LoggableLdapAuthorizationServiceDecorator(x))
       .map(svc => {
         ttl match {
           case Some(ttlValue) => new CacheableLdapAuthorizationServiceDecorator(svc, ttlValue)
           case _ => svc
         }
       })
+      .map(x => new LoggableLdapAuthorizationServiceDecorator(x))
       .map(LdapAuthorizationRule.Settings(_, groupsLogic, groupsLogic.groups))
   }
 
