@@ -16,11 +16,8 @@
  */
 package tech.beshu.ror.es.ssl
 
-import java.io.InputStream
-
-import io.netty.buffer.ByteBufAllocator
 import io.netty.channel.Channel
-import io.netty.handler.ssl.{ClientAuth, NotSslRecordException, SslContext, SslContextBuilder}
+import io.netty.handler.ssl.{NotSslRecordException, SslContext}
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings.{ClusterSettings, Settings}
@@ -32,9 +29,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.SharedGroupFactory
 import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.SSLCertParser
-
-import scala.collection.JavaConverters._
+import tech.beshu.ror.utils.SSLCertHelper
 
 class SSLNetty4HttpServerTransport(settings: Settings,
                                    networkService: NetworkService,
@@ -44,7 +39,8 @@ class SSLNetty4HttpServerTransport(settings: Settings,
                                    dispatcher: HttpServerTransport.Dispatcher,
                                    ssl: ExternalSslConfiguration,
                                    clusterSettings: ClusterSettings,
-                                   sharedGroupFactory: SharedGroupFactory)
+                                   sharedGroupFactory: SharedGroupFactory,
+                                   fipsCompliant: Boolean)
   extends Netty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, clusterSettings, sharedGroupFactory)
     with Logging {
 
@@ -63,35 +59,13 @@ class SSLNetty4HttpServerTransport(settings: Settings,
     private var context = Option.empty[SslContext]
 
     doPrivileged {
-      SSLCertParser.run(new SSLContextCreatorImpl, ssl)
+      context = Option(SSLCertHelper.prepareSSLContext(ssl, fipsCompliant))
     }
 
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
       context.foreach { sslCtx =>
         ch.pipeline().addFirst("ssl_netty4_handler", sslCtx.newHandler(ch.alloc()))
-      }
-    }
-
-    private class SSLContextCreatorImpl extends SSLCertParser.SSLContextCreator {
-      override def mkSSLContext(certChain: InputStream, privateKey: InputStream): Unit = {
-        try { // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-          val sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null)
-
-          logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider.name)
-          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build.newEngine(ByteBufAllocator.DEFAULT), ssl)
-          if (ssl.allowedCiphers.nonEmpty) sslCtxBuilder.ciphers(ssl.allowedCiphers.map(_.value).toList.asJava)
-          if (ssl.clientAuthenticationEnabled) {
-            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
-            sslCtxBuilder.trustManager(SSLCertParser.customTrustManagerFrom(ssl).orNull)
-          }
-          if (ssl.allowedProtocols.nonEmpty) sslCtxBuilder.protocols(ssl.allowedProtocols.map(_.value).toList: _*)
-          context = Some(sslCtxBuilder.build)
-        } catch {
-          case e: Exception =>
-            context = None
-            logger.error("Failed to load SSL HTTP CertChain & private key from Keystore! " + e.getClass.getSimpleName + ": " + e.getMessage, e)
-        }
       }
     }
   }
