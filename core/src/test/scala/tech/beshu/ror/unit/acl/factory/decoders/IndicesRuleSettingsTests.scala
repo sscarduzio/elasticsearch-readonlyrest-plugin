@@ -91,6 +91,25 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
           }
         )
       }
+      "one numeric index is defined as array" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    indices: ["1"]
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            val indices: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]] = NonEmptySet.one(AlreadyResolved(clusterIndexName("1").nel))
+            rule.settings.allowedIndices should be(indices)
+            rule.settings.mustInvolveIndices shouldBe false
+          }
+        )
+      }
       "two indices are defined" in {
         assertDecodingSuccess(
           yaml =
