@@ -36,7 +36,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder.nameDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, LdapServicesDecoder}
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.LdapRulesDecodersHelper.{findLdapService, ERROR_MSG_NO_GROUPS_LIST, ERROR_MSG_ONLY_ONE_GROUPS_LIST}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.LdapRulesDecodersHelper.{findLdapService, errorMsgNoGroupsList, errorMsgOnlyOneGroupsList}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
@@ -144,8 +144,8 @@ object LdapAuthorizationRuleDecoder {
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .emapE {
-        case (name, _, None, None) => Left(RulesLevelCreationError(Message(ERROR_MSG_NO_GROUPS_LIST(name.value.value))))
-        case (name, _, Some(_), Some(_)) => Left(RulesLevelCreationError(Message(ERROR_MSG_ONLY_ONE_GROUPS_LIST(name.value.value))))
+        case (name, _, None, None) => Left(RulesLevelCreationError(Message(errorMsgNoGroupsList(name.value.value))))
+        case (name, _, Some(_), Some(_)) => Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(name.value.value))))
         case (name, ttl, Some(groupsOr), None) => createLdapAuthorizationDecoder(name, ttl, groupsOr, ldapDefinitions)
         case (name, ttl, None, Some(groupsAnd)) => createLdapAuthorizationDecoder(name, ttl, groupsAnd, ldapDefinitions)
       }.decoder
@@ -206,16 +206,16 @@ object LdapAuthRuleDecoder {
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          groups_and <- c.downField("groups_and").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.And))
-          groups_or <- c.downField("groups").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.Or))
+          groupsAnd <- c.downField("groups_and").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.And))
+          groupsOr <- c.downField("groups").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.Or))
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
-        } yield (name, ttl, groups_or, groups_and)
+        } yield (name, ttl, groupsOr, groupsAnd)
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .emapE {
-        case (name, _, None, None) => Left(RulesLevelCreationError(Message(ERROR_MSG_NO_GROUPS_LIST(name.value.value))))
-        case (name, _, Some(_), Some(_)) => Left(RulesLevelCreationError(Message(ERROR_MSG_ONLY_ONE_GROUPS_LIST(name.value.value))))
+        case (name, _, None, None) => Left(RulesLevelCreationError(Message(errorMsgNoGroupsList(name.value.value))))
+        case (name, _, Some(_), Some(_)) => Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(name.value.value))))
         case (name, ttl, Some(groupsOr), None) =>
           createLdapAuthDecoder(name, ttl, groupsOr, ldapDefinitions, impersonatorsDef, mocksProvider, caseMappingEquality)
         case (name, ttl, None, Some(groupsAnd)) =>
@@ -226,9 +226,9 @@ object LdapAuthRuleDecoder {
 
 private object LdapRulesDecodersHelper {
 
-  def ERROR_MSG_NO_GROUPS_LIST(name: String) = s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
+  def errorMsgNoGroupsList(name: String) = s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
 
-  def ERROR_MSG_ONLY_ONE_GROUPS_LIST(name: String) = s"Please specify either 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
+  def errorMsgOnlyOneGroupsList(name: String) = s"Please specify either 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
 
   def findLdapService[T <: LdapService : ClassTag, R <: Rule : RuleName](ldapServices: List[LdapService],
                                                                          searchedServiceName: LdapService.Name): Either[AclCreationError, T] = {

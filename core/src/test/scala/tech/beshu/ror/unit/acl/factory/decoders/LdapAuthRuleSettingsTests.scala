@@ -24,11 +24,7 @@ import tech.beshu.ror.utils.SingletonLdapContainers
 
 class LdapAuthRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[LdapAuthRule] {
-
-  def ERROR_MSG_NO_GROUPS_LIST(name: String) = s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
-
-  def ERROR_MSG_ONLY_ONE_GROUPS_LIST(name: String) = s"Please specify either 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
-
+  
   "An LdapAuthRule" should {
     "be able to be loaded from config" when {
       "there is LDAP service with given name and groups are defined" in {
@@ -136,7 +132,7 @@ class LdapAuthRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message(ERROR_MSG_NO_GROUPS_LIST("ldap1"))))
+            errors.head should be(RulesLevelCreationError(Message("Please specify one between 'groups' or 'groups_and' for LDAP authorization rule ldap1")))
           }
         )
       }
