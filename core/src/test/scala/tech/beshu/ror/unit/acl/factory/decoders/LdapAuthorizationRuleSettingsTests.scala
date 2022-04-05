@@ -211,7 +211,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Please specify one between 'groups' or 'groups_and' for LDAP authorization rule ldap1")))
+            errors.head should be(RulesLevelCreationError(Message("Please specify one between 'groups' or 'groups_and' for LDAP authorization rule 'ldap1'")))
           }
         )
       }
