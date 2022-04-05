@@ -27,11 +27,15 @@ import tech.beshu.ror.utils.ScalaOps._
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
-class RestControllerOps(val restController: RestController) {
+class RestControllerOps(restController: RestController) {
 
   def decorateRestHandlersWith(restHandlerDecorator: RestHandler => RestHandler): Unit = doPrivileged {
-    val wrapper = on(restController).get[UnaryOperator[RestHandler]]("handlerWrapper")
-    on(restController).set("handlerWrapper", new NewUnaryOperatorRestHandler(wrapper, restHandlerDecorator))
+    on(restController).set(
+      "handlerWrapper",
+      new UnaryOperator[RestHandler] {
+        override def apply(t: RestHandler): RestHandler = restHandlerDecorator(t)
+      }
+    )
 
     val handlers = on(restController).get[PathTrie[Any]]("handlers")
     val updatedHandlers = new PathTreeOps(handlers).update(restHandlerDecorator)
@@ -42,6 +46,8 @@ class RestControllerOps(val restController: RestController) {
 
     def update(restHandlerDecorator: RestHandler => RestHandler): PathTrie[Any] = {
       val root = on(pathTrie).get[pathTrie.TrieNode]("root")
+      val rootValue = on(pathTrie).get[Any]("rootValue")
+      if (rootValue != null) MethodHandlersWrapper.updateWithWrapper(rootValue, restHandlerDecorator)
       update(root, restHandlerDecorator)
       pathTrie
     }
@@ -63,7 +69,12 @@ class RestControllerOps(val restController: RestController) {
       val newMethodHandlers = methodHandlers
         .map { case (method, handler) =>
           println(s"WRAPPED HANDLER CLASS: ${handler.getClass.getName}") // todo: remove
-          (method, restHandlerDecorator(handler))
+          if(handler.getClass.getName.startsWith("org.elasticsearch.xpack.security.rest.SecurityRestFilter")) {
+            val underlyingHandler = on(handler).get[RestHandler]("restHandler")
+            (method, restHandlerDecorator(underlyingHandler))
+          } else {
+            (method, handler)
+          }
         }
         .asJava
       on(value).set("methodHandlers", newMethodHandlers)
@@ -82,5 +93,5 @@ class RestControllerOps(val restController: RestController) {
 
 object RestControllerOps {
 
-  implicit def toOps(restController: RestController): RestControllerOps = new RestControllerOps(restController)
+  implicit def toRestControllerOps(restController: RestController): RestControllerOps = new RestControllerOps(restController)
 }

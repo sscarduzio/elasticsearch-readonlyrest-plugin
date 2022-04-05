@@ -65,6 +65,7 @@ import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
+import tech.beshu.ror.es.utils.NodeClientOps._
 import tech.beshu.ror.es.utils.RestControllerOps._
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
@@ -226,6 +227,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                indexNameExpressionResolver: IndexNameExpressionResolver,
                                nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
     restController.decorateRestHandlersWith(new ChannelInterceptingRestHandlerDecorator(_))
+    ilaf.client.deactivateXPackFilter()
     List[RestHandler](
       new RestRRAdminAction(),
       new RestRRAuthMockAction(),
@@ -234,16 +236,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       new RestRRAuditEventAction()
     ).asJava
   }
-
-  // todo: to remove?
-//  override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
-//    restHandler: RestHandler =>
-//      (request: RestRequest, channel: RestChannel, client: NodeClient) => {
-//        val rorRestChannel = new RorRestChannel(channel)
-//        ThreadRepo.setRestChannel(rorRestChannel)
-//        restHandler.handleRequest(request, rorRestChannel, client)
-//      }
-//  }
 
   override def getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry, threadContext: ThreadContext): util.List[TransportInterceptor] = {
     List[TransportInterceptor](new RorTransportInterceptor(threadContext, s.get("node.name"))).asJava
