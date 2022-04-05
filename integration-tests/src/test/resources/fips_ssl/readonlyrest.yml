@@ -1,0 +1,27 @@
+readonlyrest:
+  fips_mode: SSL_ONLY
+
+  ssl:
+    enable: true
+    keystore_file: "elastic-certificates.bcfks"
+    keystore_pass: readonlyrest
+    truststore_file: "elastic-certificates.bcfks"
+    truststore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  ssl_internode:
+    enable: true
+    keystore_file: "keystore.bcfks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+    truststore_file: "truststore.bcfks"
+    truststore_pass: readonlyrest
+    certificate_verification: true
+
+  access_control_rules:
+
+    # ES containter initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
+      verbosity: error
+      type: allow
+      auth_key: admin:container

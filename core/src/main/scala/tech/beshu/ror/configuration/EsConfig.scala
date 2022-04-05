@@ -27,9 +27,12 @@ import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.yaml.JsonFile
 
+import java.nio.file.Path
+
 final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings,
                           ssl: RorSsl,
-                          rorIndex: RorIndexNameConfiguration)
+                          rorIndex: RorIndexNameConfiguration,
+                          fipsConfiguration: FipsConfiguration)
 
 object EsConfig {
 
@@ -42,7 +45,8 @@ object EsConfig {
       rorEsLevelSettings <- parse(configFile)
       ssl <- loadSslSettings(esConfigFolderPath, configFile)
       rorIndex <- loadRorIndexNameConfiguration(configFile)
-    } yield EsConfig(rorEsLevelSettings, ssl, rorIndex)).value
+      fipsConfiguration <- loadFipsConfiguration(esConfigFolderPath, configFile)
+    } yield EsConfig(rorEsLevelSettings, ssl, rorIndex, fipsConfiguration)).value
   }
 
   private def parse(configFile: File): EitherT[Task, LoadEsConfigError, RorEsLevelSettings] = {
@@ -51,13 +55,19 @@ object EsConfig {
   }
 
   private def loadSslSettings(esConfigFolderPath: Path, configFile: File)
-                             (implicit envVarsProvider:EnvVarsProvider,
+                             (implicit envVarsProvider: EnvVarsProvider,
                               propertiesProvider: PropertiesProvider): EitherT[Task, LoadEsConfigError, RorSsl] = {
     EitherT(RorSsl.load(esConfigFolderPath).map(_.left.map(error => MalformedContent(configFile, error.message))))
   }
 
   private def loadRorIndexNameConfiguration(configFile: File): EitherT[Task, LoadEsConfigError, RorIndexNameConfiguration] = {
     EitherT(RorIndexNameConfiguration.load(configFile).map(_.left.map(error => MalformedContent(configFile, error.message))))
+  }
+
+  private def loadFipsConfiguration(esConfigFolderPath: Path, configFile: File)
+                                   (implicit envVarsProvider: EnvVarsProvider,
+                                    propertiesProvider: PropertiesProvider): EitherT[Task, LoadEsConfigError, FipsConfiguration] = {
+    EitherT(FipsConfiguration.load(esConfigFolderPath).map(_.left.map(error => MalformedContent(configFile, error.message))))
   }
 
   final case class RorEsLevelSettings(forceLoadRorFromFile: Boolean)

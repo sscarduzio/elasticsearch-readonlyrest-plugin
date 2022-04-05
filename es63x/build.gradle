@@ -95,6 +95,9 @@ tasks.withType(Zip) { task ->
 
 configurations {
     wagon
+    implementation {
+        exclude group: 'org.bouncycastle'
+    }
     distJars {
         extendsFrom runtime
         exclude group: 'org.elasticsearch'
@@ -105,6 +108,7 @@ configurations {
         exclude group: 'org.apache.commons'
         exclude group: 'org.yaml'
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
+        exclude group: 'org.bouncycastle'
     }
 }
 

@@ -53,6 +53,7 @@ compileScala {
 configurations {
     distJars {
         extendsFrom runtime
+        exclude group: 'org.bouncycastle'
     }
 }
 

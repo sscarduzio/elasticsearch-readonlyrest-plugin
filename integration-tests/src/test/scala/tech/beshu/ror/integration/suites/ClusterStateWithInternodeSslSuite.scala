@@ -100,5 +100,3 @@ trait ClusterStateWithInternodeSslSuite
     }
   }
 }
-
-object ElasticWithoutRorClusterProvider extends EsClusterProvider with EsWithoutSecurityPluginContainerCreator

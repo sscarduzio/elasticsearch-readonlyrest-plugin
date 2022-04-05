@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.boot
 
+
 import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import monix.execution.Scheduler
