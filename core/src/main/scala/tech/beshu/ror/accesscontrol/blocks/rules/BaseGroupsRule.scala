@@ -46,7 +46,7 @@ abstract class BaseGroupsRule(val settings: Settings,
     with AuthorizationImpersonationCustomSupport
     with Logging {
 
-  protected def availableGroupsFrom(userGroups: Set[Group], ruleGroups: Set[Group]): Option[UniqueNonEmptyList[Group]]
+  protected def calculateAllowedGroupsForUser(userGroups: Set[Group], ruleGroups: Set[Group]): Option[UniqueNonEmptyList[Group]]
 
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
@@ -111,7 +111,7 @@ abstract class BaseGroupsRule(val settings: Settings,
   private def authorizeAndAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                 resolvedGroups: UniqueNonEmptyList[Group])
                                                                                (userDef: UserDef): Task[Option[B]] = {
-    availableGroupsFrom(userDef.localGroups.toSet, resolvedGroups.toSet) match {
+    calculateAllowedGroupsForUser(userDef.localGroups.toSet, resolvedGroups.toSet) match {
       case None =>
         Task.now(None)
       case Some(availableGroups) =>
@@ -235,7 +235,7 @@ abstract class BaseGroupsRule(val settings: Settings,
     for {
       externalGroupsMappedToLocalGroups <- mapExternalGroupsToLocalGroups(groupMappings, externalAvailableGroups)
       availableLocalGroups <- {
-        availableGroupsFrom(potentiallyAvailableGroups.toSet, externalGroupsMappedToLocalGroups.toSet)
+        calculateAllowedGroupsForUser(potentiallyAvailableGroups.toSet, externalGroupsMappedToLocalGroups.toSet)
       }
       loggedUser <- sourceBlockContext.userMetadata.loggedUser
     } yield destinationBlockContext.withUserMetadata(_
