@@ -101,8 +101,8 @@ private[boot] class MainReloadableEngine(boot: ReadonlyRest,
     }
   }
 
-  private [boot] def reloadEngineUsingIndexConfigWithoutPermit()
-                                                              (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, RawRorConfig]] = {
+  private[boot] def reloadEngineUsingIndexConfigWithoutPermit()
+                                                             (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, RawRorConfig]] = {
     val result = for {
       newConfig <- EitherT(loadRorConfigFromIndex())
       _ <- reloadEngine(newConfig)

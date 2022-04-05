@@ -207,14 +207,19 @@ object BaseReloadableEngine {
                                                ttl: Option[FiniteDuration])
 
   private[engines] sealed trait EngineState
+
   private[engines] object EngineState {
+
     case object NotStartedYet
       extends EngineState
+
     final case class Working(engineWithConfig: EngineWithConfig,
                              scheduledShutdownJob: Option[Cancelable])
       extends EngineState
+
     case object Stopped
       extends EngineState
+
   }
 
   private[BaseReloadableEngine] val delayOfOldEngineShutdown = 10 seconds
