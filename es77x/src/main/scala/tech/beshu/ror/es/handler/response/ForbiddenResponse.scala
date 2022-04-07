@@ -75,9 +75,8 @@ object ForbiddenResponse {
   def createRorNotEnabledResponse(): ForbiddenResponse =
     new ForbiddenResponse(None, RorNotEnabled :: Nil)
 
-  def createTestSettingsNotConfiguredResponse(): ForbiddenResponse = {
+  def createTestSettingsNotConfiguredResponse(): ForbiddenResponse =
     new ForbiddenResponse(None, TestSettingsNotConfigured :: Nil)
-  }
 
   private implicit val forbiddenCauseShow: Show[ForbiddenCause] = Show.show {
     case ForbiddenBlockMatch => "FORBIDDEN_BY_BLOCK"

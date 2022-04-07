@@ -68,9 +68,8 @@ import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter._
 import tech.beshu.ror.es.handler.request.context.types._
-import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
@@ -86,13 +85,11 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
   extends Logging {
 
   def handle(engines: Engines,
-             esContext: EsContext): Task[Unit] = {
-    esContext.pickEngineToHandleOrForbid(engines) match {
-      case Right(engine) =>
-        handleRequestWithEngine(engine, esContext)
-      case Left(forbiddenResponse) =>
-        Task.delay(esContext.listener.onFailure(forbiddenResponse))
-    }
+             esContext: EsContext): Task[Either[Error, Unit]] = {
+    esContext
+      .pickEngineToHandle(engines)
+      .map(handleRequestWithEngine(_, esContext))
+      .sequence
   }
 
   private def handleRequestWithEngine(engine: Engine,
@@ -250,14 +247,14 @@ object AclAwareRequestFilter {
     lazy val requestContextId = s"${channel.request().hashCode()}-${actionRequest.hashCode()}#${task.getId}"
     val timestamp: Instant = Instant.now()
 
-    def pickEngineToHandleOrForbid(engines: Engines): Either[ForbiddenResponse, Engine] = {
+    def pickEngineToHandle(engines: Engines): Either[Error, Engine] = {
       val impersonationHeaderPresent = channel
         .request()
         .getHeaders.asScala
         .exists { case (name, _) => isImpersonateAsHeader(name) }
       engines.impersonatorsEngine match {
         case Some(impersonatorsEngine) if impersonationHeaderPresent => Right(impersonatorsEngine)
-        case None if impersonationHeaderPresent => Left(ForbiddenResponse.createTestSettingsNotConfiguredResponse())
+        case None if impersonationHeaderPresent => Left(Error.ImpersonatorsEngineNotConfigured)
         case Some(_) | None => Right(engines.mainEngine)
       }
     }
@@ -286,6 +283,11 @@ object AclAwareRequestFilter {
       threadPool.getThreadContext.addXPackAuthenticationHeader(nodeName)
       chain.proceed(task, action, request, listener)
     }
+  }
+
+  sealed trait Error
+  object Error {
+    case object ImpersonatorsEngineNotConfigured extends Error
   }
 }
 
