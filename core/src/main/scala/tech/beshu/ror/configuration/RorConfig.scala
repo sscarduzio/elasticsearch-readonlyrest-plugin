@@ -16,12 +16,20 @@
  */
 package tech.beshu.ror.configuration
 
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
+import tech.beshu.ror.accesscontrol.domain.{User, UserIdPatterns}
+import tech.beshu.ror.configuration.LocalUsersOps.fromRorConfig
 import tech.beshu.ror.accesscontrol.logging.AuditingTool
 
 final case class RorConfig(services: RorConfig.Services,
-                           auditingSettings: Option[AuditingTool.Settings])
+                           blocks: Seq[Block],
+                           users: Seq[UserIdPatterns],
+                           auditingSettings: Option[AuditingTool.Settings]) {
+
+  lazy val localUsers: RorConfig.LocalUsers = fromRorConfig(this)
+}
 
 object RorConfig {
   final case class Services(authenticationServices: Seq[ExternalAuthenticationService#Id],
@@ -30,4 +38,6 @@ object RorConfig {
   object Services {
     def empty: Services = Services(Seq.empty, Seq.empty, Seq.empty)
   }
+
+  final case class LocalUsers(users: Set[User.Id], unknownUsers: Boolean)
 }

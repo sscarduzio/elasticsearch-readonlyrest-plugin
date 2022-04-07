@@ -16,21 +16,22 @@
  */
 package tech.beshu.ror.api
 
+import java.time.{Clock, Instant}
+
 import cats.data.EitherT
 import cats.implicits._
 import io.circe.Decoder
 import monix.eval.Task
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.api.TestConfigApi.TestConfigRequest.Type
-import tech.beshu.ror.api.TestConfigApi.TestConfigResponse.{Failure, InvalidateTestConfig, ProvideLocalUsers, ProvideTestConfig, UpdateTestConfig}
+import tech.beshu.ror.api.TestConfigApi.TestConfigResponse._
 import tech.beshu.ror.api.TestConfigApi.{TestConfigRequest, TestConfigResponse}
-import tech.beshu.ror.boot.RorInstance.{RawConfigReloadError, TestConfig}
+import tech.beshu.ror.boot.RorInstance.{RawConfigReloadError, TestConfig, TestEngineRorConfig}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 
-import java.time.{Clock, Instant}
-import scala.concurrent.duration.{FiniteDuration, _}
+import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
 
@@ -103,14 +104,15 @@ class TestConfigApi(rorInstance: RorInstance)
   private def provideLocalUsers()
                                (implicit requestId: RequestId): Task[TestConfigResponse] = {
     rorInstance
-      .currentTestConfig()
+      .currentTestEngineRorConfig()
       .map {
-        case TestConfig.NotSet =>
+        case TestEngineRorConfig.NotSet =>
           TestConfigResponse.ProvideLocalUsers.TestSettingsNotConfigured("ROR Test settings are not configured")
-        case _: TestConfig.Present =>
-          TestConfigResponse.ProvideLocalUsers.SuccessResponse(users = List.empty, unknownUsers = false)
-        case _: TestConfig.Invalidated =>
-          TestConfigResponse.ProvideLocalUsers.TestSettingsNotConfigured("ROR Test settings are not configured")
+        case TestEngineRorConfig.Present(config) =>
+          TestConfigResponse.ProvideLocalUsers.SuccessResponse(
+            users = config.localUsers.users.map(_.value.value).toList,
+            unknownUsers = config.localUsers.unknownUsers
+          )
       }
   }
 

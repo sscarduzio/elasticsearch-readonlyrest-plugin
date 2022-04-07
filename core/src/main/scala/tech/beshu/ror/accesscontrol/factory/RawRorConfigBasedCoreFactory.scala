@@ -31,7 +31,9 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.{RuleWithVariableUsageDefinition, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
+import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyHashingRule, AuthKeyPBKDF2WithHmacSHA512Rule, AuthKeyRule, AuthKeySha1Rule, AuthKeySha256Rule, AuthKeySha512Rule, AuthKeyUnixRule, BaseGroupsRule, ExternalAuthenticationRule, ExternalAuthorizationRule, JwtAuthRule, LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule, ProxyAuthRule, RorKbnAuthRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseAuthenticationRule, BaseAuthorizationRule, BaseBasicAuthAuthenticationRule, BaseComposedAuthenticationAndAuthorizationRule, BasicAuthenticationRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.UsernameCaseMapping
@@ -123,7 +125,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
       core <-
       if (!enabled) {
         AsyncDecoderCreator
-          .from(Decoder.const(Core(DisabledAccessControl, RorConfig(RorConfig.Services.empty, None))))
+          .from(Decoder.const(Core(DisabledAccessControl, RorConfig(RorConfig.Services.empty, Seq.empty, Seq.empty, None))))
       } else {
         for {
           globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(
@@ -339,6 +341,8 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
             authorizationServices = authorizationServices.items.map(_.id),
             ldaps = ldapServices.items.map(_.id)
           ),
+          blocks = upgradedBlocks.toList,
+          users = userDefs.items.map(_.usernames),
           auditingSettings = auditingTools,
         )
         val accessControl = new AccessControlList(
