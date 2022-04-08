@@ -56,7 +56,7 @@ class SSLNetty4HttpServerTransport(settings: Settings,
     private var context = Option.empty[SslContext]
 
     doPrivileged {
-      context = Option(SSLCertHelper.prepareSSLContext(ssl, fipsCompliant))
+      context = Option(SSLCertHelper.prepareSSLContext(ssl, fipsCompliant, ssl.clientAuthenticationEnabled))
     }
 
     override def initChannel(ch: Channel): Unit = {

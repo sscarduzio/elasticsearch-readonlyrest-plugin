@@ -19,7 +19,7 @@ package tech.beshu.ror.utils
 import cats.effect.{IO, Resource}
 import cats.implicits._
 import io.netty.buffer.ByteBufAllocator
-import io.netty.handler.ssl.{SslContext, SslContextBuilder}
+import io.netty.handler.ssl.{ClientAuth, SslContext, SslContextBuilder}
 import org.apache.logging.log4j.scala.Logging
 import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
 import tech.beshu.ror.configuration.SslConfiguration
@@ -143,7 +143,7 @@ object SSLCertHelper extends Logging {
       .unsafeRunSync()
   }
 
-  def prepareSSLContext(sslConfiguration: SslConfiguration, fipsCompliant: Boolean): SslContext = {
+  def prepareSSLContext(sslConfiguration: SslConfiguration, fipsCompliant: Boolean, clientAuthenticationEnabled: Boolean): SslContext = {
     SSLCertHelper
       .getKeyManagerFactory(sslConfiguration, fipsCompliant)
       .attempt
@@ -155,7 +155,10 @@ object SSLCertHelper extends Logging {
           if (sslConfiguration.allowedCiphers.nonEmpty) {
             sslCtxBuilder.ciphers(sslConfiguration.allowedCiphers.map(_.value).asJava)
           }
-
+          if (clientAuthenticationEnabled) {
+            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
+            sslCtxBuilder.trustManager(SSLCertHelper.getTrustManagerFactory(sslConfiguration, fipsCompliant))
+          }
           if (sslConfiguration.allowedProtocols.nonEmpty) {
             sslCtxBuilder.protocols(sslConfiguration.allowedProtocols.map(_.value).asJava)
           }
