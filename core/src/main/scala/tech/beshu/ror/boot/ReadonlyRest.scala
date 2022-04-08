@@ -149,7 +149,6 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
     new Engine(
       core = decoratedCore,
-      rorConfig = core.rorConfig,
       httpClientsFactory = httpClientsFactory,
       ldapConnectionPoolProvider,
       auditingTool
@@ -196,7 +195,6 @@ object ReadonlyRest {
   }
 
   final class Engine(val core: Core,
-                     val rorConfig: RorConfig,
                      httpClientsFactory: AsyncHttpClientsFactory,
                      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                      auditingTool: Option[AuditingTool])
