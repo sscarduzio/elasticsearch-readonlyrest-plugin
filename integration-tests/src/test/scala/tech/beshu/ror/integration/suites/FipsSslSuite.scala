@@ -42,6 +42,7 @@ trait FipsSslSuite
       numberOfInstances = 2,
       internodeSslEnabled = true,
       xPackSupport = false,
+      isFipsEnabled = true
     )
   )
 

@@ -58,7 +58,9 @@ trait EsWithSecurityPluginContainerCreator extends EsContainerCreator {
       xPackSupport = clusterSettings.xPackSupport,
       useXpackSecurityInsteadOfRor = clusterSettings.useXpackSecurityInsteadOfRor,
       externalSslEnabled = clusterSettings.externalSslEnabled,
-      forceNonOssImage = clusterSettings.forceNonOssImage)
+      forceNonOssImage = clusterSettings.forceNonOssImage,
+      isFipsEnabled = clusterSettings.isFipsEnabled
+    )
 
     EsWithSecurityPluginContainer.create(
       containerConfig,

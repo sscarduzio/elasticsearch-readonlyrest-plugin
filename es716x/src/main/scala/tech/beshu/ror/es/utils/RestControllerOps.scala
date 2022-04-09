@@ -68,13 +68,13 @@ class RestControllerOps(restController: RestController) {
       val methodHandlers = on(value).get[java.util.Map[RestRequest.Method, RestHandler]]("methodHandlers").asScala.toMap
       val newMethodHandlers = methodHandlers
         .map { case (method, handler) =>
-          println(s"WRAPPED HANDLER CLASS: ${handler.getClass.getName}") // todo: remove
-          if(handler.getClass.getName.startsWith("org.elasticsearch.xpack.security.rest.SecurityRestFilter")) {
-            val underlyingHandler = on(handler).get[RestHandler]("restHandler")
-            (method, restHandlerDecorator(underlyingHandler))
-          } else {
-            (method, handler)
-          }
+          val handlerToDecorate =
+            if (handler.getClass.getName.startsWith("org.elasticsearch.xpack.security.rest.SecurityRestFilter")) {
+              on(handler).get[RestHandler]("restHandler")
+            } else {
+              handler
+            }
+          (method, restHandlerDecorator(handlerToDecorate))
         }
         .asJava
       on(value).set("methodHandlers", newMethodHandlers)

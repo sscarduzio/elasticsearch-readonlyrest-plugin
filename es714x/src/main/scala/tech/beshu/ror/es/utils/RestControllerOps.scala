@@ -16,14 +16,13 @@
  */
 package tech.beshu.ror.es.utils
 
-import java.util.function.UnaryOperator
-
 import org.elasticsearch.common.path.PathTrie
 import org.elasticsearch.rest.{RestController, RestHandler, RestRequest}
 import org.joor.Reflect.on
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.ScalaOps._
 
+import java.util.function.UnaryOperator
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
@@ -68,13 +67,13 @@ class RestControllerOps(restController: RestController) {
       val methodHandlers = on(value).get[java.util.Map[RestRequest.Method, RestHandler]]("methodHandlers").asScala.toMap
       val newMethodHandlers = methodHandlers
         .map { case (method, handler) =>
-          println(s"WRAPPED HANDLER CLASS: ${handler.getClass.getName}") // todo: remove
-          if(handler.getClass.getName.startsWith("org.elasticsearch.xpack.security.rest.SecurityRestFilter")) {
-            val underlyingHandler = on(handler).get[RestHandler]("restHandler")
-            (method, restHandlerDecorator(underlyingHandler))
-          } else {
-            (method, handler)
-          }
+          val handlerToDecorate =
+            if (handler.getClass.getName.startsWith("org.elasticsearch.xpack.security.rest.SecurityRestFilter")) {
+              on(handler).get[RestHandler]("restHandler")
+            } else {
+              handler
+            }
+          (method, restHandlerDecorator(handlerToDecorate))
         }
         .asJava
       on(value).set("methodHandlers", newMethodHandlers)

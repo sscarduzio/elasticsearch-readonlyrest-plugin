@@ -14,7 +14,7 @@ grant {
   permission java.security.SecurityPermission "getProperty.keystore.type.compat";
   permission java.io.FilePermission "/usr/share/elasticsearch/jdk/lib/security/jssecacerts", "read";
   permission java.io.FilePermission "/usr/share/elasticsearch/jdk/lib/security/cacerts", "read";
-  permission java.io.FilePermission "keystore.bcfks", "read";
+  permission java.io.FilePermission "ror-keystore.bcfks", "read";
   permission java.security.SecurityPermission "getProperty.jdk.tls.server.defaultDHEParameters";
   permission org.bouncycastle.crypto.CryptoServicesPermission "defaultRandomConfig";
 };

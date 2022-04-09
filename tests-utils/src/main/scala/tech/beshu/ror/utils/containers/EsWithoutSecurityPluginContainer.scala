@@ -19,6 +19,7 @@ package tech.beshu.ror.utils.containers
 import cats.data.NonEmptyList
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
+import tech.beshu.ror.utils.containers.images.DockerImageCreator
 
 import scala.language.postfixOps
 
@@ -58,9 +59,20 @@ object EsWithoutSecurityPluginContainer extends StrictLogging {
       config.esVersion,
       startedClusterDependencies,
       esClusterSettings,
-      ESWithoutSecurityPluginImage.create(config)
+      esImageFromDockerfile(config)
     )
     EsContainer.init(esContainer, config, initializer, logger)
+  }
+
+  private def esImageFromDockerfile(config: EsWithoutSecurityPluginContainer.Config) = {
+    val esImageWithRor = new images.EsImage
+    DockerImageCreator.create(
+      esImageWithRor.create(images.EsImage.Config(
+        config.esVersion,
+        config.clusterName,
+        config.nodeName, config.nodes
+      ))
+    )
   }
 }
 

@@ -210,4 +210,24 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
       }
     }
   }
+
+  "test" in {
+    assertDecodingSuccess(
+      yaml =
+        """
+          |readonlyrest:
+          |
+          |  access_control_rules:
+          |
+          |  - name: test_block1
+          |    indices: ["1"]
+          |
+          |""".stripMargin,
+      assertion = rule => {
+        val indices: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]] = NonEmptySet.one(AlreadyResolved(clusterIndexName("index1").nel))
+        rule.settings.allowedIndices should be(indices)
+        rule.settings.mustInvolveIndices shouldBe false
+      }
+    )
+  }
 }

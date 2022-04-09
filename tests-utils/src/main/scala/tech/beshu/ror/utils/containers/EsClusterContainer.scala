@@ -119,10 +119,12 @@ final case class EsClusterSettings(name: String,
                                    esVersion: EsVersion = EsVersion.DeclaredInProject,
                                    externalSslEnabled: Boolean = true,
                                    enableXPackSsl: Boolean = false,
-                                   forceNonOssImage: Boolean = false)(implicit val rorConfigFileName: String)
+                                   forceNonOssImage: Boolean = false,
+                                   isFipsEnabled: Boolean = false)
+                                  (implicit val rorConfigFileName: String)
 
 object EsClusterSettings {
-  val basic = EsClusterSettings(name = "ROR_SINGLE", xPackSupport = false)("/basic/readonlyrest.yml")
+  val basic = EsClusterSettings(name = "ROR_SINGLE", xPackSupport = false, isFipsEnabled = false)("/basic/readonlyrest.yml")
 
   trait EsVersion
   object EsVersion {

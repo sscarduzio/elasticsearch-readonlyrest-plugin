@@ -262,7 +262,7 @@ object CirceOps {
   }
 
   object AclCreationErrorCoders {
-    private implicit val config: Configuration = Configuration.default.withDiscriminator("type")
+    private implicit val config: Configuration = Configuration.default.withDiscriminator("type").withStrictDecoding
     implicit val aclCreationErrorEncoder: Encoder[AclCreationError] = {
       implicit val _ = extras.semiauto.deriveConfiguredEncoder[Reason]
       extras.semiauto.deriveConfiguredEncoder

@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.utils.containers
 
-import java.io.File
-
+import better.files._
 import cats.data.NonEmptyList
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
+import tech.beshu.ror.utils.containers.images.{DockerImageCreator, ReadonlyRestPlugin}
 
+import java.io.File
 import scala.language.postfixOps
 
 class EsWithSecurityPluginContainer private(name: String,
@@ -53,20 +54,43 @@ object EsWithSecurityPluginContainer extends StrictLogging {
                           customRorIndexName: Option[String],
                           internodeSslEnabled: Boolean,
                           externalSslEnabled: Boolean,
-                          forceNonOssImage: Boolean) extends EsContainer.Config
+                          forceNonOssImage: Boolean,
+                          isFipsEnabled: Boolean)
+    extends EsContainer.Config
 
   def create(config: EsWithSecurityPluginContainer.Config,
              initializer: ElasticsearchNodeDataInitializer,
              startedClusterDependencies: StartedClusterDependencies,
              esClusterSettings: EsClusterSettings): EsContainer = {
+
     val rorContainer = new EsWithSecurityPluginContainer(
       config.nodeName,
       config.esVersion,
       startedClusterDependencies,
       esClusterSettings,
-      ESWithSecurityPluginImage.create(config),
+      esImageFromDockerfile(config),
       config.externalSslEnabled
     )
     EsContainer.init(rorContainer, config, initializer, logger)
+  }
+
+  private def esImageFromDockerfile(config: EsWithSecurityPluginContainer.Config) = {
+    val esImageWithRor = new images.EsImage with ReadonlyRestPlugin
+    DockerImageCreator.create(
+      esImageWithRor.create(ReadonlyRestPlugin.Config(
+        esConfig = images.EsImage.Config(
+          config.esVersion,
+          config.clusterName,
+          config.nodeName, config.nodes
+        ),
+        rorConfig = config.rorConfigFile.toScala,
+        rorPlugin = config.rorPluginFile.toScala,
+        rorConfigHotReloading = config.configHotReloadingEnabled,
+        rorCustomSettingsIndex = config.customRorIndexName,
+        restSslEnabled = config.externalSslEnabled,
+        internodeSslEnabled = config.internodeSslEnabled,
+        isFipsEnabled = config.isFipsEnabled
+      ))
+    )
   }
 }
