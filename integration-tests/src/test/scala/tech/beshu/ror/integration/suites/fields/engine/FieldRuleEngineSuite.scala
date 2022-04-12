@@ -32,7 +32,6 @@ trait FieldRuleEngineSuite
 
   import FieldRuleEngineSuite.QueriesUsingNotAllowedField._
 
-
   override def nodeDataInitializer = Some(FieldRuleEngineSuite.nodeDataInitializer())
 
   protected def unmodifableQueryAssertion(user: String, query: String): Assertion

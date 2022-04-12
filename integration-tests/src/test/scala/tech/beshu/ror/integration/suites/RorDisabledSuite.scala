@@ -37,8 +37,7 @@ trait RorDisabledSuite
 
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
-      name = "ROR1",
-      xPackSupport = false,
+      name = "ROR1"
     )
   )
 

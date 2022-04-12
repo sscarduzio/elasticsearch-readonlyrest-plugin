@@ -36,7 +36,6 @@ trait ResizeSuite
   private lazy val user1IndexManager = new IndexManager(basicAuthClient("dev1", "test"), esVersionUsed)
   private lazy val user2IndexManager = new IndexManager(basicAuthClient("dev2", "test"), esVersionUsed)
 
-
   override def nodeDataInitializer = Some(ResizeSuite.nodeDataInitializer())
 
   "A resize request" should {

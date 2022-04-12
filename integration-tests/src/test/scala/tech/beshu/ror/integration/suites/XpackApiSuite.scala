@@ -23,6 +23,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.XpackApiSuite.NextRollupJobName
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.RorAttributes
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -45,14 +47,13 @@ trait XpackApiSuite
     EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = XpackApiSuite.nodeDataInitializer(),
-      xPackSupport = true,
-      // todo:
-      externalSslEnabled = false,
-      internodeSslEnabled = false
+      clusterType = ClusterType.RorCluster(RorAttributes.default.copy(
+        restSslEnabled = false
+      ))
     )
   )
 
-  private lazy val adminXpackApiManager = new XpackApiManager(rorAdminClient, esVersionUsed)
+  private lazy val adminXpackApiManager = new XpackApiManager(adminClient, esVersionUsed)
   private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"))
   private lazy val dev2SearchManager = new SearchManager(basicAuthClient("dev2", "test"))
   private lazy val dev3XpackApiManager = new XpackApiManager(basicAuthClient("dev3", "test"), esVersionUsed)

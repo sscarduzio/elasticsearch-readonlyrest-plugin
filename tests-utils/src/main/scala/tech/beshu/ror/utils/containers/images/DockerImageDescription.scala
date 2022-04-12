@@ -35,6 +35,11 @@ final case class DockerImageDescription(baseImage: String,
     else this
   }
 
+  def runWhen(condition: Boolean, command: => String, orElseCommand: => String): DockerImageDescription = {
+    if (condition) run(command)
+    else run(orElseCommand)
+  }
+
   def user(name: String): DockerImageDescription = {
     this.copy(runCommands = this.runCommands :+ Command.ChangeUser(name))
   }
@@ -45,6 +50,10 @@ final case class DockerImageDescription(baseImage: String,
 
   def addEnv(name: String, value: String): DockerImageDescription = {
     this.copy(envs = this.envs + Env(name, value))
+  }
+
+  def addEnvs(envs: Map[String, String]): DockerImageDescription = {
+    this.copy(envs = this.envs ++ envs.map { case (k, v) => Env(k, v) })
   }
 
   def setEntrypoint(entrypoint: Path): DockerImageDescription = {

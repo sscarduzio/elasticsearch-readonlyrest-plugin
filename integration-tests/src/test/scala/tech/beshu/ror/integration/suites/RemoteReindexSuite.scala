@@ -22,8 +22,9 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsClusterSettings.EsVersion
+import tech.beshu.ror.utils.containers.EsClusterSettings.{ClusterType, EsVersion}
 import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.RorAttributes
 import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -44,21 +45,22 @@ trait RemoteReindexSuite
     EsClusterSettings(
       name = "ROR_SOURCE_ES",
       nodeDataInitializer = RemoteReindexSuite.sourceEsDataInitializer(),
-      xPackSupport = false,
       esVersion = EsVersion.SpecificVersion("es60x"),
-      externalSslEnabled = false
+      clusterType = ClusterType.RorCluster(RorAttributes.default.copy(
+        restSslEnabled = false
+      ))
     )(sourceEsRorConfigFileName)
   )
 
   private lazy val destEsCluster = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR_DEST_ES",
-      rorContainerSpecification = ContainerSpecification(
-        Map(
-          "reindex.remote.whitelist" -> "*:9200"
-        )),
-      xPackSupport = false,
-      externalSslEnabled = false
+      containerSpecification = ContainerSpecification(
+        Map("reindex.remote.whitelist" -> "*:9200")
+      ),
+      clusterType = ClusterType.RorCluster(RorAttributes.default.copy(
+        restSslEnabled = false
+      ))
     )(rorConfigFileName)
   )
 

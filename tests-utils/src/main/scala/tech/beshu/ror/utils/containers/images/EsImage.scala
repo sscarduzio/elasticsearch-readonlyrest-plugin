@@ -29,7 +29,8 @@ object EsImage {
   final case class Config(esVersion: String,
                           clusterName: String,
                           nodeName: String,
-                          nodes: NonEmptyList[String])
+                          nodes: NonEmptyList[String],
+                          envs: Map[String, String])
 }
 class EsImage extends LazyLogging {
 
@@ -55,7 +56,7 @@ class EsImage extends LazyLogging {
       )
       .user("root")
       .run(s"chown -R elasticsearch:elasticsearch ${configDir.toString()}")
-      .addEnv("ES_JAVA_OPTS", javaOptsBasedOn(config, withEsJavaOptsBuilder))
+      .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(config, withEsJavaOptsBuilder)))
   }
 
   private def esConfigFileBasedOn(config: Config,

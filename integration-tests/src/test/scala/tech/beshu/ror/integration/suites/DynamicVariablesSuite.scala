@@ -39,9 +39,8 @@ trait DynamicVariablesSuite
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
-      rorContainerSpecification = ContainerSpecification(Map("TEST_VAR" -> "dev")),
-      nodeDataInitializer = DynamicVariablesSuite.nodeDataInitializer(),
-      xPackSupport = false,
+      containerSpecification = ContainerSpecification(Map("TEST_VAR" -> "dev")),
+      nodeDataInitializer = DynamicVariablesSuite.nodeDataInitializer()
     )
   )
 

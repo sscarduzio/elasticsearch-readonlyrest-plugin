@@ -40,7 +40,7 @@ trait BaseAuditingToolsSuite
 
   protected def destNodeClientProvider: ClientProvider
 
-  private lazy val adminAuditIndexManager = new AuditIndexManager(destNodeClientProvider.rorAdminClient, esVersionUsed, "audit_index")
+  private lazy val adminAuditIndexManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, "audit_index")
 
   override def beforeEach(): Unit = {
     super.beforeEach()
@@ -233,7 +233,7 @@ trait BaseAuditingToolsSuite
     }
     "not be audited" when {
       "admin rule is matched" in {
-        val rorApiManager = new RorApiManager(rorAdminClient, esVersionUsed)
+        val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
 
         val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }"""))
         response.responseCode shouldBe 204

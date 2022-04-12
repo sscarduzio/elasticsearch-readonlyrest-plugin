@@ -45,7 +45,7 @@ trait MSearchWithFilterSuite
     """{"query" : {"match_all" : {}}}"""
   )
 
-  private lazy val adminSearchManager = new SearchManager(rorAdminClient)
+  private lazy val adminSearchManager = new SearchManager(adminClient)
   private lazy val user1SearchManager = new SearchManager(basicAuthClient("test1", "dev"))
   private lazy val user2SearchManager = new SearchManager(basicAuthClient("test2", "dev"))
 

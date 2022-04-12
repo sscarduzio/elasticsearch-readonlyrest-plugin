@@ -36,7 +36,7 @@ trait EsClusterProvider {
   def createLocalClusterContainers(nodesData: NonEmptyList[ClusterNodeData]): EsClusterContainer = {
     val nodeNames = nodesData.map(_.name)
     new EsClusterContainer(
-      nodesData.head.settings.rorContainerSpecification,
+      nodesData.head.settings.containerSpecification,
       nodesData.map(createNode(nodeNames, _)),
       nodesData.head.settings.dependentServicesContainers
     )

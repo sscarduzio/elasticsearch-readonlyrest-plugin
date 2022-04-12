@@ -21,7 +21,8 @@ import com.dimafeng.testcontainers.{Container, SingleContainer}
 import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.GenericContainer
-import tech.beshu.ror.utils.containers.EsClusterSettings.EsVersion
+import tech.beshu.ror.utils.containers.EsClusterSettings.{ClusterType, EsVersion}
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.RorAttributes
 import tech.beshu.ror.utils.elasticsearch.ClusterManager
 
 import scala.language.existentials
@@ -87,7 +88,7 @@ class EsRemoteClustersContainer private[containers](val localCluster: EsClusterC
 
   private def remoteClustersInitializer(container: EsClusterContainer,
                                         remoteClustersConfig: Map[String, EsClusterContainer]): Unit = {
-    val clusterManager = new ClusterManager(container.nodes.head.rorAdminClient, esVersion = container.nodes.head.esVersion)
+    val clusterManager = new ClusterManager(container.nodes.head.adminClient, esVersion = container.nodes.head.esVersion)
     val result = clusterManager.configureRemoteClusters(
       remoteClustersConfig.mapValues(_.nodes.map(c => s""""${c.name}:9300""""))
     )
@@ -109,27 +110,26 @@ trait SetupRemoteCluster {
 final case class EsClusterSettings(name: String,
                                    numberOfInstances: Int = 1,
                                    nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-                                   rorContainerSpecification: ContainerSpecification = ContainerSpecification(Map.empty),
+                                   containerSpecification: ContainerSpecification = ContainerSpecification(Map.empty),
                                    dependentServicesContainers: List[DependencyDef] = Nil,
-                                   xPackSupport: Boolean,
-                                   useXpackSecurityInsteadOfRor: Boolean = false,
-                                   configHotReloadingEnabled: Boolean = false,
-                                   customRorIndexName: Option[String] = None,
-                                   internodeSslEnabled: Boolean = false,
                                    esVersion: EsVersion = EsVersion.DeclaredInProject,
-                                   externalSslEnabled: Boolean = true,
-                                   enableXPackSsl: Boolean = false,
-                                   forceNonOssImage: Boolean = false,
-                                   isFipsEnabled: Boolean = false)
+                                   clusterType: ClusterType = ClusterType.RorCluster(RorAttributes.default))
                                   (implicit val rorConfigFileName: String)
 
 object EsClusterSettings {
-  val basic = EsClusterSettings(name = "ROR_SINGLE", xPackSupport = false, isFipsEnabled = false)("/basic/readonlyrest.yml")
+  val basic: EsClusterSettings = EsClusterSettings(name = "ROR_SINGLE")("/basic/readonlyrest.yml")
 
   trait EsVersion
   object EsVersion {
     case object DeclaredInProject extends EsVersion
     final case class SpecificVersion(moduleName: String) extends EsVersion
+  }
+
+  sealed trait ClusterType
+  object ClusterType {
+    final case class RorCluster(attributes: RorAttributes) extends ClusterType
+    case object XPackCluster extends ClusterType
+    case object EsWithNoSecurityCluster extends ClusterType
   }
 }
 

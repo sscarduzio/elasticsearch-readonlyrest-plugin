@@ -17,17 +17,30 @@
 package tech.beshu.ror.utils.containers.images
 
 import better.files._
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.RorAttributes
 import tech.beshu.ror.utils.misc.Version
 
 object ReadonlyRestPlugin {
   final case class Config(esConfig: EsImage.Config,
                           rorConfig: File,
                           rorPlugin: File,
-                          rorConfigHotReloading: Boolean,
-                          rorCustomSettingsIndex: Option[String],
-                          restSslEnabled: Boolean,
-                          internodeSslEnabled: Boolean,
-                          isFipsEnabled: Boolean)
+                          rorAttributes: RorAttributes)
+  object Config {
+    final case class RorAttributes(hotReloading: Boolean,
+                                   customSettingsIndex: Option[String],
+                                   restSslEnabled: Boolean,
+                                   internodeSslEnabled: Boolean,
+                                   isFipsEnabled: Boolean)
+    object RorAttributes {
+      val default: RorAttributes = RorAttributes(
+        hotReloading = true,
+        customSettingsIndex = None,
+        restSslEnabled = true,
+        internodeSslEnabled = false,
+        isFipsEnabled = false
+      )
+    }
+  }
 }
 trait ReadonlyRestPlugin extends EsImage {
   this: EsImage =>
@@ -42,6 +55,7 @@ trait ReadonlyRestPlugin extends EsImage {
       .copyFile(configDir / "readonlyrest.yml", config.rorConfig)
       .copyFile(configDir / "ror-keystore.jks", fromResourceBy(name = "ror-keystore.jks"))
       .copyFile(configDir / "ror-truststore.jks", fromResourceBy(name = "ror-truststore.jks"))
+      .copyFile(configDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
       .updateFipsDependencies(config)
       .user("elasticsearch")
       .installRorPlugin(config)
@@ -49,24 +63,24 @@ trait ReadonlyRestPlugin extends EsImage {
 
   private def updateEsConfig(config: ReadonlyRestPlugin.Config): EsConfigBuilder => EsConfigBuilder = builder => {
     builder
-      .addWhen(!config.rorConfigHotReloading, "readonlyrest.force_load_from_file: true")
-      .addWhen(config.rorCustomSettingsIndex.isDefined, s"readonlyrest.settings_index: ${config.rorCustomSettingsIndex.get}")
+      .addWhen(!config.rorAttributes.hotReloading, "readonlyrest.force_load_from_file: true")
+      .addWhen(config.rorAttributes.customSettingsIndex.isDefined, s"readonlyrest.settings_index: ${config.rorAttributes.customSettingsIndex.get}")
       .add("xpack.security.enabled: false")
-      .addWhen(config.restSslEnabled, "http.type: ssl_netty4")
-      .addWhen(config.internodeSslEnabled, "transport.type: ror_ssl_internode")
+      .addWhen(config.rorAttributes.restSslEnabled, "http.type: ssl_netty4")
+      .addWhen(config.rorAttributes.internodeSslEnabled, "transport.type: ror_ssl_internode")
   }
 
   private def updatesJavaOpts(config: ReadonlyRestPlugin.Config): EsJavaOptsBuilder => EsJavaOptsBuilder = builder => {
     builder
       .add(unboundidDebug(false))
-      .add(rorHotReloading(config.rorConfigHotReloading))
+      .add(rorHotReloading(config.rorAttributes.hotReloading))
   }
 
   private def unboundidDebug(enabled: Boolean) =
-    s"-Dcom.unboundid.ldap.sdk.debug.enabled=${if(enabled) true else false}"
+    s"-Dcom.unboundid.ldap.sdk.debug.enabled=${if (enabled) true else false}"
 
   private def rorHotReloading(enabled: Boolean) =
-    if(!enabled) "-Dcom.readonlyrest.settings.refresh.interval=0" else ""
+    if (!enabled) "-Dcom.readonlyrest.settings.refresh.interval=0" else ""
 
   private implicit class InstallRorPlugin(val image: DockerImageDescription) {
     def installRorPlugin(config: ReadonlyRestPlugin.Config): DockerImageDescription = {
@@ -80,7 +94,7 @@ trait ReadonlyRestPlugin extends EsImage {
 
   private implicit class UpdateFipsDependencies(val image: DockerImageDescription) {
     def updateFipsDependencies(config: ReadonlyRestPlugin.Config): DockerImageDescription = {
-      if(!config.isFipsEnabled) image
+      if (!config.rorAttributes.isFipsEnabled) image
       else {
         image
           .copyFile(configDir / "additional-permissions.policy", fromResourceBy(name = "additional-permissions.policy"))
