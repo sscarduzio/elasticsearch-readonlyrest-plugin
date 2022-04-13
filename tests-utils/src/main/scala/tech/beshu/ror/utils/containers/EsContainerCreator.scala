@@ -22,8 +22,7 @@ import com.dimafeng.testcontainers.SingleContainer
 import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.EsClusterSettings.{ClusterType, EsVersion}
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.RorAttributes
-import tech.beshu.ror.utils.containers.images.{EsImage, ReadonlyRestPlugin}
+import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestWithEnabledXpackSecurityPlugin, ReadonlyRestPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
 import java.io.File
@@ -40,20 +39,56 @@ trait EsContainerCreator {
       case EsVersion.SpecificVersion(version) => RorPluginGradleProject.customModule(version)
     }
     clusterSettings.clusterType match {
+      case ClusterType.RorWithXpackSecurityCluster(attributes) =>
+        createEsWithRorAndXpackSecurityContainer(name, nodeNames, project, clusterSettings, attributes, startedClusterDependencies)
       case ClusterType.RorCluster(attributes) =>
         createEsWithRorContainer(name, nodeNames, project, clusterSettings, attributes, startedClusterDependencies)
-      case ClusterType.XPackCluster =>
-        createEsWithXpackContainer(name, nodeNames, project, clusterSettings, startedClusterDependencies)
+      case ClusterType.XPackSecurityCluster(attributes) =>
+        createEsWithXpackContainer(name, nodeNames, project, clusterSettings, attributes, startedClusterDependencies)
       case ClusterType.EsWithNoSecurityCluster =>
         createEsWithNoSecurityContainer(name, nodeNames, project, clusterSettings, startedClusterDependencies)
     }
+  }
+
+  private def createEsWithRorAndXpackSecurityContainer(name: String,
+                                                       nodeNames: NonEmptyList[String],
+                                                       project: RorPluginGradleProject,
+                                                       clusterSettings: EsClusterSettings,
+                                                       attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes,
+                                                       startedClusterDependencies: StartedClusterDependencies) = {
+    val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
+    val rawRorConfigFile = ContainerUtils.getResourceFile(clusterSettings.rorConfigFileName)
+
+    val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
+      source = rawRorConfigFile.toScala,
+      startedDependencies = startedClusterDependencies,
+      mode = RorConfigAdjuster.Mode.Plugin
+    )
+
+    EsContainerWithRorAndXpackSecurity.create(
+      esVersion = project.getESVersion,
+      esConfig = Elasticsearch.Config(
+        clusterName = clusterSettings.name,
+        nodeName = name,
+        nodes = nodeNames,
+        envs = clusterSettings.containerSpecification.environmentVariables
+      ),
+      securityConfig = ReadonlyRestWithEnabledXpackSecurityPlugin.Config(
+        rorPlugin = rorPluginFile.toScala,
+        rorConfig = adjustedRorConfig,
+        attributes = attributes
+      ),
+      initializer = clusterSettings.nodeDataInitializer,
+      startedClusterDependencies = startedClusterDependencies,
+      esClusterSettings = clusterSettings
+    )
   }
 
   private def createEsWithRorContainer(name: String,
                                        nodeNames: NonEmptyList[String],
                                        project: RorPluginGradleProject,
                                        clusterSettings: EsClusterSettings,
-                                       rorAttributes: RorAttributes,
+                                       attributes: ReadonlyRestPlugin.Config.Attributes,
                                        startedClusterDependencies: StartedClusterDependencies) = {
     val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
     val rawRorConfigFile = ContainerUtils.getResourceFile(clusterSettings.rorConfigFileName)
@@ -65,17 +100,17 @@ trait EsContainerCreator {
     )
 
     EsContainerWithRorSecurity.create(
-      config = ReadonlyRestPlugin.Config(
-        esConfig = EsImage.Config(
-          esVersion = project.getESVersion,
-          clusterName = clusterSettings.name,
-          nodeName = name,
-          nodes = nodeNames,
-          envs = clusterSettings.containerSpecification.environmentVariables
-        ),
+      esVersion = project.getESVersion,
+      esConfig = Elasticsearch.Config(
+        clusterName = clusterSettings.name,
+        nodeName = name,
+        nodes = nodeNames,
+        envs = clusterSettings.containerSpecification.environmentVariables
+      ),
+      rorConfig = ReadonlyRestPlugin.Config(
         rorPlugin = rorPluginFile.toScala,
         rorConfig = adjustedRorConfig,
-        rorAttributes = rorAttributes
+        attributes = attributes
       ),
       initializer = clusterSettings.nodeDataInitializer,
       startedClusterDependencies = startedClusterDependencies,
@@ -87,15 +122,17 @@ trait EsContainerCreator {
                                          nodeNames: NonEmptyList[String],
                                          project: RorPluginGradleProject,
                                          clusterSettings: EsClusterSettings,
+                                         attributes: XpackSecurityPlugin.Config.Attributes,
                                          startedClusterDependencies: StartedClusterDependencies) = {
     EsContainerWithXpackSecurity.create(
-      config = EsImage.Config(
-        esVersion = project.getESVersion,
+      esVersion = project.getESVersion,
+      esConfig = Elasticsearch.Config(
         clusterName = clusterSettings.name,
         nodeName = name,
         nodes = nodeNames,
         envs = clusterSettings.containerSpecification.environmentVariables
       ),
+      xpackSecurityConfig = XpackSecurityPlugin.Config(attributes),
       initializer = clusterSettings.nodeDataInitializer,
       startedClusterDependencies = startedClusterDependencies,
       esClusterSettings = clusterSettings
@@ -108,16 +145,16 @@ trait EsContainerCreator {
                                               clusterSettings: EsClusterSettings,
                                               startedClusterDependencies: StartedClusterDependencies) = {
     EsContainerWithNoSecurity.create(
-      EsImage.Config(
-        esVersion = project.getESVersion,
+      esVersion = project.getESVersion,
+      esConfig = Elasticsearch.Config(
         clusterName = clusterSettings.name,
         nodeName = name,
         nodes = nodeNames,
         envs = clusterSettings.containerSpecification.environmentVariables
       ),
-      clusterSettings.nodeDataInitializer,
-      startedClusterDependencies,
-      clusterSettings
+      initializer = clusterSettings.nodeDataInitializer,
+      startedClusterDependencies = startedClusterDependencies,
+      esClusterSettings = clusterSettings
     )
   }
 }

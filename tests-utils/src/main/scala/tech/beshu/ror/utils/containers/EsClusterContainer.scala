@@ -22,7 +22,7 @@ import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.EsClusterSettings.{ClusterType, EsVersion}
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.RorAttributes
+import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.ClusterManager
 
 import scala.language.existentials
@@ -113,7 +113,9 @@ final case class EsClusterSettings(name: String,
                                    containerSpecification: ContainerSpecification = ContainerSpecification(Map.empty),
                                    dependentServicesContainers: List[DependencyDef] = Nil,
                                    esVersion: EsVersion = EsVersion.DeclaredInProject,
-                                   clusterType: ClusterType = ClusterType.RorCluster(RorAttributes.default))
+                                   clusterType: ClusterType = ClusterType.RorWithXpackSecurityCluster(
+                                     ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default
+                                   ))
                                   (implicit val rorConfigFileName: String)
 
 object EsClusterSettings {
@@ -127,8 +129,9 @@ object EsClusterSettings {
 
   sealed trait ClusterType
   object ClusterType {
-    final case class RorCluster(attributes: RorAttributes) extends ClusterType
-    case object XPackCluster extends ClusterType
+    final case class RorWithXpackSecurityCluster(attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes) extends ClusterType
+    final case class RorCluster(attributes: ReadonlyRestPlugin.Config.Attributes) extends ClusterType
+    final case class XPackSecurityCluster(attributes: XpackSecurityPlugin.Config.Attributes) extends ClusterType
     case object EsWithNoSecurityCluster extends ClusterType
   }
 }

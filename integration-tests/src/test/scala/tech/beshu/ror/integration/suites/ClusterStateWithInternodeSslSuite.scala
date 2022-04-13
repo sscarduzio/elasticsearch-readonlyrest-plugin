@@ -21,9 +21,9 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.{RorCluster, XPackCluster}
+import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.{RorCluster, XPackSecurityCluster}
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.RorAttributes
+import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, IndexManager, RorApiManager}
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
@@ -48,7 +48,7 @@ trait ClusterStateWithInternodeSslSuite
         EsClusterSettings(
           name = "ROR1",
           numberOfInstances = 3,
-          clusterType = RorCluster(RorAttributes.default.copy(
+          clusterType = RorCluster(ReadonlyRestPlugin.Config.Attributes.default.copy(
             internodeSslEnabled = true
           ))
         )
@@ -57,14 +57,16 @@ trait ClusterStateWithInternodeSslSuite
       NonEmptyList.of(
         EsClusterSettings(
           name = "xpack_cluster",
-          clusterType = RorCluster(RorAttributes.default.copy(
+          clusterType = RorCluster(ReadonlyRestPlugin.Config.Attributes.default.copy(
             internodeSslEnabled = true
           ))
         ),
         EsClusterSettings(
           name = "xpack_cluster",
           numberOfInstances = 2,
-          clusterType = XPackCluster
+          clusterType = XPackSecurityCluster(XpackSecurityPlugin.Config.Attributes.default.copy(
+            internodeSslEnabled = true
+          ))
         )
       )
     }

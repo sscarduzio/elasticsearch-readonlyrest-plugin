@@ -21,34 +21,54 @@ import cats.data.NonEmptyList
 import com.typesafe.scalalogging.LazyLogging
 import os.Path
 import tech.beshu.ror.utils.containers.ContainerUtils
-import tech.beshu.ror.utils.containers.images.EsImage._
+import tech.beshu.ror.utils.containers.images.Elasticsearch._
 import tech.beshu.ror.utils.misc.Version
 
-object EsImage {
+object Elasticsearch {
 
-  final case class Config(esVersion: String,
-                          clusterName: String,
+  final case class Config(clusterName: String,
                           nodeName: String,
                           nodes: NonEmptyList[String],
                           envs: Map[String, String])
-}
-class EsImage extends LazyLogging {
 
-  protected lazy val esDir: Path = os.root / "usr" / "share" / "elasticsearch"
-  protected lazy val configDir: Path = esDir / "config"
+  lazy val esDir: Path = os.root / "usr" / "share" / "elasticsearch"
+  lazy val configDir: Path = esDir / "config"
 
-  def create(config: Config): DockerImageDescription = {
-    create(config, identity, identity)
+  trait Plugin {
+    def updateEsImage(image: DockerImageDescription): DockerImageDescription
+    def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder
+    def updateEsJavaOptsBuilder(builder: EsJavaOptsBuilder): EsJavaOptsBuilder
   }
 
-  private[images] def create(config: Config,
-                             withEsConfigBuilder: EsConfigBuilder => EsConfigBuilder,
-                             withEsJavaOptsBuilder: EsJavaOptsBuilder => EsJavaOptsBuilder): DockerImageDescription = {
+  private [images] def fromResourceBy(name: String): File = {
+    scala.util.Try(ContainerUtils.getResourceFile(s"/$name"))
+      .map(_.toScala)
+      .get
+  }
+
+  def create(esVersion: String, config: Config): Elasticsearch = {
+    new Elasticsearch(esVersion, config)
+  }
+}
+class Elasticsearch(esVersion: String,
+                    config: Config,
+                    plugins: Seq[Plugin])
+  extends LazyLogging {
+
+  def this(esVersion: String, config: Config) {
+    this(esVersion, config, Seq.empty)
+  }
+
+  def install(plugin: Plugin): Elasticsearch = {
+    new Elasticsearch(esVersion, config, plugins :+ plugin)
+  }
+
+  def toDockerImageDescription: DockerImageDescription = {
     DockerImageDescription
-      .create(image = s"docker.elastic.co/elasticsearch/elasticsearch:${config.esVersion}")
+      .create(image = s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion")
       .copyFile(
         destination = configDir / "elasticsearch.yml",
-        file = esConfigFileBasedOn(config, withEsConfigBuilder)
+        file = esConfigFileBasedOn(config, updateEsConfigBuilderFromPlugins)
       )
       .copyFile(
         destination = configDir / "log4j2.properties",
@@ -56,7 +76,29 @@ class EsImage extends LazyLogging {
       )
       .user("root")
       .run(s"chown -R elasticsearch:elasticsearch ${configDir.toString()}")
-      .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(config, withEsJavaOptsBuilder)))
+      .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(config, withEsJavaOptsBuilderFromPlugins)))
+      .installPlugins()
+  }
+
+  private implicit class InstallPlugins(val image: DockerImageDescription) {
+    def installPlugins(): DockerImageDescription = {
+      plugins
+        .foldLeft(image) {
+          case (currentImage, plugin) => plugin.updateEsImage(currentImage)
+        }
+    }
+  }
+
+  private def updateEsConfigBuilderFromPlugins(builder: EsConfigBuilder) = {
+    plugins
+      .map(p => p.updateEsConfigBuilder(_))
+      .foldLeft(builder) { case (currentBuilder, update) => update(currentBuilder) }
+  }
+
+  private def withEsJavaOptsBuilderFromPlugins(builder: EsJavaOptsBuilder) = {
+    plugins
+      .map(p => p.updateEsJavaOptsBuilder(_))
+      .foldLeft(builder) { case (currentBuilder, update) => update(currentBuilder) }
   }
 
   private def esConfigFileBasedOn(config: Config,
@@ -78,28 +120,28 @@ class EsImage extends LazyLogging {
       .add("network.host: 0.0.0.0")
       .add("path.repo: /tmp")
       .add("cluster.routing.allocation.disk.threshold_enabled: false")
-      .addWhen(Version.greaterOrEqualThan(config.esVersion, 7, 6, 0),
+      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 6, 0),
         entry = "indices.lifecycle.history_index_enabled: false"
       )
-      .addWhen(Version.greaterOrEqualThan(config.esVersion, 7, 0, 0),
+      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
         entry = s"discovery.seed_hosts: ${config.nodes.toList.mkString(",")}",
         orElseEntry = s"discovery.zen.ping.unicast.hosts: ${config.nodes.toList.mkString(",")}"
       )
-      .addWhen(Version.greaterOrEqualThan(config.esVersion, 7, 0, 0),
+      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
         entry = s"cluster.initial_master_nodes: ${config.nodes.toList.mkString(",")}",
         orElseEntry = s"node.master: true"
       )
-      .addWhen(Version.greaterOrEqualThan(config.esVersion, 7, 14, 0),
+      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 14, 0),
         entry = s"ingest.geoip.downloader.enabled: false"
       )
-      .addWhen(Version.greaterOrEqualThan(config.esVersion, 8, 0, 0),
+      .addWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0),
         entry = s"action.destructive_requires_name: false"
       )
   }
 
   private def log4jFileNameBaseOn(config: Config) = {
     fromResourceBy(
-      name = if (Version.greaterOrEqualThan(config.esVersion, 7, 10, 0)) "log4j2_es_7.10_and_newer.properties"
+      name = if (Version.greaterOrEqualThan(esVersion, 7, 10, 0)) "log4j2_es_7.10_and_newer.properties"
       else "log4j2_es_before_7.10.properties"
     )
   }
@@ -117,17 +159,11 @@ class EsImage extends LazyLogging {
       .add("-Xms1g")
       .add("-Xmx1g")
       .add("-Djava.security.egd=file:/dev/./urandoms")
-      .add("-Xdebug", s"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${xDebugAddressBasedOn(config.esVersion)}")
+      .add("-Xdebug", s"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${xDebugAddressBasedOn(esVersion)}")
   }
 
   private def xDebugAddressBasedOn(esVersion: String) = {
     if (Version.greaterOrEqualThan(esVersion, 6, 3, 0)) "*:8000" else "8000"
-  }
-
-  protected def fromResourceBy(name: String): File = {
-    scala.util.Try(ContainerUtils.getResourceFile(s"/$name"))
-      .map(_.toScala)
-      .get
   }
 }
 
@@ -135,6 +171,10 @@ final case class EsConfigBuilder(entries: Seq[String]) {
 
   def add(entry: String): EsConfigBuilder = {
     this.copy(entries = this.entries :+ entry)
+  }
+
+  def remove(entry: String): EsConfigBuilder = {
+    this.copy(entries = this.entries.filterNot(_ == entry))
   }
 
   def addWhen(condition: Boolean, entry: => String): EsConfigBuilder = {

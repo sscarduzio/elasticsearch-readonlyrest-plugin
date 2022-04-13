@@ -24,7 +24,7 @@ import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegra
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsClusterSettings.{ClusterType, EsVersion}
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.RorAttributes
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -46,7 +46,7 @@ trait RemoteReindexSuite
       name = "ROR_SOURCE_ES",
       nodeDataInitializer = RemoteReindexSuite.sourceEsDataInitializer(),
       esVersion = EsVersion.SpecificVersion("es60x"),
-      clusterType = ClusterType.RorCluster(RorAttributes.default.copy(
+      clusterType = ClusterType.RorCluster(Attributes.default.copy(
         restSslEnabled = false
       ))
     )(sourceEsRorConfigFileName)
@@ -58,7 +58,7 @@ trait RemoteReindexSuite
       containerSpecification = ContainerSpecification(
         Map("reindex.remote.whitelist" -> "*:9200")
       ),
-      clusterType = ClusterType.RorCluster(RorAttributes.default.copy(
+      clusterType = ClusterType.RorCluster(Attributes.default.copy(
         restSslEnabled = false
       ))
     )(rorConfigFileName)

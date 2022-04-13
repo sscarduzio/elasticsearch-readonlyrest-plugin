@@ -18,7 +18,7 @@ package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
-import tech.beshu.ror.utils.containers.images.DockerImageCreator
+import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 import scala.language.postfixOps
@@ -40,24 +40,27 @@ class EsContainerWithNoSecurity(name: String,
 
 object EsContainerWithNoSecurity extends StrictLogging {
 
-  def create(config: images.EsImage.Config,
+  def create(esVersion: String,
+             esConfig: Elasticsearch.Config,
              initializer: ElasticsearchNodeDataInitializer,
              startedClusterDependencies: StartedClusterDependencies,
              esClusterSettings: EsClusterSettings): EsContainer = {
     val esContainer = new EsContainerWithNoSecurity(
-      config.nodeName,
-      config.esVersion,
+      esConfig.nodeName,
+      esVersion,
       startedClusterDependencies,
       esClusterSettings,
-      esImageFromDockerfile(config)
+      esImageFromDockerfile(esVersion, esConfig)
     )
     EsContainer.init(esContainer, initializer, logger)
   }
 
-  private def esImageFromDockerfile(config: images.EsImage.Config) = {
-    val esImageWithRor = new images.EsImage
+  private def esImageFromDockerfile(esVersion: String,
+                                    esConfig: Elasticsearch.Config) = {
     DockerImageCreator.create(
-      esImageWithRor.create(config)
+      Elasticsearch
+        .create(esVersion, esConfig)
+        .toDockerImageDescription
     )
   }
 }

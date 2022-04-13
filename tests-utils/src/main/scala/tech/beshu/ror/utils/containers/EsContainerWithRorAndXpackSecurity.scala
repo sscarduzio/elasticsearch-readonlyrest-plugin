@@ -18,21 +18,22 @@ package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
-import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch, ReadonlyRestPlugin}
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Enabled
+import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 import scala.language.postfixOps
 
-class EsContainerWithRorSecurity private(name: String,
-                                         esVersion: String,
-                                         startedClusterDependencies: StartedClusterDependencies,
-                                         esClusterSettings: EsClusterSettings,
-                                         image: ImageFromDockerfile,
-                                         override val sslEnabled: Boolean)
+class EsContainerWithRorAndXpackSecurity private(name: String,
+                                                 esVersion: String,
+                                                 startedClusterDependencies: StartedClusterDependencies,
+                                                 esClusterSettings: EsClusterSettings,
+                                                 image: ImageFromDockerfile,
+                                                 override val sslEnabled: Boolean)
   extends EsContainer(name, esVersion, startedClusterDependencies, esClusterSettings, image)
     with StrictLogging {
 
-  logger.info(s"[$name] Creating ES with ROR plugin installed container ...")
+  logger.info(s"[$name] Creating ES with ROR and X-Pack plugin installed container ...")
 
   override lazy val adminClient: RestClient = {
     import EsContainerWithRorSecurity.rorAdminCredentials
@@ -40,33 +41,34 @@ class EsContainerWithRorSecurity private(name: String,
   }
 }
 
-object EsContainerWithRorSecurity extends StrictLogging {
-
-  val rorAdminCredentials: (String, String) = ("admin", "container")
+object EsContainerWithRorAndXpackSecurity extends StrictLogging {
 
   def create(esVersion: String,
              esConfig: Elasticsearch.Config,
-             rorConfig: ReadonlyRestPlugin.Config,
+             securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
              initializer: ElasticsearchNodeDataInitializer,
              startedClusterDependencies: StartedClusterDependencies,
              esClusterSettings: EsClusterSettings): EsContainer = {
-    val rorContainer = new EsContainerWithRorSecurity(
+    val rorContainer = new EsContainerWithRorAndXpackSecurity(
       esConfig.nodeName,
       esVersion,
       startedClusterDependencies,
       esClusterSettings,
-      esImageWithRorFromDockerfile(esVersion, esConfig, rorConfig),
-      rorConfig.attributes.restSslEnabled
+      esImageWithRorAndXpackFromDockerfile(esVersion, esConfig, securityConfig),
+      securityConfig.attributes.restSsl match {
+        case Enabled.Yes(_) => true
+        case Enabled.No => false
+      }
     )
     EsContainer.init(rorContainer, initializer, logger)
   }
 
-  private def esImageWithRorFromDockerfile(esVersion: String,
-                                           esConfig: Elasticsearch.Config,
-                                           rorConfig: ReadonlyRestPlugin.Config) = {
+  private def esImageWithRorAndXpackFromDockerfile(esVersion: String,
+                                                   esConfig: Elasticsearch.Config,
+                                                   securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config) = {
     DockerImageCreator.create(
       Elasticsearch.create(esVersion, esConfig)
-        .install(new ReadonlyRestPlugin(esVersion, rorConfig))
+        .install(new ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion, securityConfig))
         .toDockerImageDescription
     )
   }

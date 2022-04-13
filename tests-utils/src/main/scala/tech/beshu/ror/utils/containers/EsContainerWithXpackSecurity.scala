@@ -19,7 +19,7 @@ package tech.beshu.ror.utils.containers
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
 import tech.beshu.ror.utils.containers.EsContainerWithXpackSecurity.xpackAdminCredentials
-import tech.beshu.ror.utils.containers.images.{DockerImageCreator, EsImage, EsImageWithXpack}
+import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch, XpackSecurityPlugin}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 import scala.language.postfixOps
@@ -36,33 +36,38 @@ class EsContainerWithXpackSecurity private(name: String,
 
   override val sslEnabled: Boolean = false
 
-  override lazy val adminClient: RestClient =  basicAuthClient(xpackAdminCredentials._1, xpackAdminCredentials._2)
+  override lazy val adminClient: RestClient = basicAuthClient(xpackAdminCredentials._1, xpackAdminCredentials._2)
 }
-
 
 object EsContainerWithXpackSecurity extends StrictLogging {
 
   val xpackAdminCredentials: (String, String) = ("elastic", "elastic")
 
-  def create(config: images.EsImage.Config,
+  def create(esVersion: String,
+             esConfig: Elasticsearch.Config,
+             xpackSecurityConfig: XpackSecurityPlugin.Config,
              initializer: ElasticsearchNodeDataInitializer,
              startedClusterDependencies: StartedClusterDependencies,
              esClusterSettings: EsClusterSettings): EsContainer = {
 
     val rorContainer = new EsContainerWithXpackSecurity(
-      config.nodeName,
-      config.esVersion,
+      esConfig.nodeName,
+      esVersion,
       startedClusterDependencies,
       esClusterSettings,
-      esImageWithXpackFromDockerfile(config)
+      esImageWithXpackFromDockerfile(esVersion, esConfig, xpackSecurityConfig)
     )
     EsContainer.init(rorContainer, initializer, logger)
   }
 
-    private def esImageWithXpackFromDockerfile(config: EsImage.Config) = {
-      val esImageWithXpack = new EsImageWithXpack
-      DockerImageCreator.create(
-        esImageWithXpack.create(config)
-      )
-    }
+  private def esImageWithXpackFromDockerfile(esVersion: String,
+                                             esConfig: Elasticsearch.Config,
+                                             xpackSecurityConfig: XpackSecurityPlugin.Config) = {
+    DockerImageCreator.create(
+      Elasticsearch
+        .create(esVersion, esConfig)
+        .install(new XpackSecurityPlugin(esVersion, xpackSecurityConfig))
+        .toDockerImageDescription
+    )
+  }
 }

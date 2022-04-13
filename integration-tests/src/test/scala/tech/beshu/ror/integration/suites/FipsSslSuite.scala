@@ -22,7 +22,7 @@ import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationT
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.RorCluster
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.RorAttributes
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.CatManager
 
 trait FipsSslSuite
@@ -42,7 +42,7 @@ trait FipsSslSuite
     EsClusterSettings(
       name = "fips_cluster",
       numberOfInstances = 2,
-      clusterType = RorCluster(RorAttributes.default.copy(
+      clusterType = RorCluster(Attributes.default.copy(
         internodeSslEnabled = true,
         isFipsEnabled = true
       ))
