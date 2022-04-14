@@ -17,11 +17,11 @@
 package tech.beshu.ror.accesscontrol.factory
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.Json
 import cats.implicits._
-import tech.beshu.ror.accesscontrol.show.logs._
+import eu.timepit.refined.types.string.NonEmptyString
+import io.circe.{Encoder, Json}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.{createMultiVariableFrom, createSingleVariableFrom}
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.providers.EnvVarsProvider
 
 object JsonConfigStaticVariableResolver {
@@ -43,7 +43,7 @@ object JsonConfigStaticVariableResolver {
         json.asString.flatMap(NonEmptyString.unapply) match {
           case Some(str) =>
             tryToResolveAllStaticMultipleVars(str, errors)
-              .map(resolvedStringToJson)
+              .map(s => resolvedStringToJson(s, json))
               .toList
           case None =>
             mapJson(json, errors) :: Nil
@@ -57,14 +57,27 @@ object JsonConfigStaticVariableResolver {
           case Some(nes) => tryToResolveAllStaticSingleVars(nes, errors)
           case None => str
         }
-        resolvedStringToJson(resolved)
+        if (resolved != str)
+          resolvedStringToJson(resolved, json)
+        else json
       }
   }
 
-  private def resolvedStringToJson(resolvedStr: String) = {
+  private def preserveNumbersAsStrings(original: Json, newValue: Json) = {
+    {
+      for {
+        _ <- original.asString
+        newNum <- newValue.asNumber
+      } yield Encoder.encodeString(newNum.toString)
+    }.getOrElse(newValue)
+  }
+
+  private def resolvedStringToJson(resolvedStr: String, original: Json) = {
     def isJsonPrimitive(json: Json) = !(json.isObject || json.isArray)
+
     io.circe.parser.parse(resolvedStr) match {
-      case Right(newJsonValue) if isJsonPrimitive(newJsonValue) => newJsonValue
+      case Right(newJsonValue) if isJsonPrimitive(newJsonValue) =>
+        preserveNumbersAsStrings(original, newJsonValue)
       case Right(_) => Json.fromString(resolvedStr)
       case Left(_) => Json.fromString(resolvedStr)
     }
