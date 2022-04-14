@@ -54,10 +54,11 @@ object JsonConfigStaticVariableResolver {
       .mapObject(_.mapValues(mapJson(_, errors)))
       .withString { str =>
         val resolved = NonEmptyString.unapply(str) match {
-          case Some(nes) => tryToResolveAllStaticSingleVars(nes, errors)
+          case Some(nes) =>
+            tryToResolveAllStaticSingleVars(nes, errors)
           case None => str
         }
-        if (resolved != str)
+        if (resolved =!= str)
           resolvedStringToJson(resolved, json)
         else json
       }
