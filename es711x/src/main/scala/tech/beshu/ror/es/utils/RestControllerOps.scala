@@ -16,15 +16,13 @@
  */
 package tech.beshu.ror.es.utils
 
-import java.util.function.UnaryOperator
-
 import org.elasticsearch.common.path.PathTrie
-import org.elasticsearch.core.RestApiVersion
 import org.elasticsearch.rest.{RestController, RestHandler, RestRequest}
 import org.joor.Reflect.on
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.ScalaOps._
 
+import java.util.function.UnaryOperator
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
@@ -47,6 +45,8 @@ class RestControllerOps(restController: RestController) {
 
     def update(restHandlerDecorator: RestHandler => RestHandler): PathTrie[Any] = {
       val root = on(pathTrie).get[pathTrie.TrieNode]("root")
+      val rootValue = on(pathTrie).get[Any]("rootValue")
+      if (rootValue != null) MethodHandlersWrapper.updateWithWrapper(rootValue, restHandlerDecorator)
       update(root, restHandlerDecorator)
       pathTrie
     }
@@ -64,22 +64,16 @@ class RestControllerOps(restController: RestController) {
 
   private object MethodHandlersWrapper {
     def updateWithWrapper(value: Any, restHandlerDecorator: RestHandler => RestHandler): Any = {
-      val methodHandlers = on(value).get[java.util.Map[RestRequest.Method, java.util.Map[RestApiVersion, RestHandler]]]("methodHandlers").asScala.toMap
+      val methodHandlers = on(value).get[java.util.Map[RestRequest.Method, RestHandler]]("methodHandlers").asScala.toMap
       val newMethodHandlers = methodHandlers
-        .map { case (key, handlersMap) =>
-          val newHandlersMap = handlersMap
-            .asSafeMap
-            .map { case (apiVersion, handler) =>
-              val handlerToDecorate =
-                if (handler.getClass.getName.startsWith("org.elasticsearch.xpack.security.rest.SecurityRestFilter")) {
-                  on(handler).get[RestHandler]("restHandler")
-                } else {
-                  handler
-                }
-              (apiVersion, restHandlerDecorator(handlerToDecorate))
+        .map { case (method, handler) =>
+          val handlerToDecorate =
+            if (handler.getClass.getName.startsWith("org.elasticsearch.xpack.security.rest.SecurityRestFilter")) {
+              on(handler).get[RestHandler]("restHandler")
+            } else {
+              handler
             }
-            .asJava
-          (key, newHandlersMap)
+          (method, restHandlerDecorator(handlerToDecorate))
         }
         .asJava
       on(value).set("methodHandlers", newMethodHandlers)

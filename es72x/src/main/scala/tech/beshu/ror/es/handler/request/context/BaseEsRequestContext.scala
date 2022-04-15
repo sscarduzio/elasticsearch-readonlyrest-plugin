@@ -65,7 +65,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
           } yield (Header.Name(nonEmptyName), nonEmptyValues)
         }
         .toSeq
-        .partition { case (name, _) => name === Header.Name.rorAuthorization }
+        .partition { case (name, _) => name === Header.Name.authorization }
     val headersFromAuthorizationHeaderValues = authorizationHeaders
       .flatMap { case (_, values) =>
         val headersFromAuthorizationHeaderValues = values

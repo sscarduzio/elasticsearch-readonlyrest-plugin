@@ -63,13 +63,13 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(secret.getEncoded),
             userClaim = None,
             groupsClaim = None
           ),
           tokenHeader = new Header(
-            Header.Name.rorAuthorization,
+            Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")
           )
         ) {
@@ -84,13 +84,13 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Rsa(pub),
             userClaim = None,
             groupsClaim = None
           ),
           tokenHeader = new Header(
-            Header.Name.rorAuthorization,
+            Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")
           )
         ) {
@@ -104,13 +104,13 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.NoCheck(authService(jwt.stringify(), authenticated = true)),
             userClaim = None,
             groupsClaim = None
           ),
           tokenHeader = new Header(
-            Header.Name.rorAuthorization,
+            Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")
           )
         ) {
@@ -125,7 +125,7 @@ class JwtAuthRuleTests
         val authService = cachedAuthService(validJwt.stringify(), invalidJwt.stringify())
         val jwtDef = JwtDef(
           JwtDef.Name("test"),
-          AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+          AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
           SignatureCheckMethod.NoCheck(authService),
           userClaim = None,
           groupsClaim = None
@@ -133,7 +133,7 @@ class JwtAuthRuleTests
         def checkValidToken = assertMatchRule(
           configuredJwtDef = jwtDef,
           tokenHeader = new Header(
-            Header.Name.rorAuthorization,
+            Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${validJwt.stringify()}")
           )
         ) {
@@ -144,7 +144,7 @@ class JwtAuthRuleTests
         def checkInvalidToken = assertNotMatchRule(
           configuredJwtDef = jwtDef,
           tokenHeader = new Header(
-            Header.Name.rorAuthorization,
+            Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${invalidJwt.stringify()}")
           )
         )
@@ -162,13 +162,13 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = None
           ),
           tokenHeader = new Header(
-            Header.Name.rorAuthorization,
+            Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")
           )
         ) {
@@ -187,12 +187,12 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
-          tokenHeader = new Header(Header.Name.rorAuthorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
         ) {
           blockContext => assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
@@ -209,12 +209,12 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("https://{domain}/claims/roles")))
           ),
-          tokenHeader = new Header(Header.Name.rorAuthorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
         ) {
           blockContext => assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
@@ -230,13 +230,13 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
           configuredGroups = UniqueList.empty,
-          tokenHeader = new Header(Header.Name.rorAuthorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
         ) {
           blockContext => assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
@@ -253,12 +253,12 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("tech.beshu.groups")))
           ),
-          tokenHeader = new Header(Header.Name.rorAuthorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
         ) {
           blockContext => assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
@@ -275,13 +275,13 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
           configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group2")),
-          tokenHeader = new Header(Header.Name.rorAuthorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
         ) {
           blockContext => assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
@@ -342,13 +342,13 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key1.getEncoded),
             userClaim = None,
             groupsClaim = None
           ),
           tokenHeader = new Header(
-            Header.Name.rorAuthorization,
+            Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${jwt2.stringify()}")
           )
         )
@@ -360,13 +360,13 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Rsa(pub),
             userClaim = None,
             groupsClaim = None
           ),
           tokenHeader = new Header(
-            Header.Name.rorAuthorization,
+            Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")
           )
         )
@@ -376,13 +376,13 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.NoCheck(authService(jwt.stringify(), authenticated = false)),
             userClaim = None,
             groupsClaim = None
           ),
           tokenHeader = new Header(
-            Header.Name.rorAuthorization,
+            Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")
           )
         )
@@ -393,13 +393,13 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = None
           ),
           tokenHeader = new Header(
-            Header.Name.rorAuthorization,
+            Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")
           )
         )
@@ -410,13 +410,13 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
           tokenHeader = new Header(
-            Header.Name.rorAuthorization,
+            Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")
           )
         )
@@ -430,13 +430,13 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("tech.beshu.groups.subgroups")))
           ),
           configuredGroups = UniqueList.of(Group("group1")),
-          tokenHeader = new Header(Header.Name.rorAuthorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
         )
       }
       "rule groups are defined and intersection between those groups and JWT ones is empty" in {
@@ -448,13 +448,13 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
           configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group4")),
-          tokenHeader = new Header(Header.Name.rorAuthorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
         )
       }
     }

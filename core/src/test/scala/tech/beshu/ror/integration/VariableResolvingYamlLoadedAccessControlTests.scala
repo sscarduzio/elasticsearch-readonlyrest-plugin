@@ -241,7 +241,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             "tech" :-> "beshu" :-> "mainGroup" := List("j1", "j2")
           ))
           val request = MockRequestContext.indices.copy(
-            headers = Set(new Header(Header.Name.rorAuthorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))),
+            headers = Set(new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))),
             filteredIndices = Set(clusterIndexName("gj1"))
           )
 
@@ -267,7 +267,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           ))
 
           val request = MockRequestContext.indices.copy(
-            headers = Set(new Header(Header.Name.rorAuthorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))),
+            headers = Set(new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))),
             filteredIndices = Set(clusterIndexName("gj0")),
             allIndicesAndAliases = Set(FullLocalIndexWithAliases(fullIndexName("gj0"), Set.empty))
           )
@@ -294,7 +294,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           ))
 
           val request = MockRequestContext.search.copy(
-            headers = Set(new Header(Header.Name.rorAuthorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))),
+            headers = Set(new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))),
             indices = Set.empty,
             allIndicesAndAliases = Set.empty
           )

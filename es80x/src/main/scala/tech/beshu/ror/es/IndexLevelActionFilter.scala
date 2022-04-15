@@ -49,7 +49,7 @@ import scala.language.postfixOps
 
 class IndexLevelActionFilter(nodeName: String,
                              clusterService: ClusterService,
-                             client: NodeClient,
+                             val client: NodeClient,
                              threadPool: ThreadPool,
                              env: Environment,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],

@@ -79,7 +79,6 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-
 @Inject
 class ReadonlyRestPlugin(s: Settings, p: Path)
   extends Plugin
@@ -181,11 +180,11 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                  clusterSettings: ClusterSettings): util.Map[String, Supplier[HttpServerTransport]] = {
     sslConfig
       .externalSsl
-      .map(ssl =>
+      .map { ssl =>
         "ssl_netty4" -> new Supplier[HttpServerTransport] {
           override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, ssl, clusterSettings, getSharedGroupFactory(settings), fipsConfig.isSslFipsCompliant)
         }
-      )
+      }
       .toMap
       .asJava
   }

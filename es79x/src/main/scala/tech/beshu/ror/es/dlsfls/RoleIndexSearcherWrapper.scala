@@ -24,8 +24,8 @@ import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import org.apache.lucene.index.DirectoryReader
-import org.elasticsearch.common.CheckedFunction
 import org.elasticsearch.common.util.concurrent.ThreadContext
+import org.elasticsearch.common.CheckedFunction
 import org.elasticsearch.index.IndexService
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsFromHeaderValue

@@ -18,10 +18,9 @@ package tech.beshu.ror.es.utils
 
 import java.io.IOException
 import java.util.function.{Function => JFunction}
-
 import org.apache.lucene.index.DirectoryReader
 import org.apache.lucene.util.{SetOnce => LuceneSetOnce}
-import org.elasticsearch.core.CheckedFunction
+import org.elasticsearch.common.CheckedFunction
 import org.elasticsearch.index.{IndexModule, IndexService}
 import org.joor.Reflect.on
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper

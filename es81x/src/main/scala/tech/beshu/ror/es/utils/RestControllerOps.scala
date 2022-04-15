@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.es.utils
 
+import java.util.function.UnaryOperator
+
 import org.elasticsearch.common.path.PathTrie
 import org.elasticsearch.core.RestApiVersion
 import org.elasticsearch.rest.{RestController, RestHandler, RestRequest}
@@ -23,7 +25,6 @@ import org.joor.Reflect.on
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.ScalaOps._
 
-import java.util.function.UnaryOperator
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
@@ -46,8 +47,6 @@ class RestControllerOps(restController: RestController) {
 
     def update(restHandlerDecorator: RestHandler => RestHandler): PathTrie[Any] = {
       val root = on(pathTrie).get[pathTrie.TrieNode]("root")
-      val rootValue = on(pathTrie).get[Any]("rootValue")
-      if (rootValue != null) MethodHandlersWrapper.updateWithWrapper(rootValue, restHandlerDecorator)
       update(root, restHandlerDecorator)
       pathTrie
     }
@@ -71,12 +70,13 @@ class RestControllerOps(restController: RestController) {
           val newHandlersMap = handlersMap
             .asSafeMap
             .map { case (apiVersion, handler) =>
-              if(handler.getClass.getName.startsWith("org.elasticsearch.xpack.security.rest.SecurityRestFilter")) {
-                val underlyingHandler = on(handler).get[RestHandler]("restHandler")
-                (apiVersion, restHandlerDecorator(underlyingHandler))
-              } else {
-                (apiVersion, handler)
-              }
+              val handlerToDecorate =
+                if (handler.getClass.getName.startsWith("org.elasticsearch.xpack.security.rest.SecurityRestFilter")) {
+                  on(handler).get[RestHandler]("restHandler")
+                } else {
+                  handler
+                }
+              (apiVersion, restHandlerDecorator(handlerToDecorate))
             }
             .asJava
           (key, newHandlersMap)

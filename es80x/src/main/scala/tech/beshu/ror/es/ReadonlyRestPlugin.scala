@@ -43,7 +43,7 @@ import org.elasticsearch.repositories.{RepositoriesService, VerifyNodeRepository
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.netty4.{Netty4Plugin, Netty4Utils, SharedGroupFactory}
+import org.elasticsearch.transport.netty4.{Netty4Utils, SharedGroupFactory}
 import org.elasticsearch.transport.{Transport, TransportInterceptor, TransportService}
 import org.elasticsearch.watcher.ResourceWatcherService
 import org.elasticsearch.xcontent.NamedXContentRegistry
@@ -65,6 +65,8 @@ import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
+import tech.beshu.ror.es.utils.NodeClientOps._
+import tech.beshu.ror.es.utils.RestControllerOps._
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
@@ -178,11 +180,11 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                  clusterSettings: ClusterSettings): util.Map[String, Supplier[HttpServerTransport]] = {
     sslConfig
       .externalSsl
-      .map(ssl =>
+      .map { ssl =>
         "ssl_netty4" -> new Supplier[HttpServerTransport] {
           override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, ssl, clusterSettings, getSharedGroupFactory(settings), fipsConfig.isSslFipsCompliant)
         }
-      )
+      }
       .toMap
       .asJava
   }
@@ -230,8 +232,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                settingsFilter: SettingsFilter,
                                indexNameExpressionResolver: IndexNameExpressionResolver,
                                nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
-    import tech.beshu.ror.es.utils.RestControllerOps._
     restController.decorateRestHandlersWith(new ChannelInterceptingRestHandlerDecorator(_))
+    ilaf.client.deactivateXPackFilter()
     List[RestHandler](
       new RestRRAdminAction(),
       new RestRRAuthMockAction(),
