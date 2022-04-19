@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.factory
 import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.{Encoder, Json}
+import io.circe.Json
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.{createMultiVariableFrom, createSingleVariableFrom}
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -64,25 +64,21 @@ object JsonConfigStaticVariableResolver {
       }
   }
 
-  private def preserveNumbersAsStrings(original: Json, newValue: Json) = {
-    {
-      for {
-        _ <- original.asString
-        newNum <- newValue.asNumber
-      } yield Encoder.encodeString(newNum.toString)
-    }.getOrElse(newValue)
-  }
 
   private def resolvedStringToJson(resolvedStr: String, original: Json) = {
     def isJsonPrimitive(json: Json) = !(json.isObject || json.isArray)
 
+    def preserveNumericStringsAsStrings(newValue: Json) =
+      if (original.isString && newValue.isNumber) original else newValue
+
     io.circe.parser.parse(resolvedStr) match {
       case Right(newJsonValue) if isJsonPrimitive(newJsonValue) =>
-        preserveNumbersAsStrings(original, newJsonValue)
+        preserveNumericStringsAsStrings(newJsonValue)
       case Right(_) => Json.fromString(resolvedStr)
       case Left(_) => Json.fromString(resolvedStr)
     }
   }
+
 
   private def tryToResolveAllStaticSingleVars(str: NonEmptyString, errors: ResolvingErrors)
                                              (implicit envProvider: EnvVarsProvider): String = {
