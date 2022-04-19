@@ -86,7 +86,7 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
     private var context = Option.empty[SslContext]
 
     doPrivileged {
-      context = Option(SSLCertHelper.prepareSSLContext(ssl, fipsCompliant))
+      context = Option(SSLCertHelper.prepareSSLContext(ssl, fipsCompliant, clientAuthenticationEnabled = false))
     }
 
     override def initChannel(ch: Channel): Unit = {

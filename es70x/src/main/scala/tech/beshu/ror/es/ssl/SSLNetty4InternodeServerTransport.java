@@ -116,7 +116,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
     public SslChannelInitializer(String name) {
       super(name);
       AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-        context = Optional.of(SSLCertHelper.prepareSSLContext(ssl, fipsCompliant));
+        context = Optional.of(SSLCertHelper.prepareSSLContext(ssl, fipsCompliant, false));
         return null;
       });
     }
