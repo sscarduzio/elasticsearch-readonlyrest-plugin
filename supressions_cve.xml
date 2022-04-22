@@ -55,4 +55,18 @@
         <sha1>4d44e4edc4a7fb39f09b95b09f560a15976fa1ba</sha1>
         <cpe>cpe:/a:apache:log4j</cpe>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: async-http-client-backend-cats_2.12-1.7.2.jar (https://github.com/jeremylong/DependencyCheck/issues/4369)
+   ]]></notes>
+        <sha1>59101893e2c7cf0640da292549cc50b3420ae088</sha1>
+        <cve>CVE-2021-43138</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: async-http-client-backend_2.12-1.7.2.jar (https://github.com/jeremylong/DependencyCheck/issues/4369)
+   ]]></notes>
+        <sha1>ce88877609b732ab2544f90001ca70e815bbc49c</sha1>
+        <cpe>cpe:/a:async_project:async</cpe>
+    </suppress>
 </suppressions>
