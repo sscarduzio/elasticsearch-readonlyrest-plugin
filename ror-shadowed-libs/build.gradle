@@ -23,7 +23,7 @@ buildscript {
     }
 
     dependencies {
-        classpath group: 'org.owasp',                            name: 'dependency-check-gradle',  version: '6.4.1.1'
+        classpath group: 'org.owasp',                            name: 'dependency-check-gradle',  version: '6.5.3'
         classpath group: 'com.github.jengelman.gradle.plugins',  name: 'shadow',                   version: '4.0.4'
     }
 }

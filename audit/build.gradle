@@ -25,6 +25,7 @@ buildscript {
     }
 
     dependencies {
+        classpath group: 'org.owasp',                                   name: 'dependency-check-gradle',        version: '6.5.3'
         classpath group: 'com.github.prokod',                           name: 'gradle-crossbuild-scala',        version: '0.9.0'
         classpath group: 'io.codearte.gradle.nexus',                    name: 'gradle-nexus-staging-plugin',    version: '0.21.1'
         classpath group: 'com.star-zero.gradle',                        name: 'githook',                        version: '1.2.1'
@@ -45,8 +46,23 @@ apply plugin: 'io.codearte.nexus-staging'
 apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'maven-publish'
+apply plugin: 'org.owasp.dependencycheck'
 apply plugin: 'scala'
 apply plugin: 'signing'
+
+dependencyCheck {
+    /*
+       Severity	Base Score
+       None     0
+       Low      0.1-3.9
+       Medium   4.0-6.9
+       High     7.0-8.9
+       Critical 9.0-10.0
+     */
+    failBuildOnCVSS = 3
+    scanConfigurations = ['runtime']
+    suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
+}
 
 compileJava {
     sourceCompatibility = 1.8
@@ -59,7 +75,7 @@ compileScala {
 }
 
 dependencies {
-    compile group: 'org.scala-lang',                name: 'scala-library',              version: '2.12.8'
+    compile group: 'org.scala-lang',                name: 'scala-library',              version: '2.12.10'
     compile group: 'org.json',                      name: 'json',                       version: '20180813'
 }
 
