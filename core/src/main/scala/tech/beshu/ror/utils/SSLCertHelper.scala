@@ -105,6 +105,9 @@ object SSLCertHelper extends Logging {
   private def getKeyManagerFactory(sslConfiguration: SslConfiguration, fipsCompliant: Boolean): IO[KeyManagerFactory] = {
     loadKeystore(sslConfiguration, fipsCompliant)
       .map { keystore =>
+        if (sslConfiguration.keyPass.isDefined) {
+          logger.warn("ROR configuration parameter key_pass is declared however it won't be used in this mode. In this case password for specific key MUST be the same as keystore password")
+        }
         removeAllAliasesFromKeystoreBesidesOne(keystore, prepareAlias(keystore, sslConfiguration))
         val kmf = getKeyManagerFactoryInstance(fipsCompliant)
         kmf.init(keystore, sslConfiguration.keystorePassword)
