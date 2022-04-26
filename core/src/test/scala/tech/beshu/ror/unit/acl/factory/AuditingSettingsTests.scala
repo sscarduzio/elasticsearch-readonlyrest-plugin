@@ -104,7 +104,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
           """.stripMargin)
 
           assertSettingsNoPresent(config)
-          }
+        }
       }
     }
     "be able to be loaded from config" when {
@@ -517,7 +517,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorConfig(_, _ ,_,None))) => }
+    inside(core) { case Right(Core(_, RorConfig(_, _, _, None))) => }
   }
 
   private def assertSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorConfig,
@@ -532,7 +532,7 @@ class AuditingSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorConfig(_, _,_, Some(auditingSettings)))) =>
+    inside(core) { case Right(Core(_, RorConfig(_, _, _, Some(auditingSettings)))) =>
       auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName(expectedIndexName))
       auditingSettings.logSerializer shouldBe a[EXPECTED_SERIALIZER]
       auditingSettings.auditCluster shouldBe expectedAuditCluster
