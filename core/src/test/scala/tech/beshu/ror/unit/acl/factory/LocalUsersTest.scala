@@ -89,6 +89,58 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           allUsersResolved(Set(User.Id("user1"), User.Id("user2")))
         )
       }
+      "'proxy_auth' rule" in {
+        val config =
+          s"""
+             |readonlyrest:
+             |    access_control_rules:
+             |
+             |    - name: "::Tweets::"
+             |      methods: GET
+             |      indices: ["twitter"]
+             |      proxy_auth:
+             |        proxy_auth_config: "proxy1"
+             |        users: ["admin"]
+             |      groups_provider_authorization:
+             |        user_groups_provider: "GroupsService"
+             |        groups: ["group3"]
+             |
+             |    - name: "::Facebook posts::"
+             |      methods: GET
+             |      indices: ["facebook"]
+             |      proxy_auth:
+             |        proxy_auth_config: "proxy1"
+             |        users: ["dev"]
+             |      groups_provider_authorization:
+             |        user_groups_provider: "GroupsService"
+             |        groups: ["group1"]
+             |        cache_ttl_in_sec: 60
+             |
+             |    proxy_auth_configs:
+             |
+             |    - name: "proxy1"
+             |      user_id_header: "X-Auth-Token"                           # default X-Forwarded-User
+             |
+             |    user_groups_providers:
+             |
+             |    - name: GroupsService
+             |      groups_endpoint: "http://localhost:8080/groups"
+             |      auth_token_name: "token"
+             |      auth_token_passed_as: QUERY_PARAM                        # HEADER OR QUERY_PARAM
+             |      response_groups_json_path: "$$..groups[?(@.name)].name"   # see: https://github.com/json-path/JsonPath
+             |      cache_ttl_in_sec: 60
+             |      http_connection_settings:
+             |        connection_timeout_in_sec: 5                           # default 2
+             |        socket_timeout_in_sec: 3                               # default 5
+             |        connection_request_timeout_in_sec: 3                   # default 5
+             |        connection_pool_size: 10                               # default 30
+             |""".stripMargin
+
+        assertLocalUsersFromConfig(
+          config,
+          allUsersResolved(Set(User.Id("admin"), User.Id("dev")))
+        )
+      }
     }
     "return info that unknown users in config" when {
       "hashed username and password" in {
