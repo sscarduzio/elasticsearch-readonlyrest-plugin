@@ -176,5 +176,4 @@ class LocalUsersTest extends AnyWordSpec with Inside {
     implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
     new RawRorConfigBasedCoreFactory(RorMode.Plugin)
   }
-
 }
