@@ -174,7 +174,8 @@ private object SslDecoders {
           truststorePassword = sslCommonProperties.truststorePassword,
           allowedProtocols = sslCommonProperties.allowedProtocols,
           allowedCiphers = sslCommonProperties.allowedCiphers,
-          certificateVerificationEnabled = certificateVerification.orElse(sslCommonProperties.verification).getOrElse(false))
+          certificateVerificationEnabled = certificateVerification.orElse(sslCommonProperties.verification).getOrElse(false)
+        )
     }
   }
 
@@ -193,7 +194,7 @@ private object SslDecoders {
           truststorePassword = sslCommonProperties.truststorePassword,
           allowedProtocols = sslCommonProperties.allowedProtocols,
           allowedCiphers = sslCommonProperties.allowedCiphers,
-          clientAuthenticationEnabled = clientAuthentication.orElse(sslCommonProperties.verification).getOrElse(false),
+          clientAuthenticationEnabled = clientAuthentication.orElse(sslCommonProperties.verification).getOrElse(false)
         )
     }
   }
@@ -222,7 +223,8 @@ private object SslDecoders {
         truststorePassword = truststorePassword,
         allowedProtocols = protocols.getOrElse(Set.empty[Protocol]),
         allowedCiphers = ciphers.getOrElse(Set.empty[Cipher]),
-        verification = verification)
+        verification = verification
+      )
   }
 
   private def whenEnabled[T <: SslConfiguration](cursor: HCursor)(decoding: => Either[DecodingFailure, T]) = {

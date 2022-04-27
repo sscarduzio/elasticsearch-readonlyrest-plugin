@@ -18,13 +18,10 @@
 package tech.beshu.ror.es.ssl;
 
 
-import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
-import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.NotSslRecordException;
 import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.network.NetworkService;
@@ -34,22 +31,19 @@ import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.HttpChannel;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
-import scala.collection.JavaConverters$;
-import tech.beshu.ror.configuration.SslConfiguration;
+import scala.Option;
 import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration;
-import tech.beshu.ror.utils.SSLCertParser;
+import tech.beshu.ror.utils.SSLCertHelper;
 
-import javax.net.ssl.TrustManagerFactory;
-import java.io.InputStream;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
   private final Logger logger = LogManager.getLogger(this.getClass());
   private final ExternalSslConfiguration ssl;
+  private final Boolean fipsCompliant;
 
   public SSLNetty4HttpServerTransport(Settings settings,
                                       NetworkService networkService,
@@ -57,9 +51,11 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
                                       ThreadPool threadPool,
                                       NamedXContentRegistry xContentRegistry,
                                       Dispatcher dispatcher,
-                                      ExternalSslConfiguration ssl) {
+                                      ExternalSslConfiguration ssl,
+                                      Boolean fipsCompliant) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
     this.ssl = ssl;
+    this.fipsCompliant = fipsCompliant;
   }
 
   @Override
@@ -86,7 +82,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, handlingSettings);
       AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-        SSLCertParser.run(new SSLContextCreatorImpl(), ssl);
+        context = Optional.of(SSLCertHelper.prepareSSLContext(ssl, fipsCompliant, ssl.clientAuthenticationEnabled()));
         return null;
       });
     }
@@ -98,50 +94,6 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
       });
     }
 
-    private class SSLContextCreatorImpl implements SSLCertParser.SSLContextCreator {
-      @Override
-      public void mkSSLContext(InputStream certChain, InputStream privateKey) {
-        try {
-          // #TODO: expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-          SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null);
 
-          logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);
-
-          if(ssl.allowedCiphers().size() > 0) {
-            sslCtxBuilder.ciphers(
-                JavaConverters$.MODULE$
-                    .setAsJavaSet(ssl.allowedCiphers())
-                    .stream()
-                    .map(SslConfiguration.Cipher::value)
-                    .collect(Collectors.toList())
-            );
-          }
-
-          if (ssl.clientAuthenticationEnabled()) {
-            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
-            TrustManagerFactory usedTrustManager = SSLCertParser.customTrustManagerFrom(ssl).getOrElse(null);
-            sslCtxBuilder.trustManager(usedTrustManager);
-          }
-
-          if(ssl.allowedProtocols().size() > 0) {
-            sslCtxBuilder.protocols(
-                JavaConverters$.MODULE$
-                    .setAsJavaSet(ssl.allowedProtocols())
-                    .stream()
-                    .map(SslConfiguration.Protocol::value)
-                    .toArray(String[]::new)
-            );
-          }
-
-          context = Optional.of(sslCtxBuilder.build());
-
-        } catch (Exception e) {
-          context = Optional.empty();
-          logger.error("Failed to load SSL HTTP CertChain & private key from Keystore! "
-              + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
-        }
-      }
-    }
   }
 }

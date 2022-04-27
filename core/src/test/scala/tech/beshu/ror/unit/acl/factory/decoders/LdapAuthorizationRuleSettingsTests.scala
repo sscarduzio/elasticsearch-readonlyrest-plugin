@@ -20,6 +20,8 @@ import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule.GroupsLogic
+import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule.GroupsLogic.Or
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -55,9 +57,70 @@ class LdapAuthorizationRuleSettingsTests
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a [LoggableLdapAuthorizationServiceDecorator]
-            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a [CircuitBreakerLdapServiceDecorator]
-            rule.settings.permittedGroups should be (UniqueNonEmptyList.of(Group("group3")))
+            rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
+            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapServiceDecorator]
+            rule.settings.permittedGroups should be(GroupsLogic.Or(UniqueNonEmptyList.of(Group("group3"))))
+          }
+        )
+      }
+      "there is LDAP service with given name and groups_and are defined" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+               |    ldap_authorization:
+               |      name: "ldap1"
+               |      groups_and: ["group3"]
+               |
+               |  ldaps:
+               |
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |""".stripMargin,
+          assertion = rule => {
+            rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
+            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapServiceDecorator]
+
+            rule.settings.permittedGroups should be (GroupsLogic.And(UniqueNonEmptyList.of(Group("group3"))))
+          }
+        )
+      }
+      "there is LDAP service with given name and groups_or are defined" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+               |    ldap_authorization:
+               |      name: "ldap1"
+               |      groups: ["group3"]
+               |
+               |  ldaps:
+               |
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |""".stripMargin,
+          assertion = rule => {
+            rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
+            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapServiceDecorator]
+            rule.settings.permittedGroups should be (GroupsLogic.Or(UniqueNonEmptyList.of(Group("group3"))))
           }
         )
       }
@@ -86,9 +149,9 @@ class LdapAuthorizationRuleSettingsTests
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a [LoggableLdapAuthorizationServiceDecorator]
-            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a [CacheableLdapAuthorizationServiceDecorator]
-            rule.settings.permittedGroups should be (UniqueNonEmptyList.of(Group("group3")))
+            rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
+            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CacheableLdapAuthorizationServiceDecorator]
+            rule.settings.permittedGroups should be(Or(UniqueNonEmptyList.of(Group("group3"))))
           }
         )
       }
@@ -148,10 +211,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
-              """ldap_authorization:
-                |  name: "ldap1"
-                |""".stripMargin)))
+            errors.head should be(RulesLevelCreationError(Message("Please specify one between 'groups' or 'groups_and' for LDAP authorization rule 'ldap1'")))
           }
         )
       }
@@ -181,7 +241,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Non empty list of groups are required")))
+            errors.head should be(RulesLevelCreationError(Message("Non empty list of groups is required")))
           }
         )
       }

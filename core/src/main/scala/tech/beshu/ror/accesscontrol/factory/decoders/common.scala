@@ -134,14 +134,14 @@ object common extends Logging {
     import tech.beshu.ror.accesscontrol.orders._
     SyncDecoderCreator
       .from(DecoderHelpers.decodeStringLikeOrNonEmptySet[Group])
-      .withError(ValueLevelCreationError(Message("Non empty list of groups are required")))
+      .withError(ValueLevelCreationError(Message("Non empty list of groups is required")))
       .decoder
   }
 
   implicit val groupsUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[Group]] =
     SyncDecoderCreator
       .from(DecoderHelpers.decoderStringLikeOrUniqueNonEmptyList[Group])
-      .withError(ValueLevelCreationError(Message("Non empty list of groups are required")))
+      .withError(ValueLevelCreationError(Message("Non empty list of groups is required")))
       .decoder
 
   implicit val usersUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[User.Id]] =

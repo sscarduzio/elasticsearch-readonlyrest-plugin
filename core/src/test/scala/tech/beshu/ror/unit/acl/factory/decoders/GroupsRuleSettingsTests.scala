@@ -597,7 +597,7 @@ class GroupsRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of groups are required")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of groups is required")))
           }
         )
       }
@@ -620,7 +620,7 @@ class GroupsRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of groups are required")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of groups is required")))
           }
         )
       }

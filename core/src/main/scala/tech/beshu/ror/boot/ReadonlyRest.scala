@@ -18,7 +18,6 @@ package tech.beshu.ror.boot
 
 import java.nio.file.Path
 import java.time.Clock
-
 import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -161,7 +160,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
       .map(settings => new AuditingTool(settings, auditSinkCreator(settings.auditCluster)))
   }
 
-  private def inspectFlsEngine(engine: Engine) = {
+  private def inspectFlsEngine(engine: Engine): Unit = {
     engine.core.accessControl.staticContext.usedFlsEngineInFieldsRule.foreach {
       case FlsEngine.Lucene | FlsEngine.ESWithLucene =>
         logger.warn("Defined fls engine relies on lucene. To make it work well, all nodes should have ROR plugin installed.")

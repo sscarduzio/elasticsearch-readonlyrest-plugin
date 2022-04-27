@@ -51,6 +51,15 @@ readonlyrest:
         name: "ldap3"
         groups: ["europe"]
 
+    - name: "::Test6 index::"
+      methods: GET
+      indices: ["test6"]
+      ldap_authentication:
+        name: "ldap2"
+      ldap_authorization:
+        name: "ldap2"
+        groups_and: ["group3", "group2"]
+
   users:
     - username: cartman
       groups: ["local_group1", "local_group3"]
