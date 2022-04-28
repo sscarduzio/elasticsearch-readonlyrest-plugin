@@ -31,11 +31,9 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.{RuleWithVariableUsageDefinition, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
-import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyHashingRule, AuthKeyPBKDF2WithHmacSHA512Rule, AuthKeyRule, AuthKeySha1Rule, AuthKeySha256Rule, AuthKeySha512Rule, AuthKeyUnixRule, BaseGroupsRule, ExternalAuthenticationRule, ExternalAuthorizationRule, JwtAuthRule, LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule, ProxyAuthRule, RorKbnAuthRule}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseAuthenticationRule, BaseAuthorizationRule, BaseBasicAuthAuthenticationRule, BaseComposedAuthenticationAndAuthorizationRule, BasicAuthenticationRule, Rule}
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{Header, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{Header, LocalUsers, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.UsernameCaseMapping
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError._
@@ -47,9 +45,10 @@ import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, G
 import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
-import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps, _}
+import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils._
 import tech.beshu.ror.boot.ReadonlyRest.RorMode
+import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.{LocalUsersSupport, localUsersMonoid}
 import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
 import tech.beshu.ror.providers.{EnvVarsProvider, UuidProvider}
 import tech.beshu.ror.utils.ScalaOps._
@@ -125,7 +124,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
       core <-
       if (!enabled) {
         AsyncDecoderCreator
-          .from(Decoder.const(Core(DisabledAccessControl, RorConfig(RorConfig.Services.empty, Seq.empty, Seq.empty, None))))
+          .from(Decoder.const(Core(DisabledAccessControl, RorConfig.disabled)))
       } else {
         for {
           globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(
@@ -218,7 +217,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
   private def blockDecoder(definitions: DefinitionsPack,
                            globalSettings: GlobalSettings,
                            mocksProvider: MocksProvider)
-                          (implicit loggingContext: LoggingContext): Decoder[Block] = {
+                          (implicit loggingContext: LoggingContext): Decoder[BlockDecodingResult] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] =
       Decoder
@@ -256,7 +255,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
                 .remove(Attributes.Block.verbosity))
             ))
           block <- Block.createFrom(name, policy, verbosity, rules).left.map(DecodingFailureOps.fromError(_))
-        } yield block
+        } yield BlockDecodingResult(block, rules.map(localUsersForRule).combineAll)
         result.left.map(_.overrideDefaultErrorWith(BlocksLevelCreationError(MalformedValue(c.value))))
       }
   }
@@ -265,6 +264,13 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
     import tech.beshu.ror.accesscontrol.factory.decoders.common.headerName
     Decoder.instance(_.downField("obfuscated_headers").as[Option[Set[Header.Name]]])
       .map(_.getOrElse(Set(Header.Name.authorization)))
+  }
+
+  private def localUsersForRule[R <: Rule](rule: RuleWithVariableUsageDefinition[R]) = {
+    rule.localUsersSupport match {
+      case users: LocalUsersSupport.AvailableLocalUsers[R] => users.definedLocalUsers(rule.rule)
+      case LocalUsersSupport.NotAvailableLocalUsers => LocalUsers.empty
+    }
   }
 
   private def coreDecoder(httpClientFactory: HttpClientsFactory,
@@ -297,9 +303,9 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
           caseMappingEquality
         ))
         obfuscatedHeaders <- AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
-        blocks <- {
+        blocksNel <- {
           implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
-          implicit val blockAsyncDecoder: AsyncDecoder[Block] = AsyncDecoderCreator.from {
+          implicit val blockAsyncDecoder: AsyncDecoder[BlockDecodingResult] = AsyncDecoderCreator.from {
             blockDecoder(
               DefinitionsPack(
                 proxies = authProxies,
@@ -316,7 +322,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
             )
           }
           DecoderHelpers
-            .decodeFieldList[Block, Task](Attributes.acl, RulesLevelCreationError.apply)
+            .decodeFieldList[BlockDecodingResult, Task](Attributes.acl, RulesLevelCreationError.apply)
             .emapE {
               case NoField => Left(BlocksLevelCreationError(Message(s"No ${Attributes.acl} section found")))
               case FieldListValue(blocks) =>
@@ -324,7 +330,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
                   case None =>
                     Left(BlocksLevelCreationError(Message(s"${Attributes.acl} defined, but no block found")))
                   case Some(neBlocks) =>
-                    neBlocks.map(_.name).toList.findDuplicates match {
+                    neBlocks.map(_.block.name).toList.findDuplicates match {
                       case Nil => Right(neBlocks)
                       case duplicates => Left(BlocksLevelCreationError(Message(s"Blocks must have unique names. Duplicates: ${duplicates.map(_.show).mkString(",")}")))
                     }
@@ -333,16 +339,22 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
         }
       } yield {
         implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
+        val blocks = blocksNel.map(_.block)
         val upgradedBlocks = CrossBlockContextBlocksUpgrade.upgrade(blocks)
         upgradedBlocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
+        val localUsers: LocalUsers = {
+          val fromUserDefs = LocalUsers(users = Set.empty, unknownUsers = userDefs.items.map(_.usernames).nonEmpty)
+          val fromBlocks = blocksNel.map(_.localUsers).toList
+          (fromBlocks :+ fromUserDefs).combineAll
+        }
+
         val rorConfig = RorConfig(
           services = RorConfig.Services(
             authenticationServices = authenticationServices.items.map(_.id),
             authorizationServices = authorizationServices.items.map(_.id),
             ldaps = ldapServices.items.map(_.id)
           ),
-          blocks = upgradedBlocks.toList,
-          users = userDefs.items.map(_.usernames),
+          localUsers = localUsers,
           auditingSettings = auditingTools,
         )
         val accessControl = new AccessControlList(
@@ -391,6 +403,8 @@ object RawRorConfigBasedCoreFactory {
     }
 
   }
+
+  private case class BlockDecodingResult(block: Block, localUsers: LocalUsers)
 
   private sealed trait RuleDecodingResult
   private object RuleDecodingResult {

@@ -173,7 +173,7 @@ class ReadonlyRestStartingTests
           createCoreResult =
             Task
               .sleep(100 millis)
-              .map(_ => Right(Core(mockEnabledAccessControl, RorConfig(RorConfig.Services.empty, Seq.empty, Seq.empty, None)))) // very long creation
+              .map(_ => Right(Core(mockEnabledAccessControl, RorConfig.disabled))) // very long creation
         )
         mockIndexJsonContentManagerSaveCall(
           mockedIndexJsonContentManager,
@@ -577,7 +577,7 @@ class ReadonlyRestStartingTests
         (config: RawRorConfig, _, _, _, _) => config == rawRorConfig
       })
       .once()
-      .returns(Task.now(Right(Core(accessControlMock, RorConfig(RorConfig.Services.empty, Seq.empty, Seq.empty, None)))))
+      .returns(Task.now(Right(Core(accessControlMock, RorConfig.disabled))))
     mockedCoreFactory
   }
 

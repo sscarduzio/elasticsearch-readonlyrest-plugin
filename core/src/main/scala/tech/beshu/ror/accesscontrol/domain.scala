@@ -85,6 +85,11 @@ object domain {
     implicit val eq: Eq[Group] = Eq.by(_.value.value)
   }
 
+  final case class LocalUsers(users: Set[User.Id], unknownUsers: Boolean)
+  object LocalUsers {
+    def empty: LocalUsers = LocalUsers(Set.empty, unknownUsers = false)
+  }
+
   final case class Header(name: Header.Name, value: NonEmptyString)
   object Header {
     final case class Name(value: NonEmptyString)
