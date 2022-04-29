@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import cats.implicits._
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaHideAppsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
@@ -36,21 +36,21 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 object KibanaHideAppsRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaHideAppsRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[KibanaHideAppsRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[KibanaHideAppsRule]] = {
     DecoderHelpers
       .decodeNonEmptyStringLikeOrNonEmptySet(KibanaApp.apply)
-      .map(apps => RuleWithVariableUsageDefinition.create(new KibanaHideAppsRule(Settings(apps))))
+      .map(apps => RuleDefinition.create(new KibanaHideAppsRule(Settings(apps))))
   }
 }
 
 object KibanaIndexRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaIndexRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[KibanaIndexRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[KibanaIndexRule]] = {
     KibanaRulesDecoderHelper
       .kibanaIndexDecoder
       .map { index =>
-        RuleWithVariableUsageDefinition.create(new KibanaIndexRule(KibanaIndexRule.Settings(index)))
+        RuleDefinition.create(new KibanaIndexRule(KibanaIndexRule.Settings(index)))
       }
   }
 }
@@ -58,11 +58,11 @@ object KibanaIndexRuleDecoder
 object KibanaTemplateIndexRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaTemplateIndexRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[KibanaTemplateIndexRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[KibanaTemplateIndexRule]] = {
     KibanaRulesDecoderHelper
       .kibanaIndexDecoder
       .map { index =>
-        RuleWithVariableUsageDefinition.create(new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(index)))
+        RuleDefinition.create(new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(index)))
       }
   }
 }
@@ -70,7 +70,7 @@ object KibanaTemplateIndexRuleDecoder
 class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorConfigurationIndex)
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaAccessRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[KibanaAccessRule]] =
+  override protected def decoder: Decoder[RuleDefinition[KibanaAccessRule]] =
     DecoderHelpers
       .decodeStringLike
       .map(_.toLowerCase)
@@ -84,7 +84,7 @@ class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorConfigurationIndex)
       case unknown => Left(CoreCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
     }
       .map(KibanaAccessRule.Settings(_, rorIndexNameConfiguration))
-      .map(settings => RuleWithVariableUsageDefinition.create(new KibanaAccessRule(settings)))
+      .map(settings => RuleDefinition.create(new KibanaAccessRule(settings)))
       .decoder
 }
 

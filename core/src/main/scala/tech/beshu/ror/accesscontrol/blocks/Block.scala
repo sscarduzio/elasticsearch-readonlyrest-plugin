@@ -115,7 +115,7 @@ object Block {
   def createFrom(name: Name,
                  policy: Option[Policy],
                  verbosity: Option[Verbosity],
-                 rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]])
+                 rules: NonEmptyList[RuleDefinition[Rule]])
                 (implicit loggingContext: LoggingContext): Either[BlocksLevelCreationError, Block] = {
     val sortedRules = rules.sorted
     BlockValidator.validate(sortedRules) match {
@@ -130,7 +130,7 @@ object Block {
   private def createBlockInstance(name: Name,
                                   policy: Option[Policy],
                                   verbosity: Option[Verbosity],
-                                  rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]])
+                                  rules: NonEmptyList[RuleDefinition[Rule]])
                                  (implicit loggingContext: LoggingContext) =
     new Block(
       name,
@@ -150,10 +150,12 @@ object Block {
       extends HistoryItem[B]
   }
 
-  final case class RuleWithVariableUsageDefinition[+T <: Rule](rule: T, variableUsage: VariableUsage[T], localUsersSupport: LocalUsersSupport[T])
-  object RuleWithVariableUsageDefinition {
+  final case class RuleDefinition[+T <: Rule](rule: T,
+                                              variableUsage: VariableUsage[T],
+                                              localUsersSupport: LocalUsersSupport[T])
+  object RuleDefinition {
     def create[T <: Rule : VariableUsage : LocalUsersSupport](rule: T) = {
-      new RuleWithVariableUsageDefinition(rule, implicitly[VariableUsage[T]], implicitly[LocalUsersSupport[T]])
+      new RuleDefinition(rule, implicitly[VariableUsage[T]], implicitly[LocalUsersSupport[T]])
     }
   }
 

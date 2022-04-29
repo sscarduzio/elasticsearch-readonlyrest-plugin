@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol._
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.acl.AccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.blocks.Block.{RuleWithVariableUsageDefinition, Verbosity}
+import tech.beshu.ror.accesscontrol.blocks.Block.{RuleDefinition, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
@@ -151,8 +151,8 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
 
   private def rulesNelDecoder(definitions: DefinitionsPack,
                               globalSettings: GlobalSettings,
-                              mocksProvider: MocksProvider): Decoder[NonEmptyList[RuleWithVariableUsageDefinition[Rule]]] = Decoder.instance { c =>
-    val init = State.pure[ACursor, Validated[List[String], Decoder.Result[List[RuleWithVariableUsageDefinition[Rule]]]]](Validated.Valid(Right(List.empty)))
+                              mocksProvider: MocksProvider): Decoder[NonEmptyList[RuleDefinition[Rule]]] = Decoder.instance { c =>
+    val init = State.pure[ACursor, Validated[List[String], Decoder.Result[List[RuleDefinition[Rule]]]]](Validated.Valid(Right(List.empty)))
 
     val (_, result) = c.keys.toList.flatten // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
@@ -266,7 +266,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
       .map(_.getOrElse(Set(Header.Name.authorization)))
   }
 
-  private def localUsersForRule[R <: Rule](rule: RuleWithVariableUsageDefinition[R]) = {
+  private def localUsersForRule[R <: Rule](rule: RuleDefinition[R]) = {
     rule.localUsersSupport match {
       case users: LocalUsersSupport.AvailableLocalUsers[R] => users.definedLocalUsers(rule.rule)
       case LocalUsersSupport.NotAvailableLocalUsers => LocalUsers.empty
@@ -408,7 +408,7 @@ object RawRorConfigBasedCoreFactory {
 
   private sealed trait RuleDecodingResult
   private object RuleDecodingResult {
-    final case class Result(value: Decoder.Result[RuleWithVariableUsageDefinition[Rule]]) extends RuleDecodingResult
+    final case class Result(value: Decoder.Result[RuleDefinition[Rule]]) extends RuleDecodingResult
     case object UnknownRule extends RuleDecodingResult
     case object Skipped extends RuleDecodingResult
   }

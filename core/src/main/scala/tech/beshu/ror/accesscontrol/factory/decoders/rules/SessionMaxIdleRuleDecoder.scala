@@ -20,7 +20,7 @@ import java.time.Clock
 
 import cats.Eq
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule.Settings
 import tech.beshu.ror.accesscontrol.domain.User
@@ -35,10 +35,10 @@ class SessionMaxIdleRuleDecoder(implicit clock: Clock,
                                 userIdEq: Eq[User.Id])
   extends RuleBaseDecoderWithoutAssociatedFields[SessionMaxIdleRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[SessionMaxIdleRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[SessionMaxIdleRule]] = {
     common
       .positiveFiniteDurationDecoder
-      .map(maxIdle => RuleWithVariableUsageDefinition.create(new SessionMaxIdleRule(Settings(maxIdle))))
+      .map(maxIdle => RuleDefinition.create(new SessionMaxIdleRule(Settings(maxIdle))))
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .decoder

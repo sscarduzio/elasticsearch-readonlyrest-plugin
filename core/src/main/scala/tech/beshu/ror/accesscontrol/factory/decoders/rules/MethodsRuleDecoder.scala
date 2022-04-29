@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 import com.softwaremill.sttp.Method
 import com.softwaremill.sttp.Method._
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.MethodsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.MethodsRule.Settings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -27,15 +27,15 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.MethodsRuleDecoderHelper.methodDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.orders._
-import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
+import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 object MethodsRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[MethodsRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[MethodsRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[MethodsRule]] = {
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet[Method]
-      .map(methods => RuleWithVariableUsageDefinition.create(new MethodsRule(Settings(methods))))
+      .map(methods => RuleDefinition.create(new MethodsRule(Settings(methods))))
   }
 }
 

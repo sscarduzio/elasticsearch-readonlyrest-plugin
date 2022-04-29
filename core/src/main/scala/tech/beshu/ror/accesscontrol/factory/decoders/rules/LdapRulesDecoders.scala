@@ -20,7 +20,7 @@ import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
@@ -49,7 +49,7 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                     caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthenticationRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[LdapAuthenticationRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[LdapAuthenticationRule]] = {
     LdapAuthenticationRuleDecoder.simpleLdapAuthenticationNameAndLocalConfig
       .orElse(LdapAuthenticationRuleDecoder.complexLdapAuthenticationServiceNameAndLocalConfig)
       .toSyncDecoder
@@ -63,7 +63,7 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
             .findLdapService[LdapAuthenticationService, LdapAuthenticationRule](ldapDefinitions.items, name)
       }
       .map(new LoggableLdapAuthenticationServiceDecorator(_))
-      .map(service => RuleWithVariableUsageDefinition.create(
+      .map(service => RuleDefinition.create(
         new LdapAuthenticationRule(
           LdapAuthenticationRule.Settings(service),
           impersonatorsDef.toImpersonation(mocksProvider),
@@ -100,10 +100,10 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                    caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthorizationRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[LdapAuthorizationRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[LdapAuthorizationRule]] = {
     LdapAuthorizationRuleDecoder
       .settingsDecoder(ldapDefinitions)
-      .map(settings => RuleWithVariableUsageDefinition.create(
+      .map(settings => RuleDefinition.create(
         new LdapAuthorizationRule(settings, impersonatorsDef.toImpersonation(mocksProvider), caseMappingEquality)
       ))
   }
@@ -144,9 +144,9 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
                           caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[LdapAuthRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[LdapAuthRule]] = {
     LdapAuthRuleDecoder.instance(ldapDefinitions, impersonatorsDef, mocksProvider, caseMappingEquality)
-      .map(RuleWithVariableUsageDefinition.create(_))
+      .map(RuleDefinition.create(_))
   }
 }
 

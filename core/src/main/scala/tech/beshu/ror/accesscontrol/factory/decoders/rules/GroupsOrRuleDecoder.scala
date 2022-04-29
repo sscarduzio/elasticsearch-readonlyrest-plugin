@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 import cats.data.NonEmptyList
 import cats.implicits._
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.{BaseGroupsRule, GroupsAndRule, GroupsOrRule}
@@ -62,7 +62,7 @@ abstract class BaseGroupsRuleDecoder[R <: BaseGroupsRule : RuleName : VariableUs
 
   protected def createRule(settings: BaseGroupsRule.Settings, caseMappingEquality: UserIdCaseMappingEquality): R
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[R]] = {
+  override protected def decoder: Decoder[RuleDefinition[R]] = {
     DecoderHelpers
       .decoderStringLikeOrUniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]]
       .toSyncDecoder
@@ -70,7 +70,7 @@ abstract class BaseGroupsRuleDecoder[R <: BaseGroupsRule : RuleName : VariableUs
       .emapE { groups =>
         NonEmptyList.fromList(usersDefinitions.items) match {
           case Some(userDefs) =>
-            Right(RuleWithVariableUsageDefinition.create(createRule(BaseGroupsRule.Settings(groups, userDefs), caseMappingEquality)))
+            Right(RuleDefinition.create(createRule(BaseGroupsRule.Settings(groups, userDefs), caseMappingEquality)))
           case None =>
             Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${ruleName.show}` requires them.")))
         }
