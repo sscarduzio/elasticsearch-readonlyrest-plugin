@@ -348,7 +348,7 @@ trait BaseAdminApiSuite
 
           val localUsersResponse = ror1WithIndexConfigAdminActionManager.currentRorLocalUsers
           localUsersResponse.responseJson("status").str should be("OK")
-          localUsersResponse.responseJson("users").arr should be(empty)
+          localUsersResponse.responseJson("users").arr.toList.map(_.str) should be(List("admin", "dev1"))
           localUsersResponse.responseJson("unknown_users").bool should be(false)
         }
       }

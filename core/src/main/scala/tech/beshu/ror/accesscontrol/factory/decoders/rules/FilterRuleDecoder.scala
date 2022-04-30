@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.FilterRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.domain.Filter
@@ -27,9 +27,9 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 object FilterRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[FilterRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[FilterRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[FilterRule]] = {
     DecoderHelpers
       .alwaysRightSingleVariableDecoder(AlwaysRightConvertible.from(Filter.apply))
-      .map(filter => RuleWithVariableUsageDefinition.create(new FilterRule(FilterRule.Settings(filter))))
+      .map(filter => RuleDefinition.create(new FilterRule(FilterRule.Settings(filter))))
   }
 }

@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import cats.implicits._
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule
 import tech.beshu.ror.accesscontrol.domain.Group
@@ -37,7 +37,7 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
                          implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[JwtAuthRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[JwtAuthRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[JwtAuthRule]] = {
     JwtAuthRuleDecoder.nameAndGroupsSimpleDecoder
       .or(JwtAuthRuleDecoder.nameAndGroupsExtendedDecoder)
       .toSyncDecoder
@@ -48,7 +48,7 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
         }
       }
       .map { case (jwtDef, groups) =>
-        RuleWithVariableUsageDefinition.create(new JwtAuthRule(JwtAuthRule.Settings(jwtDef, groups), caseMappingEquality))
+        RuleDefinition.create(new JwtAuthRule(JwtAuthRule.Settings(jwtDef, groups), caseMappingEquality))
       }
       .decoder
   }

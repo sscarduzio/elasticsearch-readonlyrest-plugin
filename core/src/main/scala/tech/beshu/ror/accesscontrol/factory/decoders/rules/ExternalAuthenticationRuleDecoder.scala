@@ -20,7 +20,7 @@ import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService, ImpersonatorDef}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule
@@ -45,7 +45,7 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
                                         implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[ExternalAuthenticationRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ExternalAuthenticationRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[ExternalAuthenticationRule]] = {
     simpleExternalAuthenticationServiceNameAndLocalConfig
       .orElse(complexExternalAuthenticationServiceNameAndLocalConfig)
       .toSyncDecoder
@@ -56,7 +56,7 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
         case (name, None) =>
           findAuthenticationService(authenticationServices.items, name)
       }
-      .map(service => RuleWithVariableUsageDefinition.create(new
+      .map(service => RuleDefinition.create(new
           ExternalAuthenticationRule(
             Settings(service),
             impersonatorsDef.toImpersonation(mocksProvider),

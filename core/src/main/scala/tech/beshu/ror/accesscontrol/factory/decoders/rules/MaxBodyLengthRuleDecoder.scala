@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import io.circe.Decoder
 import squants.information.Bytes
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.MaxBodyLengthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.MaxBodyLengthRule.Settings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 object MaxBodyLengthRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[MaxBodyLengthRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[MaxBodyLengthRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[MaxBodyLengthRule]] = {
     Decoder
       .decodeLong
       .toSyncDecoder
@@ -37,7 +37,7 @@ object MaxBodyLengthRuleDecoder
         if (value >= 0) Right(Bytes(value))
         else Left(RulesLevelCreationError(Message(s"Invalid max body length: $value")))
       }
-      .map(maxBodyLength => RuleWithVariableUsageDefinition.create(new MaxBodyLengthRule(Settings(maxBodyLength))))
+      .map(maxBodyLength => RuleDefinition.create(new MaxBodyLengthRule(Settings(maxBodyLength))))
       .decoder
   }
 }

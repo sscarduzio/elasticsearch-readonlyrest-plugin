@@ -20,7 +20,7 @@ import java.util.regex.Pattern
 
 import cats.implicits._
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.UriRegexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
@@ -38,10 +38,10 @@ import scala.util.Try
 object UriRegexRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[UriRegexRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[UriRegexRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[UriRegexRule]] = {
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Pattern]]
-      .map(patterns => RuleWithVariableUsageDefinition.create(new UriRegexRule(UriRegexRule.Settings(patterns))))
+      .map(patterns => RuleDefinition.create(new UriRegexRule(UriRegexRule.Settings(patterns))))
   }
 
   implicit val patternConvertible: Convertible[Pattern] = new Convertible[Pattern] {

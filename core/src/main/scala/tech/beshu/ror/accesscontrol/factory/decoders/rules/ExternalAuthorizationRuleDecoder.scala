@@ -22,7 +22,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthorizationServiceDecorator, ExternalAuthorizationService, ImpersonatorDef}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthorizationRule
@@ -47,9 +47,9 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
                                        implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[ExternalAuthorizationRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ExternalAuthorizationRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[ExternalAuthorizationRule]] = {
     settingsDecoder(authorizationServices, caseMappingEquality)
-      .map(settings => RuleWithVariableUsageDefinition.create(
+      .map(settings => RuleDefinition.create(
         new ExternalAuthorizationRule(settings, impersonatorsDef.toImpersonation(mocksProvider), caseMappingEquality)
       ))
   }

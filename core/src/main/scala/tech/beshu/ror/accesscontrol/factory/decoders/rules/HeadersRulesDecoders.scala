@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.{HeadersAndRule, HeadersOrRule}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
@@ -32,11 +32,11 @@ import tech.beshu.ror.utils.StringWiseSplitter._
 class HeadersAndRuleDecoder(implicit ev: RuleName[HeadersAndRule])
   extends RuleBaseDecoderWithoutAssociatedFields[HeadersAndRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[HeadersAndRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[HeadersAndRule]] = {
     DecoderHelpers
       .decodeStringLikeOrNonEmptySetE(headerAccessRequirementFromString)
       .map { requirements =>
-        RuleWithVariableUsageDefinition.create(new HeadersAndRule(HeadersAndRule.Settings(requirements)))
+        RuleDefinition.create(new HeadersAndRule(HeadersAndRule.Settings(requirements)))
       }
   }
 }
@@ -44,11 +44,11 @@ class HeadersAndRuleDecoder(implicit ev: RuleName[HeadersAndRule])
 object HeadersOrRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[HeadersOrRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[HeadersOrRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[HeadersOrRule]] = {
     DecoderHelpers
       .decodeStringLikeOrNonEmptySetE(headerAccessRequirementFromString)
       .map { requirements =>
-        RuleWithVariableUsageDefinition.create(new HeadersOrRule(HeadersOrRule.Settings(requirements)))
+        RuleDefinition.create(new HeadersOrRule(HeadersOrRule.Settings(requirements)))
       }
   }
 }

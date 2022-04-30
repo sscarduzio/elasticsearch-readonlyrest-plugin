@@ -18,12 +18,16 @@ package tech.beshu.ror.configuration
 
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
+import tech.beshu.ror.accesscontrol.domain.LocalUsers
 import tech.beshu.ror.accesscontrol.logging.AuditingTool
 
 final case class RorConfig(services: RorConfig.Services,
+                           localUsers: LocalUsers,
                            auditingSettings: Option[AuditingTool.Settings])
 
 object RorConfig {
+  def disabled: RorConfig = RorConfig(RorConfig.Services.empty, LocalUsers.empty, None)
+
   final case class Services(authenticationServices: Seq[ExternalAuthenticationService#Id],
                             authorizationServices: Seq[ExternalAuthorizationService#Id],
                             ldaps: Seq[LdapService#Id])

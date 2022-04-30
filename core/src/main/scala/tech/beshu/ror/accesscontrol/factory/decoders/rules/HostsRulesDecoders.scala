@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.{HostsRule, LocalHostsRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Address
@@ -31,11 +31,11 @@ import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 object HostsRuleDecoder
   extends RuleBaseDecoderWithAssociatedFields[HostsRule, Boolean] {
 
-  override def ruleDecoderCreator: Boolean => Decoder[RuleWithVariableUsageDefinition[HostsRule]] =
+  override def ruleDecoderCreator: Boolean => Decoder[RuleDefinition[HostsRule]] =
     acceptXForwardedFor =>
       DecoderHelpers
         .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Address]]
-        .map(nes => RuleWithVariableUsageDefinition.create(
+        .map(nes => RuleDefinition.create(
           new HostsRule(HostsRule.Settings(nes, acceptXForwardedFor), new Ip4sBasedHostnameResolver)
         ))
 
@@ -49,10 +49,10 @@ object HostsRuleDecoder
 class LocalHostsRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[LocalHostsRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[LocalHostsRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[LocalHostsRule]] = {
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Address]]
-      .map(addresses => RuleWithVariableUsageDefinition.create(
+      .map(addresses => RuleDefinition.create(
         new LocalHostsRule(LocalHostsRule.Settings(addresses), new Ip4sBasedHostnameResolver)
       ))
   }

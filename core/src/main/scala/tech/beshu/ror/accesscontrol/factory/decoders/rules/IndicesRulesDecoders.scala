@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 import cats.data.NonEmptySet
 import cats.implicits._
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.rules.{RepositoriesRule, SnapshotsRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
@@ -40,18 +40,18 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 object IndicesRuleDecoders
   extends RuleBaseDecoderWithoutAssociatedFields[IndicesRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[IndicesRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[IndicesRule]] = {
     IndicesRuleDecoders.indicesRuleSimpleDecoder
       .or(IndicesRuleDecoders.indicesRuleExtendedDecoder)
   }
 
   private val defaultMustInvolveIndicesValue = false
 
-  private lazy val indicesRuleSimpleDecoder: Decoder[RuleWithVariableUsageDefinition[IndicesRule]] =
+  private lazy val indicesRuleSimpleDecoder: Decoder[RuleDefinition[IndicesRule]] =
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]]
       .map(indices =>
-        RuleWithVariableUsageDefinition.create(
+        RuleDefinition.create(
           new IndicesRule(
             settings = IndicesRule.Settings(indices, mustInvolveIndices = defaultMustInvolveIndicesValue),
             identifierGenerator = RandomBasedUniqueIdentifierGenerator
@@ -59,13 +59,13 @@ object IndicesRuleDecoders
         )
       )
 
-  private lazy val indicesRuleExtendedDecoder: Decoder[RuleWithVariableUsageDefinition[IndicesRule]] = {
+  private lazy val indicesRuleExtendedDecoder: Decoder[RuleDefinition[IndicesRule]] = {
     Decoder.instance { c =>
       for {
         indices <- c.downField("patterns").as[NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]]]
         mustInvolveIndices <- c.downFields("must_involve_indices").as[Option[Boolean]]
       } yield {
-        RuleWithVariableUsageDefinition.create(
+        RuleDefinition.create(
           new IndicesRule(
             settings = IndicesRule.Settings(indices, mustInvolveIndices.getOrElse(defaultMustInvolveIndicesValue)),
             identifierGenerator = RandomBasedUniqueIdentifierGenerator
@@ -83,7 +83,7 @@ object IndicesRuleDecoders
 object SnapshotsRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[SnapshotsRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[SnapshotsRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[SnapshotsRule]] = {
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]]
       .toSyncDecoder
@@ -95,7 +95,7 @@ object SnapshotsRuleDecoder
         else
           Right(snapshots)
       }
-      .map(indices => RuleWithVariableUsageDefinition.create(new SnapshotsRule(SnapshotsRule.Settings(indices))))
+      .map(indices => RuleDefinition.create(new SnapshotsRule(SnapshotsRule.Settings(indices))))
       .decoder
   }
 }
@@ -103,7 +103,7 @@ object SnapshotsRuleDecoder
 object RepositoriesRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[RepositoriesRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[RepositoriesRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[RepositoriesRule]] = {
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]]
       .toSyncDecoder
@@ -115,7 +115,7 @@ object RepositoriesRuleDecoder
         else
           Right(repositories)
       }
-      .map(repositories => RuleWithVariableUsageDefinition.create(new RepositoriesRule(RepositoriesRule.Settings(repositories))))
+      .map(repositories => RuleDefinition.create(new RepositoriesRule(RepositoriesRule.Settings(repositories))))
       .decoder
   }
 }

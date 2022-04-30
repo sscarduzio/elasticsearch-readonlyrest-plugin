@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import cats.implicits._
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule
 import tech.beshu.ror.accesscontrol.domain.Group
@@ -37,7 +37,7 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
                             implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[RorKbnAuthRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[RorKbnAuthRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[RorKbnAuthRule]] = {
     RorKbnAuthRuleDecoder.nameAndGroupsSimpleDecoder
       .or(RorKbnAuthRuleDecoder.nameAndGroupsExtendedDecoder)
       .toSyncDecoder
@@ -48,7 +48,7 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
         }
       }
       .map { case (rorKbnDef, groups) =>
-        RuleWithVariableUsageDefinition.create(new RorKbnAuthRule(RorKbnAuthRule.Settings(rorKbnDef, groups), caseMappingEquality))
+        RuleDefinition.create(new RorKbnAuthRule(RorKbnAuthRule.Settings(rorKbnDef, groups), caseMappingEquality))
       }
       .decoder
   }
