@@ -20,18 +20,13 @@ import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.Version
 import org.elasticsearch.common.bytes.BytesReference
-import org.elasticsearch.common.io.stream.Writeable.Writer
-import org.elasticsearch.common.io.stream.{BytesStreamOutput, StreamOutput}
+import org.elasticsearch.common.io.stream.BytesStreamOutput
 import tech.beshu.ror.accesscontrol.domain.Header
 
 import java.util.Base64
 import scala.collection.JavaConverters._
 
 object XPackSecurityAuthenticationHeader {
-
-  private val stringWriter = new Writer[String] {
-    override def write(out: StreamOutput, value: String): Unit = out.writeString(value)
-  }
 
   def createXpackAuthenticationHeader(nodeName: String) = new Header(
     Header.Name("_xpack_security_authentication"),
@@ -56,7 +51,7 @@ object XPackSecurityAuthenticationHeader {
     output.writeBoolean(false)
     if (output.getVersion.onOrAfter(Version.V_7_0_0)) {
       output.writeVInt(4) // Internal
-      output.writeMapValues(java.util.Map.of[String, String](), stringWriter)
+      output.writeGenericMap(Map.empty[String, Object].asJava)
     }
     NonEmptyString.unsafeFrom {
       Base64.getEncoder.encodeToString(BytesReference.toBytes(output.bytes()))
