@@ -42,7 +42,6 @@ fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es82x" ]]; then
     echo ">>> es82x => Running testcontainers.."
-    ./gradlew clean --stacktrace es82x:ror '-PesVersion=8.2.0' --rerun-tasks
     ./gradlew integration-tests:test '-PesModule=es82x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
