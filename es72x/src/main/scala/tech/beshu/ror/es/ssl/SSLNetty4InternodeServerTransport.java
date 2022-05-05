@@ -38,7 +38,7 @@ import org.elasticsearch.transport.netty4.Netty4Transport;
 import scala.collection.JavaConverters$;
 import tech.beshu.ror.configuration.SslConfiguration;
 import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration;
-import tech.beshu.ror.utils.SSLCertParser;
+import tech.beshu.ror.utils.SslCertParser;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.TrustManagerFactory;
@@ -76,7 +76,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
         logger.info(">> internode SSL channel initializing");
 
         TrustManagerFactory usedTrustManager = ssl.certificateVerificationEnabled() ?
-                SSLCertParser.customTrustManagerFrom(ssl).getOrElse(null) : InsecureTrustManagerFactory.INSTANCE;
+                SslCertParser.customTrustManagerFrom(ssl).getOrElse(null) : InsecureTrustManagerFactory.INSTANCE;
 
         SslContext sslCtx = SslContextBuilder.forClient()
                 .trustManager(usedTrustManager)
@@ -119,7 +119,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
     public SslChannelInitializer(String name) {
       super(name);
       AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-        SSLCertParser.run(new SSLContextCreatorImpl(), ssl);
+        SslCertParser.run(new SSLContextCreatorImpl(), ssl);
         return null;
       });
     }
@@ -133,7 +133,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
       });
     }
 
-    private class SSLContextCreatorImpl implements SSLCertParser.SSLContextCreator {
+    private class SSLContextCreatorImpl implements SslCertParser.SSLContextCreator {
       @Override
       public void mkSSLContext(InputStream certChain, InputStream privateKey) {
         try {
@@ -141,7 +141,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null);
 
           logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);
+          SslCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);
 
           if(ssl.allowedCiphers().size() > 0) {
             sslCtxBuilder.ciphers(
