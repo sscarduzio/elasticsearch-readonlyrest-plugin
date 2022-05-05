@@ -37,7 +37,6 @@ import org.elasticsearch.threadpool.ThreadPool;
 import scala.collection.JavaConverters$;
 import tech.beshu.ror.configuration.SslConfiguration;
 import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration;
-import tech.beshu.ror.utils.SSLCertParser2;
 
 import javax.net.ssl.TrustManagerFactory;
 import java.io.InputStream;

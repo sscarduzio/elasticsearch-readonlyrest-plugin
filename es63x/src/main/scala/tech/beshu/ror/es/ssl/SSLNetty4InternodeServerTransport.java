@@ -37,7 +37,6 @@ import org.elasticsearch.transport.netty4.Netty4Transport;
 import scala.collection.JavaConverters$;
 import tech.beshu.ror.configuration.SslConfiguration;
 import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration;
-import tech.beshu.ror.utils.SSLCertParser2;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.TrustManagerFactory;

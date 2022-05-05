@@ -32,7 +32,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.netty4.SharedGroupFactory
 import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.SSLCertParser2
+import tech.beshu.ror.utils.SSLCertParser1
 
 import scala.collection.JavaConverters._
 
@@ -63,7 +63,7 @@ class SSLNetty4HttpServerTransport(settings: Settings,
     private var context = Option.empty[SslContext]
 
     doPrivileged {
-      SSLCertParser2.run(new SSLContextCreatorImpl, ssl)
+      SSLCertParser1.run(new SSLContextCreatorImpl, ssl)
     }
 
     override def initChannel(ch: Channel): Unit = {
@@ -73,17 +73,17 @@ class SSLNetty4HttpServerTransport(settings: Settings,
       }
     }
 
-    private class SSLContextCreatorImpl extends SSLCertParser2.SSLContextCreator {
+    private class SSLContextCreatorImpl extends SSLCertParser1.SSLContextCreator {
       override def mkSSLContext(certChain: InputStream, privateKey: InputStream): Unit = {
         try { // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           val sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null)
 
           logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider.name)
-          SSLCertParser2.validateProtocolAndCiphers(sslCtxBuilder.build.newEngine(ByteBufAllocator.DEFAULT), ssl)
+          SSLCertParser1.validateProtocolAndCiphers(sslCtxBuilder.build.newEngine(ByteBufAllocator.DEFAULT), ssl)
           if (ssl.allowedCiphers.nonEmpty) sslCtxBuilder.ciphers(ssl.allowedCiphers.map(_.value).toList.asJava)
           if (ssl.clientAuthenticationEnabled) {
             sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
-            sslCtxBuilder.trustManager(SSLCertParser2.customTrustManagerFrom(ssl).orNull)
+            sslCtxBuilder.trustManager(SSLCertParser1.customTrustManagerFrom(ssl).orNull)
           }
           if (ssl.allowedProtocols.nonEmpty) sslCtxBuilder.protocols(ssl.allowedProtocols.map(_.value).toList: _*)
           context = Some(sslCtxBuilder.build)
