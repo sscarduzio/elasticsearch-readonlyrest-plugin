@@ -37,6 +37,7 @@ trait EsWithoutSecurityPluginContainerCreator extends EsContainerCreator {
       nodeName = name,
       nodes = nodeNames,
       envs = clusterSettings.rorContainerSpecification.environmentVariables,
+      additionalElasticsearchYamlEntries = clusterSettings.rorContainerSpecification.additionalElasticsearchYamlEntries,
       esVersion = esVersion,
       xPackSupport = clusterSettings.xPackSupport,
       useXpackSecurityInsteadOfRor = clusterSettings.useXpackSecurityInsteadOfRor,

@@ -67,6 +67,7 @@ object EsContainer {
     def nodeName: String
     def nodes: NonEmptyList[String]
     def envs: Map[String, String]
+    def additionalElasticsearchYamlEntries: Map[String, String]
     def esVersion: String
     def xPackSupport: Boolean
     def useXpackSecurityInsteadOfRor: Boolean

@@ -40,6 +40,11 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_proxy" ]]; then
     ./gradlew integration-tests:test '-PesModule=proxy' '-Pmode=proxy' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es82x" ]]; then
+    echo ">>> es82x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es82x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es81x" ]]; then
     echo ">>> es81x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es81x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
@@ -148,6 +153,9 @@ fi
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es8xx" ]]; then
 
     echo ">>> ($0) additional builds of ES module for specified ES version"
+
+    #es82
+    ./gradlew --stacktrace es82x:ror '-PesVersion=8.2.0'
 
     #es81
     ./gradlew --stacktrace es81x:ror '-PesVersion=8.1.3'
