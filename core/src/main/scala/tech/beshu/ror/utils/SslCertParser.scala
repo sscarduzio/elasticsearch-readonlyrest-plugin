@@ -33,7 +33,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * Created by sscarduzio on 02/07/2017.
   */
-object SSLCertParser extends Logging {
+object SslCertParser extends Logging {
 
   def run(sslContextCreator: SSLContextCreator,
           config: SslConfiguration): Unit = {

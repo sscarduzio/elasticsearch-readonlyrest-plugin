@@ -81,7 +81,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .applyTo(builder)
           .user("root")
 
-        RunCommandCombiner.empty
+        val commands = RunCommandCombiner.empty
           .run("chown elasticsearch:elasticsearch config/*")
           .run("(egrep -v 'node\\.name|cluster\\.initial_master_nodes|cluster\\.name|network\\.host' /usr/share/elasticsearch/config/elasticsearch.yml || echo -n '') > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
           .run(s"echo 'node.name: $nodeName' >> /usr/share/elasticsearch/config/elasticsearch.yml")
@@ -106,6 +106,11 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .runWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0),
             command = s"echo 'action.destructive_requires_name: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
           )
+
+        additionalElasticsearchYamlEntries
+          .foldLeft(commands) { case (c, (key, value)) =>
+            c.run(s"echo '$key: $value' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          }
           .applyTo(builder)
 
         val javaOpts = {

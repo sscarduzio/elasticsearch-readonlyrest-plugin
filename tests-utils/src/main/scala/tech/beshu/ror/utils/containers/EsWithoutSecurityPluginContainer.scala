@@ -40,6 +40,7 @@ object EsWithoutSecurityPluginContainer extends StrictLogging {
                           nodeName: String,
                           nodes: NonEmptyList[String],
                           envs: Map[String, String],
+                          additionalElasticsearchYamlEntries: Map[String, String],
                           esVersion: String,
                           xPackSupport: Boolean,
                           useXpackSecurityInsteadOfRor: Boolean,
@@ -47,7 +48,8 @@ object EsWithoutSecurityPluginContainer extends StrictLogging {
                           customRorIndexName: Option[String],
                           internodeSslEnabled: Boolean,
                           externalSslEnabled: Boolean,
-                          forceNonOssImage: Boolean) extends EsContainer.Config
+                          forceNonOssImage: Boolean)
+    extends EsContainer.Config
 
   def create(config: EsWithoutSecurityPluginContainer.Config,
              initializer: ElasticsearchNodeDataInitializer,

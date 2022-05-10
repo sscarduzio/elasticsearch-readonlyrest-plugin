@@ -36,7 +36,7 @@ import org.elasticsearch.threadpool.ThreadPool;
 import scala.collection.JavaConverters$;
 import tech.beshu.ror.configuration.SslConfiguration;
 import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration;
-import tech.beshu.ror.utils.SSLCertParser;
+import tech.beshu.ror.utils.SslCertParser;
 
 import javax.net.ssl.TrustManagerFactory;
 import java.io.InputStream;
@@ -84,7 +84,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, SSLNetty4HttpServerTransport.this.detailedErrorsEnabled, SSLNetty4HttpServerTransport.this.threadPool.getThreadContext());
       AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-        SSLCertParser.run(new SSLContextCreatorImpl(), ssl);
+        SslCertParser.run(new SSLContextCreatorImpl(), ssl);
         return null;
       });
     }
@@ -96,7 +96,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
       });
     }
 
-    private class SSLContextCreatorImpl implements SSLCertParser.SSLContextCreator {
+    private class SSLContextCreatorImpl implements SslCertParser.SSLContextCreator {
       @Override
       public void mkSSLContext(InputStream certChain, InputStream privateKey) {
         try {
@@ -104,7 +104,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null);
 
           logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);
+          SslCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);
 
           if(ssl.allowedCiphers().size() > 0) {
             sslCtxBuilder.ciphers(
@@ -118,7 +118,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
           if (ssl.clientAuthenticationEnabled()) {
             sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
-            TrustManagerFactory usedTrustManager = SSLCertParser.customTrustManagerFrom(ssl).getOrElse(null);
+            TrustManagerFactory usedTrustManager = SslCertParser.customTrustManagerFrom(ssl).getOrElse(null);
             sslCtxBuilder.trustManager(usedTrustManager);
           }
 
