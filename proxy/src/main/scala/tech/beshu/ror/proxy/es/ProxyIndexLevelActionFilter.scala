@@ -106,7 +106,7 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
 
   private def handleResult(listener: ActionListener[ActionResponse], result: Either[AclAwareRequestFilter.Error, Unit]): Unit = result match {
     case Right(_) =>
-    case Left(AclAwareRequestFilter.Error.TestEngineNotConfigured) =>
+    case Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured) =>
       listener.onFailure(createTestSettingsNotConfiguredResponse())
   }
 }

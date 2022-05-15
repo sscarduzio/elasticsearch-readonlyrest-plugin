@@ -179,7 +179,7 @@ class IndexLevelActionFilter(nodeName: String,
 
   private def handleResult(esContext: EsContext, result: Either[AclAwareRequestFilter.Error, Unit]): Unit = result match {
     case Right(_) =>
-    case Left(AclAwareRequestFilter.Error.TestEngineNotConfigured) =>
+    case Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured) =>
       esContext.listener.onFailure(createTestSettingsNotConfiguredResponse())
   }
 

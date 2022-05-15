@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler
 
 import java.time.Instant
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -68,13 +67,13 @@ import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter._
+import tech.beshu.ror.es.handler.request.RestRequestOps._
 import tech.beshu.ror.es.handler.request.context.types._
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
 import scala.language.postfixOps
 import scala.reflect.ClassTag
-import scala.collection.JavaConverters._
 
 class AclAwareRequestFilter(clusterService: RorClusterService,
                             settings: Settings,
@@ -231,10 +230,7 @@ object AclAwareRequestFilter {
     val timestamp: Instant = Instant.now()
 
     def pickEngineToHandle(engines: Engines): Either[Error, Engine] = {
-      val impersonationHeaderPresent = channel
-        .request()
-        .getHeaders.asScala
-        .exists { case (name, _) => isImpersonateAsHeader(name) }
+      val impersonationHeaderPresent = isImpersonationHeader
       engines.impersonatorsEngine match {
         case Some(impersonatorsEngine) if impersonationHeaderPresent => Right(impersonatorsEngine)
         case None if impersonationHeaderPresent => Left(Error.ImpersonatorsEngineNotConfigured)
@@ -242,11 +238,11 @@ object AclAwareRequestFilter {
       }
     }
 
-    private def isImpersonateAsHeader(headerName: String) = {
-      NonEmptyString
-        .unapply(headerName)
-        .map(Header.Name.apply)
-        .exists(_ === Header.Name.impersonateAs)
+    private def isImpersonationHeader = {
+      channel
+        .request()
+        .allHeaders()
+        .exists { case Header(name, _) => name === Header.Name.impersonateAs }
     }
   }
 

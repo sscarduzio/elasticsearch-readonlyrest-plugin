@@ -34,6 +34,7 @@ import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.Action._
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.{Local, Remote}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
@@ -120,6 +121,39 @@ object domain {
                 (implicit ev: ToHeaderValue[T]): Header = new Header(name, ev.toRawValue(value))
 
     def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
+
+    def fromRawHeaders(headers: Map[String, List[String]]): Set[Header] = {
+      val (authorizationHeaders, otherHeaders) =
+        headers
+          .map { case (name, values) => (name, values.toSet) }
+          .flatMap { case (name, values) =>
+            for {
+              nonEmptyName <- NonEmptyString.unapply(name)
+              nonEmptyValues <- NonEmptyList.fromList(values.toList.flatMap(NonEmptyString.unapply))
+            } yield (Header.Name(nonEmptyName), nonEmptyValues)
+          }
+          .toSeq
+          .partition { case (name, _) => name === Header.Name.authorization }
+      val headersFromAuthorizationHeaderValues = authorizationHeaders
+        .flatMap { case (_, values) =>
+          val headersFromAuthorizationHeaderValues = values
+            .map(fromAuthorizationValue)
+            .toList
+            .map(_.map(_.toList))
+            .sequence
+            .map(_.flatten)
+          headersFromAuthorizationHeaderValues match {
+            case Left(error) => throw new IllegalArgumentException(error.show)
+            case Right(v) => v
+          }
+        }
+        .toSet
+      val restOfHeaders = otherHeaders
+        .flatMap { case (name, values) => values.map(new Header(name, _)).toList }
+        .toSet
+      val restOfHeaderNames = restOfHeaders.map(_.name)
+      restOfHeaders ++ headersFromAuthorizationHeaderValues.filter { header => !restOfHeaderNames.contains(header.name) }
+    }
 
     def fromAuthorizationValue(value: NonEmptyString): Either[AuthorizationValueError, NonEmptyList[Header]] = {
       value.value.splitBy("ror_metadata=") match {
