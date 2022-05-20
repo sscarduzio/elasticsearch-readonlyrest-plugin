@@ -26,7 +26,7 @@ import tech.beshu.ror.RequestId
 import tech.beshu.ror.api.TestConfigApi.TestConfigRequest.Type
 import tech.beshu.ror.api.TestConfigApi.TestConfigResponse._
 import tech.beshu.ror.api.TestConfigApi.{TestConfigRequest, TestConfigResponse}
-import tech.beshu.ror.boot.RorInstance.{RawConfigReloadError, TestConfig, TestEngineRorConfig}
+import tech.beshu.ror.boot.RorInstance.{RawConfigReloadError, TestConfig}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
@@ -89,30 +89,32 @@ class TestConfigApi(rorInstance: RorInstance)
       .map {
         case TestConfig.NotSet =>
           TestConfigResponse.ProvideTestConfig.TestSettingsNotConfigured("ROR Test settings are not configured")
-        case TestConfig.Present(config, configuredTtl, validTo) =>
+        case TestConfig.Present(_, rawConfig, configuredTtl, validTo) =>
           TestConfigResponse.ProvideTestConfig.CurrentTestSettings(
             ttl = configuredTtl,
             validTo = validTo,
-            settings = config,
+            settings = rawConfig,
             warnings = List.empty
           )
-        case TestConfig.Invalidated(recent) =>
-          TestConfigResponse.ProvideTestConfig.TestSettingsInvalidated("ROR Test settings are invalidated", recent)
+        case TestConfig.Invalidated(recentConfig, ttl) =>
+          TestConfigResponse.ProvideTestConfig.TestSettingsInvalidated("ROR Test settings are invalidated", recentConfig, ttl)
       }
   }
 
   private def provideLocalUsers()
                                (implicit requestId: RequestId): Task[TestConfigResponse] = {
     rorInstance
-      .currentTestEngineRorConfig()
+      .currentTestConfig()
       .map {
-        case TestEngineRorConfig.NotSet =>
+        case TestConfig.NotSet =>
           TestConfigResponse.ProvideLocalUsers.TestSettingsNotConfigured("ROR Test settings are not configured")
-        case TestEngineRorConfig.Present(config) =>
+        case TestConfig.Present(config, _, _, _) =>
           TestConfigResponse.ProvideLocalUsers.SuccessResponse(
             users = config.localUsers.users.map(_.value.value).toList,
             unknownUsers = config.localUsers.unknownUsers
           )
+        case _:TestConfig.Invalidated =>
+          TestConfigResponse.ProvideLocalUsers.TestSettingsInvalidated("ROR Test settings are invalidated")
       }
   }
 
@@ -167,7 +169,9 @@ object TestConfigApi {
                                            warnings: List[Warning]) extends ProvideTestConfig
 
       final case class TestSettingsNotConfigured(message: String) extends ProvideTestConfig
-      final case class TestSettingsInvalidated(message: String, settings: RawRorConfig) extends ProvideTestConfig
+      final case class TestSettingsInvalidated(message: String,
+                                               settings: RawRorConfig,
+                                               ttl: FiniteDuration) extends ProvideTestConfig
     }
 
     sealed trait UpdateTestConfig extends TestConfigResponse
@@ -185,6 +189,7 @@ object TestConfigApi {
     object ProvideLocalUsers {
       final case class SuccessResponse(users: List[String], unknownUsers: Boolean) extends ProvideLocalUsers
       final case class TestSettingsNotConfigured(message: String) extends ProvideLocalUsers
+      final case class TestSettingsInvalidated(message: String) extends ProvideLocalUsers
     }
 
     sealed trait Failure extends TestConfigResponse
@@ -203,6 +208,7 @@ object TestConfigApi {
       case _: InvalidateTestConfig.SuccessResponse => "OK"
       case _: ProvideLocalUsers.SuccessResponse => "OK"
       case _: ProvideLocalUsers.TestSettingsNotConfigured => "TEST_SETTINGS_NOT_CONFIGURED"
+      case _: ProvideLocalUsers.TestSettingsInvalidated => "TEST_SETTINGS_INVALIDATED"
       case _: Failure.BadRequest => "FAILED"
     }
   }
