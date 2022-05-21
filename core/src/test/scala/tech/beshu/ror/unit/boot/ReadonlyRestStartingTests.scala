@@ -33,9 +33,9 @@ import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
-import tech.beshu.ror.accesscontrol.factory.{CoreFactory, Core}
+import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
 import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
-import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
+import tech.beshu.ror.boot.RorInstance.{RawConfigReloadError, TestConfig}
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.ReloadingFailed
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
@@ -45,9 +45,9 @@ import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{getResourceContent, getResourcePath, rorConfigFromResource, _}
-
 import java.time.Clock
 import java.util.UUID
+
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -360,9 +360,22 @@ class ReadonlyRestStartingTests
           val testEngineReloadResult2ndAttempt = rorInstance
             .forceReloadTestConfigEngine(testConfig1, 1 minute)
             .runSyncUnsafe()
-
-          testEngineReloadResult2ndAttempt should be(Left(RawConfigReloadError.ConfigUpToDate(testConfig1)))
+          testEngineReloadResult2ndAttempt should be(Right(()))
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
+
+          val testEngineConfigAfter2ndAttempt = rorInstance.currentTestConfig().runSyncUnsafe()
+          testEngineConfigAfter2ndAttempt shouldBe a[TestConfig.Present]
+          testEngineConfigAfter2ndAttempt.asInstanceOf[TestConfig.Present].configuredTtl should be(1 minute)
+
+          val testEngineReloadResult3rdAttempt = rorInstance
+            .forceReloadTestConfigEngine(testConfig1, 5 minute)
+            .runSyncUnsafe()
+          testEngineReloadResult3rdAttempt should be(Right(()))
+          rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
+
+          val testEngineConfigAfter3rdAttempt = rorInstance.currentTestConfig().runSyncUnsafe()
+          testEngineConfigAfter3rdAttempt shouldBe a[TestConfig.Present]
+          testEngineConfigAfter3rdAttempt.asInstanceOf[TestConfig.Present].configuredTtl should be(5 minute)
         }
       }
       "should be automatically unloaded" when {
