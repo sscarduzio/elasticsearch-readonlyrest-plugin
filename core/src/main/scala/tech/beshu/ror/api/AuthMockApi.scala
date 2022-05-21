@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.{MapsBasedMocksProvider, MocksP
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.api.AuthMockApi.AuthMockResponse.{Failure, ProvideAuthMock, UpdateAuthMock}
 import tech.beshu.ror.api.AuthMockApi.AuthMockService._
-import tech.beshu.ror.boot.RorInstance.TestEngineRorConfig
+import tech.beshu.ror.boot.RorInstance.TestConfig
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.RorConfig
 import tech.beshu.ror.utils.CirceOps.CirceErrorOps
@@ -60,7 +60,8 @@ class AuthMockApi(rorInstance: RorInstance,
                              (implicit requestId: RequestId): Task[AuthMockResponse] = {
     withRorConfigAuthServices(
       action = readCurrentAuthMocks,
-      onNotSet = AuthMockResponse.ProvideAuthMock.NotConfigured.apply
+      onNotSet = AuthMockResponse.ProvideAuthMock.NotConfigured.apply,
+      onInvalidated = AuthMockResponse.ProvideAuthMock.Invalidated.apply
     )
       .map(_.merge)
   }
@@ -103,18 +104,22 @@ class AuthMockApi(rorInstance: RorInstance,
                                      (implicit requestId: RequestId): EitherT[Task, AuthMockResponse, RorConfig.Services] = {
     EitherT(withRorConfigAuthServices(
       action = identity,
-      onNotSet = AuthMockResponse.UpdateAuthMock.NotConfigured.apply
+      onNotSet = AuthMockResponse.UpdateAuthMock.NotConfigured.apply,
+      onInvalidated = AuthMockResponse.UpdateAuthMock.Invalidated.apply
     ))
   }
 
   private def withRorConfigAuthServices[A, B](action: RorConfig.Services => B,
-                                              onNotSet: String => A)
+                                              onNotSet: String => A,
+                                              onInvalidated: String => A)
                                              (implicit requestId: RequestId): Task[Either[A, B]] = {
-    rorInstance.currentTestEngineRorConfig().map {
-      case TestEngineRorConfig.NotSet =>
+    rorInstance.currentTestConfig().map {
+      case TestConfig.NotSet =>
         Left(onNotSet("ROR Test settings are not configured. To use Auth Services Mock ROR has to have Test settings active."))
-      case TestEngineRorConfig.Present(config) =>
+      case TestConfig.Present(config, _, _, _) =>
         Right(action(config.services))
+      case _:TestConfig.Invalidated =>
+        Left(onInvalidated("ROR Test settings are invalidated. To use Auth Services Mock ROR has to have Test settings active."))
     }
   }
 
@@ -163,12 +168,14 @@ object AuthMockApi {
     object ProvideAuthMock {
       final case class CurrentAuthMocks(services: List[AuthMockService]) extends ProvideAuthMock
       final case class NotConfigured(message: String) extends ProvideAuthMock
+      final case class Invalidated(message: String) extends ProvideAuthMock
     }
 
     sealed trait UpdateAuthMock extends AuthMockResponse
     object UpdateAuthMock {
       final case class Success(message: String) extends UpdateAuthMock
       final case class NotConfigured(message: String) extends UpdateAuthMock
+      final case class Invalidated(message: String) extends UpdateAuthMock
       final case class UnknownAuthServicesDetected(message: String) extends UpdateAuthMock
     }
 
@@ -210,8 +217,10 @@ object AuthMockApi {
     def status: String = response match {
       case _: ProvideAuthMock.CurrentAuthMocks => "TEST_SETTINGS_PRESENT"
       case _: ProvideAuthMock.NotConfigured => "TEST_SETTINGS_NOT_CONFIGURED"
+      case _: ProvideAuthMock.Invalidated => "TEST_SETTINGS_INVALIDATED"
       case _: UpdateAuthMock.Success => "OK"
       case _: UpdateAuthMock.NotConfigured => "TEST_SETTINGS_NOT_CONFIGURED"
+      case _: UpdateAuthMock.Invalidated => "TEST_SETTINGS_INVALIDATED"
       case _: UpdateAuthMock.UnknownAuthServicesDetected => "UNKNOWN_AUTH_SERVICES_DETECTED"
       case _: Failure.BadRequest => "FAILED"
     }

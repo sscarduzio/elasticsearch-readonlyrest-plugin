@@ -199,6 +199,8 @@ paths:
                   $ref: "#/components/examples/OnlySomeAuthServicesConfiguredResponseExample"
                 TestSettingsNotConfiguredAuthServicesResponseExample:
                   $ref: "#/components/examples/TestSettingsNotConfiguredAuthServicesResponseExample"
+                TestSettingsInvalidatedAuthServicesResponseExample:
+                  $ref: "#/components/examples/TestSettingsInvalidatedAuthServicesResponseExample"
         403:
           description: The request was forbidden by ROR's ACL
           content:
@@ -252,6 +254,8 @@ paths:
                   $ref: "#/components/examples/AuthMocksUpdatedResponseExample"
                 TestSettingsNotConfiguredAuthServicesResponseExample:
                   $ref: "#/components/examples/TestSettingsNotConfiguredAuthServicesResponseExample"
+                TestSettingsInvalidatedAuthServicesResponseExample:
+                  $ref: "#/components/examples/TestSettingsInvalidatedAuthServicesResponseExample"
                 UnknownAuthServicesDetectedResponseExample:
                   $ref: "#/components/examples/UnknownAuthServicesDetectedResponseExample"
         403:
@@ -360,6 +364,8 @@ components:
       required:
         - status
         - message
+        - settings
+        - ttl
       properties:
         status:
           type: string
@@ -371,6 +377,8 @@ components:
         settings:
           type: string
           description: Recently configured Test Settings that are not longer valid, because they were invalidated
+        ttl:
+          $ref: '#/components/schemas/RorSettingsTtl'
 
     CurrentTestSettingsResponse:
       type: object
@@ -527,11 +535,13 @@ components:
       oneOf:
         - $ref: '#/components/schemas/CurrentAuthMocksResponse'
         - $ref: '#/components/schemas/AuthMockTestSettingsNotConfiguredResponse'
+        - $ref: '#/components/schemas/AuthMockTestSettingsInvalidatedResponse'
       discriminator:
         propertyName: status
         mapping:
           TEST_SETTINGS_PRESENT: '#/components/schemas/CurrentAuthMocksResponse'
           TEST_SETTINGS_NOT_CONFIGURED: '#/components/schemas/AuthMockTestSettingsNotConfiguredResponse'
+          TEST_SETTINGS_INVALIDATED: '#/components/schemas/AuthMockTestSettingsInvalidatedResponse'
 
     CurrentAuthMocksResponse:
       type: object
@@ -558,6 +568,20 @@ components:
           type: string
           enum:
             - TEST_SETTINGS_NOT_CONFIGURED
+        message:
+          type: string
+          description: Human readable message
+
+    AuthMockTestSettingsInvalidatedResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          enum:
+            - TEST_SETTINGS_INVALIDATED
         message:
           type: string
           description: Human readable message
@@ -590,12 +614,14 @@ components:
       oneOf:
         - $ref: '#/components/schemas/AuthMocksUpdatedResponse'
         - $ref: '#/components/schemas/AuthMockTestSettingsNotConfiguredResponse'
+        - $ref: '#/components/schemas/AuthMockTestSettingsInvalidatedResponse'
         - $ref: '#/components/schemas/UnknownAuthServicesDetectedResponse'
       discriminator:
         propertyName: status
         mapping:
           OK: '#/components/schemas/AuthMocksUpdatedResponse'
           TEST_SETTINGS_NOT_CONFIGURED: '#/components/schemas/AuthMockTestSettingsNotConfiguredResponse'
+          TEST_SETTINGS_INVALIDATED: '#/components/schemas/AuthMockTestSettingsInvalidatedResponse'
           UNKNOWN_AUTH_SERVICES_DETECTED: '#/components/schemas/UnknownAuthServicesDetectedResponse'
 
     AuthMocksUpdatedResponse:
@@ -882,6 +908,7 @@ components:
         message: ROR Test settings are invalidated
         recent_settings: |
           readonlyrest:\\r\\n    access_control_rules:\\r\\n\\r\\n    - name: | \\""Require HTTP Basic | Auth\\""\\r\\n      type: allow\\r\\n      indices: | [\\""test\\""]\\r\\n\\r\\n    - name: | \\""other\\""\\r\\n      auth_key: \\""admin:test\\""
+        ttl: 30 m
 
     TestSettingsUpdatedResponseExample:
       summary: ROR Test settings was updated and configured with success
@@ -1103,6 +1130,12 @@ components:
       value:
         status: TEST_SETTINGS_NOT_CONFIGURED
         message: ROR Test settings are not configured. To use Auth Services Mock ROR has to have Test settings active.
+
+    TestSettingsInvalidatedAuthServicesResponseExample:
+      summary: ROR Test settings are invalidated
+      value:
+        status: TEST_SETTINGS_INVALIDATED
+        message: ROR Test settings are invalidated. To use Auth Services Mock ROR has to have Test settings active.
 
     UnknownAuthServicesDetectedResponseExample:
       summary: Unknown Auth Services detected

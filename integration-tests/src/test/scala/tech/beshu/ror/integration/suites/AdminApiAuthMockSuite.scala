@@ -48,13 +48,45 @@ trait AdminApiAuthMockSuite
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = None
 
   "An admin Auth Mock REST API" should {
+    "return info that test settings are not configured" when {
+      "get current mocks" in {
+        val response = rorApiManager.currentMockedServices()
+        response.responseCode should be(200)
+        response.responseJson("status").str should be("TEST_SETTINGS_NOT_CONFIGURED")
+        response.responseJson("message").str should be("ROR Test settings are not configured. To use Auth Services Mock ROR has to have Test settings active.")
+      }
+      "update mocks" in {
+        val payloadServices = ujson.read(
+          s"""
+             |[
+             |  {
+             |    "type": "LDAP",
+             |    "name": "ldap1",
+             |    "mock": "NOT_CONFIGURED"
+             |  }
+             |]
+             |""".stripMargin)
+        val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(payloadServices))
+        response.responseCode should be(200)
+        response.responseJson("status").str should be("TEST_SETTINGS_NOT_CONFIGURED")
+        response.responseJson("message").str should be("ROR Test settings are not configured. To use Auth Services Mock ROR has to have Test settings active.")
+      }
+    }
     "provide a method for get current mocked services" which {
-      "return info that test settings are not configured" when {
+      "return info that test settings are invalidated" when {
         "get current test settings" in {
+          rorApiManager
+            .updateRorTestConfig(testEngineConfig())
+            .forceOk()
+
+          rorApiManager
+            .invalidateRorTestConfig()
+            .forceOk()
+
           val response = rorApiManager.currentMockedServices()
           response.responseCode should be(200)
-          response.responseJson("status").str should be("TEST_SETTINGS_NOT_CONFIGURED")
-          response.responseJson("message").str should be("ROR Test settings are not configured. To use Auth Services Mock ROR has to have Test settings active.")
+          response.responseJson("status").str should be("TEST_SETTINGS_INVALIDATED")
+          response.responseJson("message").str should be("ROR Test settings are invalidated. To use Auth Services Mock ROR has to have Test settings active.")
         }
       }
       "return info that mocks are not configured" in {
@@ -466,7 +498,7 @@ trait AdminApiAuthMockSuite
           }
         }
       }
-      "return info that test settings are not configured" in {
+      "return info that test settings are invalidated" in {
         val payloadServices = ujson.read(
           s"""
              |[
@@ -479,8 +511,8 @@ trait AdminApiAuthMockSuite
              |""".stripMargin)
         val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(payloadServices))
         response.responseCode should be(200)
-        response.responseJson("status").str should be("TEST_SETTINGS_NOT_CONFIGURED")
-        response.responseJson("message").str should be("ROR Test settings are not configured. To use Auth Services Mock ROR has to have Test settings active.")
+        response.responseJson("status").str should be("TEST_SETTINGS_INVALIDATED")
+        response.responseJson("message").str should be("ROR Test settings are invalidated. To use Auth Services Mock ROR has to have Test settings active.")
       }
       "return info that unknown services detected" when {
         "unknown service passed" in {

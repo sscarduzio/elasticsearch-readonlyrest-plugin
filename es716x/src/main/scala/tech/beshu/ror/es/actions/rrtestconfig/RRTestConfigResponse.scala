@@ -46,6 +46,7 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
       case provideUsersResponse: ProvideLocalUsers => provideUsersResponse match {
         case res: ProvideLocalUsers.SuccessResponse => provideLocalUsersJson(builder, res)
         case ProvideLocalUsers.TestSettingsNotConfigured(message) => addResponseJson(builder, response.status, message)
+        case ProvideLocalUsers.TestSettingsInvalidated(message) => addResponseJson(builder, response.status, message)
       }
       case failure: Failure => failure match {
         case Failure.BadRequest(message) => addResponseJson(builder, response.status, message)
@@ -97,6 +98,7 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
     builder.field("status", response.status)
     builder.field("message", response.message)
     builder.field("settings", response.settings.raw)
+    builder.field("ttl", response.ttl.toString())
     builder.endObject
   }
 

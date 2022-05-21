@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.integration.suites.base
 
+import java.time.Instant
+
 import cats.data.NonEmptyList
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalatest.BeforeAndAfterEach
@@ -26,8 +28,9 @@ import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClus
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
-
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.TimeUnit
+
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
@@ -430,6 +433,7 @@ trait BaseAdminApiSuite
         testConfigResponse.responseJson("status").str should be("TEST_SETTINGS_INVALIDATED")
         testConfigResponse.responseJson("message").str should be("ROR Test settings are invalidated")
         testConfigResponse.responseJson("settings").str should be(getResourceContent("/admin_api/readonlyrest_second_update_with_impersonation.yml"))
+        testConfigResponse.responseJson("ttl").str should be("30 minutes")
 
         // after test core invalidation, impersonations requests should be rejected
         val dev1ror1AfterTestEngineAutoDestruction = dev1Ror1stInstanceSearchManager.search("test1_index")
@@ -602,20 +606,46 @@ trait BaseAdminApiSuite
           dev2ror2AfterTestEngineAutoDestruction.responseCode should be(403)
           dev2ror2AfterTestEngineAutoDestruction.responseJson should be(testSettingsNotConfiguredResponse)
         }
-      }
-      "return info that config is up to date" when {
-        "test config is the same as provided one" in {
-          ror1WithIndexConfigAdminActionManager
-            .updateRorTestConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
-            .force()
-
+        "configuration is up to date and new ttl is passed" in {
+          val testConfig = getResourceContent("/admin_api/readonlyrest_index.yml")
           val result = ror1WithIndexConfigAdminActionManager
-            .updateRorTestConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
+            .updateRorTestConfig(testConfig, FiniteDuration.apply(30, TimeUnit.MINUTES))
             .force()
 
           result.responseCode should be(200)
-          result.responseJson("status").str should be("FAILED")
-          result.responseJson("message").str should be("Current settings are already loaded")
+          result.responseJson("status").str should be("OK")
+          result.responseJson("message").str should be("updated settings")
+
+          val testConfigResponse = ror1WithIndexConfigAdminActionManager.currentRorTestConfig
+          testConfigResponse.responseCode should be(200)
+          testConfigResponse.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
+          testConfigResponse.responseJson("settings").str should be(testConfig)
+          testConfigResponse.responseJson("ttl").str should be("30 minutes")
+          isIsoDateTime(testConfigResponse.responseJson("valid_to").str) should be(true)
+          testConfigResponse.responseJson("warnings").arr should be(empty)
+
+          // wait for valid_to comparison purpose
+          Thread.sleep(1000)
+
+          val resultAfterReload = ror1WithIndexConfigAdminActionManager
+            .updateRorTestConfig(testConfig, FiniteDuration.apply(45, TimeUnit.MINUTES))
+            .force()
+
+          resultAfterReload.responseCode should be(200)
+          resultAfterReload.responseJson("status").str should be("OK")
+          resultAfterReload.responseJson("message").str should be("updated settings")
+
+          val testConfigResponseAfterReload = ror1WithIndexConfigAdminActionManager.currentRorTestConfig
+          testConfigResponseAfterReload.responseCode should be(200)
+          testConfigResponseAfterReload.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
+          testConfigResponseAfterReload.responseJson("settings").str should be(testConfig)
+          testConfigResponseAfterReload.responseJson("ttl").str should be("45 minutes")
+          isIsoDateTime(testConfigResponseAfterReload.responseJson("valid_to").str) should be(true)
+          testConfigResponseAfterReload.responseJson("warnings").arr should be(empty)
+
+          Instant
+            .parse(testConfigResponseAfterReload.responseJson("valid_to").str)
+            .isAfter(Instant.parse(testConfigResponse.responseJson("valid_to").str)) should be(true)
         }
       }
       "return info that request is malformed" when {

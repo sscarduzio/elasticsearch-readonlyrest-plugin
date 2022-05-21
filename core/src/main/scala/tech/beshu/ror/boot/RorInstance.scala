@@ -111,11 +111,6 @@ class RorInstance private(boot: ReadonlyRest,
     anTestConfigEngine.currentTestConfig()
   }
 
-  def currentTestEngineRorConfig()
-                                (implicit requestId: RequestId): Task[TestEngineRorConfig] = {
-    anTestConfigEngine.currentRorConfig()
-  }
-
   def forceReloadTestConfigEngine(config: RawRorConfig,
                                   ttl: FiniteDuration)
                                  (implicit requestId: RequestId): Task[Either[RawConfigReloadError, Unit]] = {
@@ -215,14 +210,12 @@ object RorInstance {
   sealed trait TestConfig
   object TestConfig {
     case object NotSet extends TestConfig
-    final case class Present(config: RawRorConfig, configuredTtl: FiniteDuration, validTo: Instant) extends TestConfig
-    final case class Invalidated(recent: RawRorConfig) extends TestConfig
-  }
-
-  sealed trait TestEngineRorConfig
-  object TestEngineRorConfig {
-    case object NotSet extends TestEngineRorConfig
-    final case class Present(config: RorConfig) extends TestEngineRorConfig
+    final case class Present(config: RorConfig,
+                             rawConfig: RawRorConfig,
+                             configuredTtl: FiniteDuration,
+                             validTo: Instant) extends TestConfig
+    final case class Invalidated(recent: RawRorConfig,
+                                 configuredTtl: FiniteDuration) extends TestConfig
   }
 
   def createWithPeriodicIndexCheck(boot: ReadonlyRest,
