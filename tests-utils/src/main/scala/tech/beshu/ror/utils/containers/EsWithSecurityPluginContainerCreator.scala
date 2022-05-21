@@ -49,6 +49,7 @@ trait EsWithSecurityPluginContainerCreator extends EsContainerCreator {
       nodeName = name,
       nodes = nodeNames,
       envs = clusterSettings.rorContainerSpecification.environmentVariables,
+      additionalElasticsearchYamlEntries = clusterSettings.rorContainerSpecification.additionalElasticsearchYamlEntries,
       esVersion = esVersion,
       rorPluginFile = rorPluginFile,
       rorConfigFile = adjustedRorConfig.toJava,

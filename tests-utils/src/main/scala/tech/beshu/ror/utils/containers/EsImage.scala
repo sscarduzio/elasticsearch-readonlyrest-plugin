@@ -87,8 +87,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .applyTo(builder)
           .user("root")
 
-
-        RunCommandCombiner.empty
+        val commands = RunCommandCombiner.empty
           .runWhen(Version.greaterOrEqualThan(esVersion, 7, 10, 0),
             s"printf '${readAdditionalGrantFile}' >> /usr/share/elasticsearch/jdk/conf/security/java.policy")
           .run("chown elasticsearch:elasticsearch config/*")
@@ -115,6 +114,11 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .runWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0),
             command = s"echo 'action.destructive_requires_name: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
           )
+
+        additionalElasticsearchYamlEntries
+          .foldLeft(commands) { case (c, (key, value)) =>
+            c.run(s"echo '$key: $value' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          }
           .applyTo(builder)
 
         val javaOpts = {
