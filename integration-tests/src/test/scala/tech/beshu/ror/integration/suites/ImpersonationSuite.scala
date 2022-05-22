@@ -17,8 +17,8 @@
 package tech.beshu.ror.integration.suites
 
 import org.apache.commons.codec.binary.Base64
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonLdapContainers}
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
@@ -501,17 +501,150 @@ trait ImpersonationSuite
     }
   }
 
+  "Current user metadata request should support impersonation and" - {
+    "return 200 when the user can be impersonated" in {
+      rorApiManager
+        .configureImpersonationMocks(ujson.read(
+          s"""
+             |{
+             |  "services": [
+             |    {
+             |      "type": "LDAP",
+             |      "name": "ldap1",
+             |      "mock": {
+             |        "users" : [
+             |          {
+             |            "name": "ldap_user_1",
+             |            "groups": ["group1", "group2"]
+             |          }
+             |        ]
+             |      }
+             |    },
+             |    {
+             |      "type": "LDAP",
+             |      "name": "ldap2",
+             |      "mock": {
+             |        "users" : [
+             |          {
+             |            "name": "ldap_user_2",
+             |            "groups": ["group1", "group2"]
+             |          }
+             |        ]
+             |      }
+             |    },
+             |    {
+             |      "type": "EXT_AUTHN",
+             |      "name": "ext1",
+             |      "mock": {
+             |        "users": [
+             |          { "name": "ext_user_1" }
+             |        ]
+             |      }
+             |    },
+             |    {
+             |      "type": "EXT_AUTHN",
+             |      "name": "ext2",
+             |      "mock": {
+             |        "users": [
+             |          { "name": "ext_user_2" }
+             |        ]
+             |      }
+             |    },
+             |    {
+             |      "type": "EXT_AUTHZ",
+             |      "name": "grp1",
+             |      "mock": {
+             |        "users" : [
+             |          { "name": "gpa_user_1",  "groups": ["group4", "group5"]},
+             |          { "name": "gpa_user_1a", "groups": ["group4a", "group5a"] }
+             |        ]
+             |      }
+             |    },
+             |    {
+             |      "type": "EXT_AUTHZ",
+             |      "name": "grp2",
+             |      "mock": {
+             |        "users" : [
+             |          { "name": "gpa_user_2",  "groups": ["group4", "group5"]},
+             |          { "name": "gpa_user_2a", "groups": ["group4a", "group5a"] }
+             |        ]
+             |      }
+             |    }
+             |  ]
+             |}
+             |""".stripMargin
+        ))
+        .forceOk()
+
+      impersonatingRorApiManagers("admin1", "pass1", impersonatedUser = "dev1").foreach { apiManger =>
+        val result = apiManger.fetchMetadata()
+
+        result.responseCode should be(200)
+      }
+    }
+    "return 403 and IMPERSONATION_NOT_ALLOWED when the impersonator cannot be authenticated" in {
+
+    }
+    "return 403 and IMPERSONATION_NOT_ALLOWED when the impersonator is not allowed to impersonate a given user" in {
+
+    }
+    "return 403 and IMPERSONATION_NOT_SUPPORTED when there is no matched block and at least one don't support impersonation" in {
+
+    }
+  }
+
   private def impersonatingSearchManagers(user: String, pass: String, impersonatedUser: String) = {
-    val default = new SearchManager(
-      basicAuthClient(user, pass),
-      Map("x-ror-impersonating" -> impersonatedUser)
+    impersonatingManager(
+      user, pass, impersonatedUser,
+      (client, _, additionalHeaders) => new SearchManager(client, additionalHeaders)
     )
-    val custom = encodingInAuthHeaderSearchManager(user, pass, impersonatedUser)
-    List(default, custom)
+  }
+
+  private def impersonatingRorApiManagers(user: String, pass: String, impersonatedUser: String) = {
+    impersonatingManager(
+      user, pass, impersonatedUser,
+      (client, esVersion, additionalHeaders) => new RorApiManager(client, esVersion, additionalHeaders)
+    )
+  }
+
+  private def impersonatingManager[T](user: String,
+                                      pass: String,
+                                      impersonatedUser: String,
+                                      managerCreator: (RestClient, String, Map[String, String]) => T) = {
+    List(
+      managerCreator(
+        basicAuthClient(user, pass),
+        esVersionUsed,
+        Map("x-ror-impersonating" -> impersonatedUser)
+      ),
+      managerCreator(
+        noBasicAuthClient,
+        esVersionUsed,
+        Map(authorizationHeaderWithRorMetadata((user, pass), Map("x-ror-impersonating" -> impersonatedUser)))
+      )
+    )
+  }
+
+  private def authorizationHeaderWithRorMetadata(userCredentials: (String, String),
+                                                 headersToEncode: Map[String, String]) = {
+    def encodeBase64(value: String): String =
+      Base64.encodeBase64(value.getBytes, false).map(_.toChar).mkString
+
+    val rorMetadata =
+      s"""
+         |{
+         |  "headers": [
+         |    ${headersToEncode.map { case (name, value) => s""""$name": "$value"""" }.mkString(",\n")}
+         |  ]
+         |}
+         |""".stripMargin
+    val (user, pass) = userCredentials
+    "Authorization" -> s"Basic ${encodeBase64(s"$user:$pass")}, ror_metadata=${encodeBase64(rorMetadata)}"
   }
 
   private def encodingInAuthHeaderSearchManager(user: String, pass: String, impersonatedUser: String) = {
-    def encodeBase64(value: String): String = Base64.encodeBase64(value.getBytes, false).map(_.toChar).mkString
+    def encodeBase64(value: String): String =
+      Base64.encodeBase64(value.getBytes, false).map(_.toChar).mkString
 
     val rorMetadata =
       s"""
@@ -554,7 +687,6 @@ trait ImpersonationSuite
       |  "status":401
       |}
     """.stripMargin)
-
 
   private lazy val impersonationNotAllowedResponse = ujson.read(
     """
