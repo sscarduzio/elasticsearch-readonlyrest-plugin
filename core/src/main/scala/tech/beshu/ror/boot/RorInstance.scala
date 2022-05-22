@@ -27,15 +27,16 @@ import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.api.{AuthMockApi, ConfigApi}
-import tech.beshu.ror.boot.engines.{Engines, ImpersonatorsReloadableEngine, MainReloadableEngine}
+import tech.beshu.ror.api.{AuthMockApi, ConfigApi, TestConfigApi}
+import tech.beshu.ror.boot.engines.{Engines, MainConfigBasedReloadableEngine, TestConfigBasedReloadableEngine}
 import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.FileConfigLoader
-import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig, RorProperties}
+import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig, RorConfig, RorProperties}
 import tech.beshu.ror.providers.{JavaUuidProvider, PropertiesProvider}
 
+import java.time.{Clock, Instant}
 import scala.concurrent.duration.FiniteDuration
 
 class RorInstance private(boot: ReadonlyRest,
@@ -44,7 +45,8 @@ class RorInstance private(boot: ReadonlyRest,
                           reloadInProgress: Semaphore[Task],
                           rorConfigurationIndex: RorConfigurationIndex)
                          (implicit propertiesProvider: PropertiesProvider,
-                          scheduler: Scheduler)
+                          scheduler: Scheduler,
+                          clock: Clock)
   extends Logging {
 
   import RorInstance.ScheduledReloadError.{EngineReloadError, ReloadingInProgress}
@@ -62,13 +64,13 @@ class RorInstance private(boot: ReadonlyRest,
     case Mode.NoPeriodicIndexCheck => Cancelable.empty
   }
 
-  private val aMainEngine = new MainReloadableEngine(
+  private val aMainConfigEngine = new MainConfigBasedReloadableEngine(
     boot,
     initialEngine,
     reloadInProgress,
     rorConfigurationIndex,
   )
-  private val anImpersonatorsEngine = new ImpersonatorsReloadableEngine(
+  private val anTestConfigEngine = new TestConfigBasedReloadableEngine(
     boot,
     reloadInProgress,
     rorConfigurationIndex
@@ -81,38 +83,50 @@ class RorInstance private(boot: ReadonlyRest,
     rorConfigurationIndex
   )
 
-  private val authMockRestApi = new AuthMockApi(boot.mocksProvider)
+  private val authMockRestApi = new AuthMockApi(
+    rorInstance = this,
+    mockProvider = boot.mocksProvider
+  )
 
-  def engines: Option[Engines] = aMainEngine.engine.map(Engines(_, anImpersonatorsEngine.engine))
+  private val testConfigRestApi = new TestConfigApi(this)
+
+  def engines: Option[Engines] = aMainConfigEngine.engine.map(Engines(_, anTestConfigEngine.engine))
 
   def configApi: ConfigApi = configRestApi
 
   def authMockApi: AuthMockApi = authMockRestApi
 
+  def testConfigApi: TestConfigApi = testConfigRestApi
+
   def forceReloadFromIndex()
                           (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, Unit]] =
-    aMainEngine.forceReloadFromIndex()
+    aMainConfigEngine.forceReloadFromIndex()
 
   def forceReloadAndSave(config: RawRorConfig)
                         (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, Unit]] =
-    aMainEngine.forceReloadAndSave(config)
+    aMainConfigEngine.forceReloadAndSave(config)
 
-  def forceReloadImpersonatorsEngine(config: RawRorConfig,
-                                     ttl: FiniteDuration)
-                                    (implicit requestId: RequestId): Task[Either[RawConfigReloadError, Unit]] = {
-    anImpersonatorsEngine.forceReloadImpersonatorsEngine(config, ttl)
+  def currentTestConfig()
+                       (implicit requestId: RequestId): Task[TestConfig] = {
+    anTestConfigEngine.currentTestConfig()
   }
 
-  def invalidateImpersonationEngine()
-                                   (implicit requestId: RequestId): Task[Unit] = {
-    anImpersonatorsEngine.invalidateImpersonationEngine()
+  def forceReloadTestConfigEngine(config: RawRorConfig,
+                                  ttl: FiniteDuration)
+                                 (implicit requestId: RequestId): Task[Either[RawConfigReloadError, Unit]] = {
+    anTestConfigEngine.forceReloadTestConfigEngine(config, ttl)
+  }
+
+  def invalidateTestConfigEngine()
+                                (implicit requestId: RequestId): Task[Unit] = {
+    anTestConfigEngine.invalidateTestConfigEngine()
   }
 
   def stop(): Task[Unit] = {
     implicit val requestId: RequestId = RequestId("ES sigterm")
     for {
-      _ <- anImpersonatorsEngine.stop()
-      _ <- aMainEngine.stop()
+      _ <- anTestConfigEngine.stop()
+      _ <- aMainConfigEngine.stop()
     } yield ()
   }
 
@@ -156,7 +170,7 @@ class RorInstance private(boot: ReadonlyRest,
     }
     criticalSection.use {
       case true =>
-        aMainEngine
+        aMainConfigEngine
           .reloadEngineUsingIndexConfigWithoutPermit()
           .map(_.leftMap(ScheduledReloadError.EngineReloadError.apply))
       case false =>
@@ -193,12 +207,24 @@ object RorInstance {
     final case class EngineReloadError(underlying: IndexConfigReloadError) extends ScheduledReloadError
   }
 
+  sealed trait TestConfig
+  object TestConfig {
+    case object NotSet extends TestConfig
+    final case class Present(config: RorConfig,
+                             rawConfig: RawRorConfig,
+                             configuredTtl: FiniteDuration,
+                             validTo: Instant) extends TestConfig
+    final case class Invalidated(recent: RawRorConfig,
+                                 configuredTtl: FiniteDuration) extends TestConfig
+  }
+
   def createWithPeriodicIndexCheck(boot: ReadonlyRest,
                                    engine: ReadonlyRest.Engine,
                                    config: RawRorConfig,
                                    rorConfigurationIndex: RorConfigurationIndex)
                                   (implicit propertiesProvider: PropertiesProvider,
-                                   scheduler: Scheduler): Task[RorInstance] = {
+                                   scheduler: Scheduler,
+                                   clock: Clock): Task[RorInstance] = {
     create(boot, Mode.WithPeriodicIndexCheck, engine, config, rorConfigurationIndex)
   }
 
@@ -207,7 +233,8 @@ object RorInstance {
                                       config: RawRorConfig,
                                       rorConfigurationIndex: RorConfigurationIndex)
                                      (implicit propertiesProvider: PropertiesProvider,
-                                      scheduler: Scheduler): Task[RorInstance] = {
+                                      scheduler: Scheduler,
+                                      clock: Clock): Task[RorInstance] = {
     create(boot, Mode.NoPeriodicIndexCheck, engine, config, rorConfigurationIndex)
   }
 
@@ -217,7 +244,8 @@ object RorInstance {
                      config: RawRorConfig,
                      rorConfigurationIndex: RorConfigurationIndex)
                     (implicit propertiesProvider: PropertiesProvider,
-                     scheduler: Scheduler) = {
+                     scheduler: Scheduler,
+                     clock: Clock) = {
     Semaphore[Task](1)
       .map { isReloadInProgressSemaphore =>
         new RorInstance(

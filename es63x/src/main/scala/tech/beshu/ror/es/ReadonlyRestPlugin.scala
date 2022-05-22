@@ -70,6 +70,15 @@ import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeSe
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
+import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, TransportRRAuditEventAction}
+import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
+import tech.beshu.ror.es.actions.rrauthmock.rest.RestRRAuthMockAction
+import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionType, TransportRRAuthMockAction}
+import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
+import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
+import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, TransportRRTestConfigAction}
+import tech.beshu.ror.es.actions.rrtestconfig.rest.RestRRTestConfigAction
 
 import java.nio.file.Path
 import java.util
@@ -208,6 +217,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
       new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction]),
       new ActionHandler(RRAuthMockActionType.instance, classOf[TransportRRAuthMockAction]),
+      new ActionHandler(RRTestConfigActionType.instance, classOf[TransportRRTestConfigAction]),
       new ActionHandler(RRConfigActionType.instance, classOf[TransportRRConfigAction]),
       new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
       new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
@@ -224,6 +234,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     List[RestHandler](
       new RestRRAdminAction(settings, restController),
       new RestRRAuthMockAction(settings, restController),
+      new RestRRTestConfigAction(settings, restController),
       new RestRRConfigAction(settings, restController, nodesInCluster),
       new RestRRUserMetadataAction(settings, restController),
       new RestRRAuditEventAction(settings, restController)

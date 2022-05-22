@@ -23,7 +23,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.providers.{CallingProxy, MultipleEsTargets, RorConfigFileNameProvider}
+import tech.beshu.ror.utils.containers.providers.{CallingProxy, MultipleEsTargets, ResolvedRorConfigFileProvider, RorConfigFileNameProvider}
 import tech.beshu.ror.utils.proxy.RorProxyInstance
 
 import scala.language.postfixOps
@@ -33,6 +33,7 @@ trait ProxyTestSupport
     with ForAllTestContainer
     with CallingProxy
     with EsWithoutSecurityPluginContainerCreator
+    with ResolvedRorConfigFileProvider
     with LazyLogging {
   this: Suite with MultipleEsTargets with RorConfigFileNameProvider =>
 
@@ -50,17 +51,20 @@ trait ProxyTestSupport
     launchedProxy.close()
   }
 
-  private def launchProxy(esContainer: EsContainer, proxyPort: Int) = {
+  override def resolvedRorConfigFile: File = {
     val rawRorConfig = ContainerUtils.getResourceFile(rorConfigFileName)
-    val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
+    RorConfigAdjuster.adjustUsingDependencies(
       rawRorConfig.toScala,
       esTargets.head.startedClusterDependencies,
       RorConfigAdjuster.Mode.Proxy
     )
+  }
+
+  private def launchProxy(esContainer: EsContainer, proxyPort: Int) = {
     val instance = RorProxyInstance
       .start(
         proxyPort,
-        adjustedRorConfig,
+        resolvedRorConfigFile,
         esTargets.head.containerIpAddress,
         esTargets.head.port,
         esContainer.esClusterSettings.rorContainerSpecification.environmentVariables

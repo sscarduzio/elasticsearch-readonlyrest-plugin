@@ -43,6 +43,8 @@ import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
+import tech.beshu.ror.es.actions.rrtestconfig._
+import tech.beshu.ror.es.actions.rrtestconfig.rest.RestRRTestConfigAction
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
@@ -206,6 +208,8 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
                 RRAuditEventActionHandler.handle(req, resp)
               case (req: RRAuthMockRequest, resp: ActionListener[RRAuthMockResponse]) =>
                 new RRAuthMockActionHandler().handle(req, resp)
+              case (req: RRTestConfigRequest, resp: ActionListener[RRTestConfigResponse]) =>
+                new RRTestConfigActionHandler().handle(req, resp)
               case _ =>
                 handleEsAction(esActionRequestHandler, request, listener, proxyRestChannel)
             }
@@ -237,6 +241,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
         new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction]),
         new ActionHandler(RRAuthMockActionType.instance, classOf[TransportRRAuthMockAction]),
+        new ActionHandler(RRTestConfigActionType.instance, classOf[TransportRRTestConfigAction]),
         new ActionHandler(RRConfigActionType.instance, classOf[TransportRRConfigAction]),
         new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
         new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
@@ -253,6 +258,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       List[RestHandler](
         new RestRRAdminAction(),
         new RestRRAuthMockAction(),
+        new RestRRTestConfigAction(),
         new RestRRConfigAction(nodesInCluster),
         new RestRRUserMetadataAction(),
         new RestRRAuditEventAction()

@@ -49,10 +49,10 @@ trait ExternalAuthorizationService extends Item {
 }
 object ExternalAuthorizationService {
 
-  final case class Name(value: String) extends AnyVal
+  final case class Name(value: NonEmptyString)
   object Name {
     implicit val nameEq: Eq[Name] = Eq.fromUniversalEquals
-    implicit val nameShow: Show[Name] = Show.show(_.value)
+    implicit val nameShow: Show[Name] = Show.show(_.value.value)
   }
 }
 

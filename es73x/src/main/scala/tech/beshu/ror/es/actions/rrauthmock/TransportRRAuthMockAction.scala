@@ -21,7 +21,6 @@ import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.transport.TransportService
-import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 
 class TransportRRAuthMockAction(transportService: TransportService,
                                 actionFilters: ActionFilters,

@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.actions.rradmin.rest
 
 import java.util
-
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
@@ -27,6 +26,7 @@ import org.elasticsearch.rest._
 import org.elasticsearch.rest.action.RestToXContentListener
 import tech.beshu.ror.Constants
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, RRAdminRequest, RRAdminResponse}
+import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
 import scala.collection.JavaConverters._
 
@@ -39,8 +39,6 @@ class RestRRAdminAction()
     new Route(GET, Constants.PROVIDE_FILE_CONFIG_PATH),
     new Route(GET, Constants.PROVIDE_INDEX_CONFIG_PATH),
     new Route(POST, Constants.UPDATE_INDEX_CONFIG_PATH),
-    new Route(POST, Constants.UPDATE_TEST_CONFIG_PATH),
-    new Route(DELETE, Constants.DELETE_TEST_CONFIG_PATH),
   ).asJava
 
   override val getName: String = "ror-admin-handler"
@@ -49,7 +47,7 @@ class RestRRAdminAction()
     private val rorAdminRequest = RRAdminRequest.createFrom(request)
 
     override def accept(channel: RestChannel): Unit = {
-      client.execute(new RRAdminActionType, rorAdminRequest, new RestToXContentListener[RRAdminResponse](channel))
+      client.execute(new RRAdminActionType, rorAdminRequest, new RestToXContentWithStatusListener[RRAdminResponse](channel))
     }
   }
 }

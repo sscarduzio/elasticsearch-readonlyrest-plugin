@@ -16,21 +16,52 @@
  */
 package tech.beshu.ror.es.actions.rradmin
 
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
-import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
+import org.elasticsearch.common.xcontent.{StatusToXContentObject, ToXContent, XContentBuilder}
+import org.elasticsearch.rest.RestStatus
 import tech.beshu.ror.api.ConfigApi
+import tech.beshu.ror.api.ConfigApi.ConfigResponse._
+import tech.beshu.ror.api.ConfigApi._
 
 class RRAdminResponse(response: ConfigApi.ConfigResponse)
-  extends ActionResponse with ToXContentObject with Logging {
+  extends ActionResponse with StatusToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
     response match {
-      case ConfigApi.Success(message) => addResponseJson(builder, "ok", message)
-      case ConfigApi.ConfigNotFound(message) => addResponseJson(builder, "empty", message)
-      case ConfigApi.Failure(message) => addResponseJson(builder, "ko", message)
+      case forceReloadConfig: ConfigResponse.ForceReloadConfig => forceReloadConfig match {
+        case ForceReloadConfig.Success(message) => addResponseJson(builder, response.status, message)
+        case ForceReloadConfig.Failure(message) => addResponseJson(builder, response.status, message)
+      }
+      case provideIndexConfig: ConfigResponse.ProvideIndexConfig => provideIndexConfig match {
+        case ProvideIndexConfig.Config(rawConfig) => addResponseJson(builder, response.status, rawConfig)
+        case ProvideIndexConfig.ConfigNotFound(message) => addResponseJson(builder, response.status, message)
+        case ProvideIndexConfig.Failure(message) => addResponseJson(builder, response.status, message)
+      }
+      case provideFileConfig: ConfigResponse.ProvideFileConfig => provideFileConfig match {
+        case ProvideFileConfig.Config(rawConfig) => addResponseJson(builder, response.status, rawConfig)
+        case ProvideFileConfig.Failure(message) => addResponseJson(builder, response.status, message)
+      }
+      case updateIndexConfig: ConfigResponse.UpdateIndexConfig => updateIndexConfig match {
+        case UpdateIndexConfig.Success(message) => addResponseJson(builder, response.status, message)
+        case UpdateIndexConfig.Failure(message) => addResponseJson(builder, response.status, message)
+      }
+      case failure: ConfigResponse.Failure => failure match {
+        case Failure.BadRequest(message) => addResponseJson(builder, response.status, message)
+      }
     }
     builder
+  }
+
+  override def status(): RestStatus = {
+    response match {
+      case _: ForceReloadConfig => RestStatus.OK
+      case _: ProvideIndexConfig => RestStatus.OK
+      case _: ProvideFileConfig => RestStatus.OK
+      case _: UpdateIndexConfig => RestStatus.OK
+      case failure: Failure => failure match {
+        case Failure.BadRequest(_) => RestStatus.BAD_REQUEST
+      }
+    }
   }
 
   private def addResponseJson(builder: XContentBuilder, status: String, message: String): Unit = {
@@ -38,16 +69,5 @@ class RRAdminResponse(response: ConfigApi.ConfigResponse)
     builder.field("status", status)
     builder.field("message", message)
     builder.endObject
-  }
-}
-object RRAdminResponse extends Logging {
-  def apply(response: Either[Throwable, ConfigApi.ConfigResponse]): RRAdminResponse = {
-    response match {
-      case Left(ex) =>
-        logger.error("RRAdmin internal error", ex)
-        new RRAdminResponse(ConfigApi.ConfigResponse.internalError)
-      case Right(value) =>
-        new RRAdminResponse(value)
-    }
   }
 }

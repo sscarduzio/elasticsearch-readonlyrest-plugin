@@ -25,9 +25,7 @@ class RRAdminActionType extends Action[RRAdminRequest, RRAdminResponse, RRAdminR
   override def newRequestBuilder(client: ElasticsearchClient): RRAdminRequestBuilder =
     new RRAdminRequestBuilder(client, RRAdminActionType.instance)
 
-  override def newResponse(): RRAdminResponse = {
-    new RRAdminResponse(ConfigApi.ConfigResponse.notAvailable)
-  }
+  override def newResponse(): RRAdminResponse = new RRAdminResponse
 }
 object RRAdminActionType {
   val name = domain.Action.rorOldConfigAction.value

@@ -33,8 +33,6 @@ class TransportRRAdminAction(settings: Settings,
                              transportService: TransportService,
                              actionFilters: ActionFilters,
                              indexNameExpressionResolver: IndexNameExpressionResolver,
-                             env: Environment,
-                             indexContentProvider: EsIndexJsonContentService,
                              ignore: Unit) // hack!
   extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
     settings, RRAdminActionType.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RRAdminRequest
@@ -48,10 +46,10 @@ class TransportRRAdminAction(settings: Settings,
            actionFilters: ActionFilters,
            env: Environment,
            indexContentProvider: EsIndexJsonContentService) {
-    this(settings, threadPool, transportService, actionFilters, indexNameExpressionResolver, env, indexContentProvider, ())
+    this(settings, threadPool, transportService, actionFilters, indexNameExpressionResolver, ())
   }
 
-  private val handler = new RRAdminActionHandler(indexContentProvider, env.configFile())
+  private val handler = new RRAdminActionHandler()
 
   override def doExecute(request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
     handler.handle(request, listener)

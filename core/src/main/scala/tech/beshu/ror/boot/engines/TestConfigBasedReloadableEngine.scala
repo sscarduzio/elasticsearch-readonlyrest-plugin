@@ -24,23 +24,42 @@ import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
-import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
+import tech.beshu.ror.boot.RorInstance.{RawConfigReloadError, TestConfig}
+import tech.beshu.ror.boot.engines.BaseReloadableEngine.EngineState
 import tech.beshu.ror.boot.engines.ConfigHash._
 import tech.beshu.ror.configuration.RawRorConfig
 
+import java.time.Clock
 import scala.concurrent.duration.FiniteDuration
 
-private[boot] class ImpersonatorsReloadableEngine(boot: ReadonlyRest,
-                                                  reloadInProgress: Semaphore[Task],
-                                                  rorConfigurationIndex: RorConfigurationIndex)
-                                                 (implicit scheduler: Scheduler)
+private[boot] class TestConfigBasedReloadableEngine(boot: ReadonlyRest,
+                                                    reloadInProgress: Semaphore[Task],
+                                                    rorConfigurationIndex: RorConfigurationIndex)
+                                                   (implicit scheduler: Scheduler,
+                                                    clock: Clock)
   extends BaseReloadableEngine(
     "test", boot, None, reloadInProgress, rorConfigurationIndex
   ) {
 
-  def forceReloadImpersonatorsEngine(config: RawRorConfig,
-                                     ttl: FiniteDuration)
-                                    (implicit requestId: RequestId): Task[Either[RawConfigReloadError, Unit]] = {
+  def currentTestConfig()
+                       (implicit requestId: RequestId): Task[TestConfig] = {
+    Task.delay {
+      currentEngineState match {
+        case EngineState.NotStartedYet(None, _) | EngineState.Stopped =>
+          TestConfig.NotSet
+        case EngineState.NotStartedYet(Some(recentConfig), recentExpirationConfig) =>
+          val expiration = recentExpirationConfig.getOrElse(throw new IllegalStateException("Test Config based engine should have an expiration config defined"))
+          TestConfig.Invalidated(recentConfig, expiration.ttl)
+        case EngineState.Working(engineWithConfig, _) =>
+          val expiration = engineWithConfig.expirationConfig.getOrElse(throw new IllegalStateException("Test Config based engine should have an expiration config defined"))
+          TestConfig.Present(engineWithConfig.engine.core.rorConfig, engineWithConfig.config, expiration.ttl, expiration.validTo)
+      }
+    }
+  }
+
+  def forceReloadTestConfigEngine(config: RawRorConfig,
+                                  ttl: FiniteDuration)
+                                 (implicit requestId: RequestId): Task[Either[RawConfigReloadError, Unit]] = {
     for {
       _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of ROR test settings was forced (TTL of test engine is ${ttl.toString()}) ..."))
       reloadResult <- reloadInProgress.withPermit {
@@ -61,8 +80,8 @@ private[boot] class ImpersonatorsReloadableEngine(boot: ReadonlyRest,
     } yield reloadResult
   }
 
-  def invalidateImpersonationEngine()
-                                   (implicit requestId: RequestId): Task[Unit] = {
+  def invalidateTestConfigEngine()
+                                (implicit requestId: RequestId): Task[Unit] = {
     invalidate()
   }
 }

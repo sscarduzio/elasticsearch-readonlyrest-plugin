@@ -31,12 +31,13 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.Var
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.BlockValidator
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.BlocksLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.BlocksLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
 import tech.beshu.ror.utils.TaskOps._
 
 import scala.util.Success
@@ -114,7 +115,7 @@ object Block {
   def createFrom(name: Name,
                  policy: Option[Policy],
                  verbosity: Option[Verbosity],
-                 rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]])
+                 rules: NonEmptyList[RuleDefinition[Rule]])
                 (implicit loggingContext: LoggingContext): Either[BlocksLevelCreationError, Block] = {
     val sortedRules = rules.sorted
     BlockValidator.validate(sortedRules) match {
@@ -129,7 +130,7 @@ object Block {
   private def createBlockInstance(name: Name,
                                   policy: Option[Policy],
                                   verbosity: Option[Verbosity],
-                                  rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]])
+                                  rules: NonEmptyList[RuleDefinition[Rule]])
                                  (implicit loggingContext: LoggingContext) =
     new Block(
       name,
@@ -149,10 +150,12 @@ object Block {
       extends HistoryItem[B]
   }
 
-  final case class RuleWithVariableUsageDefinition[+T <: Rule](rule: T, variableUsage: VariableUsage[T])
-  object RuleWithVariableUsageDefinition {
-    def create[T <: Rule : VariableUsage](rule: T) = {
-      new RuleWithVariableUsageDefinition(rule, implicitly[VariableUsage[T]])
+  final case class RuleDefinition[+T <: Rule](rule: T,
+                                              variableUsage: VariableUsage[T],
+                                              localUsersSupport: LocalUsersSupport[T])
+  object RuleDefinition {
+    def create[T <: Rule : VariableUsage : LocalUsersSupport](rule: T) = {
+      new RuleDefinition(rule, implicitly[VariableUsage[T]], implicitly[LocalUsersSupport[T]])
     }
   }
 

@@ -37,7 +37,7 @@ import tech.beshu.ror.boot._
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.handler.AclAwareRequestFilter
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse, createTestSettingsNotConfiguredResponse}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, HighLevelClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
@@ -157,9 +157,15 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     aclAwareRequestFilter
       .handle(engines, esContext)
       .runAsync {
-        case Right(_) =>
+        case Right(result) => handleResult(esContext, result)
         case Left(ex) => esContext.listener.onFailure(new Exception(ex))
       }
+  }
+
+  private def handleResult(esContext: EsContext, result: Either[AclAwareRequestFilter.Error, Unit]): Unit = result match {
+    case Right(_) =>
+    case Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured) =>
+      esContext.listener.onFailure(createTestSettingsNotConfiguredResponse())
   }
 
   private def startRorInstance() = {

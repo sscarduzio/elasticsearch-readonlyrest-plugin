@@ -31,9 +31,9 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.{Header, IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{BlocksLevelCreationError, DefinitionsLevelCreationError, RulesLevelCreationError}
-import tech.beshu.ror.accesscontrol.factory.{CoreSettings, HttpClientsFactory, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{BlocksLevelCreationError, DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.boot.ReadonlyRest.RorMode
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient, MockLdapConnectionPoolProvider}
@@ -150,7 +150,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |
             |""".stripMargin)
         val acl = createCore(config)
-        val obfuscatedHeaders = acl.right.get.aclEngine.staticContext.obfuscatedHeaders
+        val obfuscatedHeaders = acl.right.get.accessControl.staticContext.obfuscatedHeaders
         obfuscatedHeaders shouldEqual Set(Header.Name.authorization)
       }
       "the section exists, and obfuscated header is not defined" in {
@@ -167,7 +167,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |  obfuscated_headers: []
             |""".stripMargin)
         val acl = createCore(config)
-        val headers = acl.right.get.aclEngine.staticContext.obfuscatedHeaders
+        val headers = acl.right.get.accessControl.staticContext.obfuscatedHeaders
         headers shouldBe empty
       }
       "the section exists, and obfuscated header is defined" in {
@@ -185,7 +185,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |  - CorpoAuth
             |""".stripMargin)
         val acl = createCore(config)
-        val headers = acl.right.get.aclEngine.staticContext.obfuscatedHeaders
+        val headers = acl.right.get.accessControl.staticContext.obfuscatedHeaders
         headers should have size 1
         headers.head should be(Header.Name(NonEmptyString.unsafeFrom("CorpoAuth")))
       }
@@ -447,7 +447,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
           |""".stripMargin)
 
       inside(createCore(config)) {
-        case Right(CoreSettings(acl: AccessControlList, _)) =>
+        case Right(Core(acl: AccessControlList, _)) =>
           val firstBlock = acl.blocks.head
           firstBlock.name should be(Block.Name("test_block1"))
           firstBlock.policy should be(Block.Policy.Forbid)
@@ -478,7 +478,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |""".stripMargin)
 
         inside(createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))) {
-          case Right(CoreSettings(acl: AccessControlList, _)) =>
+          case Right(Core(acl: AccessControlList, _)) =>
             val firstBlock = acl.blocks.head
             firstBlock.name should be(Block.Name("test_block1"))
             firstBlock.rules should have size 2

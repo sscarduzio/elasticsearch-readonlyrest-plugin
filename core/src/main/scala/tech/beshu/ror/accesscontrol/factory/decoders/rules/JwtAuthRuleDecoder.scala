@@ -18,13 +18,13 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import cats.implicits._
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.JwtDefinitionsDecoder._
@@ -37,7 +37,7 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
                          implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[JwtAuthRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[JwtAuthRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[JwtAuthRule]] = {
     JwtAuthRuleDecoder.nameAndGroupsSimpleDecoder
       .or(JwtAuthRuleDecoder.nameAndGroupsExtendedDecoder)
       .toSyncDecoder
@@ -48,7 +48,7 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
         }
       }
       .map { case (jwtDef, groups) =>
-        RuleWithVariableUsageDefinition.create(new JwtAuthRule(JwtAuthRule.Settings(jwtDef, groups), caseMappingEquality))
+        RuleDefinition.create(new JwtAuthRule(JwtAuthRule.Settings(jwtDef, groups), caseMappingEquality))
       }
       .decoder
   }

@@ -51,26 +51,12 @@ object RRAdminRequest {
         ConfigApi.ConfigRequest.Type.ProvideIndexConfig
       case (Constants.UPDATE_INDEX_CONFIG_PATH, POST) =>
         ConfigApi.ConfigRequest.Type.UpdateIndexConfig
-      case (Constants.UPDATE_TEST_CONFIG_PATH, POST) =>
-        ConfigApi.ConfigRequest.Type.UpdateTestConfig
-      case (Constants.DELETE_TEST_CONFIG_PATH, DELETE) =>
-        ConfigApi.ConfigRequest.Type.InvalidateTestConfig
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }
     new RRAdminRequest(
       new ConfigApi.ConfigRequest(
         requestType,
-        request.method.name,
-        request.path,
-        request
-          .getHeaders.asScala
-          .flatMap { case (name, values) =>
-            NonEmptyList
-              .fromList(values.asScala.toList)
-              .map((name, _))
-          }
-          .toMap,
         request.content.utf8ToString
       ),
       request
