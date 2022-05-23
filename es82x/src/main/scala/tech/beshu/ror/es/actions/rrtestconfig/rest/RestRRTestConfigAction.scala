@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.es.actions.rrtestconfig.rest
 
-import java.util
-
 import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
@@ -28,6 +26,7 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, RRTestConfigRequest, RRTestConfigResponse}
 import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
+import java.util
 import scala.collection.JavaConverters._
 
 @Inject

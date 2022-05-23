@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.handler
 
 import java.time.Instant
-
 import cats.implicits._
 import monix.eval.Task
 import monix.execution.Scheduler

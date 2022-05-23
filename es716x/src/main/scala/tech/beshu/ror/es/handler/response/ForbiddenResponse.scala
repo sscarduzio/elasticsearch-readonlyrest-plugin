@@ -70,7 +70,6 @@ object ForbiddenResponse {
   case object RorFailedToStart extends Cause
   case object TestSettingsNotConfigured extends Cause
 
-
   def create(causes: List[ForbiddenResponse.Cause],
              aclStaticContext: AccessControlStaticContext): ForbiddenResponse =
     new ForbiddenResponse(Some(aclStaticContext), causes)

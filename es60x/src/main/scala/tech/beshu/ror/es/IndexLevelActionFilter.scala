@@ -34,7 +34,7 @@ import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse, createTestSettingsNotConfiguredResponse}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, HighLevelClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadRepo
@@ -119,24 +119,42 @@ class IndexLevelActionFilter(settings: Settings,
                                                                            listener: ActionListener[Response],
                                                                            chain: ActionFilterChain[Request, Response]): Unit = {
     doPrivileged {
-      ThreadRepo.getRorRestChannel match {
-        case None =>
-          chain.proceed(task, action, request, listener)
-        case Some(_) if action.startsWith("internal:") =>
-          chain.proceed(task, action, request, listener)
-        case Some(channel) =>
-          proceedByRorEngine(
-            EsContext(
-              channel,
-              task,
-              action,
-              request,
-              listener.asInstanceOf[ActionListener[ActionResponse]],
-              chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]],
-              JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toSet
-            )
+      proceed(
+        task,
+        action,
+        request,
+        listener.asInstanceOf[ActionListener[ActionResponse]],
+        new EsChain(
+          chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]],
+          threadPool
+        )
+      )
+    }
+  }
+
+  private def proceed(task: Task,
+                      action: String,
+                      request: ActionRequest,
+                      listener: ActionListener[ActionResponse],
+                      chain: EsChain): Unit = {
+    ThreadRepo.getRorRestChannel match {
+      case None =>
+        chain.continue(nodeName, task, action, request, listener)
+      case Some(_) if action.startsWith("internal:") =>
+        chain.continue(nodeName, task, action, request, listener)
+      case Some(channel) =>
+        proceedByRorEngine(
+          EsContext(
+            channel,
+            nodeName,
+            task,
+            action,
+            request,
+            listener,
+            chain,
+            JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toSet
           )
-      }
+        )
     }
   }
 

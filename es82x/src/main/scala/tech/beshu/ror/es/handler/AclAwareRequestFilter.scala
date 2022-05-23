@@ -259,6 +259,7 @@ object AclAwareRequestFilter {
         case Some(_) | None => Right(engines.mainEngine)
       }
     }
+
     private def isImpersonationHeader = {
       channel
         .request()

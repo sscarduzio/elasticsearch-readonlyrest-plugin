@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.handler
 
+import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -23,7 +24,7 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
-import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult
+import tech.beshu.ror.accesscontrol.AccessControl.{ForbiddenCause, UserMetadataRequestResult}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataValue, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.CorrelationId
@@ -33,6 +34,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.EsRequest
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createRorNotEnabledResponse
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.Cause.fromMismatchedCause
 import tech.beshu.ror.utils.LoggerOps._
 
 import scala.collection.JavaConverters._
@@ -44,9 +46,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   extends Logging {
 
   def handle(request: RequestContext.Aux[CurrentUserMetadataRequestBlockContext] with EsRequest[CurrentUserMetadataRequestBlockContext]): Task[Unit] = {
-    engine
-      .core
-      .accessControl
+    engine.core.accessControl
       .handleMetadataRequest(request)
       .map { r => commitResult(r.result, request) }
   }
@@ -57,8 +57,8 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
       result match {
         case UserMetadataRequestResult.Allow(userMetadata, _) =>
           onAllow(request, userMetadata)
-        case UserMetadataRequestResult.Forbidden =>
-          onForbidden()
+        case UserMetadataRequestResult.Forbidden(causes) =>
+          onForbidden(causes)
         case UserMetadataRequestResult.PassedThrough =>
           onPassThrough()
       }
@@ -74,8 +74,11 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
     esContext.listener.onResponse(new RRMetadataResponse(userMetadata, requestContext.correlationId))
   }
 
-  private def onForbidden(): Unit = {
-    esContext.listener.onFailure(ForbiddenResponse.create(Nil, engine.core.accessControl.staticContext))
+  private def onForbidden(causes: NonEmptySet[ForbiddenCause]): Unit = {
+    esContext.listener.onFailure(ForbiddenResponse.create(
+      causes = causes.toList.map(fromMismatchedCause),
+      aclStaticContext = engine.core.accessControl.staticContext
+    ))
   }
 
   private def onPassThrough(): Unit = {

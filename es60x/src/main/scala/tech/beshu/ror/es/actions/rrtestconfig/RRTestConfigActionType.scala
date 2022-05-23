@@ -19,7 +19,6 @@ package tech.beshu.ror.es.actions.rrtestconfig
 import org.elasticsearch.action.{Action, ActionRequestBuilder}
 import org.elasticsearch.client.ElasticsearchClient
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.api.TestConfigApi
 
 class RRTestConfigActionType extends Action[RRTestConfigRequest, RRTestConfigResponse, RRTestConfigActionType.RequestBuilder](
   RRTestConfigActionType.name

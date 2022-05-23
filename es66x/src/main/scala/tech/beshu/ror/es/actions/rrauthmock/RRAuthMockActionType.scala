@@ -30,6 +30,7 @@ class RRAuthMockActionType extends Action[RRAuthMockRequest, RRAuthMockResponse,
   override def newRequestBuilder(client: ElasticsearchClient): RRAuthMockActionType.RequestBuilder =
     new RRAuthMockActionType.RequestBuilder(client, this, new RRAuthMockRequest())
 }
+
 object RRAuthMockActionType {
   class RequestBuilder(client: ElasticsearchClient, actionType: RRAuthMockActionType, request: RRAuthMockRequest)
     extends ActionRequestBuilder[RRAuthMockRequest, RRAuthMockResponse, RequestBuilder](client, actionType, request)

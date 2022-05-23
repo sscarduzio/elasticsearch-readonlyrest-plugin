@@ -45,5 +45,4 @@ class RestRRAuthMockAction(settings: Settings, controller: RestController)
   private def register(method: String, path: String): Unit = {
     controller.registerHandler(RestRequest.Method.valueOf(method), path, this)
   }
-
 }

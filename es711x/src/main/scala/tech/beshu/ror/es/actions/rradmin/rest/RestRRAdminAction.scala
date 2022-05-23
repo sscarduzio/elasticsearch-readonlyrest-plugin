@@ -23,7 +23,6 @@ import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
 import org.elasticsearch.rest.RestRequest.Method._
 import org.elasticsearch.rest._
-import org.elasticsearch.rest.action.RestToXContentListener
 import tech.beshu.ror.Constants
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, RRAdminRequest, RRAdminResponse}
 import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
