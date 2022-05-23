@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration
 
+import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
@@ -23,6 +24,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside}
+import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause
 import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -303,21 +305,27 @@ class CurrentUserMetadataAccessControlTests
         "no block is matched" in {
           val request = MockRequestContext.metadata.copy(headers = Set(basicAuthHeader("userXXX:pass")))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case Forbidden => }
+          inside(result.result) { case Forbidden(causes) =>
+            causes should be (NonEmptyList.one(ForbiddenCause.OperationNotAllowed))
+          }
         }
         "current group is set but it doesn't exist on available groups list" in {
           val request = MockRequestContext.metadata.copy(
             headers = Set(basicAuthHeader("user4:pass"), header("x-ror-current-group", "group7"))
           )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case Forbidden => }
+          inside(result.result) { case Forbidden(causes) =>
+            causes should be (NonEmptyList.one(ForbiddenCause.OperationNotAllowed))
+          }
         }
         "block with no available groups collected is matched and current group is set" in {
           val request = MockRequestContext.metadata.copy(
             headers = Set(basicAuthHeader("user3:pass"), header("x-ror-current-group", "group7"))
           )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case Forbidden => }
+          inside(result.result) { case Forbidden(causes) =>
+            causes should be (NonEmptyList.one(ForbiddenCause.OperationNotAllowed))
+          }
         }
       }
     }

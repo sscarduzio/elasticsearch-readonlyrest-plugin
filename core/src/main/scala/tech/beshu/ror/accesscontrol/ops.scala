@@ -16,9 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol
 
-import java.util.Base64
-import java.util.regex.{Pattern => RegexPattern}
-
 import cats.data.NonEmptyList
 import cats.implicits._
 import cats.{Order, Show}
@@ -28,20 +25,20 @@ import eu.timepit.refined.numeric.Greater
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.{Uri => LemonUri}
 import shapeless.Nat
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched
+import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Name, Policy, RuleDefinition}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, FilteredResponseFields, ResponseTransformation, RuleOrdering}
+import tech.beshu.ror.accesscontrol.blocks._
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
 import tech.beshu.ror.accesscontrol.domain.Address.Ip
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
@@ -57,12 +54,14 @@ import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
+import java.util.Base64
+import java.util.regex.{Pattern => RegexPattern}
 import scala.concurrent.duration.FiniteDuration
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
-import tech.beshu.ror.utils.ScalaOps._
 
 object header {
 
@@ -107,10 +106,10 @@ object orders {
   implicit val groupOrder: Order[Group] = Order.by(_.value)
   implicit val ruleWithVariableUsageDefinitionOrder: Order[RuleDefinition[Rule]] = Order.by(_.rule)
   implicit val patternOrder: Order[RegexPattern] = Order.by(_.pattern)
-  implicit val forbiddenByMismatchedCauseOrder: Order[ForbiddenByMismatched.Cause] = Order.by {
-    case ForbiddenByMismatched.Cause.OperationNotAllowed => 1
-    case ForbiddenByMismatched.Cause.ImpersonationNotAllowed => 2
-    case ForbiddenByMismatched.Cause.ImpersonationNotSupported => 3
+  implicit val forbiddenCauseOrder: Order[ForbiddenCause] = Order.by {
+    case ForbiddenCause.OperationNotAllowed => 1
+    case ForbiddenCause.ImpersonationNotAllowed => 2
+    case ForbiddenCause.ImpersonationNotSupported => 3
   }
   implicit val repositoryOrder: Order[RepositoryName] =  Order.by {
     case RepositoryName.Full(value) => value.value

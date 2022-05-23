@@ -16,14 +16,12 @@
  */
 package tech.beshu.ror.integration
 
-import java.util.Base64
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, ForbiddenByMismatched, IndexNotFound}
+import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, IndexNotFound}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{FullLocalIndexWithAliases, Group, User}
@@ -33,6 +31,8 @@ import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
+
+import java.util.Base64
 
 class GroupsRuleAccessControlTests
   extends AnyWordSpec

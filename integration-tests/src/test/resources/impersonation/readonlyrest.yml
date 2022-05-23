@@ -19,7 +19,7 @@ readonlyrest:
 
     - name: "test2 (1)"
       indices: ["test2_index"]
-      auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+      auth_key_sha1: "9986e90bf8a4add7a56be873273e6e0997220b0f" # dev3:test
 
     - name: "test2 (2)"
       indices: ["test2_index"]

@@ -52,22 +52,23 @@ trait ImpersonationSuite
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     loadTestSettings()
-    rorApiManager.updateRorInIndexConfig( // In a test, the main engine config should be different from the test config to prevent accidental use of the main engine
-      s"""
-         |readonlyrest:
-         |  access_control_rules:
-         |    # ES containter initializer need this rule to configure ES instance after startup
-         |    - name: "CONTAINER ADMIN"
-         |      verbosity: error
-         |      type: allow
-         |      auth_key: admin:container
-         |""".stripMargin
-    )
+    rorApiManager
+      .updateRorInIndexConfig( // In a test, the main engine config should be different from the test config to prevent accidental use of the main engine
+        s"""
+           |readonlyrest:
+           |  access_control_rules:
+           |    # ES containter initializer need this rule to configure ES instance after startup
+           |    - name: "CONTAINER ADMIN"
+           |      verbosity: error
+           |      type: allow
+           |      auth_key: admin:container
+           |""".stripMargin
+      )
       .force()
   }
 
   override protected def beforeEach(): Unit = {
-    rorApiManager.invalidateImpersonationMocks().forceOk()
+    rorApiManager.invalidateImpersonationMocks().force()
     super.beforeEach()
   }
 
@@ -503,93 +504,47 @@ trait ImpersonationSuite
 
   "Current user metadata request should support impersonation and" - {
     "return 200 when the user can be impersonated" in {
-      rorApiManager
-        .configureImpersonationMocks(ujson.read(
-          s"""
-             |{
-             |  "services": [
-             |    {
-             |      "type": "LDAP",
-             |      "name": "ldap1",
-             |      "mock": {
-             |        "users" : [
-             |          {
-             |            "name": "ldap_user_1",
-             |            "groups": ["group1", "group2"]
-             |          }
-             |        ]
-             |      }
-             |    },
-             |    {
-             |      "type": "LDAP",
-             |      "name": "ldap2",
-             |      "mock": {
-             |        "users" : [
-             |          {
-             |            "name": "ldap_user_2",
-             |            "groups": ["group1", "group2"]
-             |          }
-             |        ]
-             |      }
-             |    },
-             |    {
-             |      "type": "EXT_AUTHN",
-             |      "name": "ext1",
-             |      "mock": {
-             |        "users": [
-             |          { "name": "ext_user_1" }
-             |        ]
-             |      }
-             |    },
-             |    {
-             |      "type": "EXT_AUTHN",
-             |      "name": "ext2",
-             |      "mock": {
-             |        "users": [
-             |          { "name": "ext_user_2" }
-             |        ]
-             |      }
-             |    },
-             |    {
-             |      "type": "EXT_AUTHZ",
-             |      "name": "grp1",
-             |      "mock": {
-             |        "users" : [
-             |          { "name": "gpa_user_1",  "groups": ["group4", "group5"]},
-             |          { "name": "gpa_user_1a", "groups": ["group4a", "group5a"] }
-             |        ]
-             |      }
-             |    },
-             |    {
-             |      "type": "EXT_AUTHZ",
-             |      "name": "grp2",
-             |      "mock": {
-             |        "users" : [
-             |          { "name": "gpa_user_2",  "groups": ["group4", "group5"]},
-             |          { "name": "gpa_user_2a", "groups": ["group4a", "group5a"] }
-             |        ]
-             |      }
-             |    }
-             |  ]
-             |}
-             |""".stripMargin
-        ))
-        .forceOk()
+      loadTestSettings()
+      configureSomeMocksForAllExternalServices()
 
-      impersonatingRorApiManagers("admin1", "pass1", impersonatedUser = "dev1").foreach { apiManger =>
+      impersonatingRorApiManagers("admin1", "pass", impersonatedUser = "dev1").foreach { apiManger =>
         val result = apiManger.fetchMetadata()
 
         result.responseCode should be(200)
       }
     }
-    "return 403 and IMPERSONATION_NOT_ALLOWED when the impersonator cannot be authenticated" in {
+    "return 401 and IMPERSONATION_NOT_ALLOWED when the impersonator cannot be authenticated" in {
+      loadTestSettings()
+      configureSomeMocksForAllExternalServices()
 
+      impersonatingRorApiManagers("admin1", "wrong_password", impersonatedUser = "dev1").foreach { apiManger =>
+        val result = apiManger.fetchMetadata()
+
+        result.responseCode should be(401)
+        result.responseJson("error")("due_to").arr.map(_.str).toSet should be(Set("OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"))
+      }
     }
-    "return 403 and IMPERSONATION_NOT_ALLOWED when the impersonator is not allowed to impersonate a given user" in {
+    "return 401 and IMPERSONATION_NOT_ALLOWED when the impersonator is not allowed to impersonate a given user" in {
+      loadTestSettings()
+      configureSomeMocksForAllExternalServices()
 
+      impersonatingRorApiManagers("admin2", "pass", impersonatedUser = "dev1").foreach { apiManger =>
+        val result = apiManger.fetchMetadata()
+
+        result.responseCode should be(401)
+        result.responseJson("error")("due_to").arr.map(_.str).toSet should be(Set("OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"))
+      }
     }
-    "return 403 and IMPERSONATION_NOT_SUPPORTED when there is no matched block and at least one don't support impersonation" in {
+    "return 401 and IMPERSONATION_NOT_SUPPORTED when there is no matched block and at least one don't support impersonation" in {
+      loadTestSettings()
+      configureSomeMocksForAllExternalServices()
 
+      impersonatingRorApiManagers("admin1", "pass", impersonatedUser = "dev3").foreach { apiManger =>
+        val result = apiManger.fetchMetadata()
+
+        result.responseCode should be(401)
+        result.responseJson("error")("due_to").arr.map(_.str).toSet should be(Set("OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_SUPPORTED"))
+      }
     }
   }
 
@@ -634,7 +589,7 @@ trait ImpersonationSuite
       s"""
          |{
          |  "headers": [
-         |    ${headersToEncode.map { case (name, value) => s""""$name": "$value"""" }.mkString(",\n")}
+         |    ${headersToEncode.map { case (name, value) => s""""$name:$value"""" }.mkString(",\n")}
          |  ]
          |}
          |""".stripMargin
@@ -642,29 +597,83 @@ trait ImpersonationSuite
     "Authorization" -> s"Basic ${encodeBase64(s"$user:$pass")}, ror_metadata=${encodeBase64(rorMetadata)}"
   }
 
-  private def encodingInAuthHeaderSearchManager(user: String, pass: String, impersonatedUser: String) = {
-    def encodeBase64(value: String): String =
-      Base64.encodeBase64(value.getBytes, false).map(_.toChar).mkString
-
-    val rorMetadata =
-      s"""
-         |{
-         |  "headers": [
-         |    "x-ror-impersonating:$impersonatedUser"
-         |  ]
-         |}
-         |""".stripMargin
-
-    new SearchManager(
-      noBasicAuthClient,
-      additionalHeaders = Map(
-        "Authorization" -> s"Basic ${encodeBase64(s"$user:$pass")}, ror_metadata=${encodeBase64(rorMetadata)}"
-      )
-    )
+  private def loadTestSettings(): Unit = {
+    rorApiManager.updateRorTestConfig(resolvedRorConfigFile.contentAsString).forceOk()
   }
 
-  private def loadTestSettings() = {
-    rorApiManager.updateRorTestConfig(resolvedRorConfigFile.contentAsString).forceOk()
+  private def configureSomeMocksForAllExternalServices(): Unit = {
+    rorApiManager
+      .configureImpersonationMocks(ujson.read(
+        s"""
+           |{
+           |  "services": [
+           |    {
+           |      "type": "LDAP",
+           |      "name": "ldap1",
+           |      "mock": {
+           |        "users" : [
+           |          {
+           |            "name": "ldap_user_1",
+           |            "groups": ["group1", "group2"]
+           |          }
+           |        ]
+           |      }
+           |    },
+           |    {
+           |      "type": "LDAP",
+           |      "name": "ldap2",
+           |      "mock": {
+           |        "users" : [
+           |          {
+           |            "name": "ldap_user_2",
+           |            "groups": ["group1", "group2"]
+           |          }
+           |        ]
+           |      }
+           |    },
+           |    {
+           |      "type": "EXT_AUTHN",
+           |      "name": "ext1",
+           |      "mock": {
+           |        "users": [
+           |          { "name": "ext_user_1" }
+           |        ]
+           |      }
+           |    },
+           |    {
+           |      "type": "EXT_AUTHN",
+           |      "name": "ext2",
+           |      "mock": {
+           |        "users": [
+           |          { "name": "ext_user_2" }
+           |        ]
+           |      }
+           |    },
+           |    {
+           |      "type": "EXT_AUTHZ",
+           |      "name": "grp1",
+           |      "mock": {
+           |        "users" : [
+           |          { "name": "gpa_user_1",  "groups": ["group4", "group5"]},
+           |          { "name": "gpa_user_1a", "groups": ["group4a", "group5a"] }
+           |        ]
+           |      }
+           |    },
+           |    {
+           |      "type": "EXT_AUTHZ",
+           |      "name": "grp2",
+           |      "mock": {
+           |        "users" : [
+           |          { "name": "gpa_user_2",  "groups": ["group4", "group5"]},
+           |          { "name": "gpa_user_2a", "groups": ["group4a", "group5a"] }
+           |        ]
+           |      }
+           |    }
+           |  ]
+           |}
+           |""".stripMargin
+      ))
+      .forceOk()
   }
 
   private lazy val impersonationNotSupportedResponse = ujson.read(

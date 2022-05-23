@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
 import tech.beshu.ror.accesscontrol.AccessControl.{AccessControlStaticContext, RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.Block.History
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
@@ -48,16 +47,8 @@ object AccessControl {
       extends RegularRequestResult[B]
     final case class ForbiddenBy[B <: BlockContext](blockContext: B, block: Block)
       extends RegularRequestResult[B]
-    final case class ForbiddenByMismatched[B <: BlockContext](causes: NonEmptySet[Cause])
+    final case class ForbiddenByMismatched[B <: BlockContext](causes: NonEmptySet[ForbiddenCause])
       extends RegularRequestResult[B]
-    case object ForbiddenByMismatched {
-      sealed trait Cause
-      object Cause {
-        case object OperationNotAllowed extends Cause
-        case object ImpersonationNotSupported extends Cause
-        case object ImpersonationNotAllowed extends Cause
-      }
-    }
     final case class IndexNotFound[B <: BlockContext]()
       extends RegularRequestResult[B]
     final case class AliasNotFound[B <: BlockContext]()
@@ -73,8 +64,15 @@ object AccessControl {
   sealed trait UserMetadataRequestResult
   object UserMetadataRequestResult {
     final case class Allow(userMetadata: UserMetadata, block: Block) extends UserMetadataRequestResult
-    case object Forbidden extends UserMetadataRequestResult
+    final case class Forbidden(causes: NonEmptySet[ForbiddenCause]) extends UserMetadataRequestResult
     case object PassedThrough extends UserMetadataRequestResult
+  }
+
+  sealed trait ForbiddenCause
+  object ForbiddenCause {
+    case object OperationNotAllowed extends ForbiddenCause
+    case object ImpersonationNotSupported extends ForbiddenCause
+    case object ImpersonationNotAllowed extends ForbiddenCause
   }
 
   trait AccessControlStaticContext {

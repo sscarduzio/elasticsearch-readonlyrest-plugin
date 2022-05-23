@@ -20,20 +20,19 @@ import cats.data.{NonEmptyList, NonEmptySet, WriterT}
 import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.AccessControl
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched
-import tech.beshu.ror.accesscontrol.AccessControl.{AccessControlStaticContext, RegularRequestResult, UserMetadataRequestResult, WithHistory}
+import tech.beshu.ror.accesscontrol.AccessControl._
 import tech.beshu.ror.accesscontrol.acl.AccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, HistoryItem, Policy}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.{Group, Header}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
-import tech.beshu.ror.accesscontrol.orders.forbiddenByMismatchedCauseOrder
+import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -92,10 +91,10 @@ class AccessControlList(val blocks: NonEmptyList[Block],
           case Right(matchedResults) =>
             userMetadataFrom(matchedResults, context.currentGroup.toOption) match {
               case Some((userMetadata, matchedBlock)) => UserMetadataRequestResult.Allow(userMetadata, matchedBlock)
-              case None => UserMetadataRequestResult.Forbidden
+              case None => UserMetadataRequestResult.Forbidden(nonEmptySetOfMismatchedCausesFromHistory(history))
             }
           case Left(_) =>
-            UserMetadataRequestResult.Forbidden
+            UserMetadataRequestResult.Forbidden(nonEmptySetOfMismatchedCausesFromHistory(history))
         }
         WithHistory(history, result)
       }
@@ -174,18 +173,18 @@ class AccessControlList(val blocks: NonEmptyList[Block],
     WriterT.value[Task, Vector[History[B]], ExecutionResult[B]](executionResult)
   }
 
-  private def nonEmptySetOfMismatchedCausesFromHistory[B <: BlockContext](history: Vector[History[B]]): NonEmptySet[ForbiddenByMismatched.Cause] = {
+  private def nonEmptySetOfMismatchedCausesFromHistory[B <: BlockContext](history: Vector[History[B]]): NonEmptySet[ForbiddenCause] = {
     val causes = rejectionsFrom(history).map {
       case Rejected(None) | Rejected(Some(Rejected.Cause.IndexNotFound | Rejected.Cause.AliasNotFound | Rejected.Cause.TemplateNotFound)) =>
-        ForbiddenByMismatched.Cause.OperationNotAllowed
+        ForbiddenCause.OperationNotAllowed
       case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) =>
-        ForbiddenByMismatched.Cause.ImpersonationNotAllowed
+        ForbiddenCause.ImpersonationNotAllowed
       case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) =>
-        ForbiddenByMismatched.Cause.ImpersonationNotSupported
+        ForbiddenCause.ImpersonationNotSupported
     }
     NonEmptyList
       .fromList(causes.toList)
-      .getOrElse(NonEmptyList.one(ForbiddenByMismatched.Cause.OperationNotAllowed))
+      .getOrElse(NonEmptyList.one(ForbiddenCause.OperationNotAllowed))
       .toNes
   }
 
