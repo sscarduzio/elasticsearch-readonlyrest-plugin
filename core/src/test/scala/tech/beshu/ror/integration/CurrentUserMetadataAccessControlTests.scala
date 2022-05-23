@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.integration
 
-import cats.data.NonEmptyList
+import cats.data.NonEmptySet
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
@@ -25,11 +25,13 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside}
 import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause
+import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause.OperationNotAllowed
 import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, HttpClientsFactory}
+import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.containers.{LdapContainer, WireMockContainer, WireMockScalaAdapter}
@@ -306,7 +308,7 @@ class CurrentUserMetadataAccessControlTests
           val request = MockRequestContext.metadata.copy(headers = Set(basicAuthHeader("userXXX:pass")))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           inside(result.result) { case Forbidden(causes) =>
-            causes should be (NonEmptyList.one(ForbiddenCause.OperationNotAllowed))
+            causes should be (NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
           }
         }
         "current group is set but it doesn't exist on available groups list" in {
@@ -315,7 +317,7 @@ class CurrentUserMetadataAccessControlTests
           )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           inside(result.result) { case Forbidden(causes) =>
-            causes should be (NonEmptyList.one(ForbiddenCause.OperationNotAllowed))
+            causes should be (NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
           }
         }
         "block with no available groups collected is matched and current group is set" in {
@@ -324,7 +326,7 @@ class CurrentUserMetadataAccessControlTests
           )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           inside(result.result) { case Forbidden(causes) =>
-            causes should be (NonEmptyList.one(ForbiddenCause.OperationNotAllowed))
+            causes should be (NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
           }
         }
       }
