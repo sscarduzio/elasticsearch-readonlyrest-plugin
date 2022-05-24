@@ -18,10 +18,10 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
+import org.joor.Reflect.on
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.snapshots.status.{SnapshotsStatusRequest, SnapshotsStatusResponse}
 import org.elasticsearch.threadpool.ThreadPool
-import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter

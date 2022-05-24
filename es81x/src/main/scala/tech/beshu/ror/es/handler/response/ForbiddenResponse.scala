@@ -20,14 +20,13 @@ import cats.Show
 import cats.implicits._
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.rest.RestStatus
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.AccessControl.{AccessControlStaticContext, ForbiddenCause}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
-import tech.beshu.ror.es.handler.response.ForbiddenResponse.ForbiddenCause
 
 import scala.collection.JavaConverters._
 
 class ForbiddenResponse private(aclStaticContext: Option[AccessControlStaticContext],
-                                causes: List[ForbiddenCause])
+                                causes: List[ForbiddenResponse.Cause])
   extends ElasticsearchException(
     aclStaticContext.map(_.forbiddenRequestMessage).getOrElse(GlobalSettings.defaultForbiddenRequestMessage)
   ) {
@@ -52,17 +51,26 @@ class ForbiddenResponse private(aclStaticContext: Option[AccessControlStaticCont
 
 object ForbiddenResponse {
 
-  sealed trait ForbiddenCause
-  case object ForbiddenBlockMatch extends ForbiddenCause
-  case object OperationNotAllowed extends ForbiddenCause
-  case object ImpersonationNotSupported extends ForbiddenCause
-  case object ImpersonationNotAllowed extends ForbiddenCause
-  case object RorNotReadyYet extends ForbiddenCause
-  case object RorNotEnabled extends ForbiddenCause
-  case object RorFailedToStart extends ForbiddenCause
-  case object TestSettingsNotConfigured extends ForbiddenCause
+  sealed trait Cause
+  object Cause {
+    def fromMismatchedCause(cause: ForbiddenCause): Cause = {
+      cause match {
+        case ForbiddenCause.OperationNotAllowed => OperationNotAllowed
+        case ForbiddenCause.ImpersonationNotSupported => ImpersonationNotSupported
+        case ForbiddenCause.ImpersonationNotAllowed => ImpersonationNotAllowed
+      }
+    }
+  }
+  case object ForbiddenBlockMatch extends Cause
+  case object OperationNotAllowed extends Cause
+  case object ImpersonationNotSupported extends Cause
+  case object ImpersonationNotAllowed extends Cause
+  case object RorNotReadyYet extends Cause
+  case object RorNotEnabled extends Cause
+  case object RorFailedToStart extends Cause
+  case object TestSettingsNotConfigured extends Cause
 
-  def create(causes: List[ForbiddenCause],
+  def create(causes: List[ForbiddenResponse.Cause],
              aclStaticContext: AccessControlStaticContext): ForbiddenResponse =
     new ForbiddenResponse(Some(aclStaticContext), causes)
 
@@ -78,7 +86,7 @@ object ForbiddenResponse {
   def createTestSettingsNotConfiguredResponse(): ForbiddenResponse =
     new ForbiddenResponse(None, TestSettingsNotConfigured :: Nil)
 
-  private implicit val forbiddenCauseShow: Show[ForbiddenCause] = Show.show {
+  private implicit val forbiddenCauseShow: Show[Cause] = Show.show {
     case ForbiddenBlockMatch => "FORBIDDEN_BY_BLOCK"
     case OperationNotAllowed => "OPERATION_NOT_ALLOWED"
     case ImpersonationNotSupported => "IMPERSONATION_NOT_SUPPORTED"

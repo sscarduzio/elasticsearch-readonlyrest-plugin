@@ -81,7 +81,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl,
           resultWithHistory.result match {
             case UserMetadataRequestResult.Allow(userMetadata, block) =>
               log(Allow(requestContext, userMetadata, block, resultWithHistory.history))
-            case UserMetadataRequestResult.Forbidden =>
+            case UserMetadataRequestResult.Forbidden(_) =>
               log(Forbidden(requestContext, resultWithHistory.history))
             case UserMetadataRequestResult.PassedThrough =>
             // ignore

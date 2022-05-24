@@ -63,8 +63,8 @@ import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
-import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, TransportRRTestConfigAction}
 import tech.beshu.ror.es.actions.rrtestconfig.rest.RestRRTestConfigAction
+import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, TransportRRTestConfigAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.ThreadRepo
@@ -78,7 +78,6 @@ import java.util.function.Supplier
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
-
 
 @Inject
 class ReadonlyRestPlugin(s: Settings, p: Path)

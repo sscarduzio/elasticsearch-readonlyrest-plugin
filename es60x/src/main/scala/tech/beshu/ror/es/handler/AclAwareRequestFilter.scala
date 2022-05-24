@@ -207,11 +207,12 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
 
 object AclAwareRequestFilter {
   final case class EsContext(channel: RestChannel with ResponseFieldsFiltering,
+                             nodeName: String,
                              task: EsTask,
                              actionType: String,
                              actionRequest: ActionRequest,
                              listener: ActionListener[ActionResponse],
-                             chain: ActionFilterChain[ActionRequest, ActionResponse],
+                             chain: EsChain,
                              threadContextResponseHeaders: Set[(String, String)]) {
     lazy val requestContextId = s"${channel.request().hashCode()}-${actionRequest.hashCode()}#${task.getId}"
     val timestamp: Instant = Instant.now()
@@ -230,6 +231,23 @@ object AclAwareRequestFilter {
         .request()
         .allHeaders()
         .exists { case Header(name, _) => name === Header.Name.impersonateAs }
+    }
+  }
+
+  final class EsChain(chain: ActionFilterChain[ActionRequest, ActionResponse],
+                      threadPool: ThreadPool) {
+
+    def continue(exContext: EsContext,
+                 listener: ActionListener[ActionResponse]): Unit = {
+      continue(exContext.nodeName, exContext.task, exContext.actionType, exContext.actionRequest, listener)
+    }
+
+    def continue(nodeName: String,
+                 task: EsTask,
+                 action: String,
+                 request: ActionRequest,
+                 listener: ActionListener[ActionResponse]): Unit = {
+      chain.proceed(task, action, request, listener)
     }
   }
 

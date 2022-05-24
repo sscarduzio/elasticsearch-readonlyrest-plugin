@@ -21,10 +21,8 @@ import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.env.Environment
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
-import tech.beshu.ror.es.services.EsIndexJsonContentService
 
 import scala.language.postfixOps
 
@@ -43,9 +41,7 @@ class TransportRRAdminAction(settings: Settings,
            threadPool: ThreadPool,
            transportService: TransportService,
            indexNameExpressionResolver: IndexNameExpressionResolver,
-           actionFilters: ActionFilters,
-           env: Environment,
-           indexContentProvider: EsIndexJsonContentService) {
+           actionFilters: ActionFilters) {
     this(settings, threadPool, transportService, actionFilters, indexNameExpressionResolver, ())
   }
 

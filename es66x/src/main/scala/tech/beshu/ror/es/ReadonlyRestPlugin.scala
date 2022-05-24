@@ -46,8 +46,8 @@ import org.elasticsearch.plugins._
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.Transport
 import org.elasticsearch.transport.netty4.Netty4Utils
+import org.elasticsearch.transport.Transport
 import org.elasticsearch.watcher.ResourceWatcherService
 import org.elasticsearch.{ElasticsearchException, Version}
 import tech.beshu.ror.Constants
@@ -113,18 +113,11 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     .load(environment.configFile)
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
-  private val emptyClusterState = new ClusterStateResponse(
-    ClusterName.CLUSTER_NAME_SETTING.get(s),
-    ClusterState.EMPTY_STATE,
-    serializeFullClusterState(ClusterState.EMPTY_STATE, Version.CURRENT).length,
-    false
-  )
   private val esInitListener = new EsInitListener
 
   private var ilaf: IndexLevelActionFilter = _
 
   SecurityProviderConfiguratorForFips.configureIfRequired(fipsConfig)
-
 
   override def createComponents(client: Client,
                                 clusterService: ClusterService,
@@ -137,13 +130,13 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                 namedWriteableRegistry: NamedWriteableRegistry): util.Collection[AnyRef] = {
     doPrivileged {
       ilaf = new IndexLevelActionFilter(
+        client.settings().get("node.name"),
         clusterService,
         client.asInstanceOf[NodeClient],
         threadPool,
         environment,
         TransportServiceInterceptor.remoteClusterServiceSupplier,
         SnapshotsServiceInterceptor.snapshotsServiceSupplier,
-        emptyClusterState,
         esInitListener
       )
     }

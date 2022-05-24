@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.es.handler
 
-import java.time.{Duration, Instant}
-
 import cats.data.NonEmptyList
 import cats.implicits._
 import monix.eval.Task
@@ -26,23 +24,23 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.{ActionListener, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
 import tech.beshu.ror.accesscontrol.blocks.BlockContext._
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater._
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, FilteredResponseFields, ResponseTransformation}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.RegularRequestHandler.fromMismatchedCause
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
-import tech.beshu.ror.es.handler.response.ForbiddenResponse.{ForbiddenBlockMatch, ForbiddenCause, ImpersonationNotAllowed, ImpersonationNotSupported, OperationNotAllowed}
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.Cause.fromMismatchedCause
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.{ForbiddenBlockMatch, OperationNotAllowed}
 import tech.beshu.ror.es.utils.ThreadContextOps._
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
 
+import java.time.{Duration, Instant}
 import scala.util.{Failure, Success, Try}
 
 class RegularRequestHandler(engine: Engine,
@@ -108,7 +106,7 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
-  private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {
+  private def onForbidden(causes: NonEmptyList[ForbiddenResponse.Cause]): Unit = {
     esContext.listener.onFailure(ForbiddenResponse.create(causes.toList, engine.core.accessControl.staticContext))
   }
 
@@ -241,16 +239,5 @@ class RegularRequestHandler(engine: Engine,
     }
 
     override def onFailure(e: Exception): Unit = esContext.listener.onFailure(e)
-  }
-}
-
-object RegularRequestHandler {
-
-  private def fromMismatchedCause(cause: Cause): ForbiddenCause = {
-    cause match {
-      case Cause.OperationNotAllowed => OperationNotAllowed
-      case Cause.ImpersonationNotSupported => ImpersonationNotSupported
-      case Cause.ImpersonationNotAllowed => ImpersonationNotAllowed
-    }
   }
 }
