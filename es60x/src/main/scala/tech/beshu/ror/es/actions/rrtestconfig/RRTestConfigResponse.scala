@@ -87,7 +87,7 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
     response.warnings.foreach { warning =>
       builder.startObject()
       builder.field("block_name", warning.blockName)
-      builder.field("rule", warning.ruleName)
+      builder.field("rule_name", warning.ruleName)
       builder.field("message", warning.message)
       builder.field("hint", warning.hint)
       builder.endObject()

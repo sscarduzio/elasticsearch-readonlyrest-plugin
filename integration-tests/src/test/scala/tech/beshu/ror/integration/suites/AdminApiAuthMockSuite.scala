@@ -24,7 +24,7 @@ import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, Sin
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
 import tech.beshu.ror.utils.containers.providers.ResolvedRorConfigFileProvider
-import tech.beshu.ror.utils.elasticsearch.RorApiManager
+import tech.beshu.ror.utils.elasticsearch.{BaseManager, RorApiManager}
 import ujson.Value.Value
 
 trait AdminApiAuthMockSuite
@@ -136,6 +136,42 @@ trait AdminApiAuthMockSuite
              |  }
              |]
              |""".stripMargin))
+
+        val testConfigResponse = rorApiManager.currentRorTestConfig
+        testConfigResponse.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
+        testConfigResponse.responseJson("warnings").arr.size should be(4)
+
+        assertTestConfigWarning(
+          json = testConfigResponse.responseJson("warnings")(0),
+          blockName = "test2 (1)",
+          ruleName = "auth_key_sha1",
+          message = "The rule contains fully hashed username and password. It doesn't support impersonation in this configuration",
+          hint = "You can use second version of the rule and use not hashed username. Like that: `auth_key_sha1: USER_NAME:hash(PASSWORD)"
+        )
+
+        assertTestConfigWarning(
+          json = testConfigResponse.responseJson("warnings")(1),
+          blockName = "test3 (1)",
+          ruleName = "ldap_auth",
+          message = "The rule 'ldap_auth' will not match during impersonation until a mock of service is not configured",
+          hint = "Configure a mock of an LDAP service with ID [ldap1]"
+        )
+
+        assertTestConfigWarning(
+          json = testConfigResponse.responseJson("warnings")(2),
+          blockName = "test3 (2)",
+          ruleName = "external_authentication",
+          message = "The rule 'external_authentication' will not match during impersonation until a mock of service is not configured",
+          hint = "Configure a mock of an external authentication service with ID [ext1]"
+        )
+
+        assertTestConfigWarning(
+          json = testConfigResponse.responseJson("warnings")(3),
+          blockName = "test3 (3)",
+          ruleName = "groups_provider_authorization",
+          message = "The rule 'groups_provider_authorization' will not match during impersonation until a mock of service is not configured",
+          hint = "Configure a mock of an external authorization service with ID [grp1]"
+        )
       }
       "return info that some of mocks are configured" in {
         rorApiManager
@@ -328,6 +364,18 @@ trait AdminApiAuthMockSuite
         response.responseCode should be(200)
         response.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
         response.responseJson("services") should be(payloadServices)
+
+        val testConfigResponse = rorApiManager.currentRorTestConfig
+        testConfigResponse.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
+        testConfigResponse.responseJson("warnings").arr.size should be(1)
+
+        assertTestConfigWarning(
+          json = testConfigResponse.responseJson("warnings")(0),
+          blockName = "test2 (1)",
+          ruleName = "auth_key_sha1",
+          message = "The rule contains fully hashed username and password. It doesn't support impersonation in this configuration",
+          hint = "You can use second version of the rule and use not hashed username. Like that: `auth_key_sha1: USER_NAME:hash(PASSWORD)"
+        )
       }
     }
     "provide a method for reload mocked services" which {
@@ -604,6 +652,19 @@ trait AdminApiAuthMockSuite
         }
       }
     }
+  }
+
+  private def assertTestConfigWarning(json: BaseManager.JSON,
+                                      blockName:String,
+                                      ruleName: String,
+                                      message: String,
+                                      hint: String) = {
+    List(
+      json("block_name").str,
+      json("rule_name").str,
+      json("message").str,
+      json("hint").str,
+    ) should be(List(blockName, ruleName, message, hint))
   }
 
   private def updateMocksPayload(payloadServices: Value) = {
