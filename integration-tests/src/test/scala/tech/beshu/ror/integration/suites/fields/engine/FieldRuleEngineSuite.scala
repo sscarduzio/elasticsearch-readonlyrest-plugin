@@ -32,7 +32,6 @@ trait FieldRuleEngineSuite
 
   import FieldRuleEngineSuite.QueriesUsingNotAllowedField._
 
-
   override def nodeDataInitializer = Some(FieldRuleEngineSuite.nodeDataInitializer())
 
   protected def unmodifableQueryAssertion(user: String, query: String): Assertion
@@ -41,14 +40,35 @@ trait FieldRuleEngineSuite
     "specific FLS engine is used" should {
       "match and return filtered document source" when {
         "modifiable at ES level query using not allowed field is passed in request" in {
-          assertNoSearchHitsReturnedFor("user", modifiableAtEsLevelQuery)
+          assertNoSearchHitsReturnedFor("user1", modifiableAtEsLevelQuery)
         }
       }
       "handle unmodifiable at ES level query" when {
         "using not allowed field is passed in request" in {
-          unmodifableQueryAssertion("user", unmodifiableAtEsLevelQuery)
+          unmodifableQueryAssertion("user1", unmodifiableAtEsLevelQuery)
         }
       }
+    }
+    "test" in {
+      val searchManager = new SearchManager(basicAuthClient("user2", "pass"))
+      val result = searchManager.search(
+        "test-index",
+        ujson.read(
+          s"""
+             |{
+             |  "aggs":{
+             |    "my_aggregate":{
+             |      "terms":{
+             |        "field":"forbiddenField"
+             |      }
+             |    }
+             |  }
+             |}
+             """.stripMargin)
+      )
+
+      result.responseCode shouldBe 200
+      result.searchHits.isEmpty shouldBe true
     }
   }
 
@@ -99,9 +119,14 @@ object FieldRuleEngineSuite {
       """
         |{
         | "allowedField": "allowedFieldValue",
-        | "notAllowedField": 1
+        | "notAllowedField": 1,
+        | "forbiddenField": 1
         |}""".stripMargin
 
     documentManager.createDoc("test-index", 1, ujson.read(document)).force()
+    documentManager.createDoc("test-index", 2, ujson.read(document)).force()
+    documentManager.createDoc("test-index", 3, ujson.read(document)).force()
+    documentManager.createDoc("test-index", 4, ujson.read(document)).force()
+    documentManager.createDoc("test-index", 5, ujson.read(document)).force()
   }
 }
