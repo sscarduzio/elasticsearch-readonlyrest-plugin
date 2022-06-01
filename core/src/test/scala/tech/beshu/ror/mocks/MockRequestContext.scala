@@ -69,6 +69,7 @@ object MockRequestContext {
 
   def notReadOnly[BC <: BlockContext](blockContextCreator: RequestContext => BC): MockSimpleRequestContext[BC] =
     MockSimpleRequestContext(blockContextCreator, isReadOnly = false, customAction = DefaultAction)
+
 }
 
 final case class MockGeneralIndexRequestContext(override val timestamp: Instant,

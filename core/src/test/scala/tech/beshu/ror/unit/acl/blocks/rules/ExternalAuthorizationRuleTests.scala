@@ -334,7 +334,7 @@ class ExternalAuthorizationRuleTests
                          assertionType: AssertionType): Unit = {
     val rule = new ExternalAuthorizationRule(settings, impersonation, UserIdEq.caseSensitive)
     val requestContext = MockRequestContext.metadata.copy(
-      headers = preferredGroup.map(_.value).map(v => new Header(Header.Name.currentGroup, v)).toSet[Header]
+      headers = preferredGroup.map(_.toHeader).toSet
     )
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext,

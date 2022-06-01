@@ -264,6 +264,10 @@ object TestsUtils {
     case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to Group")
   }
 
+  implicit class CurrentGroupToHeader(val group: Group) extends AnyVal {
+    def toHeader: Header = new Header(Header.Name.currentGroup, group.value)
+  }
+
   def noGroupMappingFrom(value: String): GroupMappings = GroupMappings.Simple(UniqueNonEmptyList.of(groupFrom(value)))
 
   def apiKeyFrom(value: String): ApiKey = NonEmptyString.from(value) match {
