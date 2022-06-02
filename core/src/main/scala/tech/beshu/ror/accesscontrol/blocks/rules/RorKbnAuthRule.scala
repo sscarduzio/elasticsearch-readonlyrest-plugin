@@ -63,15 +63,31 @@ final class RorKbnAuthRule(val settings: Settings,
 
   override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
     Task {
-      val authHeaderName = Header.Name.authorization
-      blockContext.requestContext.bearerToken.map(h => JwtToken(h.value)) match {
-        case None =>
-          logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
-          Rejected()
-        case Some(token) =>
-          process(token, blockContext)
+      blockContext.requestContext.currentGroup match {
+        case RequestGroup.`N/A` =>
+          authorizeUsingJwtToken(blockContext)
+        case RequestGroup.AGroup(group) =>
+          settings.permittedGroups.toList match {
+            case Nil =>
+              authorizeUsingJwtToken(blockContext)
+            case permittedGroups if permittedGroups.contains(group) =>
+              authorizeUsingJwtToken(blockContext)
+            case _ =>
+              RuleResult.Rejected()
+          }
       }
     }
+
+  private def authorizeUsingJwtToken[B <: BlockContext : BlockContextUpdater](blockContext: B): RuleResult[B] = {
+    val authHeaderName = Header.Name.authorization
+    blockContext.requestContext.bearerToken.map(h => JwtToken(h.value)) match {
+      case None =>
+        logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
+        Rejected()
+      case Some(token) =>
+        process(token, blockContext)
+    }
+  }
 
   private def process[B <: BlockContext : BlockContextUpdater](token: JwtToken, blockContext: B): RuleResult[B] = {
     jwtTokenData(token) match {
@@ -121,14 +137,30 @@ final class RorKbnAuthRule(val settings: Settings,
   private def handleGroupsClaimSearchResult[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                      result: ClaimSearchResult[UniqueList[Group]]) = {
     result match {
-      case NotFound if settings.groups.nonEmpty => Left(())
+      case NotFound if settings.permittedGroups.nonEmpty => Left(())
       case NotFound => Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
-      case Found(groups) if settings.groups.nonEmpty =>
-        UniqueNonEmptyList.fromSortedSet(settings.groups.intersect(groups)) match {
-          case Some(matchedGroups) => Right(blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups)))
-          case None => Left(())
+      case Found(groups) if settings.permittedGroups.nonEmpty =>
+        UniqueNonEmptyList.fromSortedSet(settings.permittedGroups.intersect(groups)) match {
+          case Some(matchedGroups) =>
+            checkIfCanContinueWithGroups(blockContext, matchedGroups.toUniqueList)
+              .map(_.withUserMetadata(_.addAvailableGroups(matchedGroups)))
+          case None =>
+            Left(())
         }
-      case Found(_) => Right(blockContext)
+      case Found(groups) =>
+        checkIfCanContinueWithGroups(blockContext, groups)
+    }
+  }
+
+  private def checkIfCanContinueWithGroups[B <: BlockContext : BlockContextUpdater](blockContext: B,
+                                                                                    groups: UniqueList[Group]) = {
+    blockContext.requestContext.currentGroup match {
+      case RequestGroup.`N/A` =>
+        Right(blockContext)
+      case RequestGroup.AGroup(group) if groups.contains(group) =>
+        Right(blockContext)
+      case RequestGroup.AGroup(_) =>
+        Left(())
     }
   }
 
@@ -147,7 +179,7 @@ object RorKbnAuthRule {
     override val name = Rule.Name("ror_kbn_auth")
   }
 
-  final case class Settings(rorKbn: RorKbnDef, groups: UniqueList[Group])
+  final case class Settings(rorKbn: RorKbnDef, permittedGroups: UniqueList[Group])
 
   private val userClaimName = ClaimName(JsonPath.compile("user"))
   private val groupsClaimName = ClaimName(JsonPath.compile("groups"))

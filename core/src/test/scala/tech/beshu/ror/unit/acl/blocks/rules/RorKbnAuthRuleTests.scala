@@ -111,7 +111,7 @@ class RorKbnAuthRuleTests
             )(blockContext)
         }
       }
-      "rule groups are defined and intersection between those groups and Ror Kbn ones is not empty" in {
+      "rule groups are defined and intersection between those groups and Ror Kbn ones is not empty (no preferred group)" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
@@ -124,6 +124,30 @@ class RorKbnAuthRuleTests
           ),
           configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group2")),
           tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+        ) {
+          blockContext =>
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+              currentGroup = Some(Group("group2")),
+              availableGroups = UniqueList.of(Group("group2")),
+              jwt = Some(JwtTokenPayload(jwt.defaultClaims()))
+            )(blockContext)
+        }
+      }
+      "rule groups are defined and intersection between those groups and Ror Kbn ones is not empty (with preferred group)" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val jwt = Jwt(key, claims = List(
+          "user" := "user1",
+          "groups" := List("group1", "group2")
+        ))
+        assertMatchRule(
+          configuredRorKbnDef = RorKbnDef(
+            RorKbnDef.Name("test"),
+            SignatureCheckMethod.Hmac(key.getEncoded)
+          ),
+          configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group2")),
+          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")),
+          preferredGroup = Some(groupFrom("group2"))
         ) {
           blockContext =>
             assertBlockContext(
@@ -210,26 +234,62 @@ class RorKbnAuthRuleTests
           tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
         )
       }
+      "preferred group is not on the groups list from JWT" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val jwt = Jwt(key, claims = List(
+          "user" := "user1",
+          "groups" := List("group1", "group2")
+        ))
+        assertNotMatchRule(
+          configuredRorKbnDef = RorKbnDef(
+            RorKbnDef.Name("test"),
+            SignatureCheckMethod.Hmac(key.getEncoded)
+          ),
+          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")),
+          preferredGroup = Some(groupFrom("group5"))
+        )
+      }
+      "preferred group is not on the permitted groups list" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val jwt = Jwt(key, claims = List(
+          "user" := "user1",
+          "groups" := List("group5", "group2")
+        ))
+        assertNotMatchRule(
+          configuredRorKbnDef = RorKbnDef(
+            RorKbnDef.Name("test"),
+            SignatureCheckMethod.Hmac(key.getEncoded)
+          ),
+          configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group2")),
+          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")),
+          preferredGroup = Some(groupFrom("group5"))
+        )
+      }
     }
   }
 
   private def assertMatchRule(configuredRorKbnDef: RorKbnDef,
                               configuredGroups: UniqueList[Group] = UniqueList.empty,
-                              tokenHeader: Header)
+                              tokenHeader: Header,
+                              preferredGroup: Option[Group] = None)
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(configuredRorKbnDef, configuredGroups, tokenHeader, Some(blockContextAssertion))
+    assertRule(configuredRorKbnDef, configuredGroups, tokenHeader, preferredGroup, Some(blockContextAssertion))
 
   private def assertNotMatchRule(configuredRorKbnDef: RorKbnDef,
                                  configuredGroups: UniqueList[Group] = UniqueList.empty,
-                                 tokenHeader: Header): Unit =
-    assertRule(configuredRorKbnDef, configuredGroups, tokenHeader, blockContextAssertion = None)
+                                 tokenHeader: Header,
+                                 preferredGroup: Option[Group] = None): Unit =
+    assertRule(configuredRorKbnDef, configuredGroups, tokenHeader, preferredGroup, blockContextAssertion = None)
 
   private def assertRule(configuredRorKbnDef: RorKbnDef,
                          configuredGroups: UniqueList[Group] = UniqueList.empty,
                          tokenHeader: Header,
+                         preferredGroup: Option[Group],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, configuredGroups), UserIdEq.caseSensitive)
-    val requestContext = MockRequestContext.metadata.copy(headers = Set(tokenHeader))
+    val requestContext = MockRequestContext.metadata.copy(
+      headers = Set(tokenHeader) ++ preferredGroup.map(_.toHeader).toSet
+    )
     val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
     val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {

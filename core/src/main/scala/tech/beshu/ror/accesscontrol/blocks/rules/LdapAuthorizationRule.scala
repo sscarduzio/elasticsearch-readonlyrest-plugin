@@ -82,7 +82,6 @@ object LdapAuthorizationRule {
 
   object GroupsLogic {
     final case class Or(override val groups: UniqueNonEmptyList[Group]) extends GroupsLogic
-
     final case class And(override val groups: UniqueNonEmptyList[Group]) extends GroupsLogic
   }
 

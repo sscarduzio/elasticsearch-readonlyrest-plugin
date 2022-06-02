@@ -404,7 +404,7 @@ abstract class BaseGroupsRuleTests extends AnyWordSpec with Inside with BlockCon
       if (caseSensitivity) UserIdEq.caseSensitive else UserIdEq.caseInsensitive
     )
     val requestContext = MockRequestContext.metadata.copy(
-      headers = preferredGroup.map(_.value).map(v => new Header(Header.Name.currentGroup, v)).toSet[Header]
+      headers = preferredGroup.map(_.toHeader).toSet
     )
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext,
