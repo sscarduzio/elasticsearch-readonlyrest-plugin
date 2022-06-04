@@ -72,12 +72,8 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
       protected void initChannel(Channel ch) throws Exception {
         super.initChannel(ch);
         logger.info(">> internode SSL channel initializing");
-        TrustManagerFactory usedTrustManager = ssl.certificateVerificationEnabled() ?
-                SSLCertHelper.getTrustManagerFactory(ssl, fipsCompliant) : InsecureTrustManagerFactory.INSTANCE;
 
-        SslContext sslCtx = SslContextBuilder.forClient()
-                .trustManager(usedTrustManager)
-                .build();
+        SslContext sslCtx = SSLCertHelper.prepareClientSSLContext(ssl, fipsCompliant, ssl.certificateVerificationEnabled());
 
         ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter() {
           @Override
@@ -116,7 +112,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
     public SslChannelInitializer(String name) {
       super(name);
       AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-        context = Optional.of(SSLCertHelper.prepareSSLContext(ssl, fipsCompliant, false));
+        context = Optional.of(SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, false));
         return null;
       });
     }

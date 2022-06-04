@@ -31,7 +31,6 @@ import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.HttpChannel;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
-import scala.Option;
 import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration;
 import tech.beshu.ror.utils.SSLCertHelper;
 
@@ -82,7 +81,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, handlingSettings);
       AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-        context = Optional.of(SSLCertHelper.prepareSSLContext(ssl, fipsCompliant, ssl.clientAuthenticationEnabled()));
+        context = Optional.of(SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, ssl.clientAuthenticationEnabled()));
         return null;
       });
     }
