@@ -37,6 +37,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMeth
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule
+import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule.GroupsLogic
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
@@ -47,7 +48,7 @@ import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.misc.Random
-import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -259,7 +260,7 @@ class JwtAuthRuleTests
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
-          configuredGroups = UniqueList.empty,
+          groupsLogic = GroupsLogic.NotDefined,
           tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
         ) {
           blockContext => assertBlockContext(
@@ -290,7 +291,7 @@ class JwtAuthRuleTests
           )(blockContext)
         }
       }
-      "rule groups are defined and intersection between those groups and JWT ones is not empty" in {
+      "rule groups with 'or' logic are defined and intersection between those groups and JWT ones is not empty" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
@@ -304,7 +305,9 @@ class JwtAuthRuleTests
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
-          configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group2")),
+          groupsLogic = GroupsLogic.Defined(GroupsLogic.Strategy.Or(
+            UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group2"))
+          )),
           tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
         ) {
           blockContext => assertBlockContext(
@@ -312,6 +315,33 @@ class JwtAuthRuleTests
             jwt = Some(JwtTokenPayload(jwt.defaultClaims())),
             currentGroup = Some(Group("group2")),
             availableGroups = UniqueList.of(Group("group2"))
+          )(blockContext)
+        }
+      }
+      "rule groups with 'and' logic are defined and intersection between those groups and JWT ones is not empty" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val jwt = Jwt(key, claims = List(
+          "userId" := "user1",
+          "groups" := List("group1", "group2")
+        ))
+        assertMatchRule(
+          configuredJwtDef = JwtDef(
+            JwtDef.Name("test"),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            userClaim = Some(ClaimName(JsonPath.compile("userId"))),
+            groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
+          ),
+          groupsLogic = GroupsLogic.Defined(GroupsLogic.Strategy.And(
+            UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group2"))
+          )),
+          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+        ) {
+          blockContext => assertBlockContext(
+            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+            jwt = Some(JwtTokenPayload(jwt.defaultClaims())),
+            currentGroup = Some(Group("group1")),
+            availableGroups = UniqueList.of(Group("group1"), Group("group2"))
           )(blockContext)
         }
       }
@@ -459,11 +489,13 @@ class JwtAuthRuleTests
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("tech.beshu.groups.subgroups")))
           ),
-          configuredGroups = UniqueList.of(Group("group1")),
+          groupsLogic = GroupsLogic.Defined(GroupsLogic.Strategy.Or(
+            UniqueNonEmptyList.of(Group("group1"))
+          )),
           tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
         )
       }
-      "rule groups are defined and intersection between those groups and JWT ones is empty" in {
+      "rule groups with 'or' logic are defined and intersection between those groups and JWT ones is empty" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
@@ -477,7 +509,29 @@ class JwtAuthRuleTests
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
-          configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group4")),
+          groupsLogic = GroupsLogic.Defined(GroupsLogic.Strategy.Or(
+            UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group4"))
+          )),
+          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+        )
+      }
+      "rule groups with 'and' logic are defined and intersection between those groups and JWT ones is empty" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val jwt = Jwt(key, claims = List(
+          "userId" := "user1",
+          "groups" := List("group1", "group2")
+        ))
+        assertNotMatchRule(
+          configuredJwtDef = JwtDef(
+            JwtDef.Name("test"),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            userClaim = Some(ClaimName(JsonPath.compile("userId"))),
+            groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
+          ),
+          groupsLogic = GroupsLogic.Defined(GroupsLogic.Strategy.And(
+            UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3"))
+          )),
           tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
         )
       }
@@ -513,7 +567,9 @@ class JwtAuthRuleTests
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
-          configuredGroups = UniqueList.of(groupFrom("group2")),
+          groupsLogic = GroupsLogic.Defined(GroupsLogic.Strategy.Or(
+            UniqueNonEmptyList.of(groupFrom("group2"))
+          )),
           tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")),
           preferredGroup = Some(groupFrom("group3"))
         )
@@ -522,24 +578,24 @@ class JwtAuthRuleTests
   }
 
   private def assertMatchRule(configuredJwtDef: JwtDef,
-                              configuredGroups: UniqueList[Group] = UniqueList.empty,
+                              groupsLogic: GroupsLogic = GroupsLogic.NotDefined,
                               tokenHeader: Header,
                               preferredGroup: Option[Group] = None)
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroup, Some(blockContextAssertion))
+    assertRule(configuredJwtDef, groupsLogic, tokenHeader, preferredGroup, Some(blockContextAssertion))
 
   private def assertNotMatchRule(configuredJwtDef: JwtDef,
-                                 configuredGroups: UniqueList[Group] = UniqueList.empty,
+                                 groupsLogic: GroupsLogic = GroupsLogic.NotDefined,
                                  tokenHeader: Header,
                                  preferredGroup: Option[Group] = None): Unit =
-    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroup, blockContextAssertion = None)
+    assertRule(configuredJwtDef, groupsLogic, tokenHeader, preferredGroup, blockContextAssertion = None)
 
   private def assertRule(configuredJwtDef: JwtDef,
-                         configuredGroups: UniqueList[Group] = UniqueList.empty,
+                         groupsLogic: GroupsLogic = GroupsLogic.NotDefined,
                          tokenHeader: Header,
                          preferredGroup: Option[Group],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
-    val rule = new JwtAuthRule(JwtAuthRule.Settings(configuredJwtDef, configuredGroups), UserIdEq.caseSensitive)
+    val rule = new JwtAuthRule(JwtAuthRule.Settings(configuredJwtDef, groupsLogic), UserIdEq.caseSensitive)
     val requestContext = MockRequestContext.metadata.copy(
       headers = Set(tokenHeader) ++ preferredGroup.map(_.toHeader).toSet
     )

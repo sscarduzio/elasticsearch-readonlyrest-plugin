@@ -21,6 +21,7 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule
+import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule.GroupsLogic
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -31,7 +32,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.JwtDefinitionsD
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.decodeUniqueList
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
-import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
                          implicit val caseMappingEquality: UserIdCaseMappingEquality)
@@ -41,14 +42,14 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
     JwtAuthRuleDecoder.nameAndGroupsSimpleDecoder
       .or(JwtAuthRuleDecoder.nameAndGroupsExtendedDecoder)
       .toSyncDecoder
-      .emapE { case (name, groups) =>
+      .emapE { case (name, groupsLogic) =>
         jwtDefinitions.items.find(_.id === name) match {
-          case Some(jwtDef) => Right((jwtDef, groups))
+          case Some(jwtDef) => Right(JwtAuthRule.Settings(jwtDef, groupsLogic))
           case None => Left(RulesLevelCreationError(Message(s"Cannot find JWT definition with name: ${name.show}")))
         }
       }
-      .map { case (jwtDef, groups) =>
-        RuleDefinition.create(new JwtAuthRule(JwtAuthRule.Settings(jwtDef, groups), caseMappingEquality))
+      .map { settings =>
+        RuleDefinition.create(new JwtAuthRule(settings, caseMappingEquality))
       }
       .decoder
   }
@@ -56,18 +57,46 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
 
 private object JwtAuthRuleDecoder {
 
-  private val nameAndGroupsSimpleDecoder: Decoder[(JwtDef.Name, UniqueList[Group])] =
+  private val nameAndGroupsSimpleDecoder: Decoder[(JwtDef.Name, GroupsLogic)] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .map(JwtDef.Name.apply)
-      .map((_, UniqueList.empty))
+      .map((_, GroupsLogic.NotDefined))
 
-  private val nameAndGroupsExtendedDecoder: Decoder[(JwtDef.Name, UniqueList[Group])] =
-    Decoder.instance { c =>
-      for {
-        jwtDefName <- c.downField("name").as[JwtDef.Name]
-        groups <- c.downFields("roles", "groups").as[Option[UniqueList[Group]]]
-      } yield (jwtDefName, groups.getOrElse(UniqueList.empty))
-    }
+  private val nameAndGroupsExtendedDecoder: Decoder[(JwtDef.Name, GroupsLogic)] =
+    Decoder
+      .instance { c =>
+        for {
+          rorKbnDefName <- c.downField("name").as[JwtDef.Name]
+          groupsOrLogic <- {
+            val (cursor, key) = c.downFieldsWithKey("roles", "groups")
+            cursor.as[Option[UniqueNonEmptyList[Group]]]
+              .map {
+                _.map(GroupsLogic.Strategy.Or).map(GroupsLogic.Defined).map((_, key))
+              }
+          }
+          groupsAndLogic <- {
+            val (cursor, key) = c.downFieldsWithKey("roles_and", "groups_and")
+            cursor.as[Option[UniqueNonEmptyList[Group]]]
+              .map {
+                _.map(GroupsLogic.Strategy.And).map(GroupsLogic.Defined).map((_, key))
+              }
+          }
+        } yield (rorKbnDefName, groupsOrLogic, groupsAndLogic)
+      }
+      .toSyncDecoder
+      .emapE {
+        case (name, Some((_, groupsOrKey)), Some((_, groupsAndKey))) =>
+          Left(RulesLevelCreationError(Message(
+            s"Please specify either '$groupsOrKey' or '$groupsAndKey' for JWT authorization rule '${name.value.value}'"
+          )))
+        case (name, Some((groupsOrLogic, _)), None) =>
+          Right((name, groupsOrLogic))
+        case (name, None, Some((groupsAndLogic, _))) =>
+          Right((name, groupsAndLogic))
+        case (name, None, None) =>
+          Right((name, GroupsLogic.NotDefined: GroupsLogic))
+      }
+      .decoder
 
 }

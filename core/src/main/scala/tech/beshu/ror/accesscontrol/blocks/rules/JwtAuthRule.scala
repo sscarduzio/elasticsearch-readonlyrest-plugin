@@ -23,6 +23,7 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod._
+import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule.GroupsLogic
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
@@ -71,10 +72,10 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
           case RequestGroup.`N/A` =>
             authorizeUsingJwtToken(blockContext)
           case RequestGroup.AGroup(group) =>
-            settings.permittedGroups.toList match {
-              case Nil =>
+            settings.groupsLogic match {
+              case GroupsLogic.NotDefined =>
                 authorizeUsingJwtToken(blockContext)
-              case permittedGroups if permittedGroups.contains(group) =>
+              case GroupsLogic.Defined(strategy) if strategy.availableGroupsFrom(UniqueList.of(group)).isDefined =>
                 authorizeUsingJwtToken(blockContext)
               case _ =>
                 Task.now(RuleResult.Rejected())
@@ -198,22 +199,25 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
 
   private def handleGroupsClaimSearchResult[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                      result: Option[ClaimSearchResult[UniqueList[Group]]]) = {
-    result match {
-      case None if settings.permittedGroups.nonEmpty => Left(())
-      case Some(NotFound) if settings.permittedGroups.nonEmpty => Left(())
-      case Some(NotFound) => Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
-      case Some(Found(groups)) if settings.permittedGroups.nonEmpty =>
-        UniqueNonEmptyList.fromSortedSet(settings.permittedGroups.intersect(groups)) match {
+    (result, settings.groupsLogic) match {
+      case (None, GroupsLogic.Defined(_)) =>
+        Left(())
+      case (None, GroupsLogic.NotDefined) =>
+        Right(blockContext)
+      case (Some(NotFound), GroupsLogic.Defined(_)) =>
+        Left(())
+      case (Some(NotFound), GroupsLogic.NotDefined) =>
+        Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
+      case (Some(Found(groups)), GroupsLogic.Defined(strategy)) =>
+        strategy.availableGroupsFrom(groups) match {
           case Some(matchedGroups) =>
             checkIfCanContinueWithGroups(blockContext, matchedGroups.toUniqueList)
               .map(_.withUserMetadata(_.addAvailableGroups(matchedGroups)))
           case None =>
             Left(())
         }
-      case Some(Found(groups)) =>
+      case (Some(Found(groups)), GroupsLogic.NotDefined) =>
         checkIfCanContinueWithGroups(blockContext, groups)
-      case None =>
-        Right(blockContext)
     }
   }
 
@@ -236,5 +240,30 @@ object JwtAuthRule {
     override val name = Rule.Name("jwt_auth")
   }
 
-  final case class Settings(jwt: JwtDef, permittedGroups: UniqueList[Group])
+  final case class Settings(jwt: JwtDef, groupsLogic: GroupsLogic)
+
+  sealed trait GroupsLogic
+  object GroupsLogic {
+    case object NotDefined extends GroupsLogic
+    final case class Defined(strategy: Strategy) extends GroupsLogic
+
+    sealed trait Strategy
+    object Strategy {
+      final case class Or(groups: UniqueNonEmptyList[Group]) extends Strategy
+      final case class And(groups: UniqueNonEmptyList[Group]) extends Strategy
+    }
+  }
+
+  implicit class GroupsLogicStrategyExecutor(val strategy: GroupsLogic.Strategy) extends AnyVal {
+    def availableGroupsFrom(userGroups: UniqueList[Group]): Option[UniqueNonEmptyList[Group]] = {
+      strategy match {
+        case GroupsLogic.Strategy.And(groups) =>
+          val intersection = userGroups intersect groups
+          if (intersection.toSet === groups.toSet) Some(groups) else None
+        case GroupsLogic.Strategy.Or(groups) =>
+          val intersection = userGroups.toSet intersect groups
+          UniqueNonEmptyList.fromSet(intersection)
+      }
+    }
+  }
 }

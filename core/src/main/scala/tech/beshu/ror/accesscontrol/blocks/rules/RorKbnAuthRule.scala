@@ -22,7 +22,8 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
-import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.GroupsLogic.Strategy
+import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.{GroupsLogic, Settings}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
@@ -67,10 +68,10 @@ final class RorKbnAuthRule(val settings: Settings,
         case RequestGroup.`N/A` =>
           authorizeUsingJwtToken(blockContext)
         case RequestGroup.AGroup(group) =>
-          settings.permittedGroups.toList match {
-            case Nil =>
+          settings.groupsLogic match {
+            case GroupsLogic.NotDefined =>
               authorizeUsingJwtToken(blockContext)
-            case permittedGroups if permittedGroups.contains(group) =>
+            case GroupsLogic.Defined(strategy) if strategy.availableGroupsFrom(UniqueList.of(group)).isDefined =>
               authorizeUsingJwtToken(blockContext)
             case _ =>
               RuleResult.Rejected()
@@ -136,18 +137,20 @@ final class RorKbnAuthRule(val settings: Settings,
 
   private def handleGroupsClaimSearchResult[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                      result: ClaimSearchResult[UniqueList[Group]]) = {
-    result match {
-      case NotFound if settings.permittedGroups.nonEmpty => Left(())
-      case NotFound => Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
-      case Found(groups) if settings.permittedGroups.nonEmpty =>
-        UniqueNonEmptyList.fromSortedSet(settings.permittedGroups.intersect(groups)) match {
+    (result, settings.groupsLogic) match {
+      case (NotFound, GroupsLogic.Defined(_)) =>
+        Left(())
+      case (NotFound, GroupsLogic.NotDefined) =>
+        Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
+      case (Found(groups), GroupsLogic.Defined(strategy)) =>
+        strategy.availableGroupsFrom(groups) match {
           case Some(matchedGroups) =>
             checkIfCanContinueWithGroups(blockContext, matchedGroups.toUniqueList)
               .map(_.withUserMetadata(_.addAvailableGroups(matchedGroups)))
           case None =>
             Left(())
         }
-      case Found(groups) =>
+      case (Found(groups), GroupsLogic.NotDefined) =>
         checkIfCanContinueWithGroups(blockContext, groups)
     }
   }
@@ -179,7 +182,32 @@ object RorKbnAuthRule {
     override val name = Rule.Name("ror_kbn_auth")
   }
 
-  final case class Settings(rorKbn: RorKbnDef, permittedGroups: UniqueList[Group])
+  final case class Settings(rorKbn: RorKbnDef, groupsLogic: GroupsLogic)
+
+  sealed trait GroupsLogic
+  object GroupsLogic {
+    case object NotDefined extends GroupsLogic
+    final case class Defined(strategy: Strategy) extends GroupsLogic
+
+    sealed trait Strategy
+    object Strategy {
+      final case class Or(groups: UniqueNonEmptyList[Group]) extends Strategy
+      final case class And(groups: UniqueNonEmptyList[Group]) extends Strategy
+    }
+  }
+
+  implicit class GroupsLogicStrategyExecutor(val strategy: GroupsLogic.Strategy) extends AnyVal {
+    def availableGroupsFrom(userGroups: UniqueList[Group]): Option[UniqueNonEmptyList[Group]] = {
+      strategy match {
+        case Strategy.And(groups) =>
+          val intersection = userGroups intersect groups
+          if (intersection.toSet === groups.toSet) Some(groups) else None
+        case Strategy.Or(groups) =>
+          val intersection = userGroups.toSet intersect groups
+          UniqueNonEmptyList.fromSet(intersection)
+      }
+    }
+  }
 
   private val userClaimName = ClaimName(JsonPath.compile("user"))
   private val groupsClaimName = ClaimName(JsonPath.compile("groups"))
