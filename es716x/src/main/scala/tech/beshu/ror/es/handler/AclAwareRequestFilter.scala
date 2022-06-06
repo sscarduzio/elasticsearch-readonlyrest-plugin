@@ -281,7 +281,6 @@ object AclAwareRequestFilter {
                  action: String,
                  request: ActionRequest,
                  listener: ActionListener[ActionResponse]): Unit = {
-      logger.warn(s"ROR: Action $action")
       threadPool.getThreadContext.addXPackAuthenticationHeader(nodeName)
       chain.proceed(task, action, request, listener)
     }
