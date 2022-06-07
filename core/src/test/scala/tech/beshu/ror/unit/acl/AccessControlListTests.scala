@@ -104,14 +104,12 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
   private def group(groupName: String) = Group(NonEmptyString.unsafeFrom(groupName))
 
   private def mockMetadataRequestContext(preferredGroup: String) = {
+    val userMetadata = UserMetadata.empty.withCurrentGroup(groupFrom(preferredGroup))
     val rc = mock[MetadataRequestContext]
     (rc.initialBlockContext _)
       .expects()
-      .returning(CurrentUserMetadataRequestBlockContext(rc, UserMetadata.empty, Set.empty, List.empty))
+      .returning(CurrentUserMetadataRequestBlockContext(rc, userMetadata, Set.empty, List.empty))
       .anyNumberOfTimes()
-    (rc.headers _)
-      .expects()
-      .returning(Set(new Header(Header.Name("x-ror-current-group"), NonEmptyString.unsafeFrom(preferredGroup))))
     (rc.action _)
       .expects()
       .returning(Action.rorUserMetadataAction)

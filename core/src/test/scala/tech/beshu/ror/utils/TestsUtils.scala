@@ -69,6 +69,9 @@ object TestsUtils {
       NonEmptyString.unsafeFrom(value)
     )
 
+  def currentGroupHeader(value: String): Header =
+    header("x-ror-current-group", value)
+
   def clusterIndexName(str: NonEmptyString): ClusterIndexName = ClusterIndexName.unsafeFromString(str.value)
 
   def localIndexName(str: NonEmptyString): ClusterIndexName.Local = ClusterIndexName.Local.fromString(str.value.value).get

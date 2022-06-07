@@ -271,8 +271,7 @@ class CurrentUserMetadataAccessControlTests
             }
 
             val request2 = MockRequestContext.metadata.copy(
-              headers = Set(header("X-Forwarded-User", "user5")),
-              currentGroup = Some(groupFrom("service1_group2"))
+              headers = Set(header("X-Forwarded-User", "user5"), currentGroupHeader("service1_group2"))
             )
             val result2 = acl.handleMetadataRequest(request2).runSyncUnsafe()
 
@@ -291,8 +290,7 @@ class CurrentUserMetadataAccessControlTests
             }
 
             val request2 = MockRequestContext.metadata.copy(
-              headers = Set(basicAuthHeader("user6:user2")),
-              currentGroup = Some(groupFrom("ldap2_group2"))
+              headers = Set(basicAuthHeader("user6:user2"), currentGroupHeader("ldap2_group2"))
             )
             val result2 = acl.handleMetadataRequest(request2).runSyncUnsafe()
 
