@@ -147,7 +147,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
       }
 
       "current group variable is used and initial group is present" in {
-        val requestContext = MockRequestContext.metadata.copy(headers = Set(headerFrom("x-ror-current-group" -> "g1")))
+        val requestContext = MockRequestContext.metadata.copy(headers = Set(currentGroupHeader("g1")))
         val variable = forceCreateSingleVariable("@{acl:current_group}")
           .resolve(currentUserMetadataRequestBlockContextFrom(requestContext = requestContext))
         variable shouldBe Right("g1")

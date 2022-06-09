@@ -197,7 +197,7 @@ class GroupsRuleAccessControlTests
           val request = MockRequestContext.indices.copy(
             headers = Set(
               basicAuthHeader("morgan:user1"),
-              header("x-ror-current-group", "admin")
+              currentGroupHeader( "admin")
             ),
             filteredIndices = Set(clusterIndexName(".kibana")),
             allIndicesAndAliases = Set(FullLocalIndexWithAliases(fullIndexName(".kibana"), Set.empty))
