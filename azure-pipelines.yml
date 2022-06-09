@@ -94,7 +94,7 @@ stages:
             IT_PROXY:
               ROR_TASK: integration_proxy
       - job:
-        condition: and(or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
+        condition: or(eq(variables.isDevelop, true), eq(variables.isMaster, true))
         container: maven:3.8.1-openjdk-17-slim
         steps:
           - checkout: self
@@ -127,7 +127,7 @@ stages:
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
-        condition: and(and(ne(variables.isDevelop, true), ne(variables.isMaster, true)))
+        condition: and(ne(variables.isDevelop, true), ne(variables.isMaster, true))
         container: maven:3.8.1-openjdk-17-slim
         steps:
           - checkout: self
@@ -158,7 +158,7 @@ stages:
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
-        condition: and(or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
+        condition: or(eq(variables.isDevelop, true), eq(variables.isMaster, true))
         steps:
           - checkout: self
             fetchDepth: 1
@@ -220,7 +220,7 @@ stages:
             IT_es60x:
               ROR_TASK: integration_es60x
       - job:
-        condition: and(and(ne(variables.isDevelop, true), ne(variables.isMaster, true)))
+        condition: and(ne(variables.isDevelop, true), ne(variables.isMaster, true))
         steps:
           - checkout: self
             fetchDepth: 1
