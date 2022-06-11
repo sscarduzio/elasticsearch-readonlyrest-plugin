@@ -25,7 +25,7 @@ import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule
-import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.GroupsLogic
+import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.Groups
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
@@ -58,7 +58,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-            rule.settings.groupsLogic should be(GroupsLogic.NotDefined)
+            rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
       }
@@ -83,7 +83,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-            rule.settings.groupsLogic should be(GroupsLogic.NotDefined)
+            rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
       }
@@ -111,9 +111,9 @@ class RorKbnAuthRuleSettingsTests
             assertion = rule => {
               rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
               rule.settings.rorKbn.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
-              rule.settings.groupsLogic should be(
-                GroupsLogic.Defined(
-                  GroupsLogic.Strategy.Or(
+              rule.settings.permittedGroups should be(
+                Groups.Defined(
+                  Groups.GroupsLogic.Or(
                     UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group2")))
                 )
               )
@@ -145,9 +145,9 @@ class RorKbnAuthRuleSettingsTests
             assertion = rule => {
               rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
               rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-              rule.settings.groupsLogic should be(
-                GroupsLogic.Defined(
-                  GroupsLogic.Strategy.And(
+              rule.settings.permittedGroups should be(
+                Groups.Defined(
+                  Groups.GroupsLogic.And(
                     UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group2")))
                 )
               )
@@ -177,7 +177,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
-            rule.settings.groupsLogic should be(GroupsLogic.NotDefined)
+            rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
       }
@@ -202,7 +202,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
-            rule.settings.groupsLogic should be(GroupsLogic.NotDefined)
+            rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
       }
@@ -230,7 +230,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
-            rule.settings.groupsLogic should be(GroupsLogic.NotDefined)
+            rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
       }
@@ -256,7 +256,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Ec]
-            rule.settings.groupsLogic should be(GroupsLogic.NotDefined)
+            rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
       }

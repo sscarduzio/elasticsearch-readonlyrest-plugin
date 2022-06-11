@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule
-import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.GroupsLogic
+import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
@@ -102,7 +102,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          groupsLogic = GroupsLogic.NotDefined,
+          configuredGroups = Groups.NotDefined,
           tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
         ) {
           blockContext =>
@@ -123,8 +123,8 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          groupsLogic = GroupsLogic.Defined(
-            GroupsLogic.Strategy.Or(
+          configuredGroups = Groups.Defined(
+            Groups.GroupsLogic.Or(
               UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group2")),
             )
           ),
@@ -150,8 +150,8 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          groupsLogic = GroupsLogic.Defined(
-            GroupsLogic.Strategy.Or(
+          configuredGroups = Groups.Defined(
+            Groups.GroupsLogic.Or(
               UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group2"))
             )
           ),
@@ -224,8 +224,8 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          groupsLogic = GroupsLogic.Defined(
-            GroupsLogic.Strategy.Or(
+          configuredGroups = Groups.Defined(
+            Groups.GroupsLogic.Or(
               UniqueNonEmptyList.of(Group("g1"))
             )
           ),
@@ -243,8 +243,8 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          groupsLogic = GroupsLogic.Defined(
-            GroupsLogic.Strategy.Or(
+          configuredGroups = Groups.Defined(
+            Groups.GroupsLogic.Or(
               UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group4")),
             )
           ),
@@ -262,8 +262,8 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          groupsLogic = GroupsLogic.Defined(
-            GroupsLogic.Strategy.And(
+          configuredGroups = Groups.Defined(
+            Groups.GroupsLogic.And(
               UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")),
             )
           ),
@@ -296,8 +296,8 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          groupsLogic = GroupsLogic.Defined(
-            GroupsLogic.Strategy.Or(
+          configuredGroups = Groups.Defined(
+            Groups.GroupsLogic.Or(
               UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group2"))
             )
           ),
@@ -309,24 +309,24 @@ class RorKbnAuthRuleTests
   }
 
   private def assertMatchRule(configuredRorKbnDef: RorKbnDef,
-                              groupsLogic: GroupsLogic = GroupsLogic.NotDefined,
+                              configuredGroups: Groups = Groups.NotDefined,
                               tokenHeader: Header,
                               preferredGroup: Option[Group] = None)
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(configuredRorKbnDef, groupsLogic, tokenHeader, preferredGroup, Some(blockContextAssertion))
+    assertRule(configuredRorKbnDef, configuredGroups, tokenHeader, preferredGroup, Some(blockContextAssertion))
 
   private def assertNotMatchRule(configuredRorKbnDef: RorKbnDef,
-                                 groupsLogic: GroupsLogic = GroupsLogic.NotDefined,
+                                 configuredGroups: Groups = Groups.NotDefined,
                                  tokenHeader: Header,
                                  preferredGroup: Option[Group] = None): Unit =
-    assertRule(configuredRorKbnDef, groupsLogic, tokenHeader, preferredGroup, blockContextAssertion = None)
+    assertRule(configuredRorKbnDef, configuredGroups, tokenHeader, preferredGroup, blockContextAssertion = None)
 
   private def assertRule(configuredRorKbnDef: RorKbnDef,
-                         groupsLogic: GroupsLogic = GroupsLogic.NotDefined,
+                         configuredGroups: Groups = Groups.NotDefined,
                          tokenHeader: Header,
                          preferredGroup: Option[Group],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
-    val rule = new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, groupsLogic), UserIdEq.caseSensitive)
+    val rule = new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, configuredGroups), UserIdEq.caseSensitive)
     val requestContext = MockRequestContext.metadata.copy(
       headers = Set(tokenHeader) ++ preferredGroup.map(_.toHeader).toSet
     )

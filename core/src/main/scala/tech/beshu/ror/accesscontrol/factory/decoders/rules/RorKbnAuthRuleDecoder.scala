@@ -21,7 +21,7 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule
-import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.GroupsLogic
+import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.Groups
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -56,13 +56,13 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
 
 private object RorKbnAuthRuleDecoder {
 
-  private val nameAndGroupsSimpleDecoder: Decoder[(RorKbnDef.Name, GroupsLogic)] =
+  private val nameAndGroupsSimpleDecoder: Decoder[(RorKbnDef.Name, Groups)] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .map(RorKbnDef.Name.apply)
-      .map((_, GroupsLogic.NotDefined))
+      .map((_, Groups.NotDefined))
 
-  private val nameAndGroupsExtendedDecoder: Decoder[(RorKbnDef.Name, GroupsLogic)] =
+  private val nameAndGroupsExtendedDecoder: Decoder[(RorKbnDef.Name, Groups)] =
     Decoder
       .instance { c =>
         for {
@@ -71,14 +71,14 @@ private object RorKbnAuthRuleDecoder {
             val (cursor, key) = c.downFieldsWithKey("roles", "groups")
             cursor.as[Option[UniqueNonEmptyList[Group]]]
               .map {
-                _.map(GroupsLogic.Strategy.Or).map(GroupsLogic.Defined).map((_, key))
+                _.map(Groups.GroupsLogic.Or).map(Groups.Defined).map((_, key))
               }
           }
           groupsAndLogic <- {
             val (cursor, key) = c.downFieldsWithKey("roles_and", "groups_and")
             cursor.as[Option[UniqueNonEmptyList[Group]]]
               .map {
-                _.map(GroupsLogic.Strategy.And).map(GroupsLogic.Defined).map((_, key))
+                _.map(Groups.GroupsLogic.And).map(Groups.Defined).map((_, key))
               }
           }
         } yield (rorKbnDefName, groupsOrLogic, groupsAndLogic)
@@ -94,7 +94,7 @@ private object RorKbnAuthRuleDecoder {
         case (name, None, Some((groupsAndLogic, _))) =>
           Right((name, groupsAndLogic))
         case (name, None, None) =>
-          Right((name, GroupsLogic.NotDefined: GroupsLogic))
+          Right((name, Groups.NotDefined: Groups))
       }
       .decoder
 

@@ -22,8 +22,8 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
-import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.GroupsLogic.Strategy
-import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.{GroupsLogic, Settings}
+import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.Groups.GroupsLogic
+import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.{Groups, Settings}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
@@ -68,10 +68,10 @@ final class RorKbnAuthRule(val settings: Settings,
         case RequestGroup.`N/A` =>
           authorizeUsingJwtToken(blockContext)
         case RequestGroup.AGroup(group) =>
-          settings.groupsLogic match {
-            case GroupsLogic.NotDefined =>
+          settings.permittedGroups match {
+            case Groups.NotDefined =>
               authorizeUsingJwtToken(blockContext)
-            case GroupsLogic.Defined(strategy) if strategy.availableGroupsFrom(UniqueList.of(group)).isDefined =>
+            case Groups.Defined(groupsLogic) if groupsLogic.groups.contains(group) =>
               authorizeUsingJwtToken(blockContext)
             case _ =>
               RuleResult.Rejected()
@@ -137,12 +137,12 @@ final class RorKbnAuthRule(val settings: Settings,
 
   private def handleGroupsClaimSearchResult[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                      result: ClaimSearchResult[UniqueList[Group]]) = {
-    (result, settings.groupsLogic) match {
-      case (NotFound, GroupsLogic.Defined(_)) =>
+    (result, settings.permittedGroups) match {
+      case (NotFound, Groups.Defined(_)) =>
         Left(())
-      case (NotFound, GroupsLogic.NotDefined) =>
+      case (NotFound, Groups.NotDefined) =>
         Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
-      case (Found(groups), GroupsLogic.Defined(strategy)) =>
+      case (Found(groups), Groups.Defined(strategy)) =>
         strategy.availableGroupsFrom(groups) match {
           case Some(matchedGroups) =>
             checkIfCanContinueWithGroups(blockContext, matchedGroups.toUniqueList)
@@ -150,7 +150,7 @@ final class RorKbnAuthRule(val settings: Settings,
           case None =>
             Left(())
         }
-      case (Found(groups), GroupsLogic.NotDefined) =>
+      case (Found(groups), Groups.NotDefined) =>
         checkIfCanContinueWithGroups(blockContext, groups)
     }
   }
@@ -182,30 +182,34 @@ object RorKbnAuthRule {
     override val name = Rule.Name("ror_kbn_auth")
   }
 
-  final case class Settings(rorKbn: RorKbnDef, groupsLogic: GroupsLogic)
+  final case class Settings(rorKbn: RorKbnDef, permittedGroups: Groups)
+  sealed trait Groups
+  object Groups {
+    case object NotDefined extends Groups
+    final case class Defined(groupsLogic: GroupsLogic) extends Groups
 
-  sealed trait GroupsLogic
-  object GroupsLogic {
-    case object NotDefined extends GroupsLogic
-    final case class Defined(strategy: Strategy) extends GroupsLogic
-
-    sealed trait Strategy
-    object Strategy {
-      final case class Or(groups: UniqueNonEmptyList[Group]) extends Strategy
-      final case class And(groups: UniqueNonEmptyList[Group]) extends Strategy
+    sealed trait GroupsLogic
+    object GroupsLogic {
+      final case class Or(groups: UniqueNonEmptyList[Group]) extends GroupsLogic
+      final case class And(groups: UniqueNonEmptyList[Group]) extends GroupsLogic
     }
   }
 
-  implicit class GroupsLogicStrategyExecutor(val strategy: GroupsLogic.Strategy) extends AnyVal {
+  implicit class GroupsLogicExecutor(val groupsLogic: Groups.GroupsLogic) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueList[Group]): Option[UniqueNonEmptyList[Group]] = {
-      strategy match {
-        case Strategy.And(groups) =>
+      groupsLogic match {
+        case GroupsLogic.And(groups) =>
           val intersection = userGroups intersect groups
           if (intersection.toSet === groups.toSet) Some(groups) else None
-        case Strategy.Or(groups) =>
+        case GroupsLogic.Or(groups) =>
           val intersection = userGroups.toSet intersect groups
           UniqueNonEmptyList.fromSet(intersection)
       }
+    }
+
+    def groups: UniqueNonEmptyList[Group] = groupsLogic match {
+      case GroupsLogic.And(groups) => groups
+      case GroupsLogic.Or(groups) => groups
     }
   }
 

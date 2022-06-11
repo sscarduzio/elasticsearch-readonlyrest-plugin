@@ -21,7 +21,7 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule
-import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule.GroupsLogic
+import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule.Groups
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -57,13 +57,13 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
 
 private object JwtAuthRuleDecoder {
 
-  private val nameAndGroupsSimpleDecoder: Decoder[(JwtDef.Name, GroupsLogic)] =
+  private val nameAndGroupsSimpleDecoder: Decoder[(JwtDef.Name, Groups)] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .map(JwtDef.Name.apply)
-      .map((_, GroupsLogic.NotDefined))
+      .map((_, Groups.NotDefined))
 
-  private val nameAndGroupsExtendedDecoder: Decoder[(JwtDef.Name, GroupsLogic)] =
+  private val nameAndGroupsExtendedDecoder: Decoder[(JwtDef.Name, Groups)] =
     Decoder
       .instance { c =>
         for {
@@ -72,14 +72,14 @@ private object JwtAuthRuleDecoder {
             val (cursor, key) = c.downFieldsWithKey("roles", "groups")
             cursor.as[Option[UniqueNonEmptyList[Group]]]
               .map {
-                _.map(GroupsLogic.Strategy.Or).map(GroupsLogic.Defined).map((_, key))
+                _.map(Groups.GroupsLogic.Or).map(Groups.Defined).map((_, key))
               }
           }
           groupsAndLogic <- {
             val (cursor, key) = c.downFieldsWithKey("roles_and", "groups_and")
             cursor.as[Option[UniqueNonEmptyList[Group]]]
               .map {
-                _.map(GroupsLogic.Strategy.And).map(GroupsLogic.Defined).map((_, key))
+                _.map(Groups.GroupsLogic.And).map(Groups.Defined).map((_, key))
               }
           }
         } yield (rorKbnDefName, groupsOrLogic, groupsAndLogic)
@@ -95,7 +95,7 @@ private object JwtAuthRuleDecoder {
         case (name, None, Some((groupsAndLogic, _))) =>
           Right((name, groupsAndLogic))
         case (name, None, None) =>
-          Right((name, GroupsLogic.NotDefined: GroupsLogic))
+          Right((name, Groups.NotDefined: Groups))
       }
       .decoder
 
