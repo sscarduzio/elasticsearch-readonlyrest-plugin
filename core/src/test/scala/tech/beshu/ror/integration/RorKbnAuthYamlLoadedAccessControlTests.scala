@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{JwtTokenPayload, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.collection.JavaConverters._
 
@@ -62,14 +63,21 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
       |
       |    - name: Valid JWT token is present with another key
       |      type: allow
+      |      indices: ["index1"]
       |      ror_kbn_auth:
       |        name: "kbn2"
       |
       |    - name: Valid JWT token is present with a third key + role
       |      type: allow
-      |      ror_kbn_auth:
-      |        name: "kbn3"
-      |        roles: ["viewer_group"]
+      |      indices: ["index2"]
+      |      groups: ["mapped_viewer_group"]
+      |
+      |  users:
+      |  - username: "*"
+      |    groups: ["mapped_viewer_group"]
+      |    ror_kbn_auth:
+      |      name: "kbn2"
+      |      roles: ["viewer_group"]
       |
       |  ror_kbn:
       |
@@ -103,6 +111,35 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
               jwt = Some(JwtTokenPayload(claims))
+            ) {
+              blockContext
+            }
+          }
+        }
+        "JWT token with non-empty list of groups is defined, preferred group is used" in {
+          val claims = new DefaultClaims(Map[String, AnyRef]("sub" -> "test", "user" -> "user", "groups" -> List("viewer_group").asJava).asJava)
+          val jwtBuilder = Jwts.builder
+            .signWith(Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes))
+            .setSubject("test")
+            .setClaims(claims)
+          val preferredGroup = groupFrom("mapped_viewer_group")
+          val index = clusterIndexName("index2")
+          val request = MockRequestContext.indices.copy(
+            filteredIndices = Set(index),
+            allAllowedIndices = Set(index),
+            headers = Set(header("Authorization", s"Bearer ${jwtBuilder.compact}"), preferredGroup.toHeader)
+          )
+
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+
+          result.history should have size 4
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+            block.name should be(Block.Name("Valid JWT token is present with a third key + role"))
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
+              currentGroup = Some(preferredGroup),
+              availableGroups = UniqueList.of(preferredGroup),
+              indices = Set(index)
             ) {
               blockContext
             }

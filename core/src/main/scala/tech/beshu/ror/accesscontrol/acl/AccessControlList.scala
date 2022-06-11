@@ -34,7 +34,6 @@ import tech.beshu.ror.accesscontrol.domain.{Group, Header}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class AccessControlList(val blocks: NonEmptyList[Block],
@@ -89,7 +88,7 @@ class AccessControlList(val blocks: NonEmptyList[Block],
         val history = blockResults.map(_._2).toVector
         val result = matchedAllowedBlocks(blockResults.map(_._1)) match {
           case Right(matchedResults) =>
-            userMetadataFrom(matchedResults, context.currentGroup.toOption) match {
+            userMetadataFrom(matchedResults, context.initialBlockContext.userMetadata.currentGroup) match {
               case Some((userMetadata, matchedBlock)) => UserMetadataRequestResult.Allow(userMetadata, matchedBlock)
               case None => UserMetadataRequestResult.Forbidden(nonEmptySetOfMismatchedCausesFromHistory(history))
             }

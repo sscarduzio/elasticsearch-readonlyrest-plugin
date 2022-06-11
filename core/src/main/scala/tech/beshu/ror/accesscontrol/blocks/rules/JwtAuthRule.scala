@@ -69,10 +69,10 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
     Task
       .unit
       .flatMap { _ =>
-        blockContext.requestContext.currentGroup match {
-          case RequestGroup.`N/A` =>
+        blockContext.userMetadata.currentGroup match {
+          case None =>
             authorizeUsingJwtToken(blockContext)
-          case RequestGroup.AGroup(group) =>
+          case Some(group) =>
             settings.permittedGroups match {
               case Groups.NotDefined =>
                 authorizeUsingJwtToken(blockContext)
@@ -209,8 +209,8 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
         Left(())
       case (Some(NotFound), Groups.NotDefined) =>
         Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
-      case (Some(Found(groups)), Groups.Defined(strategy)) =>
-        strategy.availableGroupsFrom(groups) match {
+      case (Some(Found(groups)), Groups.Defined(groupsLogic)) =>
+        groupsLogic.availableGroupsFrom(groups) match {
           case Some(matchedGroups) =>
             checkIfCanContinueWithGroups(blockContext, matchedGroups.toUniqueList)
               .map(_.withUserMetadata(_.addAvailableGroups(matchedGroups)))
@@ -224,12 +224,12 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
 
   private def checkIfCanContinueWithGroups[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                     groups: UniqueList[Group]) = {
-    blockContext.requestContext.currentGroup match {
-      case RequestGroup.`N/A` =>
+    blockContext.userMetadata.currentGroup match {
+      case None =>
         Right(blockContext)
-      case RequestGroup.AGroup(group) if groups.contains(group) =>
+      case Some(group) if groups.contains(group) =>
         Right(blockContext)
-      case RequestGroup.AGroup(_) =>
+      case Some(_) =>
         Left(())
     }
   }
