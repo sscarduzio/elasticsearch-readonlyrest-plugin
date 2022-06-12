@@ -29,8 +29,11 @@ import tech.beshu.ror.configuration.SslConfiguration.ServerCertificateConfigurat
 import tech.beshu.ror.configuration.SslConfiguration.{ClientCertificateConfiguration, KeystoreFile, KeystorePassword, ServerCertificateConfiguration, TruststorePassword}
 
 import java.io.{File, FileInputStream, IOException}
+import java.nio.charset.Charset
 import java.security.cert.{CertificateFactory, X509Certificate}
+import java.security.spec.PKCS8EncodedKeySpec
 import java.security.{KeyFactory, KeyStore, PrivateKey}
+import java.util.Base64
 import javax.net.ssl.{KeyManagerFactory, TrustManagerFactory}
 import scala.collection.JavaConverters._
 import scala.language.{existentials, implicitConversions}
@@ -54,10 +57,32 @@ object SSLCertHelper extends Logging {
     }
   }
 
-  private def loadKeyFactory() = {
-    val keyFactory = KeyFactory.getInstance("RSA")
-//    keyFactory.generatePublic()
-    val certFactory = CertificateFactory.getInstance("X.509")
+  private def loadPrivateKey(file: File): IO[PrivateKey] = {
+    Resource
+      .fromAutoCloseable(IO(new FileInputStream(file)))
+      .use { privateKeyFile => IO {
+        val key = new String(privateKeyFile.readAllBytes(), Charset.defaultCharset())
+        val strippedKey = key
+          .replace("-----BEGIN PRIVATE KEY-----", "")
+          .replaceAll(System.lineSeparator(), "")
+          .replace("-----END PRIVATE KEY-----", "")
+        val encodedKey = Base64.getDecoder.decode(strippedKey)
+        val keyFactory = KeyFactory.getInstance("RSA")
+        val keySpec = new PKCS8EncodedKeySpec(encodedKey)
+        keyFactory.generatePrivate(keySpec)
+      }}
+  }
+
+  private def loadCertificateChain(file: File): IO[Array[X509Certificate]] = {
+    Resource
+      .fromAutoCloseable(IO(new FileInputStream(file)))
+      .use { certificateChainFile => IO {
+        val certFactory = CertificateFactory.getInstance("X.509")
+        certFactory.generateCertificates(certificateChainFile).asScala.toArray.map {
+          case cc: X509Certificate => cc
+          case _ => throw MalformedSslSettings(s"Certificate chain in $file contains invalid X509 certificate")
+        }
+      }}
   }
 
   private def loadKeystoreFromFile(keystoreFile: File, password: Array[Char], fipsCompliant: Boolean): IO[KeyStore] = {
@@ -121,7 +146,12 @@ object SSLCertHelper extends Logging {
       }
   }
 
-  private def getPrivateKeyAndCertificateChainFromPemFiles(fileBasedConfiguration: ServerCertificateConfiguration.FileBasedConfiguration): IO[(PrivateKey, Array[X509Certificate])] = ???
+  private def getPrivateKeyAndCertificateChainFromPemFiles(fileBasedConfiguration: ServerCertificateConfiguration.FileBasedConfiguration): IO[(PrivateKey, Array[X509Certificate])] = {
+    for {
+      privateKey <- loadPrivateKey(fileBasedConfiguration.serverCertificateKeyFile.value)
+      certificateChain <- loadCertificateChain(fileBasedConfiguration.serverCertificateFile.value)
+    } yield (privateKey, certificateChain)
+  }
 
   private def getPrivateKeyAndCertificateChainFromKeystore(keystoreBasedConfiguration: KeystoreBasedConfiguration): IO[(PrivateKey, Array[X509Certificate])] = {
     loadKeystore(keystoreBasedConfiguration, fipsCompliant = false)
@@ -154,7 +184,14 @@ object SSLCertHelper extends Logging {
   }
 
   def getTrustedCertificatesFromPemFile(fileBasedConfiguration: ClientCertificateConfiguration.FileBasedConfiguration): Array[X509Certificate] = {
-    ???
+    loadCertificateChain(fileBasedConfiguration.clientTrustedCertificateFile.value)
+      .attempt
+      .map {
+        case Right(certificateChain) => certificateChain
+        case Left(exception) =>
+          throw UnableToLoadDataFromProvidedFilesException(exception)
+      }
+      .unsafeRunSync()
   }
 
   def getTrustManagerFactory(truststoreBasedConfiguration: TruststoreBasedConfiguration, fipsCompliant: Boolean): TrustManagerFactory = {

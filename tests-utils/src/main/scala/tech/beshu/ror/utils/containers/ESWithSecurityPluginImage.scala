@@ -31,6 +31,8 @@ object ESWithSecurityPluginImage extends EsImage[EsWithSecurityPluginContainer.C
   private val bcfksTruststoreFileName = "truststore.bcfks"
   private val xpackTruststoreFileName = "shield.jks"
   private val pkcsCerts = "elastic-certificates.p12"
+  private val pemPrivateKey = "elastic-certificates-pkey.pem"
+  private val pemCertificateChain = "elastic-certificates-cert.pem"
   private val bcfksCerts = "elastic-certificates.bcfks"
   private val elasticsearchKeystore = "elasticsearch.keystore"
   private val configDir = "/config"
@@ -54,6 +56,8 @@ object ESWithSecurityPluginImage extends EsImage[EsWithSecurityPluginContainer.C
       .withFileFromFile(s"$configDir/$bcfksTruststoreFileName", ContainerUtils.getResourceFile("/" + bcfksTruststoreFileName))
       .withFileFromFile(s"$configDir/$bcfksCerts", ContainerUtils.getResourceFile("/" + bcfksCerts))
       .withFileFromFile(s"$configDir/$pkcsCerts", ContainerUtils.getResourceFile("/" + pkcsCerts))
+      .withFileFromFile(s"$configDir/$pemPrivateKey", ContainerUtils.getResourceFile("/" + pemPrivateKey))
+      .withFileFromFile(s"$configDir/$pemCertificateChain", ContainerUtils.getResourceFile("/" + pemCertificateChain))
   }
 
   override protected def install(builder: DockerfileBuilder,
