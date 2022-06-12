@@ -22,13 +22,16 @@ import io.netty.buffer.ByteBufAllocator
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import io.netty.handler.ssl.{ClientAuth, SslContext, SslContextBuilder}
 import org.apache.logging.log4j.scala.Logging
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
 import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
+import org.bouncycastle.openssl.PEMParser
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import tech.beshu.ror.configuration.SslConfiguration
 import tech.beshu.ror.configuration.SslConfiguration.ClientCertificateConfiguration.{FileBasedConfiguration, TruststoreBasedConfiguration}
 import tech.beshu.ror.configuration.SslConfiguration.ServerCertificateConfiguration.KeystoreBasedConfiguration
 import tech.beshu.ror.configuration.SslConfiguration.{ClientCertificateConfiguration, KeystoreFile, KeystorePassword, ServerCertificateConfiguration, TruststorePassword}
 
-import java.io.{File, FileInputStream, IOException}
+import java.io.{File, FileInputStream, FileReader, IOException}
 import java.nio.charset.Charset
 import java.security.cert.{CertificateFactory, X509Certificate}
 import java.security.spec.PKCS8EncodedKeySpec
@@ -59,17 +62,12 @@ object SSLCertHelper extends Logging {
 
   private def loadPrivateKey(file: File): IO[PrivateKey] = {
     Resource
-      .fromAutoCloseable(IO(new FileInputStream(file)))
-      .use { privateKeyFile => IO {
-        val key = new String(privateKeyFile.readAllBytes(), Charset.defaultCharset())
-        val strippedKey = key
-          .replace("-----BEGIN PRIVATE KEY-----", "")
-          .replaceAll(System.lineSeparator(), "")
-          .replace("-----END PRIVATE KEY-----", "")
-        val encodedKey = Base64.getDecoder.decode(strippedKey)
-        val keyFactory = KeyFactory.getInstance("RSA")
-        val keySpec = new PKCS8EncodedKeySpec(encodedKey)
-        keyFactory.generatePrivate(keySpec)
+      .fromAutoCloseable(IO(new FileReader(file)))
+      .use { privateKeyFileReader => IO {
+        val pemParser = new PEMParser(privateKeyFileReader)
+        val privateKeyInfo = PrivateKeyInfo.getInstance(pemParser.readObject())
+        val converter = new JcaPEMKeyConverter()
+        converter.getPrivateKey(privateKeyInfo)
       }}
   }
 
