@@ -34,7 +34,6 @@ object ESWithSecurityPluginImage extends EsImage[EsWithSecurityPluginContainer.C
   private val pemPrivateKey = "elastic-certificates-pkey.pem"
   private val pemCertificateChain = "elastic-certificates-cert.pem"
   private val bcfksCerts = "elastic-certificates.bcfks"
-  private val elasticsearchKeystore = "elasticsearch.keystore"
   private val configDir = "/config"
 
   override protected def copyNecessaryFiles(builder: DockerfileBuilder, config: EsWithSecurityPluginContainer.Config): DockerfileBuilder = {
