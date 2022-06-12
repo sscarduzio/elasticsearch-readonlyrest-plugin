@@ -1,12 +1,8 @@
 readonlyrest:
   ssl:
     enable: true
-#    keystore_file: "elastic-certificates.p12"
-#    keystore_pass: readonlyrest
     server_certificate_key_file: elastic-certificates-pkey.pem
     server_certificate_file: elastic-certificates-cert.pem
-#    truststore_file: "elastic-certificates.p12"
-#    truststore_pass: readonlyrest
     client_trusted_certificate_file: elastic-certificates-cert.pem
     key_pass: readonlyrest
 
