@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule
+import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
@@ -41,7 +42,7 @@ import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.misc.Random
-import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -101,7 +102,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          configuredGroups = UniqueList.empty,
+          configuredGroups = Groups.NotDefined,
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
@@ -122,7 +123,11 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group2")),
+          configuredGroups = Groups.Defined(
+            Groups.GroupsLogic.Or(
+              UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group2")),
+            )
+          ),
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
@@ -145,7 +150,11 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group2")),
+          configuredGroups = Groups.Defined(
+            Groups.GroupsLogic.Or(
+              UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group2"))
+            )
+          ),
           tokenHeader = bearerHeader(jwt),
           preferredGroup = Some(groupFrom("group2"))
         ) {
@@ -215,11 +224,15 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          configuredGroups = UniqueList.of(Group("g1")),
+          configuredGroups = Groups.Defined(
+            Groups.GroupsLogic.Or(
+              UniqueNonEmptyList.of(Group("g1"))
+            )
+          ),
           tokenHeader = bearerHeader(jwt)
         )
       }
-      "rule groups are defined and intersection between those groups and ROR Kbn ones is empty" in {
+      "rule groups are defined with 'or' logic and intersection between those groups and ROR Kbn ones is empty" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         val jwt = Jwt(key, claims = List(
           "user" := "user1",
@@ -230,7 +243,30 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group4")),
+          configuredGroups = Groups.Defined(
+            Groups.GroupsLogic.Or(
+              UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group4")),
+            )
+          ),
+          tokenHeader = bearerHeader(jwt)
+        )
+      }
+      "rule groups are defined with 'and' logic and intersection between those groups and ROR Kbn ones is empty" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val jwt = Jwt(key, claims = List(
+          "user" := "user1",
+          "groups" := List("group1", "group2")
+        ))
+        assertNotMatchRule(
+          configuredRorKbnDef = RorKbnDef(
+            RorKbnDef.Name("test"),
+            SignatureCheckMethod.Hmac(key.getEncoded)
+          ),
+          configuredGroups = Groups.Defined(
+            Groups.GroupsLogic.And(
+              UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")),
+            )
+          ),
           tokenHeader = bearerHeader(jwt)
         )
       }
@@ -260,7 +296,11 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group2")),
+          configuredGroups = Groups.Defined(
+            Groups.GroupsLogic.Or(
+              UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group2"))
+            )
+          ),
           tokenHeader = bearerHeader(jwt),
           preferredGroup = Some(groupFrom("group5"))
         )
@@ -269,20 +309,20 @@ class RorKbnAuthRuleTests
   }
 
   private def assertMatchRule(configuredRorKbnDef: RorKbnDef,
-                              configuredGroups: UniqueList[Group] = UniqueList.empty,
+                              configuredGroups: Groups = Groups.NotDefined,
                               tokenHeader: Header,
                               preferredGroup: Option[Group] = None)
                              (blockContextAssertion: BlockContext => Unit): Unit =
     assertRule(configuredRorKbnDef, configuredGroups, tokenHeader, preferredGroup, Some(blockContextAssertion))
 
   private def assertNotMatchRule(configuredRorKbnDef: RorKbnDef,
-                                 configuredGroups: UniqueList[Group] = UniqueList.empty,
+                                 configuredGroups: Groups = Groups.NotDefined,
                                  tokenHeader: Header,
                                  preferredGroup: Option[Group] = None): Unit =
     assertRule(configuredRorKbnDef, configuredGroups, tokenHeader, preferredGroup, blockContextAssertion = None)
 
   private def assertRule(configuredRorKbnDef: RorKbnDef,
-                         configuredGroups: UniqueList[Group] = UniqueList.empty,
+                         configuredGroups: Groups = Groups.NotDefined,
                          tokenHeader: Header,
                          preferredGroup: Option[Group],
                          blockContextAssertion: Option[BlockContext => Unit]) = {

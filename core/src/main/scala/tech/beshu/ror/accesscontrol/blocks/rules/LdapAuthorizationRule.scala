@@ -94,7 +94,7 @@ object LdapAuthorizationRule {
           if (intersection.toSet === groups.toSet) Some(groups) else None
         case Or(groups) =>
           val intersection = userGroups.toSet intersect groups
-          if (intersection.isEmpty) None else UniqueNonEmptyList.fromSet(intersection)
+          UniqueNonEmptyList.fromSet(intersection)
       }
     }
   }

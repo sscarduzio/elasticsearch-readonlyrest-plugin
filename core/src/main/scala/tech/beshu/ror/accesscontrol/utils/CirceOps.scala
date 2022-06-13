@@ -284,6 +284,14 @@ object CirceOps {
       }
     }
 
+    def downFieldsWithKey(field: String, fields: String*): (ACursor, String) = {
+      fields.toList.foldLeft((value.downField(field), field)) {
+        case ((_: FailedCursor, prevField), nextField) => (value.downField(nextField), nextField)
+        case ((found: HCursor, foundFiled), _) => (found, foundFiled)
+        case ((other, otherField), _) => (other, otherField)
+      }
+    }
+
     def downNonEmptyField(name: String): Decoder.Result[NonEmptyString] = {
       import tech.beshu.ror.accesscontrol.factory.decoders.common.nonEmptyStringDecoder
       downFields(name).asWithError[NonEmptyString](s"Field $name cannot be empty")
