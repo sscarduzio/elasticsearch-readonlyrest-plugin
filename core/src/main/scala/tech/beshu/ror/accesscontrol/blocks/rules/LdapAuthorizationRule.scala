@@ -42,8 +42,6 @@ class LdapAuthorizationRule(val settings: Settings,
 
   override protected val groupsPermittedByRule: UniqueNonEmptyList[Group] = settings.permittedGroups.groups
 
-  override protected val groupsPermittedByAllRulesOfThisType: UniqueNonEmptyList[Group] = settings.allLdapGroups
-
   override protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[Group]] =
     settings.ldap.groupsOf(user.id)
 
@@ -75,7 +73,7 @@ object LdapAuthorizationRule {
     override val name = Rule.Name("ldap_authorization")
   }
 
-  final case class Settings(ldap: LdapAuthorizationService, permittedGroups: GroupsLogic, allLdapGroups: UniqueNonEmptyList[Group])
+  final case class Settings(ldap: LdapAuthorizationService, permittedGroups: GroupsLogic)
 
   sealed trait GroupsLogic {
     val groups: UniqueNonEmptyList[Group]

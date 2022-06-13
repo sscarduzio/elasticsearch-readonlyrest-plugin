@@ -40,8 +40,6 @@ trait BaseAuthorizationRule extends AuthorizationRule with SimpleAuthorizationIm
 
   protected def groupsPermittedByRule: UniqueNonEmptyList[Group]
 
-  protected def groupsPermittedByAllRulesOfThisType: UniqueNonEmptyList[Group]
-
   protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[Group]]
 
   protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = Right(())

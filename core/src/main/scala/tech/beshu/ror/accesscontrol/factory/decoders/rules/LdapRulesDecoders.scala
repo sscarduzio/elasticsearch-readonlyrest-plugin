@@ -117,8 +117,7 @@ object LdapAuthorizationRuleDecoder {
   def createLdapAuthorizationDecoder(name: LdapService.Name,
                                      ttl: Option[Refined[FiniteDuration, Positive]],
                                      groupsLogic: GroupsLogic,
-                                     ldapDefinitions: Definitions[LdapService]
-                                    ) = {
+                                     ldapDefinitions: Definitions[LdapService]) = {
     findLdapService[LdapAuthorizationService, LdapAuthorizationRule](ldapDefinitions.items, name)
       .map(svc => {
         ttl match {
@@ -127,7 +126,7 @@ object LdapAuthorizationRuleDecoder {
         }
       })
       .map(service => new LoggableLdapAuthorizationServiceDecorator(service))
-      .map(LdapAuthorizationRule.Settings(_, groupsLogic, groupsLogic.groups))
+      .map(LdapAuthorizationRule.Settings(_, groupsLogic))
   }
 
   private def settingsDecoder(ldapDefinitions: Definitions[LdapService]): Decoder[LdapAuthorizationRule.Settings] =
@@ -189,7 +188,7 @@ object LdapAuthRuleDecoder {
             caseMappingEquality
           ),
           new LdapAuthorizationRule(
-            LdapAuthorizationRule.Settings(ldapService, groupsLogic, groupsLogic.groups),
+            LdapAuthorizationRule.Settings(ldapService, groupsLogic),
             impersonatorsDef.toImpersonation(mocksProvider),
             caseMappingEquality
           )
