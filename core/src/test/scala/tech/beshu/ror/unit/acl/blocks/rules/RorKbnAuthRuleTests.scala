@@ -62,7 +62,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
             assertBlockContext(
@@ -82,7 +82,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Rsa(pub)
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
             assertBlockContext(
@@ -102,7 +102,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = UniqueList.empty,
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
             assertBlockContext(
@@ -123,7 +123,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group2")),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
             assertBlockContext(
@@ -146,7 +146,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group2")),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")),
+          tokenHeader = bearerHeader(jwt),
           preferredGroup = Some(groupFrom("group2"))
         ) {
           blockContext =>
@@ -172,7 +172,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key1.getEncoded)
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt2.stringify()}"))
+          tokenHeader = bearerHeader(jwt2)
         )
       }
       "token has invalid RS256 signature" in {
@@ -187,7 +187,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Rsa(pub)
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = bearerHeader(jwt)
         )
       }
       "userId isn't passed in JWT token claim" in {
@@ -201,7 +201,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = bearerHeader(jwt)
         )
       }
       "groups aren't passed in JWT token claim while some groups are defined in settings" in {
@@ -216,7 +216,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = UniqueList.of(Group("g1")),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = bearerHeader(jwt)
         )
       }
       "rule groups are defined and intersection between those groups and ROR Kbn ones is empty" in {
@@ -231,7 +231,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group4")),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = bearerHeader(jwt)
         )
       }
       "preferred group is not on the groups list from JWT" in {
@@ -245,7 +245,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")),
+          tokenHeader = bearerHeader(jwt),
           preferredGroup = Some(groupFrom("group5"))
         )
       }
@@ -261,7 +261,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group2")),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")),
+          tokenHeader = bearerHeader(jwt),
           preferredGroup = Some(groupFrom("group5"))
         )
       }
@@ -288,7 +288,7 @@ class RorKbnAuthRuleTests
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, configuredGroups), UserIdEq.caseSensitive)
     val requestContext = MockRequestContext.metadata.copy(
-      headers = Set(tokenHeader) ++ preferredGroup.map(_.toHeader).toSet
+      headers = Set(tokenHeader) ++ preferredGroup.map(_.toCurrentGroupHeader).toSet
     )
     val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
     val result = rule.check(blockContext).runSyncUnsafe(1 second)

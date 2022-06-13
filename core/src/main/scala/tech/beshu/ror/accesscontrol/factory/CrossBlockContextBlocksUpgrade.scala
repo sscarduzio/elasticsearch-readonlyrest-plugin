@@ -41,14 +41,16 @@ object CrossBlockContextBlocksUpgrade {
       case (modifiedBlocks, currentBlock) =>
         val upgradedRules = currentBlock.rules.foldLeft(Vector.empty[Rule]) {
           case (modifiedRules, currentRule: LdapAuthorizationRule) =>
-            val newSettings = currentRule.settings.copy(
-              allLdapGroups = crossBlocksAvailableLdapGroups(currentRule.settings.ldap.id)
-            )
+            val newSettings = currentRule.settings
+//              .copy(
+//              allLdapGroups = crossBlocksAvailableLdapGroups(currentRule.settings.ldap.id)
+//            )
             modifiedRules :+ new LdapAuthorizationRule(newSettings, currentRule.impersonation, currentRule.caseMappingEquality)
           case (modifiedRules, currentRule: LdapAuthRule) =>
-            val newSettings = currentRule.authorization.settings.copy(
-              allLdapGroups = crossBlocksAvailableLdapGroups(currentRule.authorization.settings.ldap.id)
-            )
+            val newSettings = currentRule.authorization.settings
+//              .copy(
+//              allLdapGroups = crossBlocksAvailableLdapGroups(currentRule.authorization.settings.ldap.id)
+//            )
             modifiedRules :+ new LdapAuthRule(
               currentRule.authentication,
               new LdapAuthorizationRule(newSettings, currentRule.authorization.impersonation, currentRule.authorization.caseMappingEquality)
@@ -93,9 +95,10 @@ object CrossBlockContextBlocksUpgrade {
       case (modifiedBlocks, currentBlock) =>
         val upgradedRules = currentBlock.rules.foldLeft(Vector.empty[Rule]) {
           case (modifiedRules, currentRule: ExternalAuthorizationRule) =>
-            val newSettings = currentRule.settings.copy(
-              allExternalServiceGroups = crossBlocksAvailableExternalServiceGroups(currentRule.settings.service.id)
-            )
+            val newSettings = currentRule.settings
+//              .copy(
+//              allExternalServiceGroups = crossBlocksAvailableExternalServiceGroups(currentRule.settings.service.id)
+//            )
             modifiedRules :+ new ExternalAuthorizationRule(newSettings, currentRule.impersonation, currentRule.caseMappingEquality)
           case (modifiedRules, currentRule) =>
             modifiedRules :+ currentRule

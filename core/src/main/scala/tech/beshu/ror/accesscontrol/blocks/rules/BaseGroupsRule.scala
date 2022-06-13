@@ -233,9 +233,7 @@ abstract class BaseGroupsRule(val settings: Settings,
     val externalAvailableGroups = sourceBlockContext.userMetadata.availableGroups
     for {
       externalGroupsMappedToLocalGroups <- mapExternalGroupsToLocalGroups(groupMappings, externalAvailableGroups)
-      availableLocalGroups <- {
-        calculateAllowedGroupsForUser(potentiallyAvailableGroups.toSet, externalGroupsMappedToLocalGroups.toSet)
-      }
+      availableLocalGroups <- calculateAllowedGroupsForUser(potentiallyAvailableGroups.toSet, externalGroupsMappedToLocalGroups.toSet)
       loggedUser <- sourceBlockContext.userMetadata.loggedUser
     } yield destinationBlockContext.withUserMetadata(_
       .withLoggedUser(loggedUser)

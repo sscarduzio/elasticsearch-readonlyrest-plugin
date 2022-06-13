@@ -44,7 +44,11 @@ class LdapAuthorizationRule(val settings: Settings,
 
   override protected val groupsPermittedByAllRulesOfThisType: UniqueNonEmptyList[Group] = settings.allLdapGroups
 
-  override protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[Group]] = settings.ldap.groupsOf(user.id)
+  override protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[Group]] =
+    settings.ldap.groupsOf(user.id)
+
+  override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] =
+    settings.permittedGroups.availableGroupsFrom(usersGroups)
 
   override protected def mockedGroupsOf(user: User.Id,
                                         mocksProvider: MocksProvider)
@@ -63,9 +67,6 @@ class LdapAuthorizationRule(val settings: Settings,
         Groups.CannotCheck
       }
   }
-
-  override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] =
-    settings.permittedGroups.availableGroupsFrom(usersGroups)
 }
 
 object LdapAuthorizationRule {

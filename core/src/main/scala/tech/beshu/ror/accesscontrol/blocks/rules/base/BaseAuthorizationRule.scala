@@ -121,7 +121,8 @@ trait BaseAuthorizationRule extends AuthorizationRule with SimpleAuthorizationIm
   }
 
   private def allGroupsIntersection(availableGroups: UniqueNonEmptyList[Group]) = {
-    UniqueNonEmptyList.unsafeFromSortedSet(groupsPermittedByAllRulesOfThisType.intersect(availableGroups)) // it is safe here
+    availableGroups
+//    UniqueNonEmptyList.unsafeFromSortedSet(groupsPermittedByAllRulesOfThisType.intersect(availableGroups)) // it is safe here
   }
 
 }

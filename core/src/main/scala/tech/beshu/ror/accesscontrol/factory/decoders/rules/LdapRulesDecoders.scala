@@ -119,7 +119,6 @@ object LdapAuthorizationRuleDecoder {
                                      groupsLogic: GroupsLogic,
                                      ldapDefinitions: Definitions[LdapService]
                                     ) = {
-
     findLdapService[LdapAuthorizationService, LdapAuthorizationRule](ldapDefinitions.items, name)
       .map(svc => {
         ttl match {
@@ -127,7 +126,7 @@ object LdapAuthorizationRuleDecoder {
           case _ => svc
         }
       })
-      .map(x => new LoggableLdapAuthorizationServiceDecorator(x))
+      .map(service => new LoggableLdapAuthorizationServiceDecorator(service))
       .map(LdapAuthorizationRule.Settings(_, groupsLogic, groupsLogic.groups))
   }
 

@@ -272,7 +272,7 @@ class LdapAuthorizationRuleTests
                          assertionType: AssertionType): Unit = {
     val rule = new LdapAuthorizationRule(settings, impersonation, UserIdEq.caseSensitive)
     val requestContext = MockRequestContext.metadata.copy(
-      headers = preferredGroup.map(_.toHeader).toSet
+      headers = preferredGroup.map(_.toCurrentGroupHeader).toSet
     )
     val blockContext = loggedUser
       .foldLeft(CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)) {
