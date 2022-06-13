@@ -73,7 +73,7 @@ class ExternalAuthorizationRuleTests
           )(
             blockContextAssertion = defaultOutputBlockContextAssertion(
               user = User.Id("user2"),
-              group = groupFrom("g2"),
+              preferredGroup = groupFrom("g2"),
               availableGroups = UniqueList.of(groupFrom("g2"))
             )
           )
@@ -96,7 +96,7 @@ class ExternalAuthorizationRuleTests
           )(
             blockContextAssertion = defaultOutputBlockContextAssertion(
               user = User.Id("user2"),
-              group = groupFrom("g1"),
+              preferredGroup = groupFrom("g1"),
               availableGroups = UniqueList.of(groupFrom("g1"), groupFrom("g2"))
             )
           )
@@ -119,7 +119,7 @@ class ExternalAuthorizationRuleTests
           )(
             blockContextAssertion = defaultOutputBlockContextAssertion(
               user = User.Id("user2"),
-              group = groupFrom("g1"),
+              preferredGroup = groupFrom("g1"),
               availableGroups = UniqueList.of(groupFrom("g1"), groupFrom("g2"))
             )
           )
@@ -359,12 +359,12 @@ class ExternalAuthorizationRuleTests
   }
 
   private def defaultOutputBlockContextAssertion(user: User.Id,
-                                                 group: Group,
+                                                 preferredGroup: Group,
                                                  availableGroups: UniqueList[Group]): BlockContext => Unit =
     (blockContext: BlockContext) => {
       assertBlockContext(
         loggedUser = Some(DirectlyLoggedUser(user)),
-        currentGroup = Some(group),
+        currentGroup = Some(preferredGroup),
         availableGroups = availableGroups
       )(blockContext)
     }

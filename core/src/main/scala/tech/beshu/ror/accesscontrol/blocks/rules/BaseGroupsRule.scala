@@ -60,7 +60,7 @@ abstract class BaseGroupsRule(val settings: Settings,
       .flatMap { _ =>
         UniqueNonEmptyList.fromList(resolveGroups(blockContext)) match {
           case None => Task.now(Rejected())
-          case Some(groups) if isCurrentGroupEligible(blockContext, groups) =>
+          case Some(groups) if blockContext.isCurrentGroupEligible(groups) =>
             continueCheckingWithUserDefinitions(blockContext, groups)
           case Some(_) =>
             Task.now(Rejected())
@@ -281,16 +281,6 @@ abstract class BaseGroupsRule(val settings: Settings,
 
   private def resolveGroups[B <: BlockContext](blockContext: B) = {
     resolveAll(settings.groups.toNonEmptyList, blockContext)
-  }
-
-  private def isCurrentGroupEligible[B <: BlockContext](blockContext: B,
-                                                        groups: UniqueNonEmptyList[Group]): Boolean = {
-    blockContext.userMetadata.currentGroup match {
-      case Some(preferredGroup) =>
-        blockContext.requestContext.uriPath.isCurrentUserMetadataPath || groups.contains(preferredGroup)
-      case None =>
-        true
-    }
   }
 }
 

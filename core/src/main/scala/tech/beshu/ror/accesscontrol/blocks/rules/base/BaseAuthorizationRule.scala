@@ -98,31 +98,29 @@ trait BaseAuthorizationRule extends AuthorizationRule with SimpleAuthorizationIm
   private def authorizeLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                            user: LoggedUser,
                                                                            userGroupsProvider: (B, LoggedUser) => Task[UniqueList[Group]]): Task[RuleResult[B]] = {
-    blockContext.userMetadata.currentGroup match {
-      case Some(group) if !groupsPermittedByRule.contains(group) =>
-        Task.now(RuleResult.Rejected())
-      case Some(_) | None =>
-        userGroupsProvider(blockContext, user)
-          .map(uniqueList => UniqueNonEmptyList.fromSet(uniqueList.toSet))
-          .map {
-            case Some(fetchedUserGroups) =>
-              calculateAllowedGroupsForUser(fetchedUserGroups) match {
-                case Some(_) =>
-                  Fulfilled(blockContext.withUserMetadata(
-                    _.addAvailableGroups(allGroupsIntersection(fetchedUserGroups))
-                  ))
-                case None =>
-                  RuleResult.Rejected()
-              }
-            case None =>
-              RuleResult.Rejected()
-          }
+    if (blockContext.isCurrentGroupEligible(groupsPermittedByRule)) {
+      userGroupsProvider(blockContext, user)
+        .map(uniqueList => UniqueNonEmptyList.fromSet(uniqueList.toSet))
+        .map {
+          case Some(fetchedUserGroups) =>
+            calculateAllowedGroupsForUser(fetchedUserGroups) match {
+              case Some(_) =>
+                Fulfilled(blockContext.withUserMetadata(
+                  _.addAvailableGroups(allGroupsIntersection(fetchedUserGroups))
+                ))
+              case None =>
+                RuleResult.Rejected()
+            }
+          case None =>
+            RuleResult.Rejected()
+        }
+    } else {
+      Task.now(RuleResult.Rejected())
     }
   }
 
   private def allGroupsIntersection(availableGroups: UniqueNonEmptyList[Group]) = {
-    availableGroups
-//    UniqueNonEmptyList.unsafeFromSortedSet(groupsPermittedByAllRulesOfThisType.intersect(availableGroups)) // it is safe here
+    UniqueNonEmptyList.unsafeFromSortedSet(groupsPermittedByRule.intersect(availableGroups)) // it is safe here
   }
 
 }
