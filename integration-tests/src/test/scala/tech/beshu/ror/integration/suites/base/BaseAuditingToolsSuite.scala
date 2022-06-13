@@ -125,7 +125,7 @@ trait BaseAuditingToolsSuite
           val userMetadataResponse = userMetadataManager.fetchMetadata()
 
           userMetadataResponse.responseCode should be(200)
-          val correlationId = userMetadataResponse.responseJson("x-ror-logging-id").str
+          val correlationId = userMetadataResponse.responseJson("x-ror-correlation-id").str
 
           val indexManager = new IndexManager(
             basicAuthClient("username", "dev"),
@@ -156,11 +156,11 @@ trait BaseAuditingToolsSuite
 
           val response1 = fetchMetadata()
           response1.responseCode should be(200)
-          val loggingId1 = response1.responseJson("x-ror-logging-id").str
+          val loggingId1 = response1.responseJson("x-ror-correlation-id").str
 
           val response2 = fetchMetadata(correlationId = Some(loggingId1))
           response2.responseCode should be(200)
-          val loggingId2 = response2.responseJson("x-ror-logging-id").str
+          val loggingId2 = response2.responseJson("x-ror-correlation-id").str
 
           loggingId1 shouldNot be(loggingId2)
 
