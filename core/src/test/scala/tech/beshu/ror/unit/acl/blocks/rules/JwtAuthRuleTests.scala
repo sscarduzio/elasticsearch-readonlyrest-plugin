@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import java.security.Key
-
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
@@ -31,7 +29,7 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService, JwtDef}
@@ -50,6 +48,7 @@ import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
+import java.security.Key
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -560,10 +559,17 @@ class JwtAuthRuleTests
                          preferredGroup: Option[Group],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new JwtAuthRule(JwtAuthRule.Settings(configuredJwtDef, configuredGroups), UserIdEq.caseSensitive)
-    val requestContext = MockRequestContext.metadata.copy(
+    val requestContext = MockRequestContext.indices.copy(
       headers = Set(tokenHeader) ++ preferredGroup.map(_.toCurrentGroupHeader).toSet
     )
-    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+    val blockContext = GeneralIndexRequestBlockContext(
+      requestContext = requestContext,
+      userMetadata = UserMetadata.from(requestContext),
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty,
+      filteredIndices = Set.empty,
+      allAllowedIndices = Set.empty
+    )
     val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>

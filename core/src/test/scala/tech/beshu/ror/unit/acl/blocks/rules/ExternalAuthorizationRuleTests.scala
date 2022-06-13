@@ -65,7 +65,6 @@ class ExternalAuthorizationRuleTests
             settings = ExternalAuthorizationRule.Settings(
               service = service,
               permittedGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
-              allExternalServiceGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
               users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
             ),
             loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
@@ -88,7 +87,6 @@ class ExternalAuthorizationRuleTests
             settings = ExternalAuthorizationRule.Settings(
               service = service,
               permittedGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
-              allExternalServiceGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
               users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
             ),
             loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
@@ -111,7 +109,6 @@ class ExternalAuthorizationRuleTests
             settings = ExternalAuthorizationRule.Settings(
               service = service,
               permittedGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
-              allExternalServiceGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
               users = UniqueNonEmptyList.of(User.Id("*"))
             ),
             loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
@@ -135,7 +132,6 @@ class ExternalAuthorizationRuleTests
               settings = ExternalAuthorizationRule.Settings(
                 service = service,
                 permittedGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
-                allExternalServiceGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
                 users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
               ),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
@@ -164,7 +160,6 @@ class ExternalAuthorizationRuleTests
           settings = ExternalAuthorizationRule.Settings(
             service = mock[ExternalAuthorizationService],
             permittedGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
-            allExternalServiceGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
             users = UniqueNonEmptyList.of(User.Id("user1"))
           ),
           loggedUser = None,
@@ -176,7 +171,6 @@ class ExternalAuthorizationRuleTests
           settings = ExternalAuthorizationRule.Settings(
             service = mock[ExternalAuthorizationService],
             permittedGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
-            allExternalServiceGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
             users = UniqueNonEmptyList.of(User.Id("user1"))
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
@@ -193,7 +187,6 @@ class ExternalAuthorizationRuleTests
           settings = ExternalAuthorizationRule.Settings(
             service = service,
             permittedGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
-            allExternalServiceGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
             users = UniqueNonEmptyList.of(User.Id("*"))
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
@@ -210,7 +203,6 @@ class ExternalAuthorizationRuleTests
           settings = ExternalAuthorizationRule.Settings(
             service = service,
             permittedGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
-            allExternalServiceGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
             users = UniqueNonEmptyList.of(User.Id("*"))
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
@@ -222,7 +214,6 @@ class ExternalAuthorizationRuleTests
           settings = ExternalAuthorizationRule.Settings(
             service = mock[ExternalAuthorizationService],
             permittedGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
-            allExternalServiceGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
             users = UniqueNonEmptyList.of(User.Id("*"))
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
@@ -238,7 +229,6 @@ class ExternalAuthorizationRuleTests
               settings = ExternalAuthorizationRule.Settings(
                 service = service,
                 permittedGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
-                allExternalServiceGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
                 users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
               ),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
@@ -259,7 +249,6 @@ class ExternalAuthorizationRuleTests
               settings = ExternalAuthorizationRule.Settings(
                 service = service,
                 permittedGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
-                allExternalServiceGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
                 users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
               ),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
@@ -280,7 +269,6 @@ class ExternalAuthorizationRuleTests
               settings = ExternalAuthorizationRule.Settings(
                 service = service,
                 permittedGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
-                allExternalServiceGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
                 users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
               ),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
@@ -299,7 +287,6 @@ class ExternalAuthorizationRuleTests
               settings = ExternalAuthorizationRule.Settings(
                 service = mock[ExternalAuthorizationService],
                 permittedGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
-                allExternalServiceGroups = UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
                 users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
               ),
               impersonation = Impersonation.Disabled,

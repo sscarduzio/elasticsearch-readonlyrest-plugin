@@ -64,18 +64,13 @@ final class RorKbnAuthRule(val settings: Settings,
 
   override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
     Task {
-      blockContext.userMetadata.currentGroup match {
-        case None =>
+      settings.permittedGroups match {
+        case Groups.NotDefined =>
           authorizeUsingJwtToken(blockContext)
-        case Some(group) =>
-          settings.permittedGroups match {
-            case Groups.NotDefined =>
-              authorizeUsingJwtToken(blockContext)
-            case Groups.Defined(groupsLogic) if groupsLogic.groups.contains(group) =>
-              authorizeUsingJwtToken(blockContext)
-            case _ =>
-              RuleResult.Rejected()
-          }
+        case Groups.Defined(groupsLogic) if blockContext.isCurrentGroupEligible(groupsLogic.groups) =>
+          authorizeUsingJwtToken(blockContext)
+        case Groups.Defined(_) =>
+          RuleResult.Rejected()
       }
     }
 
@@ -144,26 +139,20 @@ final class RorKbnAuthRule(val settings: Settings,
         Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
       case (Found(groups), Groups.Defined(groupsLogic)) =>
         groupsLogic.availableGroupsFrom(groups) match {
-          case Some(matchedGroups) =>
-            checkIfCanContinueWithGroups(blockContext, matchedGroups.toUniqueList)
-              .map(_.withUserMetadata(_.addAvailableGroups(matchedGroups)))
-          case None =>
+          case Some(matchedGroups) if blockContext.isCurrentGroupEligible(matchedGroups) =>
+            Right(blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups)))
+          case Some(_) | None =>
             Left(())
         }
       case (Found(groups), Groups.NotDefined) =>
-        checkIfCanContinueWithGroups(blockContext, groups)
-    }
-  }
-
-  private def checkIfCanContinueWithGroups[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                                    groups: UniqueList[Group]) = {
-    blockContext.userMetadata.currentGroup match {
-      case None =>
-        Right(blockContext)
-      case Some(group) if groups.contains(group) =>
-        Right(blockContext)
-      case Some(_) =>
-        Left(())
+        UniqueNonEmptyList.fromList(groups.toList) match {
+          case None =>
+            Right(blockContext)
+          case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(nonEmptyGroups) =>
+            Right(blockContext)
+          case Some(_) =>
+            Left(())
+        }
     }
   }
 
