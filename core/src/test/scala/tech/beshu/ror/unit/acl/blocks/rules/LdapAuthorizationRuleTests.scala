@@ -25,7 +25,7 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationService, LdapService, LdapUser}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
@@ -271,13 +271,20 @@ class LdapAuthorizationRuleTests
                          preferredGroup: Option[Group],
                          assertionType: AssertionType): Unit = {
     val rule = new LdapAuthorizationRule(settings, impersonation, UserIdEq.caseSensitive)
-    val requestContext = MockRequestContext.metadata.copy(
+    val requestContext = MockRequestContext.indices.copy(
       headers = preferredGroup.map(_.toCurrentGroupHeader).toSet
     )
-    val blockContext = loggedUser
-      .foldLeft(CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)) {
-        case (bc, user) => bc.withUserMetadata(_.withLoggedUser(user))
-      }
+    val blockContext = GeneralIndexRequestBlockContext(
+      requestContext = requestContext,
+      userMetadata = loggedUser match {
+        case Some(user) => UserMetadata.from(requestContext).withLoggedUser(user)
+        case None => UserMetadata.from(requestContext)
+      },
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty,
+      filteredIndices = Set.empty,
+      allAllowedIndices = Set.empty
+    )
     val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
     assertionType match {
       case AssertionType.RuleFulfilled(blockContextAssertion) =>
