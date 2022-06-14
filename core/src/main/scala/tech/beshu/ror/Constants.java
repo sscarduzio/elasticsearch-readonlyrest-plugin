@@ -51,7 +51,7 @@ public class Constants {
   public final static Set<String> FIELDS_ALWAYS_ALLOW = Sets.newHashSet("_id", "_uid", "_type", "_version", "_seq_no", "_primary_term", "_parent", "_routing", "_timestamp", "_ttl", "_size", "_index");
 
   public static final String AUDIT_LOG_DEFAULT_INDEX_TEMPLATE = "'readonlyrest_audit-'yyyy-MM-dd";
-  
+
   public static final String HEADER_GROUPS_AVAILABLE      = "x-ror-available-groups";
   public static final String HEADER_GROUP_CURRENT         = "x-ror-current-group";
   public static final String HEADER_USER_ROR              = "x-ror-username";

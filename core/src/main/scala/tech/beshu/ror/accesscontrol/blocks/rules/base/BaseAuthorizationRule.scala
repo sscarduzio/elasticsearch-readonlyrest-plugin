@@ -40,8 +40,6 @@ trait BaseAuthorizationRule extends AuthorizationRule with SimpleAuthorizationIm
 
   protected def groupsPermittedByRule: UniqueNonEmptyList[Group]
 
-  protected def groupsPermittedByAllRulesOfThisType: UniqueNonEmptyList[Group]
-
   protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[Group]]
 
   protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = Right(())
@@ -98,30 +96,29 @@ trait BaseAuthorizationRule extends AuthorizationRule with SimpleAuthorizationIm
   private def authorizeLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                            user: LoggedUser,
                                                                            userGroupsProvider: (B, LoggedUser) => Task[UniqueList[Group]]): Task[RuleResult[B]] = {
-    blockContext.userMetadata.currentGroup match {
-      case Some(group) if !groupsPermittedByRule.contains(group) =>
-        Task.now(RuleResult.Rejected())
-      case Some(_) | None =>
-        userGroupsProvider(blockContext, user)
-          .map(uniqueList => UniqueNonEmptyList.fromSet(uniqueList.toSet))
-          .map {
-            case Some(fetchedUserGroups) =>
-              calculateAllowedGroupsForUser(fetchedUserGroups) match {
-                case Some(_) =>
-                  Fulfilled(blockContext.withUserMetadata(
-                    _.addAvailableGroups(allGroupsIntersection(fetchedUserGroups))
-                  ))
-                case None =>
-                  RuleResult.Rejected()
-              }
-            case None =>
-              RuleResult.Rejected()
-          }
+    if (blockContext.isCurrentGroupEligible(groupsPermittedByRule)) {
+      userGroupsProvider(blockContext, user)
+        .map(uniqueList => UniqueNonEmptyList.fromSet(uniqueList.toSet))
+        .map {
+          case Some(fetchedUserGroups) =>
+            calculateAllowedGroupsForUser(fetchedUserGroups) match {
+              case Some(_) =>
+                Fulfilled(blockContext.withUserMetadata(
+                  _.addAvailableGroups(allGroupsIntersection(fetchedUserGroups))
+                ))
+              case None =>
+                RuleResult.Rejected()
+            }
+          case None =>
+            RuleResult.Rejected()
+        }
+    } else {
+      Task.now(RuleResult.Rejected())
     }
   }
 
   private def allGroupsIntersection(availableGroups: UniqueNonEmptyList[Group]) = {
-    UniqueNonEmptyList.unsafeFromSortedSet(groupsPermittedByAllRulesOfThisType.intersect(availableGroups)) // it is safe here
+    UniqueNonEmptyList.unsafeFromSortedSet(groupsPermittedByRule.intersect(availableGroups)) // it is safe here
   }
 
 }

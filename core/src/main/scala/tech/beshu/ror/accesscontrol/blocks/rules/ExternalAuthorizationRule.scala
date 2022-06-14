@@ -44,9 +44,6 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
   override protected val groupsPermittedByRule: UniqueNonEmptyList[Group] =
     settings.permittedGroups
 
-  override protected val groupsPermittedByAllRulesOfThisType: UniqueNonEmptyList[Group] =
-    settings.allExternalServiceGroups
-
   override protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = {
     Either.cond(userMatcher.`match`(user.id), (), ())
   }
@@ -83,7 +80,6 @@ object ExternalAuthorizationRule {
 
   final case class Settings(service: ExternalAuthorizationService,
                             permittedGroups: UniqueNonEmptyList[Group],
-                            allExternalServiceGroups: UniqueNonEmptyList[Group],
                             users: UniqueNonEmptyList[User.Id])
 
 }

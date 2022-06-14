@@ -101,7 +101,7 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
             .signWith(Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes))
             .setSubject("test")
             .setClaims(claims)
-          val request = MockRequestContext.indices.copy(headers = Set(header("Authorization", s"Bearer ${jwtBuilder.compact}")))
+          val request = MockRequestContext.indices.copy(headers = Set(bearerHeader(jwtBuilder)))
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -127,7 +127,7 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
           val request = MockRequestContext.indices.copy(
             filteredIndices = Set(index),
             allAllowedIndices = Set(index),
-            headers = Set(header("Authorization", s"Bearer ${jwtBuilder.compact}"), preferredGroup.toHeader)
+            headers = Set(bearerHeader(jwtBuilder), preferredGroup.toCurrentGroupHeader)
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()

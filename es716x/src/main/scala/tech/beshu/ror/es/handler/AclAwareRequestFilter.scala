@@ -269,7 +269,7 @@ object AclAwareRequestFilter {
   }
 
   final class EsChain(chain: ActionFilterChain[ActionRequest, ActionResponse],
-                      threadPool: ThreadPool) extends Logging  {
+                      threadPool: ThreadPool) {
 
     def continue(exContext: EsContext,
                  listener: ActionListener[ActionResponse]): Unit = {

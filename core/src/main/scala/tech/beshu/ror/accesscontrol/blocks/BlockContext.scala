@@ -23,6 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 sealed trait BlockContext {
   def requestContext: RequestContext
@@ -32,6 +33,15 @@ sealed trait BlockContext {
   def responseHeaders: Set[Header]
 
   def responseTransformations: List[ResponseTransformation]
+
+  def isCurrentGroupEligible(permittedGroups: UniqueNonEmptyList[Group]): Boolean = {
+    userMetadata.currentGroup match {
+      case Some(preferredGroup) =>
+        requestContext.uriPath.isCurrentUserMetadataPath || permittedGroups.contains(preferredGroup)
+      case None =>
+        true
+    }
+  }
 }
 object BlockContext {
 
