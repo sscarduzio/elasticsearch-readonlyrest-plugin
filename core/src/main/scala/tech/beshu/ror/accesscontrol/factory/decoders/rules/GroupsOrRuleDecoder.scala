@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
+import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport.ImpersonationWarningExtractor
 
 class GroupsOrRuleDecoder(usersDefinitions: Definitions[UserDef],
                           override implicit val caseMappingEquality: UserIdCaseMappingEquality)
@@ -57,8 +57,8 @@ class GroupsAndRuleDecoder(usersDefinitions: Definitions[UserDef],
   }
 }
 
-abstract class BaseGroupsRuleDecoder[R <: BaseGroupsRule : RuleName : VariableUsage : LocalUsersSupport : ImpersonationWarningSupport](usersDefinitions: Definitions[UserDef],
-                                                                                                                                       implicit val caseMappingEquality: UserIdCaseMappingEquality)
+abstract class BaseGroupsRuleDecoder[R <: BaseGroupsRule : RuleName : VariableUsage : LocalUsersSupport : ImpersonationWarningExtractor](usersDefinitions: Definitions[UserDef],
+                                                                                                                                         implicit val caseMappingEquality: UserIdCaseMappingEquality)
 
   extends RuleBaseDecoderWithoutAssociatedFields[R] {
 

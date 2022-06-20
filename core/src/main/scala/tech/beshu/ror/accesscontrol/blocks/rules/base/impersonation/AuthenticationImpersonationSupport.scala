@@ -37,7 +37,7 @@ import tech.beshu.ror.accesscontrol.matchers.{GenericPatternMatcher, MatcherWith
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
-trait AuthenticationImpersonationSupport
+trait AuthenticationImpersonationSupport extends ImpersonationSupport
 
 trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonationSupport {
   this: AuthenticationRule =>

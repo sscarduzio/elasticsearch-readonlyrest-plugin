@@ -153,7 +153,7 @@ trait AdminApiAuthMockSuite
           json = testConfigResponse.responseJson("warnings")(1),
           blockName = "test3 (1)",
           ruleName = "ldap_auth",
-          message = "The rule 'ldap_auth' will not match during impersonation until a mock of service is not configured",
+          message = "The rule 'ldap_auth' will fail to match the impersonating request when the mock of the service 'ldap1' is not configured",
           hint = "Configure a mock of an LDAP service with ID [ldap1]"
         )
 
@@ -161,7 +161,7 @@ trait AdminApiAuthMockSuite
           json = testConfigResponse.responseJson("warnings")(2),
           blockName = "test3 (2)",
           ruleName = "external_authentication",
-          message = "The rule 'external_authentication' will not match during impersonation until a mock of service is not configured",
+          message = "The rule 'external_authentication' will fail to match the impersonating request when the mock of the service 'ext1' is not configured",
           hint = "Configure a mock of an external authentication service with ID [ext1]"
         )
 
@@ -169,7 +169,7 @@ trait AdminApiAuthMockSuite
           json = testConfigResponse.responseJson("warnings")(3),
           blockName = "test3 (3)",
           ruleName = "groups_provider_authorization",
-          message = "The rule 'groups_provider_authorization' will not match during impersonation until a mock of service is not configured",
+          message = "The rule 'groups_provider_authorization' will fail to match the impersonating request when the mock of the service 'grp1' is not configured",
           hint = "Configure a mock of an external authorization service with ID [grp1]"
         )
       }

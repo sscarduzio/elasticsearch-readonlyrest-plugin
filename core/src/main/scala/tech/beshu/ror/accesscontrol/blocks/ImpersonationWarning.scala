@@ -20,11 +20,12 @@ import cats.implicits.catsSyntaxOptionId
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport.ImpersonationWarningExtractor.noWarnings
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules._
 import tech.beshu.ror.accesscontrol.blocks.rules.base._
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{Impersonation, ImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
 
 final case class ImpersonationWarning(block: Block.Name,
@@ -36,96 +37,105 @@ object ImpersonationWarning {
   sealed trait ImpersonationWarningSupport[+T <: Rule]
 
   object ImpersonationWarningSupport {
-    trait WithPossibleWarnings[T <: Rule] extends ImpersonationWarningSupport[T] {
+    object NotSupported extends ImpersonationWarningSupport[Nothing]
+
+    trait ImpersonationWarningExtractor[T <: Rule with ImpersonationSupport] extends ImpersonationWarningSupport[T] {
       def warningFor(rule: T, blockName: Block.Name)
                     (implicit requestId: RequestId): Option[ImpersonationWarning]
     }
 
-    object WithPossibleWarnings {
-      def apply[T <: Rule](f: (T, Block.Name, RequestId) => Option[ImpersonationWarning]): WithPossibleWarnings[T] =
-        new WithPossibleWarnings[T] {
+    object ImpersonationWarningExtractor {
+      def apply[T <: Rule with ImpersonationSupport](f: (T, Block.Name, RequestId) => Option[ImpersonationWarning]): ImpersonationWarningExtractor[T] =
+        new ImpersonationWarningExtractor[T] {
           override def warningFor(rule: T, blockName: Block.Name)
                                  (implicit requestId: RequestId): Option[ImpersonationWarning] = f(rule, blockName, requestId)
         }
+
+      def noWarnings[T <: Rule with ImpersonationSupport]: ImpersonationWarningExtractor[T] = {
+        new ImpersonationWarningExtractor[T] {
+          override final def warningFor(rule: T, blockName: Block.Name)
+                                       (implicit requestId: RequestId): Option[ImpersonationWarning] = None
+        }
+      }
     }
 
-    object WithoutWarnings extends ImpersonationWarningSupport[Nothing]
+    implicit val actionsRule: ImpersonationWarningSupport[ActionsRule] = NotSupported
+    implicit val apiKeyRule: ImpersonationWarningSupport[ApiKeysRule] = NotSupported
+    implicit val fieldsRule: ImpersonationWarningSupport[FieldsRule] = NotSupported
+    implicit val filterRule: ImpersonationWarningSupport[FilterRule] = NotSupported
+    implicit val headersAndRule: ImpersonationWarningSupport[HeadersAndRule] = NotSupported
+    implicit val headersOrRule: ImpersonationWarningSupport[HeadersOrRule] = NotSupported
+    implicit val hostsRule: ImpersonationWarningSupport[HostsRule] = NotSupported
+    implicit val indicesRule: ImpersonationWarningSupport[IndicesRule] = NotSupported
+    implicit val kibanaAccessRule: ImpersonationWarningSupport[KibanaAccessRule] = NotSupported
+    implicit val kibanaHideAppsRule: ImpersonationWarningSupport[KibanaHideAppsRule] = NotSupported
+    implicit val kibanaIndexRule: ImpersonationWarningSupport[KibanaIndexRule] = NotSupported
+    implicit val kibanaTemplateIndexRule: ImpersonationWarningSupport[KibanaTemplateIndexRule] = NotSupported
+    implicit val localHostsRule: ImpersonationWarningSupport[LocalHostsRule] = NotSupported
+    implicit val maxBodyLengthRule: ImpersonationWarningSupport[MaxBodyLengthRule] = NotSupported
+    implicit val methodsRule: ImpersonationWarningSupport[MethodsRule] = NotSupported
+    implicit val repositoriesRule: ImpersonationWarningSupport[RepositoriesRule] = NotSupported
+    implicit val responseFieldsRule: ImpersonationWarningSupport[ResponseFieldsRule] = NotSupported
+    implicit val sessionMaxIdleRule: ImpersonationWarningSupport[SessionMaxIdleRule] = NotSupported
+    implicit val snapshotsRule: ImpersonationWarningSupport[SnapshotsRule] = NotSupported
+    implicit val uriRegexRule: ImpersonationWarningSupport[UriRegexRule] = NotSupported
+    implicit val usersRule: ImpersonationWarningSupport[UsersRule] = NotSupported
+    implicit val xForwarderForRule: ImpersonationWarningSupport[XForwardedForRule] = NotSupported
 
-    implicit val actionsRule: ImpersonationWarningSupport[ActionsRule] = WithoutWarnings
-    implicit val apiKeyRule: ImpersonationWarningSupport[ApiKeysRule] = WithoutWarnings
-    implicit val authKeyRule: ImpersonationWarningSupport[AuthKeyRule] = WithoutWarnings
-    implicit val authKeyUnixRule: ImpersonationWarningSupport[AuthKeyUnixRule] = WithoutWarnings
-    implicit val fieldsRule: ImpersonationWarningSupport[FieldsRule] = WithoutWarnings
-    implicit val filterRule: ImpersonationWarningSupport[FilterRule] = WithoutWarnings
-    implicit val groupsOrRule: ImpersonationWarningSupport[GroupsOrRule] = WithoutWarnings
-    implicit val groupsAndRule: ImpersonationWarningSupport[GroupsAndRule] = WithoutWarnings
-    implicit val headersAndRule: ImpersonationWarningSupport[HeadersAndRule] = WithoutWarnings
-    implicit val headersOrRule: ImpersonationWarningSupport[HeadersOrRule] = WithoutWarnings
-    implicit val hostsRule: ImpersonationWarningSupport[HostsRule] = WithoutWarnings
-    implicit val indicesRule: ImpersonationWarningSupport[IndicesRule] = WithoutWarnings
-    implicit val kibanaAccessRule: ImpersonationWarningSupport[KibanaAccessRule] = WithoutWarnings
-    implicit val kibanaHideAppsRule: ImpersonationWarningSupport[KibanaHideAppsRule] = WithoutWarnings
-    implicit val kibanaIndexRule: ImpersonationWarningSupport[KibanaIndexRule] = WithoutWarnings
-    implicit val kibanaTemplateIndexRule: ImpersonationWarningSupport[KibanaTemplateIndexRule] = WithoutWarnings
-    implicit val localHostsRule: ImpersonationWarningSupport[LocalHostsRule] = WithoutWarnings
-    implicit val maxBodyLengthRule: ImpersonationWarningSupport[MaxBodyLengthRule] = WithoutWarnings
-    implicit val methodsRule: ImpersonationWarningSupport[MethodsRule] = WithoutWarnings
-    implicit val proxyAuthRule: ImpersonationWarningSupport[ProxyAuthRule] = WithoutWarnings
-    implicit val repositoriesRule: ImpersonationWarningSupport[RepositoriesRule] = WithoutWarnings
-    implicit val responseFieldsRule: ImpersonationWarningSupport[ResponseFieldsRule] = WithoutWarnings
-    implicit val sessionMaxIdleRule: ImpersonationWarningSupport[SessionMaxIdleRule] = WithoutWarnings
-    implicit val snapshotsRule: ImpersonationWarningSupport[SnapshotsRule] = WithoutWarnings
-    implicit val uriRegexRule: ImpersonationWarningSupport[UriRegexRule] = WithoutWarnings
-    implicit val usersRule: ImpersonationWarningSupport[UsersRule] = WithoutWarnings
-    implicit val xForwarderForRule: ImpersonationWarningSupport[XForwardedForRule] = WithoutWarnings
-
-    implicit val authKeyPBKDF2WithHmacSHA512Rule: ImpersonationWarningSupport[AuthKeyPBKDF2WithHmacSHA512Rule] = WithPossibleWarnings[AuthKeyPBKDF2WithHmacSHA512Rule](fromHashedCredentials)
-    implicit val authKeySha1Rule: ImpersonationWarningSupport[AuthKeySha1Rule] = WithPossibleWarnings[AuthKeySha1Rule](fromHashedCredentials)
-    implicit val authKeySha256Rule: ImpersonationWarningSupport[AuthKeySha256Rule] = WithPossibleWarnings[AuthKeySha256Rule](fromHashedCredentials)
-    implicit val authKeySha512Rule: ImpersonationWarningSupport[AuthKeySha512Rule] = WithPossibleWarnings[AuthKeySha512Rule](fromHashedCredentials)
-    implicit val externalAuthenticationRule: ImpersonationWarningSupport[ExternalAuthenticationRule] = WithPossibleWarnings[ExternalAuthenticationRule]((rule, blockName, requestId) =>
+    implicit val authKeyPBKDF2WithHmacSHA512Rule: ImpersonationWarningExtractor[AuthKeyPBKDF2WithHmacSHA512Rule] = ImpersonationWarningExtractor[AuthKeyPBKDF2WithHmacSHA512Rule](fromHashedCredentials)
+    implicit val authKeyRule: ImpersonationWarningExtractor[AuthKeyRule] = noWarnings[AuthKeyRule]
+    implicit val authKeyUnixRule: ImpersonationWarningExtractor[AuthKeyUnixRule] = noWarnings[AuthKeyUnixRule]
+    implicit val authKeySha1Rule: ImpersonationWarningExtractor[AuthKeySha1Rule] = ImpersonationWarningExtractor[AuthKeySha1Rule](fromHashedCredentials)
+    implicit val authKeySha256Rule: ImpersonationWarningExtractor[AuthKeySha256Rule] = ImpersonationWarningExtractor[AuthKeySha256Rule](fromHashedCredentials)
+    implicit val authKeySha512Rule: ImpersonationWarningExtractor[AuthKeySha512Rule] = ImpersonationWarningExtractor[AuthKeySha512Rule](fromHashedCredentials)
+    implicit val externalAuthenticationRule: ImpersonationWarningExtractor[ExternalAuthenticationRule] = ImpersonationWarningExtractor[ExternalAuthenticationRule]((rule, blockName, requestId) =>
       for {
         mocksProvider <- mocksProvider(rule.impersonation)
-        warning <- mocksProvider.externalAuthenticationServiceWith(rule.settings.service.id)(requestId) match {
+        serviceId = rule.settings.service.id
+        warning <- mocksProvider.externalAuthenticationServiceWith(serviceId)(requestId) match {
           case Some(_) => None
           case None =>
             ImpersonationWarning(
               block = blockName,
               ruleName = rule.name,
-              message = impersonationNotSupportedWithoutMockMsg(rule.name),
-              hint = s"Configure a mock of an external authentication service with ID [${rule.settings.service.id.value.value}]"
+              message = impersonationNotSupportedWithoutMockMsg(rule.name, serviceId.value.value),
+              hint = s"Configure a mock of an external authentication service with ID [${serviceId.value.value}]"
             ).some
         }
       } yield warning
     )
-    implicit val externalAuthorizationRule: ImpersonationWarningSupport[ExternalAuthorizationRule] = WithPossibleWarnings[ExternalAuthorizationRule]((rule, blockName, requestId) =>
+    implicit val externalAuthorizationRule: ImpersonationWarningExtractor[ExternalAuthorizationRule] = ImpersonationWarningExtractor[ExternalAuthorizationRule]((rule, blockName, requestId) =>
       for {
         mocksProvider <- mocksProvider(rule.impersonation)
-        warning <- mocksProvider.externalAuthorizationServiceWith(rule.settings.service.id)(requestId) match {
+        serviceId = rule.settings.service.id
+        warning <- mocksProvider.externalAuthorizationServiceWith(serviceId)(requestId) match {
           case Some(_) => None
           case None =>
             ImpersonationWarning(
               block = blockName,
               ruleName = rule.name,
-              message = impersonationNotSupportedWithoutMockMsg(rule.name),
-              hint = s"Configure a mock of an external authorization service with ID [${rule.settings.service.id.value.value}]"
+              message = impersonationNotSupportedWithoutMockMsg(rule.name, serviceId.value.value),
+              hint = s"Configure a mock of an external authorization service with ID [${serviceId.value.value}]"
             ).some
         }
       } yield warning
     )
-    implicit val jwtAuthRule: ImpersonationWarningSupport[JwtAuthRule] = WithPossibleWarnings[JwtAuthRule] { (rule, blockName, _) =>
+    implicit val groupsOrRule: ImpersonationWarningExtractor[GroupsOrRule] = noWarnings[GroupsOrRule]
+    implicit val groupsAndRule: ImpersonationWarningExtractor[GroupsAndRule] = noWarnings[GroupsAndRule]
+    implicit val jwtAuthRule: ImpersonationWarningExtractor[JwtAuthRule] = ImpersonationWarningExtractor[JwtAuthRule] { (rule, blockName, _) =>
       Some(impersonationNotSupportedWarning(rule, blockName))
     }
-    implicit val ldapAuthenticationRule: ImpersonationWarningSupport[LdapAuthenticationRule] = WithPossibleWarnings[LdapAuthenticationRule] { (rule, blockName, requestId) =>
+    implicit val ldapAuthenticationRule: ImpersonationWarningExtractor[LdapAuthenticationRule] = ImpersonationWarningExtractor[LdapAuthenticationRule] { (rule, blockName, requestId) =>
       ldapWarning(rule.name, blockName, rule.settings.ldap.id, rule.impersonation)(requestId)
     }
-    implicit val ldapAuthorizationRule: ImpersonationWarningSupport[LdapAuthorizationRule] = WithPossibleWarnings[LdapAuthorizationRule] { (rule, blockName, requestId) =>
+    implicit val ldapAuthorizationRule: ImpersonationWarningExtractor[LdapAuthorizationRule] = ImpersonationWarningExtractor[LdapAuthorizationRule] { (rule, blockName, requestId) =>
       ldapWarning(rule.name, blockName, rule.settings.ldap.id, rule.impersonation)(requestId)
     }
-    implicit val ldapAuthRule: ImpersonationWarningSupport[LdapAuthRule] = WithPossibleWarnings[LdapAuthRule] { (rule, blockName, requestId) =>
+    implicit val ldapAuthRule: ImpersonationWarningExtractor[LdapAuthRule] = ImpersonationWarningExtractor[LdapAuthRule] { (rule, blockName, requestId) =>
       ldapWarning(rule.name, blockName, rule.authorization.settings.ldap.id, rule.authorization.impersonation)(requestId)
     }
-    implicit val rorKbnAuthRule: ImpersonationWarningSupport[RorKbnAuthRule] = WithPossibleWarnings[RorKbnAuthRule] { (rule, blockName, _) =>
+    implicit val proxyAuthRule: ImpersonationWarningExtractor[ProxyAuthRule] = noWarnings[ProxyAuthRule]
+    implicit val rorKbnAuthRule: ImpersonationWarningExtractor[RorKbnAuthRule] = ImpersonationWarningExtractor[RorKbnAuthRule] { (rule, blockName, _) =>
       Some(impersonationNotSupportedWarning(rule, blockName))
     }
 
@@ -147,8 +157,8 @@ object ImpersonationWarning {
       ImpersonationWarning(
         block = blockName,
         ruleName = rule.name,
-        message = "Impersonation is not supported by this rule by default",
-        hint = ""
+        message = "Impersonation is not supported by this rule",
+        hint = "We plan to support it in the future"
       )
 
     private def ldapWarning(ruleName: Rule.Name,
@@ -164,7 +174,7 @@ object ImpersonationWarning {
             ImpersonationWarning(
               block = blockName,
               ruleName = ruleName,
-              message = impersonationNotSupportedWithoutMockMsg(ruleName),
+              message = impersonationNotSupportedWithoutMockMsg(ruleName, serviceId.value.value),
               hint = s"Configure a mock of an LDAP service with ID [${serviceId.value.value}]"
             ).some
         }
@@ -176,8 +186,8 @@ object ImpersonationWarning {
       case Impersonation.Disabled => None
     }
 
-    private def impersonationNotSupportedWithoutMockMsg(ruleName: Rule.Name): NonEmptyString = NonEmptyString.unsafeFrom(
-      s"The rule '${ruleName.value}' will not match during impersonation until a mock of service is not configured"
+    private def impersonationNotSupportedWithoutMockMsg(ruleName: Rule.Name, serviceName: String): NonEmptyString = NonEmptyString.unsafeFrom(
+      s"The rule '${ruleName.value}' will fail to match the impersonating request when the mock of the service '$serviceName' is not configured"
     )
   }
 }

@@ -34,6 +34,7 @@ import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWar
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSupport
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, LocalUsers, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.UsernameCaseMapping
@@ -433,8 +434,10 @@ object RawRorConfigBasedCoreFactory {
     private def impersonationWarningForRule(rule: RuleDefinition[R])
                                            (implicit requestId: RequestId): List[ImpersonationWarning] = {
       rule.impersonationWarnings match {
-        case warnings: ImpersonationWarningSupport.WithPossibleWarnings[R] => warnings.warningFor(rule.rule, blockName).toList
-        case ImpersonationWarningSupport.WithoutWarnings => List.empty
+        case extractor: ImpersonationWarningSupport.ImpersonationWarningExtractor[R] =>
+          extractor.warningFor(rule.rule, blockName).toList
+        case ImpersonationWarningSupport.NotSupported =>
+          List.empty
       }
     }
   }

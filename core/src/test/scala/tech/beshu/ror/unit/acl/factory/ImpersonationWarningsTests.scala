@@ -224,9 +224,9 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
         val hint = "Configure a mock of an LDAP service with ID [ldap1]"
 
         impersonationWarningsReader(config).read() should be(List(
-          notMockedServiceWarning("test_block1", "ldap_auth", hint),
-          notMockedServiceWarning("test_block2", "ldap_authentication", hint),
-          notMockedServiceWarning("test_block3", "ldap_authorization", hint),
+          notMockedServiceWarning("test_block1", "ldap_auth", "ldap1", hint),
+          notMockedServiceWarning("test_block2", "ldap_authentication", "ldap1", hint),
+          notMockedServiceWarning("test_block3", "ldap_authorization", "ldap1", hint),
         ))
       }
       "external authentication service is not mocked" in {
@@ -247,7 +247,7 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
 
         val hint = "Configure a mock of an external authentication service with ID [ext1]"
         impersonationWarningsReader(config, NoOpMocksProvider).read() should be(List(
-          notMockedServiceWarning("test_block1", "external_authentication", hint)
+          notMockedServiceWarning("test_block1", "external_authentication", "ext1", hint)
         ))
       }
       "external authorization service is not mocked" in {
@@ -276,7 +276,7 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
 
         val hint = "Configure a mock of an external authorization service with ID [GroupsService1]"
         impersonationWarningsReader(config, NoOpMocksProvider).read() should be(List(
-          notMockedServiceWarning("test_block1", "groups_provider_authorization", hint)
+          notMockedServiceWarning("test_block1", "groups_provider_authorization", "GroupsService1", hint)
         ))
       }
       "impersonation not supported by rule" when {
@@ -337,11 +337,11 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
     )
   }
 
-  private def notMockedServiceWarning(blockName: String, ruleName: String, hint: String) = {
+  private def notMockedServiceWarning(blockName: String, ruleName: String, serviceId: String, hint: String) = {
     warning(
       blockName,
       ruleName,
-      message = s"The rule '$ruleName' will not match during impersonation until a mock of service is not configured",
+      message = s"The rule '$ruleName' will fail to match the impersonating request when the mock of the service '$serviceId' is not configured",
       hint = hint
     )
   }
@@ -350,8 +350,8 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
     warning(
       blockName,
       ruleName,
-      message = "Impersonation is not supported by this rule by default",
-      hint = ""
+      message = "Impersonation is not supported by this rule",
+      hint = "We plan to support it in the future"
     )
   }
 
