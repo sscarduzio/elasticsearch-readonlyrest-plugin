@@ -16,10 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import java.security.Key
-
 import eu.timepit.refined.auto._
-import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
 import monix.execution.Scheduler.Implicits.global
@@ -28,7 +25,7 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -44,6 +41,7 @@ import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
+import java.security.Key
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -63,7 +61,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
             assertBlockContext(
@@ -83,7 +81,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Rsa(pub)
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
             assertBlockContext(
@@ -103,7 +101,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = Groups.NotDefined,
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
             assertBlockContext(
@@ -128,7 +126,7 @@ class RorKbnAuthRuleTests
               UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group2")),
             )
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
             assertBlockContext(
@@ -155,7 +153,7 @@ class RorKbnAuthRuleTests
               UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group2"))
             )
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")),
+          tokenHeader = bearerHeader(jwt),
           preferredGroup = Some(groupFrom("group2"))
         ) {
           blockContext =>
@@ -181,7 +179,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key1.getEncoded)
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt2.stringify()}"))
+          tokenHeader = bearerHeader(jwt2)
         )
       }
       "token has invalid RS256 signature" in {
@@ -196,7 +194,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Rsa(pub)
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = bearerHeader(jwt)
         )
       }
       "userId isn't passed in JWT token claim" in {
@@ -210,7 +208,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = bearerHeader(jwt)
         )
       }
       "groups aren't passed in JWT token claim while some groups are defined in settings" in {
@@ -229,7 +227,7 @@ class RorKbnAuthRuleTests
               UniqueNonEmptyList.of(Group("g1"))
             )
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = bearerHeader(jwt)
         )
       }
       "rule groups are defined with 'or' logic and intersection between those groups and ROR Kbn ones is empty" in {
@@ -248,7 +246,7 @@ class RorKbnAuthRuleTests
               UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group4")),
             )
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = bearerHeader(jwt)
         )
       }
       "rule groups are defined with 'and' logic and intersection between those groups and ROR Kbn ones is empty" in {
@@ -267,7 +265,7 @@ class RorKbnAuthRuleTests
               UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")),
             )
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))
+          tokenHeader = bearerHeader(jwt)
         )
       }
       "preferred group is not on the groups list from JWT" in {
@@ -281,7 +279,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")),
+          tokenHeader = bearerHeader(jwt),
           preferredGroup = Some(groupFrom("group5"))
         )
       }
@@ -301,7 +299,7 @@ class RorKbnAuthRuleTests
               UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group2"))
             )
           ),
-          tokenHeader = new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")),
+          tokenHeader = bearerHeader(jwt),
           preferredGroup = Some(groupFrom("group5"))
         )
       }
@@ -327,10 +325,17 @@ class RorKbnAuthRuleTests
                          preferredGroup: Option[Group],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, configuredGroups), UserIdEq.caseSensitive)
-    val requestContext = MockRequestContext.metadata.copy(
-      headers = Set(tokenHeader) ++ preferredGroup.map(_.toHeader).toSet
+    val requestContext = MockRequestContext.indices.copy(
+      headers = Set(tokenHeader) ++ preferredGroup.map(_.toCurrentGroupHeader).toSet
     )
-    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+    val blockContext = GeneralIndexRequestBlockContext(
+      requestContext = requestContext,
+      userMetadata = UserMetadata.from(requestContext),
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty,
+      filteredIndices = Set.empty,
+      allAllowedIndices = Set.empty
+    )
     val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>

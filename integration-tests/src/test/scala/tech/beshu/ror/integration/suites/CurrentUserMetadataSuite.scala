@@ -47,7 +47,7 @@ trait CurrentUserMetadataSuite
           result.responseJson("x-ror-username").str should be("user1")
           result.responseJson("x-ror-current-group").str should be("group1")
           result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group1")))
-          result.responseJson("x-ror-logging-id").str should fullyMatch uuidRegex()
+          result.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex()
         }
         "several blocks are matched and current group is set" in {
           val user1MetadataManager = new RorApiManager(basicAuthClient("user4", "pass"), esVersionUsed)
@@ -61,7 +61,7 @@ trait CurrentUserMetadataSuite
           result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group5"), Str("group6")))
           result.responseJson("x-ror-kibana_index").str should be("user4_group6_kibana_index")
           result.responseJson("x-ror-kibana_template_index").str should be("user4_group6_kibana_template_index")
-          result.responseJson("x-ror-logging-id").str should fullyMatch uuidRegex()
+          result.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex()
         }
         "at least one block is matched" in {
           val user2MetadataManager = new RorApiManager(basicAuthClient("user2", "pass"), esVersionUsed)
@@ -76,7 +76,7 @@ trait CurrentUserMetadataSuite
           result.responseJson("x-ror-kibana_index").str should be("user2_kibana_index")
           result.responseJson("x-ror-kibana-hidden-apps").arr.toList should be(List(Str("user2_app1"), Str("user2_app2")))
           result.responseJson("x-ror-kibana_access").str should be("ro")
-          result.responseJson("x-ror-logging-id").str should fullyMatch uuidRegex()
+          result.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex()
         }
         "block with no available groups collected is matched" in {
           val user3MetadataManager = new RorApiManager(basicAuthClient("user3", "pass"), esVersionUsed)
@@ -88,7 +88,7 @@ trait CurrentUserMetadataSuite
           result.responseJson("x-ror-username").str should be("user3")
           result.responseJson("x-ror-kibana_index").str should be("user3_kibana_index")
           result.responseJson("x-ror-kibana-hidden-apps").arr.toList should be(List(Str("user3_app1"), Str("user3_app2")))
-          result.responseJson("x-ror-logging-id").str should fullyMatch uuidRegex()
+          result.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex()
         }
       }
       "return forbidden" when {

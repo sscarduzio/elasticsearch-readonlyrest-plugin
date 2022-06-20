@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.metadata
 
 import cats.data.NonEmptySet
 import cats.implicits._
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}

@@ -69,18 +69,13 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
     Task
       .unit
       .flatMap { _ =>
-        blockContext.userMetadata.currentGroup match {
-          case None =>
+        settings.permittedGroups match {
+          case Groups.NotDefined =>
             authorizeUsingJwtToken(blockContext)
-          case Some(group) =>
-            settings.permittedGroups match {
-              case Groups.NotDefined =>
-                authorizeUsingJwtToken(blockContext)
-              case Groups.Defined(groupsLogic) if groupsLogic.groups.contains(group) =>
-                authorizeUsingJwtToken(blockContext)
-              case _ =>
-                Task.now(RuleResult.Rejected())
-            }
+          case Groups.Defined(groupsLogic) if blockContext.isCurrentGroupEligible(groupsLogic.groups) =>
+            authorizeUsingJwtToken(blockContext)
+          case Groups.Defined(_) =>
+            Task.now(RuleResult.Rejected())
         }
       }
 
@@ -224,12 +219,10 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
 
   private def checkIfCanContinueWithGroups[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                     groups: UniqueList[Group]) = {
-    blockContext.userMetadata.currentGroup match {
-      case None =>
+    UniqueNonEmptyList.fromList(groups.toList) match {
+      case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(nonEmptyGroups) =>
         Right(blockContext)
-      case Some(group) if groups.contains(group) =>
-        Right(blockContext)
-      case Some(_) =>
+      case Some(_) | None =>
         Left(())
     }
   }
