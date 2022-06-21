@@ -31,7 +31,7 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.language.postfixOps
 
-class GroupsRuleTests extends BaseGroupsRuleTests {
+class GroupsOrRuleTests extends BaseGroupsRuleTests {
 
   override def createRule(settings: GroupsRuleSettings, caseSensitivity: UserIdCaseMappingEquality): BaseGroupsRule = {
     new GroupsOrRule(settings, caseSensitivity)

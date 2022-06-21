@@ -340,8 +340,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
       } yield {
         implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
         val blocks = blocksNel.map(_.block)
-        val upgradedBlocks = CrossBlockContextBlocksUpgrade.upgrade(blocks)
-        upgradedBlocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
+        blocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
         val localUsers: LocalUsers = {
           val fromUserDefs = LocalUsers(users = Set.empty, unknownUsers = userDefs.items.map(_.usernames).nonEmpty)
           val fromBlocks = blocksNel.map(_.localUsers).toList
@@ -358,7 +357,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
           auditingSettings = auditingTools,
         )
         val accessControl = new AccessControlList(
-          upgradedBlocks,
+          blocks,
           new AccessControlListStaticContext(
             blocks,
             globalSettings,

@@ -34,7 +34,6 @@ import tech.beshu.ror.accesscontrol.domain.{Group, Header}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class AccessControlList(val blocks: NonEmptyList[Block],
@@ -89,7 +88,7 @@ class AccessControlList(val blocks: NonEmptyList[Block],
         val history = blockResults.map(_._2).toVector
         val result = matchedAllowedBlocks(blockResults.map(_._1)) match {
           case Right(matchedResults) =>
-            userMetadataFrom(matchedResults, context.currentGroup.toOption) match {
+            userMetadataFrom(matchedResults, context.initialBlockContext.userMetadata.currentGroup) match {
               case Some((userMetadata, matchedBlock)) => UserMetadataRequestResult.Allow(userMetadata, matchedBlock)
               case None => UserMetadataRequestResult.Forbidden(nonEmptySetOfMismatchedCausesFromHistory(history))
             }
@@ -101,37 +100,30 @@ class AccessControlList(val blocks: NonEmptyList[Block],
   }
 
   private def userMetadataFrom(matchedResults: NonEmptyList[Matched[CurrentUserMetadataRequestBlockContext]],
-                               preferredGroup: Option[Group]): Option[(UserMetadata, Block)] = {
-    val allGroupsWithRelatedResults = flatGroupWithMatchedCurrentMetadata(matchedResults)
-    (preferredGroup match {
+                               optPreferredGroup: Option[Group]): Option[(UserMetadata, Block)] = {
+    optPreferredGroup match {
       case Some(preferredGroup) =>
-        allGroupsWithRelatedResults
-          .find {
-            case (`preferredGroup`, _) => true
-            case _ => false
-          }.map(someFirst)
+        matchedResults
+          .find { case Matched(_, bc) => bc.userMetadata.availableGroups.contains(preferredGroup) }
+          .map {  case Matched(block, bc) =>
+            val userMetadata = updateUserMetadataGroups(bc, Some(preferredGroup), allAvailableGroupsFrom(matchedResults))
+            (userMetadata, block)
+          }
       case None =>
         Some {
-          allGroupsWithRelatedResults.headOption.map(someFirst)
-            .getOrElse((None, matchedResults.head))
+          val Matched(block, bc) = matchedResults.head
+          val userMetadata = updateUserMetadataGroups(bc, None, allAvailableGroupsFrom(matchedResults))
+          (userMetadata, block)
         }
-    }) map { case (maybeGroup, Matched(block, blockContext)) =>
-      val allGroups = UniqueList.fromList(allGroupsWithRelatedResults.map(_._1))
-      val userMetadata = updateUserMetadataGroups(blockContext, maybeGroup, allGroups)
-      (userMetadata, block)
     }
   }
 
-  private def flatGroupWithMatchedCurrentMetadata(matchedResults: NonEmptyList[Matched[CurrentUserMetadataRequestBlockContext]]) = {
-    matchedResults
-      .toList
-      .foldLeft(List.empty[(Group, Matched[CurrentUserMetadataRequestBlockContext])]) {
-        case (acc, matched) =>
-          acc ::: matched.blockContext.userMetadata.availableGroups.toList.map((_, matched))
-      }
+  private def allAvailableGroupsFrom(matchedResults: NonEmptyList[Matched[CurrentUserMetadataRequestBlockContext]]) = {
+    UniqueList.fromList(
+      matchedResults.toList.flatMap {
+        case Matched(_, bc) => bc.userMetadata.availableGroups.toList
+      })
   }
-
-  private def someFirst[A, B](t: (A, B)): (Some[A], B) = (Some(t._1), t._2)
 
   private def updateUserMetadataGroups(blockContext: CurrentUserMetadataRequestBlockContext,
                                        currentGroup: Option[Group],
