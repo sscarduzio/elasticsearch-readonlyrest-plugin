@@ -24,8 +24,8 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule}
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain.{User, UserIdPatterns}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, ImpersonationDefinitionsDecoderCreator}
 import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList

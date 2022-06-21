@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.UsersRule
 import tech.beshu.ror.accesscontrol.blocks.rules.UsersRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
@@ -32,10 +32,10 @@ import tech.beshu.ror.utils.CaseMappingEquality._
 class UsersRuleDecoder(implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[UsersRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[UsersRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[UsersRule]] = {
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[User.Id]]
-      .map(users => RuleWithVariableUsageDefinition.create(new UsersRule(Settings(users), caseMappingEquality)))
+      .map(users => RuleDefinition.create(new UsersRule(Settings(users), caseMappingEquality)))
   }
 }
 

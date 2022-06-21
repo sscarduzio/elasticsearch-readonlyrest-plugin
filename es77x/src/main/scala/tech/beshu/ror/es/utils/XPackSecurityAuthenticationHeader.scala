@@ -38,13 +38,13 @@ object XPackSecurityAuthenticationHeader {
     getAuthenticationHeaderValue(nodeName, "_system")
   )
 
-  private def getAuthenticationHeaderValue(nodeName: String, permission: String): NonEmptyString = {
+  private def getAuthenticationHeaderValue(nodeName: String, userName: String): NonEmptyString = {
     val output = new BytesStreamOutput()
     val currentVersion = Version.CURRENT
     output.setVersion(currentVersion)
     Version.writeVersion(currentVersion, output)
     output.writeBoolean(true)
-    output.writeString(permission)
+    output.writeString(userName)
     output.writeString(nodeName)
     output.writeString("__attach")
     output.writeString("__attach")

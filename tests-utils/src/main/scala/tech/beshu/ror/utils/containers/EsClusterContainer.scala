@@ -100,7 +100,14 @@ class EsRemoteClustersContainer private[containers](val localCluster: EsClusterC
   }
 }
 
-final case class ContainerSpecification(environmentVariables: Map[String, String])
+final case class ContainerSpecification(environmentVariables: Map[String, String],
+                                        additionalElasticsearchYamlEntries: Map[String, String])
+object ContainerSpecification {
+  lazy val empty: ContainerSpecification = ContainerSpecification(
+    environmentVariables = Map.empty,
+    additionalElasticsearchYamlEntries = Map.empty
+  )
+}
 
 trait SetupRemoteCluster {
   def remoteClustersConfiguration(remoteClusters: NonEmptyList[EsClusterContainer]): Map[String, EsClusterContainer]
@@ -109,7 +116,7 @@ trait SetupRemoteCluster {
 final case class EsClusterSettings(name: String,
                                    numberOfInstances: Int = 1,
                                    nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-                                   rorContainerSpecification: ContainerSpecification = ContainerSpecification(Map.empty),
+                                   rorContainerSpecification: ContainerSpecification = ContainerSpecification.empty,
                                    dependentServicesContainers: List[DependencyDef] = Nil,
                                    xPackSupport: Boolean,
                                    useXpackSecurityInsteadOfRor: Boolean = false,

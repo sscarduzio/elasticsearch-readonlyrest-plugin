@@ -24,8 +24,8 @@ import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
@@ -402,7 +402,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |      max_retries: 1
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("At least proper values for max_retries and reset_duration are required for circuit breaker configuration")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("At least proper values for max_retries and reset_duration are required for circuit breaker configuration")))
           }
         )
       }
@@ -413,7 +413,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |  ldaps:
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("ldaps declared, but no definition found")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("ldaps declared, but no definition found")))
           }
         )
       }
@@ -428,7 +428,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
-            inside(error) { case AclCreationError.DefinitionsLevelCreationError(MalformedValue(message)) =>
+            inside(error) { case CoreCreationError.DefinitionsLevelCreationError(MalformedValue(message)) =>
               message should include(s"""host: "${SingletonLdapContainers.ldap1.ldapHost}"""")
               message should include(s"""port: ${SingletonLdapContainers.ldap1.ldapPort}""")
               message should include(s"""search_user_base_DN: "ou=People,dc=example,dc=com"""")
@@ -458,7 +458,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("ldaps definitions must have unique identifiers. Duplicates: ldap1")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("ldaps definitions must have unique identifiers. Duplicates: ldap1")))
           }
         )
       }
@@ -475,7 +475,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    cache_ttl_in_sec: infinity
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.ValueLevelCreationError(Message("Cannot convert value '\"infinity\"' to duration")))
+            error should be(CoreCreationError.ValueLevelCreationError(Message("Cannot convert value '\"infinity\"' to duration")))
           }
         )
       }
@@ -492,7 +492,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    cache_ttl_in_sec: -10
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.ValueLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))
+            error should be(CoreCreationError.ValueLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))
           }
         )
       }
@@ -509,7 +509,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("'bind_dn' & 'bind_password' should be both present or both absent")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("'bind_dn' & 'bind_password' should be both present or both absent")))
           }
         )
       }
@@ -526,7 +526,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("'bind_dn' & 'bind_password' should be both present or both absent")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("'bind_dn' & 'bind_password' should be both present or both absent")))
           }
         )
       }
@@ -541,7 +541,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("Server information missing: use 'host' and 'port', 'servers'/'hosts' or 'service_discovery' option.")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Server information missing: use 'host' and 'port', 'servers'/'hosts' or 'service_discovery' option.")))
           }
         )
       }
@@ -560,7 +560,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("Cannot accept multiple server configurations settings (host,port) or (servers/hosts) or (service_discovery) at the same time.")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Cannot accept multiple server configurations settings (host,port) or (servers/hosts) or (service_discovery) at the same time.")))
           }
         )
       }
@@ -577,7 +577,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("Cannot accept multiple server configurations settings (host,port) or (servers/hosts) or (service_discovery) at the same time.")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Cannot accept multiple server configurations settings (host,port) or (servers/hosts) or (service_discovery) at the same time.")))
           }
         )
       }
@@ -594,7 +594,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("Please specify more than one LDAP server using 'servers'/'hosts' to use HA")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Please specify more than one LDAP server using 'servers'/'hosts' to use HA")))
           }
         )
       }
@@ -612,7 +612,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("Unknown HA method 'RANDOM'")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Unknown HA method 'RANDOM'")))
           }
         )
       }
@@ -628,7 +628,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("There was a problem with LDAP connection to: ldaps://localhost:12345")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with LDAP connection to: ldaps://localhost:12345")))
           }
         )
       }
@@ -645,7 +645,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    connection_pool_size: -10
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10")))
           }
         )
       }
@@ -662,7 +662,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    connection_timeout_in_sec: -10
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))
           }
         )
       }
@@ -679,7 +679,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    request_timeout_in_sec: -10
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))
           }
         )
       }
@@ -697,7 +697,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("The list of LDAP servers should be either all 'ldaps://' or all 'ldap://")))
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("The list of LDAP servers should be either all 'ldaps://' or all 'ldap://")))
           }
         )
       }

@@ -20,8 +20,8 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.boot.ReadonlyRest.RorMode
 
@@ -77,7 +77,7 @@ object GlobalStaticSettingsDecoder {
     case Some(definedFlsEngine) =>
       flsEngineFromString(definedFlsEngine)
         .left
-        .map(unknown => AclCreationError.GeneralReadonlyrestSettingsError(Message(s"Unknown fls engine: '${unknown.value}'. Supported: 'es_with_lucene', 'es'.")))
+        .map(unknown => CoreCreationError.GeneralReadonlyrestSettingsError(Message(s"Unknown fls engine: '${unknown.value}'. Supported: 'es_with_lucene', 'es'.")))
   }
 
   private def createFlsEngineForProxy(flsEngineFromConfig: Option[String]) = flsEngineFromConfig match {
@@ -88,7 +88,7 @@ object GlobalStaticSettingsDecoder {
         case Right(FlsEngine.ES) =>
           Right(FlsEngine.ES)
         case _ =>
-          Left(AclCreationError.GeneralReadonlyrestSettingsError(Message(s"Fls engine: '$definedFlsEngine' is not allowed for ROR proxy")))
+          Left(CoreCreationError.GeneralReadonlyrestSettingsError(Message(s"Fls engine: '$definedFlsEngine' is not allowed for ROR proxy")))
       }
   }
 

@@ -50,7 +50,6 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
   private final InternodeSslConfiguration ssl;
   private final Boolean fipsCompliant;
 
-
   public SSLNetty4InternodeServerTransport(Settings settings,
                                            ThreadPool threadPool,
                                            PageCacheRecycler pageCacheRecycler,

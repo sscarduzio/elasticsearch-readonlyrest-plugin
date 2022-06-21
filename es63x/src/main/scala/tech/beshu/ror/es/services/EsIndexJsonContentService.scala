@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.es.services
 
-import java.util
-
 import cats.implicits._
 import com.google.common.collect.Maps
 import monix.eval.Task
@@ -33,6 +31,8 @@ import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService._
 
+import java.util
+
 @Singleton
 class EsIndexJsonContentService(client: NodeClient,
                                 ignore: Unit) // hack!
@@ -46,7 +46,7 @@ class EsIndexJsonContentService(client: NodeClient,
 
   override def sourceOf(index: IndexName.Full,
                         id: String): Task[Either[ReadError, util.Map[String, AnyRef]]] = {
-    Task(
+    Task {
       client
         .get(
           client
@@ -55,7 +55,8 @@ class EsIndexJsonContentService(client: NodeClient,
             .setId(id)
             .request()
         )
-        .actionGet())
+        .actionGet()
+    }
       .map { response =>
         Option(response.getSourceAsMap) match {
           case Some(map) =>
@@ -77,7 +78,7 @@ class EsIndexJsonContentService(client: NodeClient,
   override def saveContent(index: IndexName.Full,
                            id: String,
                            content: util.Map[String, String]): Task[Either[WriteError, Unit]] = {
-    Task(
+    Task {
       client
         .index(
           client
@@ -90,7 +91,7 @@ class EsIndexJsonContentService(client: NodeClient,
             .request()
         )
         .actionGet()
-    )
+    }
       .map { response =>
         response.status().getStatus match {
           case status if status / 100 == 2 =>

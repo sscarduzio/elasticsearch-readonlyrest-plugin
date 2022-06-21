@@ -19,11 +19,11 @@ package tech.beshu.ror.utils
 import java.nio.file.Path
 import java.time.Duration
 import java.util.Base64
-
 import better.files.File
 import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.ParsingFailure
+import io.jsonwebtoken.JwtBuilder
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
@@ -45,6 +45,7 @@ import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.utils.misc.JwtUtils.Jwt
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration.FiniteDuration
@@ -57,7 +58,22 @@ object TestsUtils {
   def basicAuthHeader(value: String): Header =
     new Header(
       Header.Name.authorization,
-      NonEmptyString.unsafeFrom("Basic " + Base64.getEncoder.encodeToString(value.getBytes))
+      NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(value.getBytes)}")
+    )
+
+  def bearerHeader(jwt: Jwt): Header =
+    bearerHeader(Header.Name.authorization.value, jwt)
+
+  def bearerHeader(headerName: NonEmptyString, jwt: Jwt): Header =
+    new Header(
+      Header.Name(headerName),
+      NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")
+    )
+
+  def bearerHeader(jwt: JwtBuilder): Header =
+    new Header(
+      Header.Name.authorization,
+      NonEmptyString.unsafeFrom(s"Bearer ${jwt.compact}")
     )
 
   def impersonationHeader(username: NonEmptyString): Header =
@@ -68,6 +84,9 @@ object TestsUtils {
       Name(NonEmptyString.unsafeFrom(name)),
       NonEmptyString.unsafeFrom(value)
     )
+
+  def currentGroupHeader(value: String): Header =
+    header("x-ror-current-group", value)
 
   def clusterIndexName(str: NonEmptyString): ClusterIndexName = ClusterIndexName.unsafeFromString(str.value)
 
@@ -262,6 +281,10 @@ object TestsUtils {
   def groupFrom(value: String): Group = NonEmptyString.from(value) match {
     case Right(v) => Group(v)
     case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to Group")
+  }
+
+  implicit class CurrentGroupToHeader(val group: Group) extends AnyVal {
+    def toCurrentGroupHeader: Header = currentGroupHeader(group.value.value)
   }
 
   def noGroupMappingFrom(value: String): GroupMappings = GroupMappings.Simple(UniqueNonEmptyList.of(groupFrom(value)))

@@ -92,7 +92,5 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
         ch.pipeline().addFirst("ssl_netty4_handler", sslCtx.newHandler(ch.alloc()));
       });
     }
-
-
   }
 }

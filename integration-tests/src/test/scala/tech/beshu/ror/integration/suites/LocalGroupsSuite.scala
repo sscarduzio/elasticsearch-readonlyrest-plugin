@@ -84,7 +84,7 @@ trait LocalGroupsSuite
     response.responseJson("x-ror-kibana_index").str should be(".kibana_user")
     response.responseJson("x-ror-kibana-hidden-apps").arr.toList should be(List(Str("timelion")))
     response.responseJson("x-ror-kibana_access").str should be("admin")
-    response.responseJson("x-ror-logging-id").str should fullyMatch uuidRegex()
+    response.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex()
   }
 
   "identify retrieval with preferred group" in {
@@ -100,6 +100,6 @@ trait LocalGroupsSuite
     response.responseJson("x-ror-kibana_index").str should be(".kibana_foogroup")
     response.responseJson("x-ror-kibana-hidden-apps").arr.toList should be(List(Str("foo:app")))
     response.responseJson("x-ror-kibana_access").str should be("admin")
-    response.responseJson("x-ror-logging-id").str should fullyMatch uuidRegex()
+    response.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex()
   }
 }

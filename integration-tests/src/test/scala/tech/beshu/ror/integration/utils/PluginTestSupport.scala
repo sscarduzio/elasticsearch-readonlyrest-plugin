@@ -19,31 +19,48 @@ package tech.beshu.ror.integration.utils
 import better.files.File
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.utils.containers.providers._
 import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.providers._
 import tech.beshu.ror.utils.misc.Resources.getResourcePath
 
 trait PluginTestSupport extends EsWithSecurityPluginContainerCreator with CallingEsDirectly {
   this: MultipleEsTargets =>
 }
 
-trait SingletonPluginTestSupport extends PluginTestSupport with BeforeAndAfterAll {
+trait SingletonPluginTestSupport
+  extends PluginTestSupport
+    with BeforeAndAfterAll
+    with ResolvedRorConfigFileProvider {
   this: Suite with BaseSingleNodeEsClusterTest =>
 
   override lazy val targetEs: EsContainer = SingletonEsContainer.singleton.nodes.head
 
   private var startedDependencies = StartedClusterDependencies(Nil)
 
-  override protected def beforeAll(): Unit = {
-    super.beforeAll()
+  override final def resolvedRorConfigFile: File = {
+    resolveConfig.toTry.get
+  }
 
-    startedDependencies = DependencyRunner.startDependencies(clusterDependencies)
+  private def resolveConfig: Either[Throwable, File] = {
+    Either.cond(
+      test = startedDependencies.values.size === clusterDependencies.size,
+      right = resolvedConfig(startedDependencies),
+      left = new IllegalStateException("Not all dependencies are started. Cannot read resolved config yet")
+    )
+  }
+
+  private def resolvedConfig(startedDependencies: StartedClusterDependencies) = {
     val configFile = File.apply(getResourcePath(rorConfigFileName))
-    val configAdjusted = RorConfigAdjuster.adjustUsingDependencies(configFile, startedDependencies, RorConfigAdjuster.Mode.Plugin)
+    RorConfigAdjuster.adjustUsingDependencies(configFile, startedDependencies, RorConfigAdjuster.Mode.Plugin)
+  }
 
+  override protected def beforeAll(): Unit = {
+    startedDependencies = DependencyRunner.startDependencies(clusterDependencies)
     SingletonEsContainer.cleanUpContainer()
-    SingletonEsContainer.updateConfig(configAdjusted.contentAsString)
+    SingletonEsContainer.updateConfig(resolvedRorConfigFile.contentAsString)
     nodeDataInitializer.foreach(SingletonEsContainer.initNode)
+
+    super.beforeAll()
   }
 
   override protected def afterAll(): Unit = {

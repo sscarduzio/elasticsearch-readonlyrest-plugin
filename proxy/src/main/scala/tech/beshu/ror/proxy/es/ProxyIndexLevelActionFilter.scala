@@ -12,12 +12,12 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
-import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, Engine, RorMode, StartingFailure}
+import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, RorMode, StartingFailure}
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
-import tech.beshu.ror.es.handler.response.ForbiddenResponse.createRorNotReadyYetResponse
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createTestSettingsNotConfiguredResponse}
 import tech.beshu.ror.exceptions.SecurityPermissionException
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter.ThreadRepoChannelRenewalOnChainProceed
@@ -53,7 +53,7 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
       case (Some(engines), Some(channel)) =>
         Try {
           handleRequest(
-            engines.mainEngine,
+            engines,
             task,
             action,
             request,
@@ -77,7 +77,7 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
 
   def stop(): MTask[Unit] = rorInstance.stop()
 
-  private def handleRequest(engine: Engine,
+  private def handleRequest(engines: Engines,
                             task: Task,
                             action: String,
                             request: ActionRequest,
@@ -86,7 +86,7 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
                             channel: ProxyRestChannel): Unit = {
     aclAwareRequestFilter
       .handle(
-        Engines(engine, None), // todo: no second engine handling
+        engines,
         EsContext(
           channel,
           "proxy",
@@ -99,9 +99,15 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
         )
       )
       .runAsync {
-        case Right(_) =>
+        case Right(result) => handleResult(listener, result)
         case Left(ex) => channel.sendFailureResponse(ex)
       }
+  }
+
+  private def handleResult(listener: ActionListener[ActionResponse], result: Either[AclAwareRequestFilter.Error, Unit]): Unit = result match {
+    case Right(_) =>
+    case Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured) =>
+      listener.onFailure(createTestSettingsNotConfiguredResponse())
   }
 }
 

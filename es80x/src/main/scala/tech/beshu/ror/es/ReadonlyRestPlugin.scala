@@ -43,7 +43,7 @@ import org.elasticsearch.repositories.{RepositoriesService, VerifyNodeRepository
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.netty4.{Netty4Plugin, Netty4Utils, SharedGroupFactory}
+import org.elasticsearch.transport.netty4.{Netty4Utils, SharedGroupFactory}
 import org.elasticsearch.transport.{Transport, TransportInterceptor, TransportService}
 import org.elasticsearch.watcher.ResourceWatcherService
 import org.elasticsearch.xcontent.NamedXContentRegistry
@@ -63,6 +63,8 @@ import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
+import tech.beshu.ror.es.actions.rrtestconfig.rest.RestRRTestConfigAction
+import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, TransportRRTestConfigAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.ThreadRepo
@@ -217,6 +219,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
       new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction]),
       new ActionHandler(RRAuthMockActionType.instance, classOf[TransportRRAuthMockAction]),
+      new ActionHandler(RRTestConfigActionType.instance, classOf[TransportRRTestConfigAction]),
       new ActionHandler(RRConfigActionType.instance, classOf[TransportRRConfigAction]),
       new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
       new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
@@ -235,6 +238,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     List[RestHandler](
       new RestRRAdminAction(),
       new RestRRAuthMockAction(),
+      new RestRRTestConfigAction(),
       new RestRRConfigAction(nodesInCluster),
       new RestRRUserMetadataAction(),
       new RestRRAuditEventAction()

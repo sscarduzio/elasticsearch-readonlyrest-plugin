@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.ResponseFieldsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
@@ -33,12 +33,12 @@ object ResponseFieldsRuleDecoder
   implicit val accessModeConverter: AccessModeConverter[AccessMode] =
     AccessModeConverter.create(whitelistElement = AccessMode.Whitelist, blacklistElement = AccessMode.Blacklist)
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ResponseFieldsRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[ResponseFieldsRule]] = {
     for {
       configuredFields <- configuredFieldsDecoder
       accessMode <- accessModeDecoder[AccessMode](configuredFields)
       documentFields <- documentFieldsDecoder[ResponseField](configuredFields, Set.empty)
-    } yield RuleWithVariableUsageDefinition.create(new ResponseFieldsRule(ResponseFieldsRule.Settings(documentFields, accessMode)))
+    } yield RuleDefinition.create(new ResponseFieldsRule(ResponseFieldsRule.Settings(documentFields, accessMode)))
 
   }
 }

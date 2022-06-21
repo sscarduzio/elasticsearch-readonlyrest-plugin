@@ -25,18 +25,20 @@ import tech.beshu.ror.Constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block._
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.BlockValidator
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.BlocksLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.BlocksLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
 import tech.beshu.ror.utils.TaskOps._
 
 import scala.util.Success
@@ -76,7 +78,7 @@ class Block(val name: Name,
           val block: Block = this
           logger.debug(s"${ANSI_CYAN}matched ${block.show} { found: ${blockContext.show} }$ANSI_RESET")
         case Success((_: Mismatched[B], history)) =>
-          implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show[B](None, None, Vector(history))
+          implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show[B](UserMetadata.empty, Vector(history))
           logger.debug(s"$ANSI_YELLOW[${name.show}] the request matches no rules in this block: ${requestContext.show} $ANSI_RESET")
       }
   }
@@ -114,7 +116,7 @@ object Block {
   def createFrom(name: Name,
                  policy: Option[Policy],
                  verbosity: Option[Verbosity],
-                 rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]])
+                 rules: NonEmptyList[RuleDefinition[Rule]])
                 (implicit loggingContext: LoggingContext): Either[BlocksLevelCreationError, Block] = {
     val sortedRules = rules.sorted
     BlockValidator.validate(sortedRules) match {
@@ -129,7 +131,7 @@ object Block {
   private def createBlockInstance(name: Name,
                                   policy: Option[Policy],
                                   verbosity: Option[Verbosity],
-                                  rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]])
+                                  rules: NonEmptyList[RuleDefinition[Rule]])
                                  (implicit loggingContext: LoggingContext) =
     new Block(
       name,
@@ -149,10 +151,12 @@ object Block {
       extends HistoryItem[B]
   }
 
-  final case class RuleWithVariableUsageDefinition[+T <: Rule](rule: T, variableUsage: VariableUsage[T])
-  object RuleWithVariableUsageDefinition {
-    def create[T <: Rule : VariableUsage](rule: T) = {
-      new RuleWithVariableUsageDefinition(rule, implicitly[VariableUsage[T]])
+  final case class RuleDefinition[+T <: Rule](rule: T,
+                                              variableUsage: VariableUsage[T],
+                                              localUsersSupport: LocalUsersSupport[T])
+  object RuleDefinition {
+    def create[T <: Rule : VariableUsage : LocalUsersSupport](rule: T) = {
+      new RuleDefinition(rule, implicitly[VariableUsage[T]], implicitly[LocalUsersSupport[T]])
     }
   }
 

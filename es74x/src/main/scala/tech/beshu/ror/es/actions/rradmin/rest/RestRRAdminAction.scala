@@ -20,9 +20,9 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest._
-import org.elasticsearch.rest.action.RestToXContentListener
 import tech.beshu.ror.Constants
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, RRAdminRequest, RRAdminResponse}
+import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
 @Inject
 class RestRRAdminAction(controller: RestController)
@@ -32,8 +32,6 @@ class RestRRAdminAction(controller: RestController)
   register("GET", Constants.PROVIDE_INDEX_CONFIG_PATH)
   register("POST", Constants.UPDATE_INDEX_CONFIG_PATH)
   register("GET", Constants.PROVIDE_FILE_CONFIG_PATH)
-  register("POST", Constants.UPDATE_TEST_CONFIG_PATH)
-  register("DELETE", Constants.DELETE_TEST_CONFIG_PATH)
 
   override val getName: String = "ror-admin-handler"
 
@@ -41,7 +39,7 @@ class RestRRAdminAction(controller: RestController)
     private val rorAdminRequest = RRAdminRequest.createFrom(request)
 
     override def accept(channel: RestChannel): Unit = {
-      client.execute(new RRAdminActionType, rorAdminRequest, new RestToXContentListener[RRAdminResponse](channel))
+      client.execute(new RRAdminActionType, rorAdminRequest, new RestToXContentWithStatusListener[RRAdminResponse](channel))
     }
   }
 

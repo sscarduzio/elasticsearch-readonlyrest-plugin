@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration
 
+import cats.data.NonEmptySet
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
@@ -23,11 +24,14 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside}
+import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause
+import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause.OperationNotAllowed
 import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, HttpClientsFactory}
+import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.containers.{LdapContainer, WireMockContainer, WireMockScalaAdapter}
@@ -131,7 +135,7 @@ class CurrentUserMetadataAccessControlTests
       |      groups: ["ldap2_group2"]
       |
       |  - name: "SERVICE2 user6 (3)"
-      |    proxy_auth: "user5"
+      |    proxy_auth: "user6"
       |    groups_provider_authorization:
       |      user_groups_provider: "Service2"
       |      groups: ["service2_group2"]
@@ -208,7 +212,7 @@ class CurrentUserMetadataAccessControlTests
           inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user1"))))
             userMetadata.currentGroup should be (Some(Group("group3")))
-            userMetadata.availableGroups should be (UniqueList.of(Group("group3"), Group("group1")))
+            userMetadata.availableGroups.toSet should be (Set(Group("group3"), Group("group1")))
             userMetadata.kibanaIndex should be (None)
             userMetadata.hiddenKibanaApps should be (Set.empty)
             userMetadata.kibanaAccess should be (None)
@@ -216,15 +220,29 @@ class CurrentUserMetadataAccessControlTests
           }
         }
         "several blocks are matched and current group is set" in {
-          val request = MockRequestContext.metadata.copy(
-            headers = Set(basicAuthHeader("user4:pass"), header("x-ror-current-group", "group6"))
+          val loginRequest = MockRequestContext.metadata.copy(
+            headers = Set(basicAuthHeader("user4:pass"), currentGroupHeader("group6"))
           )
-          val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case Allow(userMetadata, _) =>
+          val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
+          inside(loginResponse.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4"))))
             userMetadata.currentGroup should be (Some(Group("group6")))
-            userMetadata.availableGroups should be (UniqueList.of(Group("group5"), Group("group6")))
+            userMetadata.availableGroups.toSet should be (Set(Group("group5"), Group("group6")))
             userMetadata.kibanaIndex should be (Some(clusterIndexName("user4_group6_kibana_index")))
+            userMetadata.hiddenKibanaApps should be (Set.empty)
+            userMetadata.kibanaAccess should be (None)
+            userMetadata.userOrigin should be (None)
+          }
+
+          val switchTenancyRequest = MockRequestContext.metadata.copy(
+            headers = Set(basicAuthHeader("user4:pass"), currentGroupHeader("group5"))
+          )
+          val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
+          inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
+            userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4"))))
+            userMetadata.currentGroup should be (Some(Group("group5")))
+            userMetadata.availableGroups.toSet should be (Set(Group("group5"), Group("group6")))
+            userMetadata.kibanaIndex should be (Some(clusterIndexName("user4_group5_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set.empty)
             userMetadata.kibanaAccess should be (None)
             userMetadata.userOrigin should be (None)
@@ -236,7 +254,7 @@ class CurrentUserMetadataAccessControlTests
           inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2"))))
             userMetadata.currentGroup should be (Some(Group("group2")))
-            userMetadata.availableGroups should be (UniqueList.of(Group("group2")))
+            userMetadata.availableGroups.toSet should be (Set(Group("group2")))
             userMetadata.kibanaIndex should be (Some(clusterIndexName("user2_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user2_app1"), KibanaApp("user2_app2")))
             userMetadata.kibanaAccess should be (Some(KibanaAccess.RO))
@@ -249,7 +267,7 @@ class CurrentUserMetadataAccessControlTests
           inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user3"))))
             userMetadata.currentGroup should be (None)
-            userMetadata.availableGroups should be (UniqueList.empty)
+            userMetadata.availableGroups.toSet should be (UniqueList.empty)
             userMetadata.kibanaIndex should be (Some(clusterIndexName("user3_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user3_app1"), KibanaApp("user3_app2")))
             userMetadata.kibanaAccess should be (None)
@@ -263,18 +281,17 @@ class CurrentUserMetadataAccessControlTests
 
             inside(result1.result) { case Allow(userMetadata, _) =>
               userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user5"))))
-              userMetadata.availableGroups should be (UniqueList.of(Group("service1_group1"), Group("service1_group2")))
+              userMetadata.availableGroups.toSet should be (Set(Group("service1_group1"), Group("service1_group2")))
             }
 
             val request2 = MockRequestContext.metadata.copy(
-              headers = Set(header("X-Forwarded-User", "user5")),
-              currentGroup = Some(groupFrom("service1_group2"))
+              headers = Set(header("X-Forwarded-User", "user5"), currentGroupHeader("service1_group2"))
             )
             val result2 = acl.handleMetadataRequest(request2).runSyncUnsafe()
 
             inside(result2.result) { case Allow(userMetadata, _) =>
               userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user5"))))
-              userMetadata.availableGroups should be (UniqueList.of(Group("service1_group1"), Group("service1_group2")))
+              userMetadata.availableGroups.toSet should be (Set(Group("service1_group1"), Group("service1_group2")))
             }
           }
           "the service is LDAP" in {
@@ -283,18 +300,17 @@ class CurrentUserMetadataAccessControlTests
 
             inside(result1.result) { case Allow(userMetadata, _) =>
               userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user6"))))
-              userMetadata.availableGroups should be (UniqueList.of(Group("ldap2_group1"), Group("ldap2_group2")))
+              userMetadata.availableGroups.toSet should be (Set(Group("ldap2_group1"), Group("ldap2_group2")))
             }
 
             val request2 = MockRequestContext.metadata.copy(
-              headers = Set(basicAuthHeader("user6:user2")),
-              currentGroup = Some(groupFrom("ldap2_group2"))
+              headers = Set(basicAuthHeader("user6:user2"), currentGroupHeader("ldap2_group2"))
             )
             val result2 = acl.handleMetadataRequest(request2).runSyncUnsafe()
 
             inside(result2.result) { case Allow(userMetadata, _) =>
               userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user6"))))
-              userMetadata.availableGroups should be (UniqueList.of(Group("ldap2_group1"), Group("ldap2_group2")))
+              userMetadata.availableGroups.toSet should be (Set(Group("ldap2_group1"), Group("ldap2_group2")))
             }
           }
         }
@@ -303,21 +319,27 @@ class CurrentUserMetadataAccessControlTests
         "no block is matched" in {
           val request = MockRequestContext.metadata.copy(headers = Set(basicAuthHeader("userXXX:pass")))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case Forbidden => }
+          inside(result.result) { case Forbidden(causes) =>
+            causes should be (NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
+          }
         }
         "current group is set but it doesn't exist on available groups list" in {
           val request = MockRequestContext.metadata.copy(
-            headers = Set(basicAuthHeader("user4:pass"), header("x-ror-current-group", "group7"))
+            headers = Set(basicAuthHeader("user4:pass"), currentGroupHeader("group7"))
           )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case Forbidden => }
+          inside(result.result) { case Forbidden(causes) =>
+            causes should be (NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
+          }
         }
         "block with no available groups collected is matched and current group is set" in {
           val request = MockRequestContext.metadata.copy(
-            headers = Set(basicAuthHeader("user3:pass"), header("x-ror-current-group", "group7"))
+            headers = Set(basicAuthHeader("user3:pass"), currentGroupHeader("group7"))
           )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case Forbidden => }
+          inside(result.result) { case Forbidden(causes) =>
+            causes should be (NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
+          }
         }
       }
     }

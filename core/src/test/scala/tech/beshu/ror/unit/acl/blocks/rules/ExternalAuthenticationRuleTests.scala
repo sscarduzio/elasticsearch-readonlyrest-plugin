@@ -255,7 +255,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
   private def mockExternalAuthService(name: NonEmptyString, credentials: Credentials) = {
     new ExternalAuthenticationService {
-      override def id: ExternalAuthenticationService.Name = ExternalAuthenticationService.Name(name.value)
+      override def id: ExternalAuthenticationService.Name = ExternalAuthenticationService.Name(name)
       override def authenticate(aCredentials: Credentials): Task[Boolean] = Task.delay { credentials == aCredentials }
     }
   }

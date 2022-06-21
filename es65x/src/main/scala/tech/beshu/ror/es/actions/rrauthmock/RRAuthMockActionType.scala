@@ -19,18 +19,18 @@ package tech.beshu.ror.es.actions.rrauthmock
 import org.elasticsearch.action.{Action, ActionRequestBuilder}
 import org.elasticsearch.client.ElasticsearchClient
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.api.AuthMockApi
 
 class RRAuthMockActionType extends Action[RRAuthMockRequest, RRAuthMockResponse, RRAuthMockActionType.RequestBuilder](
   RRAuthMockActionType.name
 ) {
 
   override def newResponse(): RRAuthMockResponse =
-    new RRAuthMockResponse(AuthMockApi.AuthMockResponse.notAvailable)
+    new RRAuthMockResponse()
 
   override def newRequestBuilder(client: ElasticsearchClient): RRAuthMockActionType.RequestBuilder =
     new RRAuthMockActionType.RequestBuilder(client, this, new RRAuthMockRequest())
 }
+
 object RRAuthMockActionType {
   class RequestBuilder(client: ElasticsearchClient, actionType: RRAuthMockActionType, request: RRAuthMockRequest)
     extends ActionRequestBuilder[RRAuthMockRequest, RRAuthMockResponse, RequestBuilder](client, actionType, request)

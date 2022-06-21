@@ -20,8 +20,8 @@ import cats.implicits._
 import cats.{Functor, Id}
 import io.circe._
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.yaml.YamlOps
 
@@ -48,13 +48,13 @@ sealed abstract class ADecoder[F[_] : Functor, A] {
   type Element = Json
   type Context = String
 
-  def withError(error: => AclCreationError): DECODER[A] = {
+  def withError(error: => CoreCreationError): DECODER[A] = {
     creator.instance { c =>
       apply(c).map(_.left.map(_.overrideDefaultErrorWith(error)))
     }
   }
 
-  def withError(newErrorCreator: Reason => AclCreationError, defaultErrorReason: => Reason): DECODER[A] = {
+  def withError(newErrorCreator: Reason => CoreCreationError, defaultErrorReason: => Reason): DECODER[A] = {
     creator.instance { c =>
       apply(c).map(_.left.map { df =>
         val error = df.aclCreationError.map(e => newErrorCreator(e.reason)) match {
@@ -66,7 +66,7 @@ sealed abstract class ADecoder[F[_] : Functor, A] {
     }
   }
 
-  def withErrorFromCursor(error: (Element, Context) => AclCreationError): DECODER[A] = {
+  def withErrorFromCursor(error: (Element, Context) => CoreCreationError): DECODER[A] = {
     creator.instance { c =>
       val element = c.value
       val context = YamlOps.jsonToYamlString(c.up.focus.get).trim
@@ -74,13 +74,13 @@ sealed abstract class ADecoder[F[_] : Functor, A] {
     }
   }
 
-  def withErrorFromJson(errorCreator: Json => AclCreationError): DECODER[A] = {
+  def withErrorFromJson(errorCreator: Json => CoreCreationError): DECODER[A] = {
     creator.instance { c =>
       apply(c).map(_.left.map(_.overrideDefaultErrorWith(errorCreator(c.value))))
     }
   }
 
-  def mapError(newErrorCreator: Reason => AclCreationError): DECODER[A] =
+  def mapError(newErrorCreator: Reason => CoreCreationError): DECODER[A] =
     creator.instance { c =>
       apply(c).map(_.left.map { df =>
         df.aclCreationError.map(e => newErrorCreator(e.reason)) match {
@@ -90,7 +90,7 @@ sealed abstract class ADecoder[F[_] : Functor, A] {
       })
     }
 
-  def emapE[B](f: A => Either[AclCreationError, B]): DECODER[B] =
+  def emapE[B](f: A => Either[CoreCreationError, B]): DECODER[B] =
     emap { a => f(a).left.map(AclCreationErrorCoders.stringify) }
 }
 

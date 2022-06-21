@@ -16,10 +16,8 @@
  */
 package tech.beshu.ror.es
 
-import java.util.function.Supplier
 import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
@@ -36,8 +34,8 @@ import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot._
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.handler.AclAwareRequestFilter
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse, createTestSettingsNotConfiguredResponse}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, HighLevelClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
@@ -46,15 +44,16 @@ import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
 import java.time.Clock
+import java.util.function.Supplier
 import scala.language.postfixOps
 
-class IndexLevelActionFilter(clusterService: ClusterService,
+class IndexLevelActionFilter(nodeName: String,
+                             clusterService: ClusterService,
                              client: NodeClient,
                              threadPool: ThreadPool,
                              env: Environment,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                              snapshotsServiceSupplier: Supplier[Option[SnapshotsService]],
-                             emptyClusterStateResponse: ClusterStateResponse,
                              esInitListener: EsInitListener)
                             (implicit envVarsProvider: EnvVarsProvider,
                              propertiesProvider: PropertiesProvider,
@@ -112,24 +111,42 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                                                                            listener: ActionListener[Response],
                                                                            chain: ActionFilterChain[Request, Response]): Unit = {
     doPrivileged {
-      ThreadRepo.getRorRestChannel match {
-        case None =>
-          chain.proceed(task, action, request, listener)
-        case Some(_) if action.startsWith("internal:") =>
-          chain.proceed(task, action, request, listener)
-        case Some(channel) =>
-          proceedByRorEngine(
-            EsContext(
-              channel,
-              task,
-              action,
-              request,
-              listener.asInstanceOf[ActionListener[ActionResponse]],
-              chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]],
-              JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toSet
-            )
+      proceed(
+        task,
+        action,
+        request,
+        listener.asInstanceOf[ActionListener[ActionResponse]],
+        new EsChain(
+          chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]],
+          threadPool
+        )
+      )
+    }
+  }
+
+  private def proceed(task: Task,
+                      action: String,
+                      request: ActionRequest,
+                      listener: ActionListener[ActionResponse],
+                      chain: EsChain): Unit = {
+    ThreadRepo.getRorRestChannel match {
+      case None =>
+        chain.continue(nodeName, task, action, request, listener)
+      case Some(_) if action.startsWith("internal:") =>
+        chain.continue(nodeName, task, action, request, listener)
+      case Some(channel) =>
+        proceedByRorEngine(
+          EsContext(
+            channel,
+            nodeName,
+            task,
+            action,
+            request,
+            listener,
+            chain,
+            JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toSet
           )
-      }
+        )
     }
   }
 
@@ -156,9 +173,15 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     aclAwareRequestFilter
       .handle(engines, esContext)
       .runAsync {
-        case Right(_) =>
+        case Right(result) => handleResult(esContext, result)
         case Left(ex) => esContext.listener.onFailure(new Exception(ex))
       }
+  }
+
+  private def handleResult(esContext: EsContext, result: Either[AclAwareRequestFilter.Error, Unit]): Unit = result match {
+    case Right(_) =>
+    case Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured) =>
+      esContext.listener.onFailure(createTestSettingsNotConfiguredResponse())
   }
 
   private def startRorInstance() = {

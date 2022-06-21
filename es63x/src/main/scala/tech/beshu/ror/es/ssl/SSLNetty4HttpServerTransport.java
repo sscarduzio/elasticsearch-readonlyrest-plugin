@@ -43,7 +43,6 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
   private final ExternalSslConfiguration ssl;
   private final Boolean fipsCompliant;
 
-
   public SSLNetty4HttpServerTransport(Settings settings,
                                       NetworkService networkService,
                                       BigArrays bigArrays,
@@ -91,6 +90,5 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
         ch.pipeline().addFirst("ssl_netty4_handler", sslCtx.newHandler(ch.alloc()));
       });
     }
-
   }
 }

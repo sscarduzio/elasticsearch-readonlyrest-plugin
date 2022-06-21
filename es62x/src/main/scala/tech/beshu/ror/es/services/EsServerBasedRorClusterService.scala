@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.es.services
 
-import java.util.function.Supplier
-
 import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
@@ -42,13 +40,14 @@ import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, In
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.es.{RemoteClusterAwareClient, RorClusterService}
 import tech.beshu.ror.es.RorClusterService._
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.es.utils.GenericResponseListener
+import tech.beshu.ror.es.{RemoteClusterAwareClient, RorClusterService}
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
+import java.util.function.Supplier
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 

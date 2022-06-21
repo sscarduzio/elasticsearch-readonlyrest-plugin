@@ -22,8 +22,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside}
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched._
+import tech.beshu.ror.accesscontrol.AccessControl.{ForbiddenCause, RegularRequestResult}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -132,7 +131,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
         result.history should have size 3
         inside(result.result) { case RegularRequestResult.ForbiddenByMismatched(causes) =>
-          causes.toSortedSet should contain(Cause.OperationNotAllowed)
+          causes.toSortedSet should contain(ForbiddenCause.OperationNotAllowed)
         }
       }
     }

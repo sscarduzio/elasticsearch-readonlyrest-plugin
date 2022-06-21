@@ -17,7 +17,6 @@
 
 package tech.beshu.ror.es.ssl;
 
-
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -43,7 +42,6 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
   private final Logger logger = LogManager.getLogger(this.getClass());
   private final ExternalSslConfiguration ssl;
   private final Boolean fipsCompliant;
-
 
   public SSLNetty4HttpServerTransport(Settings settings,
                                       NetworkService networkService,

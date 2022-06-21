@@ -20,15 +20,15 @@ import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService, ImpersonatorDef}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ExternalAuthenticationServicesDecoder._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, ExternalAuthenticationServicesDecoder}
@@ -45,7 +45,7 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
                                         implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[ExternalAuthenticationRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ExternalAuthenticationRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[ExternalAuthenticationRule]] = {
     simpleExternalAuthenticationServiceNameAndLocalConfig
       .orElse(complexExternalAuthenticationServiceNameAndLocalConfig)
       .toSyncDecoder
@@ -56,7 +56,7 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
         case (name, None) =>
           findAuthenticationService(authenticationServices.items, name)
       }
-      .map(service => RuleWithVariableUsageDefinition.create(new
+      .map(service => RuleDefinition.create(new
           ExternalAuthenticationRule(
             Settings(service),
             impersonatorsDef.toImpersonation(mocksProvider),
@@ -84,7 +84,7 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
   }
 
   private def findAuthenticationService(authenticationServices: List[ExternalAuthenticationService],
-                                        searchedServiceName: ExternalAuthenticationService.Name): Either[AclCreationError, ExternalAuthenticationService] = {
+                                        searchedServiceName: ExternalAuthenticationService.Name): Either[CoreCreationError, ExternalAuthenticationService] = {
     authenticationServices.find(_.id === searchedServiceName) match {
       case Some(service) => Right(service)
       case None => Left(RulesLevelCreationError(Message(s"Cannot find external authentication service with name: ${searchedServiceName.show}")))

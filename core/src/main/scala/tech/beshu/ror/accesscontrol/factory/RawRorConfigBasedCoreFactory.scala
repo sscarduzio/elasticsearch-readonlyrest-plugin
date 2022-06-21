@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.accesscontrol.factory
 
+import java.time.Clock
+
 import cats.data.{NonEmptyList, State, Validated}
 import cats.implicits._
 import cats.kernel.Monoid
@@ -26,43 +28,42 @@ import tech.beshu.ror.accesscontrol._
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.acl.AccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.blocks.Block.{RuleWithVariableUsageDefinition, Verbosity}
+import tech.beshu.ror.accesscontrol.blocks.Block.{RuleDefinition, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{Header, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{Header, LocalUsers, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.UsernameCaseMapping
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError._
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.{AclCreationError, Attributes}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError._
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.{Attributes, CoreCreationError}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions._
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, GlobalStaticSettingsDecoder}
-import tech.beshu.ror.accesscontrol.logging.{AuditingTool, LoggingContext}
+import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
-import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps, _}
+import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils._
 import tech.beshu.ror.boot.ReadonlyRest.RorMode
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.{LocalUsersSupport, localUsersMonoid}
+import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
 import tech.beshu.ror.providers.{EnvVarsProvider, UuidProvider}
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.yaml.YamlOps
 
-import java.time.Clock
-
-final case class CoreSettings(aclEngine: AccessControl,
-                              auditingSettings: Option[AuditingTool.Settings])
+final case class Core(accessControl: AccessControl,
+                      rorConfig: RorConfig)
 
 trait CoreFactory {
   def createCoreFrom(config: RawRorConfig,
                      rorIndexNameConfiguration: RorConfigurationIndex,
                      httpClientFactory: HttpClientsFactory,
                      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                     mocksProvider: MocksProvider): Task[Either[NonEmptyList[AclCreationError], CoreSettings]]
+                     mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]]
 }
 
 class RawRorConfigBasedCoreFactory(rorMode: RorMode)
@@ -75,7 +76,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
                               rorIndexNameConfiguration: RorConfigurationIndex,
                               httpClientFactory: HttpClientsFactory,
                               ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                              mocksProvider: MocksProvider): Task[Either[NonEmptyList[AclCreationError], CoreSettings]] = {
+                              mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]] = {
     config.configJson \\ Attributes.rorSectionName match {
       case Nil => createCoreFromRorSection(
         config.configJson,
@@ -123,19 +124,15 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
       core <-
       if (!enabled) {
         AsyncDecoderCreator
-          .from(Decoder.const(CoreSettings(DisabledAccessControl, None)))
+          .from(Decoder.const(Core(DisabledAccessControl, RorConfig.disabled)))
       } else {
         for {
-          auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
           globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(
             rorMode,
             rorConfigurationIndex
           ))
-          acl <- aclDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings, mocksProvider)
-        } yield CoreSettings(
-          aclEngine = acl,
-          auditingSettings = auditingTools
-        )
+          core <- coreDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings, mocksProvider)
+        } yield core
       }
     } yield core
 
@@ -154,8 +151,8 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
 
   private def rulesNelDecoder(definitions: DefinitionsPack,
                               globalSettings: GlobalSettings,
-                              mocksProvider: MocksProvider): Decoder[NonEmptyList[RuleWithVariableUsageDefinition[Rule]]] = Decoder.instance { c =>
-    val init = State.pure[ACursor, Validated[List[String], Decoder.Result[List[RuleWithVariableUsageDefinition[Rule]]]]](Validated.Valid(Right(List.empty)))
+                              mocksProvider: MocksProvider): Decoder[NonEmptyList[RuleDefinition[Rule]]] = Decoder.instance { c =>
+    val init = State.pure[ACursor, Validated[List[String], Decoder.Result[List[RuleDefinition[Rule]]]]](Validated.Valid(Right(List.empty)))
 
     val (_, result) = c.keys.toList.flatten // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
@@ -220,7 +217,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
   private def blockDecoder(definitions: DefinitionsPack,
                            globalSettings: GlobalSettings,
                            mocksProvider: MocksProvider)
-                          (implicit loggingContext: LoggingContext): Decoder[Block] = {
+                          (implicit loggingContext: LoggingContext): Decoder[BlockDecodingResult] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] =
       Decoder
@@ -258,7 +255,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
                 .remove(Attributes.Block.verbosity))
             ))
           block <- Block.createFrom(name, policy, verbosity, rules).left.map(DecodingFailureOps.fromError(_))
-        } yield block
+        } yield BlockDecodingResult(block, rules.map(localUsersForRule).combineAll)
         result.left.map(_.overrideDefaultErrorWith(BlocksLevelCreationError(MalformedValue(c.value))))
       }
   }
@@ -269,13 +266,21 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
       .map(_.getOrElse(Set(Header.Name.authorization)))
   }
 
-  private def aclDecoder(httpClientFactory: HttpClientsFactory,
-                         ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                         globalSettings: GlobalSettings,
-                         mocksProvider: MocksProvider): AsyncDecoder[AccessControl] = {
+  private def localUsersForRule[R <: Rule](rule: RuleDefinition[R]) = {
+    rule.localUsersSupport match {
+      case users: LocalUsersSupport.AvailableLocalUsers[R] => users.definedLocalUsers(rule.rule)
+      case LocalUsersSupport.NotAvailableLocalUsers => LocalUsers.empty
+    }
+  }
+
+  private def coreDecoder(httpClientFactory: HttpClientsFactory,
+                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
+                          globalSettings: GlobalSettings,
+                          mocksProvider: MocksProvider): AsyncDecoder[Core] = {
     val caseMappingEquality: UserIdCaseMappingEquality = createUserMappingEquality(globalSettings)
-    AsyncDecoderCreator.instance[AccessControl] { c =>
+    AsyncDecoderCreator.instance[Core] { c =>
       val decoder = for {
+        auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
         authorizationServices <- AsyncDecoderCreator.from(ExternalAuthorizationServicesDecoder.instance(httpClientFactory))
@@ -298,9 +303,9 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
           caseMappingEquality
         ))
         obfuscatedHeaders <- AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
-        blocks <- {
+        blocksNel <- {
           implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
-          implicit val blockAsyncDecoder: AsyncDecoder[Block] = AsyncDecoderCreator.from {
+          implicit val blockAsyncDecoder: AsyncDecoder[BlockDecodingResult] = AsyncDecoderCreator.from {
             blockDecoder(
               DefinitionsPack(
                 proxies = authProxies,
@@ -317,7 +322,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
             )
           }
           DecoderHelpers
-            .decodeFieldList[Block, Task](Attributes.acl, RulesLevelCreationError.apply)
+            .decodeFieldList[BlockDecodingResult, Task](Attributes.acl, RulesLevelCreationError.apply)
             .emapE {
               case NoField => Left(BlocksLevelCreationError(Message(s"No ${Attributes.acl} section found")))
               case FieldListValue(blocks) =>
@@ -325,7 +330,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
                   case None =>
                     Left(BlocksLevelCreationError(Message(s"${Attributes.acl} defined, but no block found")))
                   case Some(neBlocks) =>
-                    neBlocks.map(_.name).toList.findDuplicates match {
+                    neBlocks.map(_.block.name).toList.findDuplicates match {
                       case Nil => Right(neBlocks)
                       case duplicates => Left(BlocksLevelCreationError(Message(s"Blocks must have unique names. Duplicates: ${duplicates.map(_.show).mkString(",")}")))
                     }
@@ -334,16 +339,32 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
         }
       } yield {
         implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
-        val upgradedBlocks = CrossBlockContextBlocksUpgrade.upgrade(blocks)
-        upgradedBlocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
-        new AccessControlList(
-          upgradedBlocks,
+        val blocks = blocksNel.map(_.block)
+        blocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
+        val localUsers: LocalUsers = {
+          val fromUserDefs = LocalUsers(users = Set.empty, unknownUsers = userDefs.items.map(_.usernames).nonEmpty)
+          val fromBlocks = blocksNel.map(_.localUsers).toList
+          (fromBlocks :+ fromUserDefs).combineAll
+        }
+
+        val rorConfig = RorConfig(
+          services = RorConfig.Services(
+            authenticationServices = authenticationServices.items.map(_.id),
+            authorizationServices = authorizationServices.items.map(_.id),
+            ldaps = ldapServices.items.map(_.id)
+          ),
+          localUsers = localUsers,
+          auditingSettings = auditingTools,
+        )
+        val accessControl = new AccessControlList(
+          blocks,
           new AccessControlListStaticContext(
             blocks,
             globalSettings,
             obfuscatedHeaders
           )
         ): AccessControl
+        Core(accessControl, rorConfig)
       }
       decoder.apply(c)
     }
@@ -352,18 +373,18 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
 
 object RawRorConfigBasedCoreFactory {
 
-  sealed trait AclCreationError {
+  sealed trait CoreCreationError {
     def reason: Reason
   }
 
-  object AclCreationError {
+  object CoreCreationError {
 
-    final case class GeneralReadonlyrestSettingsError(reason: Reason) extends AclCreationError
-    final case class DefinitionsLevelCreationError(reason: Reason) extends AclCreationError
-    final case class BlocksLevelCreationError(reason: Reason) extends AclCreationError
-    final case class RulesLevelCreationError(reason: Reason) extends AclCreationError
-    final case class ValueLevelCreationError(reason: Reason) extends AclCreationError
-    final case class AuditingSettingsCreationError(reason: Reason) extends AclCreationError
+    final case class GeneralReadonlyrestSettingsError(reason: Reason) extends CoreCreationError
+    final case class DefinitionsLevelCreationError(reason: Reason) extends CoreCreationError
+    final case class BlocksLevelCreationError(reason: Reason) extends CoreCreationError
+    final case class RulesLevelCreationError(reason: Reason) extends CoreCreationError
+    final case class ValueLevelCreationError(reason: Reason) extends CoreCreationError
+    final case class AuditingSettingsCreationError(reason: Reason) extends CoreCreationError
 
     sealed trait Reason
     object Reason {
@@ -382,9 +403,11 @@ object RawRorConfigBasedCoreFactory {
 
   }
 
+  private case class BlockDecodingResult(block: Block, localUsers: LocalUsers)
+
   private sealed trait RuleDecodingResult
   private object RuleDecodingResult {
-    final case class Result(value: Decoder.Result[RuleWithVariableUsageDefinition[Rule]]) extends RuleDecodingResult
+    final case class Result(value: Decoder.Result[RuleDefinition[Rule]]) extends RuleDecodingResult
     case object UnknownRule extends RuleDecodingResult
     case object Skipped extends RuleDecodingResult
   }

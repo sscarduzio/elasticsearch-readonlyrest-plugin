@@ -54,9 +54,9 @@ trait RemoteReindexSuite
     EsClusterSettings(
       name = "ROR_DEST_ES",
       rorContainerSpecification = ContainerSpecification(
-        Map(
-          "reindex.remote.whitelist" -> "*:9200"
-        )),
+        environmentVariables = Map.empty,
+        additionalElasticsearchYamlEntries = Map("reindex.remote.whitelist" -> "\"*:9200\"")
+      ),
       xPackSupport = false,
       externalSslEnabled = false
     )(rorConfigFileName)

@@ -21,8 +21,8 @@ import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyPBKDF2WithHmacSHA512Rule
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 
 class AuthKeyPBKDF2WithHmacSHA512RuleSettingsTests
   extends BaseRuleSettingsDecoderTest[AuthKeyPBKDF2WithHmacSHA512Rule] {

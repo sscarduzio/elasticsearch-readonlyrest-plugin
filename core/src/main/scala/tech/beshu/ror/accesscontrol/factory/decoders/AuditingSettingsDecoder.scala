@@ -21,8 +21,8 @@ import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.AuditingSettingsCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.AuditingSettingsCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common.lemonLabsUriDecoder
 import tech.beshu.ror.accesscontrol.logging.AuditingTool
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator

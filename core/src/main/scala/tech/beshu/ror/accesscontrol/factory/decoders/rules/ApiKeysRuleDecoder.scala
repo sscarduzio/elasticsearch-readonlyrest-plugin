@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.ApiKeysRule
 import tech.beshu.ror.accesscontrol.domain.ApiKey
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
@@ -27,10 +27,10 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 object ApiKeysRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[ApiKeysRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ApiKeysRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[ApiKeysRule]] = {
     DecoderHelpers
       .decodeNonEmptyStringLikeOrNonEmptySet(ApiKey.apply)
-      .map(apiKeys => RuleWithVariableUsageDefinition.create(new ApiKeysRule(ApiKeysRule.Settings(apiKeys))))
+      .map(apiKeys => RuleDefinition.create(new ApiKeysRule(ApiKeysRule.Settings(apiKeys))))
   }
 }
 
