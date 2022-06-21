@@ -120,7 +120,7 @@ object SslConfiguration {
                                              certificateVerificationEnabled: Boolean) extends SslConfiguration
 }
 
-private object SslDecoders {
+private object SslDecoders extends Logging {
   import tech.beshu.ror.configuration.SslConfiguration._
 
   object consts {
@@ -172,7 +172,9 @@ private object SslDecoders {
       val fileBasedKeys = Set(consts.clientTrustedCertificateFile)
       val presentKeys = c.keys.fold[Set[String]](Set.empty)(_.toSet)
       if (presentKeys.intersect(truststoreBasedKeys).size > 1 && presentKeys.intersect(fileBasedKeys).size > 1) {
-        Left(DecodingFailure(s"Fields [$fileBasedKeys] and [$truststoreBasedKeys] could not be present in the same configuration section", List.empty))
+        val errorMessage = s"Field sets [${fileBasedKeys.mkString(",")}] and [${truststoreBasedKeys.mkString(",")}] could not be present in the same configuration section"
+        logger.error(errorMessage)
+        Left(DecodingFailure(errorMessage, List.empty))
       } else if (presentKeys.intersect(truststoreBasedKeys ++ fileBasedKeys).isEmpty) {
         Right(None)
       } else {
@@ -198,7 +200,9 @@ private object SslDecoders {
       val fileBasedKeys = Set(consts.serverCertificateKeyFile, consts.serverCertificateFile)
       val presentKeys = c.keys.fold[Set[String]](Set.empty)(_.toSet)
       if (presentKeys.intersect(keystoreBasedKeys).size > 1 && presentKeys.intersect(fileBasedKeys).size > 1) {
-        Left(DecodingFailure(s"Fields [$fileBasedKeys] and [$keystoreBasedKeys] could not be present in the same configuration section", List.empty))
+        val errorMessage = s"Field sets [${fileBasedKeys.mkString(",")}] and [${keystoreBasedKeys.mkString(",")}] could not be present in the same configuration section"
+        logger.error(errorMessage)
+        Left(DecodingFailure(errorMessage, List.empty))
       } else {
         keystoreBasedServerCertificateConfigurationDecoder.or(fileBasedServerCertificateConfigurationDecoder).apply(c)
       }
