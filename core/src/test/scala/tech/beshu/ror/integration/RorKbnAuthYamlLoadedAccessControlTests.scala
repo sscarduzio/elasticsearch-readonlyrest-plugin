@@ -58,6 +58,7 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
       |
       |    - name: Valid JWT token is present
       |      type: allow
+      |      indices: ["index1"]
       |      ror_kbn_auth:
       |        name: "kbn1"
       |

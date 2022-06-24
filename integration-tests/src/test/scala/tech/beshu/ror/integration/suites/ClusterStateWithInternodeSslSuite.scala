@@ -21,8 +21,8 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterProvider, EsClusterSettings, EsContainer, EsContainerCreator, _}
-import tech.beshu.ror.utils.elasticsearch.{CatManager, IndexManager, RorApiManager}
+import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
 trait ClusterStateWithInternodeSslSuite
@@ -95,7 +95,7 @@ trait ClusterStateWithInternodeSslSuite
         val getIndexResult = indexManager.getIndex("test")
 
         getIndexResult.responseCode should be(200)
-        getIndexResult.indicesAndAliases.keys.toList should be (List("test"))
+        getIndexResult.indicesAndAliases.keys.toList should be(List("test"))
       }
     }
   }

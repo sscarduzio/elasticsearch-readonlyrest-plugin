@@ -39,12 +39,12 @@ class SearchManager(client: RestClient,
   def search(indexNames: String*): SearchResult =
     call(createSearchRequest(indexNames.toList), new SearchResult(_))
 
-  def asyncSearch(indexName: String): AsyncSearchResult = {
-    call(createAsyncSearchRequest(indexName :: Nil), new AsyncSearchResult(_))
+  def asyncSearch(indexName: String, indexNames: String*): AsyncSearchResult = {
+    call(createAsyncSearchRequest(indexName :: indexNames.toList, None), new AsyncSearchResult(_))
   }
 
-  def asyncSearch(indexNames: String*): AsyncSearchResult = {
-    call(createAsyncSearchRequest(indexNames.toList), new AsyncSearchResult(_))
+  def asyncSearch(indexName: String, body: JSON): AsyncSearchResult = {
+    call(createAsyncSearchRequest(indexName :: Nil, Some(body)), new AsyncSearchResult(_))
   }
 
   def mSearchUnsafe(lines: String*): MSearchResult = {
@@ -96,13 +96,22 @@ class SearchManager(client: RestClient,
     ))
   }
 
-  private def createAsyncSearchRequest(indexNames: List[String] = Nil) = {
-    new HttpPost(client.from(
+  private def createAsyncSearchRequest(indexNames: List[String],
+                                       body: Option[JSON]) = {
+    val request = new HttpPost(client.from(
       indexNames match {
         case Nil => "/_async_search"
         case names => s"/${names.mkString(",")}/_async_search"
-      }
+      },
+      Map("size" -> "10")
     ))
+    body match {
+      case Some(b) =>
+        request.addHeader("Content-Type", "application/json")
+        request.setEntity(new StringEntity(ujson.write(b)))
+      case None =>
+    }
+    request
   }
 
   private def createMultiSearchRequest(payload: String) = {

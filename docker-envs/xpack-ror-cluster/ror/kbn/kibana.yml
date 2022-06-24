@@ -1,0 +1,13 @@
+server.name: kibana-ror
+server.host: 0.0.0.0
+elasticsearch.hosts: [ "https://es03:9200" ]
+monitoring.ui.container.elasticsearch.enabled: true
+
+elasticsearch.username: admin
+elasticsearch.password: container
+
+elasticsearch.ssl.keystore.path: "/usr/share/kibana/config/elastic-certificates.p12"
+elasticsearch.ssl.keystore.password: "test"
+elasticsearch.ssl.truststore.path: "/usr/share/kibana/config/elastic-certificates.p12"
+elasticsearch.ssl.truststore.password: "test"
+elasticsearch.ssl.verificationMode: none

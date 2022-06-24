@@ -16,21 +16,25 @@
  */
 package tech.beshu.ror.es
 
+import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.util.concurrent.ThreadContext
 import org.elasticsearch.transport._
+import tech.beshu.ror.accesscontrol.domain.Action
 import tech.beshu.ror.es.utils.ThreadContextOps._
 
 class RorTransportInterceptor(threadContext: ThreadContext, nodeName: String)
   extends TransportInterceptor {
 
   override def interceptSender(sender: TransportInterceptor.AsyncSender): TransportInterceptor.AsyncSender =
-    new TransportInterceptor.AsyncSender {
+    new TransportInterceptor.AsyncSender with Logging {
       override def sendRequest[T <: TransportResponse](connection: Transport.Connection,
                                                        action: String,
                                                        request: TransportRequest,
                                                        options: TransportRequestOptions,
                                                        handler: TransportResponseHandler[T]): Unit = {
-        threadContext.addSystemAuthenticationHeader(nodeName)
+        if(Action.isInternal(action)) {
+          threadContext.addSystemAuthenticationHeader(nodeName)
+        }
         sender.sendRequest(connection, action, request, options, handler)
       }
     }

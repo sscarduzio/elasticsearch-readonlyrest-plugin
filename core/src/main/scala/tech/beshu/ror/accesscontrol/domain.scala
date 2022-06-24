@@ -345,6 +345,8 @@ object domain {
     val rorAuditEventAction = Action("cluster:ror/audit_event/put")
     val rorOldConfigAction = Action("cluster:ror/config/refreshsettings")
 
+    def isInternal(actionString: String): Boolean = actionString.startsWith("internal:")
+
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
     implicit val caseMappingEqualityAction: CaseMappingEquality[Action] = CaseMappingEquality.instance(_.value, identity)
   }

@@ -74,7 +74,6 @@ class GroupsOrRuleTests extends BaseGroupsRuleTests {
             AlreadyResolved(groupFrom("g1").nel),
             AlreadyResolved(groupFrom("g2").nel),
           ),
-
           usersDefinitions = NonEmptyList.of(UserDef(
             usernames = userIdPatterns("user1"),
             mode = WithoutGroupsMapping(
