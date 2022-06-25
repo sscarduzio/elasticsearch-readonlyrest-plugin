@@ -344,6 +344,40 @@ trait BaseAdminApiSuite
           dev2ror2After2ndReloadResults.responseCode should be(200)
 
         }
+        "configuration is valid and response with warnings" in {
+          val dev1Ror1stInstanceSearchManager = new SearchManager(
+            clients.head.basicAuthClient("admin1", "pass"),
+            Map("x-ror-impersonating" -> "dev1")
+          )
+
+          // before first reload no user can access indices
+          val dev1ror1Results = dev1Ror1stInstanceSearchManager.search("test1_index")
+          dev1ror1Results.responseCode should be(403)
+          dev1ror1Results.responseJson should be(testSettingsNotConfiguredResponse)
+
+          val testConfig = getResourceContent("/admin_api/readonlyrest_with_warnings.yml")
+          val result = ror1WithIndexConfigAdminActionManager.updateRorTestConfig(testConfig)
+
+          result.responseCode should be(200)
+          result.responseJson("status").str should be("OK")
+          result.responseJson("message").str should be("updated settings")
+
+          val testConfigResponse = ror1WithIndexConfigAdminActionManager.currentRorTestConfig
+          testConfigResponse.responseCode should be(200)
+          testConfigResponse.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
+          testConfigResponse.responseJson("settings").str should be(testConfig)
+          testConfigResponse.responseJson("ttl").str.matches("""^(0|[1-9][0-9]*) minutes""") should be(true)
+          isIsoDateTime(testConfigResponse.responseJson("valid_to").str) should be(true)
+          testConfigResponse.responseJson("warnings").arr.size should be(1)
+          testConfigResponse.responseJson("warnings")(0)("block_name").str should be("test1")
+          testConfigResponse.responseJson("warnings")(0)("rule_name").str should be("auth_key_sha256")
+          testConfigResponse.responseJson("warnings")(0)("message").str should be("The rule contains fully hashed username and password. It doesn't support impersonation in this configuration")
+          testConfigResponse.responseJson("warnings")(0)("hint").str should be("You can use second version of the rule and use not hashed username. Like that: `auth_key_sha256: USER_NAME:hash(PASSWORD)")
+
+          // user with hashed credential cannot be impersonated
+          val dev1ror1After2ndReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
+          dev1ror1After2ndReloadResults.responseCode should be(401)
+        }
         "return local users" in {
           val updateResult = ror1WithIndexConfigAdminActionManager.updateRorTestConfig(getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml"))
           updateResult.responseJson("status").str should be("OK")
