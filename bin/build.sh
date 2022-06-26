@@ -155,19 +155,19 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es8xx" ]]; then
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
     #es82
-    ./gradlew --stacktrace es82x:ror '-PesVersion=8.2.2'
-    ./gradlew --stacktrace es82x:ror '-PesVersion=8.2.1'
-    ./gradlew --stacktrace es82x:ror '-PesVersion=8.2.0'
+    ./bin/build-ror-plugin.sh 8.2.2
+    ./bin/build-ror-plugin.sh 8.2.1
+    ./bin/build-ror-plugin.sh 8.2.0
 
     #es81
-    ./gradlew --stacktrace es81x:ror '-PesVersion=8.1.3'
-    ./gradlew --stacktrace es81x:ror '-PesVersion=8.1.2'
-    ./gradlew --stacktrace es81x:ror '-PesVersion=8.1.1'
-    ./gradlew --stacktrace es81x:ror '-PesVersion=8.1.0'
+    ./bin/build-ror-plugin.sh 8.1.3
+    ./bin/build-ror-plugin.sh 8.1.2
+    ./bin/build-ror-plugin.sh 8.1.1
+    ./bin/build-ror-plugin.sh 8.1.0
 
     #es80
-    ./gradlew --stacktrace es80x:ror '-PesVersion=8.0.1'
-    ./gradlew --stacktrace es80x:ror '-PesVersion=8.0.0'
+    ./bin/build-ror-plugin.sh 8.0.1
+    ./bin/build-ror-plugin.sh 8.0.2
 
 fi
 

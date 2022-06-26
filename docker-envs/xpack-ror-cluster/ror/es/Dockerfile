@@ -1,11 +1,18 @@
-ARG ELK_VERSION
+ARG ES_VERSION
 
-FROM ror-build:es${ELK_VERSION} AS build
+FROM ror-builder AS build
+ARG ES_VERSION
+ARG ES_MODULE
 
-ARG ELK_VERSION
+ENV ELK_VERWSION=$ES_VERSION
 
-FROM docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION}
-COPY --from=build /ror/ror.zip /tmp/ror.zip
+RUN echo "ELK_VERSION: ES_VERSION" &&\
+    /ror/build-ror.sh &&\
+    ls -h /ror/build &&\
+    mv /ror/build/readonlyrest*es${ES_VERSION}.zip /ror/build/ror.zip
+
+FROM docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}
+COPY --from=build /ror/build/ror.zip /tmp/ror.zip
 
 COPY certs/elastic-certificates.p12 /usr/share/elasticsearch/config/
 COPY ror/es/readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml

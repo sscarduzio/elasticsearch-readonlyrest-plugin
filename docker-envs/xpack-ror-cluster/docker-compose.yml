@@ -84,9 +84,7 @@ services:
       context: .
       dockerfile: ror/es/Dockerfile
       args:
-        ELK_VERSION: $ELK_VERSION
-    depends_on:
-      - ror-build
+        ES_VERSION: $ELK_VERSION
     ports:
       - "9203:9200"
       - "9303:9300"
@@ -102,20 +100,13 @@ services:
       - discovery.seed_hosts=es01,es02
       - cluster.initial_master_nodes=es01-master,es02-master,es03-master
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672"
+      - ES_VERSION=$ELK_VERSION
     networks:
       - es-network
     ulimits:
       memlock:
         soft: -1
         hard: -1
-
-  ror-build:
-    build:
-      context: ../../
-      args:
-        ES_MODULE: $ES_MODULE
-        ES_VERSION: $ELK_VERSION
-    image: ror-build:es${ELK_VERSION}
 
   kbn-ror:
     build:

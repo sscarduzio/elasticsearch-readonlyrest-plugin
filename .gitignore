@@ -44,10 +44,14 @@ target/
 *.pem
 *.pkcs8
 *.p12
-!/docker-envs/**
+!/docker-envs/**/*.p12
 
 // OSX
 .DS_Store
 
 .travis/secret.pgp
 .java-version
+
+// docker-envs
+builds/*
+docker-envs/build-ror-in-docker/builds/
