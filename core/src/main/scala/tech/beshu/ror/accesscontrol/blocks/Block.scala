@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Misma
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block._
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
@@ -153,10 +154,16 @@ object Block {
 
   final case class RuleDefinition[+T <: Rule](rule: T,
                                               variableUsage: VariableUsage[T],
-                                              localUsersSupport: LocalUsersSupport[T])
+                                              localUsersSupport: LocalUsersSupport[T],
+                                              impersonationWarnings: ImpersonationWarningSupport[T])
   object RuleDefinition {
-    def create[T <: Rule : VariableUsage : LocalUsersSupport](rule: T) = {
-      new RuleDefinition(rule, implicitly[VariableUsage[T]], implicitly[LocalUsersSupport[T]])
+    def create[T <: Rule : VariableUsage : LocalUsersSupport : ImpersonationWarningSupport](rule: T) = {
+      new RuleDefinition(
+        rule,
+        implicitly[VariableUsage[T]],
+        implicitly[LocalUsersSupport[T]],
+        implicitly[ImpersonationWarningSupport[T]]
+      )
     }
   }
 
