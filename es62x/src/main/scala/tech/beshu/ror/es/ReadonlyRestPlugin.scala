@@ -18,7 +18,7 @@ package tech.beshu.ror.es
 
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
-import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
+import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.client.Client
@@ -26,7 +26,6 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes
 import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.common.component.LifecycleComponent
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
@@ -35,7 +34,6 @@ import org.elasticsearch.common.settings._
 import org.elasticsearch.common.util.concurrent.{EsExecutors, ThreadContext}
 import org.elasticsearch.common.util.{BigArrays, PageCacheRecycler}
 import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.discovery.zen.PublishClusterStateAction.serializeFullClusterState
 import org.elasticsearch.env.{Environment, NodeEnvironment}
 import org.elasticsearch.http.HttpServerTransport
 import org.elasticsearch.index.IndexModule
@@ -46,10 +44,9 @@ import org.elasticsearch.plugins._
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.transport.Transport
+import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
-import org.elasticsearch.{ElasticsearchException, Version}
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.boot.EsInitListener

@@ -27,7 +27,7 @@ import org.elasticsearch.snapshots.SnapshotsService
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
-import tech.beshu.ror.accesscontrol.domain.AuditCluster
+import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, RorMode}
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
@@ -117,10 +117,7 @@ class IndexLevelActionFilter(nodeName: String,
         action,
         request,
         listener.asInstanceOf[ActionListener[ActionResponse]],
-        new EsChain(
-          chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]],
-          threadPool
-        )
+        new EsChain(chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]])
       )
     }
   }
@@ -132,9 +129,9 @@ class IndexLevelActionFilter(nodeName: String,
                       chain: EsChain): Unit = {
     ThreadRepo.getRorRestChannel match {
       case None =>
-        chain.continue(nodeName, task, action, request, listener)
-      case Some(_) if action.startsWith("internal:") =>
-        chain.continue(nodeName, task, action, request, listener)
+        chain.continue(task, action, request, listener)
+      case Some(_) if Action.isInternal(action) =>
+        chain.continue(task, action, request, listener)
       case Some(channel) =>
         proceedByRorEngine(
           EsContext(

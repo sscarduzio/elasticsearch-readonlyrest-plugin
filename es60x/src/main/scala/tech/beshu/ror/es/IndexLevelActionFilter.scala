@@ -124,10 +124,7 @@ class IndexLevelActionFilter(settings: Settings,
         action,
         request,
         listener.asInstanceOf[ActionListener[ActionResponse]],
-        new EsChain(
-          chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]],
-          threadPool
-        )
+        new EsChain(chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]])
       )
     }
   }
@@ -139,9 +136,9 @@ class IndexLevelActionFilter(settings: Settings,
                       chain: EsChain): Unit = {
     ThreadRepo.getRorRestChannel match {
       case None =>
-        chain.continue(nodeName, task, action, request, listener)
-      case Some(_) if action.startsWith("internal:") =>
-        chain.continue(nodeName, task, action, request, listener)
+        chain.continue(task, action, request, listener)
+      case Some(_) if Action.isInternal(action) =>
+        chain.continue(task, action, request, listener)
       case Some(channel) =>
         proceedByRorEngine(
           EsContext(

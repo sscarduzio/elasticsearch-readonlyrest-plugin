@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.handler
 
-import java.time.Instant
 import cats.implicits._
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -73,6 +72,7 @@ import tech.beshu.ror.es.handler.request.context.types._
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
+import java.time.Instant
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 
@@ -263,20 +263,17 @@ object AclAwareRequestFilter {
     }
   }
 
-  final class EsChain(chain: ActionFilterChain[ActionRequest, ActionResponse],
-                      threadPool: ThreadPool) {
+  final class EsChain(chain: ActionFilterChain[ActionRequest, ActionResponse]) {
 
-    def continue(exContext: EsContext,
+    def continue(esContext: EsContext,
                  listener: ActionListener[ActionResponse]): Unit = {
-      continue(exContext.nodeName, exContext.task, exContext.actionType, exContext.actionRequest, listener)
+      continue(esContext.task, esContext.actionType, esContext.actionRequest, listener)
     }
 
-    def continue(nodeName: String,
-                 task: EsTask,
+    def continue(task: EsTask,
                  action: String,
                  request: ActionRequest,
                  listener: ActionListener[ActionResponse]): Unit = {
-      threadPool.getThreadContext.addXPackAuthenticationHeader(nodeName)
       chain.proceed(task, action, request, listener)
     }
   }

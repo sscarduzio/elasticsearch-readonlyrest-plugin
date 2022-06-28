@@ -28,6 +28,11 @@ import scala.collection.JavaConverters._
 
 object XPackSecurityAuthenticationHeader {
 
+  def createXpackSecurityAuthenticationHeader(nodeName: String) = new Header(
+    Header.Name("_xpack_security_authentication"),
+    getAuthenticationHeaderValue(nodeName, "_xpack_security")
+  )
+
   def createXpackAuthenticationHeader(nodeName: String) = new Header(
     Header.Name("_xpack_security_authentication"),
     getAuthenticationHeaderValue(nodeName, "_xpack")

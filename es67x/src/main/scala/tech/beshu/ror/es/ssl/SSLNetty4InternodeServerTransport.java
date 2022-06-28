@@ -130,7 +130,6 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
         ch.pipeline().addFirst("ror_internode_ssl_handler", sslCtx.newHandler(ch.alloc()));
       });
     }
-
   }
 
 }

@@ -246,7 +246,7 @@ object AclAwareRequestFilter {
                              actionRequest: ActionRequest,
                              listener: ActionListener[ActionResponse],
                              chain: EsChain,
-                             threadContextResponseHeaders: Set[(String, String)]) extends Logging {
+                             threadContextResponseHeaders: Set[(String, String)]) {
     lazy val requestContextId = s"${channel.request().hashCode()}-${actionRequest.hashCode()}#${task.getId}"
     val timestamp: Instant = Instant.now()
 
@@ -267,7 +267,7 @@ object AclAwareRequestFilter {
     }
   }
 
-  final class EsChain(chain: ActionFilterChain[ActionRequest, ActionResponse]) extends Logging {
+  final class EsChain(chain: ActionFilterChain[ActionRequest, ActionResponse]) {
 
     def continue(esContext: EsContext,
                  listener: ActionListener[ActionResponse]): Unit = {

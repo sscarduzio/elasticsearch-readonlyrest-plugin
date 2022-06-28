@@ -14,10 +14,10 @@ services:
     environment:
       - cluster.name=es-cluster
       - node.name=es01-master
-      - node.master=true
-      - node.ingest=false
-      - node.data=true
-      - node.max_local_storage_nodes=3
+      - node.roles=master,data
+#      - node.master=true
+#      - node.ingest=false
+#      - node.data=true
       - bootstrap.memory_lock=true
       - discovery.seed_hosts=es02,es03
       - cluster.initial_master_nodes=es01-master,es02-master,es03-master
@@ -53,10 +53,10 @@ services:
     environment:
       - cluster.name=es-cluster
       - node.name=es02-master
-      - node.master=true
-      - node.ingest=false
-      - node.data=true
-      - node.max_local_storage_nodes=3
+      - node.roles=master,data
+#      - node.master=true
+#      - node.ingest=false
+#      - node.data=true
       - bootstrap.memory_lock=true
       - discovery.seed_hosts=es01,es03
       - cluster.initial_master_nodes=es01-master,es02-master,es03-master
@@ -92,10 +92,10 @@ services:
     environment:
       - cluster.name=es-cluster
       - node.name=es03-master
-      - node.master=true
-      - node.ingest=false
-      - node.data=true
-      - node.max_local_storage_nodes=3
+      - node.roles=master,data
+#      - node.master=true
+#      - node.ingest=false
+#      - node.data=true
       - bootstrap.memory_lock=true
       - discovery.seed_hosts=es01,es02
       - cluster.initial_master_nodes=es01-master,es02-master,es03-master
