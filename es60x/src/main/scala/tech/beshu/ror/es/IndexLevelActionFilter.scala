@@ -27,7 +27,7 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.env.Environment
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.domain.AuditCluster
+import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, RorMode}
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler

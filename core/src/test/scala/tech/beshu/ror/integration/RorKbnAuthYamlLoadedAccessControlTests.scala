@@ -58,7 +58,6 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
       |
       |    - name: Valid JWT token is present
       |      type: allow
-      |      indices: ["index1"]
       |      ror_kbn_auth:
       |        name: "kbn1"
       |
@@ -93,7 +92,7 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
       |
     """.stripMargin
 
-  "A ACL" when {
+  "An ACL" when {
     "is configured using config above" should {
       "allow to proceed" when {
         "JWT token with empty list of groups is defined" in {
