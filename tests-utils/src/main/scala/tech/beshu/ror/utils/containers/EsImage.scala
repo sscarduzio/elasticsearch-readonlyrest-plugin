@@ -142,7 +142,11 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
       })
   }
 
-  private def xmJavaOptions() = List("-Xms1g", "-Xmx1g")
+  private def xmJavaOptions() = List("-Xms1g", "-Xmx1g",
+    "--add-opens org.elasticsearch.server/org.elasticsearch.rest=ALL-UNNAMED",
+    "--add-opens org.elasticsearch.server/org.elasticsearch.common.path=ALL-UNNAMED",
+    "--add-opens org.elasticsearch.server/org.elasticsearch.index=ALL-UNNAMED",
+  )
 
   private def urandomJavaOption() = List("-Djava.security.egd=file:/dev/./urandoms")
 
