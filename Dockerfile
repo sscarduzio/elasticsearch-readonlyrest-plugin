@@ -11,7 +11,7 @@ WORKDIR /ror
 
 ENV ES_VERSION=8.2.2
 
-RUN printf './bin/build-ror-plugin.sh $ES_VERSION' > build-ror.sh &&\
+RUN echo -e '#!/bin/bash \n ./bin/build-ror-plugin.sh $ES_VERSION' > build-ror.sh &&\
     chmod +x build-ror.sh
 
 ENTRYPOINT /ror/build-ror.sh

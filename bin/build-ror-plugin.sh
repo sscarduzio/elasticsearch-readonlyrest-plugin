@@ -13,7 +13,6 @@ export -f version
 vergte() {
   [ $(version $1) -ge $(version $2) ]
 }
-
 export -f vergte
 
 ES_VERSION=$1

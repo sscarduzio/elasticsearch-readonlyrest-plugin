@@ -218,7 +218,7 @@ class RegularRequestHandler(engine: Engine,
 
   private def proceed(listener: ActionListener[ActionResponse] = esContext.listener): Unit = {
     logRequestProcessingTime()
-    threadPool.getThreadContext.addXPackAuthenticationHeader(esContext.nodeName)
+    threadPool.getThreadContext.addXpackSecurityAuthenticationHeader(esContext.nodeName)
     esContext.chain.continue(esContext, listener)
   }
 
