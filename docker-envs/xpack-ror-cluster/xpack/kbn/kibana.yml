@@ -1,6 +1,6 @@
 server.name: kibana-xpack
 server.host: 0.0.0.0
-elasticsearch.hosts: [ "https://es02:9200" ]
+elasticsearch.hosts: [ "https://es-xpack-proxy:8080" ]
 monitoring.ui.container.elasticsearch.enabled: true
 
 elasticsearch.username: elastic

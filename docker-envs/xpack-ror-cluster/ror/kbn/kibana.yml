@@ -1,6 +1,6 @@
 server.name: kibana-ror
 server.host: 0.0.0.0
-elasticsearch.hosts: [ "https://es03:9200" ]
+elasticsearch.hosts: [ "https://es-ror-proxy:8080" ]
 monitoring.ui.container.elasticsearch.enabled: true
 
 elasticsearch.username: admin

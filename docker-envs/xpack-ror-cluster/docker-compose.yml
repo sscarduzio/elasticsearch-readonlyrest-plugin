@@ -82,9 +82,9 @@ services:
   es03:
     build:
       context: .
-      dockerfile: ror/es/Dockerfile
+      dockerfile: xpack/es/Dockerfile
       args:
-        ES_VERSION: $ELK_VERSION
+        ELK_VERSION: $ELK_VERSION
     ports:
       - "9203:9200"
       - "9303:9300"
@@ -93,11 +93,117 @@ services:
       - cluster.name=es-cluster
       - node.name=es03-master
       - node.roles=master,data
-#      - node.master=true
-#      - node.ingest=false
-#      - node.data=true
+      #      - node.master=true
+      #      - node.ingest=false
+      #      - node.data=true
       - bootstrap.memory_lock=true
-      - discovery.seed_hosts=es01,es02
+      - discovery.seed_hosts=es01,es03
+      - cluster.initial_master_nodes=es01-master,es02-master,es03-master
+      - xpack.security.enabled=true
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.verification_mode=none
+      - xpack.security.transport.ssl.client_authentication=none
+      - xpack.security.transport.ssl.keystore.path=elastic-certificates.p12
+      - xpack.security.transport.ssl.truststore.path=elastic-certificates.p12
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.verification_mode=none
+      - xpack.security.http.ssl.client_authentication=none
+      - xpack.security.http.ssl.keystore.path=elastic-certificates.p12
+      - xpack.security.http.ssl.truststore.path=elastic-certificates.p12
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672"
+    networks:
+      - es-network
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+#  es03:
+#    build:
+#      context: .
+#      dockerfile: ror/es/Dockerfile
+#      args:
+#        ES_VERSION: $ELK_VERSION
+#    ports:
+#      - "9203:9200"
+#      - "9303:9300"
+#      - "5003:58672"
+#    environment:
+#      - cluster.name=es-cluster
+#      - node.name=es03-master
+#      - node.roles=master,data
+##      - node.master=true
+##      - node.ingest=false
+##      - node.data=true
+#      - bootstrap.memory_lock=true
+#      - discovery.seed_hosts=es01,es02
+#      - cluster.initial_master_nodes=es01-master,es02-master,es03-master
+#      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672"
+#      - ES_VERSION=$ELK_VERSION
+#    networks:
+#      - es-network
+#    ulimits:
+#      memlock:
+#        soft: -1
+#        hard: -1
+
+  es04:
+    build:
+      context: .
+      dockerfile: xpack/es/Dockerfile
+      args:
+        ELK_VERSION: $ELK_VERSION
+    ports:
+      - "9204:9200"
+      - "9304:9300"
+      - "5004:58672"
+    environment:
+      - cluster.name=es-cluster
+      - node.name=es04-coord
+#      - node.master=false
+#      - node.ingest=false
+#      - node.data=false
+      - bootstrap.memory_lock=true
+      - discovery.seed_hosts=es01,es02,es03
+      - cluster.initial_master_nodes=es01-master,es02-master,es03-master
+      - xpack.security.enabled=true
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.verification_mode=none
+      - xpack.security.transport.ssl.client_authentication=none
+      - xpack.security.transport.ssl.keystore.path=elastic-certificates.p12
+      - xpack.security.transport.ssl.truststore.path=elastic-certificates.p12
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.verification_mode=none
+      - xpack.security.http.ssl.client_authentication=none
+      - xpack.security.http.ssl.keystore.path=elastic-certificates.p12
+      - xpack.security.http.ssl.truststore.path=elastic-certificates.p12
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672"
+      - ES_VERSION=$ELK_VERSION
+    networks:
+      - es-network
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  es05:
+    build:
+      context: .
+      dockerfile: ror/es/Dockerfile
+      args:
+        ES_VERSION: $ELK_VERSION
+    ports:
+      - "9205:9200"
+      - "9305:9300"
+      - "5005:58672"
+    environment:
+      - cluster.name=es-cluster
+      - node.name=es05-coord
+#      - node.master=false
+#      - node.ingest=true
+#      - node.data=false
+      - bootstrap.memory_lock=true
+      - discovery.seed_hosts=es01,es02,es03
       - cluster.initial_master_nodes=es01-master,es02-master,es03-master
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672"
       - ES_VERSION=$ELK_VERSION
@@ -107,6 +213,15 @@ services:
       memlock:
         soft: -1
         hard: -1
+
+  es-ror-proxy:
+    image: mitmproxy/mitmproxy
+    command:
+      mitmdump --mode reverse:https://es05:9200 --ssl-insecure --verbose
+    depends_on:
+      - es05
+    networks:
+      - es-network
 
   kbn-ror:
     build:
@@ -125,6 +240,15 @@ services:
       memlock:
         soft: -1
         hard: -1
+
+  es-xpack-proxy:
+    image: mitmproxy/mitmproxy
+    command:
+      mitmdump --mode reverse:https://es04:9200 --ssl-insecure --verbose
+    depends_on:
+      - es04
+    networks:
+      - es-network
 
   kbn-xpack:
     build:
