@@ -326,6 +326,12 @@ object domain {
       rollupSearchAction,
       searchTemplateAction
     ).contains(this)
+
+    def isFieldCapsAction: Boolean =
+      fieldCapsAction == this
+
+    def isInternal: Boolean =
+      Action.isInternal(value)
   }
   object Action {
     val searchAction = Action("indices:data/read/search")

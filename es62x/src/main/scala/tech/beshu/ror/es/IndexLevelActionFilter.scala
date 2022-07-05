@@ -114,7 +114,7 @@ class IndexLevelActionFilter(nodeName: String,
     doPrivileged {
       proceed(
         task,
-        action,
+        Action(action),
         request,
         listener.asInstanceOf[ActionListener[ActionResponse]],
         new EsChain(chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]])
@@ -123,14 +123,14 @@ class IndexLevelActionFilter(nodeName: String,
   }
 
   private def proceed(task: Task,
-                      action: String,
+                      action: Action,
                       request: ActionRequest,
                       listener: ActionListener[ActionResponse],
                       chain: EsChain): Unit = {
     ThreadRepo.getRorRestChannel match {
       case None =>
         chain.continue(task, action, request, listener)
-      case Some(_) if Action.isInternal(action) =>
+      case Some(_) if action.isInternal =>
         chain.continue(task, action, request, listener)
       case Some(channel) =>
         proceedByRorEngine(

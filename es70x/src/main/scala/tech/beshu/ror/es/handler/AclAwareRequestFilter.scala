@@ -58,7 +58,7 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.domain.{Action, Header}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
@@ -221,7 +221,7 @@ object AclAwareRequestFilter {
   final case class EsContext(channel: RestChannel with ResponseFieldsFiltering,
                              nodeName: String,
                              task: EsTask,
-                             actionType: String,
+                             action: Action,
                              actionRequest: ActionRequest,
                              listener: ActionListener[ActionResponse],
                              chain: EsChain,
@@ -250,14 +250,14 @@ object AclAwareRequestFilter {
 
     def continue(esContext: EsContext,
                  listener: ActionListener[ActionResponse]): Unit = {
-      continue(esContext.task, esContext.actionType, esContext.actionRequest, listener)
+      continue(esContext.task, esContext.action, esContext.actionRequest, listener)
     }
 
     def continue(task: EsTask,
-                 action: String,
+                 action: Action,
                  request: ActionRequest,
                  listener: ActionListener[ActionResponse]): Unit = {
-      chain.proceed(task, action, request, listener)
+      chain.proceed(task, action.value, request, listener)
     }
   }
 

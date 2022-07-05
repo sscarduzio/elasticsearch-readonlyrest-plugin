@@ -218,7 +218,7 @@ class RegularRequestHandler(engine: Engine,
 
   private def proceed(listener: ActionListener[ActionResponse] = esContext.listener): Unit = {
     logRequestProcessingTime()
-    if(esContext.actionType.contains("indices:data/read/field_caps"))
+    if(esContext.action.isFieldCapsAction)
       threadPool.getThreadContext.addSystemAuthenticationHeader(esContext.nodeName)
     else
       threadPool.getThreadContext.addXpackSecurityAuthenticationHeader(esContext.nodeName)

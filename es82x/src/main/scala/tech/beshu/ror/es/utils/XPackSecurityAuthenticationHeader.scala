@@ -33,11 +33,6 @@ object XPackSecurityAuthenticationHeader {
     getAuthenticationHeaderValue(nodeName, "_xpack_security")
   )
 
-  def createXpackAuthenticationHeader(nodeName: String) = new Header(
-    Header.Name("_xpack_security_authentication"),
-    getAuthenticationHeaderValue(nodeName, "_xpack")
-  )
-
   def createSystemAuthenticationHeader(nodeName: String) = new Header(
     Header.Name("_xpack_security_authentication"),
     getAuthenticationHeaderValue(nodeName, "_system")
