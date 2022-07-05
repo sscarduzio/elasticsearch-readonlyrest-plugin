@@ -121,7 +121,7 @@ class IndexLevelActionFilter(settings: Settings,
     doPrivileged {
       proceed(
         task,
-        action,
+        Action(action),
         request,
         listener.asInstanceOf[ActionListener[ActionResponse]],
         new EsChain(chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]])
