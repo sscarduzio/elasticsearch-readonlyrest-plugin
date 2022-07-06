@@ -155,19 +155,19 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es8xx" ]]; then
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
     #es82
-    ./bin/build-ror-plugin.sh 8.2.2
-    ./bin/build-ror-plugin.sh 8.2.1
-    ./bin/build-ror-plugin.sh 8.2.0
+    source bin/build-ror-plugin.sh 8.2.2
+    source bin/build-ror-plugin.sh 8.2.1
+    source bin/build-ror-plugin.sh 8.2.0
 
     #es81
-    ./bin/build-ror-plugin.sh 8.1.3
-    ./bin/build-ror-plugin.sh 8.1.2
-    ./bin/build-ror-plugin.sh 8.1.1
-    ./bin/build-ror-plugin.sh 8.1.0
+    source bin/build-ror-plugin.sh 8.1.3
+    source bin/build-ror-plugin.sh 8.1.2
+    source bin/build-ror-plugin.sh 8.1.1
+    source bin/build-ror-plugin.sh 8.1.0
 
     #es80
-    ./bin/build-ror-plugin.sh 8.0.1
-    ./bin/build-ror-plugin.sh 8.0.2
+    source bin/build-ror-plugin.sh 8.0.1
+    source bin/build-ror-plugin.sh 8.0.2
 
 fi
 
