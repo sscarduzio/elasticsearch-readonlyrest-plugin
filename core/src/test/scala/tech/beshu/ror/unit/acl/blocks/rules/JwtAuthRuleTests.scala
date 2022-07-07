@@ -191,7 +191,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
@@ -308,7 +308,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
@@ -467,7 +467,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
@@ -487,7 +487,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
@@ -507,7 +507,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))

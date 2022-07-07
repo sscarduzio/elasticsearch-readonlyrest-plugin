@@ -134,7 +134,7 @@ object domain {
             } yield (Header.Name(nonEmptyName), nonEmptyValues)
           }
           .toSeq
-          .partition { case (name, _) => name === Header.Name.authorization }
+          .partition { case (name, _) => name === Header.Name.rorAuthorization }
       val headersFromAuthorizationHeaderValues = authorizationHeaders
         .flatMap { case (_, values) =>
           val headersFromAuthorizationHeaderValues = values

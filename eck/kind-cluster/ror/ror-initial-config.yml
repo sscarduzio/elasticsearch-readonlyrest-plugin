@@ -5,19 +5,19 @@ data:
        access_control_rules:
        
        - name: "::KIBANA-SRV::"
-         verbosity: error
+         #verbosity: error
          auth_key: kibana:kibana
 
        - name: "DEFAULT KIBANA USER"
-         verbosity: error
+         #verbosity: error
          auth_key: "default-quickstart-kibana-user:${KIBANA_USER_PASS}"
  
        - name: "PROBE"
-         verbosity: error
+         #verbosity: error
          auth_key: "elastic-internal-probe:${INTERNAL_PROBE_PASS}"
 
        - name: "ELASTIC-INTERNAL"
-         verbosity: error
+         #verbosity: error
          auth_key: "elastic-internal:${INTERNAL_USR_PASS}"
 
        - name: "CONTAINER ADMIN - file"

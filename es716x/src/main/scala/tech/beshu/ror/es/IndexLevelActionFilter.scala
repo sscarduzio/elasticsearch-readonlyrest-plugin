@@ -65,7 +65,7 @@ class IndexLevelActionFilter(nodeName: String,
 
   private val ror = ReadonlyRest.create(
     RorMode.Plugin,
-    new EsIndexJsonContentService(client, nodeName, threadPool),
+    new EsIndexJsonContentService(client),
     auditSinkCreator,
     env.configFile
   )

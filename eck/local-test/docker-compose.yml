@@ -3,7 +3,7 @@ version: '3'
 services:
 
   es: 
-    image: coutopl/es_7.17.0_ror_1.38.0-eck-poc
+    image: coutopl/es_7.17.0_ror_1.42.0-eck-poc
     ports: 
     - 9202:9200
     environment:

@@ -122,7 +122,7 @@ class JwtAuthRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-              rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+              rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "))
               rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
               rule.settings.jwt.userClaim should be(None)
               rule.settings.jwt.groupsClaim should be(None)
@@ -156,7 +156,7 @@ class JwtAuthRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-              rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+              rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "))
               rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
               rule.settings.jwt.userClaim should be(None)
               rule.settings.jwt.groupsClaim should be(None)

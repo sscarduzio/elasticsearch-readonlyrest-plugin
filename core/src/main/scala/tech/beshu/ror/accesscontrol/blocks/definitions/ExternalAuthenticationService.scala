@@ -72,7 +72,7 @@ class JwtExternalAuthenticationService(override val id: ExternalAuthenticationSe
 
   override def authenticate(credentials: Credentials): Task[Boolean] = {
     httpClient
-      .send(sttp.get(uri).header(Header.Name.authorization.value.value, s"Bearer ${credentials.secret.value}"))
+      .send(sttp.get(uri).header(Header.Name.rorAuthorization.value.value, s"Bearer ${credentials.secret.value}"))
       .map(_.code === successStatusCode)
   }
 }
