@@ -73,6 +73,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl,
       }
   }
 
+  // todo: logging metadata should be a little bit different
   override def handleMetadataRequest(requestContext: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]] = {
     logger.debug(s"checking user metadata request: ${requestContext.id.show}")
     underlying

@@ -136,10 +136,17 @@ object RequestContext extends Logging {
         else idx.mkString(",")
       }
 
+      def stringifyUserGroup = {
+        userMetadata.currentGroup match {
+          case Some(group) => group.show
+          case None => "<N/A>"
+        }
+      }
+
       s"""{
          | ID:${r.id.show},
          | TYP:${r.`type`.show},
-         | CGR:${userMetadata.currentGroup.show},
+         | CGR:$stringifyUserGroup,
          | USR:$stringifyUser,
          | BRS:${r.headers.exists(_.name === Header.Name.userAgent)},
          | KDX:${userMetadata.kibanaIndex.map(_.show).getOrElse("null")},

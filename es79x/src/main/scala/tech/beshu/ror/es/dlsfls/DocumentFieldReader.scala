@@ -21,7 +21,6 @@ import java.util.{Iterator => JavaIterator}
 
 import com.google.common.collect.Iterators
 import org.apache.logging.log4j.scala.Logging
-import org.apache.lucene.codecs.StoredFieldsReader
 import org.apache.lucene.index.StoredFieldVisitor.Status
 import org.apache.lucene.index._
 import org.apache.lucene.util.Bits

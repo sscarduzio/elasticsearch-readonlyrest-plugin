@@ -16,9 +16,6 @@
  */
 package tech.beshu.ror.es.dlsfls
 
-import java.io.IOException
-import java.util.function.{Function => JavaFunction}
-
 import cats.data.StateT
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
@@ -30,6 +27,8 @@ import org.elasticsearch.index.IndexService
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsFromHeaderValue
 
+import java.io.IOException
+import java.util.function.{Function => JavaFunction}
 import scala.util.{Failure, Success, Try}
 
 object RoleIndexSearcherWrapper extends Logging {

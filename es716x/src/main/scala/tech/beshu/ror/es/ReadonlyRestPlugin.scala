@@ -44,8 +44,8 @@ import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.transport.{SharedGroupFactory, Transport, TransportInterceptor}
+import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
 import org.elasticsearch.xcontent.NamedXContentRegistry
 import tech.beshu.ror.Constants

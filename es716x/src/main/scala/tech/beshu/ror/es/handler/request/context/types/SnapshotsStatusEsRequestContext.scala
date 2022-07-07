@@ -66,7 +66,7 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
   }
 
   private def filterOutNotAllowedSnapshotsAndRepositories(response: SnapshotsStatusResponse,
-                                                  blockContext: SnapshotRequestBlockContext): SnapshotsStatusResponse = {
+                                                          blockContext: SnapshotRequestBlockContext): SnapshotsStatusResponse = {
     val allowedRepositoriesMatcher = MatcherWithWildcardsScalaAdapter.create(blockContext.repositories)
     val allowedSnapshotsMatcher = MatcherWithWildcardsScalaAdapter.create(blockContext.snapshots)
 

@@ -21,8 +21,8 @@ import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationT
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
+import tech.beshu.ror.utils.elasticsearch.DocumentManager.BulkAction
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.Version
 
 trait DocumentApiSuite
   extends AnyWordSpec
@@ -126,8 +126,8 @@ trait DocumentApiSuite
       "allow to create all requests indices" when {
         "user has access to all of them" in {
           val result = dev1documentManager.bulkUnsafe(
-            bulkCreateIndexDocEntry("index1_2020-01-01", 1) ++
-              bulkCreateIndexDocEntry("index1_2020-01-02", 1): _*
+            BulkAction.Insert("index1_2020-01-01", 1, ujson.read("""{ "message" : "hello" }""")),
+            BulkAction.Insert("index1_2020-01-02", 1, ujson.read("""{ "message" : "hello" }"""))
           )
 
           result.responseCode should be(200)
@@ -141,27 +141,13 @@ trait DocumentApiSuite
       "not allow to create indices" when {
         "even one index is forbidden" in {
           val result = dev1documentManager.bulkUnsafe(
-            bulkCreateIndexDocEntry("index1_2020-01-01", 1) ++
-              bulkCreateIndexDocEntry("index2_2020-01-01", 1): _*
+            BulkAction.Insert("index1_2020-01-01", 1, ujson.read("""{ "message" : "hello" }""")),
+            BulkAction.Insert("index2_2020-01-01", 1, ujson.read("""{ "message" : "hello" }"""))
           )
 
           result.responseCode should be(401)
         }
       }
-    }
-  }
-
-  private def bulkCreateIndexDocEntry(index: String, docId: Int) = {
-    if (Version.greaterOrEqualThan(esVersionUsed, 7, 0, 0)) {
-      Seq(
-        s"""{ "create" : { "_index" : "$index", "_id" : "$docId" } }""",
-        """{ "message" : "hello" }"""
-      )
-    } else {
-      Seq(
-        s"""{ "create" : { "_index" : "$index", "_type" : "doc", "_id" : "$docId" } }""",
-        """{ "message" : "hello" }"""
-      )
     }
   }
 }
