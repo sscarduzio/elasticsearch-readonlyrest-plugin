@@ -28,9 +28,9 @@ import scala.collection.JavaConverters._
 
 object XPackSecurityAuthenticationHeader {
 
-  def createXpackAuthenticationHeader(nodeName: String) = new Header(
+  def createXpackSecurityAuthenticationHeader(nodeName: String) = new Header(
     Header.Name("_xpack_security_authentication"),
-    getAuthenticationHeaderValue(nodeName, "_xpack")
+    getAuthenticationHeaderValue(nodeName, "_xpack_security")
   )
 
   def createSystemAuthenticationHeader(nodeName: String) = new Header(
@@ -38,13 +38,13 @@ object XPackSecurityAuthenticationHeader {
     getAuthenticationHeaderValue(nodeName, "_system")
   )
 
-  private def getAuthenticationHeaderValue(nodeName: String, permission: String): NonEmptyString = {
+  private def getAuthenticationHeaderValue(nodeName: String, userName: String): NonEmptyString = {
     val output = new BytesStreamOutput()
     val currentVersion = Version.CURRENT
     output.setVersion(currentVersion)
     Version.writeVersion(currentVersion, output)
     output.writeBoolean(true)
-    output.writeString(permission)
+    output.writeString(userName)
     output.writeString(nodeName)
     output.writeString("__attach")
     output.writeString("__attach")

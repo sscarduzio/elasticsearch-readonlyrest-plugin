@@ -23,7 +23,7 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
-import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.wordspec.AnyWordSpecLike
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.CurrentUserMetadataRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
@@ -54,7 +54,7 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-abstract class BaseGroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion {
+trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextAssertion {
 
   implicit val provider: EnvVarsProvider = OsEnvVarsProvider
 
@@ -404,7 +404,7 @@ abstract class BaseGroupsRuleTests extends AnyWordSpec with Inside with BlockCon
       if (caseSensitivity) UserIdEq.caseSensitive else UserIdEq.caseInsensitive
     )
     val requestContext = MockRequestContext.metadata.copy(
-      headers = preferredGroup.map(_.value).map(v => new Header(Header.Name.currentGroup, v)).toSet[Header]
+      headers = preferredGroup.map(_.toCurrentGroupHeader).toSet
     )
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext,

@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.utils.containers
 
+import cats.effect.{IO, Resource}
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
@@ -23,6 +24,7 @@ import tech.beshu.ror.utils.containers.EsContainer.Config
 import tech.beshu.ror.utils.misc.Version
 
 import scala.collection.JavaConverters._
+import scala.io.Source
 import scala.language.postfixOps
 
 trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
@@ -32,6 +34,12 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
   protected def entry(config: CONFIG): ImageFromDockerfile = new ImageFromDockerfile()
 
   protected def install(builder: DockerfileBuilder, config: CONFIG): DockerfileBuilder = builder
+
+  private def readAdditionalGrantFile = {
+    Resource.make(IO(Source.fromFile(ContainerUtils.getResourceFile("/additional_permission.policy"))))(f => IO(f.close()))
+      .use(bs => IO(bs.getLines().mkString("\\n")))
+      .unsafeRunSync()
+  }
 
   def create(config: CONFIG): ImageFromDockerfile = {
     import config._
@@ -80,16 +88,18 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .runWhen(Version.greaterOrEqualThan(esVersion, 6, 0, 0),
             command = "echo '/usr/local/bin/docker-entrypoint.sh &' > /usr/share/elasticsearch/xpack-setup-entry.sh",
             orElse = "echo '/usr/share/elasticsearch/bin/es-docker &' > /usr/share/elasticsearch/xpack-setup-entry.sh")
-          .run("echo 'sleep 30' >> /usr/share/elasticsearch/xpack-setup-entry.sh") // Time needed to bootstrap cluster as elasticsearch-setup-passwords has to be run after cluster is ready
+          .run("echo 'sleep 15' >> /usr/share/elasticsearch/xpack-setup-entry.sh") // Time needed to bootstrap cluster as elasticsearch-setup-passwords has to be run after cluster is ready
           .run("echo 'export ES_JAVA_OPTS=\"-Xms1g -Xmx1g -Djava.security.egd=file:/dev/./urandoms\"' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
           .run("echo 'echo \"Trying to add assign superuser role to elastic\"' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
-          .runWhen(Version.greaterOrEqualThan(esVersion, 6, 7, 0),"echo \"for i in {1..15}; do curl -X POST -u elastic:elastic \"http://localhost:9200/_security/user/admin?pretty\" -H 'Content-Type: application/json' -d'{\\\"password\\\" : \\\"container\\\",\\\"roles\\\" : [ \\\"superuser\\\"]}'; sleep 2; done\" >> /usr/share/elasticsearch/xpack-setup-entry.sh")
+          .runWhen(Version.greaterOrEqualThan(esVersion, 6, 7, 0),"echo \"for i in {1..30}; do curl -X POST -u elastic:elastic \"http://localhost:9200/_security/user/admin?pretty\" -H 'Content-Type: application/json' -d'{\\\"password\\\" : \\\"container\\\",\\\"roles\\\" : [ \\\"superuser\\\"]}'; sleep 2; done\" >> /usr/share/elasticsearch/xpack-setup-entry.sh")
           .run("echo 'wait' >> /usr/share/elasticsearch/xpack-setup-entry.sh")
           .run("chmod +x /usr/share/elasticsearch/xpack-setup-entry.sh")
           .applyTo(builder)
           .user("root")
 
-        RunCommandCombiner.empty
+        val commands = RunCommandCombiner.empty
+          .runWhen(Version.greaterOrEqualThan(esVersion, 7, 10, 0),
+            s"printf '${readAdditionalGrantFile}' >> /usr/share/elasticsearch/jdk/conf/security/java.policy")
           .run("chown elasticsearch:elasticsearch config/*")
           .run("(egrep -v 'node\\.name|cluster\\.initial_master_nodes|cluster\\.name|network\\.host' /usr/share/elasticsearch/config/elasticsearch.yml || echo -n '') > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
           .run(s"echo 'node.name: $nodeName' >> /usr/share/elasticsearch/config/elasticsearch.yml")
@@ -114,6 +124,11 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .runWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0),
             command = s"echo 'action.destructive_requires_name: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
           )
+
+        additionalElasticsearchYamlEntries
+          .foldLeft(commands) { case (c, (key, value)) =>
+            c.run(s"echo '$key: $value' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          }
           .applyTo(builder)
 
         val javaOpts = {

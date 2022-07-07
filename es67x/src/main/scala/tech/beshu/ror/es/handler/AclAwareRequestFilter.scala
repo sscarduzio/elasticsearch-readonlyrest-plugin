@@ -16,9 +16,7 @@
  */
 package tech.beshu.ror.es.handler
 
-import java.time.Instant
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -60,21 +58,22 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.domain.{Action, Header}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.AclAwareRequestFilter._
+import tech.beshu.ror.es.handler.request.RestRequestOps._
 import tech.beshu.ror.es.handler.request.context.types._
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
+import java.time.Instant
 import scala.language.postfixOps
 import scala.reflect.ClassTag
-import scala.collection.JavaConverters._
 
 class AclAwareRequestFilter(clusterService: RorClusterService,
                             settings: Settings,
@@ -85,15 +84,22 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
   extends Logging {
 
   def handle(engines: Engines,
-             esContext: EsContext): Task[Unit] = {
-    val engine = esContext.pickEngineToHandle(engines)
+             esContext: EsContext): Task[Either[Error, Unit]] = {
+    esContext
+      .pickEngineToHandle(engines)
+      .map(handleRequestWithEngine(_, esContext))
+      .sequence
+  }
+
+  private def handleRequestWithEngine(engine: Engine,
+                                      esContext: EsContext) = {
     esContext.actionRequest match {
       case request: RRUserMetadataRequest =>
         val handler = new CurrentUserMetadataRequestHandler(engine, esContext)
         handler.handle(new CurrentUserMetadataEsRequestContext(request, esContext, clusterService, threadPool))
       case _ =>
         val regularRequestHandler = new RegularRequestHandler(engine, esContext, threadPool)
-        handleEsRestApiRequest(regularRequestHandler, esContext, engine.accessControl.staticContext)
+        handleEsRestApiRequest(regularRequestHandler, esContext, engine.core.accessControl.staticContext)
     }
   }
 
@@ -215,7 +221,7 @@ object AclAwareRequestFilter {
   final case class EsContext(channel: RestChannel with ResponseFieldsFiltering,
                              nodeName: String,
                              task: EsTask,
-                             actionType: String,
+                             action: Action,
                              actionRequest: ActionRequest,
                              listener: ActionListener[ActionResponse],
                              chain: EsChain,
@@ -223,41 +229,41 @@ object AclAwareRequestFilter {
     lazy val requestContextId = s"${channel.request().hashCode()}-${actionRequest.hashCode()}#${task.getId}"
     val timestamp: Instant = Instant.now()
 
-    def pickEngineToHandle(engines: Engines): Engine = {
-      val impersonationHeaderPresent = channel
-        .request()
-        .getHeaders.asScala
-        .exists { case (name, _) => isImpersonateAsHeader(name) }
+    def pickEngineToHandle(engines: Engines): Either[Error, Engine] = {
+      val impersonationHeaderPresent = isImpersonationHeader
       engines.impersonatorsEngine match {
-        case Some(impersonatorsEngine) if impersonationHeaderPresent => impersonatorsEngine
-        case Some(_) | None => engines.mainEngine
+        case Some(impersonatorsEngine) if impersonationHeaderPresent => Right(impersonatorsEngine)
+        case None if impersonationHeaderPresent => Left(Error.ImpersonatorsEngineNotConfigured)
+        case Some(_) | None => Right(engines.mainEngine)
       }
     }
 
-    private def isImpersonateAsHeader(headerName: String) = {
-      NonEmptyString
-        .unapply(headerName)
-        .map(Header.Name.apply)
-        .exists(_ === Header.Name.impersonateAs)
+    private def isImpersonationHeader = {
+      channel
+        .request()
+        .allHeaders()
+        .exists { case Header(name, _) => name === Header.Name.impersonateAs }
     }
   }
 
-  final class EsChain(chain: ActionFilterChain[ActionRequest, ActionResponse],
-                      threadPool: ThreadPool) {
+  final class EsChain(chain: ActionFilterChain[ActionRequest, ActionResponse]) {
 
-    def continue(exContext: EsContext,
+    def continue(esContext: EsContext,
                  listener: ActionListener[ActionResponse]): Unit = {
-      continue(exContext.nodeName, exContext.task, exContext.actionType, exContext.actionRequest, listener)
+      continue(esContext.task, esContext.action, esContext.actionRequest, listener)
     }
 
-    def continue(nodeName: String,
-                 task: EsTask,
-                 action: String,
+    def continue(task: EsTask,
+                 action: Action,
                  request: ActionRequest,
                  listener: ActionListener[ActionResponse]): Unit = {
-      threadPool.getThreadContext.addXPackAuthenticationHeader(nodeName)
-      chain.proceed(task, action, request, listener)
+      chain.proceed(task, action.value, request, listener)
     }
+  }
+
+  sealed trait Error
+  object Error {
+    case object ImpersonatorsEngineNotConfigured extends Error
   }
 }
 

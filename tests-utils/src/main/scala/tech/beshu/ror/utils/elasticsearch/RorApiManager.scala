@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
+import cats.implicits._
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost}
@@ -23,7 +24,7 @@ import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-import scala.collection.JavaConverters._
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
 
 class RorApiManager(client: RestClient,
@@ -61,12 +62,28 @@ class RorApiManager(client: RestClient,
     call(createUpdateRorInIndexConfigRequest(config), new JsonResponse(_))
   }
 
-  def updateRorTestConfig(config: String, ttl: Option[FiniteDuration] = None): JsonResponse = {
-    call(createUpdateRorTestConfigRequest(config, ttl), new JsonResponse(_))
+  def updateRorInIndexConfigRaw(rawRequestBody: String): JsonResponse = {
+    call(createUpdateRorInIndexConfigRequestFromRaw(rawRequestBody), new JsonResponse(_))
   }
 
-  def invalidateRorTestConfig(): JsonResponse = {
-    call(createInvalidateRorTestConfigRequest(), new JsonResponse(_))
+  def currentRorTestConfig: JsonResponse = {
+    call(createGetTestConfigRequest, new JsonResponse(_))
+  }
+
+  def updateRorTestConfig(config: String, ttl: FiniteDuration = FiniteDuration(30, TimeUnit.MINUTES)): RorApiResponse = {
+    call(createUpdateRorTestConfigRequest(config, ttl), new RorApiResponse(_))
+  }
+
+  def updateRorTestConfigRaw(rawRequestBody: String): JsonResponse = {
+    call(createUpdateRorTestConfigRequest(rawRequestBody), new JsonResponse(_))
+  }
+
+  def invalidateRorTestConfig(): RorApiResponse = {
+    call(createInvalidateRorTestConfigRequest(), new RorApiResponse(_))
+  }
+
+  def currentRorLocalUsers: JsonResponse = {
+    call(createProvideLocalUsersRequest(), new JsonResponse(_))
   }
 
   def reloadRorConfig(): JsonResponse = {
@@ -77,8 +94,19 @@ class RorApiManager(client: RestClient,
     call(createConfigureImpersonationMocksRequest(payload), new RorApiResponse(_))
   }
 
+  def currentMockedServices(): RorApiResponse = {
+    call(provideAuthMocksRequest(), new RorApiResponse(_))
+  }
+
   def invalidateImpersonationMocks(): RorApiResponse = {
-    call(createInvalidateImpersonationMocksRequest(), new RorApiResponse(_))
+    val payload = ujson.read(
+      s"""
+         | {
+         |   "services": []
+         | }
+         |""".stripMargin
+    )
+    call(createConfigureImpersonationMocksRequest(payload), new RorApiResponse(_))
   }
 
   def insertInIndexConfigDirectlyToRorIndex(rorConfigIndex: String,
@@ -111,12 +139,31 @@ class RorApiManager(client: RestClient,
     request
   }
 
-  private def createUpdateRorTestConfigRequest(config: String,
-                                               ttl: Option[FiniteDuration] = None) = {
-    val request = new HttpPost(client.from("/_readonlyrest/admin/config/test"))
+  private def createUpdateRorInIndexConfigRequestFromRaw(rawRequestJson: String) = {
+    val request = new HttpPost(client.from("/_readonlyrest/admin/config"))
     request.addHeader("Content-Type", "application/json")
-    ttl.foreach(t => request.addHeader("x-ror-test-settings-ttl", t.toString()))
-    request.setEntity(new StringEntity(rorConfigIndexDocumentContentFrom(config)))
+    request.setEntity(new StringEntity(rawRequestJson))
+    request
+  }
+
+  private def createGetTestConfigRequest = {
+    new HttpGet(client.from("/_readonlyrest/admin/config/test"))
+  }
+
+  private def createUpdateRorTestConfigRequest(config: String,
+                                               ttl: FiniteDuration) = {
+    val request = new HttpPost(client.from("/_readonlyrest/admin/config/test"))
+
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(rorTestConfig(config, ttl)))
+    request
+  }
+
+  private def createUpdateRorTestConfigRequest(rawRequestJson: String) = {
+    val request = new HttpPost(client.from("/_readonlyrest/admin/config/test"))
+
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(rawRequestJson))
     request
   }
 
@@ -124,8 +171,16 @@ class RorApiManager(client: RestClient,
     s"""{"settings": "${escapeJava(config)}"}"""
   }
 
+  private def rorTestConfig(config: String, ttl: FiniteDuration) = {
+    s"""{"settings": "${escapeJava(config)}", "ttl": "${ttl.toString()}"}"""
+  }
+
   private def createInvalidateRorTestConfigRequest() = {
     new HttpDelete(client.from("/_readonlyrest/admin/config/test"))
+  }
+
+  private def createProvideLocalUsersRequest() = {
+    new HttpGet(client.from("/_readonlyrest/admin/config/test/localusers"))
   }
 
   private def createGetRorFileConfigRequest() = {
@@ -143,14 +198,14 @@ class RorApiManager(client: RestClient,
   }
 
   private def createConfigureImpersonationMocksRequest(payload: JSON) = {
-    val request = new HttpPost(client.from("/_readonlyrest/admin/authmock"))
+    val request = new HttpPost(client.from("/_readonlyrest/admin/config/test/authmock"))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(payload)))
     request
   }
 
-  private def createInvalidateImpersonationMocksRequest() = {
-    new HttpDelete(client.from("/_readonlyrest/admin/authmock"))
+  private def provideAuthMocksRequest() = {
+    new HttpGet(client.from("/_readonlyrest/admin/config/test/authmock"))
   }
 
   private def createLoadRorCurrentConfigRequest(additionalParams: Map[String, String]) = {
@@ -162,7 +217,7 @@ class RorApiManager(client: RestClient,
     def forceOk(): this.type = {
       force()
       val status = responseJson("status").str
-      if (status != "ok") throw new IllegalStateException(s"Expected business status 'ok' but got '$status'}; Message: '${responseJson.obj.get("message").map(_.str).getOrElse("[none]")}'")
+      if (status =!= "OK") throw new IllegalStateException(s"Expected business status 'OK' but got '$status'}; Message: '${responseJson.obj.get("message").map(_.str).getOrElse("[none]")}'")
       this
     }
   }

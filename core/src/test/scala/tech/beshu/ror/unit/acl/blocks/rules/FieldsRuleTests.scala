@@ -232,7 +232,7 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
 
         (requestContext.uriPath _).expects().returning(UriPath("/_search"))
         (requestContext.isReadOnlyRequest _).expects().returning(true)
-        (requestContext.action _).expects().returning(MockRequestContext.DefaultAction)
+        (requestContext.action _).expects().returning(MockRequestContext.defaultAction)
 
         inside(rule.check(incomingBlockContext).runSyncStep) {
           case Right(Fulfilled(outBlockContext)) =>

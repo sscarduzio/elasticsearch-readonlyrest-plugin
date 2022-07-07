@@ -17,9 +17,9 @@
 package tech.beshu.ror.accesscontrol.factory
 
 import cats.data.Validated._
-import cats.data.{NonEmptyList, Validated, _}
+import cats.data._
 import cats.syntax.all._
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.{ActionsRule, GroupsOrRule, KibanaAccessRule}
@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.
 
 object BlockValidator {
 
-  def validate(rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
+  def validate(rules: NonEmptyList[RuleDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
     (
       validateAuthorizationWithAuthenticationPrinciple(rules),
       validateOnlyOneAuthenticationRulePrinciple(rules),
@@ -39,7 +39,7 @@ object BlockValidator {
     ).mapN { case _ => () }
   }
 
-  private def validateAuthorizationWithAuthenticationPrinciple(rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
+  private def validateAuthorizationWithAuthenticationPrinciple(rules: NonEmptyList[RuleDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
     rules.find(_.rule.isInstanceOf[AuthorizationRule]) match {
       case None => Validated.Valid(())
       case Some(_) if rules.exists(_.rule.isInstanceOf[AuthenticationRule]) => Validated.Valid(())
@@ -47,7 +47,7 @@ object BlockValidator {
     }
   }
 
-  private def validateOnlyOneAuthenticationRulePrinciple(rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]]) = {
+  private def validateOnlyOneAuthenticationRulePrinciple(rules: NonEmptyList[RuleDefinition[Rule]]) = {
     rules
       .map(_.rule)
       .collect { case a: AuthenticationRule => a }
@@ -64,7 +64,7 @@ object BlockValidator {
     }
   }
 
-  private def validateKibanaAccessRuleAndActionsRuleSeparationPrinciple(rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
+  private def validateKibanaAccessRuleAndActionsRuleSeparationPrinciple(rules: NonEmptyList[RuleDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
     val kibanaAccessRules = rules.map(_.rule).collect { case r: KibanaAccessRule => r }
     val actionsRules = rules.map(_.rule).collect { case r: ActionsRule => r }
     (kibanaAccessRules, actionsRules) match {
@@ -75,7 +75,7 @@ object BlockValidator {
     }
   }
 
-  private def validateRequirementsForRulesUsingVariables(allRules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
+  private def validateRequirementsForRulesUsingVariables(allRules: NonEmptyList[RuleDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
     allRules.toList
       .map(validateRequirementsForSingleRule(allRules.map(_.rule))) match {
       case Nil => Validated.Valid(())
@@ -84,10 +84,10 @@ object BlockValidator {
   }
 
   private def validateRequirementsForSingleRule(allRules: NonEmptyList[Rule])
-                                               (ruleDefinition: RuleWithVariableUsageDefinition[Rule]): Validated[NonEmptyList[RuleDoesNotMeetRequirement], Unit] = {
+                                               (ruleDefinition: RuleDefinition[Rule]): Validated[NonEmptyList[RuleDoesNotMeetRequirement], Unit] = {
     ruleDefinition match {
-      case RuleWithVariableUsageDefinition(_, NotUsingVariable) => Validated.Valid(())
-      case RuleWithVariableUsageDefinition(rule, usingVariable: UsingVariable[Rule]) =>
+      case RuleDefinition(_, NotUsingVariable, _, _) => Validated.Valid(())
+      case RuleDefinition(rule, usingVariable: UsingVariable[Rule], _, _) =>
         val allNonCompliantResults = RequirementVerifier.verify(rule, usingVariable, allRules).collect { case r: ComplianceResult.NonCompliantWith => r }
         allNonCompliantResults match {
           case Nil => Validated.Valid(())

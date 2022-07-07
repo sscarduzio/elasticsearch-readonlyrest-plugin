@@ -16,9 +16,6 @@
  */
 package tech.beshu.ror.es
 
-import java.nio.file.Path
-import java.util
-import java.util.function.{Supplier, UnaryOperator}
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
@@ -59,12 +56,17 @@ import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
+import tech.beshu.ror.es.actions.rrtestconfig.rest.RestRRTestConfigAction
+import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, TransportRRTestConfigAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
+import java.nio.file.Path
+import java.util
+import java.util.function.{Supplier, UnaryOperator}
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -129,7 +131,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       .externalSsl
       .map(ssl =>
         "ssl_netty4" -> new Supplier[HttpServerTransport] {
-          override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, ssl)
+          override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, ssl, false)
         }
       )
       .toMap
@@ -146,7 +148,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       .interNodeSsl
       .map(ssl =>
         "ror_ssl_internode" -> new Supplier[Transport] {
-          override def get(): Transport = new SSLNetty4InternodeServerTransport(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService, ssl)
+          override def get(): Transport = new SSLNetty4InternodeServerTransport(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService, ssl, false)
         }
       )
       .toMap
@@ -157,6 +159,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
       new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction]),
       new ActionHandler(RRAuthMockActionType.instance, classOf[TransportRRAuthMockAction]),
+      new ActionHandler(RRTestConfigActionType.instance, classOf[TransportRRTestConfigAction]),
       new ActionHandler(RRConfigActionType.instance, classOf[TransportRRConfigAction]),
       new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
       new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
@@ -173,6 +176,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     List[RestHandler](
       new RestRRAdminAction(settings, restController),
       new RestRRAuthMockAction(settings, restController),
+      new RestRRTestConfigAction(settings, restController),
       new RestRRConfigAction(settings, restController, nodesInCluster),
       new RestRRUserMetadataAction(settings, restController),
       new RestRRAuditEventAction(settings, restController)

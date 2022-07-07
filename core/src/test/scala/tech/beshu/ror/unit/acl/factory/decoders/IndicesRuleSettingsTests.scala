@@ -23,8 +23,8 @@ import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.MalformedValue
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.utils.TestsUtils._
 import eu.timepit.refined.auto._
@@ -72,7 +72,45 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
           }
         )
       }
-      "two indexes are defined" in {
+      "one numeric index is defined" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    indices: "1"
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            val indices: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]] = NonEmptySet.one(AlreadyResolved(clusterIndexName("1").nel))
+            rule.settings.allowedIndices should be(indices)
+            rule.settings.mustInvolveIndices shouldBe false
+          }
+        )
+      }
+      "one numeric index is defined as array" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    indices: ["1"]
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            val indices: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]] = NonEmptySet.one(AlreadyResolved(clusterIndexName("1").nel))
+            rule.settings.allowedIndices should be(indices)
+            rule.settings.mustInvolveIndices shouldBe false
+          }
+        )
+      }
+      "two indices are defined" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -87,6 +125,47 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
           assertion = rule => {
             val indices: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]] =
               NonEmptySet.of(AlreadyResolved(clusterIndexName("index1").nel), AlreadyResolved(clusterIndexName("index2").nel))
+            rule.settings.allowedIndices should be(indices)
+            rule.settings.mustInvolveIndices shouldBe false
+          }
+        )
+      }
+      "two indices are defined, one is numeric" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    indices: ["1", index2]
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            val indices: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]] =
+              NonEmptySet.of(AlreadyResolved(clusterIndexName("1").nel), AlreadyResolved(clusterIndexName("index2").nel))
+            rule.settings.allowedIndices should be(indices)
+            rule.settings.mustInvolveIndices shouldBe false
+          }
+        )
+      }
+
+      "two numeric indices are defined" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    indices: ["1", "2"]
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            val indices: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]] =
+              NonEmptySet.of(AlreadyResolved(clusterIndexName("1").nel), AlreadyResolved(clusterIndexName("2").nel))
             rule.settings.allowedIndices should be(indices)
             rule.settings.mustInvolveIndices shouldBe false
           }

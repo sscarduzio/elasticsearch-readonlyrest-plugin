@@ -20,22 +20,20 @@ import cats.data.{NonEmptyList, NonEmptySet, WriterT}
 import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.AccessControl
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched
-import tech.beshu.ror.accesscontrol.AccessControl.{AccessControlStaticContext, RegularRequestResult, UserMetadataRequestResult, WithHistory}
+import tech.beshu.ror.accesscontrol.AccessControl._
 import tech.beshu.ror.accesscontrol.acl.AccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, HistoryItem, Policy}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.{Group, Header}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
-import tech.beshu.ror.accesscontrol.orders.forbiddenByMismatchedCauseOrder
+import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class AccessControlList(val blocks: NonEmptyList[Block],
@@ -90,49 +88,42 @@ class AccessControlList(val blocks: NonEmptyList[Block],
         val history = blockResults.map(_._2).toVector
         val result = matchedAllowedBlocks(blockResults.map(_._1)) match {
           case Right(matchedResults) =>
-            userMetadataFrom(matchedResults, context.currentGroup.toOption) match {
+            userMetadataFrom(matchedResults, context.initialBlockContext.userMetadata.currentGroup) match {
               case Some((userMetadata, matchedBlock)) => UserMetadataRequestResult.Allow(userMetadata, matchedBlock)
-              case None => UserMetadataRequestResult.Forbidden
+              case None => UserMetadataRequestResult.Forbidden(nonEmptySetOfMismatchedCausesFromHistory(history))
             }
           case Left(_) =>
-            UserMetadataRequestResult.Forbidden
+            UserMetadataRequestResult.Forbidden(nonEmptySetOfMismatchedCausesFromHistory(history))
         }
         WithHistory(history, result)
       }
   }
 
   private def userMetadataFrom(matchedResults: NonEmptyList[Matched[CurrentUserMetadataRequestBlockContext]],
-                               preferredGroup: Option[Group]): Option[(UserMetadata, Block)] = {
-    val allGroupsWithRelatedResults = flatGroupWithMatchedCurrentMetadata(matchedResults)
-    (preferredGroup match {
+                               optPreferredGroup: Option[Group]): Option[(UserMetadata, Block)] = {
+    optPreferredGroup match {
       case Some(preferredGroup) =>
-        allGroupsWithRelatedResults
-          .find {
-            case (`preferredGroup`, _) => true
-            case _ => false
-          }.map(someFirst)
+        matchedResults
+          .find { case Matched(_, bc) => bc.userMetadata.availableGroups.contains(preferredGroup) }
+          .map {  case Matched(block, bc) =>
+            val userMetadata = updateUserMetadataGroups(bc, Some(preferredGroup), allAvailableGroupsFrom(matchedResults))
+            (userMetadata, block)
+          }
       case None =>
         Some {
-          allGroupsWithRelatedResults.headOption.map(someFirst)
-            .getOrElse((None, matchedResults.head))
+          val Matched(block, bc) = matchedResults.head
+          val userMetadata = updateUserMetadataGroups(bc, None, allAvailableGroupsFrom(matchedResults))
+          (userMetadata, block)
         }
-    }) map { case (maybeGroup, Matched(block, blockContext)) =>
-      val allGroups = UniqueList.fromList(allGroupsWithRelatedResults.map(_._1))
-      val userMetadata = updateUserMetadataGroups(blockContext, maybeGroup, allGroups)
-      (userMetadata, block)
     }
   }
 
-  private def flatGroupWithMatchedCurrentMetadata(matchedResults: NonEmptyList[Matched[CurrentUserMetadataRequestBlockContext]]) = {
-    matchedResults
-      .toList
-      .foldLeft(List.empty[(Group, Matched[CurrentUserMetadataRequestBlockContext])]) {
-        case (acc, matched) =>
-          acc ::: matched.blockContext.userMetadata.availableGroups.toList.map((_, matched))
-      }
+  private def allAvailableGroupsFrom(matchedResults: NonEmptyList[Matched[CurrentUserMetadataRequestBlockContext]]) = {
+    UniqueList.fromList(
+      matchedResults.toList.flatMap {
+        case Matched(_, bc) => bc.userMetadata.availableGroups.toList
+      })
   }
-
-  private def someFirst[A, B](t: (A, B)): (Some[A], B) = (Some(t._1), t._2)
 
   private def updateUserMetadataGroups(blockContext: CurrentUserMetadataRequestBlockContext,
                                        currentGroup: Option[Group],
@@ -174,18 +165,18 @@ class AccessControlList(val blocks: NonEmptyList[Block],
     WriterT.value[Task, Vector[History[B]], ExecutionResult[B]](executionResult)
   }
 
-  private def nonEmptySetOfMismatchedCausesFromHistory[B <: BlockContext](history: Vector[History[B]]): NonEmptySet[ForbiddenByMismatched.Cause] = {
+  private def nonEmptySetOfMismatchedCausesFromHistory[B <: BlockContext](history: Vector[History[B]]): NonEmptySet[ForbiddenCause] = {
     val causes = rejectionsFrom(history).map {
       case Rejected(None) | Rejected(Some(Rejected.Cause.IndexNotFound | Rejected.Cause.AliasNotFound | Rejected.Cause.TemplateNotFound)) =>
-        ForbiddenByMismatched.Cause.OperationNotAllowed
+        ForbiddenCause.OperationNotAllowed
       case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) =>
-        ForbiddenByMismatched.Cause.ImpersonationNotAllowed
+        ForbiddenCause.ImpersonationNotAllowed
       case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) =>
-        ForbiddenByMismatched.Cause.ImpersonationNotSupported
+        ForbiddenCause.ImpersonationNotSupported
     }
     NonEmptyList
       .fromList(causes.toList)
-      .getOrElse(NonEmptyList.one(ForbiddenByMismatched.Cause.OperationNotAllowed))
+      .getOrElse(NonEmptyList.one(ForbiddenCause.OperationNotAllowed))
       .toNes
   }
 

@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.ActionsRule
 import tech.beshu.ror.accesscontrol.domain.Action
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
@@ -27,9 +27,9 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 object ActionsRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[ActionsRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ActionsRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[ActionsRule]] = {
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet(Action.apply)
-      .map(actions => RuleWithVariableUsageDefinition.create(new ActionsRule(ActionsRule.Settings(actions))))
+      .map(actions => RuleDefinition.create(new ActionsRule(ActionsRule.Settings(actions))))
   }
 }

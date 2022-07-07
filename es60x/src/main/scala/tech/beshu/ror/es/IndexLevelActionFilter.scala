@@ -27,15 +27,15 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.env.Environment
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.domain.AuditCluster
+import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, RorMode}
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse, createTestSettingsNotConfiguredResponse}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, HighLevelClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
@@ -119,24 +119,39 @@ class IndexLevelActionFilter(settings: Settings,
                                                                            listener: ActionListener[Response],
                                                                            chain: ActionFilterChain[Request, Response]): Unit = {
     doPrivileged {
-      ThreadRepo.getRorRestChannel match {
-        case None =>
-          chain.proceed(task, action, request, listener)
-        case Some(_) if action.startsWith("internal:") =>
-          chain.proceed(task, action, request, listener)
-        case Some(channel) =>
-          proceedByRorEngine(
-            EsContext(
-              channel,
-              task,
-              action,
-              request,
-              listener.asInstanceOf[ActionListener[ActionResponse]],
-              chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]],
-              JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toSet
-            )
+      proceed(
+        task,
+        Action(action),
+        request,
+        listener.asInstanceOf[ActionListener[ActionResponse]],
+        new EsChain(chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]])
+      )
+    }
+  }
+
+  private def proceed(task: Task,
+                      action: Action,
+                      request: ActionRequest,
+                      listener: ActionListener[ActionResponse],
+                      chain: EsChain): Unit = {
+    ThreadRepo.getRorRestChannel match {
+      case None =>
+        chain.continue(task, action, request, listener)
+      case Some(_) if action.isInternal =>
+        chain.continue(task, action, request, listener)
+      case Some(channel) =>
+        proceedByRorEngine(
+          EsContext(
+            channel,
+            nodeName,
+            task,
+            action,
+            request,
+            listener,
+            chain,
+            JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toSet
           )
-      }
+        )
     }
   }
 
@@ -163,9 +178,15 @@ class IndexLevelActionFilter(settings: Settings,
     aclAwareRequestFilter
       .handle(engines, esContext)
       .runAsync {
-        case Right(_) =>
+        case Right(result) => handleResult(esContext, result)
         case Left(ex) => esContext.listener.onFailure(new Exception(ex))
       }
+  }
+
+  private def handleResult(esContext: EsContext, result: Either[AclAwareRequestFilter.Error, Unit]): Unit = result match {
+    case Right(_) =>
+    case Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured) =>
+      esContext.listener.onFailure(createTestSettingsNotConfiguredResponse())
   }
 
   private def startRorInstance() = {

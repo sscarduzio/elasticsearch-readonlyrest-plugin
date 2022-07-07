@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.request
 
 import java.time.Instant
-
 import cats.Show
 import cats.implicits._
 import com.softwaremill.sttp.Method
@@ -28,6 +27,7 @@ import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain._
@@ -35,7 +35,6 @@ import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.language.implicitConversions
 
@@ -113,13 +112,12 @@ object RequestContext extends Logging {
     implicit val show: Show[Id] = Show.show(_.value)
   }
 
-  def show[B <: BlockContext](loggedUser: Option[LoggedUser],
-                              kibanaIndex: Option[ClusterIndexName],
+  def show[B <: BlockContext](userMetadata: UserMetadata,
                               history: Vector[Block.History[B]])
                              (implicit headerShow: Show[Header]): Show[RequestContext.Aux[B]] =
     Show.show { r =>
       def stringifyUser = {
-        loggedUser match {
+        userMetadata.loggedUser match {
           case Some(DirectlyLoggedUser(user)) => s"${user.show}"
           case Some(ImpersonatedUser(user, impersonatedBy)) => s"${impersonatedBy.show} (as ${user.show})"
           case None => r.basicAuth.map(_.credentials.user.value).map(name => s"${name.value} (attempted)").getOrElse("[no info about user]")
@@ -138,13 +136,20 @@ object RequestContext extends Logging {
         else idx.mkString(",")
       }
 
+      def stringifyUserGroup = {
+        userMetadata.currentGroup match {
+          case Some(group) => group.show
+          case None => "<N/A>"
+        }
+      }
+
       s"""{
          | ID:${r.id.show},
          | TYP:${r.`type`.show},
-         | CGR:${r.currentGroup.show},
+         | CGR:$stringifyUserGroup,
          | USR:$stringifyUser,
          | BRS:${r.headers.exists(_.name === Header.Name.userAgent)},
-         | KDX:${kibanaIndex.map(_.show).getOrElse("null")},
+         | KDX:${userMetadata.kibanaIndex.map(_.show).getOrElse("null")},
          | ACT:${r.action.show},
          | OA:${r.remoteAddress.map(_.show).getOrElse("null")},
          | XFF:${r.headers.find(_.name === Header.Name.xForwardedFor).map(_.value.show).getOrElse("null")},
@@ -175,22 +180,6 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
           .flatMap(_.split(",").headOption)
           .flatMap(Address.from)
       }
-  }
-
-  def currentGroup: RequestGroup = {
-    findHeader(Header.Name.currentGroup) match {
-      case None => RequestGroup.`N/A`
-      case Some(Header(_, value)) => RequestGroup.AGroup(Group(value))
-    }
-  }
-
-  def isCurrentGroupEligible(groups: UniqueNonEmptyList[Group]): Boolean = {
-    currentGroup match {
-      case RequestGroup.AGroup(preferredGroup) =>
-        requestContext.uriPath.isCurrentUserMetadataPath || groups.contains(preferredGroup)
-      case RequestGroup.`N/A` =>
-        true
-    }
   }
 
   def basicAuth: Option[BasicAuth] = {

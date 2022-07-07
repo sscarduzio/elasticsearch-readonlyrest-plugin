@@ -30,9 +30,9 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.{CreationError, createMultiResolvableVariableFrom, createSingleResolvableVariableFrom}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{Reason, ValueLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{Reason, ValueLevelCreationError}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult._
@@ -163,7 +163,7 @@ object CirceOps {
       SyncDecoderCreator
         .from(singleVariableDecoder[T])
         .emapE {
-          _.left.map(error => AclCreationError.RulesLevelCreationError(Message(error.show)))
+          _.left.map(error => CoreCreationError.RulesLevelCreationError(Message(error.show)))
         }
         .decoder
 
@@ -171,7 +171,7 @@ object CirceOps {
       SyncDecoderCreator
         .from(multiVariableDecoder[T])
         .emapE {
-          _.left.map(error => AclCreationError.RulesLevelCreationError(Message(error.show)))
+          _.left.map(error => CoreCreationError.RulesLevelCreationError(Message(error.show)))
         }
         .decoder
 
@@ -187,7 +187,7 @@ object CirceOps {
     }
 
     def decodeFieldList[T, F[_] : Applicative](name: String,
-                                               errorCreator: Reason => AclCreationError = ValueLevelCreationError.apply)
+                                               errorCreator: Reason => CoreCreationError = ValueLevelCreationError.apply)
                                               (implicit decoder: ADecoder[F, T]): decoder.DECODER[FieldListResult[T]] = {
       decoder
         .creator
@@ -224,7 +224,7 @@ object CirceOps {
       }
     }
 
-    def failed[T](error: AclCreationError): Decoder[T] = {
+    def failed[T](error: CoreCreationError): Decoder[T] = {
       Decoder.failed(DecodingFailureOps.fromError(error))
     }
 
@@ -243,13 +243,13 @@ object CirceOps {
 
     import AclCreationErrorCoders._
 
-    def overrideDefaultErrorWith(error: AclCreationError): DecodingFailure = {
+    def overrideDefaultErrorWith(error: CoreCreationError): DecodingFailure = {
       if (aclCreationError.isDefined) decodingFailure
       else decodingFailure.withMessage(stringify(error))
     }
 
-    def aclCreationError: Option[AclCreationError] =
-      parse(decodingFailure.message).flatMap(Decoder[AclCreationError].decodeJson).toOption
+    def aclCreationError: Option[CoreCreationError] =
+      parse(decodingFailure.message).flatMap(Decoder[CoreCreationError].decodeJson).toOption
 
   }
 
@@ -257,22 +257,22 @@ object CirceOps {
 
     import AclCreationErrorCoders._
 
-    def fromError(error: AclCreationError): DecodingFailure =
-      DecodingFailure(Encoder[AclCreationError].apply(error).noSpaces, Nil)
+    def fromError(error: CoreCreationError): DecodingFailure =
+      DecodingFailure(Encoder[CoreCreationError].apply(error).noSpaces, Nil)
   }
 
   object AclCreationErrorCoders {
     private implicit val config: Configuration = Configuration.default.withDiscriminator("type")
-    implicit val aclCreationErrorEncoder: Encoder[AclCreationError] = {
+    implicit val aclCreationErrorEncoder: Encoder[CoreCreationError] = {
       implicit val _ = extras.semiauto.deriveConfiguredEncoder[Reason]
       extras.semiauto.deriveConfiguredEncoder
     }
-    implicit val aclCreationErrorDecoder: Decoder[AclCreationError] = {
+    implicit val aclCreationErrorDecoder: Decoder[CoreCreationError] = {
       implicit val _ = extras.semiauto.deriveConfiguredDecoder[Reason]
       extras.semiauto.deriveConfiguredDecoder
     }
 
-    def stringify(error: AclCreationError): String = Encoder[AclCreationError].apply(error).noSpaces
+    def stringify(error: CoreCreationError): String = Encoder[CoreCreationError].apply(error).noSpaces
   }
 
   implicit class ACursorOps[C <: ACursor](val value: C) extends AnyVal {
@@ -281,6 +281,14 @@ object CirceOps {
         case (_: FailedCursor, nextField) => value.downField(nextField)
         case (found: HCursor, _) => found
         case (other, _) => other
+      }
+    }
+
+    def downFieldsWithKey(field: String, fields: String*): (ACursor, String) = {
+      fields.toList.foldLeft((value.downField(field), field)) {
+        case ((_: FailedCursor, prevField), nextField) => (value.downField(nextField), nextField)
+        case ((found: HCursor, foundFiled), _) => (found, foundFiled)
+        case ((other, otherField), _) => (other, otherField)
       }
     }
 

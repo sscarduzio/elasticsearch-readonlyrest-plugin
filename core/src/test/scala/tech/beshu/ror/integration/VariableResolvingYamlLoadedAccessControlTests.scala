@@ -16,11 +16,8 @@
  */
 package tech.beshu.ror.integration
 
-import java.util.Base64
-
 import com.dimafeng.testcontainers.ForAllTestContainer
 import eu.timepit.refined.auto._
-import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
@@ -42,6 +39,8 @@ import tech.beshu.ror.utils.containers.NonStoppableLdapContainer
 import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
+
+import java.util.Base64
 
 class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
   with BaseYamlLoadedAccessControlTest
@@ -241,7 +240,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             "tech" :-> "beshu" :-> "mainGroup" := List("j1", "j2")
           ))
           val request = MockRequestContext.indices.copy(
-            headers = Set(new Header(Header.Name.rorAuthorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))),
+            headers = Set(bearerHeader(jwt)),
             filteredIndices = Set(clusterIndexName("gj1"))
           )
 
@@ -267,7 +266,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           ))
 
           val request = MockRequestContext.indices.copy(
-            headers = Set(new Header(Header.Name.rorAuthorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))),
+            headers = Set(bearerHeader(jwt)),
             filteredIndices = Set(clusterIndexName("gj0")),
             allIndicesAndAliases = Set(FullLocalIndexWithAliases(fullIndexName("gj0"), Set.empty))
           )
@@ -294,7 +293,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           ))
 
           val request = MockRequestContext.search.copy(
-            headers = Set(new Header(Header.Name.rorAuthorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))),
+            headers = Set(bearerHeader(jwt)),
             indices = Set.empty,
             allIndicesAndAliases = Set.empty
           )

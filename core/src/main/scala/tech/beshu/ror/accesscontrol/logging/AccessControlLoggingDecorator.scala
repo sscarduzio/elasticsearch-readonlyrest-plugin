@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.logging.ResponseContext._
@@ -72,6 +73,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl,
       }
   }
 
+  // todo: logging metadata should be a little bit different
   override def handleMetadataRequest(requestContext: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]] = {
     logger.debug(s"checking user metadata request: ${requestContext.id.show}")
     underlying
@@ -81,7 +83,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl,
           resultWithHistory.result match {
             case UserMetadataRequestResult.Allow(userMetadata, block) =>
               log(Allow(requestContext, userMetadata, block, resultWithHistory.history))
-            case UserMetadataRequestResult.Forbidden =>
+            case UserMetadataRequestResult.Forbidden(_) =>
               log(Forbidden(requestContext, resultWithHistory.history))
             case UserMetadataRequestResult.PassedThrough =>
             // ignore
@@ -135,27 +137,25 @@ object AccessControlLoggingDecorator {
     Show.show[ResponseContext[B]] {
       case allowedBy: AllowedBy[B] =>
         implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(
-          allowedBy.blockContext.userMetadata.loggedUser, allowedBy.blockContext.userMetadata.kibanaIndex, allowedBy.history
+          allowedBy.blockContext.userMetadata, allowedBy.history
         )
         s"""${Constants.ANSI_CYAN}ALLOWED by ${allowedBy.block.show} req=${allowedBy.requestContext.show}${Constants.ANSI_RESET}"""
       case allow: Allow[B] =>
-        implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(
-          allow.userMetadata.loggedUser, allow.userMetadata.kibanaIndex, allow.history
-        )
+        implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(allow.userMetadata, allow.history)
         s"""${Constants.ANSI_CYAN}ALLOWED by ${allow.block.show} req=${allow.requestContext.show}${Constants.ANSI_RESET}"""
       case forbiddenBy: ForbiddenBy[B] =>
         implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(
-          forbiddenBy.blockContext.userMetadata.loggedUser, forbiddenBy.blockContext.userMetadata.kibanaIndex, forbiddenBy.history
+          forbiddenBy.blockContext.userMetadata, forbiddenBy.history
         )
         s"""${Constants.ANSI_PURPLE}FORBIDDEN by ${forbiddenBy.block.show} req=${forbiddenBy.requestContext.show}${Constants.ANSI_RESET}"""
       case forbidden: Forbidden[B] =>
-        implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(None, None, forbidden.history)
+        implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(UserMetadata.empty, forbidden.history)
         s"""${Constants.ANSI_PURPLE}FORBIDDEN by default req=${forbidden.requestContext.show}${Constants.ANSI_RESET}"""
       case requestedIndexNotExist: RequestedIndexNotExist[B] =>
-        implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(None, None, requestedIndexNotExist.history)
+        implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(UserMetadata.empty, requestedIndexNotExist.history)
         s"""${Constants.ANSI_PURPLE}INDEX NOT FOUND req=${requestedIndexNotExist.requestContext.show}${Constants.ANSI_RESET}"""
       case errored: Errored[B] =>
-        implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(None, None, Vector.empty)
+        implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(UserMetadata.empty, Vector.empty)
         s"""${Constants.ANSI_YELLOW}ERRORED by error req=${errored.requestContext.show}${Constants.ANSI_RESET}"""
     }
   }

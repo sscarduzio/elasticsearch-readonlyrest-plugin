@@ -18,8 +18,6 @@ package tech.beshu.ror.es.handler.request.context
 
 import java.time.Instant
 
-import cats.data.NonEmptyList
-import cats.implicits._
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
@@ -30,12 +28,10 @@ import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.request.RestRequestOps._
 import tech.beshu.ror.utils.RCUtils
-
-import scala.collection.JavaConverters._
 
 abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
                                                        clusterService: RorClusterService)
@@ -51,41 +47,9 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy implicit val id: RequestContext.Id = RequestContext.Id(esContext.requestContextId)
 
-  override lazy val action: Action = Action(esContext.actionType)
+  override lazy val action: Action = esContext.action
 
-  override lazy val headers: Set[Header] = {
-    val (authorizationHeaders, otherHeaders) =
-      restRequest
-        .getHeaders.asScala
-        .map { case (name, values) => (name, values.asScala.toSet) }
-        .flatMap { case (name, values) =>
-          for {
-            nonEmptyName <- NonEmptyString.unapply(name)
-            nonEmptyValues <- NonEmptyList.fromList(values.toList.flatMap(NonEmptyString.unapply))
-          } yield (Header.Name(nonEmptyName), nonEmptyValues)
-        }
-        .toSeq
-        .partition { case (name, _) => name === Header.Name.authorization }
-    val headersFromAuthorizationHeaderValues = authorizationHeaders
-      .flatMap { case (_, values) =>
-        val headersFromAuthorizationHeaderValues = values
-          .map(Header.fromAuthorizationValue)
-          .toList
-          .map(_.map(_.toList))
-          .sequence
-          .map(_.flatten)
-        headersFromAuthorizationHeaderValues match {
-          case Left(error) => throw new IllegalArgumentException(error.show)
-          case Right(v) => v
-        }
-      }
-      .toSet
-    val restOfHeaders = otherHeaders
-      .flatMap { case (name, values) => values.map(new Header(name, _)).toList }
-      .toSet
-    val restOfHeaderNames = restOfHeaders.map(_.name)
-    restOfHeaders ++ headersFromAuthorizationHeaderValues.filter { header => !restOfHeaderNames.contains(header.name) }
-  }
+  override lazy val headers: Set[Header] = restRequest.allHeaders()
 
   override lazy val remoteAddress: Option[Address] =
     Option(restRequest.getHttpChannel)

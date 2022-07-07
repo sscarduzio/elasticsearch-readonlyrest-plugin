@@ -47,7 +47,7 @@ object MetadataValue {
   }
 
   private def loggingId(correlationId: CorrelationId) = {
-    Map(Constants.HEADER_LOGGING_ID -> MetadataString(correlationId.value.value))
+    Map(Constants.HEADER_CORRELATION_ID -> MetadataString(correlationId.value.value))
   }
 
   private def userOrigin(userMetadata: UserMetadata) = {

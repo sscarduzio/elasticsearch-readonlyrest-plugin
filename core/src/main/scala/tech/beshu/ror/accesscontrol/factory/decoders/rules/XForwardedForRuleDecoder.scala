@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.XForwardedForRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Address
@@ -30,10 +30,10 @@ import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 object XForwardedForRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[XForwardedForRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[XForwardedForRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[XForwardedForRule]] = {
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Address]]
-      .map(addresses => RuleWithVariableUsageDefinition.create(
+      .map(addresses => RuleDefinition.create(
         new XForwardedForRule(XForwardedForRule.Settings(addresses), new Ip4sBasedHostnameResolver)
       ))
   }

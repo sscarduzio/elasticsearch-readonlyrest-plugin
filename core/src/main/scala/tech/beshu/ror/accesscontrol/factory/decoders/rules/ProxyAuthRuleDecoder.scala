@@ -18,14 +18,14 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import cats.Order
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, ProxyAuth}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common.userIdDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ProxyAuthDefinitionsDecoder._
@@ -41,10 +41,10 @@ class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth],
                            implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[ProxyAuthRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ProxyAuthRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[ProxyAuthRule]] = {
     ProxyAuthRuleDecoder.simpleSettingsDecoder
       .or(ProxyAuthRuleDecoder.extendedSettingsDecoder(authProxiesDefinitions))
-      .map(settings => RuleWithVariableUsageDefinition.create(
+      .map(settings => RuleDefinition.create(
         new ProxyAuthRule(
           settings,
           impersonatorsDef.toImpersonation(mocksProvider),

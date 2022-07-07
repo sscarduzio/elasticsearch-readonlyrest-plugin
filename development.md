@@ -4,19 +4,21 @@ These instructions are valid to run the whole ElasticSearch code base as a Java 
 This project contains the ElasticSearch dependencies in the Maven build system, so all the ElasticSearch classes will be in the class path and we'll be able to run the whole thing without a problem.
 `git clone https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin.git /me/elasticsearch-readonlyrest-plugin`
 For this example, we cloned the source code under a short path: the `/me` directory.
+## Set proper JDK version
+Current version of ROR requires JDK 17. 
 ## Run ES as a Java Application
 Gradle project named `eshome` is configured to run ROR as java application. You can run it from console
 ```bash
-./gradlew :eshome:run
+./gradlew clean eshome:runEs
 ```
 or using Intellij for debug. ![Dropdown edit configurations](https://i.imgur.com/KiFSyD9.png)
-The careful reader may already have noticed that some Java options points to a special folder under `./eshome`. This contains what ElasticSearch normally expects to see in the present working directory it's being run.
+
+ES version and ROR ES module can be defined in gradle.properties. Currently, eshome should support ES 8.x
 
 ```
 $ tree eshome
 .
 ├── bin
-│   └── no_delete
 ├── config
 │   ├── elasticsearch.yml
 │   ├── log4j2.properties
@@ -25,30 +27,36 @@ $ tree eshome
 │   └── [...]
 ├── data
 ├── lib
-│   └── no_delete
 ├── logs
 ├── modules
-│   ├── transport-netty4
-│      ├── plugin-descriptor.properties
-│      └── plugin-security.policy
 └── plugins
-    └── readonlyrest
-        ├── plugin-descriptor.properties
-        └── plugin-security.policy
 ```
 Notice the plugins/readonlyrest contains a copy of the descriptor properties and security policy, but not the plugin's jar. This is because - as stated in the beginning - the plugin code is already available to the class path in form of source files.
 ## Run it
 Now save this, call it with a name like `Whole ES` and you'll be able to press play and see ElasticSearch boot up in your IDE.
 ![ES booting up and running in IDE](https://i.imgur.com/A4DfsWZ.png)
 ## Debug with concrete ES version
-Intellij is able to run `eshome` in debug, but it misses resolving ES sources.
-It would navigate to ES 5.5.0, even when you're debugging ES 7.3.2.
-You can help Intellij by ignoring not used modules.
-If you'll ignore every es module, except one you're working on Intellij won't miss ES version sources.
+Currently eshome support debugging only es8x modules.
 ![ES booting up and running in IDE](https://i.imgur.com/s32SaI8.png) 
 ## Building plugin using Gradle for concrete ES version:
-* `./gradlew clean es70x:ror '-PesVersion=7.2.0'` 
-* ROR plugin binaries can found in `es70x/build/distributions/`
+
+### Using Gradle
+* `./gradlew clean [ROR_ES_MODULE]:ror '-PesVersion=[ES_VERSION]'` 
+* eg. `./gradlew clean es70x:ror '-PesVersion=7.2.0'`
+* ROR plugin binaries can be found in `es70x/build/distributions/`
+
+**⚠️Required tools:**
+* OpenJDK 17
+* Gradle 4.10
+
+### Using Docker
+* `cd docker-envs/build-ror-in-docker && /build.sh [ES_VERSION]`
+* eg. `cd docker-envs/build-ror-in-docker && /build.sh 8.2.2`
+* ROR plugin bunaries can be found in `docker-envs/build-ror-in-docker/builds`
+
+**⚠️Required tools:**
+* Docker
+
 ## Running tests
 * unit tests: `./gradlew test ror`
 * integration tests for specific module (at the moment we have two modules with integration tests): 
@@ -87,3 +95,10 @@ Caused by: java.lang.IllegalStateException: codebase property already set: codeb
 ```
 ES above version 7.9.x uses plugin class loaders based on plugin dirs, so dependency jars are copied like are copied for installed plugin, to plugin's dir. You should clean `eshome` project.
 `./gradlew :eshome:clean`
+### #6 
+If you see in Idea:
+```
+Unable to make protected void java.net.URLClassLoader.addURL(java.net.URL) accessible: module java.base does not "opens java.net" to unnamed module @17d99928
+```
+you should go to `File->ProjectStructure->SDK` and pick JDK different than 17 apply. 
+Then you can refresh your gradle project, pick JDK 17 once again and rebuild the project.    

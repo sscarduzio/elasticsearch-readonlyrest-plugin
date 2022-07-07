@@ -19,8 +19,8 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{CacheableLdapAuthenticationServiceDecorator, CircuitBreakerLdapAuthenticationServiceDecorator, LoggableLdapAuthenticationServiceDecorator}
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthenticationRule
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.utils.SingletonLdapContainers
 
 class LdapAuthenticationRuleSettingsTests

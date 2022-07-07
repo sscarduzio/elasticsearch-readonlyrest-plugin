@@ -1,0 +1,13 @@
+grant {
+  permission org.bouncycastle.crypto.CryptoServicesPermission "exportSecretKey";
+  permission org.bouncycastle.crypto.CryptoServicesPermission "exportPrivateKey";
+  permission java.security.SecurityPermission "getProperty.jdk.tls.disabledAlgorithms";
+  permission java.security.SecurityPermission "getProperty.jdk.certpath.disabledAlgorithms";
+  permission java.security.SecurityPermission "getProperty.keystore.type.compat";
+  permission java.security.SecurityPermission "removeProvider.SunRsaSign";
+  permission java.security.SecurityPermission "removeProvider.SunJSSE";
+  permission java.io.FilePermission "${java.home}/lib/security/jssecacerts", "read";
+  permission java.io.FilePermission "${java.home}/lib/security/cacerts", "read";
+  permission java.security.SecurityPermission "getProperty.jdk.tls.server.defaultDHEParameters";
+  permission org.bouncycastle.crypto.CryptoServicesPermission "defaultRandomConfig";
+};

@@ -28,9 +28,10 @@ import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
-import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineState, EngineWithConfig}
+import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineExpirationConfig, EngineState, EngineWithConfig}
 import tech.beshu.ror.boot.engines.ConfigHash._
 import tech.beshu.ror.configuration.RawRorConfig
+import java.time.{Clock, Instant}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -40,21 +41,24 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
                                                      initialEngine: Option[(Engine, RawRorConfig)],
                                                      reloadInProgress: Semaphore[Task],
                                                      rorConfigurationIndex: RorConfigurationIndex)
-                                                    (implicit scheduler: Scheduler)
+                                                    (implicit scheduler: Scheduler,
+                                                     clock: Clock)
   extends Logging {
+
+  import BaseReloadableEngine.ConfigUpdate
 
   private val currentEngine: Atomic[EngineState] = AtomicAny[EngineState](
     initialEngine match {
       case Some((engine, config)) =>
         logger.info(s"ROR $name engine (id=${config.hashString()}) was initiated.")
-        EngineState.Working(EngineWithConfig(engine, config, ttl = None), scheduledShutdownJob = None)
+        EngineState.Working(EngineWithConfig(engine, config, expirationConfig = None), scheduledShutdownJob = None)
       case None =>
-        EngineState.NotStartedYet
+        EngineState.NotStartedYet(recentConfig = None, recentExpirationConfig = None)
     }
   )
 
   def engine: Option[Engine] = currentEngine.get() match {
-    case EngineState.NotStartedYet => None
+    case EngineState.NotStartedYet(_, _) => None
     case EngineState.Working(engineWithConfig, _) => Some(engineWithConfig.engine)
     case EngineState.Stopped => None
   }
@@ -66,7 +70,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
         state <- Task.delay(currentEngine.getAndSet(EngineState.Stopped))
         _ <- Task.delay {
           state match {
-            case EngineState.NotStartedYet =>
+            case EngineState.NotStartedYet(_, _) =>
             case working@EngineState.Working(engineWithConfig, _) =>
               logger.info(s"[${requestId.show}] ROR $name engine (id=${engineWithConfig.config.hashString()}) will be stopped ...")
               stopNow(working)
@@ -82,12 +86,12 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     reloadInProgress.withPermit {
       Task.delay {
         currentEngine.transform {
-          case EngineState.NotStartedYet =>
-            EngineState.NotStartedYet
+          case notStarted: EngineState.NotStartedYet =>
+            notStarted
           case oldWorkingEngine@EngineState.Working(engineWithConfig, _) =>
             logger.info(s"[${requestId.show}] ROR $name engine (id=${engineWithConfig.config.hashString()}) will be invalidated ... ")
             stopEarly(oldWorkingEngine)
-            EngineState.NotStartedYet
+            EngineState.NotStartedYet(recentConfig = Some(engineWithConfig.config), recentExpirationConfig = engineWithConfig.expirationConfig)
           case EngineState.Stopped =>
             EngineState.Stopped
         }
@@ -95,21 +99,72 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     }
   }
 
+  protected final def currentEngineState: EngineState = currentEngine.get()
+
   protected def reloadEngine(newConfig: RawRorConfig,
                              newConfigEngineTtl: Option[FiniteDuration] = None)
                             (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Unit] = {
+    newConfigEngineTtl match {
+      case Some(ttl) =>
+        reloadEngineWithConfiguredTtl(newConfig, ttl)
+      case None =>
+        reloadEngineWithoutTtl(newConfig)
+    }
+  }
+
+  private def reloadEngineWithConfiguredTtl(newConfig: RawRorConfig,
+                                            ttl: FiniteDuration)
+                                           (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Unit] = {
+    for {
+      configUpdate <- checkConfigUpdateType(newConfig)
+      _ <- configUpdate match {
+        case ConfigUpdate.NewConfig =>
+          runReload(newConfig, Some(ttl))
+        case ConfigUpdate.ConfigUpToDate =>
+          updateEngineExpirationConfig(ttl)
+      }
+    } yield ()
+  }
+
+  private def reloadEngineWithoutTtl(newConfig: RawRorConfig)
+                                    (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Unit] = {
     for {
       _ <- canBeReloaded(newConfig)
+      _ <- runReload(newConfig, None)
+    } yield ()
+  }
+
+  private def runReload(newConfig: RawRorConfig,
+                        newConfigEngineTtl: Option[FiniteDuration])
+                       (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Unit] = {
+    for {
       newEngineWithConfig <- reloadWith(newConfig, newConfigEngineTtl)
       _ <- replaceCurrentEngine(newEngineWithConfig)
     } yield ()
+  }
+
+  private def checkConfigUpdateType(newConfig: RawRorConfig): EitherT[Task, RawConfigReloadError, ConfigUpdate] = {
+    EitherT {
+      Task.delay {
+        currentEngine.get() match {
+          case EngineState.NotStartedYet(_, _) =>
+            Right(ConfigUpdate.NewConfig)
+          case EngineState.Working(EngineWithConfig(_, currentConfig, _), _) if currentConfig != newConfig =>
+            Right(ConfigUpdate.NewConfig)
+          case EngineState.Working(EngineWithConfig(_, currentConfig, _), _) =>
+            Right(ConfigUpdate.ConfigUpToDate)
+          case EngineState.Stopped =>
+            Left(RawConfigReloadError.RorInstanceStopped)
+        }
+      }
+    }
   }
 
   private def canBeReloaded(newConfig: RawRorConfig): EitherT[Task, RawConfigReloadError, Unit] = {
     EitherT {
       Task.delay {
         currentEngine.get() match {
-          case EngineState.NotStartedYet =>
+          case EngineState.NotStartedYet(_, _) =>
             Right(())
           case EngineState.Working(EngineWithConfig(_, currentConfig, _), _) if currentConfig != newConfig =>
             Right(())
@@ -126,20 +181,30 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
                          newConfigEngineTtl: Option[FiniteDuration]): EitherT[Task, RawConfigReloadError, EngineWithConfig] = EitherT {
     tryToLoadRorCore(newConfig)
       .map(_
-        .map(EngineWithConfig(_, newConfig, newConfigEngineTtl))
+        .map { engine =>
+          EngineWithConfig(
+            engine = engine,
+            config = newConfig,
+            expirationConfig = newConfigEngineTtl.map(newExpirationConfig)
+          )
+        }
         .leftMap(RawConfigReloadError.ReloadingFailed.apply)
       )
+  }
+
+  private def newExpirationConfig(ttl: FiniteDuration) = {
+    EngineExpirationConfig(ttl = ttl, validTo = clock.instant().plusMillis(ttl.toMillis))
   }
 
   private def tryToLoadRorCore(config: RawRorConfig) =
     boot.loadRorCore(config, rorConfigurationIndex)
 
   private def replaceCurrentEngine(newEngineWithConfig: EngineWithConfig)
-                                  (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Option[EngineWithConfig]] = {
+                                  (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Unit] = {
     EitherT {
       Task.delay {
-        val result = currentEngine.getAndTransform {
-          case EngineState.NotStartedYet =>
+        val oldEngineState = currentEngine.getAndTransform {
+          case _: EngineState.NotStartedYet =>
             logger.info(s"[${requestId.show}] ROR $name engine (id=${newEngineWithConfig.config.hashString()}) is going to be used ...")
             workingStateFrom(newEngineWithConfig)
           case oldWorkingEngine@EngineState.Working(_, _) =>
@@ -151,9 +216,9 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
             newEngineWithConfig.engine.shutdown()
             EngineState.Stopped
         }
-        result match {
-          case EngineState.NotStartedYet => Right(None)
-          case EngineState.Working(oldEngineWithConfig, _) => Right(Some(oldEngineWithConfig))
+        oldEngineState match {
+          case _: EngineState.NotStartedYet => Right(())
+          case EngineState.Working(_, _) => Right(())
           case EngineState.Stopped => Left(RawConfigReloadError.RorInstanceStopped)
         }
       }
@@ -164,18 +229,54 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
                               (implicit requestId: RequestId) =
     EngineState.Working(
       engineWithConfig,
-      engineWithConfig.ttl.map { ttl =>
+      engineWithConfig.expirationConfig.map(_.ttl).map { ttl =>
         scheduler.scheduleOnce(ttl) {
           logger.info(s"[${requestId.show}] ROR $name engine (id=${engineWithConfig.config.hashString()}) is being stopped after TTL were reached ...")
           stop(engineWithConfig)
           currentEngine.transform {
-            case EngineState.NotStartedYet => EngineState.NotStartedYet
-            case EngineState.Working(_, _) => EngineState.NotStartedYet
-            case EngineState.Stopped => EngineState.Stopped
+            case EngineState.NotStartedYet(_, _) =>
+              EngineState.NotStartedYet(
+                recentConfig = Some(engineWithConfig.config),
+                recentExpirationConfig = engineWithConfig.expirationConfig
+              )
+            case EngineState.Working(_, _) =>
+              EngineState.NotStartedYet(
+                recentConfig = Some(engineWithConfig.config),
+                recentExpirationConfig = engineWithConfig.expirationConfig
+              )
+            case EngineState.Stopped =>
+              EngineState.Stopped
           }
         }
       }
     )
+
+  private def updateEngineExpirationConfig(ttl: FiniteDuration)
+                                          (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Unit] = {
+    EitherT {
+      Task.delay {
+        val oldEngineState = currentEngine.getAndTransform {
+          case EngineState.NotStartedYet(recentConfig, recentExpirationConfig) =>
+            EngineState.NotStartedYet(recentConfig, recentExpirationConfig)
+          case EngineState.Working(engineWithConfig, scheduledShutdownJob) =>
+            logger.info(s"[${requestId.show}] ROR $name engine (id=${engineWithConfig.config.hashString()}) is being updated with new TTL ...")
+            scheduledShutdownJob.foreach(_.cancel())
+            val engineWithNewExpirationConfig = engineWithConfig.copy(expirationConfig = Some(newExpirationConfig(ttl)))
+            workingStateFrom(engineWithNewExpirationConfig)
+          case EngineState.Stopped =>
+            EngineState.Stopped
+        }
+        oldEngineState match {
+          case _: EngineState.NotStartedYet =>
+            Left(RawConfigReloadError.ReloadingFailed(ReadonlyRest.StartingFailure("Cannot update engine TTL because engine was invalidated")))
+          case EngineState.Working(_, _) =>
+            Right(())
+          case EngineState.Stopped =>
+            Left(RawConfigReloadError.RorInstanceStopped)
+        }
+      }
+    }
+  }
 
   private def stopEarly(engineState: EngineState.Working)
                        (implicit requestId: RequestId): Unit = {
@@ -204,17 +305,31 @@ object BaseReloadableEngine {
 
   private[engines] case class EngineWithConfig(engine: Engine,
                                                config: RawRorConfig,
-                                               ttl: Option[FiniteDuration])
+                                               expirationConfig: Option[EngineExpirationConfig])
+
+  private[engines] final case class EngineExpirationConfig(ttl: FiniteDuration,
+                                                           validTo: Instant)
 
   private[engines] sealed trait EngineState
+
   private[engines] object EngineState {
-    case object NotStartedYet
+    final case class NotStartedYet(recentConfig: Option[RawRorConfig],
+                                   recentExpirationConfig: Option[EngineExpirationConfig])
       extends EngineState
+
     final case class Working(engineWithConfig: EngineWithConfig,
                              scheduledShutdownJob: Option[Cancelable])
       extends EngineState
+
     case object Stopped
       extends EngineState
+
+  }
+
+  private[BaseReloadableEngine] sealed trait ConfigUpdate
+  private[BaseReloadableEngine] object ConfigUpdate {
+    case object NewConfig extends ConfigUpdate
+    case object ConfigUpToDate extends ConfigUpdate
   }
 
   private[BaseReloadableEngine] val delayOfOldEngineShutdown = 10 seconds

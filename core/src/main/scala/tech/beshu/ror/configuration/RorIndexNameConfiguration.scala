@@ -48,7 +48,7 @@ object RorIndexNameConfiguration extends Logging {
   private implicit val rorIndexNameConfigurationDecoder: Decoder[RorIndexNameConfiguration] = {
     Decoder.instance { c =>
       val oneLine = c.downField("readonlyrest.settings_index").as[Option[NonEmptyString]]
-      val twoLines =  c.downField("readonlyrest").downField("settings_index").as[Option[NonEmptyString]]
+      val twoLines = c.downField("readonlyrest").downField("settings_index").as[Option[NonEmptyString]]
       val customIndexName = (oneLine.toOption.flatten, twoLines.toOption.flatten) match {
         case (Some(result), _) => IndexName.Full(result)
         case (_, Some(result)) => IndexName.Full(result)

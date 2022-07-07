@@ -170,7 +170,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
         val request = MockRequestContext.indices.copy(
           headers = Set(
             basicAuthHeader("admin:dev"),
-            Header(("x-ror-current-group", "Administrators"))
+            currentGroupHeader("Administrators")
           ),
           uriPath = UriPath("/.kibana_admins/_create/index-pattern:3b2fa1b0-bcb2-11eb-a20e-8daf1d07a2b2"),
           method = Method("PUT"),

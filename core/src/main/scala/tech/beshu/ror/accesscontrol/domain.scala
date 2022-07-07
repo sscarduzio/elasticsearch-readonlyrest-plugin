@@ -34,6 +34,7 @@ import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.Action._
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.{Local, Remote}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
@@ -85,6 +86,11 @@ object domain {
     implicit val eq: Eq[Group] = Eq.by(_.value.value)
   }
 
+  final case class LocalUsers(users: Set[User.Id], unknownUsers: Boolean)
+  object LocalUsers {
+    def empty: LocalUsers = LocalUsers(Set.empty, unknownUsers = false)
+  }
+
   final case class Header(name: Header.Name, value: NonEmptyString)
   object Header {
     final case class Name(value: NonEmptyString)
@@ -104,7 +110,7 @@ object domain {
       val authorization = Name("Authorization")
       val rorUser = Name(Constants.HEADER_USER_ROR)
       val kibanaAccess = Name(Constants.HEADER_KIBANA_ACCESS)
-      val impersonateAs = Name("impersonate_as")
+      val impersonateAs = Name(Constants.HEADER_IMPERSONATING)
       val correlationId = Name(Constants.HEADER_CORRELATION_ID)
 
       implicit val eqName: Eq[Name] = Eq.by(_.value.value.toLowerCase(Locale.US))
@@ -116,6 +122,39 @@ object domain {
                 (implicit ev: ToHeaderValue[T]): Header = new Header(name, ev.toRawValue(value))
 
     def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
+
+    def fromRawHeaders(headers: Map[String, List[String]]): Set[Header] = {
+      val (authorizationHeaders, otherHeaders) =
+        headers
+          .map { case (name, values) => (name, values.toSet) }
+          .flatMap { case (name, values) =>
+            for {
+              nonEmptyName <- NonEmptyString.unapply(name)
+              nonEmptyValues <- NonEmptyList.fromList(values.toList.flatMap(NonEmptyString.unapply))
+            } yield (Header.Name(nonEmptyName), nonEmptyValues)
+          }
+          .toSeq
+          .partition { case (name, _) => name === Header.Name.authorization }
+      val headersFromAuthorizationHeaderValues = authorizationHeaders
+        .flatMap { case (_, values) =>
+          val headersFromAuthorizationHeaderValues = values
+            .map(fromAuthorizationValue)
+            .toList
+            .map(_.map(_.toList))
+            .sequence
+            .map(_.flatten)
+          headersFromAuthorizationHeaderValues match {
+            case Left(error) => throw new IllegalArgumentException(error.show)
+            case Right(v) => v
+          }
+        }
+        .toSet
+      val restOfHeaders = otherHeaders
+        .flatMap { case (name, values) => values.map(new Header(name, _)).toList }
+        .toSet
+      val restOfHeaderNames = restOfHeaders.map(_.name)
+      restOfHeaders ++ headersFromAuthorizationHeaderValues.filter { header => !restOfHeaderNames.contains(header.name) }
+    }
 
     def fromAuthorizationValue(value: NonEmptyString): Either[AuthorizationValueError, NonEmptyList[Header]] = {
       value.value.splitBy("ror_metadata=") match {
@@ -289,6 +328,12 @@ object domain {
       rollupSearchAction,
       searchTemplateAction
     ).contains(this)
+
+    def isFieldCapsAction: Boolean =
+      fieldCapsAction == this
+
+    def isInternal: Boolean =
+      Action.isInternal(value)
   }
   object Action {
     val searchAction = Action("indices:data/read/search")
@@ -303,9 +348,12 @@ object domain {
     // ROR actions
     val rorUserMetadataAction = Action("cluster:ror/user_metadata/get")
     val rorConfigAction = Action("cluster:ror/config/manage")
+    val rorTestConfigAction = Action("cluster:ror/testconfig/manage")
     val rorAuthMockAction = Action("cluster:ror/authmock/manage")
     val rorAuditEventAction = Action("cluster:ror/audit_event/put")
     val rorOldConfigAction = Action("cluster:ror/config/refreshsettings")
+
+    def isInternal(actionString: String): Boolean = actionString.startsWith("internal:")
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
     implicit val caseMappingEqualityAction: CaseMappingEquality[Action] = CaseMappingEquality.instance(_.value, identity)

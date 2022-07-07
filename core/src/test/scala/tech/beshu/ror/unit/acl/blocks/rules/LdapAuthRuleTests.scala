@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapAuthorizationService, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
+import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule.GroupsLogic
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{Impersonation, ImpersonationSettings}
@@ -58,9 +59,8 @@ class LdapAuthRuleTests
             mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(true))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
-            mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.of(Group("g1")))),
-            UniqueNonEmptyList.of(Group("g1"), Group("g2")),
-            UniqueNonEmptyList.of(Group("g1"), Group("g2"))
+            ldap = mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.of(Group("g1")))),
+            permittedGroups = GroupsLogic.Or(UniqueNonEmptyList.of(Group("g1"), Group("g2"))),
           ),
           basicHeader = basicAuthHeader("user1:pass")
         )(
@@ -69,6 +69,18 @@ class LdapAuthRuleTests
             group = groupFrom("g1"),
             availableGroups = UniqueList.of(groupFrom("g1"))
           )
+        )
+      }
+      "[groups_and] user can be authenticated, but does not have all the LDAP groups" in {
+        assertNotMatchRule(
+          authenticationSettings = LdapAuthenticationRule.Settings(
+            mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(true))
+          ),
+          authorizationSettings = LdapAuthorizationRule.Settings(
+            ldap = mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.of(Group("g1")))),
+            permittedGroups = GroupsLogic.And(UniqueNonEmptyList.of(Group("g1"), Group("g2")))
+          ),
+          basicHeader = Some(basicAuthHeader("user1:pass"))
         )
       }
       "user is being impersonated" when {
@@ -80,8 +92,7 @@ class LdapAuthRuleTests
               ),
               authorizationSettings = LdapAuthorizationRule.Settings(
                 mockLdapAuthorizationService(LdapService.Name("ldap1")),
-                UniqueNonEmptyList.of(Group("g1"), Group("g2")),
-                UniqueNonEmptyList.of(Group("g1"), Group("g2"))
+                permittedGroups = GroupsLogic.Or(UniqueNonEmptyList.of(Group("g1"), Group("g2")))
               ),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
@@ -112,9 +123,8 @@ class LdapAuthRuleTests
         assertNotMatchRule(
           authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
           authorizationSettings = LdapAuthorizationRule.Settings(
-            mock[LdapAuthorizationService],
-            UniqueNonEmptyList.of(Group("g1"), Group("g2")),
-            UniqueNonEmptyList.of(Group("g1"), Group("g2"))
+            ldap = mock[LdapAuthorizationService],
+            permittedGroups = GroupsLogic.Or(UniqueNonEmptyList.of(Group("g1"), Group("g2")))
           ),
           basicHeader = None
         )
@@ -125,22 +135,20 @@ class LdapAuthRuleTests
             mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(false))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
-            mock[LdapAuthorizationService],
-            UniqueNonEmptyList.of(Group("g1"), Group("g2")),
-            UniqueNonEmptyList.of(Group("g1"), Group("g2"))
+            ldap = mock[LdapAuthorizationService],
+            permittedGroups = GroupsLogic.Or(UniqueNonEmptyList.of(Group("g1"), Group("g2")))
           ),
           basicHeader = Some(basicAuthHeader("user1:pass"))
         )
       }
-      "user don't have permitted group" in {
+      "user doesn't have any permitted group" in {
         assertNotMatchRule(
           authenticationSettings = LdapAuthenticationRule.Settings(
             mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(true))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
-            mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.empty)),
-            UniqueNonEmptyList.of(Group("g1"), Group("g2")),
-            UniqueNonEmptyList.of(Group("g1"), Group("g2"))
+            ldap = mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.empty)),
+            permittedGroups = GroupsLogic.Or(UniqueNonEmptyList.of(Group("g1"), Group("g2")))
           ),
           basicHeader = Some(basicAuthHeader("user1:pass"))
         )
@@ -151,9 +159,8 @@ class LdapAuthRuleTests
             mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.raiseError(TestException("authentication failure")))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
-            mock[LdapAuthorizationService],
-            UniqueNonEmptyList.of(Group("g1"), Group("g2")),
-            UniqueNonEmptyList.of(Group("g1"), Group("g2"))
+            ldap = mock[LdapAuthorizationService],
+            permittedGroups = GroupsLogic.Or(UniqueNonEmptyList.of(Group("g1"), Group("g2")))
           ),
           basicHeader = basicAuthHeader("user1:pass"),
           exception = TestException("authentication failure")
@@ -165,9 +172,8 @@ class LdapAuthRuleTests
             mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(true))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
-            mockLdapAuthorizationService(User.Id("user1"), Task.raiseError(TestException("authorization failure"))),
-            UniqueNonEmptyList.of(Group("g1"), Group("g2")),
-            UniqueNonEmptyList.of(Group("g1"), Group("g2"))
+            ldap = mockLdapAuthorizationService(User.Id("user1"), Task.raiseError(TestException("authorization failure"))),
+            permittedGroups = GroupsLogic.Or(UniqueNonEmptyList.of(Group("g1"), Group("g2")))
           ),
           basicHeader = basicAuthHeader("user1:pass"),
           exception = TestException("authorization failure")
@@ -179,9 +185,8 @@ class LdapAuthRuleTests
             assertNotMatchRule(
               authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
               authorizationSettings = LdapAuthorizationRule.Settings(
-                mock[LdapAuthorizationService],
-                UniqueNonEmptyList.of(Group("g1"), Group("g2")),
-                UniqueNonEmptyList.of(Group("g1"), Group("g2"))
+                ldap = mock[LdapAuthorizationService],
+                permittedGroups = GroupsLogic.Or(UniqueNonEmptyList.of(Group("g1"), Group("g2")))
               ),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
@@ -202,9 +207,8 @@ class LdapAuthRuleTests
             assertNotMatchRule(
               authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
               authorizationSettings = LdapAuthorizationRule.Settings(
-                mock[LdapAuthorizationService],
-                UniqueNonEmptyList.of(Group("g1"), Group("g2")),
-                UniqueNonEmptyList.of(Group("g1"), Group("g2"))
+                ldap = mock[LdapAuthorizationService],
+                permittedGroups = GroupsLogic.Or(UniqueNonEmptyList.of(Group("g1"), Group("g2")))
               ),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
@@ -225,9 +229,8 @@ class LdapAuthRuleTests
             assertNotMatchRule(
               authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
               authorizationSettings = LdapAuthorizationRule.Settings(
-                mock[LdapAuthorizationService],
-                UniqueNonEmptyList.of(Group("g1"), Group("g2")),
-                UniqueNonEmptyList.of(Group("g1"), Group("g2"))
+                ldap = mock[LdapAuthorizationService],
+                permittedGroups = GroupsLogic.Or(UniqueNonEmptyList.of(Group("g1"), Group("g2")))
               ),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
@@ -248,9 +251,8 @@ class LdapAuthRuleTests
             assertNotMatchRule(
               authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
               authorizationSettings = LdapAuthorizationRule.Settings(
-                mock[LdapAuthorizationService],
-                UniqueNonEmptyList.of(Group("g1"), Group("g2")),
-                UniqueNonEmptyList.of(Group("g1"), Group("g2"))
+                ldap = mock[LdapAuthorizationService],
+                permittedGroups = GroupsLogic.Or(UniqueNonEmptyList.of(Group("g1"), Group("g2")))
               ),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
@@ -271,9 +273,8 @@ class LdapAuthRuleTests
             assertNotMatchRule(
               authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
               authorizationSettings = LdapAuthorizationRule.Settings(
-                mock[LdapAuthorizationService],
-                UniqueNonEmptyList.of(Group("g1"), Group("g2")),
-                UniqueNonEmptyList.of(Group("g1"), Group("g2"))
+                ldap = mock[LdapAuthorizationService],
+                permittedGroups = GroupsLogic.Or(UniqueNonEmptyList.of(Group("g1"), Group("g2")))
               ),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
@@ -296,9 +297,8 @@ class LdapAuthRuleTests
                 mockLdapAuthenticationService(User.Id("admin"), PlainTextSecret("pass"), Task.now(false))
               ),
               authorizationSettings = LdapAuthorizationRule.Settings(
-                mock[LdapAuthorizationService],
-                UniqueNonEmptyList.of(Group("g1"), Group("g2")),
-                UniqueNonEmptyList.of(Group("g1"), Group("g2"))
+                ldap = mock[LdapAuthorizationService],
+                permittedGroups = GroupsLogic.Or(UniqueNonEmptyList.of(Group("g1"), Group("g2")))
               ),
               impersonation = Impersonation.Disabled,
               basicHeader = Some(basicAuthHeader("admin:pass")),

@@ -27,7 +27,9 @@ import tech.beshu.ror.Constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_
 import tech.beshu.ror.es.AuditSinkService
 
 @Inject
-class EsAuditSinkService(client: Client) extends AuditSinkService with Logging {
+class EsAuditSinkService(client: Client)
+  extends AuditSinkService
+    with Logging {
 
   private val bulkProcessor =
     BulkProcessor

@@ -26,9 +26,13 @@ object ESWithSecurityPluginImage extends EsImage[EsWithSecurityPluginContainer.C
   private val log4j2FileName = "log4j2.properties"
   private val javaOptionsFileName = "jvm.options"
   private val keystoreFileName = "keystore.jks"
+  private val bcfksKeystoreFileName = "keystore.bcfks"
   private val truststoreFileName = "truststore.jks"
+  private val bcfksTruststoreFileName = "truststore.bcfks"
   private val xpackTruststoreFileName = "shield.jks"
   private val pkcsCerts = "elastic-certificates.p12"
+  private val bcfksCerts = "elastic-certificates.bcfks"
+  private val elasticsearchKeystore = "elasticsearch.keystore"
   private val httpCerts = "http.p12"
   private val rolesFileName = "roles.yml"
   private val configDir = "/config"
@@ -48,6 +52,9 @@ object ESWithSecurityPluginImage extends EsImage[EsWithSecurityPluginContainer.C
       .withFileFromFile(s"$configDir/$truststoreFileName", ContainerUtils.getResourceFile("/" + truststoreFileName))
       .withFileFromFile(s"$configDir/$javaOptionsFileName", ContainerUtils.getResourceFile("/" + javaOptionsFileName))
       .withFileFromFile(s"$configDir/$xpackTruststoreFileName", ContainerUtils.getResourceFile("/" + xpackTruststoreFileName))
+      .withFileFromFile(s"$configDir/$bcfksKeystoreFileName", ContainerUtils.getResourceFile("/" + bcfksKeystoreFileName))
+      .withFileFromFile(s"$configDir/$bcfksTruststoreFileName", ContainerUtils.getResourceFile("/" + bcfksTruststoreFileName))
+      .withFileFromFile(s"$configDir/$bcfksCerts", ContainerUtils.getResourceFile("/" + bcfksCerts))
       .withFileFromFile(s"$configDir/$pkcsCerts", ContainerUtils.getResourceFile("/" + pkcsCerts))
       .withFileFromFile(s"$configDir/$httpCerts", ContainerUtils.getResourceFile("/" + httpCerts))
       .withFileFromFile(s"$configDir/$rolesFileName", ContainerUtils.getResourceFile("/" + rolesFileName))

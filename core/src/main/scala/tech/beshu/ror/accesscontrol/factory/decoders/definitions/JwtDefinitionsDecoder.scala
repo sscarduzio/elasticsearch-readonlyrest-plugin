@@ -21,9 +21,9 @@ import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, ClaimName, He
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{Name, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps.fromError
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.CryptoOps.keyStringToPublicKey
@@ -114,14 +114,14 @@ object JwtDefinitionsDecoder {
           decodeSignatureKey
             .flatMap { key =>
               keyStringToPublicKey("RSA", key).toEither
-                .left.map(_ => fromError(AclCreationError.DefinitionsLevelCreationError(Message(s"Key '$key' seems to be invalid"))))
+                .left.map(_ => fromError(CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '$key' seems to be invalid"))))
             }
             .map(SignatureCheckMethod.Rsa.apply)
         case Some("EC") =>
           decodeSignatureKey
             .flatMap { key =>
               keyStringToPublicKey("EC", key).toEither
-                .left.map(_ => fromError(AclCreationError.DefinitionsLevelCreationError(Message(s"Key '$key' seems to be invalid"))))
+                .left.map(_ => fromError(CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '$key' seems to be invalid"))))
             }
             .map(SignatureCheckMethod.Ec.apply)
         case Some(unknown) =>

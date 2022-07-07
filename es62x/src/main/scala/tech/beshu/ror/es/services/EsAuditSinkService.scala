@@ -47,6 +47,7 @@ class EsAuditSinkService(client: Client)
         .source(jsonRecord, XContentType.JSON)
     )
   }
+
   override def close(): Unit = {
     client.close()
   }

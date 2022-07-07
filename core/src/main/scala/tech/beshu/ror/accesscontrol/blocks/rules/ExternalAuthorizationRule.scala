@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.implicits._
 import cats.Eq
+import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
@@ -44,9 +44,6 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
   override protected val groupsPermittedByRule: UniqueNonEmptyList[Group] =
     settings.permittedGroups
 
-  override protected val groupsPermittedByAllRulesOfThisType: UniqueNonEmptyList[Group] =
-    settings.allExternalServiceGroups
-
   override protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = {
     Either.cond(userMatcher.`match`(user.id), (), ())
   }
@@ -70,6 +67,9 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
         Groups.CannotCheck
       }
   }
+
+  override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] =
+    UniqueNonEmptyList.fromSet(settings.permittedGroups.toSet.intersect(usersGroups))
 }
 
 object ExternalAuthorizationRule {
@@ -80,7 +80,6 @@ object ExternalAuthorizationRule {
 
   final case class Settings(service: ExternalAuthorizationService,
                             permittedGroups: UniqueNonEmptyList[Group],
-                            allExternalServiceGroups: UniqueNonEmptyList[Group],
                             users: UniqueNonEmptyList[User.Id])
 
 }

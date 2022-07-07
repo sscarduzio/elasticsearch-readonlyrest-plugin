@@ -22,15 +22,15 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.Block.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthorizationServiceDecorator, ExternalAuthorizationService, ImpersonatorDef}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ExternalAuthorizationServicesDecoder._
@@ -47,9 +47,9 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
                                        implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleBaseDecoderWithoutAssociatedFields[ExternalAuthorizationRule] {
 
-  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ExternalAuthorizationRule]] = {
+  override protected def decoder: Decoder[RuleDefinition[ExternalAuthorizationRule]] = {
     settingsDecoder(authorizationServices, caseMappingEquality)
-      .map(settings => RuleWithVariableUsageDefinition.create(
+      .map(settings => RuleDefinition.create(
         new ExternalAuthorizationRule(settings, impersonatorsDef.toImpersonation(mocksProvider), caseMappingEquality)
       ))
   }
@@ -72,16 +72,16 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
         case (name, Some(ttl), groups, users) =>
           findAuthorizationService(authorizationServices.items, name)
             .map(new CacheableExternalAuthorizationServiceDecorator(_, ttl))
-            .map(ExternalAuthorizationRule.Settings(_, groups, groups, users))
+            .map(ExternalAuthorizationRule.Settings(_, groups, users))
         case (name, None, groups, users) =>
           findAuthorizationService(authorizationServices.items, name)
-            .map(ExternalAuthorizationRule.Settings(_, groups, groups, users))
+            .map(ExternalAuthorizationRule.Settings(_, groups, users))
       }
       .decoder
   }
 
   private def findAuthorizationService(authorizationServices: List[ExternalAuthorizationService],
-                                       searchedServiceName: ExternalAuthorizationService.Name): Either[AclCreationError, ExternalAuthorizationService] = {
+                                       searchedServiceName: ExternalAuthorizationService.Name): Either[CoreCreationError, ExternalAuthorizationService] = {
     authorizationServices.find(_.id === searchedServiceName) match {
       case Some(service) => Right(service)
       case None => Left(RulesLevelCreationError(Message(s"Cannot find user groups provider with name: ${searchedServiceName.show}")))

@@ -64,7 +64,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
           mockProvider
         )
         .map(_.fold(err => throw new IllegalStateException(s"Cannot create ACL: $err"), identity))
-    } yield core.aclEngine
+    } yield core.accessControl
     aclEngineT.runSyncUnsafe()
   }
 }
