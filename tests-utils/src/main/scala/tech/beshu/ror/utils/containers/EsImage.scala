@@ -132,20 +132,23 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
         if (useXpackSecurityInsteadOfRor)
           builder.entryPoint("/usr/share/elasticsearch/xpack-setup-entry.sh")
 
+        install(builder, config)
+
         builder
           .user("elasticsearch")
           .env(config.envs + ("ES_JAVA_OPTS" -> javaOpts) asJava)
 
-        install(builder, config)
 
         logger.info("Dockerfile\n" + builder.build)
       })
   }
 
   private def xmJavaOptions() = List("-Xms1g", "-Xmx1g",
-    "--add-opens org.elasticsearch.server/org.elasticsearch.rest=ALL-UNNAMED",
-    "--add-opens org.elasticsearch.server/org.elasticsearch.common.path=ALL-UNNAMED",
-    "--add-opens org.elasticsearch.server/org.elasticsearch.index=ALL-UNNAMED",
+    // todo: fix
+//    "--illegal-access=permit",
+//    "--add-opens org.elasticsearch.server/org.elasticsearch.rest=ALL-UNNAMED",
+//    "--add-opens org.elasticsearch.server/org.elasticsearch.common.path=ALL-UNNAMED",
+//    "--add-opens org.elasticsearch.server/org.elasticsearch.index=ALL-UNNAMED",
   )
 
   private def urandomJavaOption() = List("-Djava.security.egd=file:/dev/./urandoms")

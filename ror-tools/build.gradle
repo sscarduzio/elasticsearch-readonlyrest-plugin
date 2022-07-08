@@ -87,9 +87,12 @@ configurations {
 }
 
 dependencies {
+    shadowCompile group: 'org.javassist',                 name: 'javassist',                        version: '3.29.0-GA'
+    shadowCompile group: 'org.ow2.asm',                   name: 'asm',                              version: '9.3'
+    shadowCompile group: 'org.ow2.asm',                   name: 'asm-util',                         version: '9.3'
     shadowCompile group: 'com.lihaoyi',                   name: 'os-lib_2.12',                      version: '0.8.1'
     shadowCompile group: 'org.scala-lang',                name: 'scala-library',                    version: '2.12.8'
-    shadowCompile group: 'com.github.scopt',              name: 'scopt_2.12',                       version: '4.0.1'
+    shadowCompile group: 'com.github.scopt',              name: 'scopt_2.12',                       version: '4.1.0'
 }
 
 license {
@@ -134,7 +137,7 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocatio
 
 task relocateShadowJar(type: ConfigureShadowRelocation) {
     target = tasks.shadowJar
-    prefix = "tech.beshu.ror"
+    prefix = "tech.beshu.ror.tools"
 }
 
 tasks.shadowJar.dependsOn tasks.relocateShadowJar

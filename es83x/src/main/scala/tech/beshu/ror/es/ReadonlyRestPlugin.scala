@@ -72,6 +72,7 @@ import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVa
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SetOnce
 
+import java.lang.invoke.MethodHandles
 import java.nio.file.Path
 import java.util
 import java.util.function.Supplier
