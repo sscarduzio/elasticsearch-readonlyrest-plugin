@@ -16,17 +16,21 @@
  */
 package tech.beshu.ror.configuration
 
+import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.domain.LocalUsers
 import tech.beshu.ror.accesscontrol.logging.AuditingTool
+import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
 
 final case class RorConfig(services: RorConfig.Services,
                            localUsers: LocalUsers,
+                           impersonationWarningsReader: ImpersonationWarningsReader,
                            auditingSettings: Option[AuditingTool.Settings])
 
 object RorConfig {
-  def disabled: RorConfig = RorConfig(RorConfig.Services.empty, LocalUsers.empty, None)
+  def disabled: RorConfig = RorConfig(RorConfig.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader, None)
 
   final case class Services(authenticationServices: Seq[ExternalAuthenticationService#Id],
                             authorizationServices: Seq[ExternalAuthorizationService#Id],
@@ -34,4 +38,15 @@ object RorConfig {
   object Services {
     def empty: Services = Services(Seq.empty, Seq.empty, Seq.empty)
   }
+
+  trait ImpersonationWarningsReader {
+    def read()
+            (implicit requestId: RequestId): List[ImpersonationWarning]
+  }
+
+  object NoOpImpersonationWarningsReader extends ImpersonationWarningsReader {
+    override def read()
+                     (implicit requestId: RequestId): List[ImpersonationWarning] = List.empty
+  }
+
 }

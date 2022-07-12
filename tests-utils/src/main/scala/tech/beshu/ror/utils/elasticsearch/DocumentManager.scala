@@ -16,16 +16,15 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
+import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
-import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut, HttpUriRequest}
+import org.apache.http.client.methods._
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
-import tech.beshu.ror.utils.elasticsearch.DocumentManager.MGetResult
+import tech.beshu.ror.utils.elasticsearch.DocumentManager.{BulkAction, MGetResult}
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.Version
 import ujson.Value
-
-import scala.collection.JavaConverters._
 
 class DocumentManager(restClient: RestClient, esVersion: String)
   extends BaseManager(restClient) {
@@ -75,13 +74,12 @@ class DocumentManager(restClient: RestClient, esVersion: String)
     call(createDeleteByQueryRequest(index, query), new JsonResponse(_))
   }
 
-  def bulk(line: String, lines: String*): JsonResponse = {
-    val payload = (lines.toSeq :+ "\n").foldLeft(line) { case (acc, elem) => s"$acc\n$elem" }
-    call(createBulkRequest(payload), new JsonResponse(_))
+  def bulk(action: BulkAction, actions: BulkAction*): JsonResponse = {
+    call(createBulkRequest(NonEmptyList.of(action, actions: _*)), new JsonResponse(_))
   }
 
-  def bulkUnsafe(lines: String*): JsonResponse = {
-    lines.toList match {
+  def bulkUnsafe(actions: BulkAction*): JsonResponse = {
+    actions.toList match {
       case Nil => throw new IllegalArgumentException("At least one line should be passed to _bulk query")
       case head :: rest => bulk(head, rest: _*)
     }
@@ -138,16 +136,43 @@ class DocumentManager(restClient: RestClient, esVersion: String)
     request
   }
 
-  private def createBulkRequest(payload: String): HttpUriRequest = {
+  private def createBulkRequest(actions: NonEmptyList[BulkAction]): HttpUriRequest = {
     val request = new HttpPost(restClient.from("_bulk"))
     request.addHeader("Content-Type", "application/json")
+
+    val lines = actions
+      .toList
+      .flatMap {
+        case BulkAction.Insert(index, id, document) => bulkCreateIndexDocEntry(index, id, document)
+      } :+ "\n"
+
+    val payload = (lines :+ "\n").foldLeft("") { case (acc, elem) => s"$acc\n$elem" }
     request.setEntity(new StringEntity(payload))
     request
+  }
+
+  private def bulkCreateIndexDocEntry(index: String, docId: Int, document: JSON) = {
+    if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
+      Seq(
+        s"""{ "create" : { "_index" : "$index", "_id" : "$docId" } }""",
+        ujson.write(document)
+      )
+    } else {
+      Seq(
+        s"""{ "create" : { "_index" : "$index", "_type" : "doc", "_id" : "$docId" } }""",
+        ujson.write(document)
+      )
+    }
   }
 }
 
 object DocumentManager {
   class MGetResult(response: HttpResponse) extends JsonResponse(response) {
     lazy val docs: List[Value] = responseJson("docs").arr.toList
+  }
+
+  sealed trait BulkAction
+  object BulkAction {
+    final case class Insert(index: String, id: Int, document: JSON) extends BulkAction
   }
 }

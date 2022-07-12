@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.suites.ClusterStateWithInternodeSslSuite
+import tech.beshu.ror.integration.suites.XpackClusterWithRorNodesAndInternodeSslSuite
 import tech.beshu.ror.integration.utils.PluginTestSupport
 
-class ClusterStateWithInternodeSslPluginTests extends ClusterStateWithInternodeSslSuite with PluginTestSupport
+class XpackClusterWithRorNodesAndInternodeSslPluginTests extends XpackClusterWithRorNodesAndInternodeSslSuite with PluginTestSupport

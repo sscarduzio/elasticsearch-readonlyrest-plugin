@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthor
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-trait AuthorizationImpersonationSupport
+trait AuthorizationImpersonationSupport extends ImpersonationSupport
 
 trait SimpleAuthorizationImpersonationSupport extends AuthorizationImpersonationSupport {
   this: AuthorizationRule =>

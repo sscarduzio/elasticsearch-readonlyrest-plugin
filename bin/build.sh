@@ -165,7 +165,7 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es8xx" ]]; then
     ./gradlew --stacktrace es81x:ror '-PesVersion=8.1.1'
     ./gradlew --stacktrace es81x:ror '-PesVersion=8.1.0'
 
-    #es80
+    #es80x
     ./gradlew --stacktrace es80x:ror '-PesVersion=8.0.1'
     ./gradlew --stacktrace es80x:ror '-PesVersion=8.0.0'
 

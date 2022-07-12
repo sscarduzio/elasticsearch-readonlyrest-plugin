@@ -89,12 +89,19 @@ class TestConfigApi(rorInstance: RorInstance)
       .map {
         case TestConfig.NotSet =>
           TestConfigResponse.ProvideTestConfig.TestSettingsNotConfigured("ROR Test settings are not configured")
-        case TestConfig.Present(_, rawConfig, configuredTtl, validTo) =>
+        case TestConfig.Present(config, rawConfig, configuredTtl, validTo) =>
           TestConfigResponse.ProvideTestConfig.CurrentTestSettings(
             ttl = configuredTtl,
             validTo = validTo,
             settings = rawConfig,
-            warnings = List.empty
+            warnings = config.impersonationWarningsReader.read().map { warning =>
+              TestConfigResponse.ProvideTestConfig.Warning(
+                blockName = warning.block.value,
+                ruleName = warning.ruleName.value,
+                message = warning.message.value,
+                hint = warning.hint
+              )
+            }
           )
         case TestConfig.Invalidated(recentConfig, ttl) =>
           TestConfigResponse.ProvideTestConfig.TestSettingsInvalidated("ROR Test settings are invalidated", recentConfig, ttl)
