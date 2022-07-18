@@ -88,9 +88,10 @@ configurations {
 
 dependencies {
     shadowCompile group: 'org.ow2.asm',                   name: 'asm',                              version: '9.3'
+    shadowCompile group: 'io.kevinlee',                   name: 'just-semver_2.12',                 version: '0.5.0'
     shadowCompile group: 'com.lihaoyi',                   name: 'os-lib_2.12',                      version: '0.8.1'
     shadowCompile group: 'org.scala-lang',                name: 'scala-library',                    version: '2.12.8'
-    shadowCompile group: 'com.github.scopt',              name: 'scopt_2.12',                       version: '4.1.0'
+    shadowCompile group: 'com.github.scopt',              name: 'scopt_2.12',                       version: '4.0.1'
 }
 
 license {

@@ -16,34 +16,15 @@
  */
 package tech.beshu.ror.tools.patches
 
-import tech.beshu.ror.tools.utils.EsUtil.{es800, es830, readEsVersion}
-
 import scala.util.Try
 
-trait EsPatch {
+object NoOpPatch extends EsPatch {
 
-  def assertIsPatched(): Try[Unit]
+  override def assertIsPatched(): Try[Unit] = Try {}
 
-  def backup(): Try[Unit]
+  override def backup(): Try[Unit] = Try {}
 
-  def restore(): Try[Unit]
+  override def restore(): Try[Unit] = Try {}
 
-  def execute(): Try[Unit]
-
-  def assertIsNotPatched(): Try[Unit] = Try {
-    assertIsPatched()
-      .fold(
-        _ => (),
-        _ => throw new IllegalStateException("ReadonlyREST plugin is already patched")
-      )
-  }
-}
-object EsPatch {
-  def create(esPath: os.Path): EsPatch = {
-    readEsVersion(esPath) match {
-      case esVersion if esVersion < es800 => NoOpPatch
-      case esVersion if esVersion < es830 => new Es80xPatch(esPath)
-      case esVersion => new Es83xPatch(esPath, esVersion)
-    }
-  }
+  override def execute(): Try[Unit] = Try {}
 }

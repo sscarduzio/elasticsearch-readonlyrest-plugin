@@ -19,7 +19,7 @@ package tech.beshu.ror.tools
 import os.Path
 import scopt._
 import tech.beshu.ror.tools.actions._
-import tech.beshu.ror.tools.patches.Es8xxPatch
+import tech.beshu.ror.tools.patches.EsPatch
 
 import scala.util.Try
 
@@ -32,13 +32,13 @@ object RorToolsApp {
         config.command match {
           case Command.Patch(customEsPath) =>
             val esPath = customEsPath.getOrElse(defaults.esPath)
-            new PatchAction(new Es8xxPatch(esPath)).execute()
+            new PatchAction(EsPatch.create(esPath)).execute()
           case Command.Unpatch(customEsPath) =>
             val esPath = customEsPath.getOrElse(defaults.esPath)
-            new UnpatchAction(new Es8xxPatch(esPath)).execute()
+            new UnpatchAction(EsPatch.create(esPath)).execute()
           case Command.Verify(customEsPath) =>
             val esPath = customEsPath.getOrElse(defaults.esPath)
-            new VerifyAction(new Es8xxPatch(esPath)).execute()
+            new VerifyAction(EsPatch.create(esPath)).execute()
         }
       }
   }
@@ -56,7 +56,7 @@ object RorToolsApp {
     note(""),
     verifyCommand,
     note(""),
-    help('h', "help").text("prints this usage text"),
+    help('h', "help").text("prints this usage text")
   )
 
   private lazy val patchCommand =

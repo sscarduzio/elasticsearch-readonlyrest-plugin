@@ -29,14 +29,14 @@ object ModuleOpener {
   def openModule(jar: File): Unit = {
     loadFileFromJar(jar, "module-info") match {
       case Some(moduleInfoInputStream) =>
-        val updatedContentOfModuleInfo = openModule(moduleInfoInputStream)
+        val updatedContentOfModuleInfo = doOpenModule(moduleInfoInputStream)
         updateFileInJar(jar, "/module-info.class", updatedContentOfModuleInfo)
       case None =>
         throw new IllegalStateException(s"Cannot find module-info.class in ${jar.toString}")
     }
   }
 
-  private def openModule(moduleInputStream: InputStream) = {
+  private def doOpenModule(moduleInputStream: InputStream) = {
     val reader = new ClassReader(moduleInputStream)
     val writer = new ClassWriter(reader, 0)
     reader.accept(new EsClassVisitor(writer), 0)
@@ -50,7 +50,7 @@ object ModuleOpener {
         jarFile
           .entries().asScala
           .find { entry =>
-            val name = entry.getRealName
+            val name = entry.getName
             val classSuffix = ".class"
             name.startsWith(classFileName) && name.endsWith(classSuffix) && name.length == (classFileName.length + classSuffix.length)
           }
@@ -61,18 +61,19 @@ object ModuleOpener {
   private def updateFileInJar(jar: File,
                               destinationPathSting: String,
                               newContent: Array[Byte]): Unit = {
-    val zipfs = FileSystems.newFileSystem(
+    Option(FileSystems.newFileSystem(
       URI.create("jar:" + jar.toURI),
       Map("create" -> "true").asJava
-    )
-    try {
-      Files.copy(
-        new ByteArrayInputStream(newContent),
-        zipfs.getPath(destinationPathSting),
-        StandardCopyOption.REPLACE_EXISTING
-      )
-    } finally {
-      if (zipfs != null) zipfs.close()
+    )) map { zipfs =>
+      try {
+        Files.copy(
+          new ByteArrayInputStream(newContent),
+          zipfs.getPath(destinationPathSting),
+          StandardCopyOption.REPLACE_EXISTING
+        )
+      } finally {
+        zipfs.close()
+      }
     }
   }
 
