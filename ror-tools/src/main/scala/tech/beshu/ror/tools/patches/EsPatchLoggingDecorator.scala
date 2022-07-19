@@ -16,37 +16,27 @@
  */
 package tech.beshu.ror.tools.patches
 
-import tech.beshu.ror.tools.utils.EsUtil.findTransportNetty4JarIn
-import tech.beshu.ror.tools.utils.{EsNotPatchedException, EsUtil}
-
-import scala.language.postfixOps
-
-class Es80xPatch(esPath: os.Path) extends EsPatch {
-
-  private val transportNetty4ModulePath = esPath / "modules" / "transport-netty4"
-  private val readonlyRestPluginPath = EsUtil.readonlyrestPluginPath(esPath)
+class EsPatchLoggingDecorator(underlying: EsPatch) extends EsPatch {
 
   override def isPatched: Boolean = {
-    findTransportNetty4JarIn(readonlyRestPluginPath).isDefined
+    println("Checking if ES is patched ...")
+    underlying.isPatched
   }
 
   override def backup(): Unit = {
-    // nothing to do
+    println("Creating backup ...")
+    underlying.backup()
   }
 
   override def restore(): Unit = {
-    findTransportNetty4JarIn(readonlyRestPluginPath) match {
-      case Some(jar) => os.remove(jar)
-      case None => EsNotPatchedException
-    }
+    println("Restoring ...")
+    underlying.restore()
+    println("ES is unpatched! ReadonlyREST can be removed now")
   }
 
   override def execute(): Unit = {
-    findTransportNetty4JarIn(transportNetty4ModulePath) match {
-      case Some(jar) =>
-        os.copy(from = jar, to = readonlyRestPluginPath / jar.last)
-      case None =>
-        new IllegalStateException(s"ReadonlyREST plugin cannot be patched due to not found transport netty4 jar")
-    }
+    println("Patching ...")
+    underlying.execute()
+    println("ES is patched! ReadonlyREST is ready to use")
   }
 }

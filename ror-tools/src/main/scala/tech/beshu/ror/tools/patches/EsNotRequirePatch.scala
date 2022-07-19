@@ -16,15 +16,17 @@
  */
 package tech.beshu.ror.tools.patches
 
-import scala.util.Try
+import just.semver.SemVer
+import tech.beshu.ror.tools.utils.EsPatchingNotRequired
 
-object NoOpPatch extends EsPatch {
+class EsNotRequirePatch(esVersion: SemVer)
+  extends EsPatch {
 
-  override def assertIsPatched(): Try[Unit] = Try {}
+  override def isPatched: Boolean = throw new EsPatchingNotRequired(esVersion)
 
-  override def backup(): Try[Unit] = Try {}
+  override def backup(): Unit = throw new EsPatchingNotRequired(esVersion)
 
-  override def restore(): Try[Unit] = Try {}
+  override def restore(): Unit = throw new EsPatchingNotRequired(esVersion)
 
-  override def execute(): Try[Unit] = Try {}
+  override def execute(): Unit = throw new EsPatchingNotRequired(esVersion)
 }

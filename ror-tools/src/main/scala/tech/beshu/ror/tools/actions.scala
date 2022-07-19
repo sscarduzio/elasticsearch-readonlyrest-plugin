@@ -17,33 +17,35 @@
 package tech.beshu.ror.tools
 
 import tech.beshu.ror.tools.patches.EsPatch
+import tech.beshu.ror.tools.utils.{EsAlreadyPatchedException, EsNotPatchedException}
 
 import scala.language.postfixOps
 
 object actions {
 
   class PatchAction(patch: EsPatch) {
+
     def execute(): Unit = {
-      (for {
-        _ <- patch.assertIsNotPatched()
-        _ <- patch.backup()
-        _ <- patch.execute()
-      } yield ()) get
+      if (patch.isPatched) throw EsAlreadyPatchedException
+      patch.backup()
+      patch.execute()
     }
   }
 }
 
 class UnpatchAction(patch: EsPatch) {
   def execute(): Unit = {
-    (for {
-      _ <- patch.assertIsPatched()
-      _ <- patch.restore()
-    } yield ()) get
+    if (!patch.isPatched) throw EsNotPatchedException
+    patch.restore()
   }
 }
 
 class VerifyAction(patch: EsPatch) {
   def execute(): Unit = {
-    patch.assertIsPatched().get
+    if (patch.isPatched) {
+      println("ES is patched! ReadonlyREST can be used")
+    } else {
+      println("ES is NOT patched! ReadonlyREST cannot be used yet")
+    }
   }
 }

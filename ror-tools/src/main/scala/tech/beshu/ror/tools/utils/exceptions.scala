@@ -14,30 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.patches
+package tech.beshu.ror.tools.utils
 
-import tech.beshu.ror.tools.utils.EsUtil.{es800, es830, readEsVersion}
+import just.semver.SemVer
 
-trait EsPatch {
+object EsNotPatchedException extends IllegalStateException("ES is not patched yet")
 
-  def isPatched: Boolean
+object EsAlreadyPatchedException extends IllegalStateException("ES is already patched")
 
-  def backup(): Unit
-
-  def restore(): Unit
-
-  def execute(): Unit
-}
-object EsPatch {
-  def create(esPath: os.Path): EsPatch = {
-    new EsPatchLoggingDecorator(
-      readEsVersion(esPath) match {
-        case esVersion if esVersion < es800 => new EsNotRequirePatch(esVersion)
-        case esVersion if esVersion < es830 => new Es80xPatch(esPath)
-        case esVersion => new Es83xPatch(esPath, esVersion)
-      }
-    )
-  }
-
-  def createA(esPath: String): EsPatch = create(os.Path(esPath))
-}
+final class EsPatchingNotRequired(esVersion: SemVer) extends IllegalStateException(s"ES ${esVersion.render} doesn't require patching")
