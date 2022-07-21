@@ -79,9 +79,6 @@ test {
 }
 
 configurations {
-//    scalaCompilerPlugin {
-//        transitive = false
-//    }
     shadowCompile
     compile.extendsFrom(shadowCompile)
 }
