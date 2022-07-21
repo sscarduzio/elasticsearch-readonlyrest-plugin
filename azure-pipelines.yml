@@ -326,6 +326,7 @@ stages:
 
           - script: |
               set -e
+              apt-get update && apt-get install -y git
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
