@@ -27,7 +27,7 @@ import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
-import tech.beshu.ror.accesscontrol.domain.AuditCluster
+import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, RorMode}
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
@@ -37,6 +37,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse, createTestSettingsNotConfiguredResponse}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, RestClientAuditSinkService}
+import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
@@ -112,27 +113,26 @@ class IndexLevelActionFilter(nodeName: String,
     doPrivileged {
       proceed(
         task,
-        action,
+        Action(action),
         request,
         listener.asInstanceOf[ActionListener[ActionResponse]],
-        new EsChain(
-          chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]],
-          threadPool
-        )
+        new EsChain(chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]])
       )
     }
   }
 
   private def proceed(task: Task,
-                      action: String,
+                      action: Action,
                       request: ActionRequest,
                       listener: ActionListener[ActionResponse],
                       chain: EsChain): Unit = {
     ThreadRepo.getRorRestChannel match {
       case None =>
-        chain.continue(nodeName, task, action, request, listener)
-      case Some(_) if action.startsWith("internal:") =>
-        chain.continue(nodeName, task, action, request, listener)
+        threadPool.getThreadContext.addXpackSecurityAuthenticationHeader(nodeName)
+        chain.continue(task, action, request, listener)
+      case Some(_) if action.isInternal =>
+        threadPool.getThreadContext.addSystemAuthenticationHeader(nodeName)
+        chain.continue(task, action, request, listener)
       case Some(channel) =>
         proceedByRorEngine(
           EsContext(

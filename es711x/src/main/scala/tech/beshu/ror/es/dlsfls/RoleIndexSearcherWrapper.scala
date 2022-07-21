@@ -16,20 +16,19 @@
  */
 package tech.beshu.ror.es.dlsfls
 
-import java.io.IOException
-import java.util.function.{Function => JavaFunction}
-
 import cats.data.StateT
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import org.apache.lucene.index.DirectoryReader
-import org.elasticsearch.common.util.concurrent.ThreadContext
 import org.elasticsearch.common.CheckedFunction
+import org.elasticsearch.common.util.concurrent.ThreadContext
 import org.elasticsearch.index.IndexService
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsFromHeaderValue
 
+import java.io.IOException
+import java.util.function.{Function => JavaFunction}
 import scala.util.{Failure, Success, Try}
 
 object RoleIndexSearcherWrapper extends Logging {

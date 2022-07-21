@@ -47,7 +47,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy implicit val id: RequestContext.Id = RequestContext.Id(esContext.requestContextId)
 
-  override lazy val action: Action = Action(esContext.actionType)
+  override lazy val action: Action = esContext.action
 
   override lazy val headers: Set[Header] = restRequest.allHeaders()
 

@@ -21,11 +21,11 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterProvider, EsClusterSettings, EsContainer, EsContainerCreator, _}
-import tech.beshu.ror.utils.elasticsearch.{CatManager, IndexManager, RorApiManager}
+import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
-trait ClusterStateWithInternodeSslSuite
+trait XpackClusterWithRorNodesAndInternodeSslSuite
   extends AnyWordSpec
     with BaseEsClusterIntegrationTest
     with ESVersionSupportForAnyWordSpecLike
@@ -33,7 +33,7 @@ trait ClusterStateWithInternodeSslSuite
     with BeforeAndAfterAll {
   this: EsContainerCreator =>
 
-  override implicit val rorConfigFileName = "/cluster_state_internode_ssl/readonlyrest.yml"
+  override implicit val rorConfigFileName = "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest.yml"
 
   override def clusterContainer: EsClusterContainer = generalClusterContainer
 
@@ -71,32 +71,37 @@ trait ClusterStateWithInternodeSslSuite
     }
   )
 
-  "Health check" should {
-    "be successful" when {
-      "internode ssl is enabled" in {
-        val rorClusterAdminStateManager = new CatManager(clusterContainer.nodes.head.rorAdminClient, esVersion = esVersionUsed)
+  "Health check works" in {
+    val rorClusterAdminStateManager = new CatManager(clusterContainer.nodes.head.rorAdminClient, esVersion = esVersionUsed)
 
-        val response = rorClusterAdminStateManager.healthCheck()
+    val response = rorClusterAdminStateManager.healthCheck()
 
-        response.responseCode should be(200)
-      }
-      "ROR config reload can be done" in {
-        val rorApiManager = new RorApiManager(clusterContainer.nodes.head.rorAdminClient, esVersion = esVersionUsed)
+    response.responseCode should be(200)
+  }
+  "ROR config reload can be done" in {
+    val rorApiManager = new RorApiManager(clusterContainer.nodes.head.rorAdminClient, esVersion = esVersionUsed)
 
-        val updateResult = rorApiManager
-          .updateRorInIndexConfig(getResourceContent("/cluster_state_internode_ssl/readonlyrest_update.yml"))
+    val updateResult = rorApiManager
+      .updateRorInIndexConfig(getResourceContent("/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_update.yml"))
 
-        updateResult.responseCode should be(200)
-        updateResult.responseJson("status").str should be("ok")
+    updateResult.responseCode should be(200)
+    updateResult.responseJson("status").str should be("ok")
 
-        val indexManager = new IndexManager(basicAuthClient("user1", "test"), esVersion = esVersionUsed)
-        indexManager.createIndex("test").force()
+    val indexManager = new IndexManager(basicAuthClient("user1", "test"), esVersion = esVersionUsed)
+    indexManager.createIndex("test").force()
 
-        val getIndexResult = indexManager.getIndex("test")
+    val getIndexResult = indexManager.getIndex("test")
 
-        getIndexResult.responseCode should be(200)
-        getIndexResult.indicesAndAliases.keys.toList should be (List("test"))
-      }
-    }
+    getIndexResult.responseCode should be(200)
+    getIndexResult.indicesAndAliases.keys.toList should be(List("test"))
+  }
+  "Field caps request works" in {
+    val documentManager = new DocumentManager(clusterContainer.nodes.head.rorAdminClient, esVersion = esVersionUsed)
+    documentManager.createDoc("user2_index", 1, ujson.read("""{ "data1": 1, "data2": 2 }"""))
+
+    val searchManager = new SearchManager(basicAuthClient("user2", "test"))
+    val result = searchManager.fieldCaps(indices = "user2_index" :: Nil, fields = "data1" :: Nil)
+
+    result.responseCode should be(200)
   }
 }
