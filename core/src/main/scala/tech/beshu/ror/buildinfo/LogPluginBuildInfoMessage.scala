@@ -17,7 +17,6 @@
 package tech.beshu.ror.buildinfo
 
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.utils.AccessControllerHelper
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import scala.util.{Failure, Success}
@@ -33,7 +32,7 @@ object LogPluginBuildInfoMessage extends Logging {
   }
 
   def createLogMessage(buildInfo: BuildInfo): String =
-    s"Starting ReadonlyREST plugin v${buildInfo.pluginVersion} on ES v${buildInfo.esVersion}"
+    s"Starting ReadonlyREST plugin v${buildInfo.pluginVersion} on Elasticsearch v${buildInfo.esVersion}"
 
   def apply(): Unit = {
     logBuildInfoMessage()

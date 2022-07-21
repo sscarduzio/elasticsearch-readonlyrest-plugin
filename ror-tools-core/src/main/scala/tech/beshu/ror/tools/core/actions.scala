@@ -42,9 +42,12 @@ object actions {
   class VerifyAction(patch: EsPatch) {
     def execute(): Unit = {
       if (patch.isPatched) {
-        println("ES is patched! ReadonlyREST can be used")
+        println("Elasticsearch is patched! ReadonlyREST can be used")
       } else {
-        println("ES is NOT patched! ReadonlyREST cannot be used yet")
+        println(
+          "Elasticsearch is NOT patched! ReadonlyREST cannot be used yet. " +
+            "For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#3.-patch-es"
+        )
       }
     }
   }

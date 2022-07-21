@@ -18,8 +18,8 @@ package tech.beshu.ror.tools.core.utils
 
 import just.semver.SemVer
 
-object EsNotPatchedException extends IllegalStateException("ES is not patched yet")
+object EsNotPatchedException extends IllegalStateException("Elasticsearch is not patched yet")
 
-object EsAlreadyPatchedException extends IllegalStateException("ES is already patched")
+object EsAlreadyPatchedException extends IllegalStateException("Elasticsearch is already patched")
 
-final class EsPatchingNotRequired(esVersion: SemVer) extends IllegalStateException(s"ES ${esVersion.render} doesn't require patching")
+final class EsPatchingNotRequired(esVersion: SemVer) extends IllegalStateException(s"Elasticsearch ${esVersion.render} doesn't require patching")

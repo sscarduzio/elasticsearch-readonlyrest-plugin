@@ -19,7 +19,7 @@ package tech.beshu.ror.tools.core.patches
 class EsPatchLoggingDecorator(underlying: EsPatch) extends EsPatch {
 
   override def isPatched: Boolean = {
-    println("Checking if ES is patched ...")
+    println("Checking if Elasticsearch is patched ...")
     underlying.isPatched
   }
 
@@ -31,12 +31,12 @@ class EsPatchLoggingDecorator(underlying: EsPatch) extends EsPatch {
   override def restore(): Unit = {
     println("Restoring ...")
     underlying.restore()
-    println("ES is unpatched! ReadonlyREST can be removed now")
+    println("Elasticsearch is unpatched! ReadonlyREST can be removed now")
   }
 
   override def execute(): Unit = {
     println("Patching ...")
     underlying.execute()
-    println("ES is patched! ReadonlyREST is ready to use")
+    println("Elasticsearch is patched! ReadonlyREST is ready to use")
   }
 }
