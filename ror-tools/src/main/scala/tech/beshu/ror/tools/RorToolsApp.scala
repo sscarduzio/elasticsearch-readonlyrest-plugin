@@ -17,9 +17,9 @@
 package tech.beshu.ror.tools
 
 import os.Path
-import scopt._
-import tech.beshu.ror.tools.actions._
-import tech.beshu.ror.tools.patches.EsPatch
+import scopt.OParser
+import tech.beshu.ror.tools.core.actions._
+import tech.beshu.ror.tools.core.patches.EsPatch
 
 import scala.util.Try
 

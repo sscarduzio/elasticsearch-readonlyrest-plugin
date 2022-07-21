@@ -87,8 +87,10 @@ configurations {
 }
 
 dependencies {
-    shadowCompile project(path: ':ror-tools-core')
-    shadowCompile group: 'com.github.scopt',              name: 'scopt_2.12',                       version: '4.0.1'
+    shadowCompile group: 'org.ow2.asm',                   name: 'asm',                              version: '9.3'
+    shadowCompile group: 'io.kevinlee',                   name: 'just-semver_2.12',                 version: '0.5.0'
+    shadowCompile group: 'com.lihaoyi',                   name: 'os-lib_2.12',                      version: '0.8.1'
+    shadowCompile group: 'org.scala-lang',                name: 'scala-library',                    version: '2.12.8'
 }
 
 license {
@@ -120,11 +122,6 @@ tasks.withType(ScalaCompile) {
 }
 
 shadowJar {
-    minimize()
-    manifest {
-        attributes 'Main-Class': 'tech.beshu.ror.tools.RorToolsApp'
-    }
-    archiveName = "ror-tools.${extension}"
     configurations = [project.configurations.shadowCompile]
 }
 
@@ -143,48 +140,4 @@ tasks.withType(AbstractArchiveTask) {
     reproducibleFileOrder = true
 }
 
-def netty4TransportArtifactName = "transport-netty4-" + esVersion + ".jar"
-def netty4TransportArtifactDestinationPath = "org/elasticsearch/plugin/transport-netty4/" + esVersion + "/" + netty4TransportArtifactName
-
-task uploadArtifactsFromEsBinaries(type: Exec) {
-    commandLine '../ci/upload-file-to-s3.sh', layout.buildDirectory.get().asFile.path + "/" + netty4TransportArtifactName, "build/" + netty4TransportArtifactDestinationPath
-}
-
-task getArtifactsFromEsBinaries {
-    doLast {
-        def esDir = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion)
-        def netty4TransportArtifactPath = esDir.path + "/elasticsearch-" + esVersion + "/modules/transport-netty4/" + netty4TransportArtifactName
-        def netty4TransportDestPath = layout.buildDirectory
-        project.logger.info("Coping " + netty4TransportArtifactPath + " to " + netty4TransportDestPath.get().asFile.path + " ...")
-        copy {
-            from netty4TransportArtifactPath
-            into netty4TransportDestPath
-        }
-    }
-}
-
-uploadArtifactsFromEsBinaries.dependsOn getArtifactsFromEsBinaries
-
-task downloadEsBinaries {
-    doLast {
-        def esTar = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion + ".tar.gz")
-        if (!esTar.exists()) {
-            if (!layout.buildDirectory.asFile.get().exists()) {
-                project.mkdir(layout.buildDirectory.asFile.get())
-            }
-            def esLinuxBinaries = "elasticsearch-" + esVersion + "-linux-x86_64.tar.gz"
-            project.logger.info("Downloading " + esLinuxBinaries + " ...")
-            new URL("https://artifacts.elastic.co/downloads/elasticsearch/" + esLinuxBinaries)
-                    .withInputStream { i -> esTar.withOutputStream { it << i } }
-        }
-        def esDir = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion)
-        project.logger.info("Extracting " + esTar.path + " to " + esDir.path + "...")
-        copy {
-            from tarTree(esTar)
-            into esDir
-        }
-    }
-}
-
-getArtifactsFromEsBinaries.dependsOn downloadEsBinaries
 

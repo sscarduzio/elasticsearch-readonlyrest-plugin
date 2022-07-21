@@ -14,10 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools
+package tech.beshu.ror.tools.core
 
-import tech.beshu.ror.tools.patches.EsPatch
-import tech.beshu.ror.tools.utils.{EsAlreadyPatchedException, EsNotPatchedException}
+import tech.beshu.ror.tools.core.patches.EsPatch
+import tech.beshu.ror.tools.core.utils.{EsAlreadyPatchedException, EsNotPatchedException}
 
 import scala.language.postfixOps
 
@@ -31,21 +31,21 @@ object actions {
       patch.execute()
     }
   }
-}
 
-class UnpatchAction(patch: EsPatch) {
-  def execute(): Unit = {
-    if (!patch.isPatched) throw EsNotPatchedException
-    patch.restore()
+  class UnpatchAction(patch: EsPatch) {
+    def execute(): Unit = {
+      if (!patch.isPatched) throw EsNotPatchedException
+      patch.restore()
+    }
   }
-}
 
-class VerifyAction(patch: EsPatch) {
-  def execute(): Unit = {
-    if (patch.isPatched) {
-      println("ES is patched! ReadonlyREST can be used")
-    } else {
-      println("ES is NOT patched! ReadonlyREST cannot be used yet")
+  class VerifyAction(patch: EsPatch) {
+    def execute(): Unit = {
+      if (patch.isPatched) {
+        println("ES is patched! ReadonlyREST can be used")
+      } else {
+        println("ES is NOT patched! ReadonlyREST cannot be used yet")
+      }
     }
   }
 }

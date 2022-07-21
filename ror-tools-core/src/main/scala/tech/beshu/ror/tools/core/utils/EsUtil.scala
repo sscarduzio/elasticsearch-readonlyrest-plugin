@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.utils
+package tech.beshu.ror.tools.core.utils
 
 import just.semver.SemVer
 import os.Path

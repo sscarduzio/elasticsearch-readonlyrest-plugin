@@ -14,10 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.patches
+package tech.beshu.ror.tools.core.patches
 
-import tech.beshu.ror.tools.utils.EsUtil.findTransportNetty4JarIn
-import tech.beshu.ror.tools.utils.{EsNotPatchedException, EsUtil}
+import tech.beshu.ror.tools.core.utils.{EsNotPatchedException, EsUtil}
+import tech.beshu.ror.tools.core.utils.EsUtil.findTransportNetty4JarIn
 
 import scala.language.postfixOps
 

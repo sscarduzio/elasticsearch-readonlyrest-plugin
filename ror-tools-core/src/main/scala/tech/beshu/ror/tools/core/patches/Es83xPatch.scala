@@ -14,11 +14,11 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.patches
+package tech.beshu.ror.tools.core.patches
 
 import just.semver.SemVer
-import tech.beshu.ror.tools.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
-import tech.beshu.ror.tools.utils.ModuleOpener.openModule
+import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
+import tech.beshu.ror.tools.core.utils.ModuleOpener.openModule
 
 import scala.language.postfixOps
 import scala.util.Try
