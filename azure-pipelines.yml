@@ -326,13 +326,14 @@ stages:
 
           - script: |
               set -e
-              apt-get update && apt-get install -y git
+              echo ">>> MAKE SURE GIT IS INSTALLED >>> "
+              apt-get update && apt-get install -y git && git status || exit 1
+
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
               
-              echo ">> ALL VARIABLES NAMES " && export | awk -F= '{print $1}'
-              echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
+              # echo ">> ALL VARIABLES NAMES " && export | awk -F= '{print $1}'
               
               echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/build.sh
