@@ -25,12 +25,12 @@ class EsInitListener extends Logging {
 
   private val readyPromise = Promise[Unit]()
 
-  logger.info("ReadonlyREST is waiting for full ES init")
+  logger.info("ReadonlyREST is waiting for full Elasticsearch init")
 
   def waitUntilReady: Task[Unit] = Task.fromFuture(readyPromise.future)
 
   def onEsReady(): Unit = {
-    logger.info("ES fully initiated. ReadonlyREST can continue ...")
+    logger.info("Elasticsearch fully initiated. ReadonlyREST can continue ...")
     readyPromise.trySuccess(())
   }
 }

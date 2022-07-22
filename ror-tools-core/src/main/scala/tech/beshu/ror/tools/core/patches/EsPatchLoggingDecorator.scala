@@ -14,19 +14,30 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.patches
+package tech.beshu.ror.tools.core.patches
 
-import scala.util.Try
+private[patches] class EsPatchLoggingDecorator(underlying: EsPatch)
+  extends EsPatch {
 
-trait EsPatch {
+  override def isPatched: Boolean = {
+    println("Checking if Elasticsearch is patched ...")
+    underlying.isPatched
+  }
 
-  def assertIsNotPatched(): Try[Unit]
+  override def backup(): Unit = {
+    println("Creating backup ...")
+    underlying.backup()
+  }
 
-  def assertIsPatched(): Try[Unit]
+  override def restore(): Unit = {
+    println("Restoring ...")
+    underlying.restore()
+    println("Elasticsearch is unpatched! ReadonlyREST can be removed now")
+  }
 
-  def backup(): Try[Unit]
-
-  def restore(): Try[Unit]
-
-  def execute(): Try[Unit]
+  override def execute(): Unit = {
+    println("Patching ...")
+    underlying.execute()
+    println("Elasticsearch is patched! ReadonlyREST is ready to use")
+  }
 }
