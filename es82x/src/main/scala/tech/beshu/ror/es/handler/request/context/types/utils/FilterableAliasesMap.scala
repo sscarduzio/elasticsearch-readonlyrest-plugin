@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap.AliasesMap
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.ImmutableOpenMapOps
 import tech.beshu.ror.utils.{CaseMappingEquality, StringCaseMapping}
-
+import tech.beshu.ror.utils.ScalaOps._
 import scala.collection.JavaConverters._
 
 import scala.language.{implicitConversions, postfixOps}
