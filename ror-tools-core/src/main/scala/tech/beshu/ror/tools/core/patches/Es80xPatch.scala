@@ -16,15 +16,17 @@
  */
 package tech.beshu.ror.tools.core.patches
 
-import tech.beshu.ror.tools.core.utils.{EsNotPatchedException, EsUtil}
+import tech.beshu.ror.tools.core.utils.{EsDirectory, EsUtil}
 import tech.beshu.ror.tools.core.utils.EsUtil.findTransportNetty4JarIn
+import tech.beshu.ror.tools.core.utils.RorToolsException.EsNotPatchedException
 
 import scala.language.postfixOps
 
-class Es80xPatch(esPath: os.Path) extends EsPatch {
+private[patches] class Es80xPatch(esDirectory: EsDirectory)
+  extends EsPatch {
 
-  private val transportNetty4ModulePath = esPath / "modules" / "transport-netty4"
-  private val readonlyRestPluginPath = EsUtil.readonlyrestPluginPath(esPath)
+  private val transportNetty4ModulePath = esDirectory.path / "modules" / "transport-netty4"
+  private val readonlyRestPluginPath = EsUtil.readonlyrestPluginPath(esDirectory.path)
 
   override def isPatched: Boolean = {
     findTransportNetty4JarIn(readonlyRestPluginPath).isDefined

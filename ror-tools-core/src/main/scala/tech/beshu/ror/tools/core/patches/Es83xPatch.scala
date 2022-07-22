@@ -17,20 +17,21 @@
 package tech.beshu.ror.tools.core.patches
 
 import just.semver.SemVer
+import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
 import tech.beshu.ror.tools.core.utils.ModuleOpener.openModule
 
 import scala.language.postfixOps
 import scala.util.Try
 
-class Es83xPatch(esPath: os.Path,
-                 esVersion: SemVer)
+private[patches] class Es83xPatch(esDirectory: EsDirectory,
+                                  esVersion: SemVer)
   extends EsPatch {
 
-  private val libPath = esPath / "lib"
-  private val modulesPath = esPath / "modules"
+  private val libPath = esDirectory.path / "lib"
+  private val modulesPath = esDirectory.path / "modules"
 
-  private val readonlyRestPluginPath = readonlyrestPluginPath(esPath)
+  private val readonlyRestPluginPath = readonlyrestPluginPath(esDirectory.path)
   private val rorBackupFolderPath = readonlyRestPluginPath / "patch_backup"
   private val elasticsearchJar = s"elasticsearch-${esVersion.render}.jar"
   private val elasticsearchJarOriginPath = libPath / elasticsearchJar
@@ -38,7 +39,7 @@ class Es83xPatch(esPath: os.Path,
   private val xpackCoreJar = s"x-pack-core-${esVersion.render}.jar"
   private val xpackCoreJarPath = modulesPath / "x-pack-core" / xpackCoreJar
   private val xpackCoreRorBackupPath = rorBackupFolderPath / xpackCoreJar
-  private val transportNetty4ModulePath = esPath / "modules" / "transport-netty4"
+  private val transportNetty4ModulePath = esDirectory.path / "modules" / "transport-netty4"
 
   override def isPatched: Boolean = {
     doesBackupFolderExist && isTransportNetty4PresentInRorPluginPath

@@ -17,9 +17,9 @@
 package tech.beshu.ror.tools.core.patches
 
 import just.semver.SemVer
-import tech.beshu.ror.tools.core.utils.EsPatchingNotRequired
+import tech.beshu.ror.tools.core.utils.RorToolsException.EsPatchingNotRequired
 
-class EsNotRequirePatch(esVersion: SemVer)
+private[patches] class EsNotRequirePatch(esVersion: SemVer)
   extends EsPatch {
 
   override def isPatched: Boolean = throw new EsPatchingNotRequired(esVersion)

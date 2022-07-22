@@ -27,9 +27,9 @@ object EsUtil {
   val es800: SemVer = SemVer.unsafeParse("8.0.0")
   val es830: SemVer = SemVer.unsafeParse("8.3.0")
 
-  def readEsVersion(esPath: os.Path): SemVer = {
+  def readEsVersion(esDirectory: EsDirectory): SemVer = {
     os
-      .list(esPath / "lib")
+      .list(esDirectory.path / "lib")
       .view
       .flatMap { file =>
         file.last match {

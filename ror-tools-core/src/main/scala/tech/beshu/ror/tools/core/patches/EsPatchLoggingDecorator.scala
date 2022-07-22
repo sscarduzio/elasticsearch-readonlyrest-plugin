@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.tools.core.patches
 
-class EsPatchLoggingDecorator(underlying: EsPatch) extends EsPatch {
+private[patches] class EsPatchLoggingDecorator(underlying: EsPatch)
+  extends EsPatch {
 
   override def isPatched: Boolean = {
     println("Checking if Elasticsearch is patched ...")

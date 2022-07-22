@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror.tools
 
-import os.Path
 import scopt.OParser
 import tech.beshu.ror.tools.core.actions._
 import tech.beshu.ror.tools.core.patches.EsPatch
+import tech.beshu.ror.tools.core.utils.{EsDirectory, RorToolsException}
 
 import scala.util.Try
 
@@ -29,18 +29,28 @@ object RorToolsApp {
     OParser
       .parse(parser, args, Config(Command.Verify(None)))
       .foreach { config =>
-        config.command match {
-          case Command.Patch(customEsPath) =>
-            val esPath = customEsPath.getOrElse(defaults.esPath)
-            new PatchAction(EsPatch.create(esPath)).execute()
-          case Command.Unpatch(customEsPath) =>
-            val esPath = customEsPath.getOrElse(defaults.esPath)
-            new UnpatchAction(EsPatch.create(esPath)).execute()
-          case Command.Verify(customEsPath) =>
-            val esPath = customEsPath.getOrElse(defaults.esPath)
-            new VerifyAction(EsPatch.create(esPath)).execute()
+        Try {
+          config.command match {
+            case Command.Patch(customEsPath) =>
+              val esDirectory = esDirectoryFrom(customEsPath)
+              new PatchAction(EsPatch.create(esDirectory)).execute()
+            case Command.Unpatch(customEsPath) =>
+              val esDirectory = esDirectoryFrom(customEsPath)
+              new UnpatchAction(EsPatch.create(esDirectory)).execute()
+            case Command.Verify(customEsPath) =>
+              val esDirectory = esDirectoryFrom(customEsPath)
+              new VerifyAction(EsPatch.create(esDirectory)).execute()
+          }
+        } recover {
+          case ex: RorToolsException =>
+            println(s"ERROR: ${ex.getMessage}")
+            sys.exit(1)
         }
       }
+  }
+
+  private def esDirectoryFrom(esPath: Option[os.Path]) = {
+    esPath.map(EsDirectory.from).getOrElse(EsDirectory.default)
   }
 
   private val builder = OParser.builder[Config]
@@ -88,17 +98,13 @@ object RorToolsApp {
 
   private lazy val esPathOption =
     opt[String]("es-path")
-      .text(s"Path to elasticsearch directory; default=${defaults.esPath}")
+      .text(s"Path to elasticsearch directory; default=${EsDirectory.defaultPath}")
       .validate { path =>
         Try(os.Path(path))
           .toEither
           .flatMap { p => Either.cond(os.exists(p), (), ()) }
           .left.map(_ => s"Path [$path] does not exist")
       }
-
-  private object defaults {
-    val esPath: Path = os.Path("/usr/share/elasticsearch")
-  }
 
   private final case class Config(command: Command)
 

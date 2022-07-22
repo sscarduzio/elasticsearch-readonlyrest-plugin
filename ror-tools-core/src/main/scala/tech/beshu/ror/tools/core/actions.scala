@@ -17,7 +17,7 @@
 package tech.beshu.ror.tools.core
 
 import tech.beshu.ror.tools.core.patches.EsPatch
-import tech.beshu.ror.tools.core.utils.{EsAlreadyPatchedException, EsNotPatchedException}
+import tech.beshu.ror.tools.core.utils.RorToolsException.{EsAlreadyPatchedException, EsNotPatchedException}
 
 import scala.language.postfixOps
 
