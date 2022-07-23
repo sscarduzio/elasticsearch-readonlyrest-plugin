@@ -327,7 +327,7 @@ stages:
           - script: |
               set -e
               echo ">>> MAKE SURE GIT IS INSTALLED >>> "
-              apt-get update && apt-get install -y git && git status || exit 1
+              sudo apt-get update && sudo apt-get install -y git && git status || exit 1
 
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
