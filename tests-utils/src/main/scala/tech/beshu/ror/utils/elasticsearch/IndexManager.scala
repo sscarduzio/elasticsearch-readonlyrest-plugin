@@ -21,7 +21,7 @@ import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
-import tech.beshu.ror.utils.elasticsearch.IndexManager.{AliasAction, AliasesResponse, GetIndexResponse, ReindexSource, ResolveResponse}
+import tech.beshu.ror.utils.elasticsearch.IndexManager._
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Version
 
@@ -103,6 +103,11 @@ class IndexManager(client: RestClient,
 
   def getMapping(indexName: String, field: String): JsonResponse = {
     call(createGetMappingRequest(indexName, field), new JsonResponse(_))
+  }
+
+  def createIndexWithMapping(indexName: String, propertiesJson: JSON): JsonResponse = {
+    call(createIndexRequest(indexName, None, Map.empty), new JsonResponse(_)).force()
+    call(createPutMappingRequest(indexName, propertiesJson), new JsonResponse(_))
   }
 
   def rollover(target: String, index: String): JsonResponse = {
@@ -212,6 +217,16 @@ class IndexManager(client: RestClient,
 
   private def createGetMappingRequest(indexName: String, field: String) = {
     new HttpGet(client.from(s"/$indexName/_mapping/field/$field"))
+  }
+
+  private def createPutMappingRequest(indexName: String, propertiesJson: JSON) = {
+    val request = new HttpPut(client.from(s"/$indexName/_mapping"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""{
+         |  "properties": ${ujson.write(propertiesJson)}
+         |}""".stripMargin))
+    request
   }
 
   private def createRolloverRequest(target: String, index: Option[String]) = {

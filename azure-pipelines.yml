@@ -91,10 +91,10 @@ stages:
               ROR_TASK: license
             UNIT:
               ROR_TASK: core_tests
-
             IT_PROXY:
               ROR_TASK: integration_proxy
       - job:
+        condition: or(eq(variables.isDevelop, true), eq(variables.isMaster, true))
         container: maven:3.8.1-openjdk-17-slim
         steps:
           - checkout: self
@@ -120,6 +120,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            IT_es83x:
+              ROR_TASK: integration_es83x
             IT_es82x:
               ROR_TASK: integration_es82x
             IT_es81x:
@@ -127,6 +129,38 @@ stages:
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
+        condition: and(ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        container: maven:3.8.1-openjdk-17-slim
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key 
+              
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              bin/build.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            IT_es83x:
+              ROR_TASK: integration_es83x
+            IT_es80x:
+              ROR_TASK: integration_es80x
+      - job:
+        condition: or(eq(variables.isDevelop, true), eq(variables.isMaster, true))
         steps:
           - checkout: self
             fetchDepth: 1
@@ -185,6 +219,42 @@ stages:
               ROR_TASK: integration_es62x
             IT_es61x:
               ROR_TASK: integration_es61x
+            IT_es60x:
+              ROR_TASK: integration_es60x
+      - job:
+        condition: and(ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key 
+              
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              bin/build.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            IT_es716x:
+              ROR_TASK: integration_es716x
+            IT_es710x:
+              ROR_TASK: integration_es710x
+            IT_es70x:
+              ROR_TASK: integration_es70x
+            IT_es67x:
+              ROR_TASK: integration_es67x
             IT_es60x:
               ROR_TASK: integration_es60x
 
@@ -258,6 +328,7 @@ stages:
 
           - script: |
               set -e
+              apt-get update && apt-get install -y git
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key

@@ -178,7 +178,7 @@ class GroupsRuleAccessControlTests
             "roles" := List("group5", "group6", "group7")
           ))
           val request = MockRequestContext.indices.copy(
-            headers = Set(header("Authorization", s"Bearer ${jwt.stringify()}")),
+            headers = Set(bearerHeader(jwt)),
             filteredIndices = Set(clusterIndexName("g*")),
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
@@ -197,7 +197,7 @@ class GroupsRuleAccessControlTests
           val request = MockRequestContext.indices.copy(
             headers = Set(
               basicAuthHeader("morgan:user1"),
-              header("x-ror-current-group", "admin")
+              currentGroupHeader( "admin")
             ),
             filteredIndices = Set(clusterIndexName(".kibana")),
             allIndicesAndAliases = Set(FullLocalIndexWithAliases(fullIndexName(".kibana"), Set.empty))

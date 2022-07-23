@@ -78,6 +78,7 @@ compileScala {
 dependencies {
     compile project(path: ':core')
     compile project(path: ':ror-tools', configuration: 'shadow')
+    compile project(path: ':ror-tools-core')
     compile             group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: esVersion
     compile             group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-client',              version: esVersion
     compile             group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.13'

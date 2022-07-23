@@ -24,14 +24,17 @@ import cats.kernel.Monoid
 import io.circe._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol._
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.acl.AccessControlList.AccessControlListStaticContext
-import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.blocks.Block.{RuleDefinition, Verbosity}
+import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSupport
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, LocalUsers, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.UsernameCaseMapping
@@ -49,6 +52,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils._
 import tech.beshu.ror.boot.ReadonlyRest.RorMode
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.{LocalUsersSupport, localUsersMonoid}
+import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
 import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
 import tech.beshu.ror.providers.{EnvVarsProvider, UuidProvider}
 import tech.beshu.ror.utils.ScalaOps._
@@ -255,7 +259,11 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
                 .remove(Attributes.Block.verbosity))
             ))
           block <- Block.createFrom(name, policy, verbosity, rules).left.map(DecodingFailureOps.fromError(_))
-        } yield BlockDecodingResult(block, rules.map(localUsersForRule).combineAll)
+        } yield BlockDecodingResult(
+          block = block,
+          localUsers = rules.map(localUsersForRule).combineAll,
+          impersonationWarnings = new BlockImpersonationWarningsReader(block.name, rules)
+        )
         result.left.map(_.overrideDefaultErrorWith(BlocksLevelCreationError(MalformedValue(c.value))))
       }
   }
@@ -340,8 +348,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
       } yield {
         implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
         val blocks = blocksNel.map(_.block)
-        val upgradedBlocks = CrossBlockContextBlocksUpgrade.upgrade(blocks)
-        upgradedBlocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
+        blocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
         val localUsers: LocalUsers = {
           val fromUserDefs = LocalUsers(users = Set.empty, unknownUsers = userDefs.items.map(_.usernames).nonEmpty)
           val fromBlocks = blocksNel.map(_.localUsers).toList
@@ -355,10 +362,11 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
             ldaps = ldapServices.items.map(_.id)
           ),
           localUsers = localUsers,
+          impersonationWarningsReader = new ImpersonationWarningsCombinedReader(blocksNel.map(_.impersonationWarnings).toList: _*),
           auditingSettings = auditingTools,
         )
         val accessControl = new AccessControlList(
-          upgradedBlocks,
+          blocks,
           new AccessControlListStaticContext(
             blocks,
             globalSettings,
@@ -404,7 +412,38 @@ object RawRorConfigBasedCoreFactory {
 
   }
 
-  private case class BlockDecodingResult(block: Block, localUsers: LocalUsers)
+  private class ImpersonationWarningsCombinedReader(readers: ImpersonationWarningsReader*)
+    extends ImpersonationWarningsReader {
+
+    override def read()
+                     (implicit requestId: RequestId): List[ImpersonationWarning] = readers.flatMap(_.read()).toList
+  }
+
+  private class BlockImpersonationWarningsReader[R <: Rule](blockName: Block.Name,
+                                                            blockRules: NonEmptyList[RuleDefinition[R]])
+    extends ImpersonationWarningsReader {
+
+    override def read()
+                     (implicit request: RequestId): List[ImpersonationWarning] = {
+      blockRules
+        .toList
+        .flatMap(impersonationWarningForRule(_))
+    }
+
+    private def impersonationWarningForRule(rule: RuleDefinition[R])
+                                           (implicit requestId: RequestId): List[ImpersonationWarning] = {
+      rule.impersonationWarnings match {
+        case extractor: ImpersonationWarningSupport.ImpersonationWarningExtractor[R] =>
+          extractor.warningFor(rule.rule, blockName).toList
+        case ImpersonationWarningSupport.NotSupported =>
+          List.empty
+      }
+    }
+  }
+
+  private case class BlockDecodingResult(block: Block,
+                                         localUsers: LocalUsers,
+                                         impersonationWarnings: ImpersonationWarningsReader)
 
   private sealed trait RuleDecodingResult
   private object RuleDecodingResult {

@@ -23,6 +23,8 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod._
+import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule.Groups
+import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule.Groups.GroupsLogic
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
@@ -67,14 +69,25 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
     Task
       .unit
       .flatMap { _ =>
-        jwtTokenFrom(blockContext.requestContext) match {
-          case None =>
-            logger.debug(s"Authorization header '${settings.jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
-            Task.now(Rejected())
-          case Some(token) =>
-            process(token, blockContext)
+        settings.permittedGroups match {
+          case Groups.NotDefined =>
+            authorizeUsingJwtToken(blockContext)
+          case Groups.Defined(groupsLogic) if blockContext.isCurrentGroupEligible(groupsLogic.groups) =>
+            authorizeUsingJwtToken(blockContext)
+          case Groups.Defined(_) =>
+            Task.now(RuleResult.Rejected())
         }
       }
+
+  private def authorizeUsingJwtToken[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+    jwtTokenFrom(blockContext.requestContext) match {
+      case None =>
+        logger.debug(s"Authorization header '${settings.jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
+        Task.now(Rejected())
+      case Some(token) =>
+        process(token, blockContext)
+    }
+  }
 
   private def jwtTokenFrom(requestContext: RequestContext) = {
     requestContext
@@ -182,16 +195,35 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
 
   private def handleGroupsClaimSearchResult[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                      result: Option[ClaimSearchResult[UniqueList[Group]]]) = {
-    result match {
-      case None if settings.groups.nonEmpty => Left(())
-      case Some(NotFound) if settings.groups.nonEmpty => Left(())
-      case Some(NotFound) => Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
-      case Some(Found(groups)) if settings.groups.nonEmpty =>
-        UniqueNonEmptyList.fromSortedSet(settings.groups.intersect(groups)) match {
-          case Some(matchedGroups) => Right(blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups)))
-          case None => Left(())
+    (result, settings.permittedGroups) match {
+      case (None, Groups.Defined(_)) =>
+        Left(())
+      case (None, Groups.NotDefined) =>
+        Right(blockContext)
+      case (Some(NotFound), Groups.Defined(_)) =>
+        Left(())
+      case (Some(NotFound), Groups.NotDefined) =>
+        Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
+      case (Some(Found(groups)), Groups.Defined(groupsLogic)) =>
+        groupsLogic.availableGroupsFrom(groups) match {
+          case Some(matchedGroups) =>
+            checkIfCanContinueWithGroups(blockContext, matchedGroups.toUniqueList)
+              .map(_.withUserMetadata(_.addAvailableGroups(matchedGroups)))
+          case None =>
+            Left(())
         }
-      case Some(Found(_)) | None => Right(blockContext)
+      case (Some(Found(groups)), Groups.NotDefined) =>
+        checkIfCanContinueWithGroups(blockContext, groups)
+    }
+  }
+
+  private def checkIfCanContinueWithGroups[B <: BlockContext : BlockContextUpdater](blockContext: B,
+                                                                                    groups: UniqueList[Group]) = {
+    UniqueNonEmptyList.fromList(groups.toList) match {
+      case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(nonEmptyGroups) =>
+        Right(blockContext)
+      case Some(_) | None =>
+        Left(())
     }
   }
 }
@@ -202,6 +234,35 @@ object JwtAuthRule {
     override val name = Rule.Name("jwt_auth")
   }
 
-  final case class Settings(jwt: JwtDef, groups: UniqueList[Group])
+  final case class Settings(jwt: JwtDef, permittedGroups: Groups)
 
+  sealed trait Groups
+  object Groups {
+    case object NotDefined extends Groups
+    final case class Defined(groupsLogic: GroupsLogic) extends Groups
+
+    sealed trait GroupsLogic
+    object GroupsLogic {
+      final case class Or(groups: UniqueNonEmptyList[Group]) extends GroupsLogic
+      final case class And(groups: UniqueNonEmptyList[Group]) extends GroupsLogic
+    }
+  }
+
+  implicit class GroupsLogicExecutor(val groupsLogic: Groups.GroupsLogic) extends AnyVal {
+    def availableGroupsFrom(userGroups: UniqueList[Group]): Option[UniqueNonEmptyList[Group]] = {
+      groupsLogic match {
+        case Groups.GroupsLogic.And(groups) =>
+          val intersection = userGroups intersect groups
+          if (intersection.toSet === groups.toSet) Some(groups) else None
+        case Groups.GroupsLogic.Or(groups) =>
+          val intersection = userGroups.toSet intersect groups
+          UniqueNonEmptyList.fromSet(intersection)
+      }
+    }
+
+    def groups: UniqueNonEmptyList[Group] = groupsLogic match {
+      case GroupsLogic.Or(groups) => groups
+      case GroupsLogic.And(groups) => groups
+    }
+  }
 }

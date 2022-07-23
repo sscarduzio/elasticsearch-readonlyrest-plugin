@@ -326,6 +326,12 @@ object domain {
       rollupSearchAction,
       searchTemplateAction
     ).contains(this)
+
+    def isFieldCapsAction: Boolean =
+      fieldCapsAction == this
+
+    def isInternal: Boolean =
+      Action.isInternal(value)
   }
   object Action {
     val searchAction = Action("indices:data/read/search")
@@ -344,6 +350,8 @@ object domain {
     val rorAuthMockAction = Action("cluster:ror/authmock/manage")
     val rorAuditEventAction = Action("cluster:ror/audit_event/put")
     val rorOldConfigAction = Action("cluster:ror/config/refreshsettings")
+
+    def isInternal(actionString: String): Boolean = actionString.startsWith("internal:")
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
     implicit val caseMappingEqualityAction: CaseMappingEquality[Action] = CaseMappingEquality.instance(_.value, identity)

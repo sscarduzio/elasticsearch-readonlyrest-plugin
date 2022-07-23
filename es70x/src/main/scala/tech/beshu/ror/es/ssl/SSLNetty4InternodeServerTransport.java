@@ -72,6 +72,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
       protected void initChannel(Channel ch) throws Exception {
         super.initChannel(ch);
         logger.info(">> internode SSL channel initializing");
+
         TrustManagerFactory usedTrustManager = ssl.certificateVerificationEnabled() ?
                 SSLCertHelper.getTrustManagerFactory(ssl, fipsCompliant) : InsecureTrustManagerFactory.INSTANCE;
 

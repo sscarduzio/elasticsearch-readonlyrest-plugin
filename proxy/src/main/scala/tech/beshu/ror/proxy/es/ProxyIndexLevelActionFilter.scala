@@ -11,6 +11,7 @@ import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.domain.Action
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, RorMode, StartingFailure}
 import tech.beshu.ror.boot.engines.Engines
@@ -24,6 +25,7 @@ import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter.ThreadRepoChannelRene
 import tech.beshu.ror.proxy.es.clients.{ProxyFilterable, RestHighLevelClientAdapter}
 import tech.beshu.ror.proxy.es.services.{EsRestClientBasedRorClusterService, ProxyIndexJsonContentService}
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
+
 import java.nio.file.Path
 import java.time.Clock
 import scala.util.{Failure, Success, Try}
@@ -91,10 +93,10 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
           channel,
           "proxy",
           task,
-          action,
+          Action(action),
           request,
           listener,
-          new EsChain(chain, threadPool),
+          new EsChain(chain),
           JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toSet
         )
       )

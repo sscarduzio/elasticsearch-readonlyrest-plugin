@@ -42,9 +42,11 @@ class LdapAuthorizationRule(val settings: Settings,
 
   override protected val groupsPermittedByRule: UniqueNonEmptyList[Group] = settings.permittedGroups.groups
 
-  override protected val groupsPermittedByAllRulesOfThisType: UniqueNonEmptyList[Group] = settings.allLdapGroups
+  override protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[Group]] =
+    settings.ldap.groupsOf(user.id)
 
-  override protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[Group]] = settings.ldap.groupsOf(user.id)
+  override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] =
+    settings.permittedGroups.availableGroupsFrom(usersGroups)
 
   override protected def mockedGroupsOf(user: User.Id,
                                         mocksProvider: MocksProvider)
@@ -63,9 +65,6 @@ class LdapAuthorizationRule(val settings: Settings,
         Groups.CannotCheck
       }
   }
-
-  override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] =
-    settings.permittedGroups.availableGroupsFrom(usersGroups)
 }
 
 object LdapAuthorizationRule {
@@ -74,7 +73,7 @@ object LdapAuthorizationRule {
     override val name = Rule.Name("ldap_authorization")
   }
 
-  final case class Settings(ldap: LdapAuthorizationService, permittedGroups: GroupsLogic, allLdapGroups: UniqueNonEmptyList[Group])
+  final case class Settings(ldap: LdapAuthorizationService, permittedGroups: GroupsLogic)
 
   sealed trait GroupsLogic {
     val groups: UniqueNonEmptyList[Group]
@@ -82,7 +81,6 @@ object LdapAuthorizationRule {
 
   object GroupsLogic {
     final case class Or(override val groups: UniqueNonEmptyList[Group]) extends GroupsLogic
-
     final case class And(override val groups: UniqueNonEmptyList[Group]) extends GroupsLogic
   }
 
@@ -94,7 +92,7 @@ object LdapAuthorizationRule {
           if (intersection.toSet === groups.toSet) Some(groups) else None
         case Or(groups) =>
           val intersection = userGroups.toSet intersect groups
-          if (intersection.isEmpty) None else UniqueNonEmptyList.fromSet(intersection)
+          UniqueNonEmptyList.fromSet(intersection)
       }
     }
   }

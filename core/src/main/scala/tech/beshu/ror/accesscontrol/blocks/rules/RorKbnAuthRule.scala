@@ -22,7 +22,8 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
-import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.Groups.GroupsLogic
+import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.{Groups, Settings}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
@@ -63,15 +64,26 @@ final class RorKbnAuthRule(val settings: Settings,
 
   override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
     Task {
-      val authHeaderName = Header.Name.authorization
-      blockContext.requestContext.bearerToken.map(h => JwtToken(h.value)) match {
-        case None =>
-          logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
-          Rejected()
-        case Some(token) =>
-          process(token, blockContext)
+      settings.permittedGroups match {
+        case Groups.NotDefined =>
+          authorizeUsingJwtToken(blockContext)
+        case Groups.Defined(groupsLogic) if blockContext.isCurrentGroupEligible(groupsLogic.groups) =>
+          authorizeUsingJwtToken(blockContext)
+        case Groups.Defined(_) =>
+          RuleResult.Rejected()
       }
     }
+
+  private def authorizeUsingJwtToken[B <: BlockContext : BlockContextUpdater](blockContext: B): RuleResult[B] = {
+    val authHeaderName = Header.Name.authorization
+    blockContext.requestContext.bearerToken.map(h => JwtToken(h.value)) match {
+      case None =>
+        logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
+        Rejected()
+      case Some(token) =>
+        process(token, blockContext)
+    }
+  }
 
   private def process[B <: BlockContext : BlockContextUpdater](token: JwtToken, blockContext: B): RuleResult[B] = {
     jwtTokenData(token) match {
@@ -120,15 +132,27 @@ final class RorKbnAuthRule(val settings: Settings,
 
   private def handleGroupsClaimSearchResult[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                      result: ClaimSearchResult[UniqueList[Group]]) = {
-    result match {
-      case NotFound if settings.groups.nonEmpty => Left(())
-      case NotFound => Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
-      case Found(groups) if settings.groups.nonEmpty =>
-        UniqueNonEmptyList.fromSortedSet(settings.groups.intersect(groups)) match {
-          case Some(matchedGroups) => Right(blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups)))
-          case None => Left(())
+    (result, settings.permittedGroups) match {
+      case (NotFound, Groups.Defined(_)) =>
+        Left(())
+      case (NotFound, Groups.NotDefined) =>
+        Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
+      case (Found(groups), Groups.Defined(groupsLogic)) =>
+        groupsLogic.availableGroupsFrom(groups) match {
+          case Some(matchedGroups) if blockContext.isCurrentGroupEligible(matchedGroups) =>
+            Right(blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups)))
+          case Some(_) | None =>
+            Left(())
         }
-      case Found(_) => Right(blockContext)
+      case (Found(groups), Groups.NotDefined) =>
+        UniqueNonEmptyList.fromList(groups.toList) match {
+          case None =>
+            Right(blockContext)
+          case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(nonEmptyGroups) =>
+            Right(blockContext)
+          case Some(_) =>
+            Left(())
+        }
     }
   }
 
@@ -147,7 +171,36 @@ object RorKbnAuthRule {
     override val name = Rule.Name("ror_kbn_auth")
   }
 
-  final case class Settings(rorKbn: RorKbnDef, groups: UniqueList[Group])
+  final case class Settings(rorKbn: RorKbnDef, permittedGroups: Groups)
+  sealed trait Groups
+  object Groups {
+    case object NotDefined extends Groups
+    final case class Defined(groupsLogic: GroupsLogic) extends Groups
+
+    sealed trait GroupsLogic
+    object GroupsLogic {
+      final case class Or(groups: UniqueNonEmptyList[Group]) extends GroupsLogic
+      final case class And(groups: UniqueNonEmptyList[Group]) extends GroupsLogic
+    }
+  }
+
+  implicit class GroupsLogicExecutor(val groupsLogic: Groups.GroupsLogic) extends AnyVal {
+    def availableGroupsFrom(userGroups: UniqueList[Group]): Option[UniqueNonEmptyList[Group]] = {
+      groupsLogic match {
+        case GroupsLogic.And(groups) =>
+          val intersection = userGroups intersect groups
+          if (intersection.toSet === groups.toSet) Some(groups) else None
+        case GroupsLogic.Or(groups) =>
+          val intersection = userGroups.toSet intersect groups
+          UniqueNonEmptyList.fromSet(intersection)
+      }
+    }
+
+    def groups: UniqueNonEmptyList[Group] = groupsLogic match {
+      case GroupsLogic.And(groups) => groups
+      case GroupsLogic.Or(groups) => groups
+    }
+  }
 
   private val userClaimName = ClaimName(JsonPath.compile("user"))
   private val groupsClaimName = ClaimName(JsonPath.compile("groups"))

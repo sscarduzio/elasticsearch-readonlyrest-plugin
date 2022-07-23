@@ -74,7 +74,7 @@ trait QueryAuditLogSerializerSuite
         result.responseJson("x-ror-username").str should be("user1-proxy-id")
         result.responseJson("x-ror-current-group").str should be("group1")
         result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group1")))
-        result.responseJson("x-ror-logging-id").str should fullyMatch uuidRegex()
+        result.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex()
 
         val auditEntries = auditIndexManager.getEntries.jsons
         auditEntries.size shouldBe 1

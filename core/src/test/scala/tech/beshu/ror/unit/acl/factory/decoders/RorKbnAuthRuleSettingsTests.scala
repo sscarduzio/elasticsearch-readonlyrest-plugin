@@ -25,12 +25,13 @@ import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule
+import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.Groups
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class RorKbnAuthRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[RorKbnAuthRule] with MockFactory {
@@ -57,7 +58,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-            rule.settings.groups should be(UniqueList.empty)
+            rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
       }
@@ -82,35 +83,77 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-            rule.settings.groups should be(UniqueList.empty)
+            rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
       }
-      "rule is defined using extended version with groups and minimal request set of fields in ROR kbn definition" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ror_kbn_auth:
-              |      name: "kbn1"
-              |      roles: ["group1","group2"]
-              |
-              |  ror_kbn:
-              |
-              |  - name: kbn1
-              |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
-            rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-            rule.settings.groups should be(UniqueList.of(groupFrom("group1"), groupFrom("group2")))
-          }
-        )
+      "rule is defined using extended version with groups or logic and minimal request set of fields in ROR kbn definition" in {
+        val rolesKeys = List("roles", "groups")
+        rolesKeys.foreach { roleKey =>
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 |readonlyrest:
+                 |
+                 |  access_control_rules:
+                 |
+                 |  - name: test_block1
+                 |    ror_kbn_auth:
+                 |      name: "kbn1"
+                 |      $roleKey: ["group1","group2"]
+                 |
+                 |  ror_kbn:
+                 |
+                 |  - name: kbn1
+                 |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                 |
+                 |""".stripMargin,
+            assertion = rule => {
+              rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
+              rule.settings.rorKbn.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
+              rule.settings.permittedGroups should be(
+                Groups.Defined(
+                  Groups.GroupsLogic.Or(
+                    UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group2")))
+                )
+              )
+            }
+          )
+        }
+      }
+      "rule is defined using extended version with groups and logic and minimal request set of fields in ROR kbn definition" in {
+        val rolesKeys = List("roles_and", "groups_and")
+        rolesKeys.foreach { roleKey =>
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                |readonlyrest:
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    ror_kbn_auth:
+                |      name: "kbn1"
+                |      $roleKey: ["group1","group2"]
+                |
+                |  ror_kbn:
+                |
+                |  - name: kbn1
+                |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                |
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
+              rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
+              rule.settings.permittedGroups should be(
+                Groups.Defined(
+                  Groups.GroupsLogic.And(
+                    UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group2")))
+                )
+              )
+            }
+          )
+        }
       }
       "RSA family algorithm can be used in token signature" in {
         val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
@@ -134,7 +177,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
-            rule.settings.groups should be(UniqueList.empty)
+            rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
       }
@@ -159,7 +202,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
-            rule.settings.groups should be(UniqueList.empty)
+            rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
       }
@@ -187,7 +230,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
-            rule.settings.groups should be(UniqueList.empty)
+            rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
       }
@@ -213,7 +256,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Ec]
-            rule.settings.groups should be(UniqueList.empty)
+            rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
       }
@@ -339,6 +382,39 @@ class RorKbnAuthRuleSettingsTests
             )))
           }
         )
+      }
+      "both 'groups or' key and 'groups and' key used" in {
+        List(
+          ("roles", "roles_and"),
+          ("groups", "groups_and")
+        )
+          .foreach { case (groupsOrKey, groupsAndKey) =>
+            assertDecodingFailure(
+              yaml =
+                s"""
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    ror_kbn_auth:
+                   |      name: "kbn1"
+                   |      $groupsOrKey: ["group1", "group2"]
+                   |      $groupsAndKey: ["groups1", "groups2"]
+                   |  ror_kbn:
+                   |
+                   |  - name: kbn2
+                   |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                   |
+                   |""".stripMargin,
+              assertion = errors => {
+                errors should have size 1
+                errors.head should be(RulesLevelCreationError(Message(
+                  s"Please specify either '$groupsOrKey' or '$groupsAndKey' for ROR Kibana authorization rule 'kbn1'")
+                ))
+              }
+            )
+          }
       }
       "two ROR kbn definitions have the same names" in {
         assertDecodingFailure(

@@ -39,8 +39,24 @@ Now save this, call it with a name like `Whole ES` and you'll be able to press p
 Currently eshome support debugging only es8x modules.
 ![ES booting up and running in IDE](https://i.imgur.com/s32SaI8.png) 
 ## Building plugin using Gradle for concrete ES version:
-* `./gradlew clean es70x:ror '-PesVersion=7.2.0'` 
-* ROR plugin binaries can found in `es70x/build/distributions/`
+
+### Using Gradle
+* `./gradlew clean [ROR_ES_MODULE]:ror '-PesVersion=[ES_VERSION]'` 
+* eg. `./gradlew clean es70x:ror '-PesVersion=7.2.0'`
+* ROR plugin binaries can be found in `es70x/build/distributions/`
+
+**⚠️Required tools:**
+* OpenJDK 17
+* Gradle 4.10
+
+### Using Docker
+* `cd docker-envs/build-ror-in-docker && /build.sh [ES_VERSION]`
+* eg. `cd docker-envs/build-ror-in-docker && /build.sh 8.2.2`
+* ROR plugin bunaries can be found in `docker-envs/build-ror-in-docker/builds`
+
+**⚠️Required tools:**
+* Docker
+
 ## Running tests
 * unit tests: `./gradlew test ror`
 * integration tests for specific module (at the moment we have two modules with integration tests): 

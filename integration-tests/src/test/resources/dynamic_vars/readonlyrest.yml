@@ -13,7 +13,7 @@ readonlyrest:
 
   - name: "Kibana at user 1"
     type: allow
-    auth_key: simone:${TEST_VAR}
+    auth_key: "simone:${TEST_VAR}"
     indices: [".kibana_@{user}"]
 
   - name: "Kibana at user 2"

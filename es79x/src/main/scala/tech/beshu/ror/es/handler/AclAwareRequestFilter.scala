@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.handler
 
-import java.time.Instant
 import cats.implicits._
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -61,7 +60,7 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.domain.{Action, Header}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
@@ -71,9 +70,9 @@ import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter._
 import tech.beshu.ror.es.handler.request.RestRequestOps._
 import tech.beshu.ror.es.handler.request.context.types._
-import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
+import java.time.Instant
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 
@@ -243,7 +242,7 @@ object AclAwareRequestFilter {
   final case class EsContext(channel: RestChannel with ResponseFieldsFiltering,
                              nodeName: String,
                              task: EsTask,
-                             actionType: String,
+                             action: Action,
                              actionRequest: ActionRequest,
                              listener: ActionListener[ActionResponse],
                              chain: EsChain,
@@ -268,21 +267,18 @@ object AclAwareRequestFilter {
     }
   }
 
-  final class EsChain(chain: ActionFilterChain[ActionRequest, ActionResponse],
-                      threadPool: ThreadPool) {
+  final class EsChain(chain: ActionFilterChain[ActionRequest, ActionResponse]) {
 
-    def continue(exContext: EsContext,
+    def continue(esContext: EsContext,
                  listener: ActionListener[ActionResponse]): Unit = {
-      continue(exContext.nodeName, exContext.task, exContext.actionType, exContext.actionRequest, listener)
+      continue(esContext.task, esContext.action, esContext.actionRequest, listener)
     }
 
-    def continue(nodeName: String,
-                 task: EsTask,
-                 action: String,
+    def continue(task: EsTask,
+                 action: Action,
                  request: ActionRequest,
                  listener: ActionListener[ActionResponse]): Unit = {
-      threadPool.getThreadContext.addXPackAuthenticationHeader(nodeName)
-      chain.proceed(task, action, request, listener)
+      chain.proceed(task, action.value, request, listener)
     }
   }
 

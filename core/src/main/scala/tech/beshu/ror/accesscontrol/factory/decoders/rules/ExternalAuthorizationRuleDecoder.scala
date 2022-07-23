@@ -72,10 +72,10 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
         case (name, Some(ttl), groups, users) =>
           findAuthorizationService(authorizationServices.items, name)
             .map(new CacheableExternalAuthorizationServiceDecorator(_, ttl))
-            .map(ExternalAuthorizationRule.Settings(_, groups, groups, users))
+            .map(ExternalAuthorizationRule.Settings(_, groups, users))
         case (name, None, groups, users) =>
           findAuthorizationService(authorizationServices.items, name)
-            .map(ExternalAuthorizationRule.Settings(_, groups, groups, users))
+            .map(ExternalAuthorizationRule.Settings(_, groups, users))
       }
       .decoder
   }

@@ -27,3 +27,5 @@ object Impersonation {
 
 final case class ImpersonationSettings(impersonators: List[ImpersonatorDef],
                                        mocksProvider: MocksProvider)
+
+trait ImpersonationSupport
