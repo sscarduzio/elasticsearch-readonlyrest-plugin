@@ -28,6 +28,7 @@ import org.apache.http.conn.ssl.SSLConnectionSocketFactory
 import org.apache.http.conn.ssl.NoopHostnameVerifier
 import org.apache.http.impl.auth.BasicScheme
 import org.apache.http.impl.client.{HttpClientBuilder, HttpClients, StandardHttpRequestRetryHandler}
+import org.apache.http.message.BasicHeader
 import org.apache.http.ssl.SSLContextBuilder
 import org.apache.http.util.EntityUtils
 import org.apache.http.{Header, HttpResponse}
@@ -101,11 +102,10 @@ class RestClient(ssl: Boolean,
       .getOrElse(100)
   }
 
-  private def createBasicAuthHeader(user: String, password: String) = BasicScheme.authenticate(
-    new UsernamePasswordCredentials(user, password),
-    "UTF-8",
-    false
-  )
+  private def createBasicAuthHeader(user: String, password: String) = {
+    val authenticate = BasicScheme.authenticate(new UsernamePasswordCredentials(user, password), "UTF-8", false)
+    new BasicHeader("Authorization", authenticate.getValue)
+  }
 
   private def buildUri(path: String, queryParams: Map[String, String]) = {
     val uriBuilder = new URIBuilder()

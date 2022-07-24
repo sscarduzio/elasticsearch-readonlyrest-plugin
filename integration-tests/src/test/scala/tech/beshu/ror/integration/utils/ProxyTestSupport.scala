@@ -32,7 +32,7 @@ trait ProxyTestSupport
   extends BeforeAndAfterAll
     with ForAllTestContainer
     with CallingProxy
-    with EsWithoutSecurityPluginContainerCreator
+    with EsContainerCreator
     with ResolvedRorConfigFileProvider
     with LazyLogging {
   this: Suite with MultipleEsTargets with RorConfigFileNameProvider =>
@@ -81,7 +81,6 @@ sealed trait BasicEsClusterProxyTestSupport extends ProxyTestSupport {
 
   private def clusterSettings = {
     val enhancedSettings = EsClusterSettings.basic
-      .copy(xPackSupport = xpackSupport)
       .copy(dependentServicesContainers = clusterDependencies)
 
     nodeDataInitializer match {
@@ -97,6 +96,7 @@ sealed trait BasicEsClusterProxyTestSupport extends ProxyTestSupport {
 trait XpackEsClusterProxyTestSupport extends BasicEsClusterProxyTestSupport {
   this: Suite with BaseSingleNodeEsClusterTest =>
 
+  // todo: remove?
   override def xpackSupport: Boolean = true
 }
 

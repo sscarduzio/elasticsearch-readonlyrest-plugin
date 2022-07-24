@@ -17,6 +17,8 @@
 package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseAdminApiSuite
+import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes
 import tech.beshu.ror.utils.containers.{EsClusterSettings, EsContainerCreator}
 
 trait AdminApiWithCustomRorIndexSuite extends BaseAdminApiSuite {
@@ -29,18 +31,18 @@ trait AdminApiWithCustomRorIndexSuite extends BaseAdminApiSuite {
     EsClusterSettings(
       name = "ROR1",
       numberOfInstances = 2,
-      customRorIndexName = Some(readonlyrestIndexName),
-      nodeDataInitializer = nodeDataInitializer(),
-      xPackSupport = false,
-      configHotReloadingEnabled = true
+      clusterType = ClusterType.RorWithXpackSecurityCluster(Attributes.default.copy(
+        rorCustomSettingsIndex = Some(readonlyrestIndexName)
+      ))
     )
   )
 
   override protected lazy val rorWithNoIndexConfig = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR2",
-      customRorIndexName = Some(readonlyrestIndexName),
-      xPackSupport = false,
+      clusterType = ClusterType.RorWithXpackSecurityCluster(Attributes.default.copy(
+        rorCustomSettingsIndex = Some(readonlyrestIndexName)
+      ))
     )
   )
 }

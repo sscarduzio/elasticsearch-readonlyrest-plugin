@@ -53,8 +53,8 @@ trait BaseAdminApiSuite
   private lazy val ror1_2Node = rorWithIndexConfig.nodes.tail.head
   private lazy val ror2_1Node = rorWithNoIndexConfig.nodes.head
 
-  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.rorAdminClient, esVersionUsed)
-  private lazy val rorWithNoIndexConfigAdminActionManager = new RorApiManager(clients.last.rorAdminClient, esVersionUsed)
+  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.adminClient, esVersionUsed)
+  private lazy val rorWithNoIndexConfigAdminActionManager = new RorApiManager(clients.last.adminClient, esVersionUsed)
 
   override lazy val esTargets = NonEmptyList.of(ror1_1Node, ror1_2Node, ror2_1Node)
   override lazy val clusterContainers = NonEmptyList.of(rorWithIndexConfig, rorWithNoIndexConfig)
@@ -63,7 +63,7 @@ trait BaseAdminApiSuite
     "provide a method for force refresh ROR config" which {
       "is going to reload ROR core" when {
         "in-index config is newer than current one" in {
-          val rorApiManager = new RorApiManager(ror2_1Node.rorAdminClient, esVersionUsed)
+          val rorApiManager = new RorApiManager(ror2_1Node.adminClient, esVersionUsed)
           rorApiManager
             .insertInIndexConfigDirectlyToRorIndex(
               rorConfigIndex = readonlyrestIndexName,
@@ -80,7 +80,7 @@ trait BaseAdminApiSuite
       }
       "return info that config is up to date" when {
         "in-index config is the same as current one" in {
-          val rorApiManager = new RorApiManager(ror2_1Node.rorAdminClient, esVersionUsed)
+          val rorApiManager = new RorApiManager(ror2_1Node.adminClient, esVersionUsed)
           rorApiManager
             .insertInIndexConfigDirectlyToRorIndex(
               rorConfigIndex = readonlyrestIndexName,
@@ -105,7 +105,7 @@ trait BaseAdminApiSuite
       }
       "return info that cannot reload config" when {
         "config cannot be reloaded (eg. because LDAP is not achievable)" in {
-          val rorApiManager = new RorApiManager(ror2_1Node.rorAdminClient, esVersionUsed)
+          val rorApiManager = new RorApiManager(ror2_1Node.adminClient, esVersionUsed)
           rorApiManager
             .insertInIndexConfigDirectlyToRorIndex(
               rorConfigIndex = readonlyrestIndexName,
@@ -833,7 +833,7 @@ trait BaseAdminApiSuite
       .invalidateRorTestConfig()
       .force()
 
-    val indexManager = new IndexManager(ror2_1Node.rorAdminClient, esVersionUsed)
+    val indexManager = new IndexManager(ror2_1Node.adminClient, esVersionUsed)
     indexManager.removeIndex(readonlyrestIndexName)
 
     ror1WithIndexConfigAdminActionManager

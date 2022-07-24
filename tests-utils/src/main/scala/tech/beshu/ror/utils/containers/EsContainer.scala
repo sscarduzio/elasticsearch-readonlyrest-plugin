@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.utils.containers
 
-import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.SingleContainer
 import com.typesafe.scalalogging.Logger
 import monix.eval.Coeval
@@ -62,42 +61,23 @@ abstract class EsContainer(val name: String,
 }
 
 object EsContainer {
-  trait Config {
-    def clusterName: String
-    def nodeName: String
-    def nodes: NonEmptyList[String]
-    def envs: Map[String, String]
-    def additionalElasticsearchYamlEntries: Map[String, String]
-    def esVersion: String
-    def xPackSupport: Boolean
-    def useXpackSecurityInsteadOfRor: Boolean
-    def internodeSslEnabled: Boolean
-    def configHotReloadingEnabled: Boolean
-    def customRorIndexName: Option[String]
-    def externalSslEnabled: Boolean
-    def forceNonOssImage: Boolean
-  }
 
   def init(esContainer: EsContainer,
-           config: EsContainer.Config,
            initializer: ElasticsearchNodeDataInitializer,
            logger: Logger): EsContainer = {
 
     val logConsumer: Consumer[OutputFrame] = new Slf4jLogConsumer(logger.underlying)
-    val esClient = if (config.useXpackSecurityInsteadOfRor)
-      Coeval(esContainer.xpackSecurityAdminClient)
-    else
-      Coeval(esContainer.rorAdminClient)
+    val esClient = Coeval(esContainer.adminClient)
     esContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
     esContainer.container.addExposedPort(9200)
     esContainer.container.addExposedPort(9300)
     esContainer.container.addExposedPort(8000)
     esContainer.container.setWaitStrategy(
-      new ElasticsearchNodeWaitingStrategy(config.esVersion, esContainer.name, esClient, initializer)
+      new ElasticsearchNodeWaitingStrategy(esContainer.esVersion, esContainer.name, esClient, initializer)
         .withStartupTimeout(5 minutes)
     )
     esContainer.container.setNetwork(Network.SHARED)
-    esContainer.container.setNetworkAliases((config.nodeName :: Nil).asJava)
+    esContainer.container.setNetworkAliases((esContainer.name :: Nil).asJava)
     esContainer
   }
 

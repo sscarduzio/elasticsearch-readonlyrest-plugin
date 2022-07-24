@@ -23,6 +23,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.XpackApiSuite.NextRollupJobName
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.{Attributes, Enabled, InternodeSsl}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -45,14 +47,14 @@ trait XpackApiSuite
     EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = XpackApiSuite.nodeDataInitializer(),
-      xPackSupport = true,
-      // todo:
-      externalSslEnabled = false,
-      internodeSslEnabled = false
+      clusterType = ClusterType.RorWithXpackSecurityCluster(Attributes.default.copy(
+        restSsl = Enabled.No,
+        internodeSsl = Enabled.Yes(InternodeSsl.Es)
+      ))
     )
   )
 
-  private lazy val adminXpackApiManager = new XpackApiManager(rorAdminClient, esVersionUsed)
+  private lazy val adminXpackApiManager = new XpackApiManager(adminClient, esVersionUsed)
   private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"))
   private lazy val dev2SearchManager = new SearchManager(basicAuthClient("dev2", "test"))
   private lazy val dev3XpackApiManager = new XpackApiManager(basicAuthClient("dev3", "test"), esVersionUsed)
@@ -69,7 +71,7 @@ trait XpackApiSuite
     "be allowed for dev1 and test1_index_a" excludeES(allEs6x, allEs7xBelowEs77x) in {
       val result = dev1SearchManager.asyncSearch("test1_index_a")
 
-      result.responseCode should be (200)
+      result.responseCode should be(200)
       result.searchHits.map(i => i("_index").str).toSet should be(
         Set("test1_index_a")
       )
@@ -77,12 +79,12 @@ trait XpackApiSuite
     "not be allowed for dev2 and test1_index_a" excludeES(allEs6x, allEs7xBelowEs77x) in {
       val result = dev2SearchManager.asyncSearch("test1_index_a")
 
-      result.responseCode should be (404)
+      result.responseCode should be(404)
     }
     "support filter and fields rule" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
       val result = dev2SearchManager.asyncSearch("test2_index")
 
-      result.responseCode should be (200)
+      result.responseCode should be(200)
       result.searchHits.map(i => i("_index").str).toSet should be(
         Set("test2_index")
       )
@@ -138,26 +140,26 @@ trait XpackApiSuite
           index = "test7_index",
           query = ujson.read(
             """
-               |{
-               |  "source": {
-               |    "query": {
-               |      "bool": {
-               |        "filter": [
-               |          {
-               |            "query_string": {
-               |              "query": "a1 OR a2 OR a3",
-               |              "fields": [
-               |                "content.app.keyword"
-               |              ],
-               |              "default_operator": "OR",
-               |              "analyze_wildcard": false
-               |            }
-               |          }
-               |        ]
-               |      }
-               |    }
-               |  }
-               |}""".stripMargin
+              |{
+              |  "source": {
+              |    "query": {
+              |      "bool": {
+              |        "filter": [
+              |          {
+              |            "query_string": {
+              |              "query": "a1 OR a2 OR a3",
+              |              "fields": [
+              |                "content.app.keyword"
+              |              ],
+              |              "default_operator": "OR",
+              |              "analyze_wildcard": false
+              |            }
+              |          }
+              |        ]
+              |      }
+              |    }
+              |  }
+              |}""".stripMargin
           )
         )
 
@@ -314,9 +316,9 @@ trait XpackApiSuite
 
           val result = adminXpackApiManager.getRollupJobCapabilities("test4*")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
           val jobs = result.capabilities.values.toList.flatten
-          jobs.map(_("job_id").str) should contain (jobName)
+          jobs.map(_ ("job_id").str) should contain(jobName)
         }
         "user has access to requested indices" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName1 = NextRollupJobName.get
@@ -326,12 +328,12 @@ trait XpackApiSuite
 
           val result = dev4XpackApiManager.getRollupJobCapabilities("test4_index_a")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
           val jobs = result.capabilities.values.toList.flatten
-          jobs.map(_("job_id").str) should contain (jobName1)
+          jobs.map(_ ("job_id").str) should contain(jobName1)
           jobs.foreach { job =>
-            job("rollup_index").str should startWith ("rollup_test4")
-            job("index_pattern").str should startWith ("test4")
+            job("rollup_index").str should startWith("rollup_test4")
+            job("index_pattern").str should startWith("test4")
           }
         }
         "user has access to requested index pattern" excludeES(allEs6xBelowEs63x, rorProxy) in {
@@ -344,13 +346,13 @@ trait XpackApiSuite
 
           val result = dev4XpackApiManager.getRollupJobCapabilities("test4*")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
           val jobs = result.capabilities.values.toList.flatten
           jobs should have size 1
-          jobs.map(_("job_id").str) should contain (jobName2)
+          jobs.map(_ ("job_id").str) should contain(jobName2)
           jobs.foreach { job =>
-            job("rollup_index").str should startWith ("rollup_test4")
-            job("index_pattern").str should startWith ("test4")
+            job("rollup_index").str should startWith("rollup_test4")
+            job("index_pattern").str should startWith("test4")
           }
         }
         "user has access to one index of requested index patten" excludeES(allEs6xBelowEs63x, rorProxy) in {
@@ -363,13 +365,13 @@ trait XpackApiSuite
 
           val result = dev4XpackApiManager.getRollupJobCapabilities("test4*")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
           val jobs = result.capabilities.values.toList.flatten
           jobs should have size 2
-          jobs.map(_("job_id").str) should contain (jobName2)
+          jobs.map(_ ("job_id").str) should contain(jobName2)
           jobs.foreach { job =>
-            job("rollup_index").str should startWith ("rollup_test4")
-            job("index_pattern").str should startWith ("test4")
+            job("rollup_index").str should startWith("rollup_test4")
+            job("index_pattern").str should startWith("test4")
           }
         }
       }
@@ -380,9 +382,9 @@ trait XpackApiSuite
 
           val result = dev4XpackApiManager.getRollupJobCapabilities("test3_index_a")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
           val jobs = result.capabilities.values.toList.flatten
-          jobs.size should be (0)
+          jobs.size should be(0)
         }
         "user had no access to requested index pattern" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName = NextRollupJobName.get
@@ -390,9 +392,9 @@ trait XpackApiSuite
 
           val result = dev4XpackApiManager.getRollupJobCapabilities("test3*")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
           val jobs = result.capabilities.values.toList.flatten
-          jobs.size should be (0)
+          jobs.size should be(0)
         }
       }
     }
@@ -404,9 +406,9 @@ trait XpackApiSuite
 
           val result = adminXpackApiManager.getRollupIndexCapabilities("admin_t5")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
           val jobs = result.capabilities.values.toList.flatten
-          jobs.map(_("job_id").str) should contain (jobName)
+          jobs.map(_ ("job_id").str) should contain(jobName)
         }
         "user has access to requested indices" excludeES(allEs6xBelowEs63x, rorProxy) in {
           val jobName1 = NextRollupJobName.get
@@ -416,12 +418,12 @@ trait XpackApiSuite
 
           val result = dev5XpackApiManager.getRollupIndexCapabilities(s"rollup_test5_$jobName1")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
           val jobs = result.capabilities.values.toList.flatten
-          jobs.map(_("job_id").str) should contain (jobName1)
+          jobs.map(_ ("job_id").str) should contain(jobName1)
           jobs.foreach { job =>
-            job("rollup_index").str should startWith ("rollup_test5")
-            job("index_pattern").str should startWith ("test5")
+            job("rollup_index").str should startWith("rollup_test5")
+            job("index_pattern").str should startWith("test5")
           }
         }
         "user has access to requested index pattern" excludeES(allEs6xBelowEs63x, rorProxy) in {
@@ -432,12 +434,12 @@ trait XpackApiSuite
 
           val result = dev5XpackApiManager.getRollupIndexCapabilities("rollup_test5*")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
           val jobs = result.capabilities.values.toList.flatten
-          jobs.map(_("job_id").str) should contain (jobName1)
+          jobs.map(_ ("job_id").str) should contain(jobName1)
           jobs.foreach { job =>
-            job("rollup_index").str should startWith ("rollup_test5")
-            job("index_pattern").str should startWith ("test5")
+            job("rollup_index").str should startWith("rollup_test5")
+            job("index_pattern").str should startWith("test5")
           }
         }
         "user has access to one index of requested index patten" excludeES(allEs6xBelowEs63x, rorProxy) in {
@@ -448,12 +450,12 @@ trait XpackApiSuite
 
           val result = dev5XpackApiManager.getRollupIndexCapabilities("rollup_test*")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
           val jobs = result.capabilities.values.toList.flatten
-          jobs.map(_("job_id").str) should contain (jobName1)
+          jobs.map(_ ("job_id").str) should contain(jobName1)
           jobs.foreach { job =>
-            job("rollup_index").str should startWith ("rollup_test5")
-            job("index_pattern").str should startWith ("test5")
+            job("rollup_index").str should startWith("rollup_test5")
+            job("index_pattern").str should startWith("test5")
           }
         }
       }
@@ -464,9 +466,9 @@ trait XpackApiSuite
 
           val result = dev5XpackApiManager.getRollupIndexCapabilities("rollup_test3*")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
           val jobs = result.capabilities.values.toList.flatten
-          jobs.size should be (0)
+          jobs.size should be(0)
         }
       }
       "return 404" when {
@@ -476,7 +478,7 @@ trait XpackApiSuite
 
           val result = dev5XpackApiManager.getRollupIndexCapabilities(s"rollup_test3_$jobName")
 
-          result.responseCode should be (404)
+          result.responseCode should be(404)
         }
       }
     }
@@ -491,7 +493,7 @@ trait XpackApiSuite
 
           val result = dev6XpackApiManager.rollupSearch(rollupIndex6a)
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
         }
       }
       "return 404" when {
@@ -502,7 +504,7 @@ trait XpackApiSuite
 
           val result = dev6XpackApiManager.rollupSearch(rollupIndex)
 
-          result.responseCode should be (404)
+          result.responseCode should be(404)
         }
       }
     }
@@ -636,7 +638,7 @@ trait XpackApiSuite
           "full index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""DESCRIBE library""")
             result.isSuccess should be(true)
-            result.queryResult.keys should contain allOf ("column", "type")
+            result.queryResult.keys should contain allOf("column", "type")
             result.column("column").map(_.str) should contain only(
               "author", "author.keyword", "internal_id", "name", "name.keyword", "release_date"
             )
@@ -644,7 +646,7 @@ trait XpackApiSuite
           "full indices names are used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""DESCRIBE \"bookstore,library\"""")
             result.isSuccess should be(true)
-            result.queryResult.keys should contain allOf ("column", "type")
+            result.queryResult.keys should contain allOf("column", "type")
             result.column("column").map(_.str) should contain only(
               "author", "author.keyword", "internal_id", "name", "name.keyword", "price", "release_date"
             )
@@ -652,7 +654,7 @@ trait XpackApiSuite
           "wildcard is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""DESCRIBE \"*\"""")
             result.isSuccess should be(true)
-            result.queryResult.keys should contain allOf ("column", "type")
+            result.queryResult.keys should contain allOf("column", "type")
             result.column("column").map(_.str) should contain only(
               "author", "author.keyword", "internal_id", "name", "name.keyword", "price", "release_date"
             )
@@ -660,7 +662,7 @@ trait XpackApiSuite
           "alias is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""DESCRIBE bookshop""")
             result.isSuccess should be(true)
-            result.queryResult.keys should contain allOf ("column", "type")
+            result.queryResult.keys should contain allOf("column", "type")
             result.column("column").map(_.str) should contain only(
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
@@ -675,7 +677,7 @@ trait XpackApiSuite
           "full index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""DESCRIBE bookstore""")
             result.isSuccess should be(true)
-            result.queryResult.keys should contain allOf ("column", "type")
+            result.queryResult.keys should contain allOf("column", "type")
             result.column("column").map(_.str) should contain only(
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
@@ -683,7 +685,7 @@ trait XpackApiSuite
           "full indices names are used and one of them is not allowed" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""DESCRIBE \"bookstore,library\"""")
             result.isSuccess should be(true)
-            result.queryResult.keys should contain allOf ("column", "type")
+            result.queryResult.keys should contain allOf("column", "type")
             result.column("column").map(_.str) should contain only(
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
@@ -691,7 +693,7 @@ trait XpackApiSuite
           "wildcard is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""DESCRIBE \"*\"""")
             result.isSuccess should be(true)
-            result.queryResult.keys should contain allOf ("column", "type")
+            result.queryResult.keys should contain allOf("column", "type")
             result.column("column").map(_.str) should contain only(
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
@@ -699,7 +701,7 @@ trait XpackApiSuite
           "alias is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""DESCRIBE \"bookshop\"""")
             result.isSuccess should be(true)
-            result.queryResult.keys should contain allOf ("column", "type")
+            result.queryResult.keys should contain allOf("column", "type")
             result.column("column").map(_.str) should contain only(
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
@@ -737,7 +739,7 @@ trait XpackApiSuite
           "full index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN library""")
             result.isSuccess should be(true)
-            result.queryResult.keys should contain allOf ("column", "type")
+            result.queryResult.keys should contain allOf("column", "type")
             result.column("column").map(_.str) should contain only(
               "author", "author.keyword", "internal_id", "name", "name.keyword", "release_date"
             )
@@ -745,7 +747,7 @@ trait XpackApiSuite
           "full indices names are used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN \"bookstore,library\"""")
             result.isSuccess should be(true)
-            result.queryResult.keys should contain allOf ("column", "type")
+            result.queryResult.keys should contain allOf("column", "type")
             result.column("column").map(_.str) should contain only(
               "author", "author.keyword", "internal_id", "name", "name.keyword", "price", "release_date"
             )
@@ -753,7 +755,7 @@ trait XpackApiSuite
           "wildcard is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN \"*\"""")
             result.isSuccess should be(true)
-            result.queryResult.keys should contain allOf ("column", "type")
+            result.queryResult.keys should contain allOf("column", "type")
             result.column("column").map(_.str) should contain only(
               "author", "author.keyword", "internal_id", "name", "name.keyword", "price", "release_date"
             )
@@ -761,7 +763,7 @@ trait XpackApiSuite
           "alias is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN bookshop""")
             result.isSuccess should be(true)
-            result.queryResult.keys should contain allOf ("column", "type")
+            result.queryResult.keys should contain allOf("column", "type")
             result.column("column").map(_.str) should contain only(
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
@@ -776,7 +778,7 @@ trait XpackApiSuite
           "full index name is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SHOW COLUMNS IN bookstore""")
             result.isSuccess should be(true)
-            result.queryResult.keys should contain allOf ("column", "type")
+            result.queryResult.keys should contain allOf("column", "type")
             result.column("column").map(_.str) should contain only(
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
@@ -784,7 +786,7 @@ trait XpackApiSuite
           "full indices names are used and one of them is not allowed" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SHOW COLUMNS FROM \"bookstore,library\"""")
             result.isSuccess should be(true)
-            result.queryResult.keys should contain allOf ("column", "type")
+            result.queryResult.keys should contain allOf("column", "type")
             result.column("column").map(_.str) should contain only(
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
@@ -792,7 +794,7 @@ trait XpackApiSuite
           "wildcard is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SHOW COLUMNS FROM \"*\"""")
             result.isSuccess should be(true)
-            result.queryResult.keys should contain allOf ("column", "type")
+            result.queryResult.keys should contain allOf("column", "type")
             result.column("column").map(_.str) should contain only(
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
@@ -800,7 +802,7 @@ trait XpackApiSuite
           "alias is used" excludeES(allEs6xBelowEs65x, rorProxy) in {
             val result = dev3SqlManager.execute("""SHOW COLUMNS FROM \"bookshop\"""")
             result.isSuccess should be(true)
-            result.queryResult.keys should contain allOf ("column", "type")
+            result.queryResult.keys should contain allOf("column", "type")
             result.column("column").map(_.str) should contain only(
               "author", "author.keyword", "name", "name.keyword", "price", "release_date"
             )
@@ -1013,6 +1015,7 @@ object XpackApiSuite {
 
   private object NextRollupJobName {
     private val currentId = Atomic(0)
+
     def get: String = s"job${currentId.incrementAndGet()}"
   }
 }
