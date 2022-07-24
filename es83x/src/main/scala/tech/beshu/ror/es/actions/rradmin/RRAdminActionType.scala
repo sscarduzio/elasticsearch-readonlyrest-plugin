@@ -14,36 +14,21 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools
+package tech.beshu.ror.es.actions.rradmin
 
-import tech.beshu.ror.tools.patches.EsPatch
+import org.elasticsearch.action.ActionType
+import org.elasticsearch.common.io.stream.Writeable
+import tech.beshu.ror.accesscontrol.domain
 
-import scala.language.postfixOps
+class RRAdminActionType extends ActionType[RRAdminResponse](
+  RRAdminActionType.name,
+  RRAdminActionType.exceptionReader
+)
 
-object actions {
-
-  class PatchAction(patch: EsPatch) {
-    def execute(): Unit = {
-      (for {
-        _ <- patch.assertIsNotPatched()
-        _ <- patch.backup()
-        _ <- patch.execute()
-      } yield ()) get
-    }
-  }
-}
-
-class UnpatchAction(patch: EsPatch) {
-  def execute(): Unit = {
-    (for {
-      _ <- patch.assertIsPatched()
-      _ <- patch.restore()
-    } yield ()) get
-  }
-}
-
-class VerifyAction(patch: EsPatch) {
-  def execute(): Unit = {
-    patch.assertIsPatched().get
-  }
+object RRAdminActionType {
+  val name = domain.Action.rorOldConfigAction.value
+  val instance = new RRAdminActionType()
+  final case object RRAdminActionCannotBeTransported extends Exception
+  def exceptionReader[A]: Writeable.Reader[A] =
+    _ => throw RRAdminActionCannotBeTransported
 }

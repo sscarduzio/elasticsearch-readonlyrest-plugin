@@ -142,11 +142,12 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
         if (useXpackSecurityInsteadOfRor)
           builder.entryPoint("/usr/share/elasticsearch/xpack-setup-entry.sh")
 
+        install(builder, config)
+
         builder
           .user("elasticsearch")
           .env(config.envs + ("ES_JAVA_OPTS" -> javaOpts) asJava)
 
-        install(builder, config)
 
         logger.info("Dockerfile\n" + builder.build)
       })

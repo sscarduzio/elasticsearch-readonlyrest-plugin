@@ -31,7 +31,7 @@ trait LogProxyBuildInfoMessage extends Logging {
   }
 
   def createLogMessage(buildInfo: BuildInfo): String =
-    s"Starting ReadonlyREST proxy v${buildInfo.pluginVersion} (based on ES v${buildInfo.esVersion})"
+    s"Starting ReadonlyREST proxy v${buildInfo.pluginVersion} (based on Elasticsearch v${buildInfo.esVersion})"
 
 }
 
