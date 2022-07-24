@@ -4,6 +4,6 @@ cluster.initial_master_nodes: n1_it
 readonlyrest:
   ssl:
     enable: false
-    keystore_file: "keystore.jks"
+    keystore_file: "ror-keystore.jks"
     keystore_pass: readonlyrest1
     key_pass: readonlyrest2

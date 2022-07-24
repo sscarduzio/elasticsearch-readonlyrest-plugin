@@ -47,7 +47,7 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
       |readonlyrest:
       |  ssl:
       |    enable: true
-      |    keystore_file: "keystore.jks"
+      |    keystore_file: "ror-keystore.jks"
       |    keystore_pass: readonlyrest
       |    key_pass: readonlyrest
       |

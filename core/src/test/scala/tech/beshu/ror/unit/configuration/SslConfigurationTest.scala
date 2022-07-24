@@ -38,10 +38,10 @@ class SslConfigurationTest
         val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
         inside(ssl.externalSsl) {
           case Some(ExternalSslConfiguration(keystoreFile, Some(keystorePassword), Some(keyPass), None, Some(truststoreFile), Some(truststorePassword), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
-            keystoreFile.value.getName should be("keystore.jks")
+            keystoreFile.value.getName should be("ror-keystore.jks")
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
-            truststoreFile.value.getName should be("truststore.jks")
+            truststoreFile.value.getName should be("ror-truststore.jks")
             truststorePassword should be(TruststorePassword("readonlyrest3"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
@@ -53,10 +53,10 @@ class SslConfigurationTest
         val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_elasticsearch_config_only_digits/")).runSyncUnsafe().right.get
         inside(ssl.externalSsl) {
           case Some(ExternalSslConfiguration(keystoreFile, Some(keystorePassword), Some(keyPass), None, Some(truststoreFile), Some(truststorePassword), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
-            keystoreFile.value.getName should be("keystore.jks")
+            keystoreFile.value.getName should be("ror-keystore.jks")
             keystorePassword should be(KeystorePassword("123456"))
             keyPass should be(KeyPass("12"))
-            truststoreFile.value.getName should be("truststore.jks")
+            truststoreFile.value.getName should be("ror-truststore.jks")
             truststorePassword should be(TruststorePassword("1234"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
@@ -70,10 +70,10 @@ class SslConfigurationTest
         val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_readonlyrest_config/")).runSyncUnsafe().right.get
         inside(ssl.externalSsl) {
           case Some(ExternalSslConfiguration(keystoreFile, Some(keystorePassword), Some(keyPass), None, Some(truststoreFile), Some(truststorePassword), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
-            keystoreFile.value.getName should be("keystore.jks")
+            keystoreFile.value.getName should be("ror-keystore.jks")
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
-            truststoreFile.value.getName should be("truststore.jks")
+            truststoreFile.value.getName should be("ror-truststore.jks")
             truststorePassword should be(TruststorePassword("readonlyrest3"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
@@ -114,7 +114,7 @@ class SslConfigurationTest
       val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
       inside(ssl.interNodeSsl) {
         case Some(InternodeSslConfiguration(keystoreFile, Some(keystorePassword), Some(keyPass), None, truststoreFile, truststorePassword, allowedProtocols, allowedCiphers, certificateVerificationEnabled)) =>
-          keystoreFile.value.getName should be("keystore.jks")
+          keystoreFile.value.getName should be("ror-keystore.jks")
           keystorePassword should be(KeystorePassword("readonlyrest1"))
           keyPass should be(KeyPass("readonlyrest2"))
           truststoreFile should be(None)
@@ -130,10 +130,10 @@ class SslConfigurationTest
         val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_readonlyrest_config/")).runSyncUnsafe().right.get
         inside(ssl.interNodeSsl) {
           case Some(InternodeSslConfiguration(keystoreFile, Some(keystorePassword), Some(keyPass), None, Some(truststoreFile), Some(truststorePassword), allowedProtocols, allowedCiphers, certificateVerificationEnabled)) =>
-            keystoreFile.value.getName should be("keystore.jks")
+            keystoreFile.value.getName should be("ror-keystore.jks")
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
-            truststoreFile.value.getName should be("truststore.jks")
+            truststoreFile.value.getName should be("ror-truststore.jks")
             truststorePassword should be(TruststorePassword("readonlyrest3"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
