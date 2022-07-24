@@ -68,7 +68,7 @@ trait FieldRuleEngineSuite
       )
 
       result.responseCode shouldBe 200
-      result.searchHits.isEmpty shouldBe true
+      result.searchHits shouldBe Nil
     }
   }
 

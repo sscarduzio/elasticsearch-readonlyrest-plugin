@@ -21,9 +21,11 @@ import cats.syntax.show._
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{AbstractQueryBuilder, QueryBuilder, QueryBuilders}
+import org.elasticsearch.search.aggregations.AggregatorFactories
+import org.elasticsearch.search.aggregations.support.ValuesSourceAggregationBuilder
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{NotUsingFields, UsedField, UsingFields}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -32,6 +34,9 @@ import tech.beshu.ror.es.handler.request.queries.QueryFieldsUsage.{Ops => QueryF
 import tech.beshu.ror.es.handler.request.queries.QueryWithModifiableFields.instances._
 import tech.beshu.ror.es.handler.request.queries.QueryWithModifiableFields.{Ops => QueryWithModifiableFieldsOps}
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
+
+import java.util.UUID
+import scala.collection.JavaConverters._
 
 object SearchRequestOps extends Logging {
 
@@ -102,7 +107,7 @@ object SearchRequestOps extends Logging {
         case Some(scriptFields) if scriptFields.size() > 0 =>
           RequestFieldsUsage.CannotExtractFields
         case _ =>
-          checkQueryFields()
+          checkQueryAndAggregationsFields()
       }
     }
 
@@ -110,13 +115,56 @@ object SearchRequestOps extends Logging {
       val currentQuery = request.source().query()
       val newQuery = currentQuery.handleNotAllowedFields(notAllowedFields)
       request.source().query(newQuery)
+      Option(request.source()).foreach(s =>
+          Option(s.aggregations())
+            .map { aggs =>
+              val builder = new AggregatorFactories.Builder()
+              aggs
+                .getAggregatorFactories.asScala
+                .foreach {
+                  case f: ValuesSourceAggregationBuilder[_] if notAllowedFields.find(s => s.value == f.field()).isDefined =>
+                    builder.addAggregator(f.field(s"${f.field()}_${UUID.randomUUID().toString}"))
+                  case f =>
+                    builder.addAggregator(f)
+                }
+              import org.joor.Reflect._
+              on(s).set("aggregations", builder)
+            }
+        )
       request
     }
 
-    private def checkQueryFields(): RequestFieldsUsage = {
-      Option(request.source()).flatMap(s => Option(s.query()))
-        .map(_.fieldsUsage)
+    private def checkQueryAndAggregationsFields(): RequestFieldsUsage = {
+      Option(request.source())
+        .map { s =>
+          val fieldsFromAggregations = Option(s.aggregations())
+            .map(_
+              .getAggregatorFactories.asScala
+              .flatMap {
+                case builder: ValuesSourceAggregationBuilder[_] => builder.field() :: Nil
+                case _ => Nil
+              }
+              .map(UsedField.apply)
+            )
+            .toList
+            .flatten
+          val aggregationsRequestFieldsUsage = NonEmptyList.fromList(fieldsFromAggregations) match {
+            case Some(fields) => UsingFields(fields)
+            case None => NotUsingFields
+          }
+          val queryRequestFieldsUsage = Option(s.query()).map(_.fieldsUsage).getOrElse(NotUsingFields)
+          val ll = (aggregationsRequestFieldsUsage, queryRequestFieldsUsage) match {
+            case (UsingFields(f1), UsingFields(f2)) => UsingFields(f1 ::: f2)
+            case (UsingFields(f1), _) => UsingFields(f1)
+            case (_, UsingFields(f2)) => UsingFields(f2)
+            case _ => NotUsingFields
+          }
+          ll: RequestFieldsUsage
+        }
         .getOrElse(RequestFieldsUsage.NotUsingFields)
+//      Option(request.source()).flatMap(s => Option(s.query()))
+//        .map(_.fieldsUsage)
+//        .getOrElse(RequestFieldsUsage.NotUsingFields)
     }
 
     private def disableCaching(requestId: RequestContext.Id) = {
