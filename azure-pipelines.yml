@@ -120,6 +120,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            IT_es83x:
+              ROR_TASK: integration_es83x
             IT_es82x:
               ROR_TASK: integration_es82x
             IT_es81x:
@@ -153,8 +155,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            IT_es82x:
-              ROR_TASK: integration_es82x
+            IT_es83x:
+              ROR_TASK: integration_es83x
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
@@ -326,9 +328,7 @@ stages:
 
           - script: |
               set -e
-              echo ">>> MAKE SURE GIT IS INSTALLED >>> "
-              sudo apt-get update && sudo apt-get install -y git && git status || exit 1
-
+              apt-get update && apt-get install -y git
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key

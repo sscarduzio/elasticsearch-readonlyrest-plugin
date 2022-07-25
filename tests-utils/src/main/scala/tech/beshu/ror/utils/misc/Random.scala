@@ -17,6 +17,8 @@
 package tech.beshu.ror.utils.misc
 
 import java.security.{KeyPairGenerator, PrivateKey, PublicKey, SecureRandom}
+import java.time.Instant
+import java.util.concurrent.ThreadLocalRandom
 
 object Random {
 
@@ -27,4 +29,12 @@ object Random {
     val pair = keyGen.generateKeyPair()
     (pair.getPublic, pair.getPrivate)
   }
+
+  def instant(origin: Instant, bound: Instant): Instant =
+    Instant.ofEpochSecond(
+      ThreadLocalRandom.current().nextLong(origin.getEpochSecond, bound.getEpochSecond)
+    )
+
+  def instant: Instant =
+    instant(Instant.EPOCH, Instant.now())
 }

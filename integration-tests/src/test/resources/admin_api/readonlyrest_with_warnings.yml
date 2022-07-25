@@ -1,0 +1,11 @@
+readonlyrest:
+  # comments should survive
+  access_control_rules:
+    - name: "CONTAINER ADMIN - updated"
+      verbosity: "error"
+      type: "allow"
+      auth_key: "admin:container"
+
+    - name: "test1"
+      indices: ["test1_index", "odd:test1_index"]
+      auth_key_sha256: "66dea39e8a54b609b5b4a0e680da48ff325f6f7dc70f1aac2d80e64fab509c84"

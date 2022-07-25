@@ -86,8 +86,8 @@ object BlockValidator {
   private def validateRequirementsForSingleRule(allRules: NonEmptyList[Rule])
                                                (ruleDefinition: RuleDefinition[Rule]): Validated[NonEmptyList[RuleDoesNotMeetRequirement], Unit] = {
     ruleDefinition match {
-      case RuleDefinition(_, NotUsingVariable, _) => Validated.Valid(())
-      case RuleDefinition(rule, usingVariable: UsingVariable[Rule], _) =>
+      case RuleDefinition(_, NotUsingVariable, _, _) => Validated.Valid(())
+      case RuleDefinition(rule, usingVariable: UsingVariable[Rule], _, _) =>
         val allNonCompliantResults = RequirementVerifier.verify(rule, usingVariable, allRules).collect { case r: ComplianceResult.NonCompliantWith => r }
         allNonCompliantResults match {
           case Nil => Validated.Valid(())
