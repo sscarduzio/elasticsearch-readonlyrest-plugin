@@ -181,6 +181,13 @@ object SSLCertHelper extends Logging {
     }
   }
 
+  def isPEMHandlingAvailable: Boolean = {
+    Try {
+      Class.forName("org.bouncycastle.openssl.PEMParser")
+    }
+      .isSuccess
+  }
+
   def getTrustedCertificatesFromPemFile(fileBasedConfiguration: ClientCertificateConfiguration.FileBasedConfiguration): Array[X509Certificate] = {
     loadCertificateChain(fileBasedConfiguration.clientTrustedCertificateFile.value)
       .attempt

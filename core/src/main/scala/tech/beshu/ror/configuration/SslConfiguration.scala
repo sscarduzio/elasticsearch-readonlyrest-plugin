@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration, KeystoreFile, TruststoreFile}
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
+import tech.beshu.ror.utils.SSLCertHelper
 
 final case class RorSsl(externalSsl: Option[ExternalSslConfiguration],
                         interNodeSsl: Option[InternodeSslConfiguration])
@@ -171,17 +172,24 @@ private object SslDecoders extends Logging {
       val truststoreBasedKeys = Set(consts.truststoreFile, consts.truststorePass)
       val fileBasedKeys = Set(consts.clientTrustedCertificateFile)
       val presentKeys = c.keys.fold[Set[String]](Set.empty)(_.toSet)
-      if (presentKeys.intersect(truststoreBasedKeys).size > 1 && presentKeys.intersect(fileBasedKeys).size > 1) {
+      if (presentKeys.intersect(truststoreBasedKeys).nonEmpty && presentKeys.intersect(fileBasedKeys).nonEmpty) {
         val errorMessage = s"Field sets [${fileBasedKeys.mkString(",")}] and [${truststoreBasedKeys.mkString(",")}] could not be present in the same configuration section"
         logger.error(errorMessage)
         Left(DecodingFailure(errorMessage, List.empty))
-      } else if (presentKeys.intersect(truststoreBasedKeys ++ fileBasedKeys).isEmpty) {
-        Right(None)
-      } else {
-        truststoreBasedClientCertificateConfigurationDecoder
-          .or(fileBasedClientCertificateConfigurationDecoder)
-          .apply(c)
+      } else if (presentKeys.intersect(truststoreBasedKeys).nonEmpty) {
+        truststoreBasedClientCertificateConfigurationDecoder(c)
           .map(Option.apply)
+      } else if (presentKeys.intersect(fileBasedKeys).nonEmpty) {
+        if (SSLCertHelper.isPEMHandlingAvailable) {
+          fileBasedClientCertificateConfigurationDecoder(c)
+            .map(Option.apply)
+        } else {
+          val errorMessage = "PEM File Handling is not available in your current deployment of Elasticsearch"
+          logger.error(errorMessage)
+          Left(DecodingFailure(errorMessage, List.empty))
+        }
+      } else {
+        Right(None)
       }
     }
   }
@@ -199,12 +207,24 @@ private object SslDecoders extends Logging {
       val keystoreBasedKeys = Set(consts.keystoreFile, consts.keystorePass, consts.keyPass, consts.keyAlias)
       val fileBasedKeys = Set(consts.serverCertificateKeyFile, consts.serverCertificateFile)
       val presentKeys = c.keys.fold[Set[String]](Set.empty)(_.toSet)
-      if (presentKeys.intersect(keystoreBasedKeys).size > 1 && presentKeys.intersect(fileBasedKeys).size > 1) {
+      if (presentKeys.intersect(keystoreBasedKeys).nonEmpty && presentKeys.intersect(fileBasedKeys).nonEmpty) {
         val errorMessage = s"Field sets [${fileBasedKeys.mkString(",")}] and [${keystoreBasedKeys.mkString(",")}] could not be present in the same configuration section"
         logger.error(errorMessage)
         Left(DecodingFailure(errorMessage, List.empty))
+      } else if (presentKeys.intersect(keystoreBasedKeys).nonEmpty) {
+        keystoreBasedServerCertificateConfigurationDecoder(c)
+      } else if (presentKeys.intersect(fileBasedKeys).nonEmpty) {
+        if (SSLCertHelper.isPEMHandlingAvailable) {
+          fileBasedServerCertificateConfigurationDecoder(c)
+        } else {
+          val errorMessage = "PEM File Handling is not available in your current deployment of Elasticsearch"
+          logger.error(errorMessage)
+          Left(DecodingFailure(errorMessage, List.empty))
+        }
       } else {
-        keystoreBasedServerCertificateConfigurationDecoder.or(fileBasedServerCertificateConfigurationDecoder).apply(c)
+        val errorMessage = "There was no SSL configuration present for server"
+        logger.error(errorMessage)
+        Left(DecodingFailure(errorMessage, List.empty))
       }
     }
   }
