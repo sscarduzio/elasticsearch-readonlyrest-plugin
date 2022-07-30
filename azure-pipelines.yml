@@ -342,8 +342,7 @@ stages:
                 set -e
 
                 echo ">>>> Installing GIT with apt-get"
-                export DEBIAN_FRONTEND=noninteractive
-                apt-get update && apt-get install -y git
+                sudo apt-get update && apt-get install -y git
                 git status && echo ">>> Git installed correctly!"
                 
                 # Translate back env vars to avoid cyclical reference :/
