@@ -342,7 +342,7 @@ stages:
                 set -e
 
                 echo ">>>> Installing GIT with apt-get"
-                sudo apt-get update && apt-get install -y git
+                sudo apt-get update && sudo apt-get install -y git
                 git status && echo ">>> Git installed correctly!"
                 
                 # Translate back env vars to avoid cyclical reference :/
