@@ -5,26 +5,25 @@ source "$(dirname "$0")/ci-lib.sh"
 ###############################
 # S3 Artifact Uploader Script #
 ###############################
-# Motivation: "artifact" addon and deploy feature of Travis are a complete loss of time
-# The S3 command line tool is this: https://github.com/pivotal-golang/s3cli
-# No need for hardcoding AWS Credentials, they're securely held in travis-ci.
+# Motivation: upload features in specific CI providers (Travis, Azure,..) are a complete loss of time
+# We use curl and that's it. Our scripts are way more portable now, and could run in our laptop if needed.
 #
-# This tool triggers a build upload if a tag for the plugin and elasticsearch version is not already present.
-# The plugin and elasticsearch versions are taken from the build name, which comes from gradle.build
+# This tool uploads builds only if that build does not have a corresponding tag in Git.
+# For example, if tag "v1.42.0_es8.3.3" exists in Git, we won't upload the build 'readonlyrest_1.42.0_es8.3.3.zip' to S3.
 #
-# Ultimately, I'm just going to commit changes to the build.gradle and this thing tags and uploads where necessary.
+# In practice, when you bump the version in build.gradle, this script tags and uploads only if necessary.
 
 # Translate Azure to Travis env vars
 
-export TRAVIS_BRANCH=$(git symbolic-ref --short -q HEAD)
+export BRANCH_CI_BUILDING_FROM=$(git symbolic-ref --short -q HEAD)
 
 if [ -nz ${BUILD_SOURCEBRANCHNAME:+x} ]
 then
  export TRAVIS=true
- export TRAVIS_BRANCH=$BUILD_SOURCEBRANCHNAME
+ export BRANCH_CI_BUILDING_FROM=$BUILD_SOURCEBRANCHNAME
  export TRAVIS_BUILD_NUMBER="$BUILD_BUILDNUMBER"
 fi
-echo ">> FOUND CI PARAMETERS: task? $ROR_TASK; is CI? $TRAVIS; branch? $TRAVIS_BRANCH"
+echo ">> FOUND CI PARAMETERS: task? $ROR_TASK; is CI? $TRAVIS; branch? $BRANCH_CI_BUILDING_FROM"
 
 
 if [ ! -z "$TRAVIS_TAG" ]; then
@@ -32,7 +31,7 @@ if [ ! -z "$TRAVIS_TAG" ]; then
   exit 0
 fi
 
-if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; then
+if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $BRANCH_CI_BUILDING_FROM != "master" ]]; then
     echo ">>> won't try to tag and upload builds because this is a PR"
     exit 0
 fi
@@ -53,9 +52,19 @@ function processBuild {
 
     GIT_TAG=v$(echo $PLUGIN_FILE_BASE | sed 's/readonlyrest-//' | sed 's/\.zip//')
     echo "GIT_TAG: $GIT_TAG"
-    tag $GIT_TAG &&
+    tag $GIT_TAG || (echo "Failed tagging $GIT_TAG" && return 1)
+
+    echo "Tagging OK, will upload to S3..."
     upload  $PLUGIN_FILE        build/$PLUGIN_VERSION/$PLUGIN_FILE_BASE &&
     upload  $PLUGIN_FILE.sha1   build/$PLUGIN_VERSION/$PLUGIN_FILE_BASE.sha1
+    if [ $? == 0 ] ; then
+      echo "Upload OK, build $PLUGIN_FILE_BASE processed successfully"
+      return 0
+    else
+      echo "FATAL: upload $PLUGIN_FILE_BASE failed, removing tag $GIT_TAG and exiting..."
+      tag_delete $GIT_TAG || echo "Failed to delete tag $GIT_TAG"
+      exit 1
+    fi
 }
 
 for zipFile in `ls -1 es*x/build/distributions/*zip`; do
@@ -64,41 +73,3 @@ for zipFile in `ls -1 es*x/build/distributions/*zip`; do
 done
 
 exit 0
-
-##########################################
-# Sample of available ENV vars in Travis #
-##########################################
-
-#declare -x SHELL="/bin/bash"
-#declare -x SHLVL="2"
-#declare -x SSH_CLIENT="104.198.36.26 56467 22"
-#declare -x SSH_CONNECTION="104.198.36.26 56467 10.10.2.23 22"
-#declare -x SSH_TTY="/dev/pts/1"
-#declare -x TERM="dumb"
-#declare -x TRAVIS="true"
-#declare -x TRAVIS_BRANCH="auto-build"
-#declare -x TRAVIS_BUILD_DIR="/home/travis/build/sscarduzio/elasticsearch-readonlyrest-plugin"
-#declare -x TRAVIS_BUILD_ID="188755410"
-#declare -x TRAVIS_BUILD_NUMBER="229"
-#declare -x TRAVIS_COMMIT="7c018b7ad3a6b445f84d66f510edffab236464d9"
-#declare -x TRAVIS_COMMIT_RANGE="0c6da9942d7b...7c018b7ad3a6"
-#declare -x TRAVIS_EVENT_TYPE="push"
-#declare -x TRAVIS_JDK_VERSION="oraclejdk8"
-#declare -x TRAVIS_JOB_ID="188755411"
-#declare -x TRAVIS_JOB_NUMBER="229.1"
-#declare -x TRAVIS_LANGUAGE="java"
-#declare -x TRAVIS_OS_NAME="linux"
-#declare -x TRAVIS_PULL_REQUEST="false"
-#declare -x TRAVIS_PULL_REQUEST_BRANCH=""
-#declare -x TRAVIS_PULL_REQUEST_SHA=""
-#declare -x TRAVIS_REPO_SLUG="sscarduzio/elasticsearch-readonlyrest-plugin"
-#declare -x TRAVIS_SECURE_ENV_VARS="true"
-#declare -x TRAVIS_STACK_FEATURES="basic chromium firefox google-chrome jdk memcached mongodb mysql phantomjs postgresql rabbitmq redis sphinxsearch sqlite xserver"
-#declare -x TRAVIS_STACK_JOB_BOARD_REGISTER="/.job-board-register.yml"
-#declare -x TRAVIS_STACK_LANGUAGES="clojure groovy java pure_java scala"
-#declare -x TRAVIS_STACK_NAME="jvm"
-#declare -x TRAVIS_STACK_NODE_ATTRIBUTES="/.node-attributes.yml"
-#declare -x TRAVIS_STACK_TIMESTAMP="2016-12-02 04:25:24 UTC"
-#declare -x TRAVIS_SUDO="true"
-#declare -x TRAVIS_TAG=""
-#declare -x TRAVIS_TEST_RESULT="0"
