@@ -74,8 +74,7 @@ stages:
               export aws_secret_access_key=$var_aws_secret_access_key 
               
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              #bin/build.sh
-              echo lol
+              bin/build.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -85,9 +84,13 @@ stages:
               testRunTitle: "$(ROR_TASK) results"
               testResultsFiles: "**/TEST*xml"
               mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            LICENSE:
+              ROR_TASK: license
 
-
-
+      
 
   - stage: BLD_TEST
     dependsOn:
@@ -147,7 +150,7 @@ stages:
   - stage: S3_UP
     dependsOn:
       - TEST
-    condition: succeeded('TEST')
+    condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
     jobs:
       - job:
         container: 
@@ -165,20 +168,24 @@ stages:
               sh -c "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confold" -y install sudo"
             displayName: 'Install Sudo in container #HACK - See https://github.com/microsoft/azure-pipelines-agent/issues/2043'
  
-          - script: |
-              set -e
-              export DEBIAN_FRONTEND=noninteractive
-              apt-get update && apt-get install -y git
-              git status && echo ">>> Git installed correctly!"
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
+          - task: Bash@3
+            inputs:
+              targetType: 'inline'
               
-              # echo ">> ALL VARIABLES NAMES " && export | awk -F= '{print $1}'
-              
-              echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/build.sh
-              echo ">>> ($ROR_TASK) Git tag and upload to S3" && ci/ci-deploy.sh
+              script: |
+                set -e
+
+                echo ">>>> Installing GIT with apt-get"
+                sudo apt-get update && sudo apt-get install -y git
+                git status && echo ">>> Git installed correctly!"
+                
+                # Translate back env vars to avoid cyclical reference :/
+                export aws_access_key_id=$var_aws_access_key_id
+                export aws_secret_access_key=$var_aws_secret_access_key
+                
+                echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
+                echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/build.sh
+                echo ">>> ($ROR_TASK) Git tag and upload to S3" && ci/ci-deploy.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
