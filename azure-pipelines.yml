@@ -150,7 +150,7 @@ stages:
   - stage: S3_UP
     dependsOn:
       - TEST
-    condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
+    condition: succeeded('TEST')
     jobs:
       - job:
         container: 
