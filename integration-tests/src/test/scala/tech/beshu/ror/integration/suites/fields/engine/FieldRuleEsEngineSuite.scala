@@ -17,10 +17,10 @@
 package tech.beshu.ror.integration.suites.fields.engine
 
 import org.scalatest.Assertion
-import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.containers.EsClusterProvider
 
 trait FieldRuleEsEngineSuite extends FieldRuleEngineSuite {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/field_level_security_engine/readonlyrest_fls_engine_es.yml"
 

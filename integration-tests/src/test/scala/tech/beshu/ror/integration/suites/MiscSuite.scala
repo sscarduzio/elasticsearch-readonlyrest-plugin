@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterProvider}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -28,7 +28,7 @@ trait MiscSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/misc/readonlyrest.yml"
 

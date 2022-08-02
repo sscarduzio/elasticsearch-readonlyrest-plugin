@@ -17,10 +17,10 @@
 package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseIndexApiSuite
-import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.containers.EsClusterProvider
 
 trait IndexApiWithNonFreeKibanaSupportSuite extends BaseIndexApiSuite {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/index_api/nonfree_readonlyrest.yml"
 

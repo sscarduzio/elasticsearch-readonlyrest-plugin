@@ -24,7 +24,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.elasticsearch.SearchManager.MSearchResult
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, SearchManager}
 
@@ -34,7 +34,7 @@ trait MSearchWithFilterSuite
     with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike
     with Matchers {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/msearch_with_filter/readonlyrest.yml"
 

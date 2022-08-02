@@ -23,17 +23,16 @@ import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attribut
 import tech.beshu.ror.utils.elasticsearch.{IndexManager, LegacyTemplateManager, RorApiManager, SnapshotManager}
 
 object SingletonEsContainerWithRorSecurity
-  extends EsClusterProvider
+  extends PluginEsClusterProvider
     with EsContainerCreator
     with StrictLogging {
 
   private implicit val description: Description = Description.EMPTY
 
-  val rorClusterAttributes = ClusterType.RorCluster(Attributes.default)
   val singleton: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR_SINGLE",
-      clusterType = rorClusterAttributes
+      clusterType = ClusterType.RorCluster(Attributes.default)
     )
   )
 

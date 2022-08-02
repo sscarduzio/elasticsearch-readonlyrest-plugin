@@ -17,10 +17,10 @@
 package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseAdminApiSuite
-import tech.beshu.ror.utils.containers.{EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{EsClusterProvider, EsClusterSettings}
 
 trait AdminApiWithDefaultRorIndexSuite extends BaseAdminApiSuite {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/admin_api/readonlyrest.yml"
   override protected val readonlyrestIndexName: String = ".readonlyrest"

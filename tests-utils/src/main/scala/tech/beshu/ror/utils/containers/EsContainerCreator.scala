@@ -21,8 +21,9 @@ import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.SingleContainer
 import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.EsClusterSettings.{ClusterType, EsVersion}
+import tech.beshu.ror.utils.containers.RorConfigAdjuster.Mode
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
-import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestWithEnabledXpackSecurityPlugin, ReadonlyRestPlugin, XpackSecurityPlugin}
+import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
 import java.io.File
@@ -30,7 +31,8 @@ import java.io.File
 object EsContainerCreator extends EsContainerCreator
 trait EsContainerCreator {
 
-  def create(name: String,
+  def create(mode: Mode,
+             name: String,
              nodeNames: NonEmptyList[String],
              clusterSettings: EsClusterSettings,
              startedClusterDependencies: StartedClusterDependencies): EsContainer = {
@@ -42,7 +44,12 @@ trait EsContainerCreator {
       case ClusterType.RorWithXpackSecurityCluster(attributes) =>
         createEsWithRorAndXpackSecurityContainer(name, nodeNames, project, clusterSettings, attributes, startedClusterDependencies)
       case ClusterType.RorCluster(attributes) =>
-        createEsWithRorContainer(name, nodeNames, project, clusterSettings, attributes, startedClusterDependencies)
+        mode match {
+          case Mode.Plugin =>
+            createEsWithRorContainer(name, nodeNames, project, clusterSettings, attributes, startedClusterDependencies)
+          case Mode.Proxy =>
+            createEsWithNoSecurityContainer(name, nodeNames, project, clusterSettings, startedClusterDependencies)
+        }
       case ClusterType.XPackSecurityCluster(attributes) =>
         createEsWithXpackContainer(name, nodeNames, project, clusterSettings, attributes, startedClusterDependencies)
       case ClusterType.EsWithNoSecurityCluster =>

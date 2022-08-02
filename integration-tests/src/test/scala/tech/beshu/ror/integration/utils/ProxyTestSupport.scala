@@ -32,8 +32,7 @@ trait ProxyTestSupport
   extends BeforeAndAfterAll
     with ForAllTestContainer
     with CallingProxy
-    with EsContainerCreator
-    with EsClusterProvider
+    with ProxyEsClusterProvider
     with ResolvedRorConfigFileProvider
     with LazyLogging {
   this: Suite with MultipleEsTargets with RorConfigFileNameProvider =>
@@ -76,7 +75,7 @@ trait ProxyTestSupport
 }
 
 
-trait SingleNodeProxyTestSupport extends ProxyTestSupport {
+trait SingleNodeProxyTestSupport extends ProxyTestSupport with ProxyEsClusterProvider {
   this: Suite with BaseSingleNodeEsClusterTest =>
 
   private def clusterSettings = {

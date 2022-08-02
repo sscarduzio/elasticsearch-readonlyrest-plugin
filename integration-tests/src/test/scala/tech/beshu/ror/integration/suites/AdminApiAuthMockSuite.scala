@@ -33,7 +33,7 @@ trait AdminApiAuthMockSuite
     with ESVersionSupportForAnyWordSpecLike
     with BeforeAndAfterEach
     with Matchers {
-  this: EsContainerCreator with ResolvedRorConfigFileProvider =>
+  this: EsClusterProvider with ResolvedRorConfigFileProvider =>
 
   override implicit val rorConfigFileName = "/admin_api_mocks/readonlyrest.yml"
   private lazy val rorApiManager = new RorApiManager(adminClient, esVersionUsed)

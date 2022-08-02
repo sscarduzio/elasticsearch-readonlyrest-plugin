@@ -36,7 +36,7 @@ trait RemoteReindexSuite
   with BeforeAndAfterEach
   with ESVersionSupportForAnyWordSpecLike
   with Matchers {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/reindex_multi_containers/readonlyrest_dest_es.yml"
   private val sourceEsRorConfigFileName = "/reindex_multi_containers/readonlyrest_source_es.yml"

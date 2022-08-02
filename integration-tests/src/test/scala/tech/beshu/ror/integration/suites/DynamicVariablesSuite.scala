@@ -30,7 +30,7 @@ trait DynamicVariablesSuite
     with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
     with Matchers {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/dynamic_vars/readonlyrest.yml"
 

@@ -18,9 +18,11 @@ package tech.beshu.ror.utils.containers
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.utils.containers.EsClusterProvider.ClusterNodeData
+import tech.beshu.ror.utils.containers.RorConfigAdjuster.Mode
 
-trait EsClusterProvider {
-  this: EsContainerCreator =>
+sealed trait EsClusterProvider extends EsContainerCreator {
+
+  protected def mode: Mode
 
   def createLocalClusterContainer(esClusterSettings: EsClusterSettings): EsClusterContainer = {
     if (esClusterSettings.numberOfInstances < 1) throw new IllegalArgumentException("Cluster should have at least one instance")
@@ -70,9 +72,18 @@ trait EsClusterProvider {
   }
 
   private def createNode(nodeNames: NonEmptyList[String], nodeData: ClusterNodeData) = {
-    this.create(nodeData.name, nodeNames, nodeData.settings, _)
+    this.create(mode, nodeData.name, nodeNames, nodeData.settings, _)
   }
 }
+
 object EsClusterProvider {
   final case class ClusterNodeData(name: String, settings: EsClusterSettings)
+}
+
+trait ProxyEsClusterProvider extends EsClusterProvider {
+  override val mode = Mode.Proxy
+}
+
+trait PluginEsClusterProvider extends EsClusterProvider {
+  override val mode = Mode.Plugin
 }

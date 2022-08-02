@@ -23,7 +23,7 @@ import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTes
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonLdapContainers}
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
 import tech.beshu.ror.utils.containers.providers.ResolvedRorConfigFileProvider
-import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer, EsClusterProvider, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -34,7 +34,7 @@ trait ImpersonationSuite
     with ESVersionSupportForAnyFreeSpecLike
     with BeforeAndAfterEach
     with BeforeAndAfterAll {
-  this: EsContainerCreator with ResolvedRorConfigFileProvider =>
+  this: EsClusterProvider with ResolvedRorConfigFileProvider =>
 
   override implicit val rorConfigFileName = "/impersonation/readonlyrest.yml"
 

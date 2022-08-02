@@ -42,7 +42,7 @@ trait IndexLifecycleManagementApiSuite
     with BeforeAndAfterEach
     with Matchers
     with Eventually {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/index_lifecycle_management_api/readonlyrest.yml"
 

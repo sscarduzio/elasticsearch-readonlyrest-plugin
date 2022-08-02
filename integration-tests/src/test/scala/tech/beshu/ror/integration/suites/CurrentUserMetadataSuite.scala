@@ -20,7 +20,7 @@ import org.junit.Assert.assertEquals
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.elasticsearch.RorApiManager
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import ujson.Str
@@ -30,7 +30,7 @@ trait CurrentUserMetadataSuite
     with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/current_user_metadata/readonlyrest.yml"
 

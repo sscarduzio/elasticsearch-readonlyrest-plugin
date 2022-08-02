@@ -20,8 +20,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, ClusterManagerYaml, DocumentManager, SearchManager}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterProvider}
+import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait ResponseFieldRuleSuite
@@ -29,7 +29,7 @@ trait ResponseFieldRuleSuite
     with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike
     with Matchers {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/response_field_rules/readonlyrest.yml"
 

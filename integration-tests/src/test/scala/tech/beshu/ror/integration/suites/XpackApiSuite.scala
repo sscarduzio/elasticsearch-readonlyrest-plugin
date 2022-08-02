@@ -25,7 +25,7 @@ import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationT
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterProvider, EsClusterSettings}
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Null, Num, Str}
@@ -37,7 +37,7 @@ trait XpackApiSuite
     with ESVersionSupportForAnyWordSpecLike
     with BeforeAndAfterEach
     with Matchers {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/xpack_api/readonlyrest.yml"
 

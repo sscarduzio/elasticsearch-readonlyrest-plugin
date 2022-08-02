@@ -37,7 +37,7 @@ final class LoadClusterConfigsWithNoRorNodeTest
     with BaseEsClusterIntegrationTest
     with MultipleClientsSupport
     with ESVersionSupportForAnyWordSpecLike {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/admin_api/readonlyrest.yml"
 

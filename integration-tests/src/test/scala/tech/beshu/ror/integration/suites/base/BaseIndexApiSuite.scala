@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites.base
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterProvider, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -27,7 +27,7 @@ trait BaseIndexApiSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   protected def notFoundIndexStatusReturned: Int
   protected def forbiddenStatusReturned: Int

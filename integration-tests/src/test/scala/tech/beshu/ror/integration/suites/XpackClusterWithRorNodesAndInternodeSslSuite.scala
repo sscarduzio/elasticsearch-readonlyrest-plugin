@@ -33,7 +33,7 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
     with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
     with BeforeAndAfterAll {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest.yml"
 

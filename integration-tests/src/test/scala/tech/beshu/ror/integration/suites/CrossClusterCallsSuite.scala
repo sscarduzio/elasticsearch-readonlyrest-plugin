@@ -30,7 +30,7 @@ trait CrossClusterCallsSuite
     with BaseEsRemoteClusterIntegrationTest
     with SingleClientSupport
     with ESVersionSupportForAnyWordSpecLike {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/cross_cluster_search/readonlyrest.yml"
 

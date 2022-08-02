@@ -23,12 +23,13 @@ import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.providers._
 import tech.beshu.ror.utils.misc.Resources.getResourcePath
 
-trait PluginTestSupport extends EsContainerCreator with CallingEsDirectly {
+trait PluginTestSupport extends PluginEsClusterProvider with CallingEsDirectly {
   this: MultipleEsTargets =>
 }
 
 trait SingletonPluginTestSupport
   extends PluginTestSupport
+    with PluginEsClusterProvider
     with BeforeAndAfterAll
     with ResolvedRorConfigFileProvider {
   this: Suite with BaseSingleNodeEsClusterTest =>

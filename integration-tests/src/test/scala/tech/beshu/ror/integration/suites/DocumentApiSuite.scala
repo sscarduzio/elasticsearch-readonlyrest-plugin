@@ -28,7 +28,7 @@ trait DocumentApiSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/document_api/readonlyrest.yml"
 
