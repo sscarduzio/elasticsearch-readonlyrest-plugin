@@ -22,13 +22,20 @@ import com.dimafeng.testcontainers.SingleContainer
 import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.EsClusterSettings.{ClusterType, EsVersion}
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
-import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestWithEnabledXpackSecurityPlugin, ReadonlyRestPlugin, XpackSecurityPlugin}
+import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
 import java.io.File
 
-object EsContainerCreator extends EsContainerCreator
-trait EsContainerCreator {
+
+sealed trait EsContainerCreator {
+
+  def create(name: String,
+             nodeNames: NonEmptyList[String],
+             clusterSettings: EsClusterSettings,
+             startedClusterDependencies: StartedClusterDependencies): EsContainer
+}
+trait EsContainerCreatorForPlugin {
 
   def create(name: String,
              nodeNames: NonEmptyList[String],
@@ -160,6 +167,16 @@ trait EsContainerCreator {
       startedClusterDependencies = startedClusterDependencies,
       esClusterSettings = clusterSettings
     )
+  }
+}
+
+trait EsContainerCreatorForProxy {
+
+  def create(name: String,
+             nodeNames: NonEmptyList[String],
+             clusterSettings: EsClusterSettings,
+             startedClusterDependencies: StartedClusterDependencies): EsContainer = {
+    ???
   }
 }
 

@@ -31,6 +31,7 @@ trait AdminApiWithCustomRorIndexSuite extends BaseAdminApiSuite {
     EsClusterSettings(
       name = "ROR1",
       numberOfInstances = 2,
+      nodeDataInitializer = nodeDataInitializer(),
       clusterType = ClusterType.RorCluster(Attributes.default.copy(
         customSettingsIndex = Some(readonlyrestIndexName)
       ))
