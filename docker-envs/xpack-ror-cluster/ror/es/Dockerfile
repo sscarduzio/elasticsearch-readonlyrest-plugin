@@ -15,5 +15,9 @@ COPY certs/elastic-certificates.p12 /usr/share/elasticsearch/config/
 COPY ror/es/readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
 COPY ror/es/elasticsearch.yml /usr/share/elasticsearch/config/elasticsearch.yml
 
+USER root
+
 RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch file:///tmp/ror.zip &&\
     jdk/bin/java -jar plugins/readonlyrest/ror-tools.jar patch
+
+USER elasticsearch

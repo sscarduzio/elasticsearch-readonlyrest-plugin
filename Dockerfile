@@ -9,7 +9,7 @@ RUN microdnf install wget &&\
 COPY ./../ /ror
 WORKDIR /ror
 
-ENV ES_VERSION=8.2.2
+ENV ES_VERSION=8.3.3
 
 RUN echo -e '#!/bin/bash \n ./bin/build-ror-plugin.sh $ES_VERSION' > build-ror.sh &&\
     chmod +x build-ror.sh
