@@ -47,7 +47,8 @@ trait RemoteReindexSuite
       nodeDataInitializer = RemoteReindexSuite.sourceEsDataInitializer(),
       esVersion = EsVersion.SpecificVersion("es60x"),
       clusterType = ClusterType.RorCluster(Attributes.default.copy(
-        restSslEnabled = false
+        restSslEnabled = false,
+        rorConfigFileName = RemoteReindexSuite.this.sourceEsRorConfigFileName
       ))
     )
   )
@@ -60,7 +61,8 @@ trait RemoteReindexSuite
         additionalElasticsearchYamlEntries = Map("reindex.remote.whitelist" -> "\"*:9200\"")
       ),
       clusterType = ClusterType.RorCluster(Attributes.default.copy(
-        restSslEnabled = false
+        restSslEnabled = false,
+        rorConfigFileName = RemoteReindexSuite.this.rorConfigFileName
       ))
     )
   )

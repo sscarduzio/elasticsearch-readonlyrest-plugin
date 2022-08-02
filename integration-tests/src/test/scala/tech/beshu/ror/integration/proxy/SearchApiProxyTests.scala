@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.SearchApiSuite
-import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
 
-class SearchApiProxyTests extends SearchApiSuite with XpackEsClusterProxyTestSupport
+class SearchApiProxyTests extends SearchApiSuite with SingleNodeProxyTestSupport

@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.ResizeSuite
-import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
 
-class ResizeProxyTests extends ResizeSuite with XpackEsClusterProxyTestSupport
+class ResizeProxyTests extends ResizeSuite with SingleNodeProxyTestSupport

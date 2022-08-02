@@ -42,10 +42,6 @@ trait EsClusterProvider {
     )
   }
 
-  private def createNode(nodeNames: NonEmptyList[String], nodeData: ClusterNodeData) = {
-    this.create(nodeData.name, nodeNames, nodeData.settings, _)
-  }
-
   def createRemoteClustersContainer(localClustersSettings: EsClusterSettings,
                                     remoteClustersSettings: NonEmptyList[EsClusterSettings],
                                     remoteClusterSetup: SetupRemoteCluster): EsRemoteClustersContainer = {
@@ -71,6 +67,10 @@ trait EsClusterProvider {
             startingIndex + settings.numberOfInstances)
       }
     createLocalClusterContainers(NonEmptyList.fromListUnsafe(nodesData._1))
+  }
+
+  private def createNode(nodeNames: NonEmptyList[String], nodeData: ClusterNodeData) = {
+    this.create(nodeData.name, nodeNames, nodeData.settings, _)
   }
 }
 object EsClusterProvider {

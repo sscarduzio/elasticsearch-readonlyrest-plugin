@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.MSearchTEST2Suite
-import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
 
-class MSearchTEST2ProxyTests extends MSearchTEST2Suite with XpackEsClusterProxyTestSupport
+class MSearchTEST2ProxyTests extends MSearchTEST2Suite with SingleNodeProxyTestSupport

@@ -23,7 +23,9 @@ import tech.beshu.ror.integration.plugin.LoadClusterConfigsWithNoRorNodeTest.Ind
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers.EsClusterProvider.ClusterNodeData
+import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType
 import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin
 import tech.beshu.ror.utils.elasticsearch.RorApiManager
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
@@ -53,14 +55,20 @@ final class LoadClusterConfigsWithNoRorNodeTest
     settings = EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = IndexConfigInitializer,
-      numberOfInstances = 2
+      numberOfInstances = 2,
+      clusterType = ClusterType.RorCluster(
+        ReadonlyRestPlugin.Config.Attributes.default.copy(rorConfigFileName = rorConfigFileName)
+      )
     )
   )
   private lazy val rorNode2: ClusterNodeData = ClusterNodeData(
     name = "ror2",
     settings = EsClusterSettings(
       name = "ROR1",
-      nodeDataInitializer = IndexConfigInitializer
+      nodeDataInitializer = IndexConfigInitializer,
+      clusterType = ClusterType.RorCluster(
+        ReadonlyRestPlugin.Config.Attributes.default.copy(rorConfigFileName = rorConfigFileName)
+      )
     )
   )
 

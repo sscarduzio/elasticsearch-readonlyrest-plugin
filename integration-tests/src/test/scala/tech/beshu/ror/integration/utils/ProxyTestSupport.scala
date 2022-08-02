@@ -76,10 +76,8 @@ trait ProxyTestSupport
 }
 
 
-sealed trait BasicEsClusterProxyTestSupport extends ProxyTestSupport {
+trait SingleNodeProxyTestSupport extends ProxyTestSupport {
   this: Suite with BaseSingleNodeEsClusterTest =>
-
-  protected def xpackSupport: Boolean
 
   private def clusterSettings = {
     val enhancedSettings = EsClusterSettings.basicEsWithNoSecurity
@@ -93,16 +91,4 @@ sealed trait BasicEsClusterProxyTestSupport extends ProxyTestSupport {
 
   override lazy val container = createLocalClusterContainer(clusterSettings)
   override lazy val targetEs = container.nodes.head
-}
-
-trait XpackEsClusterProxyTestSupport extends BasicEsClusterProxyTestSupport {
-  this: Suite with BaseSingleNodeEsClusterTest =>
-
-  override def xpackSupport: Boolean = true
-}
-
-trait OssEsClusterProxyTestSupport extends BasicEsClusterProxyTestSupport {
-  this: Suite with BaseSingleNodeEsClusterTest =>
-
-  override def xpackSupport: Boolean = false
 }

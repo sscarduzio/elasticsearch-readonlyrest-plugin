@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.fields.engine.FieldRuleEsEngineSuite
-import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
 
-class FieldRuleEsEngineProxyTests extends FieldRuleEsEngineSuite with XpackEsClusterProxyTestSupport
+class FieldRuleEsEngineProxyTests extends FieldRuleEsEngineSuite with SingleNodeProxyTestSupport
