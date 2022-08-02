@@ -36,7 +36,7 @@ trait AdminApiAuthMockSuite
   this: EsContainerCreator with ResolvedRorConfigFileProvider =>
 
   override implicit val rorConfigFileName: String = "/admin_api_mocks/readonlyrest.yml"
-  private lazy val rorApiManager = new RorApiManager(rorAdminClient, esVersionUsed)
+  private lazy val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
 
   override def clusterDependencies: List[DependencyDef] = List(
     ldap(name = "LDAP1", SingletonLdapContainers.ldap1),

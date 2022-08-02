@@ -20,8 +20,8 @@ import better.files.{Resource => _, _}
 import com.typesafe.scalalogging.LazyLogging
 import monix.eval.Task
 import os.SubProcess
+import tech.beshu.ror.utils.containers.EsContainerWithRorSecurity.rorAdminCredentials
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
-import tech.beshu.ror.utils.containers.providers.ClientProvider.rorAdminCredentials
 import tech.beshu.ror.utils.gradle.{RorPluginGradleProject, RorProxyGradleProject}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.EsStartupChecker

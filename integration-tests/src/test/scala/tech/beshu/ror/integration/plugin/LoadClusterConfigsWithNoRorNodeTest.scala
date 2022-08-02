@@ -53,22 +53,18 @@ final class LoadClusterConfigsWithNoRorNodeTest
     settings = EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = IndexConfigInitializer,
-      numberOfInstances = 2,
-      xPackSupport = false,
-      configHotReloadingEnabled = true
+      numberOfInstances = 2
     )(rorConfigFileName)
   )
   private lazy val rorNode2: ClusterNodeData = ClusterNodeData(
     name = "ror2",
     settings = EsClusterSettings(
       name = "ROR1",
-      nodeDataInitializer = IndexConfigInitializer,
-      xPackSupport = false,
-      configHotReloadingEnabled = true
+      nodeDataInitializer = IndexConfigInitializer
     )(rorConfigFileName)
   )
 
-  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.rorAdminClient, esVersionUsed)
+  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.adminClient, esVersionUsed)
 
   "return index config, and a failure" excludeES (allEs8x) in {
     val result = ror1WithIndexConfigAdminActionManager.loadRorCurrentConfig()

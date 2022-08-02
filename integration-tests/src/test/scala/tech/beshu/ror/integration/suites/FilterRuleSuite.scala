@@ -120,7 +120,7 @@ trait FilterRuleSuite
         }
         "index is not found" in {
           retry(times = 3) {
-            val documentManager = new DocumentManager(rorAdminClient, esVersionUsed)
+            val documentManager = new DocumentManager(adminClient, esVersionUsed)
             val result = documentManager.get("test3_index", 1)
 
             result.responseCode shouldBe 404

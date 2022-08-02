@@ -20,7 +20,9 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.RorCluster
 import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.CatManager
 
 trait FipsSslSuite
@@ -40,12 +42,14 @@ trait FipsSslSuite
     EsClusterSettings(
       name = "fips_cluster",
       numberOfInstances = 2,
-      internodeSslEnabled = true,
-      xPackSupport = false,
+      clusterType = RorCluster(Attributes.default.copy(
+        internodeSslEnabled = true,
+        isFipsEnabled = true
+      ))
     )
   )
 
-  private lazy val rorClusterAdminStateManager = new CatManager(clients.last.rorAdminClient, esVersion = esVersionUsed)
+  private lazy val rorClusterAdminStateManager = new CatManager(clients.last.adminClient, esVersion = esVersionUsed)
 
   if(!executedOn(allEs6xBelowEs65x)) {
     "Health check" should {
@@ -59,5 +63,3 @@ trait FipsSslSuite
     }
   }
 }
-
-object ElasticWithoutRorClusterProvider extends EsClusterProvider with EsWithoutSecurityPluginContainerCreator

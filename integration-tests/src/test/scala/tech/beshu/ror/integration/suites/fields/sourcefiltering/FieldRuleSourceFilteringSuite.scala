@@ -269,7 +269,7 @@ trait FieldRuleSourceFilteringSuite
       }
       "whitelist mode is used with custom including" in {
         val result = fetchDocument(
-          client = rorAdminClient,
+          client = adminClient,
           index = "nestedtest",
           clientSourceParams = Some(Include("secrets.key"))
         )

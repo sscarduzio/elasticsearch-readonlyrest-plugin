@@ -47,7 +47,7 @@ trait ImpersonationSuite
     wiremock(name = "EXT1", mappings = "/impersonation/wiremock_service2_ext_user_2.json", "/impersonation/wiremock_group_provider2_gpa_user_2.json"),
   )
 
-  private lazy val rorApiManager = new RorApiManager(rorAdminClient, esVersionUsed)
+  private lazy val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()

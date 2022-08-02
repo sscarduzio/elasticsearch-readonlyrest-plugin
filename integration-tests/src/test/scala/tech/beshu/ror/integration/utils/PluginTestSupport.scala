@@ -23,7 +23,7 @@ import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.providers._
 import tech.beshu.ror.utils.misc.Resources.getResourcePath
 
-trait PluginTestSupport extends EsWithSecurityPluginContainerCreator with CallingEsDirectly {
+trait PluginTestSupport extends EsContainerCreator with CallingEsDirectly {
   this: MultipleEsTargets =>
 }
 

@@ -40,8 +40,7 @@ trait DocumentApiSuite
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
-      nodeDataInitializer = DocumentApiSuite.nodeDataInitializer(),
-      xPackSupport = true,
+      nodeDataInitializer = DocumentApiSuite.nodeDataInitializer()
     )
   )
 

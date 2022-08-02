@@ -43,8 +43,7 @@ trait DynamicVariablesSuite
         environmentVariables = Map("TEST_VAR" -> "dev"),
         additionalElasticsearchYamlEntries = Map.empty
       ),
-      nodeDataInitializer = DynamicVariablesSuite.nodeDataInitializer(),
-      xPackSupport = false,
+      nodeDataInitializer = DynamicVariablesSuite.nodeDataInitializer()
     )
   )
 

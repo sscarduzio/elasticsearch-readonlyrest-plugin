@@ -21,7 +21,9 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.{RorCluster, XPackSecurityCluster}
 import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
@@ -46,40 +48,39 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
         EsClusterSettings(
           name = "ROR1",
           numberOfInstances = 3,
-          internodeSslEnabled = true,
-          xPackSupport = false,
+          clusterType = RorCluster(ReadonlyRestPlugin.Config.Attributes.default.copy(
+            internodeSslEnabled = true
+          ))
         )
       )
     } else {
       NonEmptyList.of(
         EsClusterSettings(
           name = "xpack_cluster",
-          internodeSslEnabled = true,
-          xPackSupport = false,
-          forceNonOssImage = true
+          clusterType = RorCluster(ReadonlyRestPlugin.Config.Attributes.default.copy(
+            internodeSslEnabled = true
+          ))
         ),
         EsClusterSettings(
           name = "xpack_cluster",
           numberOfInstances = 2,
-          useXpackSecurityInsteadOfRor = true,
-          xPackSupport = true,
-          externalSslEnabled = false,
-          configHotReloadingEnabled = true,
-          enableXPackSsl = true
+          clusterType = XPackSecurityCluster(XpackSecurityPlugin.Config.Attributes.default.copy(
+            internodeSslEnabled = true
+          ))
         )
       )
     }
   )
 
   "Health check works" in {
-    val rorClusterAdminStateManager = new CatManager(clusterContainer.nodes.head.rorAdminClient, esVersion = esVersionUsed)
+    val rorClusterAdminStateManager = new CatManager(clusterContainer.nodes.head.adminClient, esVersion = esVersionUsed)
 
     val response = rorClusterAdminStateManager.healthCheck()
 
     response.responseCode should be(200)
   }
   "ROR config reload can be done" in {
-    val rorApiManager = new RorApiManager(clusterContainer.nodes.head.rorAdminClient, esVersion = esVersionUsed)
+    val rorApiManager = new RorApiManager(clusterContainer.nodes.head.adminClient, esVersion = esVersionUsed)
 
     val updateResult = rorApiManager
       .updateRorInIndexConfig(getResourceContent("/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_update.yml"))
@@ -96,7 +97,7 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
     getIndexResult.indicesAndAliases.keys.toList should be(List("test"))
   }
   "Field caps request works" in {
-    val documentManager = new DocumentManager(clusterContainer.nodes.head.rorAdminClient, esVersion = esVersionUsed)
+    val documentManager = new DocumentManager(clusterContainer.nodes.head.adminClient, esVersion = esVersionUsed)
     documentManager.createDoc("user2_index", 1, ujson.read("""{ "data1": 1, "data2": 2 }"""))
 
     val searchManager = new SearchManager(basicAuthClient("user2", "test"))

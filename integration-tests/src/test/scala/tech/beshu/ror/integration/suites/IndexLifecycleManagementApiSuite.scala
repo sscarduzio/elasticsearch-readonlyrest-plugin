@@ -52,13 +52,12 @@ trait IndexLifecycleManagementApiSuite
     EsClusterSettings(
       name = "ROR1",
       numberOfInstances = 2,
-      nodeDataInitializer = IndexLifecycleManagementApiSuite.nodeDataInitializer(),
-      xPackSupport = true
+      nodeDataInitializer = IndexLifecycleManagementApiSuite.nodeDataInitializer()
     )
   )
 
-  private lazy val adminIndexManager = new IndexManager(rorAdminClient, esVersionUsed)
-  private lazy val adminIndexLifecycleManager = new IndexLifecycleManager(rorAdminClient)
+  private lazy val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
+  private lazy val adminIndexLifecycleManager = new IndexLifecycleManager(adminClient)
   private lazy val dev1IndexLifecycleManager = new IndexLifecycleManager(basicAuthClient("dev1", "test"))
   private lazy val dev3IndexLifecycleManager = new IndexLifecycleManager(basicAuthClient("dev3", "test"))
 
