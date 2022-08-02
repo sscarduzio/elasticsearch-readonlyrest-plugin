@@ -3,6 +3,7 @@
 CI_DIR=$(dirname "$0")
 
 # Setup git
+git || (echo "FATAL: Failed to setup git!" && exit 1)
 git remote set-url origin git@github.com:sscarduzio/elasticsearch-readonlyrest-plugin.git
 git config --global push.default matching
 git config --global user.email "builds@travis-ci.com"
