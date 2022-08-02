@@ -147,7 +147,7 @@ stages:
   - stage: S3_UP
     dependsOn:
       - TEST
-    condition: and(succeeded('TEST'))
+    condition: and(succeeded('TEST')
     jobs:
       - job:
         container: 
