@@ -22,20 +22,13 @@ import com.dimafeng.testcontainers.SingleContainer
 import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.EsClusterSettings.{ClusterType, EsVersion}
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
-import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
+import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestWithEnabledXpackSecurityPlugin, ReadonlyRestPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
 import java.io.File
 
-
-sealed trait EsContainerCreator {
-
-  def create(name: String,
-             nodeNames: NonEmptyList[String],
-             clusterSettings: EsClusterSettings,
-             startedClusterDependencies: StartedClusterDependencies): EsContainer
-}
-trait EsContainerCreatorForPlugin {
+object EsContainerCreator extends EsContainerCreator
+trait EsContainerCreator {
 
   def create(name: String,
              nodeNames: NonEmptyList[String],
@@ -64,7 +57,7 @@ trait EsContainerCreatorForPlugin {
                                                        attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes,
                                                        startedClusterDependencies: StartedClusterDependencies) = {
     val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
-    val rawRorConfigFile = ContainerUtils.getResourceFile(clusterSettings.rorConfigFileName)
+    val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorConfigFileName)
 
     val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
       source = rawRorConfigFile.toScala,
@@ -99,7 +92,7 @@ trait EsContainerCreatorForPlugin {
                                        attributes: ReadonlyRestPlugin.Config.Attributes,
                                        startedClusterDependencies: StartedClusterDependencies) = {
     val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
-    val rawRorConfigFile = ContainerUtils.getResourceFile(clusterSettings.rorConfigFileName)
+    val rawRorConfigFile = ContainerUtils.getResourceFile(attributes.rorConfigFileName)
 
     val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
       source = rawRorConfigFile.toScala,
@@ -167,16 +160,6 @@ trait EsContainerCreatorForPlugin {
       startedClusterDependencies = startedClusterDependencies,
       esClusterSettings = clusterSettings
     )
-  }
-}
-
-trait EsContainerCreatorForProxy {
-
-  def create(name: String,
-             nodeNames: NonEmptyList[String],
-             clusterSettings: EsClusterSettings,
-             startedClusterDependencies: StartedClusterDependencies): EsContainer = {
-    ???
   }
 }
 

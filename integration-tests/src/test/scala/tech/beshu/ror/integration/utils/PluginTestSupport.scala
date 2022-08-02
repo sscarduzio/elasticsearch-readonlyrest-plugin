@@ -33,7 +33,7 @@ trait SingletonPluginTestSupport
     with ResolvedRorConfigFileProvider {
   this: Suite with BaseSingleNodeEsClusterTest =>
 
-  override lazy val targetEs: EsContainer = SingletonEsContainer.singleton.nodes.head
+  override lazy val targetEs: EsContainer = SingletonEsContainerWithRorSecurity.singleton.nodes.head
 
   private var startedDependencies = StartedClusterDependencies(Nil)
 
@@ -56,9 +56,9 @@ trait SingletonPluginTestSupport
 
   override protected def beforeAll(): Unit = {
     startedDependencies = DependencyRunner.startDependencies(clusterDependencies)
-    SingletonEsContainer.cleanUpContainer()
-    SingletonEsContainer.updateConfig(resolvedRorConfigFile.contentAsString)
-    nodeDataInitializer.foreach(SingletonEsContainer.initNode)
+    SingletonEsContainerWithRorSecurity.cleanUpContainer()
+    SingletonEsContainerWithRorSecurity.updateConfig(resolvedRorConfigFile.contentAsString)
+    nodeDataInitializer.foreach(SingletonEsContainerWithRorSecurity.initNode)
 
     super.beforeAll()
   }

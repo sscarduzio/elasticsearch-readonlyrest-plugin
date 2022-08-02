@@ -31,14 +31,16 @@ object ReadonlyRestPlugin {
                                 customSettingsIndex: Option[String],
                                 restSslEnabled: Boolean,
                                 internodeSslEnabled: Boolean,
-                                isFipsEnabled: Boolean)
+                                isFipsEnabled: Boolean,
+                                rorConfigFileName: String)
     object Attributes {
       val default: Attributes = Attributes(
         hotReloading = true,
         customSettingsIndex = None,
         restSslEnabled = true,
         internodeSslEnabled = false,
-        isFipsEnabled = false
+        isFipsEnabled = false,
+        rorConfigFileName = "/basic/readonlyrest.yml"
       )
     }
   }

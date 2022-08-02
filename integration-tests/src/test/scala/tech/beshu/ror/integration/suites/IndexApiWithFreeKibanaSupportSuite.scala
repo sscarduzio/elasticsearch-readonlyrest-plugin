@@ -22,7 +22,8 @@ import tech.beshu.ror.utils.containers.EsContainerCreator
 trait IndexApiWithFreeKibanaSupportSuite extends BaseIndexApiSuite {
   this: EsContainerCreator =>
 
-  override implicit val rorConfigFileName: String =  "/index_api/free_readonlyrest.yml"
+  override implicit val rorConfigFileName =  "/index_api/free_readonlyrest.yml"
+
   override val notFoundIndexStatusReturned: Int = 401
   override val forbiddenStatusReturned: Int = 401
 }

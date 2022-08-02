@@ -49,7 +49,7 @@ trait RemoteReindexSuite
       clusterType = ClusterType.RorCluster(Attributes.default.copy(
         restSslEnabled = false
       ))
-    )(sourceEsRorConfigFileName)
+    )
   )
 
   private lazy val destEsCluster = createLocalClusterContainer(
@@ -62,7 +62,7 @@ trait RemoteReindexSuite
       clusterType = ClusterType.RorCluster(Attributes.default.copy(
         restSslEnabled = false
       ))
-    )(rorConfigFileName)
+    )
   )
 
   private lazy val destEsIndexManager = new IndexManager(clients.last.basicAuthClient("dev1", "test"), esVersionUsed)

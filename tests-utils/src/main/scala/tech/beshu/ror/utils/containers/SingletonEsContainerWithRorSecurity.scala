@@ -18,16 +18,24 @@ package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
 import org.junit.runner.Description
+import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.{IndexManager, LegacyTemplateManager, RorApiManager, SnapshotManager}
 
-object SingletonEsContainer
+object SingletonEsContainerWithRorSecurity
   extends EsClusterProvider
     with EsContainerCreator
     with StrictLogging {
 
   private implicit val description: Description = Description.EMPTY
 
-  val singleton: EsClusterContainer = createLocalClusterContainer(EsClusterSettings.basic)
+  val rorClusterAttributes = ClusterType.RorCluster(Attributes.default)
+  val singleton: EsClusterContainer = createLocalClusterContainer(
+    EsClusterSettings(
+      name = "ROR_SINGLE",
+      clusterType = rorClusterAttributes
+    )
+  )
 
   private lazy val adminClient = singleton.nodes.head.adminClient
   private lazy val indexManager = new IndexManager(adminClient, singleton.nodes.head.esVersion)

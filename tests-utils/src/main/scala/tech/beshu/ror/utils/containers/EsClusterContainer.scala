@@ -123,10 +123,12 @@ final case class EsClusterSettings(name: String,
                                    clusterType: ClusterType = ClusterType.RorCluster(
                                      ReadonlyRestPlugin.Config.Attributes.default
                                    ))
-                                  (implicit val rorConfigFileName: String)
 
 object EsClusterSettings {
-  val basic: EsClusterSettings = EsClusterSettings(name = "ROR_SINGLE")("/basic/readonlyrest.yml")
+  val basicEsWithNoSecurity: EsClusterSettings = EsClusterSettings(
+    name = "ES_SINGLE",
+    clusterType = ClusterType.EsWithNoSecurityCluster
+  )
 
   trait EsVersion
   object EsVersion {

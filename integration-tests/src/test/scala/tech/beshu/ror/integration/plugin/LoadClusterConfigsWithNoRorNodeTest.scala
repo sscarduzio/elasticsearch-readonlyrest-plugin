@@ -54,14 +54,14 @@ final class LoadClusterConfigsWithNoRorNodeTest
       name = "ROR1",
       nodeDataInitializer = IndexConfigInitializer,
       numberOfInstances = 2
-    )(rorConfigFileName)
+    )
   )
   private lazy val rorNode2: ClusterNodeData = ClusterNodeData(
     name = "ror2",
     settings = EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = IndexConfigInitializer
-    )(rorConfigFileName)
+    )
   )
 
   private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.adminClient, esVersionUsed)

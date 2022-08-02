@@ -31,7 +31,7 @@ trait DocumentApiSuite
     with ESVersionSupportForAnyWordSpecLike {
   this: EsContainerCreator =>
 
-  override implicit val rorConfigFileName: String = "/document_api/readonlyrest.yml"
+  override implicit val rorConfigFileName = "/document_api/readonlyrest.yml"
 
   override lazy val targetEs: EsContainer = container.nodes.head
 

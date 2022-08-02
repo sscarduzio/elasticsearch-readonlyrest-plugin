@@ -35,7 +35,7 @@ trait AdminApiAuthMockSuite
     with Matchers {
   this: EsContainerCreator with ResolvedRorConfigFileProvider =>
 
-  override implicit val rorConfigFileName: String = "/admin_api_mocks/readonlyrest.yml"
+  override implicit val rorConfigFileName = "/admin_api_mocks/readonlyrest.yml"
   private lazy val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
 
   override def clusterDependencies: List[DependencyDef] = List(
