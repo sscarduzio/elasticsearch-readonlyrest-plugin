@@ -19,8 +19,7 @@ function tag {
     echo "Tagging as $GIT_TAG"
     if [[ "$(uname -s)" == *"Linux"* ]]; then
         git tag $GIT_TAG -a -m "Generated tag from TravisCI build $TRAVIS_BUILD_NUMBER" &&
-        git push origin $GIT_TAG &&
-        return 0
+        git push origin $GIT_TAG || return 1
     fi
     return 1
 }
