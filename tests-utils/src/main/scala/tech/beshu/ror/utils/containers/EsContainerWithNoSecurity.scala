@@ -59,7 +59,12 @@ object EsContainerWithNoSecurity extends StrictLogging {
                                     esConfig: Elasticsearch.Config) = {
     DockerImageCreator.create(
       Elasticsearch
-        .create(esVersion, esConfig)
+        .create(
+          esVersion,
+          esConfig.copy(
+            additionalElasticsearchYamlEntries = esConfig.additionalElasticsearchYamlEntries ++ Map("xpack.security.enabled" -> "false")
+          )
+        )
         .toDockerImageDescription
     )
   }

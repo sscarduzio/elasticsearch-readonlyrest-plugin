@@ -51,7 +51,7 @@ trait EsContainerCreator {
         }
       case ClusterType.XPackSecurityCluster(attributes) =>
         createEsWithXpackContainer(name, nodeNames, project, clusterSettings, attributes, startedClusterDependencies)
-      case ClusterType.EsWithNoSecurityCluster =>
+      case ClusterType.NoSecurityCluster =>
         createEsWithNoSecurityContainer(name, nodeNames, project, clusterSettings, startedClusterDependencies)
     }
   }
