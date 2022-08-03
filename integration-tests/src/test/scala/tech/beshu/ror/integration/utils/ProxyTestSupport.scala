@@ -22,6 +22,7 @@ import com.typesafe.scalalogging.LazyLogging
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
+import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.providers.{CallingProxy, MultipleEsTargets, ResolvedRorConfigFileProvider, RorConfigFileNameProvider}
 import tech.beshu.ror.utils.proxy.RorProxyInstance
@@ -74,20 +75,20 @@ trait ProxyTestSupport
   }
 }
 
-
 trait SingleNodeProxyTestSupport extends ProxyTestSupport with ProxyEsClusterProvider {
   this: Suite with BaseSingleNodeEsClusterTest =>
 
-  private def clusterSettings = {
-    val enhancedSettings = EsClusterSettings.basicEsWithNoSecurity
-      .copy(dependentServicesContainers = clusterDependencies)
+  override lazy val container = createLocalClusterContainer(
+    EsClusterSettings(
+      name = "ES_SINGLE",
+      clusterType = ClusterType.NoSecurityCluster,
+      dependentServicesContainers = clusterDependencies,
+      nodeDataInitializer = nodeDataInitializer match {
+        case Some(definedInitializer) => definedInitializer
+        case None => NoOpElasticsearchNodeDataInitializer
+      }
+    )
+  )
 
-    nodeDataInitializer match {
-      case Some(definedInitializer) => enhancedSettings.copy(nodeDataInitializer = definedInitializer)
-      case None => enhancedSettings
-    }
-  }
-
-  override lazy val container = createLocalClusterContainer(clusterSettings)
   override lazy val targetEs = container.nodes.head
 }

@@ -33,7 +33,8 @@ trait AdminApiWithCustomRorIndexSuite extends BaseAdminApiSuite {
       numberOfInstances = 2,
       nodeDataInitializer = nodeDataInitializer(),
       clusterType = ClusterType.RorCluster(Attributes.default.copy(
-        customSettingsIndex = Some(readonlyrestIndexName)
+        customSettingsIndex = Some(readonlyrestIndexName),
+        rorConfigFileName = rorConfigFileName
       ))
     )
   )
@@ -42,7 +43,8 @@ trait AdminApiWithCustomRorIndexSuite extends BaseAdminApiSuite {
     EsClusterSettings(
       name = "ROR2",
       clusterType = ClusterType.RorCluster(Attributes.default.copy(
-        customSettingsIndex = Some(readonlyrestIndexName)
+        customSettingsIndex = Some(readonlyrestIndexName),
+        rorConfigFileName = rorConfigFileName
       ))
     )
   )

@@ -123,10 +123,6 @@ final case class EsClusterSettings(name: String,
                                    esVersion: EsVersion = EsVersion.DeclaredInProject)
 
 object EsClusterSettings {
-  val basicEsWithNoSecurity: EsClusterSettings = EsClusterSettings(
-    name = "ES_SINGLE",
-    clusterType = ClusterType.EsWithNoSecurityCluster
-  )
 
   trait EsVersion
   object EsVersion {
@@ -139,7 +135,7 @@ object EsClusterSettings {
     final case class RorWithXpackSecurityCluster(attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes) extends ClusterType
     final case class RorCluster(attributes: ReadonlyRestPlugin.Config.Attributes) extends ClusterType
     final case class XPackSecurityCluster(attributes: XpackSecurityPlugin.Config.Attributes) extends ClusterType
-    case object EsWithNoSecurityCluster extends ClusterType
+    case object NoSecurityCluster extends ClusterType
   }
 }
 

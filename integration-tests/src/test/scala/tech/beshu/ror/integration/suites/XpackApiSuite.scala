@@ -24,7 +24,6 @@ import tech.beshu.ror.integration.suites.XpackApiSuite.NextRollupJobName
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType
-import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.RorCluster
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterProvider, EsClusterSettings}
 import tech.beshu.ror.utils.elasticsearch._
@@ -50,8 +49,8 @@ trait XpackApiSuite
       nodeDataInitializer = XpackApiSuite.nodeDataInitializer(),
       clusterType = ClusterType.RorCluster(Attributes.default.copy(
         rorConfigFileName = rorConfigFileName,
-        restSslEnabled = false,
-        internodeSslEnabled = true
+        restSslEnabled = true,
+        internodeSslEnabled = false
       ))
     )
   )

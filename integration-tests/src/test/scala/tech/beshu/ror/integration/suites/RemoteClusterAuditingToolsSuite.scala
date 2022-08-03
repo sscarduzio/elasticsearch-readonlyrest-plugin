@@ -18,7 +18,7 @@ package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseAuditingToolsSuite
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.EsWithNoSecurityCluster
+import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.NoSecurityCluster
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.dependencies._
 import tech.beshu.ror.utils.containers.providers.ClientProvider
@@ -35,7 +35,7 @@ trait RemoteClusterAuditingToolsSuite
     val cluster = createLocalClusterContainer(
       EsClusterSettings(
         name = "AUDIT",
-        clusterType = EsWithNoSecurityCluster
+        clusterType = NoSecurityCluster
       )
     )
     cluster.start()
