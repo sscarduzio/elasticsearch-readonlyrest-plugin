@@ -19,7 +19,7 @@ function tag {
     echo "Tagging as $GIT_TAG"
     if [[ "$(uname -s)" == *"Linux"* ]]; then
         git tag $GIT_TAG -a -m "Generated tag from TravisCI build $TRAVIS_BUILD_NUMBER" &&
-        git push origin $GIT_TAG || return 1
+        git push origin $GIT_TAG || exit 1
     fi
     return 1
 }
@@ -41,10 +41,10 @@ function tag_delete {
     fi
     echo "Deleting tag $GIT_TAG"
     if [[ "$(uname -s)" == *"Linux"* ]]; then
-        git tag -d $GIT_TAG && git push origin :refs/tags/$GIT_TAG || echo "Failed to delete tag $GIT_TAG"
+        git tag -d $GIT_TAG && git push origin :refs/tags/$GIT_TAG || (echo "Failed to delete tag $GIT_TAG" && exit 1)
         return 0
     fi
-    return 1
+    return 0
 }
 
 file . || (echo "FATAL: file command does not work or is not installed!" && exit 1)

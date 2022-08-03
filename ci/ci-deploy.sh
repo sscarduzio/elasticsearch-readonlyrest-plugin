@@ -69,7 +69,7 @@ function processBuild {
 
 for zipFile in `ls -1 es*x/build/distributions/*zip`; do
     echo "Processing $zipFile ..."
-    processBuild $zipFile
+    processBuild $zipFile || exit 1
 done
 
 exit 0
