@@ -8,11 +8,11 @@ trigger:
   batch: false
   branches:
     include:
-    - master
-    - develop
-    - epic/*
-    - RORDEV*
-    - '*/pull/*'
+      - master
+      - develop
+      - epic/*
+      - RORDEV*
+      - '*/pull/*'
   tags:
     exclude:
       - '*'
@@ -23,7 +23,7 @@ trigger:
       - 'docs/*'
       - '*.md'
       - '*/*/*.md'
-      
+
 pool:
   vmImage: 'ubuntu-20.04'
 
@@ -89,8 +89,174 @@ stages:
           matrix:
             LICENSE:
               ROR_TASK: license
-
-      
+            UNIT:
+              ROR_TASK: core_tests
+            IT_PROXY:
+              ROR_TASK: integration_proxy
+      - job:
+        condition: or(eq(variables.isDevelop, true), eq(variables.isMaster, true))
+        container: maven:3.8.1-openjdk-17-slim
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key 
+              
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              bin/build.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            IT_es83x:
+              ROR_TASK: integration_es83x
+            IT_es82x:
+              ROR_TASK: integration_es82x
+            IT_es81x:
+              ROR_TASK: integration_es81x
+            IT_es80x:
+              ROR_TASK: integration_es80x
+      - job:
+        condition: and(ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        container: maven:3.8.1-openjdk-17-slim
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key 
+              
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              bin/build.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            IT_es83x:
+              ROR_TASK: integration_es83x
+            IT_es80x:
+              ROR_TASK: integration_es80x
+      - job:
+        condition: or(eq(variables.isDevelop, true), eq(variables.isMaster, true))
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key 
+              
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              bin/build.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            IT_es716x:
+              ROR_TASK: integration_es716x
+            IT_es714x:
+              ROR_TASK: integration_es714x
+            IT_es711x:
+              ROR_TASK: integration_es711x
+            IT_es710x:
+              ROR_TASK: integration_es710x
+            IT_es79x:
+              ROR_TASK: integration_es79x
+            IT_es78x:
+              ROR_TASK: integration_es78x
+            IT_es77x:
+              ROR_TASK: integration_es77x
+            IT_es74x:
+              ROR_TASK: integration_es74x
+            IT_es73x:
+              ROR_TASK: integration_es73x
+            IT_es72x:
+              ROR_TASK: integration_es72x
+            IT_es70x:
+              ROR_TASK: integration_es70x
+            IT_es67x:
+              ROR_TASK: integration_es67x
+            IT_es66x:
+              ROR_TASK: integration_es66x
+            IT_es65x:
+              ROR_TASK: integration_es65x
+            IT_es63x:
+              ROR_TASK: integration_es63x
+            IT_es62x:
+              ROR_TASK: integration_es62x
+            IT_es61x:
+              ROR_TASK: integration_es61x
+            IT_es60x:
+              ROR_TASK: integration_es60x
+      - job:
+        condition: and(ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key 
+              
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              bin/build.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+          - task: PublishTestResults@2
+            condition: failed()
+            inputs:
+              testRunTitle: "$(ROR_TASK) results"
+              testResultsFiles: "**/TEST*xml"
+              mergeTestResults: true
+        strategy:
+          maxParallel: 99
+          matrix:
+            IT_es716x:
+              ROR_TASK: integration_es716x
+            IT_es710x:
+              ROR_TASK: integration_es710x
+            IT_es70x:
+              ROR_TASK: integration_es70x
+            IT_es67x:
+              ROR_TASK: integration_es67x
+            IT_es60x:
+              ROR_TASK: integration_es60x
 
   - stage: BLD_TEST
     dependsOn:
@@ -117,10 +283,10 @@ stages:
               var_aws_secret_access_key: $(aws_secret_access_key)
 
         strategy:
-            maxParallel: 99
-            matrix:
-              PKG_es8xx:
-                ROR_TASK: package_es8xx
+          maxParallel: 99
+          matrix:
+            PKG_es8xx:
+              ROR_TASK: package_es8xx
       - job:
         steps:
           - checkout: self
@@ -150,10 +316,10 @@ stages:
   - stage: S3_UP
     dependsOn:
       - TEST
-    condition: succeeded('TEST')
+    condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
     jobs:
       - job:
-        container: 
+        container:
           image: maven:3.8.1-openjdk-17-slim
           options:  "--name ci-container -v /usr/bin/docker:/tmp/docker:ro"
 
@@ -167,15 +333,15 @@ stages:
               /tmp/docker exec -t -u 0 ci-container \
               sh -c "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confold" -y install sudo"
             displayName: 'Install Sudo in container #HACK - See https://github.com/microsoft/azure-pipelines-agent/issues/2043'
- 
+
           - task: Bash@3
             inputs:
               targetType: 'inline'
-              
+
               script: |
                 set -e
 
-                echo ">>>> Installing GIT and file with apt-get"
+                echo ">>>> Installing GIT with apt-get"
                 sudo apt-get update && sudo apt-get install -y git file
                 git status && echo ">>> Git installed correctly!"
                 
