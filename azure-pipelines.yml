@@ -341,8 +341,8 @@ stages:
               script: |
                 set -e
 
-                echo ">>>> Installing GIT with apt-get"
-                sudo apt-get update && sudo apt-get install -y git
+                echo ">>>> Installing dependencies with apt-get"
+                sudo apt-get update && sudo apt-get install -y git file
                 git status && echo ">>> Git installed correctly!"
                 
                 # Translate back env vars to avoid cyclical reference :/
