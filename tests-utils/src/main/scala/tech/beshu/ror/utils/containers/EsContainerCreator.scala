@@ -21,7 +21,6 @@ import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.SingleContainer
 import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.EsClusterSettings.{ClusterType, EsVersion}
-import tech.beshu.ror.utils.containers.RorConfigAdjuster.Mode
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
@@ -69,7 +68,7 @@ trait EsContainerCreator {
     val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
       source = rawRorConfigFile.toScala,
       startedDependencies = startedClusterDependencies,
-      mode = RorConfigAdjuster.Mode.Plugin
+      mode = Mode.Plugin
     )
 
     EsContainerWithRorAndXpackSecurity.create(
@@ -104,7 +103,7 @@ trait EsContainerCreator {
     val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
       source = rawRorConfigFile.toScala,
       startedDependencies = startedClusterDependencies,
-      mode = RorConfigAdjuster.Mode.Plugin
+      mode = Mode.Plugin
     )
 
     EsContainerWithRorSecurity.create(

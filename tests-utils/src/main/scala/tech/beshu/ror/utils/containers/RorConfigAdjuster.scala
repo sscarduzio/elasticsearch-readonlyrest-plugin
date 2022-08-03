@@ -23,12 +23,6 @@ object RorConfigAdjuster {
   private val hostPlaceholder = "HOST"
   private val portPlaceholder = "PORT"
 
-  sealed trait Mode
-  object Mode {
-    case object Plugin extends Mode
-    case object Proxy extends Mode
-  }
-
   final case class Replacement(host: String, port: Int)
 
   def adjustUsingDependencies(source: File,

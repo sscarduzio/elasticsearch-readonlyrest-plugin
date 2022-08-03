@@ -22,9 +22,9 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.http.client.methods.HttpGet
 import retry.RetryPolicies.{constantDelay, limitRetriesByCumulativeDelay}
 import retry.{RetryDetails, RetryPolicy, retrying}
+import tech.beshu.ror.utils.httpclient.HttpResponseHelper.deserializeJsonBody
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.EsStartupChecker.Mode
-import tech.beshu.ror.utils.httpclient.HttpResponseHelper.deserializeJsonBody
 import tech.beshu.ror.utils.misc.ScalaUtils._
 
 import scala.concurrent.duration._

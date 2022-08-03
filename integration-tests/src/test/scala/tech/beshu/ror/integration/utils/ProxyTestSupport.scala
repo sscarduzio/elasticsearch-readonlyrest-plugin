@@ -54,9 +54,9 @@ trait ProxyTestSupport
   override def resolvedRorConfigFile: File = {
     val rawRorConfig = ContainerUtils.getResourceFile(rorConfigFileName)
     RorConfigAdjuster.adjustUsingDependencies(
-      rawRorConfig.toScala,
-      esTargets.head.startedClusterDependencies,
-      RorConfigAdjuster.Mode.Proxy
+      source = rawRorConfig.toScala,
+      startedDependencies = esTargets.head.startedClusterDependencies,
+      mode = Mode.Proxy
     )
   }
 

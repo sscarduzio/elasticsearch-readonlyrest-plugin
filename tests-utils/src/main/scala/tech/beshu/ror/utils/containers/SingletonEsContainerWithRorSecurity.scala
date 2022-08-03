@@ -59,5 +59,14 @@ object SingletonEsContainerWithRorSecurity
     nodeDataInitializer.initialize(singleton.esVersion, adminClient)
   }
 
+//  private def updateExistingIndexSettings() = {
+//    indexManager
+//      .getIndex("*").force()
+//      .indicesAndAliases.keySet
+//      .foreach { indexName =>
+//        indexManager.putAllSettings(indexName, )
+//      }
+//  }
+
   final case class CouldNotUpdateRorConfigException() extends Exception("ROR config update using admin api failed")
 }

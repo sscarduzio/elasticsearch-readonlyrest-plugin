@@ -65,7 +65,6 @@ object EsContainer {
   def init(esContainer: EsContainer,
            initializer: ElasticsearchNodeDataInitializer,
            logger: Logger): EsContainer = {
-
     val logConsumer: Consumer[OutputFrame] = new Slf4jLogConsumer(logger.underlying)
     val esClient = Coeval(esContainer.adminClient)
     esContainer.container.setLogConsumers((logConsumer :: Nil).asJava)

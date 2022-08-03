@@ -18,7 +18,6 @@ package tech.beshu.ror.utils.containers
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.utils.containers.EsClusterProvider.ClusterNodeData
-import tech.beshu.ror.utils.containers.RorConfigAdjuster.Mode
 
 sealed trait EsClusterProvider extends EsContainerCreator {
 
