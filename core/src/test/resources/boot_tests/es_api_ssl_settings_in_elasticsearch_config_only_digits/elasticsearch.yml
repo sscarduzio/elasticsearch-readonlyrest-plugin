@@ -4,8 +4,8 @@ cluster.initial_master_nodes: n1_it
 readonlyrest:
   ssl:
     enable: true
-    keystore_file: "ror-keystore.jks"
+    keystore_file:  "ror-keystore.jks"
     keystore_pass: "123456"
     key_pass: 12
-    truststore_file: "ror-truststore.jks"
+    truststore_file:  "ror-truststore.jks"
     truststore_pass: "1234"

@@ -18,22 +18,30 @@ package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
 import org.junit.runner.Description
+import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.{IndexManager, LegacyTemplateManager, RorApiManager, SnapshotManager}
 
-object SingletonEsContainer
-  extends EsClusterProvider
+object SingletonEsContainerWithRorSecurity
+  extends PluginEsClusterProvider
     with EsContainerCreator
     with StrictLogging {
 
   private implicit val description: Description = Description.EMPTY
 
-  val singleton: EsClusterContainer = createLocalClusterContainer(EsClusterSettings.basic)
+  val singleton: EsClusterContainer = createLocalClusterContainer(
+    EsClusterSettings(
+      name = "ROR_SINGLE",
+      clusterType = ClusterType.RorCluster(Attributes.default)
+    )
+  )
 
   private lazy val adminClient = singleton.nodes.head.adminClient
+
   private lazy val indexManager = new IndexManager(adminClient, singleton.nodes.head.esVersion)
   private lazy val templateManager = new LegacyTemplateManager(adminClient, singleton.esVersion)
   private lazy val snapshotManager = new SnapshotManager(adminClient)
-  private lazy val adminApiManager = new RorApiManager(adminClient, singleton.esVersion)
+  private lazy val rorApiManager = new RorApiManager(adminClient, singleton.esVersion)
 
   logger.info("Starting singleton es container...")
   singleton.start()
@@ -45,7 +53,7 @@ object SingletonEsContainer
   }
 
   def updateConfig(rorConfig: String): Unit = {
-    adminApiManager.updateRorInIndexConfig(rorConfig).force()
+    rorApiManager.updateRorInIndexConfig(rorConfig).force()
   }
 
   def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer): Unit = {

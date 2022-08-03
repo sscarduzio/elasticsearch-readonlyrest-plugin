@@ -17,20 +17,19 @@
 package tech.beshu.ror.integration.suites.base
 
 import java.time.Instant
-
 import cats.data.NonEmptyList
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterProvider, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
+
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
-
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
@@ -41,7 +40,7 @@ trait BaseAdminApiSuite
     with ESVersionSupportForAnyWordSpecLike
     with MultipleClientsSupport
     with BeforeAndAfterEach {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   protected def readonlyrestIndexName: String
 

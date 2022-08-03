@@ -18,11 +18,11 @@ package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseAdminApiSuite
 import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType
-import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes
-import tech.beshu.ror.utils.containers.{EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.{EsClusterProvider, EsClusterSettings}
 
 trait AdminApiWithCustomRorIndexSuite extends BaseAdminApiSuite {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/admin_api/readonlyrest.yml"
   override protected val readonlyrestIndexName: String = "custom_ror_index"
@@ -31,8 +31,9 @@ trait AdminApiWithCustomRorIndexSuite extends BaseAdminApiSuite {
     EsClusterSettings(
       name = "ROR1",
       numberOfInstances = 2,
-      clusterType = ClusterType.RorWithXpackSecurityCluster(Attributes.default.copy(
-        rorCustomSettingsIndex = Some(readonlyrestIndexName)
+      nodeDataInitializer = nodeDataInitializer(),
+      clusterType = ClusterType.RorCluster(Attributes.default.copy(
+        customSettingsIndex = Some(readonlyrestIndexName)
       ))
     )
   )
@@ -40,8 +41,8 @@ trait AdminApiWithCustomRorIndexSuite extends BaseAdminApiSuite {
   override protected lazy val rorWithNoIndexConfig = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR2",
-      clusterType = ClusterType.RorWithXpackSecurityCluster(Attributes.default.copy(
-        rorCustomSettingsIndex = Some(readonlyrestIndexName)
+      clusterType = ClusterType.RorCluster(Attributes.default.copy(
+        customSettingsIndex = Some(readonlyrestIndexName)
       ))
     )
   )

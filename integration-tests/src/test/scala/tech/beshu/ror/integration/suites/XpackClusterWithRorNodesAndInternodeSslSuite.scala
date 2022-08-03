@@ -23,7 +23,8 @@ import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationT
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.{RorCluster, XPackSecurityCluster}
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, XpackSecurityPlugin}
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
@@ -33,7 +34,7 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
     with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
     with BeforeAndAfterAll {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest.yml"
 
@@ -48,7 +49,8 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
         EsClusterSettings(
           name = "ROR1",
           numberOfInstances = 3,
-          clusterType = RorCluster(ReadonlyRestPlugin.Config.Attributes.default.copy(
+          clusterType = RorCluster(Attributes.default.copy(
+            rorConfigFileName = rorConfigFileName,
             internodeSslEnabled = true
           ))
         )
@@ -57,7 +59,8 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
       NonEmptyList.of(
         EsClusterSettings(
           name = "xpack_cluster",
-          clusterType = RorCluster(ReadonlyRestPlugin.Config.Attributes.default.copy(
+          clusterType = RorCluster(Attributes.default.copy(
+            rorConfigFileName = rorConfigFileName,
             internodeSslEnabled = true
           ))
         ),

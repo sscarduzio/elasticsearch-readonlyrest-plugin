@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.FiltersDocLevelSecuritySuite
-import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
 
-class FiltersDocLevelSecurityProxyTests extends FiltersDocLevelSecuritySuite with XpackEsClusterProxyTestSupport
+class FiltersDocLevelSecurityProxyTests extends FiltersDocLevelSecuritySuite with SingleNodeProxyTestSupport

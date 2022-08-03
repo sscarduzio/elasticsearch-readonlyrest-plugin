@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.DocumentApiSuite
-import tech.beshu.ror.integration.utils.PluginTestSupport
+import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
-class DocumentApiPluginTests extends DocumentApiSuite with PluginTestSupport
+class DocumentApiPluginTests extends DocumentApiSuite with SingletonPluginTestSupport

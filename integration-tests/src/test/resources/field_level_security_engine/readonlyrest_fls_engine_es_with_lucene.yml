@@ -1,7 +1,7 @@
 readonlyrest:
   ssl:
     enable: true
-    keystore_file: "ror-keystore.jks"
+    keystore_file:  "ror-keystore.jks"
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
@@ -14,10 +14,6 @@ readonlyrest:
       auth_key: admin:container
       verbosity: error
 
-    - name: "user1 rule"
-      auth_key: "user1:pass"
-      fields: ["_source", "allowedField"]
-
-    - name: "user2 rule"
-      auth_key: "user2:pass"
-      fields: [ "~forbiddenField" ]
+    - name: user
+      auth_key: "user:pass"
+      fields: ["_source","allowedField"]

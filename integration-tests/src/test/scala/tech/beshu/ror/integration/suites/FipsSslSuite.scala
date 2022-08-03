@@ -31,7 +31,7 @@ trait FipsSslSuite
     with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
     with BeforeAndAfterAll {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/fips_ssl/readonlyrest.yml"
 
@@ -43,6 +43,7 @@ trait FipsSslSuite
       name = "fips_cluster",
       numberOfInstances = 2,
       clusterType = RorCluster(Attributes.default.copy(
+        rorConfigFileName = rorConfigFileName,
         internodeSslEnabled = true,
         isFipsEnabled = true
       ))

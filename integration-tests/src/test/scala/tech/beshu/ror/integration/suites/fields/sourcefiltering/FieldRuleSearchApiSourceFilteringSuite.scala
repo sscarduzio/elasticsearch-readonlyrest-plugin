@@ -17,7 +17,7 @@
 package tech.beshu.ror.integration.suites.fields.sourcefiltering
 
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
-import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.SearchManager
 import tech.beshu.ror.utils.elasticsearch.SearchManager.SearchResult
@@ -25,7 +25,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 trait FieldRuleSearchApiSourceFilteringSuite
   extends FieldRuleSourceFilteringSuite {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override protected type CALL_RESULT = SearchResult
 

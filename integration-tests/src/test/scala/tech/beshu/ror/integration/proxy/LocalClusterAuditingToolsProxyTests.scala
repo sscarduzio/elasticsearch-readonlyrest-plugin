@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.LocalClusterAuditingToolsSuite
-import tech.beshu.ror.integration.utils.OssEsClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
 
-class LocalClusterAuditingToolsProxyTests extends LocalClusterAuditingToolsSuite with OssEsClusterProxyTestSupport
+class LocalClusterAuditingToolsProxyTests extends LocalClusterAuditingToolsSuite with SingleNodeProxyTestSupport

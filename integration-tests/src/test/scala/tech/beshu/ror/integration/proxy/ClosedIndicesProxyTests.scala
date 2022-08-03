@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.ClosedIndicesSuite
-import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
 
-class ClosedIndicesProxyTests extends ClosedIndicesSuite with XpackEsClusterProxyTestSupport
+class ClosedIndicesProxyTests extends ClosedIndicesSuite with SingleNodeProxyTestSupport

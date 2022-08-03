@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.ExternalAuthenticationSuite
-import tech.beshu.ror.integration.utils.OssEsClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
 
-class ExternalAuthenticationProxyTests extends ExternalAuthenticationSuite with OssEsClusterProxyTestSupport
+class ExternalAuthenticationProxyTests extends ExternalAuthenticationSuite with SingleNodeProxyTestSupport

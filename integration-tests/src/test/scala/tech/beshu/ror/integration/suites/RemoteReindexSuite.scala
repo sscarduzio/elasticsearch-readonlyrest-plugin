@@ -31,12 +31,12 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 trait RemoteReindexSuite
   extends AnyWordSpec
-    with BaseManyEsClustersIntegrationTest
-    with MultipleClientsSupport
-    with BeforeAndAfterEach
-    with ESVersionSupportForAnyWordSpecLike
-    with Matchers {
-  this: EsContainerCreator =>
+  with BaseManyEsClustersIntegrationTest
+  with MultipleClientsSupport
+  with BeforeAndAfterEach
+  with ESVersionSupportForAnyWordSpecLike
+  with Matchers {
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/reindex_multi_containers/readonlyrest_dest_es.yml"
   private val sourceEsRorConfigFileName = "/reindex_multi_containers/readonlyrest_source_es.yml"
@@ -47,9 +47,10 @@ trait RemoteReindexSuite
       nodeDataInitializer = RemoteReindexSuite.sourceEsDataInitializer(),
       esVersion = EsVersion.SpecificVersion("es60x"),
       clusterType = ClusterType.RorCluster(Attributes.default.copy(
-        restSslEnabled = false
+        restSslEnabled = false,
+        rorConfigFileName = RemoteReindexSuite.this.sourceEsRorConfigFileName
       ))
-    )(sourceEsRorConfigFileName)
+    )
   )
 
   private lazy val destEsCluster = createLocalClusterContainer(
@@ -60,9 +61,10 @@ trait RemoteReindexSuite
         additionalElasticsearchYamlEntries = Map("reindex.remote.whitelist" -> "\"*:9200\"")
       ),
       clusterType = ClusterType.RorCluster(Attributes.default.copy(
-        restSslEnabled = false
+        restSslEnabled = false,
+        rorConfigFileName = RemoteReindexSuite.this.rorConfigFileName
       ))
-    )(rorConfigFileName)
+    )
   )
 
   private lazy val destEsIndexManager = new IndexManager(clients.last.basicAuthClient("dev1", "test"), esVersionUsed)

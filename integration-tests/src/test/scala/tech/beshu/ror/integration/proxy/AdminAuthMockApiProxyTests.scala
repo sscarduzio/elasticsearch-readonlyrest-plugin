@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.AdminApiAuthMockSuite
-import tech.beshu.ror.integration.utils.OssEsClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
 
-class AdminAuthMockApiProxyTests extends AdminApiAuthMockSuite with OssEsClusterProxyTestSupport
+class AdminAuthMockApiProxyTests extends AdminApiAuthMockSuite with SingleNodeProxyTestSupport

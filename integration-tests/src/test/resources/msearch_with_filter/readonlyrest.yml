@@ -1,7 +1,7 @@
 readonlyrest:
   ssl:
     enable: true
-    keystore_file: "ror-keystore.jks"
+    keystore_file:  "ror-keystore.jks"
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 

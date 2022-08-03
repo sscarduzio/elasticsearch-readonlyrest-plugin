@@ -32,7 +32,7 @@ trait ProxyTestSupport
   extends BeforeAndAfterAll
     with ForAllTestContainer
     with CallingProxy
-    with EsContainerCreator
+    with ProxyEsClusterProvider
     with ResolvedRorConfigFileProvider
     with LazyLogging {
   this: Suite with MultipleEsTargets with RorConfigFileNameProvider =>
@@ -54,9 +54,9 @@ trait ProxyTestSupport
   override def resolvedRorConfigFile: File = {
     val rawRorConfig = ContainerUtils.getResourceFile(rorConfigFileName)
     RorConfigAdjuster.adjustUsingDependencies(
-      rawRorConfig.toScala,
-      esTargets.head.startedClusterDependencies,
-      RorConfigAdjuster.Mode.Proxy
+      source = rawRorConfig.toScala,
+      startedDependencies = esTargets.head.startedClusterDependencies,
+      mode = Mode.Proxy
     )
   }
 
@@ -74,13 +74,12 @@ trait ProxyTestSupport
   }
 }
 
-sealed trait BasicEsClusterProxyTestSupport extends ProxyTestSupport {
+
+trait SingleNodeProxyTestSupport extends ProxyTestSupport with ProxyEsClusterProvider {
   this: Suite with BaseSingleNodeEsClusterTest =>
 
-  protected def xpackSupport: Boolean
-
   private def clusterSettings = {
-    val enhancedSettings = EsClusterSettings.basic
+    val enhancedSettings = EsClusterSettings.basicEsWithNoSecurity
       .copy(dependentServicesContainers = clusterDependencies)
 
     nodeDataInitializer match {
@@ -91,17 +90,4 @@ sealed trait BasicEsClusterProxyTestSupport extends ProxyTestSupport {
 
   override lazy val container = createLocalClusterContainer(clusterSettings)
   override lazy val targetEs = container.nodes.head
-}
-
-trait XpackEsClusterProxyTestSupport extends BasicEsClusterProxyTestSupport {
-  this: Suite with BaseSingleNodeEsClusterTest =>
-
-  // todo: remove?
-  override def xpackSupport: Boolean = true
-}
-
-trait OssEsClusterProxyTestSupport extends BasicEsClusterProxyTestSupport {
-  this: Suite with BaseSingleNodeEsClusterTest =>
-
-  override def xpackSupport: Boolean = false
 }

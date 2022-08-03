@@ -79,6 +79,7 @@ class Elasticsearch(esVersion: String,
       .run(s"chown -R elasticsearch:elasticsearch ${configDir.toString()}")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(config, withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()
+      .user("elasticsearch")
   }
 
   private implicit class InstallPlugins(val image: DockerImageDescription) {
