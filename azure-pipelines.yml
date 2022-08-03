@@ -175,9 +175,17 @@ stages:
               script: |
                 set -e
 
-                echo ">>>> Installing GIT with apt-get"
-                sudo apt-get update && sudo apt-get install -y git
+                echo ">>>> Installing GIT and file with apt-get"
+                sudo apt-get update && sudo apt-get install -y git file
                 git status && echo ">>> Git installed correctly!"
+                
+                echo ">>>> Installing SSH Key for git tagging"
+                mkdir ~/.ssh && chmod 700 ~/.ssh
+                cat > ~/.ssh/id_rsa <<- EOM
+                $(GH_PRIV_SSH_KEY)
+                EOM
+                chmod 600 ~/.ssh/id_rsa
+                echo ">>> SSH key installed! " && head -c10 ~/.ssh/id_rsa
                 
                 # Translate back env vars to avoid cyclical reference :/
                 export aws_access_key_id=$var_aws_access_key_id

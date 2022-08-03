@@ -48,6 +48,7 @@ function tag_delete {
     return 1
 }
 
+file . || (echo "FATAL: file command does not work or is not installed!" && exit 1)
 function upload {
   BUCKET="readonlyrest-data"
   LOCAL_FILE="$1"
