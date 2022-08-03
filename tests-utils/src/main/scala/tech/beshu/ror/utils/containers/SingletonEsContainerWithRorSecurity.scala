@@ -37,10 +37,11 @@ object SingletonEsContainerWithRorSecurity
   )
 
   private lazy val adminClient = singleton.nodes.head.adminClient
+
   private lazy val indexManager = new IndexManager(adminClient, singleton.nodes.head.esVersion)
   private lazy val templateManager = new LegacyTemplateManager(adminClient, singleton.esVersion)
   private lazy val snapshotManager = new SnapshotManager(adminClient)
-  private lazy val adminApiManager = new RorApiManager(adminClient, singleton.esVersion)
+  private lazy val rorApiManager = new RorApiManager(adminClient, singleton.esVersion)
 
   logger.info("Starting singleton es container...")
   singleton.start()
@@ -52,21 +53,12 @@ object SingletonEsContainerWithRorSecurity
   }
 
   def updateConfig(rorConfig: String): Unit = {
-    adminApiManager.updateRorInIndexConfig(rorConfig).force()
+    rorApiManager.updateRorInIndexConfig(rorConfig).force()
   }
 
   def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer): Unit = {
     nodeDataInitializer.initialize(singleton.esVersion, adminClient)
   }
-
-//  private def updateExistingIndexSettings() = {
-//    indexManager
-//      .getIndex("*").force()
-//      .indicesAndAliases.keySet
-//      .foreach { indexName =>
-//        indexManager.putAllSettings(indexName, )
-//      }
-//  }
 
   final case class CouldNotUpdateRorConfigException() extends Exception("ROR config update using admin api failed")
 }

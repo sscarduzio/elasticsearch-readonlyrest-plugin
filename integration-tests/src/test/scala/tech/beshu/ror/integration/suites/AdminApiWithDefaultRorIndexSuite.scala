@@ -17,6 +17,8 @@
 package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseAdminApiSuite
+import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.RorCluster
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.containers.{EsClusterProvider, EsClusterSettings}
 
 trait AdminApiWithDefaultRorIndexSuite extends BaseAdminApiSuite {
@@ -29,13 +31,19 @@ trait AdminApiWithDefaultRorIndexSuite extends BaseAdminApiSuite {
     EsClusterSettings(
       name = "ROR1",
       numberOfInstances = 2,
+      clusterType = RorCluster(Attributes.default.copy(
+        rorConfigFileName = rorConfigFileName
+      )),
       nodeDataInitializer = nodeDataInitializer()
     )
   )
 
   override protected lazy val rorWithNoIndexConfig = createLocalClusterContainer(
     EsClusterSettings(
-      name = "ROR2"
+      name = "ROR2",
+      clusterType = RorCluster(Attributes.default.copy(
+        rorConfigFileName = rorConfigFileName
+      )),
     )
   )
 }

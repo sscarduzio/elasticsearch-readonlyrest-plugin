@@ -43,6 +43,7 @@ trait FipsSslSuite
       name = "fips_cluster",
       numberOfInstances = 2,
       clusterType = RorCluster(Attributes.default.copy(
+        rorConfigFileName = rorConfigFileName,
         internodeSslEnabled = true,
         isFipsEnabled = true
       ))

@@ -31,12 +31,16 @@ trait RemoteClusterAuditingToolsSuite
 
   override implicit val rorConfigFileName = "/cluster_auditing_tools/readonlyrest.yml"
 
-  private lazy val auditEsContainer: EsContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "AUDIT",
-      clusterType = EsWithNoSecurityCluster
+  private lazy val auditEsContainer: EsContainer = {
+    val cluster = createLocalClusterContainer(
+      EsClusterSettings(
+        name = "AUDIT",
+        clusterType = EsWithNoSecurityCluster
+      )
     )
-  ).nodes.head
+    cluster.start()
+    cluster.nodes.head
+  }
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 

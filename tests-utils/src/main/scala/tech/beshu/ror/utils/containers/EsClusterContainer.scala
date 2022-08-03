@@ -115,14 +115,12 @@ trait SetupRemoteCluster {
 }
 
 final case class EsClusterSettings(name: String,
+                                   clusterType: ClusterType,
                                    numberOfInstances: Int = 1,
                                    nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
                                    rorContainerSpecification: ContainerSpecification = ContainerSpecification.empty,
                                    dependentServicesContainers: List[DependencyDef] = Nil,
-                                   esVersion: EsVersion = EsVersion.DeclaredInProject,
-                                   clusterType: ClusterType = ClusterType.RorCluster(
-                                     ReadonlyRestPlugin.Config.Attributes.default
-                                   ))
+                                   esVersion: EsVersion = EsVersion.DeclaredInProject)
 
 object EsClusterSettings {
   val basicEsWithNoSecurity: EsClusterSettings = EsClusterSettings(

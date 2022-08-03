@@ -19,6 +19,8 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.RorCluster
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterProvider, EsClusterSettings}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -38,6 +40,9 @@ trait ClusterApiSuite
     EsClusterSettings(
       name = "ROR1",
       numberOfInstances = 2,
+      clusterType = RorCluster(Attributes.default.copy(
+        rorConfigFileName = rorConfigFileName
+      )),
       nodeDataInitializer = ClusterApiSuite.nodeDataInitializer()
     )
   )

@@ -25,7 +25,7 @@ import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, Plu
 import tech.beshu.ror.utils.containers.EsClusterProvider.ClusterNodeData
 import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.RorApiManager
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
@@ -57,7 +57,7 @@ final class LoadClusterConfigsWithNoRorNodeTest
       nodeDataInitializer = IndexConfigInitializer,
       numberOfInstances = 2,
       clusterType = ClusterType.RorCluster(
-        ReadonlyRestPlugin.Config.Attributes.default.copy(rorConfigFileName = rorConfigFileName)
+        Attributes.default.copy(rorConfigFileName = rorConfigFileName)
       )
     )
   )
@@ -67,7 +67,7 @@ final class LoadClusterConfigsWithNoRorNodeTest
       name = "ROR1",
       nodeDataInitializer = IndexConfigInitializer,
       clusterType = ClusterType.RorCluster(
-        ReadonlyRestPlugin.Config.Attributes.default.copy(rorConfigFileName = rorConfigFileName)
+        Attributes.default.copy(rorConfigFileName = rorConfigFileName)
       )
     )
   )
