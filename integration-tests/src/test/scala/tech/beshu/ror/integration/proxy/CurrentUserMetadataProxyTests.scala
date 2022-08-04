@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.CurrentUserMetadataSuite
-import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
 
-class CurrentUserMetadataProxyTests extends CurrentUserMetadataSuite with XpackEsClusterProxyTestSupport
+class CurrentUserMetadataProxyTests extends CurrentUserMetadataSuite with SingleNodeProxyTestSupport

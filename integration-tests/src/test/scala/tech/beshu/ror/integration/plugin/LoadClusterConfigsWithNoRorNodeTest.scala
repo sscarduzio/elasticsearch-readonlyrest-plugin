@@ -23,7 +23,9 @@ import tech.beshu.ror.integration.plugin.LoadClusterConfigsWithNoRorNodeTest.Ind
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers.EsClusterProvider.ClusterNodeData
+import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType
 import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.RorApiManager
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
@@ -35,7 +37,7 @@ final class LoadClusterConfigsWithNoRorNodeTest
     with BaseEsClusterIntegrationTest
     with MultipleClientsSupport
     with ESVersionSupportForAnyWordSpecLike {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/admin_api/readonlyrest.yml"
 
@@ -54,21 +56,23 @@ final class LoadClusterConfigsWithNoRorNodeTest
       name = "ROR1",
       nodeDataInitializer = IndexConfigInitializer,
       numberOfInstances = 2,
-      xPackSupport = false,
-      configHotReloadingEnabled = true
-    )(rorConfigFileName)
+      clusterType = ClusterType.RorCluster(
+        Attributes.default.copy(rorConfigFileName = rorConfigFileName)
+      )
+    )
   )
   private lazy val rorNode2: ClusterNodeData = ClusterNodeData(
     name = "ror2",
     settings = EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = IndexConfigInitializer,
-      xPackSupport = false,
-      configHotReloadingEnabled = true
-    )(rorConfigFileName)
+      clusterType = ClusterType.RorCluster(
+        Attributes.default.copy(rorConfigFileName = rorConfigFileName)
+      )
+    )
   )
 
-  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.rorAdminClient, esVersionUsed)
+  private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.adminClient, esVersionUsed)
 
   "return index config, and a failure" excludeES (allEs8x) in {
     val result = ror1WithIndexConfigAdminActionManager.loadRorCurrentConfig()

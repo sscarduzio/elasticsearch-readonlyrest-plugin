@@ -16,4 +16,8 @@
  */
 package tech.beshu.ror.utils.containers
 
-object ESWithoutSecurityPluginImage extends EsImage[EsWithoutSecurityPluginContainer.Config]
+sealed trait Mode
+object Mode {
+  case object Plugin extends Mode
+  case object Proxy extends Mode
+}

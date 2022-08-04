@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror.integration.suites.fields.querydsl
 
-import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.containers.EsClusterProvider
 
 trait FieldRuleMSearchQueryDSLSuite extends FieldRuleQueryDSLSuite {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override protected def assertNoSearchHitsReturnedFor(index: String, query: String) = {
     val result = searchManager.mSearch(s"""{"index":"$index"}""", query.replaceAll("\\n", ""))

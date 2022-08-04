@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.DeleteByQuerySuite
-import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
 
-class DeleteByQueryProxyTests extends DeleteByQuerySuite with XpackEsClusterProxyTestSupport
+class DeleteByQueryProxyTests extends DeleteByQuerySuite with SingleNodeProxyTestSupport

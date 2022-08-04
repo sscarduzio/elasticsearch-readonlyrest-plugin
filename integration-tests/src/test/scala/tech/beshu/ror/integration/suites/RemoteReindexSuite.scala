@@ -22,8 +22,9 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsClusterSettings.EsVersion
+import tech.beshu.ror.utils.containers.EsClusterSettings.{ClusterType, EsVersion}
 import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -35,7 +36,7 @@ trait RemoteReindexSuite
   with BeforeAndAfterEach
   with ESVersionSupportForAnyWordSpecLike
   with Matchers {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/reindex_multi_containers/readonlyrest_dest_es.yml"
   private val sourceEsRorConfigFileName = "/reindex_multi_containers/readonlyrest_source_es.yml"
@@ -44,10 +45,12 @@ trait RemoteReindexSuite
     EsClusterSettings(
       name = "ROR_SOURCE_ES",
       nodeDataInitializer = RemoteReindexSuite.sourceEsDataInitializer(),
-      xPackSupport = false,
       esVersion = EsVersion.SpecificVersion("es60x"),
-      externalSslEnabled = false
-    )(sourceEsRorConfigFileName)
+      clusterType = ClusterType.RorCluster(Attributes.default.copy(
+        restSslEnabled = false,
+        rorConfigFileName = RemoteReindexSuite.this.sourceEsRorConfigFileName
+      ))
+    )
   )
 
   private lazy val destEsCluster = createLocalClusterContainer(
@@ -57,9 +60,11 @@ trait RemoteReindexSuite
         environmentVariables = Map.empty,
         additionalElasticsearchYamlEntries = Map("reindex.remote.whitelist" -> "\"*:9200\"")
       ),
-      xPackSupport = false,
-      externalSslEnabled = false
-    )(rorConfigFileName)
+      clusterType = ClusterType.RorCluster(Attributes.default.copy(
+        restSslEnabled = false,
+        rorConfigFileName = RemoteReindexSuite.this.rorConfigFileName
+      ))
+    )
   )
 
   private lazy val destEsIndexManager = new IndexManager(clients.last.basicAuthClient("dev1", "test"), esVersionUsed)

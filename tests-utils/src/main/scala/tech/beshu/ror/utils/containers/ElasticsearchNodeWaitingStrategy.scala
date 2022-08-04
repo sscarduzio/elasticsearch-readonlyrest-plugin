@@ -16,15 +16,14 @@
  */
 package tech.beshu.ror.utils.containers
 
-import java.util.concurrent.TimeUnit
-
 import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Coeval
 import org.testcontainers.containers.ContainerLaunchException
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.EsStartupChecker
+import tech.beshu.ror.utils.misc.{EsStartupChecker, Version}
 
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
@@ -39,7 +38,12 @@ class ElasticsearchNodeWaitingStrategy(esVersion: String,
   override def waitUntilReady(): Unit = {
     implicit val startupThreshold: FiniteDuration = FiniteDuration(startupTimeout.toMillis, TimeUnit.MILLISECONDS)
     val client = restClient.runAttempt().fold(throw _, identity)
-    val checker = EsStartupChecker.greenEsClusterChecker(containerName, client)
+    val checker =
+      if (Version.greaterOrEqualThan(esVersion, 8, 3, 0)) {
+        EsStartupChecker.greenEsClusterChecker(containerName, client)
+      } else {
+        EsStartupChecker.accessibleEsChecker(containerName, client)
+      }
     val started = checker.waitForStart()
     if (!started) {
       throw new ContainerLaunchException(s"Cannot start ROR-ES container [$containerName]")

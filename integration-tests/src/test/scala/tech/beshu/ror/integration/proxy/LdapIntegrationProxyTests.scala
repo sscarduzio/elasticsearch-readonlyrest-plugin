@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.LdapIntegrationSuite
-import tech.beshu.ror.integration.utils.OssEsClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
 
-class LdapIntegrationProxyTests extends LdapIntegrationSuite with OssEsClusterProxyTestSupport
+class LdapIntegrationProxyTests extends LdapIntegrationSuite with SingleNodeProxyTestSupport

@@ -21,17 +21,16 @@ import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import org.scalatest.Suite
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.providers._
-import tech.beshu.ror.utils.containers.{DependencyDef, EsClusterContainer, EsClusterProvider, EsContainerCreator, EsRemoteClustersContainer}
+import tech.beshu.ror.utils.containers.{DependencyDef, EsClusterContainer, EsClusterProvider, EsRemoteClustersContainer}
 
 object support {
 
   trait BaseEsClusterIntegrationTest
     extends RorConfigFileNameProvider
-      with EsClusterProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
       with ForAllTestContainer {
-    this: Suite with EsContainerCreator with ESVersionSupport =>
+    this: Suite with EsClusterProvider with ESVersionSupport =>
 
     override lazy val container: EsClusterContainer = clusterContainer
 
@@ -40,11 +39,10 @@ object support {
 
   trait BaseEsRemoteClusterIntegrationTest
     extends RorConfigFileNameProvider
-      with EsClusterProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
       with ForAllTestContainer {
-    this: Suite with EsContainerCreator with ESVersionSupport =>
+    this: Suite with EsClusterProvider with ESVersionSupport =>
 
     override lazy val container: EsRemoteClustersContainer = remoteClusterContainer
 
@@ -53,11 +51,10 @@ object support {
 
   trait BaseManyEsClustersIntegrationTest
     extends RorConfigFileNameProvider
-      with EsClusterProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
       with ForAllTestContainer {
-    this: Suite with EsContainerCreator with ESVersionSupport =>
+    this: Suite with EsClusterProvider with ESVersionSupport =>
 
     import com.dimafeng.testcontainers.LazyContainer._
 
@@ -69,11 +66,10 @@ object support {
 
   trait BaseSingleNodeEsClusterTest
     extends RorConfigFileNameProvider
-      with EsClusterProvider
       with SingleClientSupport
       with TestSuiteWithClosedTaskAssertion
       with NodeInitializerProvider {
-    this: Suite with EsContainerCreator with ESVersionSupport =>
+    this: Suite with EsClusterProvider with ESVersionSupport =>
 
     def clusterDependencies: List[DependencyDef] = List.empty
   }

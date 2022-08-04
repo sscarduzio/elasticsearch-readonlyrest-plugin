@@ -19,13 +19,13 @@ package tech.beshu.ror.integration.suites
 import tech.beshu.ror.integration.suites.base.BaseAuditingToolsSuite
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.providers.ClientProvider
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterProvider}
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer
 
 trait LocalClusterAuditingToolsSuite
   extends BaseAuditingToolsSuite
     with BaseSingleNodeEsClusterTest  {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/enabled_auditing_tools/readonlyrest.yml"
 

@@ -25,7 +25,9 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.IndexLifecycleManagementApiSuite.{ExamplePolicies, PolicyGenerator}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.RorCluster
 import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.{ClusterManager, DocumentManager, IndexLifecycleManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -42,7 +44,7 @@ trait IndexLifecycleManagementApiSuite
     with BeforeAndAfterEach
     with Matchers
     with Eventually {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/index_lifecycle_management_api/readonlyrest.yml"
 
@@ -51,14 +53,16 @@ trait IndexLifecycleManagementApiSuite
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
+      clusterType = RorCluster(Attributes.default.copy(
+        rorConfigFileName = rorConfigFileName
+      )),
       numberOfInstances = 2,
-      nodeDataInitializer = IndexLifecycleManagementApiSuite.nodeDataInitializer(),
-      xPackSupport = true
+      nodeDataInitializer = IndexLifecycleManagementApiSuite.nodeDataInitializer()
     )
   )
 
-  private lazy val adminIndexManager = new IndexManager(rorAdminClient, esVersionUsed)
-  private lazy val adminIndexLifecycleManager = new IndexLifecycleManager(rorAdminClient)
+  private lazy val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
+  private lazy val adminIndexLifecycleManager = new IndexLifecycleManager(adminClient)
   private lazy val dev1IndexLifecycleManager = new IndexLifecycleManager(basicAuthClient("dev1", "test"))
   private lazy val dev3IndexLifecycleManager = new IndexLifecycleManager(basicAuthClient("dev3", "test"))
 

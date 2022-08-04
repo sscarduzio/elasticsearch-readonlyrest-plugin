@@ -319,7 +319,10 @@ stages:
     condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
     jobs:
       - job:
-        container: maven:3.8.1-openjdk-17-slim
+        container: 
+          image: maven:3.8.1-openjdk-17-slim
+          options:  "--name ci-container -v /usr/bin/docker:/tmp/docker:ro"
+
         steps:
           - checkout: self
             fetchDepth: 1
@@ -327,18 +330,24 @@ stages:
             persistCredentials: true
 
           - script: |
+              /tmp/docker exec -t -u 0 ci-container \
+              sh -c "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confold" -y install sudo"
+            displayName: 'Install Sudo in container #HACK - See https://github.com/microsoft/azure-pipelines-agent/issues/2043'
+ 
+          - script: |
               set -e
+              export DEBIAN_FRONTEND=noninteractive
               apt-get update && apt-get install -y git
+              git status && echo ">>> Git installed correctly!"
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
               
-              echo ">> ALL VARIABLES NAMES " && export | awk -F= '{print $1}'
-              echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
+              # echo ">> ALL VARIABLES NAMES " && export | awk -F= '{print $1}'
               
               echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/build.sh
-              echo ">>> ($ROR_TASK) Tag and upload to S3" && ci/ci-deploy.sh
+              echo ">>> ($ROR_TASK) Git tag and upload to S3" && ci/ci-deploy.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)

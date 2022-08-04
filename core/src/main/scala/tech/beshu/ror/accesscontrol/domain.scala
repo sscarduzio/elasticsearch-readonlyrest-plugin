@@ -332,6 +332,9 @@ object domain {
     def isFieldCapsAction: Boolean =
       fieldCapsAction == this
 
+    def isGetSettingsAction: Boolean =
+      getSettingsAction == this
+
     def isInternal: Boolean =
       Action.isInternal(value)
   }
@@ -345,6 +348,7 @@ object domain {
     val searchTemplateAction = Action("indices:data/read/search/template")
     val putTemplateAction = Action("indices:admin/template/put")
     val putIndexTemplateAction = Action("indices:admin/index_template/put")
+    val getSettingsAction = Action("indices:monitor/settings/get")
     // ROR actions
     val rorUserMetadataAction = Action("cluster:ror/user_metadata/get")
     val rorConfigAction = Action("cluster:ror/config/manage")

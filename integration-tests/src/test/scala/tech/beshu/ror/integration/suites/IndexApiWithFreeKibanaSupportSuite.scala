@@ -17,12 +17,13 @@
 package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseIndexApiSuite
-import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.containers.EsClusterProvider
 
 trait IndexApiWithFreeKibanaSupportSuite extends BaseIndexApiSuite {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
-  override implicit val rorConfigFileName: String =  "/index_api/free_readonlyrest.yml"
+  override implicit val rorConfigFileName =  "/index_api/free_readonlyrest.yml"
+
   override val notFoundIndexStatusReturned: Int = 401
   override val forbiddenStatusReturned: Int = 401
 }

@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.integration.suites
 
-import cats.data.NonEmptyList
 import tech.beshu.ror.integration.suites.base.BaseAuditingToolsSuite
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
+import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.NoSecurityCluster
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.dependencies._
 import tech.beshu.ror.utils.containers.providers.ClientProvider
@@ -27,17 +27,20 @@ import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer
 trait RemoteClusterAuditingToolsSuite
   extends BaseAuditingToolsSuite
     with BaseSingleNodeEsClusterTest {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/cluster_auditing_tools/readonlyrest.yml"
 
-  private lazy val auditEsContainer: EsContainer =
-    EsWithoutSecurityPluginContainerCreator.create(
-      name = "AUDIT_1",
-      nodeNames = NonEmptyList.one("AUDIT_1"),
-      EsClusterSettings(name = "AUDIT", xPackSupport = false),
-      StartedClusterDependencies(List.empty)
+  private lazy val auditEsContainer: EsContainer = {
+    val cluster = createLocalClusterContainer(
+      EsClusterSettings(
+        name = "AUDIT",
+        clusterType = NoSecurityCluster
+      )
     )
+    cluster.start()
+    cluster.nodes.head
+  }
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 
