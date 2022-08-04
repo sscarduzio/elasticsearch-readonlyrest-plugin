@@ -23,17 +23,18 @@ import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.providers._
 import tech.beshu.ror.utils.misc.Resources.getResourcePath
 
-trait PluginTestSupport extends EsWithSecurityPluginContainerCreator with CallingEsDirectly {
+trait PluginTestSupport extends PluginEsClusterProvider with CallingEsDirectly {
   this: MultipleEsTargets =>
 }
 
 trait SingletonPluginTestSupport
   extends PluginTestSupport
+    with PluginEsClusterProvider
     with BeforeAndAfterAll
     with ResolvedRorConfigFileProvider {
   this: Suite with BaseSingleNodeEsClusterTest =>
 
-  override lazy val targetEs: EsContainer = SingletonEsContainer.singleton.nodes.head
+  override lazy val targetEs: EsContainer = SingletonEsContainerWithRorSecurity.singleton.nodes.head
 
   private var startedDependencies = StartedClusterDependencies(Nil)
 
@@ -51,14 +52,14 @@ trait SingletonPluginTestSupport
 
   private def resolvedConfig(startedDependencies: StartedClusterDependencies) = {
     val configFile = File.apply(getResourcePath(rorConfigFileName))
-    RorConfigAdjuster.adjustUsingDependencies(configFile, startedDependencies, RorConfigAdjuster.Mode.Plugin)
+    RorConfigAdjuster.adjustUsingDependencies(configFile, startedDependencies, Mode.Plugin)
   }
 
   override protected def beforeAll(): Unit = {
     startedDependencies = DependencyRunner.startDependencies(clusterDependencies)
-    SingletonEsContainer.cleanUpContainer()
-    SingletonEsContainer.updateConfig(resolvedRorConfigFile.contentAsString)
-    nodeDataInitializer.foreach(SingletonEsContainer.initNode)
+    SingletonEsContainerWithRorSecurity.cleanUpContainer()
+    SingletonEsContainerWithRorSecurity.updateConfig(resolvedRorConfigFile.contentAsString)
+    nodeDataInitializer.foreach(SingletonEsContainerWithRorSecurity.initNode)
 
     super.beforeAll()
   }

@@ -5,6 +5,6 @@ readonlyrest:
   fips_mode: SSL_ONLY
   ssl:
     enable: true
-    keystore_file: "keystore.jks"
+    keystore_file:  "ror-keystore.jks"
     keystore_pass: readonlyrest
     key_pass: readonlyrest

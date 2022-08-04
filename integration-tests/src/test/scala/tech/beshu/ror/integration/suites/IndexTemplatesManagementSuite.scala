@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager.Template
 import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplate
 import tech.beshu.ror.utils.elasticsearch.{BaseTemplateManager, ComponentTemplateManager, IndexTemplateManager, LegacyTemplateManager}
@@ -30,7 +30,7 @@ trait IndexTemplatesManagementSuite
   extends AnyWordSpec
     with BaseTemplatesSuite
     with ESVersionSupportForAnyWordSpecLike {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/templates/readonlyrest.yml"
 
@@ -45,7 +45,7 @@ trait IndexTemplatesManagementSuite
     lazy val dev1TemplateManager = templateManagerCreator(basicAuthClient("dev1", "test"))
     lazy val dev2TemplateManager = templateManagerCreator(basicAuthClient("dev2", "test"))
     lazy val dev3TemplateManager = templateManagerCreator(basicAuthClient("dev3", "test"))
-    lazy val adminTemplateManager = templateManagerCreator(rorAdminClient)
+    lazy val adminTemplateManager = templateManagerCreator(adminClient)
 
     s"$name" when {
       "user is dev1" should {
@@ -1053,7 +1053,7 @@ trait IndexTemplatesManagementSuite
 
     lazy val dev1TemplateManager = new ComponentTemplateManager(basicAuthClient("dev1", "test"), esVersionUsed)
     lazy val dev2TemplateManager = new ComponentTemplateManager(basicAuthClient("dev2", "test"), esVersionUsed)
-    lazy val adminTemplateManager = new ComponentTemplateManager(rorAdminClient, esVersionUsed)
+    lazy val adminTemplateManager = new ComponentTemplateManager(adminClient, esVersionUsed)
 
     "A component template API" when {
       "user is dev1" should {
@@ -1174,7 +1174,7 @@ trait IndexTemplatesManagementSuite
   }
 
   def simulateTemplatesApiTests(): Unit = {
-    lazy val adminIndexTemplateManager = new IndexTemplateManager(rorAdminClient, esVersionUsed)
+    lazy val adminIndexTemplateManager = new IndexTemplateManager(adminClient, esVersionUsed)
     lazy val user1IndexTemplateManager = new IndexTemplateManager(basicAuthClient("dev1", "test"), esVersionUsed)
 
     "A simulate index API" should {

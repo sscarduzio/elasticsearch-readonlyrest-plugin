@@ -21,7 +21,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 import tech.beshu.ror.utils.misc.Version
@@ -31,13 +31,13 @@ trait BaseTemplatesSuite
     with BeforeAndAfterEach
     with BeforeAndAfterAll
     with LazyLogging {
-  this: Suite with EsContainerCreator with ESVersionSupport =>
+  this: Suite with EsClusterProvider with ESVersionSupport =>
 
-  private lazy val adminLegacyTemplateManager = new LegacyTemplateManager(rorAdminClient, esVersionUsed)
-  private lazy val adminIndexTemplateManager = new IndexTemplateManager(rorAdminClient, esVersionUsed)
-  private lazy val adminComponentTemplateManager = new ComponentTemplateManager(rorAdminClient, esVersionUsed)
-  private lazy val adminIndexManager = new IndexManager(rorAdminClient, esVersionUsed)
-  protected lazy val adminDocumentManager = new DocumentManager(rorAdminClient, esVersionUsed)
+  private lazy val adminLegacyTemplateManager = new LegacyTemplateManager(adminClient, esVersionUsed)
+  private lazy val adminIndexTemplateManager = new IndexTemplateManager(adminClient, esVersionUsed)
+  private lazy val adminComponentTemplateManager = new ComponentTemplateManager(adminClient, esVersionUsed)
+  private lazy val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
+  protected lazy val adminDocumentManager = new DocumentManager(adminClient, esVersionUsed)
 
   private var originLegacyTemplateNames: List[String] = List.empty
   private var originIndexTemplateNames: List[String] = List.empty

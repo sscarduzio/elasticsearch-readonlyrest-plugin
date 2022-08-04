@@ -20,7 +20,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, RorApiManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import ujson.Str
@@ -32,7 +32,7 @@ trait LocalGroupsSuite
     with ESVersionSupportForAnyWordSpecLike
     with Matchers
     with CustomScalaTestMatchers {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/local_groups/readonlyrest.yml"
 

@@ -21,7 +21,9 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.CrossClusterCallsSuite._
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.RorCluster
 import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -30,17 +32,35 @@ trait CrossClusterCallsSuite
     with BaseEsRemoteClusterIntegrationTest
     with SingleClientSupport
     with ESVersionSupportForAnyWordSpecLike {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/cross_cluster_search/readonlyrest.yml"
 
   override lazy val targetEs = container.localCluster.nodes.head
 
   override val remoteClusterContainer: EsRemoteClustersContainer = createRemoteClustersContainer(
-    EsClusterSettings(name = "ROR_L1", nodeDataInitializer = localClusterNodeDataInitializer(), xPackSupport = true),
-    NonEmptyList.of(
-      EsClusterSettings(name = "ROR_R1", nodeDataInitializer = privateRemoteClusterNodeDataInitializer(), xPackSupport = true),
-      EsClusterSettings(name = "ROR_R2", nodeDataInitializer = publicRemoteClusterNodeDataInitializer(), xPackSupport = true),
+    localClustersSettings = EsClusterSettings(
+      name = "ROR_L1",
+      clusterType = RorCluster(Attributes.default.copy(
+        rorConfigFileName = rorConfigFileName,
+      )),
+      nodeDataInitializer = localClusterNodeDataInitializer(),
+    ),
+    remoteClustersSettings = NonEmptyList.of(
+      EsClusterSettings(
+        name = "ROR_R1",
+        clusterType = RorCluster(Attributes.default.copy(
+          rorConfigFileName = rorConfigFileName,
+        )),
+        nodeDataInitializer = privateRemoteClusterNodeDataInitializer()
+      ),
+      EsClusterSettings(
+        name = "ROR_R2",
+        clusterType = RorCluster(Attributes.default.copy(
+          rorConfigFileName = rorConfigFileName,
+        )),
+        nodeDataInitializer = publicRemoteClusterNodeDataInitializer()
+      ),
     ),
     remoteClusterSetup()
   )

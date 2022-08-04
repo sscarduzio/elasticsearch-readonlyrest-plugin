@@ -17,7 +17,7 @@
 package tech.beshu.ror.integration.suites
 
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
@@ -26,24 +26,15 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 trait DocumentApiSuite
   extends AnyWordSpec
-    with BaseEsClusterIntegrationTest
-    with SingleClientSupport
+    with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
-  override implicit val rorConfigFileName: String = "/document_api/readonlyrest.yml"
+  override implicit val rorConfigFileName = "/document_api/readonlyrest.yml"
 
-  override lazy val targetEs: EsContainer = container.nodes.head
+  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(DocumentApiSuite.nodeDataInitializer())
 
   private lazy val dev1documentManager = new DocumentManager(basicAuthClient("dev1", "test"), esVersionUsed)
-
-  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      nodeDataInitializer = DocumentApiSuite.nodeDataInitializer(),
-      xPackSupport = true,
-    )
-  )
 
   "ROR" when {
     "_mget API is used" should {

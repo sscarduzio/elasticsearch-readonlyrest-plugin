@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleMSearchApiSourceFilteringSuite
-import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
 
-class FieldRuleSourceFilteringMSearchApiProxyTests extends FieldRuleMSearchApiSourceFilteringSuite with XpackEsClusterProxyTestSupport
+class FieldRuleSourceFilteringMSearchApiProxyTests extends FieldRuleMSearchApiSourceFilteringSuite with SingleNodeProxyTestSupport

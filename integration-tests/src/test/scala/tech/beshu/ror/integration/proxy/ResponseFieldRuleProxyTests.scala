@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.ResponseFieldRuleSuite
-import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
 
-class ResponseFieldRuleProxyTests extends ResponseFieldRuleSuite with XpackEsClusterProxyTestSupport
+class ResponseFieldRuleProxyTests extends ResponseFieldRuleSuite with SingleNodeProxyTestSupport
