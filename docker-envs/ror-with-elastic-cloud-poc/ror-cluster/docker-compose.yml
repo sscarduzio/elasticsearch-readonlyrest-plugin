@@ -1,0 +1,58 @@
+version: "3.7"
+services:
+
+  es-ror01:
+    build:
+      context: .
+      dockerfile: es/Dockerfile
+      args:
+        ES_VERSION: $ELK_VERSION
+        ROR_VERSION: $ROR_VERSION
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+      - "5000:58672"
+    environment:
+      - cluster.name=es-cluster
+      - node.name=es-ror01-single
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672"
+      - ES_VERSION=$ELK_VERSION
+    networks:
+      - es-ror-network
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  es-ror-proxy:
+    image: mitmproxy/mitmproxy
+    command:
+      mitmdump --mode reverse:https://es-ror01:9200 --ssl-insecure --verbose
+    depends_on:
+      - es03
+    networks:
+      - es-ror-network
+
+  kbn-ror:
+    build:
+      context: .
+      dockerfile: kbn/Dockerfile
+      args:
+        ELK_VERSION: $ELK_VERSION
+        ROR_VERSION: $ROR_VERSION
+    ports:
+      - "15601:5601"
+    environment:
+      ELASTIC_USER_PASSWORD: elastic
+    networks:
+      - es-ror-network
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+networks:
+  es-ror-network:
+    driver: bridge
