@@ -1,9 +1,15 @@
 ARG ES_VERSION
 
-FROM docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}
+FROM ror-builder AS build
 
 ARG ES_VERSION
-ARG ROR_VERSION
+
+RUN /ror/build-ror.sh &&\
+    ls -h /ror/builds &&\
+    mv /ror/builds/readonlyrest*es${ES_VERSION}.zip /ror/builds/ror.zip
+
+FROM docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}
+COPY --from=build /ror/builds/ror.zip /tmp/ror.zip
 
 COPY certs/elastic-certificates.p12 /usr/share/elasticsearch/config/
 COPY es/readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
@@ -11,7 +17,7 @@ COPY es/elasticsearch.yml /usr/share/elasticsearch/config/elasticsearch.yml
 
 USER root
 
-RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch "https://api.beshu.tech/download/es?esVersion=$ES_VERSION&pluginVersion=$ROR_VERSION" &&\
+RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch file:///tmp/ror.zip &&\
     jdk/bin/java -jar plugins/readonlyrest/ror-tools.jar patch
 
 USER elasticsearch

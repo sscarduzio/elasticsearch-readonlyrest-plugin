@@ -1,7 +1,18 @@
 version: "3.7"
 services:
 
-  es-ror01:
+  setup:
+    build:
+      context: .
+      dockerfile: setup/Dockerfile
+    depends_on:
+      - "es-ror"
+    command: >
+      bash -c './setup.sh'
+    networks:
+      - es-ror-network
+
+  es-ror:
     build:
       context: .
       dockerfile: es/Dockerfile
@@ -13,14 +24,15 @@ services:
       - "9300:9300"
       - "5000:58672"
     environment:
-      - cluster.name=es-cluster
-      - node.name=es-ror01-single
+      - cluster.name=ror-es-cluster
+      - node.name=es-ror-single
       - discovery.type=single-node
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672"
       - ES_VERSION=$ELK_VERSION
     networks:
       - es-ror-network
+      - elastic-cloud_es-network
     ulimits:
       memlock:
         soft: -1
@@ -29,9 +41,9 @@ services:
   es-ror-proxy:
     image: mitmproxy/mitmproxy
     command:
-      mitmdump --mode reverse:https://es-ror01:9200 --ssl-insecure --verbose
+      mitmdump --set validate_inbound_headers=false --mode reverse:https://es-ror:9200 --ssl-insecure --verbose
     depends_on:
-      - es03
+      - "es-ror"
     networks:
       - es-ror-network
 
@@ -42,6 +54,8 @@ services:
       args:
         ELK_VERSION: $ELK_VERSION
         ROR_VERSION: $ROR_VERSION
+    depends_on:
+      - "es-ror-proxy"
     ports:
       - "15601:5601"
     environment:
@@ -56,3 +70,5 @@ services:
 networks:
   es-ror-network:
     driver: bridge
+  elastic-cloud_es-network:
+    external: true

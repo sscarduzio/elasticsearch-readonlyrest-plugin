@@ -17,7 +17,6 @@ readonlyrest:
 
   access_control_rules:
 
-    # ES containter initializer need this rule to configure ES instance after startup
     - name: "CONTAINER ADMIN"
       type: allow
       auth_key: admin:container
@@ -25,3 +24,4 @@ readonlyrest:
     - name: "User 1"
       type: allow
       auth_key: "user1:test"
+      indices: [".kibana*", "cloud:index*", "index*"]

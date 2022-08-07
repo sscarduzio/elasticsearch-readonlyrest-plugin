@@ -2,17 +2,18 @@ version: "3.7"
 services:
 
   setup:
-    image: travelping/nettools:1.10.1
+    build:
+      context: .
+      dockerfile: setup/Dockerfile
     depends_on:
       - "es01"
       - "es02"
       - "es03"
     command: >
-      bash -c '
-        echo "Setting kibana_system password";
-        until curl --fail -k -X POST -u elastic:${ELASTIC_PASSWORD} -H "Content-Type: application/json" https://es01:9200/_security/user/kibana_system/_password -d "{\"password\":\"${KIBANA_PASSWORD}\"}" | grep -q "^{}"; do sleep 10; done;
-        echo "All done!";
-      '
+      bash -c './setup.sh'
+    environment:
+      ELASTIC_PASSWORD: $ELASTIC_PASSWORD
+      KIBANA_PASSWORD: $KIBANA_PASSWORD
     networks:
       - es-network
 
@@ -25,6 +26,7 @@ services:
         ELASTIC_PASSWORD: $ELASTIC_PASSWORD
     ports:
       - "5001:58672"
+      - "9301:9300"
     environment:
       - cluster.name=es-cluster
       - node.name=es01-master
@@ -60,6 +62,7 @@ services:
         ELASTIC_PASSWORD: $ELASTIC_PASSWORD
     ports:
       - "5002:58672"
+      - "9302:9300"
     environment:
       - cluster.name=es-cluster
       - node.name=es02-master
@@ -95,6 +98,7 @@ services:
         ELASTIC_PASSWORD: $ELASTIC_PASSWORD
     ports:
       - "5003:58672"
+      - "9303:9300"
     environment:
       - cluster.name=es-cluster
       - node.name=es03-master
@@ -124,7 +128,7 @@ services:
   es-xpack-proxy:
     image: mitmproxy/mitmproxy
     command:
-      mitmdump --mode reverse:https://es02:9200 --ssl-insecure --verbose
+      mitmdump --set validate_inbound_headers=false --mode reverse:https://es02:9200 --ssl-insecure --verbose
     depends_on:
       - es02
     networks:
