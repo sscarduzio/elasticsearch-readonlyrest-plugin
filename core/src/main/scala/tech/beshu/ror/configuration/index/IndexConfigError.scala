@@ -14,25 +14,26 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.configuration.index
 
-import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.es.IndexJsonContentService.{ReadError, WriteError}
+import cats.Show
 
-trait IndexJsonContentService {
+sealed trait IndexConfigError
+object IndexConfigError {
+  case object IndexConfigNotExist extends IndexConfigError
+  case object IndexConfigUnknownStructure extends IndexConfigError
 
-  def sourceOf(index: IndexName.Full, id: String): Task[Either[ReadError, Map[String, _]]]
-
-  def saveContent(index: IndexName.Full, id: String, content: Map[String, String]): Task[Either[WriteError, Unit]]
+  implicit val show: Show[IndexConfigError] = Show.show {
+    case IndexConfigNotExist => "Cannot find settings index"
+    case IndexConfigUnknownStructure => s"Unknown structure of index settings"
+  }
 }
 
-object IndexJsonContentService {
+sealed trait SavingIndexConfigError
+object SavingIndexConfigError {
+  case object CannotSaveConfig extends SavingIndexConfigError
 
-  sealed trait ReadError
-  case object ContentNotFound extends ReadError
-  case object CannotReachContentSource extends ReadError
-
-  sealed trait WriteError
-  case object CannotWriteToIndex extends WriteError
+  implicit val show: Show[SavingIndexConfigError] = Show.show {
+    case CannotSaveConfig => "Cannot save settings in index"
+  }
 }

@@ -14,25 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.configuration.index
 
-import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.es.IndexJsonContentService.{ReadError, WriteError}
+private[index] object Config {
+  object auditIndexConst {
+    val id = "1"
+    val settingsKey = "settings"
+  }
 
-trait IndexJsonContentService {
-
-  def sourceOf(index: IndexName.Full, id: String): Task[Either[ReadError, Map[String, _]]]
-
-  def saveContent(index: IndexName.Full, id: String, content: Map[String, String]): Task[Either[WriteError, Unit]]
-}
-
-object IndexJsonContentService {
-
-  sealed trait ReadError
-  case object ContentNotFound extends ReadError
-  case object CannotReachContentSource extends ReadError
-
-  sealed trait WriteError
-  case object CannotWriteToIndex extends WriteError
+  object testSettingsIndexConst {
+    val id = "2"
+  }
 }

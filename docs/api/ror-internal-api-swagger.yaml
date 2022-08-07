@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: ROR Internal API
   description: The API is designed for ROR KBN plugin. It should be treated as internal. It means that backward compatibility won't be a first-class thing for us.
-  version: 1.0.0
+  version: 1.1.0
 
 paths:
   /_readonlyrest/admin/config/test:
@@ -15,7 +15,7 @@ paths:
         - $ref: '#/components/parameters/XRorCorrelationIdHeader'
       responses:
         200:
-          description: Contains currenlty configured Test Settings or business error
+          description: Contains currently configured Test Settings or business error
           content:
             application/json:
               schema:
@@ -111,8 +111,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/InvalidateTestSettingsResponse'
               examples:
-                InvalidateTestSettingsResponseExample:
-                  $ref: "#/components/examples/InvalidateTestSettingsResponseExample"
+                InvalidateTestSettingsSuccessResponseExample:
+                  $ref: "#/components/examples/InvalidateTestSettingsSuccessResponseExample"
+                InvalidateTestSettingsFailedResponseExample:
+                  $ref: "#/components/examples/InvalidateTestSettingsFailedResponseExample"
         403:
           description: The request was forbidden by ROR's ACL
           content:
@@ -137,7 +139,7 @@ paths:
   /_readonlyrest/admin/config/test/localusers:
     get:
       summary: Getting list of local users
-      description: The endpoint can be used to fetch local users' names defined in currenlty configured Test settings. If Test settings are not configured, the endpoint returns proper error.
+      description: The endpoint can be used to fetch local users' names defined in currently configured Test settings. If Test settings are not configured, the endpoint returns proper error.
       tags:
         - Test Settings
       parameters:
@@ -484,6 +486,16 @@ components:
           description: Human readable message (cause)
 
     InvalidateTestSettingsResponse:
+      oneOf:
+        - $ref: '#/components/schemas/InvalidateTestSettingsSuccessResponse'
+        - $ref: '#/components/schemas/InvalidateTestSettingsFailedResponse'
+      discriminator:
+        propertyName: status
+        mapping:
+          OK: '#/components/schemas/InvalidateTestSettingsSuccessResponse'
+          FAILED: '#/components/schemas/InvalidateTestSettingsFailedResponse'
+
+    InvalidateTestSettingsSuccessResponse:
       type: object
       required:
         - status
@@ -493,6 +505,20 @@ components:
           type: string
           enum:
             - OK
+        message:
+          type: string
+          description: Human readable message (cause)
+
+    InvalidateTestSettingsFailedResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          enum:
+            - FAILED
         message:
           type: string
           description: Human readable message (cause)
@@ -922,11 +948,17 @@ components:
         status: FAILED
         message: Current settings are already loaded
 
-    InvalidateTestSettingsResponseExample:
+    InvalidateTestSettingsSuccessResponseExample:
       summary: ROR Test settings were invalidated
       value:
         status: OK
         message: test settings invalidated
+
+    InvalidateTestSettingsFailedResponseExample:
+      summary: ROR Test settings invalidation failed
+      value:
+        status: FAILED
+        message: cannot invalidate test settings
 
     GetLocalUsersFromTestSettingsResponseExample:
       summary: Local users list response

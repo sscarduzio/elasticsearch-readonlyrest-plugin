@@ -17,8 +17,11 @@
 package tech.beshu.ror.boot
 
 import java.nio.file.Path
-import java.time.Clock
+import java.time.{Clock, Instant}
+
 import cats.data.{EitherT, NonEmptyList}
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -32,15 +35,18 @@ import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, Audi
 import tech.beshu.ror.boot.ReadonlyRest._
 import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
 import tech.beshu.ror.configuration._
-import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedRorConfig}
+import tech.beshu.ror.configuration.index.{IndexConfigManager, IndexTestConfigManager}
+import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadRawTestRorConfig, LoadedRorConfig, LoadedTestRorConfig, TestConfigLoadingInterpreter}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers._
 
+import scala.concurrent.duration.FiniteDuration
 import scala.language.{implicitConversions, postfixOps}
 
 class ReadonlyRest(coreFactory: CoreFactory,
                    auditSinkCreator: AuditSinkCreator,
                    val indexConfigManager: IndexConfigManager,
+                   val indexTestConfigManager: IndexTestConfigManager,
                    val mocksProvider: MutableMocksProviderWithCachePerRequest,
                    val esConfigPath: Path)
                   (implicit scheduler: Scheduler,
@@ -52,7 +58,8 @@ class ReadonlyRest(coreFactory: CoreFactory,
     (for {
       esConfig <- loadEsConfig()
       loadedRorConfig <- loadRorConfig(esConfig)
-      instance <- startRor(esConfig, loadedRorConfig)
+      loadedTestRorConfig <- loadRorTestConfig(esConfig)
+      instance <- startRor(esConfig, loadedRorConfig, loadedTestRorConfig)
     } yield instance).value
   }
 
@@ -64,6 +71,11 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def loadRorConfig(esConfig: EsConfig) = {
     val action = LoadRawRorConfig.load(esConfigPath, esConfig, esConfig.rorIndex.index)
     runStartingFailureProgram(action)
+  }
+
+  private def loadRorTestConfig(esConfig: EsConfig): EitherT[Task, StartingFailure, LoadedTestRorConfig[TestRorConfig]] = {
+    val action = LoadRawTestRorConfig.load(esConfig.rorIndex.index)
+    runTestStartingFailureProgram(action)
   }
 
   private def runStartingFailureProgram[A](action: LoadRorConfig[ErrorOr[A]]) = {
@@ -89,25 +101,61 @@ class ReadonlyRest(coreFactory: CoreFactory,
     }
   }
 
+  private def runTestStartingFailureProgram[A](action: TestConfigLoading.LoadTestRorConfig[TestConfigLoading.ErrorOr[A]]): EitherT[Task, StartingFailure, A] = {
+    val compiler = TestConfigLoadingInterpreter.create(indexTestConfigManager, RorProperties.rorIndexSettingLoadingDelay)
+    EitherT(action.foldMap(compiler))
+      .leftMap(toStartingFailure)
+  }
+
+  private def toStartingFailure(error: LoadedTestRorConfig.Error) = {
+    error match {
+      case LoadedTestRorConfig.IndexParsingError(message) =>
+        StartingFailure(message)
+      case LoadedTestRorConfig.IndexUnknownStructure =>
+        StartingFailure(s"Test settings index is malformed")
+    }
+  }
+
   private def startRor(esConfig: EsConfig,
-                       loadedConfig: LoadedRorConfig[RawRorConfig]) = {
+                       loadedConfig: LoadedRorConfig[RawRorConfig],
+                       loadedTestRorConfig: LoadedTestRorConfig[TestRorConfig]) = {
     for {
-      engine <- EitherT(loadRorCore(loadedConfig.value, esConfig.rorIndex.index))
-      rorInstance <- createRorInstance(esConfig.rorIndex.index, engine, loadedConfig)
+      mainEngine <- EitherT(loadRorCore(loadedConfig.value, esConfig.rorIndex.index))
+      testEngine <- loadedTestRorConfig.value match {
+        case TestRorConfig.NotSet =>
+          EitherT.right(Task.now(TestEngine.NotConfigured))
+        case config@TestRorConfig.Present(rawConfig, expiration) if !config.hasExpired(clock)=>
+          EitherT(loadRorCore(rawConfig, esConfig.rorIndex.index))
+            .map( loadedEngine =>
+              TestEngine.Configured(
+                engine = loadedEngine,
+                config = rawConfig,
+                expiration = expirationConfig(expiration)
+              )
+            )
+        case TestRorConfig.Present(rawConfig, expiration) =>
+          EitherT.right(Task.now(TestEngine.Invalidated(rawConfig, expirationConfig(expiration))))
+      }
+      rorInstance <- createRorInstance(esConfig.rorIndex.index, mainEngine, testEngine, loadedConfig)
     } yield rorInstance
+  }
+
+  private def expirationConfig(config: TestRorConfig.Present.ExpirationConfig): TestEngine.Expiration = {
+    TestEngine.Expiration(config.ttl, config.validTo)
   }
 
   private def createRorInstance(rorConfigurationIndex: RorConfigurationIndex,
                                 engine: Engine,
+                                testEngine: TestEngine,
                                 loadedConfig: LoadedRorConfig[RawRorConfig]) = {
     EitherT.right[StartingFailure] {
       loadedConfig match {
         case LoadedRorConfig.FileConfig(config) =>
-          RorInstance.createWithPeriodicIndexCheck(this, engine, config, rorConfigurationIndex)
+          RorInstance.createWithPeriodicIndexCheck(this, MainEngine(engine, config), testEngine, rorConfigurationIndex)
         case LoadedRorConfig.ForcedFileConfig(config) =>
-          RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, rorConfigurationIndex)
+          RorInstance.createWithoutPeriodicIndexCheck(this, MainEngine(engine, config), testEngine, rorConfigurationIndex)
         case LoadedRorConfig.IndexConfig(_, config) =>
-          RorInstance.createWithPeriodicIndexCheck(this, engine, config, rorConfigurationIndex)
+          RorInstance.createWithPeriodicIndexCheck(this, MainEngine(engine, config), testEngine, rorConfigurationIndex)
       }
     }
   }
@@ -193,6 +241,21 @@ object ReadonlyRest {
     case object Proxy extends RorMode
   }
 
+  final case class MainEngine(engine: Engine,
+                              config: RawRorConfig)
+
+  sealed trait TestEngine
+  object TestEngine {
+    object NotConfigured extends TestEngine
+    final case class Configured(engine: Engine,
+                                config: RawRorConfig,
+                                expiration: Expiration) extends TestEngine
+    final case class Invalidated(config: RawRorConfig,
+                                 expiration: Expiration) extends TestEngine
+    final case class Expiration(ttl: FiniteDuration Refined Positive,
+                                validTo: Instant)
+  }
+
   final class Engine(val core: Core,
                      httpClientsFactory: AsyncHttpClientsFactory,
                      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
@@ -229,8 +292,9 @@ object ReadonlyRest {
              propertiesProvider: PropertiesProvider,
              clock: Clock): ReadonlyRest = {
     val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService)
+    val indexTestConfigManager: IndexTestConfigManager = new IndexTestConfigManager(indexContentService)
     val mocksProvider = new MutableMocksProviderWithCachePerRequest(NoOpMocksProvider)
 
-    new ReadonlyRest(coreFactory, auditSinkCreator, indexConfigManager, mocksProvider, esConfigPath)
+    new ReadonlyRest(coreFactory, auditSinkCreator, indexConfigManager, indexTestConfigManager, mocksProvider, esConfigPath)
   }
 }

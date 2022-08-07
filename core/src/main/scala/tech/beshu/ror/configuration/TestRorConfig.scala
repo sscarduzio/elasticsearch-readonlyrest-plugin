@@ -14,9 +14,28 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.proxy
+package tech.beshu.ror.configuration
 
-import tech.beshu.ror.integration.suites.AdminApiAuthMockSuite
-import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
+import java.time.{Clock, Instant}
 
-class AdminAuthMockApiProxyTests extends AdminApiAuthMockSuite with SingleNodeProxyTestSupport
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.Positive
+
+import scala.concurrent.duration.FiniteDuration
+
+sealed trait TestRorConfig
+object TestRorConfig {
+  case object NotSet extends TestRorConfig
+
+  final case class Present(rawConfig: RawRorConfig,
+                           expiration: Present.ExpirationConfig) extends TestRorConfig {
+    def hasExpired(clock: Clock): Boolean = {
+      expiration.validTo.isBefore(clock.instant())
+    }
+  }
+
+  object Present {
+    final case class ExpirationConfig(ttl: FiniteDuration Refined Positive,
+                                      validTo: Instant)
+  }
+}
