@@ -21,7 +21,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.CrossClusterCallsSuite._
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.RorCluster
+import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
@@ -39,24 +39,24 @@ trait CrossClusterCallsSuite
   override lazy val targetEs = container.localCluster.nodes.head
 
   override val remoteClusterContainer: EsRemoteClustersContainer = createRemoteClustersContainer(
-    localClustersSettings = EsClusterSettings(
-      name = "ROR_L1",
-      clusterType = RorCluster(Attributes.default.copy(
+    localClustersSettings = EsClusterSettings.create(
+      clusterName = "ROR_L1",
+      securityType = RorSecurity(Attributes.default.copy(
         rorConfigFileName = rorConfigFileName,
       )),
       nodeDataInitializer = localClusterNodeDataInitializer(),
     ),
     remoteClustersSettings = NonEmptyList.of(
-      EsClusterSettings(
-        name = "ROR_R1",
-        clusterType = RorCluster(Attributes.default.copy(
+      EsClusterSettings.create(
+        clusterName = "ROR_R1",
+        securityType = RorSecurity(Attributes.default.copy(
           rorConfigFileName = rorConfigFileName,
         )),
         nodeDataInitializer = privateRemoteClusterNodeDataInitializer()
       ),
-      EsClusterSettings(
-        name = "ROR_R2",
-        clusterType = RorCluster(Attributes.default.copy(
+      EsClusterSettings.create(
+        clusterName = "ROR_R2",
+        securityType = RorSecurity(Attributes.default.copy(
           rorConfigFileName = rorConfigFileName,
         )),
         nodeDataInitializer = publicRemoteClusterNodeDataInitializer()
@@ -456,7 +456,7 @@ object CrossClusterCallsSuite {
   }
 
   private def findRemoteClusterByName(name: String, remoteClusters: NonEmptyList[EsClusterContainer]) = {
-    remoteClusters.find(_.nodes.exists(_.esClusterSettings.name == name))
+    remoteClusters.find(_.nodes.exists(_.esConfig.clusterName == name))
       .getOrElse(throw new IllegalStateException(s"Cannot find remote cluster with name $name"))
   }
 }

@@ -23,16 +23,15 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 import scala.language.postfixOps
 
-class EsContainerWithRorSecurity private(name: String,
-                                         esVersion: String,
+class EsContainerWithRorSecurity private(esVersion: String,
+                                         esConfig: Elasticsearch.Config,
                                          startedClusterDependencies: StartedClusterDependencies,
-                                         esClusterSettings: EsClusterSettings,
                                          image: ImageFromDockerfile,
                                          override val sslEnabled: Boolean)
-  extends EsContainer(name, esVersion, startedClusterDependencies, esClusterSettings, image)
+  extends EsContainer(esVersion, esConfig, startedClusterDependencies, image)
     with StrictLogging {
 
-  logger.info(s"[$name] Creating ES with ROR plugin installed container ...")
+  logger.info(s"[${esConfig.nodeName}] Creating ES with ROR plugin installed container ...")
 
   override lazy val adminClient: RestClient = {
     import EsContainerWithRorSecurity.rorAdminCredentials
@@ -48,13 +47,11 @@ object EsContainerWithRorSecurity extends StrictLogging {
              esConfig: Elasticsearch.Config,
              rorConfig: ReadonlyRestPlugin.Config,
              initializer: ElasticsearchNodeDataInitializer,
-             startedClusterDependencies: StartedClusterDependencies,
-             esClusterSettings: EsClusterSettings): EsContainer = {
+             startedClusterDependencies: StartedClusterDependencies): EsContainer = {
     val rorContainer = new EsContainerWithRorSecurity(
-      esConfig.nodeName,
       esVersion,
+      esConfig,
       startedClusterDependencies,
-      esClusterSettings,
       esImageWithRorFromDockerfile(esVersion, esConfig, rorConfig),
       rorConfig.attributes.restSslEnabled
     )
