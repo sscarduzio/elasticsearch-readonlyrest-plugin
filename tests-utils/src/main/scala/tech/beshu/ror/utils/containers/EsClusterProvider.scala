@@ -57,7 +57,7 @@ sealed trait EsClusterProvider extends EsContainerCreator {
                                     remoteClusterSetup: SetupRemoteCluster): EsRemoteClustersContainer = {
     new EsRemoteClustersContainer(
       createLocalClusterContainer(localClustersSettings),
-      remoteClustersSettings.map(createLocalClusterContainer),
+      NonEmptyList.fromListUnsafe(remoteClustersSettings.toList.par.map(createLocalClusterContainer).toList),
       remoteClusterSetup
     )
   }
