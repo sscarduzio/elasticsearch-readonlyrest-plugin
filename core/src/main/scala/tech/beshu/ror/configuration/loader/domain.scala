@@ -35,7 +35,7 @@ object LoadedRorConfig {
   sealed trait LoadingIndexError
   final case class IndexParsingError(message: String) extends LoadedRorConfig.Error with LoadingIndexError
   case object IndexUnknownStructure extends LoadedRorConfig.Error with LoadingIndexError
-  case object IndexNotExist  extends LoadingIndexError
+  case object IndexNotExist extends LoadingIndexError
 }
 final case class Path(value: String) extends AnyVal
 
