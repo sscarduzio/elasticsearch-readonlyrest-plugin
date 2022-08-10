@@ -50,6 +50,13 @@ trait CrossClusterCallsSuite
     ),
     remoteClustersSettings = NonEmptyList.of(
       EsClusterSettings.create(
+        clusterName = "XPACK",
+        securityType = XPackSecurity(XpackSecurityPlugin.Config.Attributes.default.copy(
+          internodeSslEnabled = true
+        )),
+        nodeDataInitializer = xpackRemoteClusterNodeDataInitializer()
+      ),
+      EsClusterSettings.create(
         clusterName = "ROR_R1",
         securityType = RorSecurity(Attributes.default.copy(
           rorConfigFileName = rorConfigFileName,
@@ -64,14 +71,7 @@ trait CrossClusterCallsSuite
           internodeSslEnabled = true
         )),
         nodeDataInitializer = publicRemoteClusterNodeDataInitializer()
-      ),
-      EsClusterSettings.create(
-        clusterName = "XPACK",
-        securityType = XPackSecurity(XpackSecurityPlugin.Config.Attributes.default.copy(
-          internodeSslEnabled = true
-        )),
-        nodeDataInitializer = xpackRemoteClusterNodeDataInitializer()
-      ),
+      )
     ),
     remoteClusterSetup()
   )
