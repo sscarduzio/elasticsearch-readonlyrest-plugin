@@ -26,6 +26,7 @@ services:
         ELASTIC_PASSWORD: $ELASTIC_PASSWORD
     ports:
       - "5001:58672"
+      - "9201:9200"
       - "9301:9300"
     environment:
       - cluster.name=es-cluster
@@ -62,6 +63,7 @@ services:
         ELASTIC_PASSWORD: $ELASTIC_PASSWORD
     ports:
       - "5002:58672"
+      - "9202:9200"
       - "9302:9300"
     environment:
       - cluster.name=es-cluster
@@ -98,6 +100,7 @@ services:
         ELASTIC_PASSWORD: $ELASTIC_PASSWORD
     ports:
       - "5003:58672"
+      - "9203:9200"
       - "9303:9300"
     environment:
       - cluster.name=es-cluster

@@ -17,6 +17,8 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
+import org.scalatest.concurrent.Eventually
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.CrossClusterCallsSuite._
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
@@ -32,7 +34,8 @@ trait CrossClusterCallsSuite
   extends AnyWordSpec
     with BaseEsRemoteClusterIntegrationTest
     with SingleClientSupport
-    with ESVersionSupportForAnyWordSpecLike {
+    with ESVersionSupportForAnyWordSpecLike
+    with Eventually {
   this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/cross_cluster_search/readonlyrest.yml"
@@ -76,6 +79,9 @@ trait CrossClusterCallsSuite
     remoteClusterSetup()
   )
 
+  implicit override val patienceConfig: PatienceConfig =
+    PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
+
   private lazy val user1SearchManager = new SearchManager(basicAuthClient("dev1", "test"))
   private lazy val user2SearchManager = new SearchManager(basicAuthClient("dev2", "test"))
   private lazy val user3SearchManager = new SearchManager(basicAuthClient("dev3", "test"))
@@ -85,7 +91,7 @@ trait CrossClusterCallsSuite
   "A cluster _search for given index" should {
     "return 200 and allow user to its content" when {
       "user has permission to do so" when {
-        "he queries local and remote indices" in {
+        "he queries local and remote indices" in eventually {
           val result = user3SearchManager.search("etl1:etl*", "metrics*")
           result.responseCode should be(200)
           result.searchHits.map(i => i("_index").str).toSet should be(
