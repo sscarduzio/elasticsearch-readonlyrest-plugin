@@ -1,0 +1,93 @@
+version: "3.7"
+services:
+
+#  es:
+#    build:
+#      context: .
+#      dockerfile: ror/es/Dockerfile
+#      args:
+#        ES_VERSION: $ELK_VERSION
+#    ports:
+#      - "9200:9200"
+#      - "9300:9300"
+#      - "5000:58672"
+#    environment:
+#      - cluster.name=es-cluster
+#      - node.name=es-ror
+#      - bootstrap.memory_lock=true
+#      - discovery.type=single-node
+#      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672"
+#      - ES_VERSION=$ELK_VERSION
+#    networks:
+#      - es-network
+#    ulimits:
+#      memlock:
+#        soft: -1
+#        hard: -1
+#
+#  es-ror-proxy:
+#    image: mitmproxy/mitmproxy
+#    command:
+#      mitmdump --mode reverse:https://es:9200 --ssl-insecure --verbose
+#    depends_on:
+#      - es
+#    networks:
+#      - es-network
+#
+#  kbn-ror:
+#    build:
+#      context: .
+#      dockerfile: ror/kbn/Dockerfile
+#      args:
+#        ELK_VERSION: $ELK_VERSION
+#        ROR_KBN: $ROR_KBN
+#    ports:
+#      - "5601:5601"
+#    environment:
+#      ELASTIC_USER_PASSWORD: elastic
+#    networks:
+#      - es-network
+#    ulimits:
+#      memlock:
+#        soft: -1
+#        hard: -1
+
+  ldap:
+    image: osixia/openldap:1.5.0
+    command: --copy-service
+    ports:
+      - "389:389"
+    environment:
+      LDAP_ORGANISATION: example
+      LDAP_DOMAIN: example.com
+      LDAP_ADMIN_PASSWORD: password
+      LDAP_TLS_VERIFY_CLIENT: try
+    volumes:
+      - ./ldap:/container/service/slapd/assets/config/bootstrap/ldif/custom
+    networks:
+      - es-network
+
+  ldap-ui:
+    image: wheelybird/ldap-user-manager:v1.5
+    container_name: openldap-ui
+    environment:
+      - LDAP_URI=ldap://ldap
+      - LDAP_BASE_DN=dc=example,dc=com
+      - LDAP_REQUIRE_STARTTLS=FALSE
+      - LDAP_ADMINS_GROUP=admins
+      - LDAP_ADMIN_BIND_DN=cn=admin,dc=example,dc=com
+      - LDAP_ADMIN_BIND_PWD=admin
+      - LDAP_IGNORE_CERT_ERRORS=true
+      - NO_HTTPS=TRUE
+      - PASSWORD_HASH=SSHA
+      - SERVER_HOSTNAME=localhost:18080
+    depends_on:
+      - ldap
+    ports:
+      - 18080:80
+    networks:
+      - es-network
+
+networks:
+  es-network:
+    driver: bridge
