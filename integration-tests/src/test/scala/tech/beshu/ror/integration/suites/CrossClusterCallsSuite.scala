@@ -57,12 +57,12 @@ trait CrossClusterCallsSuite
     ),
     remoteClustersSettings = if (executedOn(allEs6xExceptEs67x)) {
       NonEmptyList.of(
-        xpackClusterSettings(),
         rorClusterSettings("ROR_R1", privateRemoteClusterNodeDataInitializer()),
         rorClusterSettings("ROR_R2", publicRemoteClusterNodeDataInitializer())
       )
     } else {
       NonEmptyList.of(
+        xpackClusterSettings(),
         rorClusterSettings("ROR_R1", privateRemoteClusterNodeDataInitializer()),
         rorClusterSettings("ROR_R2", publicRemoteClusterNodeDataInitializer())
       )
@@ -101,7 +101,7 @@ trait CrossClusterCallsSuite
   "A cluster _search for given index" should {
     "return 200 and allow user to its content" when {
       "user has permission to do so" when {
-        "he queries local and remote indices" excludeES (allEs6xExceptEs67x) in eventually {
+        "he queries local and remote indices" in eventually {
           val result = user3SearchManager.search("etl1:etl*", "metrics*")
           result.responseCode should be(200)
           result.searchHits.map(i => i("_index").str).toSet should be(
@@ -113,7 +113,7 @@ trait CrossClusterCallsSuite
           result.responseCode should be(200)
           result.searchHits.arr.size should be(2)
         }
-        "he queries remote xpack cluster indices" in {
+        "he queries remote xpack cluster indices" excludeES (allEs6xExceptEs67x) in {
           val result = user5SearchManager.search("xpack:xpack*")
           result.responseCode should be(200)
           result.searchHits.arr.size should be(2)
