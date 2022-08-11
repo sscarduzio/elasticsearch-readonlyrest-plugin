@@ -17,10 +17,10 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
+import com.typesafe.scalalogging.StrictLogging
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.integration.suites.CrossClusterCallsSuite._
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, XPackSecurity}
@@ -30,6 +30,8 @@ import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
+import scala.language.postfixOps
+
 trait CrossClusterCallsSuite
   extends AnyWordSpec
     with BaseEsRemoteClusterIntegrationTest
@@ -37,6 +39,8 @@ trait CrossClusterCallsSuite
     with ESVersionSupportForAnyWordSpecLike
     with Eventually {
   this: EsClusterProvider =>
+
+  import tech.beshu.ror.integration.suites.CrossClusterCallsSuite._
 
   override implicit val rorConfigFileName = "/cross_cluster_search/readonlyrest.yml"
 
@@ -51,33 +55,39 @@ trait CrossClusterCallsSuite
       )),
       nodeDataInitializer = localClusterNodeDataInitializer(),
     ),
-    remoteClustersSettings = NonEmptyList.of(
-      EsClusterSettings.create(
-        clusterName = "XPACK",
-        securityType = XPackSecurity(XpackSecurityPlugin.Config.Attributes.default.copy(
-          internodeSslEnabled = true
-        )),
-        nodeDataInitializer = xpackRemoteClusterNodeDataInitializer()
-      ),
-      EsClusterSettings.create(
-        clusterName = "ROR_R1",
-        securityType = RorSecurity(Attributes.default.copy(
-          rorConfigFileName = rorConfigFileName,
-          internodeSslEnabled = true
-        )),
-        nodeDataInitializer = privateRemoteClusterNodeDataInitializer()
-      ),
-      EsClusterSettings.create(
-        clusterName = "ROR_R2",
-        securityType = RorSecurity(Attributes.default.copy(
-          rorConfigFileName = rorConfigFileName,
-          internodeSslEnabled = true
-        )),
-        nodeDataInitializer = publicRemoteClusterNodeDataInitializer()
+    remoteClustersSettings = if (executedOn(allEs6xExceptEs67x)) {
+      NonEmptyList.of(
+        xpackClusterSettings(),
+        rorClusterSettings("ROR_R1", privateRemoteClusterNodeDataInitializer()),
+        rorClusterSettings("ROR_R2", publicRemoteClusterNodeDataInitializer())
       )
-    ),
+    } else {
+      NonEmptyList.of(
+        rorClusterSettings("ROR_R1", privateRemoteClusterNodeDataInitializer()),
+        rorClusterSettings("ROR_R2", publicRemoteClusterNodeDataInitializer())
+      )
+    },
     remoteClusterSetup()
   )
+
+  private def xpackClusterSettings() = EsClusterSettings.create(
+    clusterName = "XPACK",
+    securityType = XPackSecurity(XpackSecurityPlugin.Config.Attributes.default.copy(
+      internodeSslEnabled = true
+    )),
+    nodeDataInitializer = xpackRemoteClusterNodeDataInitializer()
+  )
+
+  private def rorClusterSettings(name: String,
+                                 nodeDataInitializer: ElasticsearchNodeDataInitializer) =
+    EsClusterSettings.create(
+      clusterName = name,
+      securityType = RorSecurity(Attributes.default.copy(
+        rorConfigFileName = rorConfigFileName,
+        internodeSslEnabled = true
+      )),
+      nodeDataInitializer = nodeDataInitializer
+    )
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
@@ -91,7 +101,7 @@ trait CrossClusterCallsSuite
   "A cluster _search for given index" should {
     "return 200 and allow user to its content" when {
       "user has permission to do so" when {
-        "he queries local and remote indices" in eventually {
+        "he queries local and remote indices" excludeES (allEs6xExceptEs67x) in eventually {
           val result = user3SearchManager.search("etl1:etl*", "metrics*")
           result.responseCode should be(200)
           result.searchHits.map(i => i("_index").str).toSet should be(
@@ -430,7 +440,7 @@ trait CrossClusterCallsSuite
   }
 }
 
-object CrossClusterCallsSuite {
+object CrossClusterCallsSuite extends StrictLogging {
 
   def localClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
@@ -477,16 +487,20 @@ object CrossClusterCallsSuite {
   }
 
   def remoteClusterSetup(): SetupRemoteCluster = (remoteClusters: NonEmptyList[EsClusterContainer]) => {
-    Map(
-      "etl1" -> findRemoteClusterByName(name = "ROR_R1", remoteClusters),
-      "etl2" -> findRemoteClusterByName(name = "ROR_R1", remoteClusters),
-      "pub" -> findRemoteClusterByName(name = "ROR_R2", remoteClusters),
-      "xpack" -> findRemoteClusterByName(name = "XPACK", remoteClusters)
-    )
+    List(
+      ("etl1", findRemoteClusterByName(name = "ROR_R1", remoteClusters)),
+      ("etl2", findRemoteClusterByName(name = "ROR_R1", remoteClusters)),
+      ("pub", findRemoteClusterByName(name = "ROR_R2", remoteClusters)),
+      ("xpack", findRemoteClusterByName(name = "XPACK", remoteClusters))
+    ) collect { case (name, Some(foundCluster)) => (name, foundCluster) } toMap
   }
 
   private def findRemoteClusterByName(name: String, remoteClusters: NonEmptyList[EsClusterContainer]) = {
-    remoteClusters.find(_.nodes.exists(_.esConfig.clusterName == name))
-      .getOrElse(throw new IllegalStateException(s"Cannot find remote cluster with name $name"))
+    remoteClusters
+      .find(_.nodes.exists(_.esConfig.clusterName == name))
+      .orElse {
+        logger.warn(s"Cannot find remote cluster with name $name. Skipping")
+        None
+      }
   }
 }
