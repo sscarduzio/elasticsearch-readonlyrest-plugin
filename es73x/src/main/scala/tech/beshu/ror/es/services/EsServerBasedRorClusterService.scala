@@ -50,7 +50,8 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
-class EsServerBasedRorClusterService(clusterService: ClusterService,
+class EsServerBasedRorClusterService(nodeName: String,
+                                     clusterService: ClusterService,
                                      remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                                      snapshotsServiceSupplier: Supplier[Option[SnapshotsService]],
                                      nodeClient: NodeClient,
