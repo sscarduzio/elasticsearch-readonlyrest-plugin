@@ -1,11 +1,11 @@
 readonlyrest:
-  ssl:
-    enable: true
-    keystore_file: "elastic-certificates.p12"
-    keystore_pass: test
-    truststore_file: "elastic-certificates.p12"
-    truststore_pass: test
-    key_pass: test
+#  ssl:
+#    enable: true
+#    keystore_file: "elastic-certificates.p12"
+#    keystore_pass: test
+#    truststore_file: "elastic-certificates.p12"
+#    truststore_pass: test
+#    key_pass: test
 
   ssl_internode:
     enable: true
@@ -23,4 +23,21 @@ readonlyrest:
 
     - name: "User 1"
       type: allow
-      auth_key: "user1:test"
+      ldap_authentication: ldap1
+
+  ldaps:
+    - name: ldap1
+      host: "lldap"
+      port: 3890
+      ssl_enabled: false                                        # default true
+      ssl_trust_all_certs: true                                 # default false
+      bind_dn: "uid=admin,ou=people,dc=example,dc=com"
+      bind_password: "password"                                 # skip for anonymous bind
+      search_user_base_DN: "ou=People,dc=example,dc=com"
+      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      user_id_attribute: "uid"                                  # default "uid"
+      unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+      connection_pool_size: 10                                  # default 30
+      connection_timeout_in_sec: 1                             # default 1
+      request_timeout_in_sec: 1                                # default 1
+      cache_ttl_in_sec: 1                                      # default 0 - cache disabled

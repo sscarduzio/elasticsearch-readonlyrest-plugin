@@ -82,14 +82,17 @@ object LdapServicesDecoder {
       circuitBreakerSettings <- AsyncDecoderCreator.from(circuitBreakerDecoder)(cursor)
     } yield (authenticationService, authortizationService, circuitBreakerSettings) match {
       case (Right(authn), Right(authz), Right(circuitBreakerConfig)) => Right {
-        new CircuitBreakerLdapServiceDecorator(
-          new ComposedLdapAuthService(authn.id, authn, authz), circuitBreakerConfig
-        )
+        new ComposedLdapAuthService(authn.id, authn, authz)
+//        new CircuitBreakerLdapServiceDecorator(
+//          new ComposedLdapAuthService(authn.id, authn, authz), circuitBreakerConfig
+//        )
       }
       case (Right(authn), _, Right(circuitBreakerConfig)) =>
-        Right(new CircuitBreakerLdapAuthenticationServiceDecorator(authn, circuitBreakerConfig))
+        Right(authn)
+//        Right(new CircuitBreakerLdapAuthenticationServiceDecorator(authn, circuitBreakerConfig))
       case (_, Right(authz), Right(circuitBreakerConfig)) =>
-        Right(new CircuitBreakerLdapAuthorizationServiceDecorator(authz, circuitBreakerConfig))
+        Right(authz)
+//        Right(new CircuitBreakerLdapAuthorizationServiceDecorator(authz, circuitBreakerConfig))
       case (error@Left(_), _, _) => error
       case (_, _, Left(error)) => Left(error)
     }
