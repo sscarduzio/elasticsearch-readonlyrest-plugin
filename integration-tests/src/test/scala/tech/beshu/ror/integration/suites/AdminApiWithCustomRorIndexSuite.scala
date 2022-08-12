@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror.integration.suites
 
+import eu.timepit.refined.auto._
 import tech.beshu.ror.integration.suites.base.BaseAdminApiSuite
-import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
-import tech.beshu.ror.utils.containers.{EsClusterProvider, EsClusterSettings}
+import tech.beshu.ror.utils.containers.{EsClusterProvider, EsClusterSettings, SecurityType}
 
 trait AdminApiWithCustomRorIndexSuite extends BaseAdminApiSuite {
   this: EsClusterProvider =>
@@ -28,11 +28,11 @@ trait AdminApiWithCustomRorIndexSuite extends BaseAdminApiSuite {
   override protected val readonlyrestIndexName: String = "custom_ror_index"
 
   override protected lazy val rorWithIndexConfig = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
+    EsClusterSettings.create(
+      clusterName = "ROR1",
       numberOfInstances = 2,
       nodeDataInitializer = nodeDataInitializer(),
-      clusterType = ClusterType.RorCluster(Attributes.default.copy(
+      securityType = SecurityType.RorSecurity(Attributes.default.copy(
         customSettingsIndex = Some(readonlyrestIndexName),
         rorConfigFileName = rorConfigFileName
       ))
@@ -40,9 +40,9 @@ trait AdminApiWithCustomRorIndexSuite extends BaseAdminApiSuite {
   )
 
   override protected lazy val rorWithNoIndexConfig = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR2",
-      clusterType = ClusterType.RorCluster(Attributes.default.copy(
+    EsClusterSettings.create(
+      clusterName = "ROR2",
+      securityType = SecurityType.RorSecurity(Attributes.default.copy(
         customSettingsIndex = Some(readonlyrestIndexName),
         rorConfigFileName = rorConfigFileName
       ))

@@ -75,6 +75,7 @@ class IndexLevelActionFilter(nodeName: String,
 
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
     new EsServerBasedRorClusterService(
+      nodeName,
       clusterService,
       remoteClusterServiceSupplier,
       repositoriesServiceSupplier,

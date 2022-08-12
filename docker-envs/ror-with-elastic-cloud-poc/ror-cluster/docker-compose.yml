@@ -1,0 +1,74 @@
+version: "3.7"
+services:
+
+  setup:
+    build:
+      context: .
+      dockerfile: setup/Dockerfile
+    depends_on:
+      - "es-ror"
+    command: >
+      bash -c './setup.sh'
+    networks:
+      - es-ror-network
+
+  es-ror:
+    build:
+      context: .
+      dockerfile: es/Dockerfile
+      args:
+        ES_VERSION: $ELK_VERSION
+        ROR_VERSION: $ROR_VERSION
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+      - "5000:58672"
+    environment:
+      - cluster.name=ror-es-cluster
+      - node.name=es-ror-single
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672"
+      - ES_VERSION=$ELK_VERSION
+    networks:
+      - es-ror-network
+      - elastic-cloud_es-network
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  es-ror-proxy:
+    image: mitmproxy/mitmproxy
+    command:
+      mitmdump --set validate_inbound_headers=false --mode reverse:https://es-ror:9200 --ssl-insecure --verbose
+    depends_on:
+      - "es-ror"
+    networks:
+      - es-ror-network
+
+  kbn-ror:
+    build:
+      context: .
+      dockerfile: kbn/Dockerfile
+      args:
+        ELK_VERSION: $ELK_VERSION
+        ROR_VERSION: $ROR_VERSION
+    depends_on:
+      - "es-ror-proxy"
+    ports:
+      - "15601:5601"
+    environment:
+      ELASTIC_USER_PASSWORD: elastic
+    networks:
+      - es-ror-network
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+networks:
+  es-ror-network:
+    driver: bridge
+  elastic-cloud_es-network:
+    external: true

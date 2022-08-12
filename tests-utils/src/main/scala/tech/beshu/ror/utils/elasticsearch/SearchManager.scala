@@ -80,7 +80,8 @@ class SearchManager(client: RestClient,
       indexName match {
         case Some(name) => s"/$name/_search"
         case None => "/_search"
-      }
+      },
+      Map("size" -> "100")
     ))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(query)))
@@ -92,7 +93,8 @@ class SearchManager(client: RestClient,
       indexNames match {
         case Nil => "/_search"
         case names => s"/${names.mkString(",")}/_search"
-      }
+      },
+      Map("size" -> "100")
     ))
   }
 

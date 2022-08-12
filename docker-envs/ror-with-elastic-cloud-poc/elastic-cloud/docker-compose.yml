@@ -1,0 +1,159 @@
+version: "3.7"
+services:
+
+  setup:
+    build:
+      context: .
+      dockerfile: setup/Dockerfile
+    depends_on:
+      - "es01"
+      - "es02"
+      - "es03"
+    command: >
+      bash -c './setup.sh'
+    environment:
+      ELASTIC_PASSWORD: $ELASTIC_PASSWORD
+      KIBANA_PASSWORD: $KIBANA_PASSWORD
+    networks:
+      - es-network
+
+  es01:
+    build:
+      context: .
+      dockerfile: es/Dockerfile
+      args:
+        ELK_VERSION: $ELK_VERSION
+        ELASTIC_PASSWORD: $ELASTIC_PASSWORD
+    ports:
+      - "5001:58672"
+      - "9201:9200"
+      - "9301:9300"
+    environment:
+      - cluster.name=es-cluster
+      - node.name=es01-master
+      - node.roles=master,data
+      - bootstrap.memory_lock=true
+      - discovery.seed_hosts=es02,es03
+      - cluster.initial_master_nodes=es01-master,es02-master,es03-master
+      - xpack.security.enabled=true
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.verification_mode=none
+      - xpack.security.transport.ssl.client_authentication=none
+      - xpack.security.transport.ssl.keystore.path=elastic-certificates.p12
+      - xpack.security.transport.ssl.truststore.path=elastic-certificates.p12
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.verification_mode=none
+      - xpack.security.http.ssl.client_authentication=none
+      - xpack.security.http.ssl.keystore.path=elastic-certificates.p12
+      - xpack.security.http.ssl.truststore.path=elastic-certificates.p12
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672"
+    networks:
+      - es-network
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  es02:
+    build:
+      context: .
+      dockerfile: es/Dockerfile
+      args:
+        ELK_VERSION: $ELK_VERSION
+        ELASTIC_PASSWORD: $ELASTIC_PASSWORD
+    ports:
+      - "5002:58672"
+      - "9202:9200"
+      - "9302:9300"
+    environment:
+      - cluster.name=es-cluster
+      - node.name=es02-master
+      - node.roles=master,data
+      - bootstrap.memory_lock=true
+      - discovery.seed_hosts=es01,es03
+      - cluster.initial_master_nodes=es01-master,es02-master,es03-master
+      - xpack.security.enabled=true
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.verification_mode=none
+      - xpack.security.transport.ssl.client_authentication=none
+      - xpack.security.transport.ssl.keystore.path=elastic-certificates.p12
+      - xpack.security.transport.ssl.truststore.path=elastic-certificates.p12
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.verification_mode=none
+      - xpack.security.http.ssl.client_authentication=none
+      - xpack.security.http.ssl.keystore.path=elastic-certificates.p12
+      - xpack.security.http.ssl.truststore.path=elastic-certificates.p12
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672"
+    networks:
+      - es-network
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  es03:
+    build:
+      context: .
+      dockerfile: es/Dockerfile
+      args:
+        ELK_VERSION: $ELK_VERSION
+        ELASTIC_PASSWORD: $ELASTIC_PASSWORD
+    ports:
+      - "5003:58672"
+      - "9203:9200"
+      - "9303:9300"
+    environment:
+      - cluster.name=es-cluster
+      - node.name=es03-master
+      - node.roles=master,data
+      - bootstrap.memory_lock=true
+      - discovery.seed_hosts=es01,es02
+      - cluster.initial_master_nodes=es01-master,es02-master,es03-master
+      - xpack.security.enabled=true
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.verification_mode=none
+      - xpack.security.transport.ssl.client_authentication=none
+      - xpack.security.transport.ssl.keystore.path=elastic-certificates.p12
+      - xpack.security.transport.ssl.truststore.path=elastic-certificates.p12
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.verification_mode=none
+      - xpack.security.http.ssl.client_authentication=none
+      - xpack.security.http.ssl.keystore.path=elastic-certificates.p12
+      - xpack.security.http.ssl.truststore.path=elastic-certificates.p12
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672"
+    networks:
+      - es-network
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  es-xpack-proxy:
+    image: mitmproxy/mitmproxy
+    command:
+      mitmdump --set validate_inbound_headers=false --mode reverse:https://es02:9200 --ssl-insecure --verbose
+    depends_on:
+      - es02
+    networks:
+      - es-network
+
+  kbn-xpack:
+    build:
+      context: .
+      dockerfile: kbn/Dockerfile
+      args:
+        ELK_VERSION: $ELK_VERSION
+    ports:
+      - "25601:5601"
+    environment:
+      KIBANA_PASSWORD: $KIBANA_PASSWORD
+    networks:
+      - es-network
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+networks:
+  es-network:
+    driver: bridge

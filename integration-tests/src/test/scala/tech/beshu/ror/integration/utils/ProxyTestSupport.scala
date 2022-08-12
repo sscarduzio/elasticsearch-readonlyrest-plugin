@@ -22,7 +22,7 @@ import com.typesafe.scalalogging.LazyLogging
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType
+import tech.beshu.ror.utils.containers.SecurityType
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.providers.{CallingProxy, MultipleEsTargets, ResolvedRorConfigFileProvider, RorConfigFileNameProvider}
 import tech.beshu.ror.utils.proxy.RorProxyInstance
@@ -68,7 +68,7 @@ trait ProxyTestSupport
         resolvedRorConfigFile,
         esTargets.head.containerIpAddress,
         esTargets.head.port,
-        esContainer.esClusterSettings.rorContainerSpecification.environmentVariables
+        esContainer.esConfig.envs
       )
       .runSyncUnsafe()
     instance
@@ -79,9 +79,9 @@ trait SingleNodeProxyTestSupport extends ProxyTestSupport with ProxyEsClusterPro
   this: Suite with BaseSingleNodeEsClusterTest =>
 
   override lazy val container = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ES_SINGLE",
-      clusterType = ClusterType.NoSecurityCluster,
+    EsClusterSettings.create(
+      clusterName = "ES_SINGLE",
+      securityType = SecurityType.NoSecurityCluster,
       dependentServicesContainers = clusterDependencies,
       nodeDataInitializer = nodeDataInitializer match {
         case Some(definedInitializer) => definedInitializer
