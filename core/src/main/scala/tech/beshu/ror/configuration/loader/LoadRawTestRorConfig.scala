@@ -23,36 +23,40 @@ import tech.beshu.ror.configuration.TestRorConfig
 import scala.language.implicitConversions
 
 object LoadRawTestRorConfig {
-  def load(configurationIndex: RorConfigurationIndex): LoadTestRorConfig[ErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
+  def load(configurationIndex: RorConfigurationIndex,
+           fallbackConfig: TestRorConfig): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
     LoadRawTestRorConfig.load(
       configIndex = configurationIndex,
       indexLoadingAttempts = 5,
+      fallback = fallbackConfig
     )
   }
 
   def load(configIndex: RorConfigurationIndex,
-           indexLoadingAttempts: Int): LoadTestRorConfig[ErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
-    attemptLoadingConfigFromIndex(configIndex, indexLoadingAttempts)
+           indexLoadingAttempts: Int,
+           fallback: TestRorConfig): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
+    attemptLoadingConfigFromIndex(configIndex, indexLoadingAttempts, fallback)
   }
 
   def attemptLoadingConfigFromIndex(index: RorConfigurationIndex,
-                                    attempts: Int): LoadTestRorConfig[ErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
+                                    attempts: Int,
+                                    fallback: TestRorConfig): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]] = {
     if (attempts <= 0) {
-      Free.pure[LoadTestConfigAction, ErrorOr[LoadedTestRorConfig[TestRorConfig]]](
-        Right(LoadedTestRorConfig.FallbackConfig[TestRorConfig](TestRorConfig.NotSet))
+      Free.pure[LoadTestConfigAction, IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]](
+        Right(LoadedTestRorConfig.FallbackConfig[TestRorConfig](fallback))
       )
     } else {
       for {
         result <- loadRorConfigFromIndex(index)
         rawRorConfig <- result match {
           case Left(LoadedTestRorConfig.IndexNotExist) =>
-            Free.defer(attemptLoadingConfigFromIndex(index, attempts - 1))
+            Free.defer(attemptLoadingConfigFromIndex(index, attempts - 1, fallback))
           case Left(error@LoadedTestRorConfig.IndexUnknownStructure) =>
-            Free.pure[LoadTestConfigAction, ErrorOr[LoadedTestRorConfig[TestRorConfig]]](Left(error))
+            Free.pure[LoadTestConfigAction, IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]](Left(error))
           case Left(error@LoadedTestRorConfig.IndexParsingError(_)) =>
-            Free.pure[LoadTestConfigAction, ErrorOr[LoadedTestRorConfig[TestRorConfig]]](Left(error))
+            Free.pure[LoadTestConfigAction, IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]](Left(error))
           case Right(value) =>
-            Free.pure[LoadTestConfigAction, ErrorOr[LoadedTestRorConfig[TestRorConfig]]](Right(value))
+            Free.pure[LoadTestConfigAction, IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]](Right(value))
         }
       } yield rawRorConfig
     }

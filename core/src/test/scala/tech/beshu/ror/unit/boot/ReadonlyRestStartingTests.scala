@@ -482,35 +482,73 @@ class ReadonlyRestStartingTests
             rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(TestConfig.NotSet)
           }
         }
-      }
-      "cannot be initialized" when {
-        "malformed config is stored in index" in {
-          val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
-          val indexConfigFile = "readonlyrest_index.yml"
+        "settings structure is not valid" should {
+          "fallback to not configured" in {
+            val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+            val indexConfigFile = "readonlyrest_index.yml"
 
-          val mockedIndexJsonContentManager = mock[IndexJsonContentService]
-          mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+            val mockedIndexJsonContentManager = mock[IndexJsonContentService]
+            mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
 
-          (mockedIndexJsonContentManager.sourceOf _)
-            .expects(fullIndexName(".readonlyrest"), "2")
-            .repeated(1)
-            .returns(Task.now(Right(
-              Map(
-                "settings" -> testConfigMalformed.raw,
-                "expiration_ttl_millis" -> "100000",
-                "expiration_timestamp" -> testClock.instant().plusSeconds(100).toString
+            lazy val expirationTimestamp = testClock.instant().minusSeconds(100)
+            (mockedIndexJsonContentManager.sourceOf _)
+              .expects(fullIndexName(".readonlyrest"), "2")
+              .repeated(1)
+              .returns(Task.now(Right(
+                Map(
+                  "settings" -> "malformed_config", // malformed ror config
+                  "expiration_ttl_millis" -> "100000",
+                  "expiration_timestamp" -> expirationTimestamp.toString
+                )
+              )))
+
+            val coreFactory = mock[CoreFactory]
+            mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
+
+            val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(5 seconds))
+
+            val result = readonlyRest.start().runSyncUnsafe()
+
+            val rorInstance = result.right.value
+            rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
+
+            rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(TestConfig.NotSet)
+          }
+        }
+        "settings structure is valid, rule is malformed and cannot start engine" should {
+          "fallback to invalidated config" in {
+            val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
+            val indexConfigFile = "readonlyrest_index.yml"
+
+            val mockedIndexJsonContentManager = mock[IndexJsonContentService]
+            mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+
+            (mockedIndexJsonContentManager.sourceOf _)
+              .expects(fullIndexName(".readonlyrest"), "2")
+              .repeated(1)
+              .returns(Task.now(Right(
+                Map(
+                  "settings" -> testConfigMalformed.raw,
+                  "expiration_ttl_millis" -> "100000",
+                  "expiration_timestamp" -> testClock.instant().plusSeconds(100).toString
+                )
+              )))
+
+            val coreFactory = mock[CoreFactory]
+            mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
+            mockFailedCoreFactory(coreFactory, testConfigMalformed)
+
+            val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(5 seconds))
+
+            val result = readonlyRest.start().runSyncUnsafe()
+            val rorInstance = result.right.value
+            rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
+            rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
+              TestConfig.Invalidated(
+                recent = testConfigMalformed,
+                configuredTtl = FiniteDuration(100, TimeUnit.SECONDS)
               )
-            )))
-
-          val coreFactory = mock[CoreFactory]
-          mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
-          mockFailedCoreFactory(coreFactory, testConfigMalformed)
-
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(5 seconds))
-
-          val result = readonlyRest.start().runSyncUnsafe()
-          inside(result) { case Left(failure) =>
-            failure should be(StartingFailure("Errors:\nfailed"))
+            )
           }
         }
       }

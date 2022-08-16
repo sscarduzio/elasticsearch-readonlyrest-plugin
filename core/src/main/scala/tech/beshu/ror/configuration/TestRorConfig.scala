@@ -29,7 +29,7 @@ object TestRorConfig {
 
   final case class Present(rawConfig: RawRorConfig,
                            expiration: Present.ExpirationConfig) extends TestRorConfig {
-    def hasExpired(clock: Clock): Boolean = {
+    def isExpired(clock: Clock): Boolean = {
       expiration.validTo.isBefore(clock.instant())
     }
   }

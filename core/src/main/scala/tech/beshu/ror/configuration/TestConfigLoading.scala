@@ -19,17 +19,16 @@ package tech.beshu.ror.configuration
 import cats.free.Free
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.loader.LoadedTestRorConfig
-import tech.beshu.ror.configuration.loader.LoadedTestRorConfig.IndexConfig
 
 import scala.language.higherKinds
 
 object TestConfigLoading {
-  type ErrorOr[A] = LoadedTestRorConfig.Error Either A
   type IndexErrorOr[A] = LoadedTestRorConfig.LoadingIndexError Either A
   type LoadTestRorConfig[A] = Free[LoadTestConfigAction, A]
   sealed trait LoadTestConfigAction[A]
   object LoadTestConfigAction {
-    final case class LoadRorConfigFromIndex(index: RorConfigurationIndex) extends LoadTestConfigAction[IndexErrorOr[IndexConfig[TestRorConfig]]]
+    final case class LoadRorConfigFromIndex(index: RorConfigurationIndex)
+      extends LoadTestConfigAction[IndexErrorOr[LoadedTestRorConfig.IndexConfig[TestRorConfig]]]
   }
 
   def loadRorConfigFromIndex(index: RorConfigurationIndex): LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig.IndexConfig[TestRorConfig]]] =

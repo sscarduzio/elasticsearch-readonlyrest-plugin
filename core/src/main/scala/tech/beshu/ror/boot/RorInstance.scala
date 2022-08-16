@@ -19,6 +19,7 @@ package tech.beshu.ror.boot
 import cats.effect.Resource
 import cats.implicits.toShow
 import cats.syntax.either._
+import cats.Show
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.catnap.Semaphore
@@ -63,10 +64,7 @@ class RorInstance private(boot: ReadonlyRest,
           logger.info(s"[CLUSTERWIDE SETTINGS] Scheduling in-index settings check disabled")
           Cancelable.empty
         case RefreshInterval.Enabled(interval) =>
-          Cancelable.collection(
-            scheduleMainConfigReload(interval),
-            scheduleTestConfigReload(interval)
-          )
+          scheduleEnginesReload(interval)
       }
     case Mode.NoPeriodicIndexCheck =>
       logger.info(s"[CLUSTERWIDE SETTINGS] Scheduling in-index settings check disabled")
@@ -141,44 +139,49 @@ class RorInstance private(boot: ReadonlyRest,
     } yield ()
   }
 
-  private def scheduleMainConfigReload(interval: FiniteDuration Refined Positive) = {
-    scheduleIndexConfigChecking(interval, "main", tryMainEngineReload)
-  }
-
-  private def scheduleTestConfigReload(interval: FiniteDuration Refined Positive) = {
-    scheduleIndexConfigChecking(interval, "test", tryTestEngineReload)
+  private def scheduleEnginesReload(interval: FiniteDuration Refined Positive): Cancelable = {
+    val reloadTask = { requestId: RequestId =>
+      Task.sequence {
+        Seq(
+          tryMainEngineReload(requestId).map(result => (ConfigType.Main, result)),
+          tryTestEngineReload(requestId).map(result => (ConfigType.Test, result))
+        )
+      }
+    }
+    scheduleIndexConfigChecking(interval, reloadTask)
   }
 
   private def scheduleIndexConfigChecking(interval: FiniteDuration Refined Positive,
-                                          name: String,
-                                          reloadTask: RequestId => Task[Either[ScheduledReloadError, Unit]]): Cancelable = {
-    logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index $name settings check within ${interval.value}")
+                                          reloadTask: RequestId => Task[Seq[(ConfigType, Either[ScheduledReloadError, Unit])]]): Cancelable = {
+    logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index settings check within ${interval.value}")
     scheduler.scheduleOnce(interval.value) {
-      val requestId: RequestId = RequestId(JavaUuidProvider.random.toString)
-      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ReadonlyREST $name config from index ...")
+      implicit val requestId: RequestId = RequestId(JavaUuidProvider.random.toString)
+      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ReadonlyREST configs from index ...")
       reloadTask(requestId)
         .runAsync {
-          case Right(Right(_)) =>
-            scheduleIndexConfigChecking(interval, name, reloadTask)
-          case Right(Left(ReloadingInProgress)) =>
-            logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Reloading of $name engine in progress ... skipping")
-            scheduleIndexConfigChecking(interval, name, reloadTask)
-          case Right(Left(EngineReloadError(IndexConfigReloadError.ReloadError(RawConfigReloadError.ConfigUpToDate(_))))) =>
-            logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] $name settings are up to date. Nothing to reload.")
-            scheduleIndexConfigChecking(interval, name, reloadTask)
-          case Right(Left(EngineReloadError(IndexConfigReloadError.ReloadError(RawConfigReloadError.RorInstanceStopped)))) =>
-            logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Stopping periodic $name settings check - application is being stopped")
-          case Right(Left(EngineReloadError(IndexConfigReloadError.ReloadError(RawConfigReloadError.ReloadingFailed(startingFailure))))) =>
-            logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] ReadonlyREST $name engine starting failed: ${startingFailure.message}")
-            scheduleIndexConfigChecking(interval, name, reloadTask)
-          case Right(Left(EngineReloadError(IndexConfigReloadError.LoadingConfigError(error)))) =>
-            logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading $name config from index failed: ${error.show}")
-            scheduleIndexConfigChecking(interval, name, reloadTask)
+          case Right(reloadResults) =>
+            reloadResults.foreach(logConfigReloadResult)
+            scheduleIndexConfigChecking(interval, reloadTask)
           case Left(ex) =>
-            logger.error(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Checking index $name config failed: error", ex)
-            scheduleIndexConfigChecking(interval, name, reloadTask)
+            logger.error(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Checking index config failed: error", ex)
+            scheduleIndexConfigChecking(interval, reloadTask)
         }
     }
+  }
+
+  private def logConfigReloadResult(configReloadResult: (ConfigType, Either[ScheduledReloadError, Unit]))
+                                   (implicit requestId: RequestId): Unit = configReloadResult match {
+    case (_, Right(())) =>
+    case (name, Left(ReloadingInProgress)) =>
+      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Reloading of ${name.show} engine in progress ... skipping")
+    case (name, Left(EngineReloadError(IndexConfigReloadError.ReloadError(RawConfigReloadError.ConfigUpToDate(_))))) =>
+      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] ${name.show} settings are up to date. Nothing to reload.")
+    case (name, Left(EngineReloadError(IndexConfigReloadError.ReloadError(RawConfigReloadError.RorInstanceStopped)))) =>
+      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Stopping periodic ${name.show} settings check - application is being stopped")
+    case (name, Left(EngineReloadError(IndexConfigReloadError.ReloadError(RawConfigReloadError.ReloadingFailed(startingFailure))))) =>
+      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] ReadonlyREST ${name.show} engine starting failed: ${startingFailure.message}")
+    case (name, Left(EngineReloadError(IndexConfigReloadError.LoadingConfigError(error)))) =>
+      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ${name.show} config from index failed: ${error.show}")
   }
 
   private def tryMainEngineReload(requestId: RequestId): Task[Either[ScheduledReloadError, Unit]] = {
@@ -301,6 +304,17 @@ object RorInstance {
   private object Mode {
     case object WithPeriodicIndexCheck extends Mode
     case object NoPeriodicIndexCheck extends Mode
+  }
+
+  private sealed trait ConfigType
+  private object ConfigType {
+    case object Main extends ConfigType
+    case object Test extends ConfigType
+
+    implicit val show: Show[ConfigType] = Show.show {
+      case Main => "main"
+      case Test => "test"
+    }
   }
 }
 

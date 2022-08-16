@@ -74,8 +74,12 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   private def loadRorTestConfig(esConfig: EsConfig): EitherT[Task, StartingFailure, LoadedTestRorConfig[TestRorConfig]] = {
-    val action = LoadRawTestRorConfig.load(esConfig.rorIndex.index)
-    runTestStartingFailureProgram(action)
+    val fallbackConfig: TestRorConfig = TestRorConfig.NotSet
+    val action = LoadRawTestRorConfig.load(
+      configurationIndex = esConfig.rorIndex.index,
+      fallbackConfig = fallbackConfig
+    )
+    EitherT.right(runTestProgram(action, LoadedTestRorConfig.FallbackConfig(fallbackConfig)))
   }
 
   private def runStartingFailureProgram[A](action: LoadRorConfig[ErrorOr[A]]) = {
@@ -101,19 +105,22 @@ class ReadonlyRest(coreFactory: CoreFactory,
     }
   }
 
-  private def runTestStartingFailureProgram[A](action: TestConfigLoading.LoadTestRorConfig[TestConfigLoading.ErrorOr[A]]): EitherT[Task, StartingFailure, A] = {
+  private def runTestProgram[A](action: TestConfigLoading.LoadTestRorConfig[TestConfigLoading.IndexErrorOr[A]],
+                                fallbackConfig: A): Task[A] = {
     val compiler = TestConfigLoadingInterpreter.create(indexTestConfigManager, RorProperties.rorIndexSettingLoadingDelay)
     EitherT(action.foldMap(compiler))
-      .leftMap(toStartingFailure)
-  }
-
-  private def toStartingFailure(error: LoadedTestRorConfig.Error) = {
-    error match {
-      case LoadedTestRorConfig.IndexParsingError(message) =>
-        StartingFailure(message)
-      case LoadedTestRorConfig.IndexUnknownStructure =>
-        StartingFailure(s"Test settings index is malformed")
-    }
+      .leftMap {
+        case LoadedTestRorConfig.IndexParsingError(message) =>
+          logger.error(s"Loading ReadonlyREST test settings from index failed: $message. Loading fallback test settings...")
+          fallbackConfig
+        case LoadedTestRorConfig.IndexUnknownStructure =>
+          logger.info("Loading ReadonlyREST test settings from index failed: index content malformed. Loading fallback test settings...")
+          fallbackConfig
+        case LoadedTestRorConfig.IndexNotExist =>
+          logger.info("Loading ReadonlyREST test settings from index failed: cannot find index. Loading fallback test settings...")
+          fallbackConfig
+      }
+      .merge
   }
 
   private def startRor(esConfig: EsConfig,
@@ -121,23 +128,31 @@ class ReadonlyRest(coreFactory: CoreFactory,
                        loadedTestRorConfig: LoadedTestRorConfig[TestRorConfig]) = {
     for {
       mainEngine <- EitherT(loadRorCore(loadedConfig.value, esConfig.rorIndex.index))
-      testEngine <- loadedTestRorConfig.value match {
-        case TestRorConfig.NotSet =>
-          EitherT.right(Task.now(TestEngine.NotConfigured))
-        case config@TestRorConfig.Present(rawConfig, expiration) if !config.hasExpired(clock)=>
-          EitherT(loadRorCore(rawConfig, esConfig.rorIndex.index))
-            .map( loadedEngine =>
+      testEngine <- EitherT.right(loadTestEngine(esConfig, loadedTestRorConfig))
+      rorInstance <- createRorInstance(esConfig.rorIndex.index, mainEngine, testEngine, loadedConfig)
+    } yield rorInstance
+  }
+
+  private def loadTestEngine(esConfig: EsConfig, loadedTestRorConfig: LoadedTestRorConfig[TestRorConfig]) = {
+    loadedTestRorConfig.value match {
+      case TestRorConfig.NotSet =>
+        Task.now(TestEngine.NotConfigured)
+      case config@TestRorConfig.Present(rawConfig, expiration) if !config.isExpired(clock) =>
+        loadRorCore(rawConfig, esConfig.rorIndex.index)
+          .map {
+            case Right(loadedEngine) =>
               TestEngine.Configured(
                 engine = loadedEngine,
                 config = rawConfig,
                 expiration = expirationConfig(expiration)
               )
-            )
-        case TestRorConfig.Present(rawConfig, expiration) =>
-          EitherT.right(Task.now(TestEngine.Invalidated(rawConfig, expirationConfig(expiration))))
-      }
-      rorInstance <- createRorInstance(esConfig.rorIndex.index, mainEngine, testEngine, loadedConfig)
-    } yield rorInstance
+            case Left(startingFailure) =>
+              logger.error(s"Unable to start test engine. Cause: ${startingFailure.message}. Test settings engine will be marked as invalidated.")
+              TestEngine.Invalidated(rawConfig, expirationConfig(expiration))
+          }
+      case TestRorConfig.Present(rawConfig, expiration) =>
+        Task.now(TestEngine.Invalidated(rawConfig, expirationConfig(expiration)))
+    }
   }
 
   private def expirationConfig(config: TestRorConfig.Present.ExpirationConfig): TestEngine.Expiration = {

@@ -44,9 +44,8 @@ object LoadedTestRorConfig {
   final case class IndexConfig[A](indexName: RorConfigurationIndex, value: A) extends LoadedTestRorConfig[A]
   final case class FallbackConfig[A](value: A) extends LoadedTestRorConfig[A]
 
-  sealed trait Error
   sealed trait LoadingIndexError
-  final case class IndexParsingError(message: String) extends LoadedTestRorConfig.Error with LoadingIndexError
-  case object IndexUnknownStructure extends LoadedTestRorConfig.Error with LoadingIndexError
+  final case class IndexParsingError(message: String) extends LoadingIndexError
+  case object IndexUnknownStructure extends LoadingIndexError
   case object IndexNotExist extends LoadingIndexError
 }

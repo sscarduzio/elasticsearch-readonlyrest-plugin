@@ -63,9 +63,9 @@ object TestConfigLoadingInterpreter extends Logging {
       case IndexParsingError(message) =>
         logger.error(s"Loading ReadonlyREST settings from index failed: $message")
       case LoadedTestRorConfig.IndexUnknownStructure =>
-        logger.info(s"Loading ReadonlyREST test settings from index failed: index content malformed")
+        logger.info("Loading ReadonlyREST test settings from index failed: index content malformed")
       case LoadedTestRorConfig.IndexNotExist =>
-        logger.info(s"Loading ReadonlyREST test settings from index failed: cannot find index")
+        logger.info("Loading ReadonlyREST test settings from index failed: cannot find index")
     }
   }
 
