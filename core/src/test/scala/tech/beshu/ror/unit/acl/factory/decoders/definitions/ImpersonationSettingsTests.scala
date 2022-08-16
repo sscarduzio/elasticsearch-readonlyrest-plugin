@@ -58,7 +58,7 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
               definitions.items should have size 1
               val impersonator = definitions.items.head
               impersonator.usernames should be(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("admin"))))
-              impersonator.users should be(UniqueNonEmptyList.of(User.Id("*")))
+              impersonator.impersonatedUsers should be(UniqueNonEmptyList.of(User.Id("*")))
               impersonator.authenticationRule shouldBe a[AuthKeyRule]
             }
           )
@@ -81,12 +81,12 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
 
             val impersonator1 = definitions.items.head
             impersonator1.usernames should be(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("admin"))))
-            impersonator1.users should be(UniqueNonEmptyList.of(User.Id("*")))
+            impersonator1.impersonatedUsers should be(UniqueNonEmptyList.of(User.Id("*")))
             impersonator1.authenticationRule shouldBe a[AuthKeySha1Rule]
 
             val impersonator2 = definitions.items.tail.head
             impersonator2.usernames should be(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("admin2"))))
-            impersonator2.users should be(UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2")))
+            impersonator2.impersonatedUsers should be(UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2")))
             impersonator2.authenticationRule shouldBe a[AuthKeyRule]
           }
         )

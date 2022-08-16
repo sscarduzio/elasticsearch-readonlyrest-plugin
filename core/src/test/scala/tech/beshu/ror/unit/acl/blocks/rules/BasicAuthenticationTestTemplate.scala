@@ -23,6 +23,7 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
+import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyRule
@@ -51,12 +52,12 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
       ImpersonatorDef(
         usernames = UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("admin"))),
         authenticationRule = adminAuthenticationRule(Credentials(User.Id("admin"), PlainTextSecret("admin"))),
-        users = UniqueNonEmptyList.of(User.Id("logstash"))
+        users = ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("logstash"))))
       ),
       ImpersonatorDef(
         usernames = UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("admin2"))),
         authenticationRule = adminAuthenticationRule(Credentials(User.Id("admin2"), PlainTextSecret("admin2"))),
-        users = UniqueNonEmptyList.of(User.Id("test"))
+        users = ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("test"))))
       )
     ),
     mocksProvider = NoOpMocksProvider

@@ -140,6 +140,55 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           allUsersResolved(Set(User.Id("admin"), User.Id("dev")))
         )
       }
+      "users section defined without wildcard patterns" in {
+        val config =
+          s"""
+             |readonlyrest:
+             |  access_control_rules:
+             |  - name: test_block1
+             |    auth_key: admin:container
+             |
+             |  users:
+             |  - username: user1
+             |    groups: ["group1", "group3"]
+             |    auth_key: "user1:pass"
+             |
+             |  - username: user2
+             |    groups: ["group2", "group4"]
+             |    auth_key: "user2:pass"
+             |
+             |  - username: user4
+             |    groups: ["group5", "group6"]
+             |    auth_key: "user4:pass"
+             |""".stripMargin
+
+        assertLocalUsersFromConfig(config, allUsersResolved(Set(
+          User.Id("user1"), User.Id("user2"), User.Id("user4"), User.Id("admin")
+        )))
+      }
+      "impersonators section defined with users" in {
+        val config =
+          s"""
+             |readonlyrest:
+             |  access_control_rules:
+             |  - name: test_block1
+             |    auth_key: admin:container
+             |
+             |  impersonation:
+             |   - impersonator: devAdmin
+             |     auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+             |     users: ["user3"]
+             |   - impersonator: devAdmin2
+             |     auth_key: devAdmin2:pass
+             |     users: ["user1", "user2"]
+             |   - impersonator: devAdmin3
+             |     auth_key: devAdmin3:pass
+             |     users: ["*", "user*"]
+             |""".stripMargin
+        assertLocalUsersFromConfig(config, expected = allUsersResolved(Set(
+          User.Id("admin"), User.Id("user1"), User.Id("user2"), User.Id("user3")
+        )))
+      }
     }
     "return info that unknown users in config" when {
       "hashed username and password" in {
@@ -168,29 +217,34 @@ class LocalUsersTest extends AnyWordSpec with Inside {
              |""".stripMargin
         assertLocalUsersFromConfig(config, withUnknownUsers(Set(User.Id("admin"))))
       }
-      "users section defined" in {
+      "users section defined with wildcard patterns" in {
         val config =
           s"""
              |readonlyrest:
              |  access_control_rules:
              |  - name: test_block1
-             |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+             |    auth_key: admin:container
              |
              |  users:
              |  - username: user1
              |    groups: ["group1", "group3"]
              |    auth_key: "user1:pass"
              |
-             |  - username: user2
+             |  - username: "*"
              |    groups: ["group2", "group4"]
              |    auth_key: "user2:pass"
              |
-             |  - username: user4
+             |  - username: "*"
              |    groups: ["group5", "group6"]
              |    auth_key: "user4:pass"
+             |
+             |  - username: "*"
+             |    groups: ["group5", "group6"]
+             |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
              |""".stripMargin
-
-        assertLocalUsersFromConfig(config, withUnknownUsers(Set.empty))
+        assertLocalUsersFromConfig(config, expected = withUnknownUsers(Set(
+          User.Id("admin"), User.Id("user1"), User.Id("user2"), User.Id("user4")
+        )))
       }
     }
   }
@@ -224,7 +278,6 @@ class LocalUsersTest extends AnyWordSpec with Inside {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
-    implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
     new RawRorConfigBasedCoreFactory(RorMode.Plugin)
   }
 
