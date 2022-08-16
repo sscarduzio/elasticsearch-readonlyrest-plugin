@@ -23,7 +23,7 @@ echo "ALL docker containers:"
 docker ps
 
 echo ""
-echo "KBN with ROR: https://localhost:15601"
-echo "KBN with XPack: https://localhost:25601"
+echo "KBN with ROR: http://localhost:15601 (admin:container)"
+echo "KBN with XPack: http://localhost:25601 (elastic:elastic)"
 
 
