@@ -27,8 +27,8 @@ readonlyrest:
 
   ldaps:
     - name: ldap1
-      host: "lldap"
-      port: 3890
+      host: "lagsimulator"
+      port: 13890
       ssl_enabled: false                                        # default true
       ssl_trust_all_certs: true                                 # default false
       bind_dn: "uid=admin,ou=people,dc=example,dc=com"
@@ -37,7 +37,7 @@ readonlyrest:
       search_groups_base_DN: "ou=Groups,dc=example,dc=com"
       user_id_attribute: "uid"                                  # default "uid"
       unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
-      connection_pool_size: 10                                  # default 30
-      connection_timeout_in_sec: 1                             # default 1
-      request_timeout_in_sec: 1                                # default 1
-      cache_ttl_in_sec: 1                                      # default 0 - cache disabled
+      connection_pool_size: 30                                  # default 30
+      connection_timeout_in_sec: 10                             # default 1
+      request_timeout_in_sec: 10                                # default 1
+#      cache_ttl_in_sec: 1                                      # default 0 - cache disabled

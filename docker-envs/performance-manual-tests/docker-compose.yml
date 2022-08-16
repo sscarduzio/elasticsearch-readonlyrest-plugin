@@ -1,4 +1,4 @@
-version: "3.7"
+version: "3.8"
 services:
 
   es:
@@ -7,8 +7,11 @@ services:
       dockerfile: ror/es/Dockerfile
       args:
         ES_VERSION: $ELK_VERSION
+    hostname: es
+    container_name: es
     depends_on:
       - lldap
+      - lagsimulator
     ports:
       - "9200:9200"
       - "9300:9300"
@@ -27,14 +30,14 @@ services:
         soft: -1
         hard: -1
 
-  es-ror-proxy:
-    image: mitmproxy/mitmproxy
-    command:
-      mitmdump --mode reverse:https://es:9200 --ssl-insecure --verbose
-    depends_on:
-      - es
-    networks:
-      - es-network
+#  es-ror-proxy:
+#    image: mitmproxy/mitmproxy
+#    command:
+#      mitmdump --mode reverse:https://es:9200 --ssl-insecure --verbose
+#    depends_on:
+#      - es
+#    networks:
+#      - es-network
 #
 #  kbn-ror:
 #    build:
@@ -54,10 +57,23 @@ services:
 #        soft: -1
 #        hard: -1
 
+  lagsimulator:
+    build:
+      context: .
+      dockerfile: lag-simulator/Dockerfile
+    hostname: simulatedlag
+    container_name: simulatedlag
+    depends_on:
+      - lldap
+    networks:
+      - es-network
+
   lldap:
     image: nitnelave/lldap:stable
     # Change this to the user:group you want.
     user: "33:33"
+    hostname: lldap
+    container_name: lldap
     ports:
       # For LDAP
       - "3890:3890"
@@ -73,41 +89,6 @@ services:
       - LLDAP_LDAP_BASE_DN=dc=example,dc=com
     networks:
       - es-network
-#  ldap:
-#    image: osixia/openldap:1.5.0
-#    command: --copy-service
-#    ports:
-#      - "389:389"
-#    environment:
-#      LDAP_ORGANISATION: example
-#      LDAP_DOMAIN: example.com
-#      LDAP_ADMIN_PASSWORD: password
-#      LDAP_TLS_VERIFY_CLIENT: try
-#    volumes:
-#      - ./ldap:/container/service/slapd/assets/config/bootstrap/ldif/custom
-#    networks:
-#      - es-network
-#
-#  ldap-ui:
-#    image: wheelybird/ldap-user-manager:v1.5
-#    container_name: openldap-ui
-#    environment:
-#      - LDAP_URI=ldap://ldap
-#      - LDAP_BASE_DN=dc=example,dc=com
-#      - LDAP_REQUIRE_STARTTLS=FALSE
-#      - LDAP_ADMINS_GROUP=admins
-#      - LDAP_ADMIN_BIND_DN=cn=admin,dc=example,dc=com
-#      - LDAP_ADMIN_BIND_PWD=admin
-#      - LDAP_IGNORE_CERT_ERRORS=true
-#      - NO_HTTPS=TRUE
-#      - PASSWORD_HASH=SSHA
-#      - SERVER_HOSTNAME=localhost:18080
-#    depends_on:
-#      - ldap
-#    ports:
-#      - 18080:80
-#    networks:
-#      - es-network
 
 networks:
   es-network:
