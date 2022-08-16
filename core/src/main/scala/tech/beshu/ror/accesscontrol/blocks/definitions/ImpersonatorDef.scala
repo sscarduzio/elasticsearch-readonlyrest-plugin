@@ -19,15 +19,15 @@ package tech.beshu.ror.accesscontrol.blocks.definitions
 import java.util.UUID
 
 import cats.Show
+import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule
-import tech.beshu.ror.accesscontrol.domain.{User, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.UserIdPatterns
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final case class ImpersonatorDef private(id: ImpersonatorDef#Id,
                                          usernames: UserIdPatterns,
                                          authenticationRule: AuthenticationRule,
-                                         users: UniqueNonEmptyList[User.Id])
+                                         impersonatedUsers: ImpersonatedUsers)
   extends Item {
 
   override type Id = UUID // artificial ID (won't be used)
@@ -35,9 +35,11 @@ final case class ImpersonatorDef private(id: ImpersonatorDef#Id,
 }
 object ImpersonatorDef {
 
+  final case class ImpersonatedUsers(usernames: UserIdPatterns) extends AnyVal
+
   def apply(usernames: UserIdPatterns,
             authenticationRule: AuthenticationRule,
-            users: UniqueNonEmptyList[User.Id]): ImpersonatorDef =
+            users: ImpersonatedUsers): ImpersonatorDef =
     new ImpersonatorDef(UUID.randomUUID(), usernames, authenticationRule, users)
 }
 

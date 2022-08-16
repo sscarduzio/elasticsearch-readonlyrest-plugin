@@ -25,6 +25,7 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
+import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
@@ -176,17 +177,17 @@ class ImpersonationRuleDecoratorTests
         ImpersonatorDef(
           userIdPatterns("admin1"),
           authKeyRule("admin1", "pass"),
-          UniqueNonEmptyList.of(User.Id("*"))
+          ImpersonatedUsers(userIdPatterns("*"))
         ),
         ImpersonatorDef(
           userIdPatterns("admin2"),
           authKeyRule("admin2", "pass"),
-          UniqueNonEmptyList.of(User.Id("user2"), User.Id("user3"))
+          ImpersonatedUsers(userIdPatterns("user2", "user3"))
         ),
         ImpersonatorDef(
           userIdPatterns("a*"),
           authKeyRule("admin3", "pass"),
-          UniqueNonEmptyList.of(User.Id("user1"))
+          ImpersonatedUsers(userIdPatterns("user1"))
         )
       )
     }

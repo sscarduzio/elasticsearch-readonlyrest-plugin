@@ -52,7 +52,7 @@ trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonati
         .impersonators
         .map { i =>
           val impersonatorMatcher = new GenericPatternMatcher(i.usernames.patterns.toList)(caseMappingEquality)
-          val userMatcher = MatcherWithWildcardsScalaAdapter.fromSetString[User.Id](i.users.map(_.value.value).toSet)(caseMappingEquality)
+          val userMatcher = new GenericPatternMatcher(i.impersonatedUsers.usernames.patterns.toSet)(caseMappingEquality)
           (i, impersonatorMatcher, userMatcher)
         }
     case Impersonation.Disabled =>

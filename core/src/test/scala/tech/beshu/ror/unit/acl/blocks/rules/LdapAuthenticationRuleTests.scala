@@ -79,7 +79,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = mocksProviderForLdapFrom(Map(
                   LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(Group("g1")))
@@ -155,7 +155,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("different_password")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = mocksProviderForLdapFrom(Map(
                   LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(Group("g1")))
@@ -179,7 +179,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("user2"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("user2")
                 )),
                 mocksProvider = mocksProviderForLdapFrom(Map(
                   LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(Group("g1")))
@@ -204,7 +204,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = mocksProviderForLdapFrom(Map(
                   LdapService.Name("ldap1") -> Map(User.Id("user2") -> Set(Group("g1")))
@@ -229,7 +229,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = NoOpMocksProvider
               )),
