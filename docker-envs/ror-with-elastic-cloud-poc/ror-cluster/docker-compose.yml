@@ -21,8 +21,8 @@ services:
         ES_VERSION: $ELK_VERSION
         ROR_VERSION: $ROR_VERSION
     ports:
-      - "9200:9200"
-      - "9300:9300"
+      - "19200:9200"
+      - "19300:9300"
       - "5000:58672"
     environment:
       - cluster.name=ror-es-cluster
