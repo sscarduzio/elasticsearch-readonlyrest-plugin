@@ -2,8 +2,10 @@
 
 CI_DIR=$(dirname "$0")
 
+# Ensure dependencies
+git || (echo "FATAL: Command git is not available! Exiting." && exit 1)
+
 # Setup git
-git || (echo "FATAL: Failed to setup git!" && exit 1)
 git remote set-url origin git@github.com:sscarduzio/elasticsearch-readonlyrest-plugin.git
 git config --global push.default matching
 git config --global user.email "builds@travis-ci.com"
@@ -32,7 +34,6 @@ function __tag_exists {
     return 1
 }
 
-
 function tag_delete {
     GIT_TAG="$1"
     if __tag_exists; then
@@ -47,7 +48,6 @@ function tag_delete {
     return 0
 }
 
-file . || (echo "FATAL: file command does not work or is not installed!" && exit 1)
 function upload {
   BUCKET="readonlyrest-data"
   LOCAL_FILE="$1"

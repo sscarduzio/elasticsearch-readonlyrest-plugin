@@ -41,6 +41,9 @@ USAGE
     exit 0
 }
 
+# Ensure dependencies
+file . || (echo "FATAL: command file is not available! Exiting." && exit 1)
+
 guessmime()
 {
     mime=`file -b --mime-type $1`
