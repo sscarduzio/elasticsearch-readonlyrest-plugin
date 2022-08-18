@@ -18,14 +18,13 @@ package tech.beshu.ror.utils.containers;
 
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException;
 import tech.beshu.ror.utils.containers.exceptions.ContainerStartupTimeoutException;
-import org.testcontainers.containers.GenericContainer;
 
 import java.io.File;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Optional;
 
 public class ContainerUtils {
   private ContainerUtils() {
@@ -33,9 +32,13 @@ public class ContainerUtils {
 
   public static File getResourceFile(String path) {
     try {
-      return Paths.get(ContainerUtils.class.getResource(path).toURI()).toFile();
+      URL resource = ContainerUtils.class.getResource(path);
+      if(resource == null)
+        throw new ContainerCreationException("Cannot find resource file '" + path + "'");
+      else
+        return Paths.get(resource.toURI()).toFile();
     } catch (URISyntaxException e) {
-      throw new ContainerCreationException("Cannot find resource file", e);
+      throw new ContainerCreationException("Cannot find resource file '" + path + "'", e);
     }
   }
 

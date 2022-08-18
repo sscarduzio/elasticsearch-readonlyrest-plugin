@@ -21,6 +21,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -30,21 +31,23 @@ trait DynamicVariablesSuite
     with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
     with Matchers {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/dynamic_vars/readonlyrest.yml"
 
   override lazy val targetEs = container.nodes.head
 
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      rorContainerSpecification = ContainerSpecification(
+    EsClusterSettings.create(
+      clusterName = "ROR1",
+      containerSpecification = ContainerSpecification(
         environmentVariables = Map("TEST_VAR" -> "dev"),
         additionalElasticsearchYamlEntries = Map.empty
       ),
-      nodeDataInitializer = DynamicVariablesSuite.nodeDataInitializer(),
-      xPackSupport = false,
+      securityType = SecurityType.RorSecurity(Attributes.default.copy(
+        rorConfigFileName = rorConfigFileName
+      )),
+      nodeDataInitializer = DynamicVariablesSuite.nodeDataInitializer()
     )
   )
 

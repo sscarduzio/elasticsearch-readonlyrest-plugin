@@ -20,7 +20,9 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterProvider, EsClusterSettings}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, RorApiManager}
 
 trait RorDisabledSuite
@@ -29,16 +31,18 @@ trait RorDisabledSuite
     with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
     with Matchers {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/plugin_disabled/readonlyrest.yml"
 
   override lazy val targetEs = container.nodes.head
 
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      xPackSupport = false,
+    EsClusterSettings.create(
+      clusterName = "ROR1",
+      securityType = RorSecurity(Attributes.default.copy(
+        rorConfigFileName = rorConfigFileName,
+      )),
     )
   )
 

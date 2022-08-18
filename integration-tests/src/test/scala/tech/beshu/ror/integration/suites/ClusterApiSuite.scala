@@ -16,10 +16,13 @@
  */
 package tech.beshu.ror.integration.suites
 
+import eu.timepit.refined.auto._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterProvider, EsClusterSettings}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
@@ -27,19 +30,21 @@ import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 trait ClusterApiSuite
   extends AnyWordSpec
     with BaseEsClusterIntegrationTest
-    with SingleClientSupport 
+    with SingleClientSupport
     with ESVersionSupportForAnyWordSpecLike {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/cluster_api/readonlyrest.yml"
   override lazy val targetEs = container.nodes.head
 
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
+    EsClusterSettings.create(
+      clusterName = "ROR1",
       numberOfInstances = 2,
-      nodeDataInitializer = ClusterApiSuite.nodeDataInitializer(),
-      xPackSupport = false,
+      securityType = RorSecurity(Attributes.default.copy(
+        rorConfigFileName = rorConfigFileName
+      )),
+      nodeDataInitializer = ClusterApiSuite.nodeDataInitializer()
     )
   )
 
@@ -58,7 +63,7 @@ trait ClusterApiSuite
       }
       "no index is passed and block without no `indices` rule was matched" in {
         val result = dev4ClusterManager.allocationExplain()
-        result.responseCode should not be(403)
+        result.responseCode should not be (403)
       }
     }
     "not allow to be used (pretend that index doesn't exist)" when {
@@ -171,8 +176,8 @@ trait ClusterApiSuite
                  |  "move": {
                  |    "index": "test1_index_nonexistent",
                  |    "shard": 0,
-                 |    "from_node": "${container.nodes(0).name}",
-                 |    "to_node": "${container.nodes(1).name}"
+                 |    "from_node": "${container.nodes(0).esConfig.nodeName}",
+                 |    "to_node": "${container.nodes(1).esConfig.nodeName}"
                  |  }
                  |}""".stripMargin)
           )

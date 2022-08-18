@@ -22,6 +22,7 @@ import com.typesafe.scalalogging.LazyLogging
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
+import tech.beshu.ror.utils.containers.SecurityType
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.providers.{CallingProxy, MultipleEsTargets, ResolvedRorConfigFileProvider, RorConfigFileNameProvider}
 import tech.beshu.ror.utils.proxy.RorProxyInstance
@@ -32,7 +33,7 @@ trait ProxyTestSupport
   extends BeforeAndAfterAll
     with ForAllTestContainer
     with CallingProxy
-    with EsWithoutSecurityPluginContainerCreator
+    with ProxyEsClusterProvider
     with ResolvedRorConfigFileProvider
     with LazyLogging {
   this: Suite with MultipleEsTargets with RorConfigFileNameProvider =>
@@ -54,9 +55,9 @@ trait ProxyTestSupport
   override def resolvedRorConfigFile: File = {
     val rawRorConfig = ContainerUtils.getResourceFile(rorConfigFileName)
     RorConfigAdjuster.adjustUsingDependencies(
-      rawRorConfig.toScala,
-      esTargets.head.startedClusterDependencies,
-      RorConfigAdjuster.Mode.Proxy
+      source = rawRorConfig.toScala,
+      startedDependencies = esTargets.head.startedClusterDependencies,
+      mode = Mode.Proxy
     )
   }
 
@@ -67,41 +68,27 @@ trait ProxyTestSupport
         resolvedRorConfigFile,
         esTargets.head.containerIpAddress,
         esTargets.head.port,
-        esContainer.esClusterSettings.rorContainerSpecification.environmentVariables
+        esContainer.esConfig.envs
       )
       .runSyncUnsafe()
     instance
   }
 }
 
-sealed trait BasicEsClusterProxyTestSupport extends ProxyTestSupport {
+trait SingleNodeProxyTestSupport extends ProxyTestSupport with ProxyEsClusterProvider {
   this: Suite with BaseSingleNodeEsClusterTest =>
 
-  protected def xpackSupport: Boolean
+  override lazy val container = createLocalClusterContainer(
+    EsClusterSettings.create(
+      clusterName = "ES_SINGLE",
+      securityType = SecurityType.NoSecurityCluster,
+      dependentServicesContainers = clusterDependencies,
+      nodeDataInitializer = nodeDataInitializer match {
+        case Some(definedInitializer) => definedInitializer
+        case None => NoOpElasticsearchNodeDataInitializer
+      }
+    )
+  )
 
-  private def clusterSettings = {
-    val enhancedSettings = EsClusterSettings.basic
-      .copy(xPackSupport = xpackSupport)
-      .copy(dependentServicesContainers = clusterDependencies)
-
-    nodeDataInitializer match {
-      case Some(definedInitializer) => enhancedSettings.copy(nodeDataInitializer = definedInitializer)
-      case None => enhancedSettings
-    }
-  }
-
-  override lazy val container = createLocalClusterContainer(clusterSettings)
   override lazy val targetEs = container.nodes.head
-}
-
-trait XpackEsClusterProxyTestSupport extends BasicEsClusterProxyTestSupport {
-  this: Suite with BaseSingleNodeEsClusterTest =>
-
-  override def xpackSupport: Boolean = true
-}
-
-trait OssEsClusterProxyTestSupport extends BasicEsClusterProxyTestSupport {
-  this: Suite with BaseSingleNodeEsClusterTest =>
-
-  override def xpackSupport: Boolean = false
 }

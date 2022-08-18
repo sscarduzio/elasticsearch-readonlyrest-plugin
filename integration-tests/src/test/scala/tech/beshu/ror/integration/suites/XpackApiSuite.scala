@@ -23,7 +23,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.XpackApiSuite.NextRollupJobName
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterProvider, EsClusterSettings, SecurityType}
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Null, Num, Str}
@@ -35,24 +36,25 @@ trait XpackApiSuite
     with ESVersionSupportForAnyWordSpecLike
     with BeforeAndAfterEach
     with Matchers {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/xpack_api/readonlyrest.yml"
 
   override lazy val targetEs = container.nodes.head
 
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
+    EsClusterSettings.create(
+      clusterName = "ROR1",
       nodeDataInitializer = XpackApiSuite.nodeDataInitializer(),
-      xPackSupport = true,
-      // todo:
-      externalSslEnabled = false,
-      internodeSslEnabled = false
+      securityType = SecurityType.RorSecurity(Attributes.default.copy(
+        rorConfigFileName = rorConfigFileName,
+        restSslEnabled = true,
+        internodeSslEnabled = false
+      ))
     )
   )
 
-  private lazy val adminXpackApiManager = new XpackApiManager(rorAdminClient, esVersionUsed)
+  private lazy val adminXpackApiManager = new XpackApiManager(adminClient, esVersionUsed)
   private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"))
   private lazy val dev2SearchManager = new SearchManager(basicAuthClient("dev2", "test"))
   private lazy val dev3XpackApiManager = new XpackApiManager(basicAuthClient("dev3", "test"), esVersionUsed)

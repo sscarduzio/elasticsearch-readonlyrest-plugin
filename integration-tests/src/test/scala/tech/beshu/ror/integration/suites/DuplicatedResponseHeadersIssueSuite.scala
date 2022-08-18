@@ -22,7 +22,7 @@ import tech.beshu.ror.integration.suites.DuplicatedResponseHeadersIssueSuite.Sea
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.dependencies.wiremock
-import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer, EsClusterProvider}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, SearchManager}
 
@@ -32,7 +32,7 @@ trait DuplicatedResponseHeadersIssueSuite
     with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike
     with Matchers {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/duplicated_response_headers_issue/readonlyrest.yml"
 

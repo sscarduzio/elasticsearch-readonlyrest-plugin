@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.elasticsearch.{BaseTemplateManager, CatManager, IndexTemplateManager, LegacyTemplateManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -28,7 +28,7 @@ trait CatApiSuite
   extends AnyWordSpec
     with BaseTemplatesSuite
     with ESVersionSupportForAnyWordSpecLike {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/cat_api/readonlyrest.yml"
 
@@ -38,7 +38,7 @@ trait CatApiSuite
 
   "A _cat/state" should {
     "work as expected" in {
-      lazy val adminClusterStateManager = new CatManager(rorAdminClient, esVersion = esVersionUsed)
+      lazy val adminClusterStateManager = new CatManager(adminClient, esVersion = esVersionUsed)
       val response = adminClusterStateManager.healthCheck()
 
       response.responseCode should be(200)
@@ -131,7 +131,7 @@ trait CatApiSuite
 
   def indexTemplateApiTests(name: String)
                            (templateManagerCreator: RestClient => BaseTemplateManager): Unit = {
-    val adminTemplateManager = templateManagerCreator(rorAdminClient)
+    val adminTemplateManager = templateManagerCreator(adminClient)
 
     s"$name" when {
       "user is dev1" should {

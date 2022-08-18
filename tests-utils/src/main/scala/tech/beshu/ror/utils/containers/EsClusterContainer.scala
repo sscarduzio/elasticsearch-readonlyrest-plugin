@@ -18,15 +18,19 @@ package tech.beshu.ror.utils.containers
 
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.{Container, SingleContainer}
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.auto._
+import eu.timepit.refined.numeric.Positive
 import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.GenericContainer
-import tech.beshu.ror.utils.containers.EsClusterSettings.EsVersion
+import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
+import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.ClusterManager
 
 import scala.language.existentials
 
-class EsClusterContainer private[containers](val rorContainerSpecification: ContainerSpecification,
+class EsClusterContainer private[containers](val esClusterSettings: EsClusterSettings,
                                              val nodeCreators: NonEmptyList[StartedClusterDependencies => EsContainer],
                                              dependencies: List[DependencyDef])
   extends Container {
@@ -87,9 +91,9 @@ class EsRemoteClustersContainer private[containers](val localCluster: EsClusterC
 
   private def remoteClustersInitializer(container: EsClusterContainer,
                                         remoteClustersConfig: Map[String, EsClusterContainer]): Unit = {
-    val clusterManager = new ClusterManager(container.nodes.head.rorAdminClient, esVersion = container.nodes.head.esVersion)
+    val clusterManager = new ClusterManager(container.nodes.head.adminClient, esVersion = container.nodes.head.esVersion)
     val result = clusterManager.configureRemoteClusters(
-      remoteClustersConfig.mapValues(_.nodes.map(c => s""""${c.name}:9300""""))
+      remoteClustersConfig.mapValues(_.nodes.map(c => s""""${c.esConfig.nodeName}:9300""""))
     )
 
     result.responseCode match {
@@ -113,29 +117,65 @@ trait SetupRemoteCluster {
   def remoteClustersConfiguration(remoteClusters: NonEmptyList[EsClusterContainer]): Map[String, EsClusterContainer]
 }
 
-final case class EsClusterSettings(name: String,
-                                   numberOfInstances: Int = 1,
-                                   nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-                                   rorContainerSpecification: ContainerSpecification = ContainerSpecification.empty,
-                                   dependentServicesContainers: List[DependencyDef] = Nil,
-                                   xPackSupport: Boolean,
-                                   useXpackSecurityInsteadOfRor: Boolean = false,
-                                   configHotReloadingEnabled: Boolean = false,
-                                   customRorIndexName: Option[String] = None,
-                                   internodeSslEnabled: Boolean = false,
-                                   esVersion: EsVersion = EsVersion.DeclaredInProject,
-                                   externalSslEnabled: Boolean = true,
-                                   enableXPackSsl: Boolean = false,
-                                   forceNonOssImage: Boolean = false)(implicit val rorConfigFileName: String)
+final case class EsClusterSettings private(clusterName: String,
+                                           nodeTypes: NonEmptyList[NodeType],
+                                           nodeDataInitializer: ElasticsearchNodeDataInitializer,
+                                           containerSpecification: ContainerSpecification,
+                                           dependentServicesContainers: List[DependencyDef],
+                                           esVersion: EsVersion)
 
 object EsClusterSettings {
-  val basic = EsClusterSettings(name = "ROR_SINGLE", xPackSupport = false)("/basic/readonlyrest.yml")
 
-  trait EsVersion
-  object EsVersion {
-    case object DeclaredInProject extends EsVersion
-    final case class SpecificVersion(moduleName: String) extends EsVersion
+  def create(clusterName: String,
+             securityType: SecurityType,
+             numberOfInstances: Int Refined Positive = 1,
+             nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
+             containerSpecification: ContainerSpecification = ContainerSpecification.empty,
+             dependentServicesContainers: List[DependencyDef] = Nil,
+             esVersion: EsVersion = EsVersion.DeclaredInProject): EsClusterSettings = {
+    EsClusterSettings(
+      clusterName,
+      NonEmptyList.one(NodeType(securityType, numberOfInstances)),
+      nodeDataInitializer,
+      containerSpecification,
+      dependentServicesContainers,
+      esVersion
+    )
   }
+
+  def createMixedCluster(clusterName: String,
+                         nodeTypes: NonEmptyList[NodeType],
+                         nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
+                         containerSpecification: ContainerSpecification = ContainerSpecification.empty,
+                         dependentServicesContainers: List[DependencyDef] = Nil,
+                         esVersion: EsVersion = EsVersion.DeclaredInProject): EsClusterSettings = {
+    EsClusterSettings(
+      clusterName,
+      nodeTypes,
+      nodeDataInitializer,
+      containerSpecification,
+      dependentServicesContainers,
+      esVersion
+    )
+  }
+
+  final case class NodeType(securityType: SecurityType,
+                            numberOfInstances: Int Refined Positive = 1)
+
+}
+
+trait EsVersion
+object EsVersion {
+  case object DeclaredInProject extends EsVersion
+  final case class SpecificVersion(moduleName: String) extends EsVersion
+}
+
+sealed trait SecurityType
+object SecurityType {
+  final case class RorWithXpackSecurity(attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes) extends SecurityType
+  final case class RorSecurity(attributes: ReadonlyRestPlugin.Config.Attributes) extends SecurityType
+  final case class XPackSecurity(attributes: XpackSecurityPlugin.Config.Attributes) extends SecurityType
+  case object NoSecurityCluster extends SecurityType
 }
 
 final case class DependencyDef(name: String, containerCreator: Coeval[SingleContainer[GenericContainer[_]]], originalPort: Int)

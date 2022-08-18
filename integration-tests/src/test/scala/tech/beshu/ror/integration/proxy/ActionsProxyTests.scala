@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.ActionsSuite
-import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
 
-class ActionsProxyTests extends ActionsSuite with XpackEsClusterProxyTestSupport
+class ActionsProxyTests extends ActionsSuite with SingleNodeProxyTestSupport

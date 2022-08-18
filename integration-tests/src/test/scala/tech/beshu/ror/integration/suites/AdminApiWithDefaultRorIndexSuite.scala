@@ -16,29 +16,35 @@
  */
 package tech.beshu.ror.integration.suites
 
+import eu.timepit.refined.auto._
 import tech.beshu.ror.integration.suites.base.BaseAdminApiSuite
-import tech.beshu.ror.utils.containers.{EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.{EsClusterProvider, EsClusterSettings}
 
 trait AdminApiWithDefaultRorIndexSuite extends BaseAdminApiSuite {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/admin_api/readonlyrest.yml"
   override protected val readonlyrestIndexName: String = ".readonlyrest"
 
   override protected lazy val rorWithIndexConfig = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
+    EsClusterSettings.create(
+      clusterName = "ROR1",
       numberOfInstances = 2,
-      nodeDataInitializer = nodeDataInitializer(),
-      xPackSupport = false,
-      configHotReloadingEnabled = true,
+      securityType = RorSecurity(Attributes.default.copy(
+        rorConfigFileName = rorConfigFileName
+      )),
+      nodeDataInitializer = nodeDataInitializer()
     )
   )
 
   override protected lazy val rorWithNoIndexConfig = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR2",
-      xPackSupport = false,
+    EsClusterSettings.create(
+      clusterName = "ROR2",
+      securityType = RorSecurity(Attributes.default.copy(
+        rorConfigFileName = rorConfigFileName
+      )),
     )
   )
 }

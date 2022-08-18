@@ -21,7 +21,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager}
 
 trait DisabledAuditingToolsSuite
@@ -30,13 +30,13 @@ trait DisabledAuditingToolsSuite
     with ESVersionSupportForAnyWordSpecLike
     with BeforeAndAfterEach
     with Matchers {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/disabled_auditing_tools/readonlyrest.yml"
 
   override val nodeDataInitializer = Some(ElasticsearchTweetsInitializer)
 
-  private lazy val auditIndexManager = new AuditIndexManager(rorAdminClient, esVersionUsed, "audit_index")
+  private lazy val auditIndexManager = new AuditIndexManager(adminClient, esVersionUsed, "audit_index")
 
   override def beforeEach(): Unit = {
     super.beforeEach()

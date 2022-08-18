@@ -30,7 +30,7 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
     with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike
     with Matchers {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/rev_proxy_groups_provider/readonlyrest.yml"
 

@@ -20,7 +20,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -29,7 +29,7 @@ trait ClosedIndicesSuite
     with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike
     with Matchers {
-  this: EsContainerCreator =>
+  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/closed_indices/readonlyrest.yml"
 
@@ -50,8 +50,8 @@ trait ClosedIndicesSuite
   }
 
   // we use admin client here so 'CONTAINER ADMIN' block is matched. We need to match 'Getter' block
-  private lazy val searchManager = new SearchManager(rorAdminClient, additionalHeaders = Map("x-api-key" -> "g"))
-  private lazy val indexManager = new IndexManager(rorAdminClient, esVersionUsed, additionalHeaders = Map("x-api-key" -> "g"))
+  private lazy val searchManager = new SearchManager(adminClient, additionalHeaders = Map("x-api-key" -> "g"))
+  private lazy val indexManager = new IndexManager(adminClient, esVersionUsed, additionalHeaders = Map("x-api-key" -> "g"))
 
   "A search request" should {
     "return only data related to a1 index and ignore closed a2 index" when {
@@ -59,22 +59,25 @@ trait ClosedIndicesSuite
         val response = searchManager.search("intentp1_a1")
 
         response.responseCode should be(200)
-        response.searchHits.size should be(1)
-        response.searchHits.head("_id").str should be("doc-a1")
+        val foundIndices = response.searchHits.map(_("_index").str)
+        foundIndices should contain ("intentp1_a1")
+        foundIndices should not contain ("intentp1_a2")
       }
       "wildcard search is used" in {
         val response = searchManager.search("*")
 
         response.responseCode should be(200)
-        response.searchHits.size should be(1)
-        response.searchHits.head("_id").str should be("doc-a1")
+        val foundIndices = response.searchHits.map(_("_index").str)
+        foundIndices should contain ("intentp1_a1")
+        foundIndices should not contain ("intentp1_a2")
       }
       "generic search all" in {
         val response = searchManager.search()
 
         response.responseCode should be(200)
-        response.searchHits.size should be(1)
-        response.searchHits.head("_id").str should be("doc-a1")
+        val foundIndices = response.searchHits.map(_("_index").str)
+        foundIndices should contain ("intentp1_a1")
+        foundIndices should not contain ("intentp1_a2")
       }
 
       "get mappings is used" in {

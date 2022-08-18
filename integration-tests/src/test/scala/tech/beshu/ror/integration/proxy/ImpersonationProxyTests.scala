@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.ImpersonationSuite
-import tech.beshu.ror.integration.utils.OssEsClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
 
-class ImpersonationProxyTests extends ImpersonationSuite with OssEsClusterProxyTestSupport
+class ImpersonationProxyTests extends ImpersonationSuite with SingleNodeProxyTestSupport

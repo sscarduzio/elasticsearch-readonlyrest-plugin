@@ -11,10 +11,10 @@ readonlyrest:
 
   ssl_internode:
     enable: true
-    keystore_file: "keystore.bcfks"
+    keystore_file: "ror-keystore.bcfks"
     keystore_pass: readonlyrest
     key_pass: readonlyrest
-    truststore_file: "truststore.bcfks"
+    truststore_file: "ror-truststore.bcfks"
     truststore_pass: readonlyrest
     certificate_verification: true
 

@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.DisabledAuditingToolsSuite
-import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
 
-class DisabledAuditingToolsProxyTests extends DisabledAuditingToolsSuite with XpackEsClusterProxyTestSupport
+class DisabledAuditingToolsProxyTests extends DisabledAuditingToolsSuite with SingleNodeProxyTestSupport

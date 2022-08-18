@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.utils.containers
 
-import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.SingleContainer
 import com.typesafe.scalalogging.Logger
 import monix.eval.Coeval
@@ -26,6 +25,7 @@ import org.testcontainers.containers.{GenericContainer, Network}
 import org.testcontainers.images.builder.ImageFromDockerfile
 import tech.beshu.ror.utils.containers.EsContainer.Credentials
 import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, None, Token}
+import tech.beshu.ror.utils.containers.images.Elasticsearch
 import tech.beshu.ror.utils.containers.providers.ClientProvider
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
@@ -35,10 +35,9 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-abstract class EsContainer(val name: String,
-                           val esVersion: String,
+abstract class EsContainer(val esVersion: String,
+                           val esConfig: Elasticsearch.Config,
                            val startedClusterDependencies: StartedClusterDependencies,
-                           val esClusterSettings: EsClusterSettings,
                            image: ImageFromDockerfile)
   extends SingleContainer[GenericContainer[_]]
     with ClientProvider {
@@ -62,42 +61,22 @@ abstract class EsContainer(val name: String,
 }
 
 object EsContainer {
-  trait Config {
-    def clusterName: String
-    def nodeName: String
-    def nodes: NonEmptyList[String]
-    def envs: Map[String, String]
-    def additionalElasticsearchYamlEntries: Map[String, String]
-    def esVersion: String
-    def xPackSupport: Boolean
-    def useXpackSecurityInsteadOfRor: Boolean
-    def internodeSslEnabled: Boolean
-    def configHotReloadingEnabled: Boolean
-    def customRorIndexName: Option[String]
-    def externalSslEnabled: Boolean
-    def forceNonOssImage: Boolean
-  }
 
   def init(esContainer: EsContainer,
-           config: EsContainer.Config,
            initializer: ElasticsearchNodeDataInitializer,
            logger: Logger): EsContainer = {
-
     val logConsumer: Consumer[OutputFrame] = new Slf4jLogConsumer(logger.underlying)
-    val esClient = if (config.useXpackSecurityInsteadOfRor)
-      Coeval(esContainer.xpackSecurityAdminClient)
-    else
-      Coeval(esContainer.rorAdminClient)
+    val esClient = Coeval(esContainer.adminClient)
     esContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
     esContainer.container.addExposedPort(9200)
     esContainer.container.addExposedPort(9300)
     esContainer.container.addExposedPort(8000)
     esContainer.container.setWaitStrategy(
-      new ElasticsearchNodeWaitingStrategy(config.esVersion, esContainer.name, esClient, initializer)
+      new ElasticsearchNodeWaitingStrategy(esContainer.esVersion, esContainer.esConfig.nodeName, esClient, initializer)
         .withStartupTimeout(5 minutes)
     )
     esContainer.container.setNetwork(Network.SHARED)
-    esContainer.container.setNetworkAliases((config.nodeName :: Nil).asJava)
+    esContainer.container.setNetworkAliases((esContainer.esConfig.nodeName :: Nil).asJava)
     esContainer
   }
 
