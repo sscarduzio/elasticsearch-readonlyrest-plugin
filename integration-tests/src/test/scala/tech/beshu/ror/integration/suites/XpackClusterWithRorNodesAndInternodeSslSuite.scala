@@ -33,11 +33,13 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
     with BeforeAndAfterAll {
   this: EsContainerCreator =>
 
+  def rorConfigPath: String
+
   override implicit val rorConfigFileName =
     if (executedOn(es60x)) {
       "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_es60x.yml"
     } else {
-      "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest.yml"
+      rorConfigPath
     }
 
   override def clusterContainer: EsClusterContainer = generalClusterContainer

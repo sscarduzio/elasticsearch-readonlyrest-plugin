@@ -17,7 +17,6 @@
 package tech.beshu.ror.utils
 
 import cats.effect.{IO, Resource}
-import cats.implicits._
 import io.netty.buffer.ByteBufAllocator
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import io.netty.handler.ssl.{ClientAuth, SslContext, SslContextBuilder}
@@ -27,22 +26,110 @@ import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
 import org.bouncycastle.openssl.PEMParser
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import tech.beshu.ror.configuration.SslConfiguration
-import tech.beshu.ror.configuration.SslConfiguration.ClientCertificateConfiguration.{FileBasedConfiguration, TruststoreBasedConfiguration}
+import tech.beshu.ror.configuration.SslConfiguration.ClientCertificateConfiguration.TruststoreBasedConfiguration
 import tech.beshu.ror.configuration.SslConfiguration.ServerCertificateConfiguration.KeystoreBasedConfiguration
-import tech.beshu.ror.configuration.SslConfiguration.{ClientCertificateConfiguration, KeystoreFile, KeystorePassword, ServerCertificateConfiguration, TruststorePassword}
+import tech.beshu.ror.configuration.SslConfiguration._
 
 import java.io.{File, FileInputStream, FileReader, IOException}
-import java.nio.charset.Charset
 import java.security.cert.{CertificateFactory, X509Certificate}
-import java.security.spec.PKCS8EncodedKeySpec
-import java.security.{KeyFactory, KeyStore, PrivateKey}
-import java.util.Base64
+import java.security.{KeyStore, PrivateKey}
 import javax.net.ssl.{KeyManagerFactory, TrustManagerFactory}
 import scala.collection.JavaConverters._
 import scala.language.{existentials, implicitConversions}
 import scala.util.Try
 
 object SSLCertHelper extends Logging {
+
+  def prepareClientSSLContext(sslConfiguration: SslConfiguration, fipsCompliant: Boolean, certificateVerificationEnabled: Boolean): SslContext = {
+    if (certificateVerificationEnabled) {
+      sslConfiguration.clientCertificateConfiguration match {
+        case Some(truststoreBasedConfiguration: TruststoreBasedConfiguration) =>
+          SslContextBuilder.forClient.trustManager(getTrustManagerFactory(truststoreBasedConfiguration, fipsCompliant)).build()
+        case Some(fileBasedConfiguration: ClientCertificateConfiguration.FileBasedConfiguration) =>
+          SslContextBuilder.forClient.trustManager(getTrustedCertificatesFromPemFile(fileBasedConfiguration).toIterable.asJava).build()
+        case None =>
+          throw new Exception("Client Authentication could not be enabled because trust certificates has not been configured")
+      }
+    } else {
+      SslContextBuilder.forClient.trustManager(InsecureTrustManagerFactory.INSTANCE).build
+    }
+  }
+
+  def prepareServerSSLContext(sslConfiguration: SslConfiguration, fipsCompliant: Boolean, clientAuthenticationEnabled: Boolean): SslContext = {
+    prepareSslContextBuilder(sslConfiguration, fipsCompliant)
+      .attempt
+      .map {
+        case Right(sslCtxBuilder) =>
+          areProtocolAndCiphersValid(sslCtxBuilder, sslConfiguration)
+          if (sslConfiguration.allowedCiphers.nonEmpty) {
+            sslCtxBuilder.ciphers(sslConfiguration.allowedCiphers.map(_.value).asJava)
+          }
+          if (clientAuthenticationEnabled) {
+            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
+            sslConfiguration.clientCertificateConfiguration match {
+              case Some(truststoreBasedConfiguration: TruststoreBasedConfiguration) =>
+                sslCtxBuilder.trustManager(getTrustManagerFactory(truststoreBasedConfiguration, fipsCompliant))
+              case Some(fileBasedConfiguration: ClientCertificateConfiguration.FileBasedConfiguration) =>
+                sslCtxBuilder.trustManager(getTrustedCertificatesFromPemFile(fileBasedConfiguration).toIterable.asJava)
+              case None =>
+                throw new Exception("Client Authentication could not be enabled because trust certificates has not been configured")
+            }
+          }
+          if (sslConfiguration.allowedProtocols.nonEmpty) {
+            sslCtxBuilder.protocols(sslConfiguration.allowedProtocols.map(_.value).asJava)
+          }
+          sslCtxBuilder.build()
+        case Left(exception: IOException) =>
+          throw UnableToLoadDataFromProvidedFilesException(exception)
+        case Left(exception) =>
+          throw UnableToInitializeSslContextBuilderUsingProvidedFiles(exception)
+      }
+      .unsafeRunSync()
+  }
+
+  def areProtocolAndCiphersValid(sslContextBuilder: SslContextBuilder, config: SslConfiguration): Boolean =
+    trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder, config)
+      .fold(
+        ex => {
+          logger.error("ROR SSL: cannot validate SSL protocols and ciphers! " + ex.getClass.getSimpleName + ": " + ex.getMessage, ex)
+          false
+        },
+        _ => true
+      )
+
+  def isPEMHandlingAvailable: Boolean = {
+    Try {
+      Class.forName("org.bouncycastle.openssl.PEMParser")
+    }
+      .isSuccess
+  }
+
+  def getTrustedCertificatesFromPemFile(fileBasedConfiguration: ClientCertificateConfiguration.FileBasedConfiguration): Array[X509Certificate] = {
+    loadCertificateChain(fileBasedConfiguration.clientTrustedCertificateFile.value)
+      .attempt
+      .map {
+        case Right(certificateChain) => certificateChain
+        case Left(exception) =>
+          throw UnableToLoadDataFromProvidedFilesException(exception)
+      }
+      .unsafeRunSync()
+  }
+
+  def getTrustManagerFactory(truststoreBasedConfiguration: TruststoreBasedConfiguration, fipsCompliant: Boolean): TrustManagerFactory = {
+    loadTruststore(truststoreBasedConfiguration, fipsCompliant)
+      .map { truststore =>
+        val tmf = getTrustManagerFactoryInstance(fipsCompliant)
+        tmf.init(truststore)
+        tmf
+      }
+      .attempt
+      .map {
+        case Right(tmf) => tmf
+        case Left(exception) =>
+          throw UnableToInitializeTrustManagerFactoryUsingProvidedTruststore(exception)
+      }
+      .unsafeRunSync()
+  }
 
   private def getKeyManagerFactoryInstance(fipsCompliant: Boolean) = {
     if(fipsCompliant) {
@@ -58,29 +145,6 @@ object SSLCertHelper extends Logging {
     } else {
       TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
     }
-  }
-
-  private def loadPrivateKey(file: File): IO[PrivateKey] = {
-    Resource
-      .fromAutoCloseable(IO(new FileReader(file)))
-      .use { privateKeyFileReader => IO {
-        val pemParser = new PEMParser(privateKeyFileReader)
-        val privateKeyInfo = PrivateKeyInfo.getInstance(pemParser.readObject())
-        val converter = new JcaPEMKeyConverter()
-        converter.getPrivateKey(privateKeyInfo)
-      }}
-  }
-
-  private def loadCertificateChain(file: File): IO[Array[X509Certificate]] = {
-    Resource
-      .fromAutoCloseable(IO(new FileInputStream(file)))
-      .use { certificateChainFile => IO {
-        val certFactory = CertificateFactory.getInstance("X.509")
-        certFactory.generateCertificates(certificateChainFile).asScala.toArray.map {
-          case cc: X509Certificate => cc
-          case _ => throw MalformedSslSettings(s"Certificate chain in $file contains invalid X509 certificate")
-        }
-      }}
   }
 
   private def loadKeystoreFromFile(keystoreFile: File, password: Array[Char], fipsCompliant: Boolean): IO[KeyStore] = {
@@ -151,6 +215,29 @@ object SSLCertHelper extends Logging {
     } yield (privateKey, certificateChain)
   }
 
+  private def loadPrivateKey(file: File): IO[PrivateKey] = {
+    Resource
+      .fromAutoCloseable(IO(new FileReader(file)))
+      .use { privateKeyFileReader => IO {
+        val pemParser = new PEMParser(privateKeyFileReader)
+        val privateKeyInfo = PrivateKeyInfo.getInstance(pemParser.readObject())
+        val converter = new JcaPEMKeyConverter()
+        converter.getPrivateKey(privateKeyInfo)
+      }}
+  }
+
+  private def loadCertificateChain(file: File): IO[Array[X509Certificate]] = {
+    Resource
+      .fromAutoCloseable(IO(new FileInputStream(file)))
+      .use { certificateChainFile => IO {
+        val certFactory = CertificateFactory.getInstance("X.509")
+        certFactory.generateCertificates(certificateChainFile).asScala.toArray.map {
+          case cc: X509Certificate => cc
+          case _ => throw MalformedSslSettings(s"Certificate chain in $file contains invalid X509 certificate")
+        }
+      }}
+  }
+
   private def getPrivateKeyAndCertificateChainFromKeystore(keystoreBasedConfiguration: KeystoreBasedConfiguration): IO[(PrivateKey, Array[X509Certificate])] = {
     loadKeystore(keystoreBasedConfiguration, fipsCompliant = false)
       .map { keystore =>
@@ -181,40 +268,6 @@ object SSLCertHelper extends Logging {
     }
   }
 
-  def isPEMHandlingAvailable: Boolean = {
-    Try {
-      Class.forName("org.bouncycastle.openssl.PEMParser")
-    }
-      .isSuccess
-  }
-
-  def getTrustedCertificatesFromPemFile(fileBasedConfiguration: ClientCertificateConfiguration.FileBasedConfiguration): Array[X509Certificate] = {
-    loadCertificateChain(fileBasedConfiguration.clientTrustedCertificateFile.value)
-      .attempt
-      .map {
-        case Right(certificateChain) => certificateChain
-        case Left(exception) =>
-          throw UnableToLoadDataFromProvidedFilesException(exception)
-      }
-      .unsafeRunSync()
-  }
-
-  def getTrustManagerFactory(truststoreBasedConfiguration: TruststoreBasedConfiguration, fipsCompliant: Boolean): TrustManagerFactory = {
-    loadTruststore(truststoreBasedConfiguration, fipsCompliant)
-      .map { truststore =>
-        val tmf = getTrustManagerFactoryInstance(fipsCompliant)
-        tmf.init(truststore)
-        tmf
-      }
-      .attempt
-      .map {
-        case Right(tmf) => tmf
-        case Left(exception) =>
-          throw UnableToInitializeTrustManagerFactoryUsingProvidedTruststore(exception)
-      }
-      .unsafeRunSync()
-  }
-
   private def prepareSslContextBuilder(sslConfiguration: SslConfiguration, fipsCompliant: Boolean): IO[SslContextBuilder] = {
     if(fipsCompliant) {
       val keystoreBasedConfiguration = sslConfiguration.serverCertificateConfiguration match {
@@ -238,63 +291,6 @@ object SSLCertHelper extends Logging {
       }
     }
   }
-
-  def prepareClientSSLContext(sslConfiguration: SslConfiguration, fipsCompliant: Boolean, certificateVerificationEnabled: Boolean): SslContext = {
-    if (certificateVerificationEnabled) {
-      sslConfiguration.clientCertificateConfiguration match {
-        case Some(truststoreBasedConfiguration: TruststoreBasedConfiguration) =>
-          SslContextBuilder.forClient.trustManager(getTrustManagerFactory(truststoreBasedConfiguration, fipsCompliant)).build()
-        case Some(fileBasedConfiguration: ClientCertificateConfiguration.FileBasedConfiguration) =>
-          SslContextBuilder.forClient.trustManager(getTrustedCertificatesFromPemFile(fileBasedConfiguration).toIterable.asJava).build()
-        case None =>
-          throw new Exception("Client Authentication could not be enabled because trust certificates has not been configured")
-      }
-    } else {
-      SslContextBuilder.forClient.trustManager(InsecureTrustManagerFactory.INSTANCE).build
-    }
-  }
-
-  def prepareServerSSLContext(sslConfiguration: SslConfiguration, fipsCompliant: Boolean, clientAuthenticationEnabled: Boolean): SslContext = {
-    prepareSslContextBuilder(sslConfiguration, fipsCompliant)
-      .attempt
-      .map {
-        case Right(sslCtxBuilder) =>
-          areProtocolAndCiphersValid(sslCtxBuilder, sslConfiguration)
-          if (sslConfiguration.allowedCiphers.nonEmpty) {
-            sslCtxBuilder.ciphers(sslConfiguration.allowedCiphers.map(_.value).asJava)
-          }
-          if (clientAuthenticationEnabled) {
-            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
-            sslConfiguration.clientCertificateConfiguration match {
-              case Some(truststoreBasedConfiguration: TruststoreBasedConfiguration) =>
-                sslCtxBuilder.trustManager(getTrustManagerFactory(truststoreBasedConfiguration, fipsCompliant))
-              case Some(fileBasedConfiguration: ClientCertificateConfiguration.FileBasedConfiguration) =>
-                sslCtxBuilder.trustManager(getTrustedCertificatesFromPemFile(fileBasedConfiguration).toIterable.asJava)
-              case None =>
-                throw new Exception("Client Authentication could not be enabled because trust certificates has not been configured")
-            }
-          }
-          if (sslConfiguration.allowedProtocols.nonEmpty) {
-            sslCtxBuilder.protocols(sslConfiguration.allowedProtocols.map(_.value).asJava)
-          }
-          sslCtxBuilder.build()
-        case Left(exception: IOException) =>
-          throw UnableToLoadDataFromProvidedFilesException(exception)
-        case Left(exception) =>
-          throw UnableToInitializeSslContextBuilderUsingProvidedFiles(exception)
-      }
-      .unsafeRunSync()
-  }
-
-  def areProtocolAndCiphersValid(sslContextBuilder: SslContextBuilder, config: SslConfiguration): Boolean =
-    trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder, config)
-      .fold(
-        ex => {
-          logger.error("ROR SSL: cannot validate SSL protocols and ciphers! " + ex.getClass.getSimpleName + ": " + ex.getMessage, ex)
-          false
-        },
-        _ => true
-      )
 
   final case class UnableToLoadDataFromProvidedFilesException(cause: Throwable) extends Exception(s"Unable to load data from provided files", cause)
   final case class UnableToInitializeSslContextBuilderUsingProvidedFiles(cause: Throwable) extends Exception(s"Unable to initialize Key Manager Factory using provided keystore.", cause)
