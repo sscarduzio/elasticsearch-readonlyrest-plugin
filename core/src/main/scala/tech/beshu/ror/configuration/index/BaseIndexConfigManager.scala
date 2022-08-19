@@ -16,13 +16,17 @@
  */
 package tech.beshu.ror.configuration.index
 
-private[index] object Config {
-  object rorSettingsIndexConst {
-    val id = "1"
-    val settingsKey = "settings"
-  }
+import monix.eval.Task
+import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
 
-  object rorTestSettingsIndexConst {
-    val id = "2"
-  }
+trait BaseIndexConfigManager[A] {
+
+  def load(indexName: RorConfigurationIndex): Task[Either[ConfigLoaderError[IndexConfigError], A]]
+
+  def save(config: A, rorConfigurationIndex: RorConfigurationIndex): Task[Either[SavingIndexConfigError, Unit]]
+
+  protected final def configLoaderError(error: IndexConfigError): Task[Either[SpecializedError[IndexConfigError], A]] =
+    Task.now(Left(SpecializedError[IndexConfigError](error)))
 }

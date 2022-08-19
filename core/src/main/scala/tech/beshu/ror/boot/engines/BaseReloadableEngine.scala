@@ -23,7 +23,6 @@ import cats.data.EitherT
 import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
-import eu.timepit.refined.refineV
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.atomic.{Atomic, AtomicAny}
@@ -31,7 +30,6 @@ import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
-import tech.beshu.ror.accesscontrol.refined.finiteDurationValidate
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError
@@ -40,6 +38,7 @@ import tech.beshu.ror.boot.engines.BaseReloadableEngine._
 import tech.beshu.ror.boot.engines.ConfigHash._
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.providers.JavaUuidProvider
+import tech.beshu.ror.utils.DurationOps._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -97,7 +96,11 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
       val invalidationTimestamp = clock.instant()
       val previous = currentEngine.getAndTransform {
         case notStarted: EngineState.NotStartedYet =>
-          if (keepPreviousConfiguration) notStarted else EngineState.NotStartedYet(recentConfig = None, recentExpirationConfig = None)
+          if (keepPreviousConfiguration) {
+            notStarted
+          } else  {
+            EngineState.NotStartedYet(recentConfig = None, recentExpirationConfig = None)
+          }
         case oldWorkingEngine@EngineState.Working(engineWithConfig, _) =>
           logger.info(s"[${requestId.show}] ROR $name engine (id=${engineWithConfig.config.hashString()}) will be invalidated ...")
           stopEarly(oldWorkingEngine)
@@ -391,11 +394,11 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   }
 
   private def isStillValid(validTo: Instant) = {
-    val leftTime = FiniteDuration.apply(validTo.minusMillis(clock.instant().toEpochMilli).toEpochMilli, TimeUnit.MILLISECONDS)
-    refineV[Positive](leftTime) match {
-      case Right(remainingEngineTtl) => RemainingEngineTime.Valid(remainingEngineTtl)
-      case Left(_) => RemainingEngineTime.Expired
-    }
+    FiniteDuration
+      .apply(validTo.minusMillis(clock.instant().toEpochMilli).toEpochMilli, TimeUnit.MILLISECONDS)
+      .toRefinedPositive
+      .map(RemainingEngineTime.Valid)
+      .getOrElse(RemainingEngineTime.Expired)
   }
 }
 

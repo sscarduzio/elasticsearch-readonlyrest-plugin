@@ -22,7 +22,7 @@ import tech.beshu.ror.es.IndexJsonContentService.{ReadError, WriteError}
 
 trait IndexJsonContentService {
 
-  def sourceOf(index: IndexName.Full, id: String): Task[Either[ReadError, Map[String, _]]]
+  def sourceOf(index: IndexName.Full, id: String): Task[Either[ReadError, Map[String, String]]]
 
   def saveContent(index: IndexName.Full, id: String, content: Map[String, String]): Task[Either[WriteError, Unit]]
 }

@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: ROR Internal API
   description: The API is designed for ROR KBN plugin. It should be treated as internal. It means that backward compatibility won't be a first-class thing for us.
-  version: 1.1.0
+  version: 2.0.0
 
 paths:
   /_readonlyrest/admin/config/test:

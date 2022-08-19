@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService._
+import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 
@@ -44,7 +45,7 @@ class EsIndexJsonContentService(client: NodeClient,
   }
 
   override def sourceOf(index: IndexName.Full,
-                        id: String): Task[Either[ReadError, Map[String, AnyRef]]] = {
+                        id: String): Task[Either[ReadError, Map[String, String]]] = {
     Task {
       client
         .get(
@@ -59,10 +60,10 @@ class EsIndexJsonContentService(client: NodeClient,
       .map { response =>
         Option(response.getSourceAsMap) match {
           case Some(map) =>
-            Right(map.asScala.toMap)
+            Right(map.asScala.toMap.asStringMap)
           case None =>
             logger.warn(s"Document [${index.show} ID=$id] _source is not available. Assuming it's empty")
-            Right(Map.empty[String, AnyRef])
+            Right(Map.empty[String, String])
         }
       }
       .executeOn(RorSchedulers.blockingScheduler)

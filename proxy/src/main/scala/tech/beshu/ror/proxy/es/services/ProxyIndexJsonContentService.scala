@@ -11,7 +11,7 @@ import tech.beshu.ror.es.IndexJsonContentService
 object ProxyIndexJsonContentService extends IndexJsonContentService {
 
   override def sourceOf(index: IndexName.Full,
-                        id: String): Task[Either[IndexJsonContentService.ReadError, Map[String, AnyRef]]] =
+                        id: String): Task[Either[IndexJsonContentService.ReadError, Map[String, String]]] =
     Task.now(Left(IndexJsonContentService.CannotReachContentSource))
 
   override def saveContent(index: IndexName.Full,

@@ -26,17 +26,17 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{Parsi
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
 
-class IndexConfigManager(indexJsonContentService: IndexJsonContentService)
-  extends Logging {
+final class IndexConfigManager(indexJsonContentService: IndexJsonContentService)
+  extends BaseIndexConfigManager[RawRorConfig]
+  with Logging {
 
-  def load(indexName: RorConfigurationIndex): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = {
+  override def load(indexName: RorConfigurationIndex): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = {
     indexJsonContentService
-      .sourceOf(indexName.index, Config.auditIndexConst.id)
+      .sourceOf(indexName.index, Config.rorSettingsIndexConst.id)
       .flatMap {
         case Right(source) =>
           source
-            .collect { case (key: String, value: String) => (key, value) }
-            .find(_._1 == Config.auditIndexConst.settingsKey)
+            .find(_._1 == Config.rorSettingsIndexConst.settingsKey)
             .map { case (_, rorYamlString) => RawRorConfig.fromString(rorYamlString).map(_.left.map(ParsingError.apply)) }
             .getOrElse(configLoaderError(IndexConfigUnknownStructure))
         case Left(CannotReachContentSource) =>
@@ -46,17 +46,15 @@ class IndexConfigManager(indexJsonContentService: IndexJsonContentService)
       }
   }
 
-  def save(config: RawRorConfig, rorConfigurationIndex: RorConfigurationIndex): Task[Either[SavingIndexConfigError, Unit]] = {
+  override def save(config: RawRorConfig, rorConfigurationIndex: RorConfigurationIndex): Task[Either[SavingIndexConfigError, Unit]] = {
     indexJsonContentService
       .saveContent(
         rorConfigurationIndex.index,
-        Config.auditIndexConst.id,
-        Map(Config.auditIndexConst.settingsKey -> config.raw)
+        Config.rorSettingsIndexConst.id,
+        Map(Config.rorSettingsIndexConst.settingsKey -> config.raw)
       )
       .map {
         _.left.map { case CannotWriteToIndex => SavingIndexConfigError.CannotSaveConfig }
       }
   }
-
-  private def configLoaderError(error: IndexConfigError) = Task.now(Left(SpecializedError[IndexConfigError](error)))
 }

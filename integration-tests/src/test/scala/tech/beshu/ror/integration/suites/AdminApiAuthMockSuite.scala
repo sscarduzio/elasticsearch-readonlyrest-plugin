@@ -703,13 +703,16 @@ trait AdminApiAuthMockSuite
       .invalidateImpersonationMocks()
       .force()
 
+    removeRorIndexAndAwaitForNotSetTestConfig()
+  }
+
+  private def removeRorIndexAndAwaitForNotSetTestConfig(): Unit = {
     // remove index storing test config
     new IndexManager(basicAuthClient("admin", "container"), esVersionUsed)
       .removeIndex(readonlyRestIndexName)
 
     eventually { // await until node invalidate the test config
       val response = rorApiManager.currentRorTestConfig
-      println(s"Cleanup: ${response.responseJson}")
       (response.responseCode, response.responseJson) should be(200, ujson.read(
         s"""
            |{
@@ -720,5 +723,4 @@ trait AdminApiAuthMockSuite
       ))
     }
   }
-
 }

@@ -24,7 +24,6 @@ import cats.data.EitherT
 import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
-import eu.timepit.refined.refineV
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
@@ -36,16 +35,18 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{Parsi
 import tech.beshu.ror.configuration.{RawRorConfig, TestRorConfig}
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
+import tech.beshu.ror.utils.DurationOps._
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.Try
 
-class IndexTestConfigManager(indexJsonContentService: IndexJsonContentService)
-  extends Logging {
+final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentService)
+  extends BaseIndexConfigManager[TestRorConfig]
+  with Logging {
 
-  def load(indexName: RorConfigurationIndex): Task[Either[ConfigLoaderError[IndexConfigError], TestRorConfig]] = {
+  override def load(indexName: RorConfigurationIndex): Task[Either[ConfigLoaderError[IndexConfigError], TestRorConfig]] = {
     indexJsonContentService
-      .sourceOf(indexName.index, Config.testSettingsIndexConst.id)
+      .sourceOf(indexName.index, Config.rorTestSettingsIndexConst.id)
       .flatMap {
         case Right(source) =>
           val properties = source.collect { case (key: String, value: String) => (key, value) }
@@ -57,11 +58,11 @@ class IndexTestConfigManager(indexJsonContentService: IndexJsonContentService)
       }
   }
 
-  def save(config: TestRorConfig.Present, rorConfigurationIndex: RorConfigurationIndex): Task[Either[SavingIndexConfigError, Unit]] = {
+  override def save(config: TestRorConfig, rorConfigurationIndex: RorConfigurationIndex): Task[Either[SavingIndexConfigError, Unit]] = {
     indexJsonContentService
       .saveContent(
         rorConfigurationIndex.index,
-        Config.testSettingsIndexConst.id,
+        Config.rorTestSettingsIndexConst.id,
         formatSettings(config)
       )
       .map {
@@ -69,40 +70,49 @@ class IndexTestConfigManager(indexJsonContentService: IndexJsonContentService)
       }
   }
 
-  private def configLoaderError(error: IndexConfigError) = Task.now(Left(SpecializedError[IndexConfigError](error)))
+  private def getSettings(config: Map[String, String]): EitherT[Task, ConfigLoaderError[IndexConfigError], TestRorConfig] = {
 
-  private def getSettings(config: Map[String, String]): EitherT[Task, ConfigLoaderError[IndexConfigError], Present] = {
-    for {
-      expirationTimeString <- getConfigProperty(config, Const.properties.expirationTime)
-      expirationTtlString <- getConfigProperty(config, Const.properties.expirationTtl)
-      rawRorConfigString <- getConfigProperty(config, Const.properties.settings)
-      rawRorConfig <- EitherT(RawRorConfig.fromString(rawRorConfigString).map(_.left.map(ParsingError.apply)))
-      expirationTime <- getInstant(expirationTimeString)
-      expirationTtl <- getExpirationTtl(expirationTtlString)
-    } yield Present(
-      rawConfig = rawRorConfig,
-      expiration = Present.ExpirationConfig(ttl = expirationTtl, validTo = expirationTime)
-    )
+    if (config.isEmpty) {
+      EitherT.right(Task.now(TestRorConfig.NotSet))
+    } else {
+      for {
+        expirationTimeString <- getConfigProperty(config, Const.properties.expirationTime)
+        expirationTtlString <- getConfigProperty(config, Const.properties.expirationTtl)
+        rawRorConfigString <- getConfigProperty(config, Const.properties.settings)
+        rawRorConfig <- EitherT(RawRorConfig.fromString(rawRorConfigString).map(_.left.map(ParsingError.apply)))
+        expirationTime <- getInstant(expirationTimeString)
+        expirationTtl <- getExpirationTtl(expirationTtlString)
+      } yield Present(
+        rawConfig = rawRorConfig,
+        expiration = Present.ExpirationConfig(ttl = expirationTtl, validTo = expirationTime)
+      )
+    }
   }
 
-  private def formatSettings(config: Present): Map[String, String] = {
-    Map(
-      Const.properties.expirationTime -> config.expiration.validTo.atOffset(ZoneOffset.UTC).toString,
-      Const.properties.expirationTtl -> config.expiration.ttl.value.toMillis.toString,
-      Const.properties.settings -> config.rawConfig.raw
-    )
+  private def formatSettings(config: TestRorConfig): Map[String, String] = {
+    config match {
+      case TestRorConfig.NotSet =>
+        Map.empty
+      case Present(rawConfig, expiration) =>
+        Map(
+          Const.properties.expirationTime -> expiration.validTo.atOffset(ZoneOffset.UTC).toString,
+          Const.properties.expirationTtl -> expiration.ttl.value.toMillis.toString,
+          Const.properties.settings -> rawConfig.raw
+        )
+    }
   }
 
   private def getExpirationTtl(value: String): EitherT[Task, ConfigLoaderError[IndexConfigError], FiniteDuration Refined Positive] = {
-    import tech.beshu.ror.accesscontrol.refined.finiteDurationValidate
-    Try(Duration.apply(value.toLong, TimeUnit.MILLISECONDS)).toOption match {
-      case Some(v: FiniteDuration) if v.toMillis > 0 =>
-        refineV[Positive](v)
-          .left.map(_ => parserError)
-          .toEitherT[Task]
-      case Some(_) | None =>
-        Left(parserError).toEitherT[Task]
+    Try {
+      Duration
+        .apply(value.toLong, TimeUnit.MILLISECONDS)
+        .toRefinedPositive
+        .leftMap((_: String) => parserError)
     }
+      .toEither
+      .leftMap(_ => parserError)
+      .flatten
+      .toEitherT[Task]
   }
 
   private def parserError: ConfigLoaderError[IndexConfigError] = SpecializedError[IndexConfigError](IndexConfigUnknownStructure)

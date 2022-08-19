@@ -22,7 +22,6 @@ import cats.data.EitherT
 import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
-import eu.timepit.refined.refineV
 import io.circe.Decoder
 import monix.eval.Task
 import tech.beshu.ror.RequestId
@@ -34,6 +33,7 @@ import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, RawConfigR
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
+import tech.beshu.ror.utils.DurationOps._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -236,14 +236,10 @@ object TestConfigApi {
                                              ttl: FiniteDuration Refined Positive)
 
     private def parseDuration(value: String): Either[String, FiniteDuration Refined Positive] = {
-      import tech.beshu.ror.accesscontrol.refined.finiteDurationValidate
-
-      Try(Duration(value)).toOption match {
-        case Some(v: FiniteDuration) if v.toMillis > 0 =>
-          refineV[Positive](v)
-        case Some(_) | None =>
-          Left(s"Cannot parse '$value' as duration.")
-      }
+      Try(Duration(value))
+        .toEither
+        .leftMap(_ =>s"Cannot parse '$value' as duration.")
+        .flatMap(_.toRefinedPositive)
     }
 
     object decoders {

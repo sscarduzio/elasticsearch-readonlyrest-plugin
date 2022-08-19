@@ -34,6 +34,7 @@ import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, Core, Core
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.boot.ReadonlyRest._
 import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
+import tech.beshu.ror.configuration.TestConfigLoading._
 import tech.beshu.ror.configuration._
 import tech.beshu.ror.configuration.index.{IndexConfigManager, IndexTestConfigManager}
 import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadRawTestRorConfig, LoadedRorConfig, LoadedTestRorConfig, TestConfigLoadingInterpreter}
@@ -74,12 +75,11 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   private def loadRorTestConfig(esConfig: EsConfig): EitherT[Task, StartingFailure, LoadedTestRorConfig[TestRorConfig]] = {
-    val fallbackConfig: TestRorConfig = TestRorConfig.NotSet
     val action = LoadRawTestRorConfig.load(
       configurationIndex = esConfig.rorIndex.index,
-      fallbackConfig = fallbackConfig
+      fallbackConfig = notSetTestRorConfig
     )
-    EitherT.right(runTestProgram(action, LoadedTestRorConfig.FallbackConfig(fallbackConfig)))
+    EitherT.right(runTestProgram(action))
   }
 
   private def runStartingFailureProgram[A](action: LoadRorConfig[ErrorOr[A]]) = {
@@ -105,20 +105,19 @@ class ReadonlyRest(coreFactory: CoreFactory,
     }
   }
 
-  private def runTestProgram[A](action: TestConfigLoading.LoadTestRorConfig[TestConfigLoading.IndexErrorOr[A]],
-                                fallbackConfig: A): Task[A] = {
+  private def runTestProgram(action: LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]]): Task[LoadedTestRorConfig[TestRorConfig]] = {
     val compiler = TestConfigLoadingInterpreter.create(indexTestConfigManager, RorProperties.rorIndexSettingLoadingDelay)
     EitherT(action.foldMap(compiler))
       .leftMap {
         case LoadedTestRorConfig.IndexParsingError(message) =>
-          logger.error(s"Loading ReadonlyREST test settings from index failed: $message. Loading fallback test settings...")
-          fallbackConfig
+          logger.error(s"Loading ReadonlyREST test settings from index failed: $message. No test settings will be loaded.")
+          LoadedTestRorConfig.FallbackConfig(notSetTestRorConfig)
         case LoadedTestRorConfig.IndexUnknownStructure =>
-          logger.info("Loading ReadonlyREST test settings from index failed: index content malformed. Loading fallback test settings...")
-          fallbackConfig
+          logger.error("Loading ReadonlyREST test settings from index failed: index content malformed. No test settings will be loaded.")
+          LoadedTestRorConfig.FallbackConfig(notSetTestRorConfig)
         case LoadedTestRorConfig.IndexNotExist =>
-          logger.info("Loading ReadonlyREST test settings from index failed: cannot find index. Loading fallback test settings...")
-          fallbackConfig
+          logger.info("Loading ReadonlyREST test settings from index failed: cannot find index. No test settings will be loaded.")
+          LoadedTestRorConfig.FallbackConfig(notSetTestRorConfig)
       }
       .merge
   }
@@ -243,6 +242,8 @@ class ReadonlyRest(coreFactory: CoreFactory,
       .mkString("Errors:\n", "\n", "")
     StartingFailure(errorsMessage)
   }
+
+  private def notSetTestRorConfig: TestRorConfig = TestRorConfig.NotSet
 }
 
 object ReadonlyRest {
