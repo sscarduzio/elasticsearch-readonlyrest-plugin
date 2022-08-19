@@ -5,7 +5,7 @@ cd elastic-cloud
 ./run.sh
 
 function isElasticCloudGreen {
-    RESPONSE_CODE=$(curl -sk -o /dev/null -w "%{http_code}" -u elastic:elastic "https://localhost:9201/_cluster/health?wait_for_status=green&timeout=300s&pretty")
+    RESPONSE_CODE=$(curl -sk -o /dev/null -w "%{http_code}" -u elastic:elastic "https://localhost:19201/_cluster/health?wait_for_status=green&timeout=300s&pretty")
     [ $RESPONSE_CODE == "200" ]
 }
 

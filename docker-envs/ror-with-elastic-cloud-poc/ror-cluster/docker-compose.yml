@@ -16,7 +16,7 @@ services:
     build:
       context: .
       dockerfile: es/Dockerfile-use-ror-binaries-from-api
-      #dockerfile: es/Dockerfile-build-for-from-sources
+#      dockerfile: es/Dockerfile-build-for-from-sources
       args:
         ES_VERSION: $ELK_VERSION
         ROR_VERSION: $ROR_VERSION

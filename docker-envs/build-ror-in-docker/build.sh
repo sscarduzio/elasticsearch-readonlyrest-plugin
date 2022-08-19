@@ -8,5 +8,5 @@ fi
 ES_VERSION=$1
 
 docker build --no-cache --progress=plain -t ror-builder-tmp ../../
-docker run --rm -v $(pwd)/builds:/ror/builds -e ES_VERSION=$ES_VERSION ror-builder-tmp
+docker run --rm -v $(pwd)/builds:/ror/builds ror-builder-tmp $ES_VERSION
 docker rmi -f ror-builder-tmp
