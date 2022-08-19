@@ -59,22 +59,25 @@ trait ClosedIndicesSuite
         val response = searchManager.search("intentp1_a1")
 
         response.responseCode should be(200)
-        response.searchHits.size should be(1)
-        response.searchHits.head("_id").str should be("doc-a1")
+        val foundIndices = response.searchHits.map(_("_index").str)
+        foundIndices should contain ("intentp1_a1")
+        foundIndices should not contain ("intentp1_a2")
       }
       "wildcard search is used" in {
         val response = searchManager.search("*")
 
         response.responseCode should be(200)
-        response.searchHits.size should be(1)
-        response.searchHits.head("_id").str should be("doc-a1")
+        val foundIndices = response.searchHits.map(_("_index").str)
+        foundIndices should contain ("intentp1_a1")
+        foundIndices should not contain ("intentp1_a2")
       }
       "generic search all" in {
         val response = searchManager.search()
 
         response.responseCode should be(200)
-        response.searchHits.size should be(1)
-        response.searchHits.head("_id").str should be("doc-a1")
+        val foundIndices = response.searchHits.map(_("_index").str)
+        foundIndices should contain ("intentp1_a1")
+        foundIndices should not contain ("intentp1_a2")
       }
 
       "get mappings is used" in {

@@ -4,7 +4,7 @@ FROM ror-builder AS build
 
 ARG ES_VERSION
 
-RUN /ror/build-ror.sh &&\
+RUN /ror/bin/build-ror-plugin.sh $ES_VERSION &&\
     ls -h /ror/builds &&\
     mv /ror/builds/readonlyrest*es${ES_VERSION}.zip /ror/builds/ror.zip
 

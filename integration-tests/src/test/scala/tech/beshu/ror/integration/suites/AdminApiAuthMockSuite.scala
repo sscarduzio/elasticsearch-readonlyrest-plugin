@@ -56,13 +56,14 @@ trait AdminApiAuthMockSuite
 
   "An admin Auth Mock REST API" should {
     "return info that test settings are not configured" when {
-      "get current mocks" in {
+      // fixme: these tests are not deterministic (should be fixed in RORDEV-588)
+      "get current mocks" ignore {
         val response = rorApiManager.currentMockedServices()
         response.responseCode should be(200)
         response.responseJson("status").str should be("TEST_SETTINGS_NOT_CONFIGURED")
         response.responseJson("message").str should be("ROR Test settings are not configured. To use Auth Services Mock ROR has to have Test settings active.")
       }
-      "update mocks" in {
+      "update mocks" ignore {
         val payloadServices = ujson.read(
           s"""
              |[

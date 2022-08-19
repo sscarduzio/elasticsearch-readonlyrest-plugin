@@ -27,6 +27,7 @@ import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.admin.indices.get.GetIndexRequest.Feature
 import org.elasticsearch.action.admin.indices.get.{GetIndexRequest, GetIndexResponse}
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
+import org.elasticsearch.client.Client
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.metadata.RepositoriesMetaData
 import org.elasticsearch.cluster.service.ClusterService
@@ -49,7 +50,8 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
-class EsServerBasedRorClusterService(clusterService: ClusterService,
+class EsServerBasedRorClusterService(nodeName: String,
+                                     clusterService: ClusterService,
                                      remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                                      snapshotsServiceSupplier: Supplier[Option[SnapshotsService]],
                                      nodeClient: NodeClient,
@@ -159,18 +161,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
         logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
         Task.now(List.empty)
       case Success(client) =>
-        val promise = CancelablePromise[GetIndexResponse]()
-        client
-          .admin()
-          .indices()
-          .getIndex(
-            new GetIndexRequest().features(Feature.ALIASES),
-            new ActionListener[GetIndexResponse] {
-              override def onResponse(response: GetIndexResponse): Unit = promise.trySuccess(response)
-              override def onFailure(e: Exception): Unit = promise.tryFailure(e)
-            })
-        Task
-          .fromCancelablePromise(promise)
+        resolveRemoteIndicesUsing(client)
           .map { response =>
             response
               .indices().asSafeList
@@ -180,6 +171,22 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
               }
           }
     }
+  }
+
+  private def resolveRemoteIndicesUsing(client: Client) = {
+    import tech.beshu.ror.es.utils.ThreadContextOps._
+    threadPool.getThreadContext.addXpackSecurityAuthenticationHeader(nodeName)
+    val promise = CancelablePromise[GetIndexResponse]()
+    client
+      .admin()
+      .indices()
+      .getIndex(
+        new GetIndexRequest().features(Feature.ALIASES),
+        new ActionListener[GetIndexResponse] {
+          override def onResponse(response: GetIndexResponse): Unit = promise.trySuccess(response)
+          override def onFailure(e: Exception): Unit = promise.tryFailure(e)
+        })
+    Task.fromCancelablePromise(promise)
   }
 
   private def toFullRemoteIndexWithAliases(indexName: String,

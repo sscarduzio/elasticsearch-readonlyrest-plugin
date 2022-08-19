@@ -1285,7 +1285,7 @@ class ReadonlyRestStartingTests
       .expects(fullIndexName(".readonlyrest"), "1")
       .repeated(repeatedCount)
       .returns(Task.now(Right(
-        Map("settings" -> getResourceContent(resourceFileName).asInstanceOf[Any])
+        Map("settings" -> getResourceContent(resourceFileName))
       )))
     mockedManager
   }
@@ -1421,7 +1421,7 @@ class ReadonlyRestStartingTests
       |""".stripMargin
   )
 
-  private implicit def toRefined(fd: FiniteDuration): FiniteDuration Refined Positive = fd.toRefinedPositive
+  private implicit def toRefined(fd: FiniteDuration): FiniteDuration Refined Positive = fd.toRefinedPositiveUnsafe
 
   private def newRequestId() = RequestId(UUID.randomUUID().toString)
 

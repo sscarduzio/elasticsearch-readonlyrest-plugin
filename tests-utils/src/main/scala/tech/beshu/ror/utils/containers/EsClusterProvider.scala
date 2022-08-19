@@ -17,29 +17,38 @@
 package tech.beshu.ror.utils.containers
 
 import cats.data.NonEmptyList
-import tech.beshu.ror.utils.containers.EsClusterProvider.ClusterNodeData
+import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
+import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 
 sealed trait EsClusterProvider extends EsContainerCreator {
 
   protected def mode: Mode
 
   def createLocalClusterContainer(esClusterSettings: EsClusterSettings): EsClusterContainer = {
-    if (esClusterSettings.numberOfInstances < 1) throw new IllegalArgumentException("Cluster should have at least one instance")
-    val nodeNames = NonEmptyList.fromListUnsafe(Seq.iterate(1, esClusterSettings.numberOfInstances)(_ + 1).toList
-      .map(idx => s"${esClusterSettings.name}_$idx"))
-    val nodesData = nodeNames.map(name => ClusterNodeData(name, esClusterSettings))
-    createLocalClusterContainers(nodesData)
-  }
-
-  def createLocalClusterContainers(nodesData: ClusterNodeData, nodesDataArgs: ClusterNodeData*): EsClusterContainer =
-    createLocalClusterContainers(NonEmptyList.of(nodesData, nodesDataArgs: _*))
-
-  def createLocalClusterContainers(nodesData: NonEmptyList[ClusterNodeData]): EsClusterContainer = {
-    val nodeNames = nodesData.map(_.name)
+    val nodesSettings = NonEmptyList.fromListUnsafe {
+      esClusterSettings.nodeTypes
+        .foldLeft(List.empty[(String, NodeType)]) {
+          case (acc, nodeType) =>
+            acc ++ List
+              .iterate(acc.length + 1, nodeType.numberOfInstances.value)(_ + 1)
+              .map(idx => s"${esClusterSettings.clusterName}_$idx")
+              .map((_, nodeType))
+        }
+        .map { case (nodeName, nodeType) =>
+          EsNodeSettings(
+            nodeName = nodeName,
+            clusterName = esClusterSettings.clusterName,
+            securityType = nodeType.securityType,
+            containerSpecification = esClusterSettings.containerSpecification,
+            esVersion = esClusterSettings.esVersion
+          )
+        }
+    }
+    val allNodeNames = nodesSettings.map(_.nodeName)
     new EsClusterContainer(
-      nodesData.head.settings.rorContainerSpecification,
-      nodesData.map(createNode(nodeNames, _)),
-      nodesData.head.settings.dependentServicesContainers
+      esClusterSettings,
+      nodesSettings.map(nodeCreator(_, allNodeNames, esClusterSettings.nodeDataInitializer)),
+      esClusterSettings.dependentServicesContainers
     )
   }
 
@@ -48,35 +57,16 @@ sealed trait EsClusterProvider extends EsContainerCreator {
                                     remoteClusterSetup: SetupRemoteCluster): EsRemoteClustersContainer = {
     new EsRemoteClustersContainer(
       createLocalClusterContainer(localClustersSettings),
-      remoteClustersSettings.map(createLocalClusterContainer),
+      NonEmptyList.fromListUnsafe(remoteClustersSettings.toList.par.map(createLocalClusterContainer).toList),
       remoteClusterSetup
     )
   }
 
-  def createFrom(clusters: NonEmptyList[EsClusterSettings]): EsClusterContainer = {
-    def clusterNodeDataFromClusterSettings(esClusterSettings: EsClusterSettings, startingIndex: Int) = {
-      Seq.iterate(startingIndex, esClusterSettings.numberOfInstances)(_ + 1)
-        .toList
-        .map(idx => s"${esClusterSettings.name}_$idx")
-        .map(name => ClusterNodeData(name, esClusterSettings))
-    }
-    val nodesData = clusters
-      .toList
-      .foldLeft((List.empty[ClusterNodeData], 1)) {
-        case ((currentNodeData, startingIndex), settings) =>
-          (currentNodeData ::: clusterNodeDataFromClusterSettings(settings, startingIndex),
-            startingIndex + settings.numberOfInstances)
-      }
-    createLocalClusterContainers(NonEmptyList.fromListUnsafe(nodesData._1))
+  private def nodeCreator(nodeSettings: EsNodeSettings,
+                          allNodeNames: NonEmptyList[String],
+                          nodeDataInitializer: ElasticsearchNodeDataInitializer): StartedClusterDependencies => EsContainer = { deps =>
+    this.create(mode, nodeSettings, allNodeNames, nodeDataInitializer, deps)
   }
-
-  private def createNode(nodeNames: NonEmptyList[String], nodeData: ClusterNodeData) = {
-    this.create(mode, nodeData.name, nodeNames, nodeData.settings, _)
-  }
-}
-
-object EsClusterProvider {
-  final case class ClusterNodeData(name: String, settings: EsClusterSettings)
 }
 
 trait ProxyEsClusterProvider extends EsClusterProvider {

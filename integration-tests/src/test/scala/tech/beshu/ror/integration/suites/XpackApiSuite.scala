@@ -23,9 +23,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.XpackApiSuite.NextRollupJobName
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterProvider, EsClusterSettings}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterProvider, EsClusterSettings, SecurityType}
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Null, Num, Str}
@@ -44,10 +43,10 @@ trait XpackApiSuite
   override lazy val targetEs = container.nodes.head
 
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
+    EsClusterSettings.create(
+      clusterName = "ROR1",
       nodeDataInitializer = XpackApiSuite.nodeDataInitializer(),
-      clusterType = ClusterType.RorCluster(Attributes.default.copy(
+      securityType = SecurityType.RorSecurity(Attributes.default.copy(
         rorConfigFileName = rorConfigFileName,
         restSslEnabled = true,
         internodeSslEnabled = false
