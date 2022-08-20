@@ -14,9 +14,26 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.proxy
+package tech.beshu.ror.configuration.index
 
-import tech.beshu.ror.integration.suites.AdminApiAuthMockSuite
-import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
+import cats.Show
 
-class AdminAuthMockApiProxyTests extends AdminApiAuthMockSuite with SingleNodeProxyTestSupport
+sealed trait IndexConfigError
+object IndexConfigError {
+  case object IndexConfigNotExist extends IndexConfigError
+  case object IndexConfigUnknownStructure extends IndexConfigError
+
+  implicit val show: Show[IndexConfigError] = Show.show {
+    case IndexConfigNotExist => "Cannot find settings index"
+    case IndexConfigUnknownStructure => s"Unknown structure of index settings"
+  }
+}
+
+sealed trait SavingIndexConfigError
+object SavingIndexConfigError {
+  case object CannotSaveConfig extends SavingIndexConfigError
+
+  implicit val show: Show[SavingIndexConfigError] = Show.show {
+    case CannotSaveConfig => "Cannot save settings in index"
+  }
+}

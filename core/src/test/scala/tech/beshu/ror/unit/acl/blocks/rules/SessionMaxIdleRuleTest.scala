@@ -21,32 +21,31 @@ import java.util.UUID
 
 import eu.timepit.refined._
 import eu.timepit.refined.api.Refined
+import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.utils.TestsUtils.scalaFiniteDuration2JavaDuration
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
-import tech.beshu.ror.accesscontrol.refined._
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.providers.UuidProvider
 import tech.beshu.ror.unit.acl.blocks.rules.SessionMaxIdleRuleTest.{fixedClock, fixedUuidProvider, rorSessionCookie, someday}
+import tech.beshu.ror.utils.CaseMappingEquality._
+import tech.beshu.ror.utils.DurationOps._
+import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.UserIdEq
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.CaseMappingEquality._
-import eu.timepit.refined.auto._
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.utils.UserIdEq
 
 class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
 
@@ -177,7 +176,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
     }
   }
 
-  private def positive(duration: FiniteDuration) = refineV[Positive](duration).right.get
+  private def positive(duration: FiniteDuration) = duration.toRefinedPositiveUnsafe
 
 }
 

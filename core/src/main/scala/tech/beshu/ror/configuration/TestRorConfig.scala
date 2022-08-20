@@ -14,25 +14,28 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.configuration
 
-import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.es.IndexJsonContentService.{ReadError, WriteError}
+import java.time.{Clock, Instant}
 
-trait IndexJsonContentService {
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.Positive
 
-  def sourceOf(index: IndexName.Full, id: String): Task[Either[ReadError, Map[String, String]]]
+import scala.concurrent.duration.FiniteDuration
 
-  def saveContent(index: IndexName.Full, id: String, content: Map[String, String]): Task[Either[WriteError, Unit]]
-}
+sealed trait TestRorConfig
+object TestRorConfig {
+  case object NotSet extends TestRorConfig
 
-object IndexJsonContentService {
+  final case class Present(rawConfig: RawRorConfig,
+                           expiration: Present.ExpirationConfig) extends TestRorConfig {
+    def isExpired(clock: Clock): Boolean = {
+      expiration.validTo.isBefore(clock.instant())
+    }
+  }
 
-  sealed trait ReadError
-  case object ContentNotFound extends ReadError
-  case object CannotReachContentSource extends ReadError
-
-  sealed trait WriteError
-  case object CannotWriteToIndex extends WriteError
+  object Present {
+    final case class ExpirationConfig(ttl: FiniteDuration Refined Positive,
+                                      validTo: Instant)
+  }
 }

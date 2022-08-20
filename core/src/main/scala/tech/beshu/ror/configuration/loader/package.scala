@@ -33,7 +33,14 @@ package object loader {
       case IndexConfig(_, value) => value
     }
   }
-  
+
+  implicit class LoadedTestConfigOps[A](fa: LoadedTestRorConfig[A]) {
+    lazy val value: A = fa match {
+      case LoadedTestRorConfig.IndexConfig(_, value) => value
+      case LoadedTestRorConfig.FallbackConfig(value) => value
+    }
+  }
+
   implicit val functorLoadedConfig: Functor[LoadedRorConfig] = new Functor[LoadedRorConfig] {
     override def map[A, B](fa: LoadedRorConfig[A])(f: A => B): LoadedRorConfig[B] = fa match {
       case FileConfig(value) => FileConfig(f(value))

@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.boot.engines
 
+import java.time.Clock
+
 import cats.data.EitherT
 import cats.implicits._
 import monix.catnap.Semaphore
@@ -28,12 +30,11 @@ import tech.beshu.ror.boot.ReadonlyRest._
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.{ConfigUpToDate, ReloadingFailed, RorInstanceStopped}
 import tech.beshu.ror.boot.RorInstance._
+import tech.beshu.ror.boot.engines.BaseReloadableEngine.InitialEngine
 import tech.beshu.ror.boot.engines.ConfigHash._
-import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError.CannotSaveConfig
 import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.index.SavingIndexConfigError.CannotSaveConfig
 import tech.beshu.ror.utils.ScalaOps.value
-
-import java.time.Clock
 
 private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
                                                     initialEngine: (Engine, RawRorConfig),
@@ -42,7 +43,11 @@ private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
                                                    (implicit scheduler: Scheduler,
                                                     clock: Clock)
   extends BaseReloadableEngine(
-    "main", boot, Some(initialEngine), reloadInProgress, rorConfigurationIndex
+    name = "main",
+    boot = boot,
+    initialEngine = InitialEngine.Configured(engine = initialEngine._1, config = initialEngine._2, expirationConfig = None),
+    reloadInProgress = reloadInProgress,
+    rorConfigurationIndex = rorConfigurationIndex
   ) {
 
   def forceReloadAndSave(config: RawRorConfig)

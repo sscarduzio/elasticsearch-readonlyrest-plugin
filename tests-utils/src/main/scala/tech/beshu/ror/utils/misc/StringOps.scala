@@ -14,25 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.utils.misc
 
-import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.es.IndexJsonContentService.{ReadError, WriteError}
+import java.time.format.DateTimeFormatter
 
-trait IndexJsonContentService {
+import scala.util.Try
 
-  def sourceOf(index: IndexName.Full, id: String): Task[Either[ReadError, Map[String, String]]]
+object StringOps {
 
-  def saveContent(index: IndexName.Full, id: String, content: Map[String, String]): Task[Either[WriteError, Unit]]
-}
+  implicit class StringDateTimeOps(val value: String) extends AnyVal {
+    def isInIsoDateTimeFormat: Boolean = {
+      isInDateTimeFormat(DateTimeFormatter.ISO_DATE_TIME)
+    }
 
-object IndexJsonContentService {
+    def isInDateTimeFormat(format: DateTimeFormatter): Boolean = {
+      Try(format.parse(value)).toOption.isDefined
+    }
+  }
 
-  sealed trait ReadError
-  case object ContentNotFound extends ReadError
-  case object CannotReachContentSource extends ReadError
-
-  sealed trait WriteError
-  case object CannotWriteToIndex extends WriteError
 }

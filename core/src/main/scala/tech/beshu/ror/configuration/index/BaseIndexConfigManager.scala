@@ -14,25 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.configuration.index
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.es.IndexJsonContentService.{ReadError, WriteError}
+import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
 
-trait IndexJsonContentService {
+trait BaseIndexConfigManager[A] {
 
-  def sourceOf(index: IndexName.Full, id: String): Task[Either[ReadError, Map[String, String]]]
+  def load(indexName: RorConfigurationIndex): Task[Either[ConfigLoaderError[IndexConfigError], A]]
 
-  def saveContent(index: IndexName.Full, id: String, content: Map[String, String]): Task[Either[WriteError, Unit]]
-}
+  def save(config: A, rorConfigurationIndex: RorConfigurationIndex): Task[Either[SavingIndexConfigError, Unit]]
 
-object IndexJsonContentService {
-
-  sealed trait ReadError
-  case object ContentNotFound extends ReadError
-  case object CannotReachContentSource extends ReadError
-
-  sealed trait WriteError
-  case object CannotWriteToIndex extends WriteError
+  protected final def configLoaderError(error: IndexConfigError): Task[Either[SpecializedError[IndexConfigError], A]] =
+    Task.now(Left(SpecializedError[IndexConfigError](error)))
 }

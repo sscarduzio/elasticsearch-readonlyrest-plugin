@@ -16,26 +16,25 @@
  */
 package tech.beshu.ror.utils
 
-import cats.data.NonEmptyList
-import org.apache.logging.log4j.scala.Logging
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.Positive
+import eu.timepit.refined.refineV
+import tech.beshu.ror.accesscontrol.refined._
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
-import scala.util.Try
 
-object HttpOps extends Logging {
+object DurationOps {
 
-  def finiteDurationHeaderValueFrom(headers: Map[String, NonEmptyList[String]],
-                                    headerName: String) = {
-    headers
-      .find { case (name, _) => name.toLowerCase == headerName.toLowerCase() }
-      .map { case (_, values) => values.head }
-      .flatMap { value =>
-        Try(Duration(value)).toOption match {
-          case Some(v: FiniteDuration) if v.toMillis > 0 => Some(v)
-          case Some(_) | None =>
-            logger.warn(s"Cannot parse '$value' of $headerName header.")
-            None
-        }
-      }
+  implicit class RefinedDurationOps(val duration: Duration) extends AnyVal {
+    def toRefinedPositive: Either[String, FiniteDuration Refined Positive] = duration match {
+      case v: FiniteDuration if v.toMillis > 0 =>
+        refineV[Positive](v)
+      case _ =>
+        Left(s"Cannot map '${duration.toString}' to finite duration.")
+    }
+
+    def toRefinedPositiveUnsafe: FiniteDuration Refined Positive =
+      toRefinedPositive.fold(err => throw new IllegalArgumentException(err), identity)
   }
+
 }

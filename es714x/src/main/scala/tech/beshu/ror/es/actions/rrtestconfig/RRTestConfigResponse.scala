@@ -41,6 +41,7 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
       }
       case invalidateConfigResponse: InvalidateTestConfig => invalidateConfigResponse match {
         case InvalidateTestConfig.SuccessResponse(message) => addResponseJson(builder, response.status, message)
+        case InvalidateTestConfig.FailedResponse(message) => addResponseJson(builder, response.status, message)
       }
       case provideUsersResponse: ProvideLocalUsers => provideUsersResponse match {
         case res: ProvideLocalUsers.SuccessResponse => provideLocalUsersJson(builder, res)
