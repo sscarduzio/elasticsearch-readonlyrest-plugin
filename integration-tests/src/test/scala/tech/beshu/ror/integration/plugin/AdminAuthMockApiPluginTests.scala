@@ -18,6 +18,5 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.AdminApiAuthMockSuite
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
-import tech.beshu.ror.utils.containers.RorConfigAdjuster
 
 class AdminAuthMockApiPluginTests extends AdminApiAuthMockSuite with SingletonPluginTestSupport

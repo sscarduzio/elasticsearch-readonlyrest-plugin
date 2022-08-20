@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.utils
 
-import eu.timepit.refined.api.Refined
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -24,6 +23,7 @@ import org.scalatest.exceptions.TestFailedException
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.utils.CacheableActionWithKeyMapping
+import tech.beshu.ror.utils.DurationOps._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -86,7 +86,7 @@ class CacheableActionWithKeyMappingTests extends AnyWordSpec with MockFactory {
   private def createTestCacheInstance(dataProvider: ExternalDataProvider,
                                       ttl: FiniteDuration = 10 seconds) = {
     new CacheableActionWithKeyMapping[String, String, Int](
-      Refined.unsafeApply(ttl),
+      ttl.toRefinedPositiveUnsafe,
       dataProvider.getBy,
       identity
     )

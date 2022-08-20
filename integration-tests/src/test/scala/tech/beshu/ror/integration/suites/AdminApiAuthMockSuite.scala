@@ -17,6 +17,7 @@
 package tech.beshu.ror.integration.suites
 
 import org.scalatest.BeforeAndAfterEach
+import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
@@ -24,19 +25,25 @@ import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, Sin
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
 import tech.beshu.ror.utils.containers.providers.ResolvedRorConfigFileProvider
-import tech.beshu.ror.utils.elasticsearch.{BaseManager, RorApiManager}
+import tech.beshu.ror.utils.elasticsearch.{BaseManager, IndexManager, RorApiManager}
 import ujson.Value.Value
+
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 trait AdminApiAuthMockSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike
     with BeforeAndAfterEach
+    with Eventually
     with Matchers {
   this: EsClusterProvider with ResolvedRorConfigFileProvider =>
 
-  override implicit val rorConfigFileName = "/admin_api_mocks/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/admin_api_mocks/readonlyrest.yml"
   private lazy val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
+  private val readonlyRestIndexName = ".readonlyrest"
+  private val testEnigneReloadInterval = 5 seconds
 
   override def clusterDependencies: List[DependencyDef] = List(
     ldap(name = "LDAP1", SingletonLdapContainers.ldap1),
@@ -548,6 +555,14 @@ trait AdminApiAuthMockSuite
         }
       }
       "return info that test settings are invalidated" in {
+        rorApiManager
+          .updateRorTestConfig(testEngineConfig())
+          .forceOk()
+
+        rorApiManager
+          .invalidateRorTestConfig()
+          .forceOk()
+
         val payloadServices = ujson.read(
           s"""
              |[
@@ -656,7 +671,7 @@ trait AdminApiAuthMockSuite
   }
 
   private def assertTestConfigWarning(json: BaseManager.JSON,
-                                      blockName:String,
+                                      blockName: String,
                                       ruleName: String,
                                       message: String,
                                       hint: String) = {
@@ -681,14 +696,32 @@ trait AdminApiAuthMockSuite
 
   private def testEngineConfig() = resolvedRorConfigFile.contentAsString
 
+  override implicit val patienceConfig: PatienceConfig =
+    PatienceConfig(timeout = testEnigneReloadInterval.plus(5 seconds), interval = 1 second)
+
   override protected def beforeEach(): Unit = {
     rorApiManager
       .invalidateImpersonationMocks()
       .force()
 
-    rorApiManager
-      .invalidateRorTestConfig()
-      .forceOk()
+    removeRorIndexAndAwaitForNotSetTestConfig()
   }
 
+  private def removeRorIndexAndAwaitForNotSetTestConfig(): Unit = {
+    // remove index storing test config
+    new IndexManager(basicAuthClient("admin", "container"), esVersionUsed)
+      .removeIndex(readonlyRestIndexName)
+
+    eventually { // await until node invalidate the test config
+      val response = rorApiManager.currentRorTestConfig
+      (response.responseCode, response.responseJson) should be(200, ujson.read(
+        s"""
+           |{
+           |  "status": "TEST_SETTINGS_NOT_CONFIGURED",
+           |  "message": "ROR Test settings are not configured"
+           |}
+           |""".stripMargin
+      ))
+    }
+  }
 }
