@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.tools.core.patches
 
+import scala.util.{Failure, Success, Try}
+
 private[patches] class EsPatchLoggingDecorator(underlying: EsPatch)
   extends EsPatch {
 
@@ -31,13 +33,21 @@ private[patches] class EsPatchLoggingDecorator(underlying: EsPatch)
 
   override def restore(): Unit = {
     println("Restoring ...")
-    underlying.restore()
-    println("Elasticsearch is unpatched! ReadonlyREST can be removed now")
+    Try(underlying.restore()) match {
+      case Success(()) =>
+        println("Elasticsearch is unpatched! ReadonlyREST can be removed now")
+      case Failure(exception) =>
+        throw exception
+    }
   }
 
   override def execute(): Unit = {
     println("Patching ...")
-    underlying.execute()
-    println("Elasticsearch is patched! ReadonlyREST is ready to use")
+    Try(underlying.execute()) match {
+      case Success(()) =>
+        println("Elasticsearch is patched! ReadonlyREST is ready to use")
+      case Failure(exception) =>
+        throw exception
+    }
   }
 }
