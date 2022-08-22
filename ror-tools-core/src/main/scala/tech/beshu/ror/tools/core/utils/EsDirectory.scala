@@ -24,7 +24,7 @@ import scala.util.{Failure, Success, Try}
 sealed case class EsDirectory private(path: os.Path)
 object EsDirectory {
 
-  val defaultPath: Path = os.Path("/usr/share/elasticsearch")
+  val defaultPath: Path = os.root / "usr" / "share" / "elasticsearch"
 
   def from(path: os.Path): EsDirectory = {
     verifyEsLocation(path).get
