@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration, KeystoreFile, TruststoreFile}
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
+import tech.beshu.ror.utils.SSLCertHelper
 
 final case class RorSsl(externalSsl: Option[ExternalSslConfiguration],
                         interNodeSsl: Option[InternodeSslConfiguration])
@@ -70,12 +71,8 @@ object RorSsl extends Logging {
 }
 
 sealed trait SslConfiguration {
-  def keystoreFile: KeystoreFile
-  def keystorePassword: Option[SslConfiguration.KeystorePassword]
-  def keyPass: Option[SslConfiguration.KeyPass]
-  def keyAlias: Option[SslConfiguration.KeyAlias]
-  def truststoreFile: Option[TruststoreFile]
-  def truststorePassword: Option[SslConfiguration.TruststorePassword]
+  def serverCertificateConfiguration: SslConfiguration.ServerCertificateConfiguration
+  def clientCertificateConfiguration: Option[SslConfiguration.ClientCertificateConfiguration]
   def allowedProtocols: Set[SslConfiguration.Protocol]
   def allowedCiphers: Set[SslConfiguration.Cipher]
 }
@@ -86,33 +83,45 @@ object SslConfiguration {
   final case class KeystoreFile(value: JFile)
   final case class TruststorePassword(value: String)
   final case class TruststoreFile(value: JFile)
+  final case class ServerCertificateKeyFile(value: JFile)
+  final case class ServerCertificateFile(value: JFile)
+  final case class ClientTrustedCertificateFile(value: JFile)
   final case class KeyPass(value: String)
   final case class KeyAlias(value: String)
   final case class Cipher(value: String)
   final case class Protocol(value: String)
 
-  final case class ExternalSslConfiguration(keystoreFile: KeystoreFile,
-                                            keystorePassword: Option[SslConfiguration.KeystorePassword],
-                                            keyPass: Option[SslConfiguration.KeyPass],
-                                            keyAlias: Option[SslConfiguration.KeyAlias],
-                                            truststoreFile: Option[TruststoreFile],
-                                            truststorePassword: Option[SslConfiguration.TruststorePassword],
+  sealed trait ServerCertificateConfiguration
+  object ServerCertificateConfiguration {
+    final case class KeystoreBasedConfiguration(keystoreFile: KeystoreFile,
+                                                keystorePassword: Option[KeystorePassword],
+                                                keyAlias: Option[KeyAlias],
+                                                keyPass: Option[KeyPass]) extends ServerCertificateConfiguration
+    final case class FileBasedConfiguration(serverCertificateKeyFile: ServerCertificateKeyFile,
+                                            serverCertificateFile: ServerCertificateFile) extends ServerCertificateConfiguration
+  }
+
+  sealed trait ClientCertificateConfiguration
+  object ClientCertificateConfiguration {
+    final case class TruststoreBasedConfiguration(truststoreFile: TruststoreFile,
+                                                  truststorePassword: Option[TruststorePassword]) extends ClientCertificateConfiguration
+    final case class FileBasedConfiguration(clientTrustedCertificateFile: ClientTrustedCertificateFile) extends ClientCertificateConfiguration
+  }
+
+  final case class ExternalSslConfiguration(serverCertificateConfiguration: ServerCertificateConfiguration,
+                                            clientCertificateConfiguration: Option[ClientCertificateConfiguration],
                                             allowedProtocols: Set[SslConfiguration.Protocol],
                                             allowedCiphers: Set[SslConfiguration.Cipher],
                                             clientAuthenticationEnabled: Boolean) extends SslConfiguration
 
-  final case class InternodeSslConfiguration(keystoreFile: KeystoreFile,
-                                             keystorePassword: Option[SslConfiguration.KeystorePassword],
-                                             keyPass: Option[SslConfiguration.KeyPass],
-                                             keyAlias: Option[SslConfiguration.KeyAlias],
-                                             truststoreFile: Option[TruststoreFile],
-                                             truststorePassword: Option[SslConfiguration.TruststorePassword],
+  final case class InternodeSslConfiguration(serverCertificateConfiguration: ServerCertificateConfiguration,
+                                             clientCertificateConfiguration: Option[ClientCertificateConfiguration],
                                              allowedProtocols: Set[SslConfiguration.Protocol],
                                              allowedCiphers: Set[SslConfiguration.Cipher],
                                              certificateVerificationEnabled: Boolean) extends SslConfiguration
 }
 
-private object SslDecoders {
+private object SslDecoders extends Logging {
   import tech.beshu.ror.configuration.SslConfiguration._
 
   object consts {
@@ -131,17 +140,17 @@ private object SslDecoders {
     val clientAuthentication = "client_authentication"
     val verification = "verification"
     val enable = "enable"
+    val serverCertificateKeyFile = "server_certificate_key_file"
+    val serverCertificateFile = "server_certificate_file"
+    val clientTrustedCertificateFile = "client_trusted_certificate_file"
   }
 
-  final case class CommonSslProperties(keystoreFile: KeystoreFile,
-                                       keystorePassword: Option[SslConfiguration.KeystorePassword],
-                                       keyPass: Option[SslConfiguration.KeyPass],
-                                       keyAlias: Option[SslConfiguration.KeyAlias],
-                                       truststoreFile: Option[TruststoreFile],
-                                       truststorePassword: Option[SslConfiguration.TruststorePassword],
+  final case class CommonSslProperties(serverCertificateConfiguration: ServerCertificateConfiguration,
+                                       clientCertificateConfiguration: Option[ClientCertificateConfiguration],
                                        allowedProtocols: Set[SslConfiguration.Protocol],
                                        allowedCiphers: Set[SslConfiguration.Cipher],
                                        verification: Option[Boolean])
+
 
   private implicit val keystorePasswordDecoder: Decoder[KeystorePassword] = DecoderHelpers.decodeStringLike.map(KeystorePassword.apply)
   private implicit val truststorePasswordDecoder: Decoder[TruststorePassword] = DecoderHelpers.decodeStringLike.map(TruststorePassword.apply)
@@ -149,6 +158,76 @@ private object SslDecoders {
   private implicit val keyAliasDecoder: Decoder[KeyAlias] = DecoderHelpers.decodeStringLike.map(KeyAlias.apply)
   private implicit val cipherDecoder: Decoder[Cipher] = DecoderHelpers.decodeStringLike.map(Cipher.apply)
   private implicit val protocolDecoder: Decoder[Protocol] = DecoderHelpers.decodeStringLike.map(Protocol.apply)
+
+  private def clientCertificateConfigurationDecoder(basePath: Path): Decoder[Option[ClientCertificateConfiguration]] = {
+    val jFileDecoder: Decoder[JFile] = fileDecoder(basePath)
+    implicit val truststoreFileDecoder = jFileDecoder.map(TruststoreFile)
+    implicit val clientTrustedCertificateFileDecoder = jFileDecoder.map(ClientTrustedCertificateFile)
+
+    val truststoreBasedClientCertificateConfigurationDecoder: Decoder[ClientCertificateConfiguration] =
+      Decoder.forProduct2(consts.truststoreFile, consts.truststorePass)(ClientCertificateConfiguration.TruststoreBasedConfiguration.apply)
+    val fileBasedClientCertificateConfigurationDecoder: Decoder[ClientCertificateConfiguration] =
+      Decoder.forProduct1(consts.clientTrustedCertificateFile)(ClientCertificateConfiguration.FileBasedConfiguration)
+    Decoder.instance { c =>
+      val truststoreBasedKeys = Set(consts.truststoreFile, consts.truststorePass)
+      val fileBasedKeys = Set(consts.clientTrustedCertificateFile)
+      val presentKeys = c.keys.fold[Set[String]](Set.empty)(_.toSet)
+      if (presentKeys.intersect(truststoreBasedKeys).nonEmpty && presentKeys.intersect(fileBasedKeys).nonEmpty) {
+        val errorMessage = s"Field sets [${fileBasedKeys.mkString(",")}] and [${truststoreBasedKeys.mkString(",")}] could not be present in the same configuration section"
+        logger.error(errorMessage)
+        Left(DecodingFailure(errorMessage, List.empty))
+      } else if (presentKeys.intersect(truststoreBasedKeys).nonEmpty) {
+        truststoreBasedClientCertificateConfigurationDecoder(c)
+          .map(Option.apply)
+      } else if (presentKeys.intersect(fileBasedKeys).nonEmpty) {
+        if (SSLCertHelper.isPEMHandlingAvailable) {
+          fileBasedClientCertificateConfigurationDecoder(c)
+            .map(Option.apply)
+        } else {
+          val errorMessage = "PEM File Handling is not available in your current deployment of Elasticsearch"
+          logger.error(errorMessage)
+          Left(DecodingFailure(errorMessage, List.empty))
+        }
+      } else {
+        Right(None)
+      }
+    }
+  }
+
+  private def serverCertificateConfigurationDecoder(basePath: Path): Decoder[ServerCertificateConfiguration] = {
+    val jFileDecoder: Decoder[JFile] = fileDecoder(basePath)
+    implicit val keystoreFileDecoder = jFileDecoder.map(KeystoreFile)
+    implicit val serverCertificateFileDecoder = jFileDecoder.map(ServerCertificateFile)
+    implicit val serverCertificateKeyFileDecoder = jFileDecoder.map(ServerCertificateKeyFile)
+    val keystoreBasedServerCertificateConfigurationDecoder: Decoder[ServerCertificateConfiguration] =
+      Decoder.forProduct4(consts.keystoreFile, consts.keystorePass, consts.keyAlias, consts.keyPass)(ServerCertificateConfiguration.KeystoreBasedConfiguration.apply)
+    val fileBasedServerCertificateConfigurationDecoder: Decoder[ServerCertificateConfiguration] =
+      Decoder.forProduct2(consts.serverCertificateKeyFile, consts.serverCertificateFile)(ServerCertificateConfiguration.FileBasedConfiguration.apply)
+    Decoder.instance { c =>
+      val keystoreBasedKeys = Set(consts.keystoreFile, consts.keystorePass, consts.keyPass, consts.keyAlias)
+      val fileBasedKeys = Set(consts.serverCertificateKeyFile, consts.serverCertificateFile)
+      val presentKeys = c.keys.fold[Set[String]](Set.empty)(_.toSet)
+      if (presentKeys.intersect(keystoreBasedKeys).nonEmpty && presentKeys.intersect(fileBasedKeys).nonEmpty) {
+        val errorMessage = s"Field sets [${fileBasedKeys.mkString(",")}] and [${keystoreBasedKeys.mkString(",")}] could not be present in the same configuration section"
+        logger.error(errorMessage)
+        Left(DecodingFailure(errorMessage, List.empty))
+      } else if (presentKeys.intersect(keystoreBasedKeys).nonEmpty) {
+        keystoreBasedServerCertificateConfigurationDecoder(c)
+      } else if (presentKeys.intersect(fileBasedKeys).nonEmpty) {
+        if (SSLCertHelper.isPEMHandlingAvailable) {
+          fileBasedServerCertificateConfigurationDecoder(c)
+        } else {
+          val errorMessage = "PEM File Handling is not available in your current deployment of Elasticsearch"
+          logger.error(errorMessage)
+          Left(DecodingFailure(errorMessage, List.empty))
+        }
+      } else {
+        val errorMessage = "There was no SSL configuration present for server"
+        logger.error(errorMessage)
+        Left(DecodingFailure(errorMessage, List.empty))
+      }
+    }
+  }
 
   def rorSslDecoder(basePath: Path): Decoder[RorSsl] = Decoder.instance { c =>
     implicit val internodeSslConfigDecoder: Decoder[Option[InternodeSslConfiguration]] = sslInternodeConfigurationDecoder(basePath)
@@ -166,12 +245,8 @@ private object SslDecoders {
         sslCommonProperties <- sslCommonPropertiesDecoder(basePath, c)
       } yield
         InternodeSslConfiguration(
-          keystoreFile = sslCommonProperties.keystoreFile,
-          keystorePassword = sslCommonProperties.keystorePassword,
-          keyPass = sslCommonProperties.keyPass,
-          keyAlias = sslCommonProperties.keyAlias,
-          truststoreFile = sslCommonProperties.truststoreFile,
-          truststorePassword = sslCommonProperties.truststorePassword,
+          serverCertificateConfiguration = sslCommonProperties.serverCertificateConfiguration,
+          clientCertificateConfiguration = sslCommonProperties.clientCertificateConfiguration,
           allowedProtocols = sslCommonProperties.allowedProtocols,
           allowedCiphers = sslCommonProperties.allowedCiphers,
           certificateVerificationEnabled = certificateVerification.orElse(sslCommonProperties.verification).getOrElse(false)
@@ -186,12 +261,8 @@ private object SslDecoders {
         sslCommonProperties <- sslCommonPropertiesDecoder(basePath, c)
       } yield
         ExternalSslConfiguration(
-          keystoreFile = sslCommonProperties.keystoreFile,
-          keystorePassword = sslCommonProperties.keystorePassword,
-          keyPass = sslCommonProperties.keyPass,
-          keyAlias = sslCommonProperties.keyAlias,
-          truststoreFile = sslCommonProperties.truststoreFile,
-          truststorePassword = sslCommonProperties.truststorePassword,
+          serverCertificateConfiguration = sslCommonProperties.serverCertificateConfiguration,
+          clientCertificateConfiguration = sslCommonProperties.clientCertificateConfiguration,
           allowedProtocols = sslCommonProperties.allowedProtocols,
           allowedCiphers = sslCommonProperties.allowedCiphers,
           clientAuthenticationEnabled = clientAuthentication.orElse(sslCommonProperties.verification).getOrElse(false)
@@ -203,27 +274,22 @@ private object SslDecoders {
     val jFileDecoder: Decoder[JFile] = fileDecoder(basePath)
     implicit val keystoreFileDecoder = jFileDecoder.map(KeystoreFile)
     implicit val truststoreFileDecoder = jFileDecoder.map(TruststoreFile)
+    implicit val serverCertificateFileDecoder = jFileDecoder.map(ServerCertificateFile)
+    implicit val serverCertificateKeyFileDecoder = jFileDecoder.map(ServerCertificateKeyFile)
+    implicit val clientTrustedCertificateFileDecoder = jFileDecoder.map(ClientTrustedCertificateFile)
     for {
-      keystoreFile <- c.downField(consts.keystoreFile).as[KeystoreFile]
-      keystorePassword <- c.downField(consts.keystorePass).as[Option[KeystorePassword]]
-      truststoreFile <- c.downField(consts.truststoreFile).as[Option[TruststoreFile]]
-      truststorePassword <- c.downField(consts.truststorePass).as[Option[TruststorePassword]]
-      keyPass <- c.downField(consts.keyPass).as[Option[KeyPass]]
-      keyAlias <- c.downField(consts.keyAlias).as[Option[KeyAlias]]
       ciphers <- c.downField(consts.allowedCiphers).as[Option[Set[Cipher]]]
       protocols <- c.downField(consts.allowedProtocols).as[Option[Set[Protocol]]]
       verification <- c.downField(consts.verification).as[Option[Boolean]]
+      serverCertificateConfiguration <- serverCertificateConfigurationDecoder(basePath).apply(c)
+      clientCertificateConfiguration <- clientCertificateConfigurationDecoder(basePath).apply(c)
     } yield
       CommonSslProperties(
-        keystoreFile = keystoreFile,
-        keystorePassword = keystorePassword,
-        keyPass = keyPass,
-        keyAlias = keyAlias,
-        truststoreFile = truststoreFile,
-        truststorePassword = truststorePassword,
+        serverCertificateConfiguration = serverCertificateConfiguration,
+        clientCertificateConfiguration = clientCertificateConfiguration,
         allowedProtocols = protocols.getOrElse(Set.empty[Protocol]),
         allowedCiphers = ciphers.getOrElse(Set.empty[Cipher]),
-        verification = verification
+        verification = verification,
       )
   }
 

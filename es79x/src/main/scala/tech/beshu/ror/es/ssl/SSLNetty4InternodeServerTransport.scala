@@ -52,13 +52,9 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
       logger.info(">> internode SSL channel initializing")
-      val usedTrustManager =
-        if (ssl.certificateVerificationEnabled) SSLCertHelper.getTrustManagerFactory(ssl, fipsCompliant)
-        else InsecureTrustManagerFactory.INSTANCE
 
-      val sslCtx = SslContextBuilder.forClient()
-        .trustManager(usedTrustManager)
-        .build()
+      val sslCtx = SSLCertHelper.prepareClientSSLContext(ssl, fipsCompliant, ssl.certificateVerificationEnabled)
+
       ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter {
         override def connect(ctx: ChannelHandlerContext, remoteAddress: SocketAddress, localAddress: SocketAddress, promise: ChannelPromise): Unit = {
           val sslEngine = sslCtx.newEngine(ctx.alloc())
@@ -86,7 +82,7 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
     private var context = Option.empty[SslContext]
 
     doPrivileged {
-      context = Option(SSLCertHelper.prepareSSLContext(ssl, fipsCompliant, clientAuthenticationEnabled = false))
+      context = Option(SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, clientAuthenticationEnabled = false))
     }
 
     override def initChannel(ch: Channel): Unit = {
