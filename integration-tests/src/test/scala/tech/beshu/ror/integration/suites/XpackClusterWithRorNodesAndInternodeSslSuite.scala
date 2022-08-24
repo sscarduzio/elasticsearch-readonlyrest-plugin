@@ -41,8 +41,8 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
   def rorConfigPath: String
 
   override implicit val rorConfigFileName =
-    if (executedOn(es60x)) {
-      "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_es60x.yml"
+    if (executedOn(allEs6xBelowEs65x)) {
+      "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_es60x-es65x.yml"
     } else {
       rorConfigPath
     }
