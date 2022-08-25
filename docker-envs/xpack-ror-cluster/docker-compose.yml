@@ -102,7 +102,7 @@ services:
   es-ror-proxy:
     image: mitmproxy/mitmproxy
     command:
-      mitmdump --mode reverse:https://es03:9200 --ssl-insecure --verbose
+      mitmdump --set validate_inbound_headers=false --mode reverse:https://es03:9200 --ssl-insecure --verbose
     depends_on:
       - es03
     networks:
@@ -129,7 +129,7 @@ services:
   es-xpack-proxy:
     image: mitmproxy/mitmproxy
     command:
-      mitmdump --mode reverse:https://es02:9200 --ssl-insecure --verbose
+      mitmdump --set validate_inbound_headers=false --mode reverse:https://es02:9200 --ssl-insecure --verbose
     depends_on:
       - es02
     networks:

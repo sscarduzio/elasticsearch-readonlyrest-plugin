@@ -17,14 +17,16 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
+import eu.timepit.refined.auto._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.{RorCluster, XPackSecurityCluster}
+import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
+import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, XPackSecurity}
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
-import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin
+import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
@@ -36,44 +38,50 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
     with BeforeAndAfterAll {
   this: EsClusterProvider =>
 
-  override implicit val rorConfigFileName = "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest.yml"
+  def rorConfigPath: String
+
+  override implicit val rorConfigFileName =
+    if (executedOn(allEs6xBelowEs65x)) {
+      "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_es60x-es65x.yml"
+    } else {
+      rorConfigPath
+    }
 
   override def clusterContainer: EsClusterContainer = generalClusterContainer
 
   override def targetEs: EsContainer = generalClusterContainer.nodes.head
 
-  lazy val generalClusterContainer: EsClusterContainer = createFrom(
+  lazy val generalClusterContainer: EsClusterContainer = createLocalClusterContainer {
     if (executedOn(allEs6xExceptEs67x)) {
-      // ROR for ES below 6.7 doesn't support internode SSL with XPack, so we test it only using ROR nodes.
-      NonEmptyList.of(
-        EsClusterSettings(
-          name = "ROR1",
-          numberOfInstances = 3,
-          clusterType = RorCluster(Attributes.default.copy(
-            rorConfigFileName = rorConfigFileName,
-            internodeSslEnabled = true
-          ))
-        )
+      EsClusterSettings.create(
+        clusterName = "ror_cluster",
+        numberOfInstances = 3,
+        securityType = RorSecurity(Attributes.default.copy(
+          rorConfigFileName = rorConfigFileName,
+          internodeSslEnabled = true
+        ))
       )
     } else {
-      NonEmptyList.of(
-        EsClusterSettings(
-          name = "xpack_cluster",
-          clusterType = RorCluster(Attributes.default.copy(
-            rorConfigFileName = rorConfigFileName,
-            internodeSslEnabled = true
-          ))
-        ),
-        EsClusterSettings(
-          name = "xpack_cluster",
-          numberOfInstances = 2,
-          clusterType = XPackSecurityCluster(XpackSecurityPlugin.Config.Attributes.default.copy(
-            internodeSslEnabled = true
-          ))
+      EsClusterSettings.createMixedCluster(
+        clusterName = "ror_xpack_cluster",
+        nodeTypes = NonEmptyList.of(
+          NodeType(
+            securityType = RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
+              rorConfigFileName = rorConfigFileName,
+              internodeSslEnabled = true
+            )),
+            numberOfInstances = 1
+          ),
+          NodeType(
+            securityType = XPackSecurity(XpackSecurityPlugin.Config.Attributes.default.copy(
+              internodeSslEnabled = true
+            )),
+            numberOfInstances = 2
+          )
         )
       )
     }
-  )
+  }
 
   "Health check works" in {
     val rorClusterAdminStateManager = new CatManager(clusterContainer.nodes.head.adminClient, esVersion = esVersionUsed)

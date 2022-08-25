@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration.suites
 
+import eu.timepit.refined.auto._
 import monix.execution.atomic.Atomic
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.Eventually
@@ -25,7 +26,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.IndexLifecycleManagementApiSuite.{ExamplePolicies, PolicyGenerator}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.RorCluster
+import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
@@ -51,9 +52,9 @@ trait IndexLifecycleManagementApiSuite
   override lazy val targetEs = container.nodes.head
 
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      clusterType = RorCluster(Attributes.default.copy(
+    EsClusterSettings.create(
+      clusterName = "ROR1",
+      securityType = RorSecurity(Attributes.default.copy(
         rorConfigFileName = rorConfigFileName
       )),
       numberOfInstances = 2,
@@ -245,7 +246,7 @@ trait IndexLifecycleManagementApiSuite
 
           val result = dev3IndexLifecycleManager.removePolicyFromIndex(index1, index2)
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
         }
         "user has access to requested index pattern" excludeES (allEs6xBelowEs66x) in {
           val index = "dynamic_1"
@@ -253,7 +254,7 @@ trait IndexLifecycleManagementApiSuite
 
           val result = dev3IndexLifecycleManager.removePolicyFromIndex("dynamic_1*")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
         }
         "no indices rule was used" excludeES (allEs6xBelowEs66x) in {
           val index = "dynamic_1"
@@ -261,7 +262,7 @@ trait IndexLifecycleManagementApiSuite
 
           val result = adminIndexLifecycleManager.removePolicyFromIndex("*")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
         }
       }
       "not be allowed" when {
@@ -273,7 +274,7 @@ trait IndexLifecycleManagementApiSuite
 
           val result = dev3IndexLifecycleManager.removePolicyFromIndex(index1, index2)
 
-          result.responseCode should be (403)
+          result.responseCode should be(403)
         }
         "user has no access to requested index pattern" excludeES (allEs6xBelowEs66x) in {
           val index = "dynamic1"
@@ -281,7 +282,7 @@ trait IndexLifecycleManagementApiSuite
 
           val result = dev3IndexLifecycleManager.removePolicyFromIndex("dynamic*")
 
-          result.responseCode should be (403)
+          result.responseCode should be(403)
         }
       }
     }
@@ -344,7 +345,7 @@ trait IndexLifecycleManagementApiSuite
           val response = adminIndexLifecycleManager.ilmExplain("*")
 
           response.responseCode should be(200)
-          response.indices.keys.toSet should contain allOf ("index1", "index1_1", "index1_2", "index2", "index2_1")
+          response.indices.keys.toSet should contain allOf("index1", "index1_1", "index1_2", "index2", "index2_1")
         }
       }
       "return empty result" when {
@@ -451,7 +452,7 @@ object IndexLifecycleManagementApiSuite {
     documentManager.createDoc("index2", "1", document).force()
     documentManager.createDoc("index2_1", "1", document).force()
 
-    if(Version.greaterOrEqualThan(esVersion, 6, 6, 0)) {
+    if (Version.greaterOrEqualThan(esVersion, 6, 6, 0)) {
       val clusterManager = new ClusterManager(adminRestClient, esVersion)
       clusterManager
         .putSettings(ujson.read {

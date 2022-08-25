@@ -14,9 +14,21 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.es.actions.rradmin
 
-import tech.beshu.ror.integration.suites.XpackClusterWithRorNodesAndInternodeSslSuite
-import tech.beshu.ror.integration.utils.PluginTestSupport
+import org.elasticsearch.action.ActionType
+import org.elasticsearch.common.io.stream.Writeable
+import tech.beshu.ror.accesscontrol.domain
 
-class XpackClusterWithRorNodesAndInternodeSslPluginTests extends XpackClusterWithRorNodesAndInternodeSslSuite with PluginTestSupport
+class RRAdminActionType extends ActionType[RRAdminResponse](
+  RRAdminActionType.name,
+  RRAdminActionType.exceptionReader
+)
+
+object RRAdminActionType {
+  val name = domain.Action.rorOldConfigAction.value
+  val instance = new RRAdminActionType()
+  final case object RRAdminActionCannotBeTransported extends Exception
+  def exceptionReader[A]: Writeable.Reader[A] =
+    _ => throw RRAdminActionCannotBeTransported
+}

@@ -27,9 +27,8 @@ import scala.collection.JavaConverters._
 object ModuleOpener {
 
   def openModule(jar: File): Unit = {
-    loadFileFromJar(jar, "module-info") match {
-      case Some(moduleInfoInputStream) =>
-        val updatedContentOfModuleInfo = doOpenModule(moduleInfoInputStream)
+    loadAndProcessFileFromJar(jar = jar, classFileName = "module-info", processFileContent = doOpenModule) match {
+      case Some(updatedContentOfModuleInfo) =>
         updateFileInJar(jar, "/module-info.class", updatedContentOfModuleInfo)
       case None =>
         throw new IllegalStateException(s"Cannot find module-info.class in ${jar.toString}")
@@ -43,19 +42,29 @@ object ModuleOpener {
     writer.toByteArray
   }
 
-  private def loadFileFromJar(jar: File,
-                              classFileName: String) = {
+  private def loadAndProcessFileFromJar(jar: File,
+                                        classFileName: String,
+                                        processFileContent: InputStream => Array[Byte]) = {
     Option(new JarFile(jar))
       .flatMap { jarFile =>
-        jarFile
-          .entries().asScala
-          .find { entry =>
-            val name = entry.getName
-            val classSuffix = ".class"
-            name.startsWith(classFileName) && name.endsWith(classSuffix) && name.length == (classFileName.length + classSuffix.length)
-          }
-          .map(jarFile.getInputStream)
+        try {
+          findFileInJar(jarFile, classFileName)
+            .map(processFileContent)
+        } finally {
+          jarFile.close()
+        }
       }
+  }
+
+  private def findFileInJar(jarFile: JarFile, classFileName: String) = {
+    jarFile
+      .entries().asScala
+      .find { entry =>
+        val name = entry.getName
+        val classSuffix = ".class"
+        name.startsWith(classFileName) && name.endsWith(classSuffix) && name.length == (classFileName.length + classSuffix.length)
+      }
+      .map(jarFile.getInputStream)
   }
 
   private def updateFileInJar(jar: File,

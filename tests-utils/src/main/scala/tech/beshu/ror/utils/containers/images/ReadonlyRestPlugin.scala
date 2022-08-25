@@ -56,6 +56,8 @@ class ReadonlyRestPlugin(esVersion: String,
       .copyFile(configDir / "ror-keystore.jks", fromResourceBy(name = "ror-keystore.jks"))
       .copyFile(configDir / "ror-truststore.jks", fromResourceBy(name = "ror-truststore.jks"))
       .copyFile(configDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
+      .copyFile(configDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
+      .copyFile(configDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
       .updateFipsDependencies(config)
       .user("root")
       .installRorPlugin(config)
