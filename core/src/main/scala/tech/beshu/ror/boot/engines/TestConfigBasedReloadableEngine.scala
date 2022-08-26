@@ -26,11 +26,12 @@ import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, AuthServicesMocks}
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.{StartingFailure, TestEngine}
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
-import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, IndexConfigReloadError, IndexConfigReloadWithUpdateError, RawConfigReloadError, TestConfig}
+import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, IndexConfigReloadError, IndexConfigReloadWithUpdateError, IndexConfigUpdateError, RawConfigReloadError, TestConfig}
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineExpirationConfig, EngineState, InitialEngine}
 import tech.beshu.ror.boot.engines.ConfigHash._
 import tech.beshu.ror.configuration.TestRorConfig.Present.ExpirationConfig
@@ -79,9 +80,11 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
                 config,
                 TestRorConfig.Present.ExpirationConfig(
                   ttl,
-                  engineExpirationConfig.validTo)
+                  engineExpirationConfig.validTo
+                ),
+                boot.authServicesMocksProvider.currentMocks
               )
-            )
+            ).leftMap(error => error: IndexConfigReloadWithUpdateError)
           } yield ()
         }
       }
@@ -114,7 +117,8 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
               expiration = ExpirationConfig(
                 ttl = invalidatedEngine.expirationConfig.ttl,
                 validTo = invalidatedEngine.expirationConfig.validTo
-              )
+              ),
+              mocks = boot.authServicesMocksProvider.currentMocks
             )
             boot.indexTestConfigManager
               .save(config, rorConfigurationIndex)
@@ -126,7 +130,39 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
     }
   }
 
-  private def saveConfig(newConfig: TestRorConfig.Present): EitherT[Task, IndexConfigReloadWithUpdateError, Unit] =
+  def saveConfig(mocks: AuthServicesMocks)
+                (implicit requestId: RequestId): Task[Either[IndexConfigUpdateError, Unit]] = {
+    reloadInProgress.withPermit {
+      value {
+        for {
+          config <- EitherT.right[IndexConfigUpdateError](currentTestConfig())
+          _ <- config match {
+            case TestConfig.NotSet =>
+              EitherT.left(Task.now(IndexConfigUpdateError.TestSettingsNotSet: IndexConfigUpdateError))
+            case TestConfig.Present(_, rawConfig, configuredTtl, validTo) =>
+              for {
+                _ <- EitherT.right(Task.delay(boot.authServicesMocksProvider.update(mocks)))
+                _ <- saveConfig(TestRorConfig.Present(
+                  rawConfig = rawConfig,
+                  expiration = TestRorConfig.Present.ExpirationConfig(
+                    configuredTtl,
+                    validTo
+                  ),
+                  mocks = boot.authServicesMocksProvider.currentMocks
+                ))
+                  .leftMap { error: IndexConfigReloadWithUpdateError.IndexConfigSavingError =>
+                    IndexConfigUpdateError.IndexConfigSavingError(error.underlying): IndexConfigUpdateError
+                  }
+              } yield ()
+            case TestConfig.Invalidated(_, _) =>
+              EitherT.left(Task.now(IndexConfigUpdateError.TestSettingsInvalidated: IndexConfigUpdateError))
+          }
+        } yield ()
+      }
+    }
+  }
+
+  private def saveConfig(newConfig: TestRorConfig.Present): EitherT[Task, IndexConfigReloadWithUpdateError.IndexConfigSavingError, Unit] =
     EitherT(boot.indexTestConfigManager.save(newConfig, rorConfigurationIndex))
       .leftMap(IndexConfigReloadWithUpdateError.IndexConfigSavingError.apply)
 
@@ -142,11 +178,17 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
                 case Some(_) => ()
                 case None => ()
               }
+              .flatMap { _ =>
+                Task.delay(boot.authServicesMocksProvider.invalidate())
+              }
           )
-        case TestRorConfig.Present(rawConfig, expiration) =>
-          reloadEngine(rawConfig, expiration.validTo, expiration.ttl)
-            .leftMap(IndexConfigReloadError.ReloadError.apply)
-            .leftWiden[IndexConfigReloadError]
+        case TestRorConfig.Present(rawConfig, expiration, mocks) =>
+          for {
+            _ <- reloadEngine(rawConfig, expiration.validTo, expiration.ttl)
+              .leftMap(IndexConfigReloadError.ReloadError.apply)
+              .leftWiden[IndexConfigReloadError]
+            _ <- EitherT.right[IndexConfigReloadError](Task.delay(boot.authServicesMocksProvider.update(mocks)))
+          } yield ()
       }
     } yield config
     result.value

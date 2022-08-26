@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror.boot
 
+import cats.Show
 import cats.effect.Resource
 import cats.implicits.toShow
 import cats.syntax.either._
-import cats.Show
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.catnap.Semaphore
@@ -27,11 +27,12 @@ import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.api.{AuthMockApi, ConfigApi, TestConfigApi}
 import tech.beshu.ror.boot.engines.{Engines, MainConfigBasedReloadableEngine, TestConfigBasedReloadableEngine}
-import tech.beshu.ror.configuration.index.{IndexConfigError, SavingIndexConfigError}
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
+import tech.beshu.ror.configuration.index.{IndexConfigError, SavingIndexConfigError}
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, RorProperties}
@@ -92,8 +93,7 @@ class RorInstance private(boot: ReadonlyRest,
   )
 
   private val authMockRestApi = new AuthMockApi(
-    rorInstance = this,
-    mockProvider = boot.mocksProvider
+    rorInstance = this
   )
 
   private val testConfigRestApi = new TestConfigApi(this)
@@ -105,6 +105,8 @@ class RorInstance private(boot: ReadonlyRest,
   def authMockApi: AuthMockApi = authMockRestApi
 
   def testConfigApi: TestConfigApi = testConfigRestApi
+
+  def mocksProvider: MocksProvider = boot.authServicesMocksProvider
 
   def forceReloadFromIndex()
                           (implicit requestId: RequestId): Task[Either[IndexConfigReloadError, Unit]] =
@@ -128,6 +130,11 @@ class RorInstance private(boot: ReadonlyRest,
   def invalidateTestConfigEngine()
                                 (implicit requestId: RequestId): Task[Either[IndexConfigInvalidationError, Unit]] = {
     anTestConfigEngine.invalidateTestConfigEngine()
+  }
+
+  def updateAuthMocks(mocks: AuthServicesMocks)
+                     (implicit requestId: RequestId): Task[Either[IndexConfigUpdateError, Unit]] = {
+    anTestConfigEngine.saveConfig(mocks)
   }
 
   def stop(): Task[Unit] = {
@@ -234,6 +241,13 @@ object RorInstance {
   object IndexConfigReloadError {
     final case class LoadingConfigError(underlying: ConfigLoaderError[IndexConfigError]) extends IndexConfigReloadError
     final case class ReloadError(underlying: RawConfigReloadError) extends IndexConfigReloadError
+  }
+
+  sealed trait IndexConfigUpdateError
+  object IndexConfigUpdateError {
+    final case class IndexConfigSavingError(underlying: SavingIndexConfigError) extends IndexConfigUpdateError
+    case object TestSettingsNotSet extends IndexConfigUpdateError
+    case object TestSettingsInvalidated extends IndexConfigUpdateError
   }
 
   sealed trait IndexConfigInvalidationError

@@ -20,6 +20,7 @@ import java.time.{Clock, Instant}
 
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
+import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -28,7 +29,8 @@ object TestRorConfig {
   case object NotSet extends TestRorConfig
 
   final case class Present(rawConfig: RawRorConfig,
-                           expiration: Present.ExpirationConfig) extends TestRorConfig {
+                           expiration: Present.ExpirationConfig,
+                           mocks: AuthServicesMocks) extends TestRorConfig {
     def isExpired(clock: Clock): Boolean = {
       expiration.validTo.isBefore(clock.instant())
     }

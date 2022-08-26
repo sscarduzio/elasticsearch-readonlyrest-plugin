@@ -907,6 +907,10 @@ trait BaseAdminApiSuite
     testSettingsDocumentContent("settings").str should be(expectedConfig)
     testSettingsDocumentContent("expiration_ttl_millis").str should be(expectedTtl.toMillis.toString)
     testSettingsDocumentContent("expiration_timestamp").str.isInIsoDateTimeFormat should be(true)
+    val mocksContent = ujson.read(testSettingsDocumentContent("auth_services_mocks").str)
+    mocksContent("ldapMocks").obj.isEmpty should be(true)
+    mocksContent("externalAuthenticationMocks").obj.isEmpty should be(true)
+    mocksContent("externalAuthorizationMocks").obj.isEmpty should be(true)
   }
 
   private def assertTestSettingsNotConfigured(rorApiManager: RorApiManager) = {
