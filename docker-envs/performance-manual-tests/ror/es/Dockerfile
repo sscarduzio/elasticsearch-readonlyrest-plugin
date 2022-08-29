@@ -14,6 +14,7 @@ COPY --from=build /ror/builds/ror.zip /tmp/ror.zip
 COPY certs/elastic-certificates.p12 /usr/share/elasticsearch/config/
 COPY ror/es/readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
 COPY ror/es/elasticsearch.yml /usr/share/elasticsearch/config/elasticsearch.yml
+COPY ror/es/log4j2.properties /usr/share/elasticsearch/config/log4j2.properties
 
 USER root
 

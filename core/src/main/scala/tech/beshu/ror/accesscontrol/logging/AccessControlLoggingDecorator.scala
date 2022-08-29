@@ -104,7 +104,6 @@ class AccessControlLoggingDecorator(val underlying: AccessControl,
     auditingTool.foreach {
       _
         .audit(responseContext)
-        .timeout(5 seconds)
         .runAsync {
           case Right(_) =>
           case Left(ex) =>

@@ -16,17 +16,18 @@
  */
 package tech.beshu.ror.accesscontrol.utils
 
-import java.util.concurrent.ConcurrentHashMap
-
 import com.github.benmanes.caffeine.cache.RemovalCause
 import com.github.blemale.scaffeine.Scaffeine
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.catnap.Semaphore
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.utils.TaskOps._
-import scala.concurrent.ExecutionContext._
 
+import java.util.UUID
+import java.util.concurrent.{ConcurrentHashMap, TimeoutException}
+import scala.concurrent.ExecutionContext._
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Success
 
@@ -36,7 +37,7 @@ class CacheableAction[K, V](ttl: FiniteDuration Refined Positive,
 
 class CacheableActionWithKeyMapping[K, K1, V](ttl: FiniteDuration Refined Positive,
                                               action: K => Task[V],
-                                              keyMap: K => K1) {
+                                              keyMap: K => K1) extends Logging {
 
   private val keySemaphoresMap = new ConcurrentHashMap[K1, Semaphore[Task]]()
 
@@ -46,12 +47,42 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: FiniteDuration Refined Positi
     .removalListener(onRemoveHook)
     .build[K1, V]
 
+  def call(key: K, requestTimeout: FiniteDuration Refined Positive): Task[V] = {
+    val correlationId = UUID.randomUUID().toString
+    val mappedKey = keyMap(key)
+    val ll = for {
+      semaphore <- semaphoreOf(mappedKey)
+      _ <- Task.delay(logger.debug(s"[${correlationId}] WAITING action for $key"))
+      cachedValue <- semaphore.withPermit {
+        for {
+          _ <- Task.delay(logger.debug(s"[${correlationId}] STARTING action for $key"))
+          res <- getFromCacheOrRunAction(key, mappedKey)
+          _ <- Task.delay(logger.debug(s"[${correlationId}] Finishing action for $key"))
+        } yield res
+      }
+    } yield cachedValue
+    ll.timeoutTo(
+      requestTimeout.value,
+      Task.delay {
+        logger.debug(s"[${correlationId}] Cancelling action for $key")
+        throw new TimeoutException("Action cancelled")
+      }
+    )
+  }
+
+  // todo: refactoring needed
   def call(key: K): Task[V] = {
+    val correlationId = UUID.randomUUID().toString
     val mappedKey = keyMap(key)
     for {
       semaphore <- semaphoreOf(mappedKey)
+      _ <- Task.delay(logger.debug(s"[${correlationId}] WAITING action for $key"))
       cachedValue <- semaphore.withPermit {
-        getFromCacheOrRunAction(key, mappedKey)
+        for {
+          _ <- Task.delay(logger.debug(s"[${correlationId}] STARTING action for $key"))
+          res <- getFromCacheOrRunAction(key, mappedKey)
+          _ <- Task.delay(logger.debug(s"[${correlationId}] Finishing action for $key"))
+        } yield res
       }
     } yield cachedValue
   }

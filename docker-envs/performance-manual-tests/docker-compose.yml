@@ -1,6 +1,17 @@
 version: "3.8"
 services:
 
+  es-proxy:
+    image: mitmproxy/mitmproxy
+    command:
+      mitmdump --set validate_inbound_headers=false --mode reverse:https://es:9200 --ssl-insecure --verbose
+    depends_on:
+      - "es"
+    ports:
+      - "8080:8080"
+    networks:
+      - es-network
+
   es:
     build:
       context: .
@@ -16,12 +27,20 @@ services:
       - "9200:9200"
       - "9300:9300"
       - "5000:58672"
+      - "9010:9010"
     environment:
       - cluster.name=es-cluster
       - node.name=es-ror
       - bootstrap.memory_lock=true
       - discovery.type=single-node
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672"
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m 
+      -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672 
+      -Dcom.sun.management.jmxremote
+      -Dcom.sun.management.jmxremote.port=9010
+      -Dcom.sun.management.jmxremote.local.only=false
+      -Dcom.sun.management.jmxremote.authenticate=false
+      -Dcom.sun.management.jmxremote.ssl=false
+      -Dcom.sun.management.jmxremote.rmi.port=9010"
       - ES_VERSION=$ELK_VERSION
     networks:
       - es-network

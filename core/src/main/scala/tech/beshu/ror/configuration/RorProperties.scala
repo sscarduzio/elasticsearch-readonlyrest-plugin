@@ -28,7 +28,6 @@ import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
-import shapeless.tag.@@
 import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.providers.PropertiesProvider.PropName

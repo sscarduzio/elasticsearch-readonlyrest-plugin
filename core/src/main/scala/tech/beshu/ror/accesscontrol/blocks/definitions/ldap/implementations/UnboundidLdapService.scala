@@ -45,9 +45,9 @@ import scala.util.Try
 class UnboundidLdapAuthenticationService private(override val id: LdapService#Id,
                                                  connectionPool: LDAPConnectionPool,
                                                  userSearchFiler: UserSearchFilterConfig,
-                                                 requestTimeout: FiniteDuration Refined Positive)
+                                                 override val serviceTimeout: FiniteDuration Refined Positive)
                                                 (implicit blockingScheduler: Scheduler)
-  extends BaseUnboundidLdapService(connectionPool, userSearchFiler, requestTimeout)
+  extends BaseUnboundidLdapService(connectionPool, userSearchFiler, serviceTimeout)
     with LdapAuthenticationService {
 
   override def authenticate(user: User.Id, secret: PlainTextSecret): Task[Boolean] = {
@@ -61,12 +61,8 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
   }
 
   private def ldapAuthenticate(user: LdapUser, password: PlainTextSecret) = {
-    Task(connectionPool.getConnection)
-      .bracket(
-        use = connection => Task(connection.bind(new SimpleBindRequest(user.dn.value.value, password.value.value)))
-      )(
-        release = connection => Task(connectionPool.releaseAndReAuthenticateConnection(connection))
-      )
+    connectionPool
+      .asyncBind(new SimpleBindRequest(user.dn.value.value, password.value.value))
       .map(_.getResultCode == ResultCode.SUCCESS)
       .onError { case ex =>
         Task(logger.errorEx(s"LDAP authenticate operation failed - cause [${ex.getMessage}]", ex))
@@ -104,9 +100,9 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
                                                 connectionPool: LDAPConnectionPool,
                                                 groupsSearchFilter: UserGroupsSearchFilterConfig,
                                                 userSearchFiler: UserSearchFilterConfig,
-                                                requestTimeout: FiniteDuration Refined Positive)
+                                                override val serviceTimeout: FiniteDuration Refined Positive)
                                                (implicit blockingScheduler: Scheduler)
-  extends BaseUnboundidLdapService(connectionPool, userSearchFiler, requestTimeout)
+  extends BaseUnboundidLdapService(connectionPool, userSearchFiler, serviceTimeout)
     with LdapAuthorizationService {
 
   override def groupsOf(id: User.Id): Task[UniqueList[Group]] = {
@@ -126,7 +122,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
     val searchFilter = searchFilterFrom(defaultSearchGroupMode, user)
     logger.debug(s"LDAP search string: $searchFilter | groupNameAttr: ${defaultSearchGroupMode.groupNameAttribute}")
     connectionPool
-      .process(searchGroupsLdapRequest(_, searchFilter, defaultSearchGroupMode), requestTimeout)
+      .process(searchGroupsLdapRequest(_, searchFilter, defaultSearchGroupMode), serviceTimeout)
       .flatMap {
         case Right(results) =>
           Task {
@@ -151,7 +147,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
   private def groupsFrom(mode: GroupsFromUserAttribute, user: LdapUser): Task[UniqueList[Group]] = {
     logger.debug(s"LDAP search string: ${user.dn.value.value} | groupsFromUserAttribute: ${mode.groupsFromUserAttribute.value}")
     connectionPool
-      .process(searchUserGroupsLdapRequest(_, user, mode), requestTimeout)
+      .process(searchUserGroupsLdapRequest(_, user, mode), serviceTimeout)
       .flatMap {
         case Right(results) =>
           Task {
@@ -246,13 +242,13 @@ object UnboundidLdapAuthorizationService {
 
 abstract class BaseUnboundidLdapService(connectionPool: LDAPConnectionPool,
                                         userSearchFiler: UserSearchFilterConfig,
-                                        requestTimeout: FiniteDuration Refined Positive)
+                                        override val serviceTimeout: FiniteDuration Refined Positive)
                                        (implicit blockingScheduler: Scheduler)
   extends LdapUserService with Logging {
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
     connectionPool
-      .process(searchUserLdapRequest(_, userSearchFiler, userId), requestTimeout)
+      .process(searchUserLdapRequest(_, userSearchFiler, userId), serviceTimeout)
       .flatMap {
         case Right(Nil) =>
           logger.debug("LDAP getting user CN returned no entries")

@@ -151,6 +151,7 @@ class IndexLevelActionFilter(nodeName: String,
   }
 
   private def proceedByRorEngine(esContext: EsContext): Unit = {
+    logger.debug(s"Starting processing: ${esContext.requestContextId}")
     rorInstanceState.get() match {
       case RorInstanceStartingState.Starting =>
         logger.warn(s"[${esContext.requestContextId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
