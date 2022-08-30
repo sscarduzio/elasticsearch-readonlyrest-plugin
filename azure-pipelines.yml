@@ -11,7 +11,7 @@ trigger:
     - master
     - develop
     - epic/*
-    - RORDEV*
+    - '*RORDEV*'
     - '*/pull/*'
   tags:
     exclude:
