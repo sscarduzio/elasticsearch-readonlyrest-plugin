@@ -221,7 +221,7 @@ object ScalaOps {
     }
   }
 
-  implicit class PositiveFiniteDurationAdd(val duration: FiniteDuration Refined Positive) extends AnyVal {
+  implicit class PositiveFiniteDurationAdd(val duration: FiniteDuration Refined Positive) {
 
     def +(duration: FiniteDuration Refined Positive): FiniteDuration Refined Positive = {
       Refined.unsafeApply(this.duration.value + duration.value)

@@ -38,8 +38,8 @@ import scala.util.{Failure, Success, Try}
 object RorProperties extends Logging {
 
   object defaults {
-    val refreshInterval: FiniteDuration Refined Positive = refineV(5 second).right.get
-    val loadingDelay: FiniteDuration Refined Positive = refineV(5 second).right.get
+    val refreshInterval: FiniteDuration Refined Positive = Refined.unsafeApply(5 second)
+    val loadingDelay: FiniteDuration Refined Positive = Refined.unsafeApply(5 second)
     val esHost: String = "localhost"
     val esPort: Int = 9200
     val proxyPort: Int = 5000
@@ -136,7 +136,7 @@ object RorProperties extends Logging {
       case Success(interval) if interval == 0 =>
         None
       case Success(interval) if interval > 0 =>
-        Some(refineV[Positive](FiniteDuration(interval.toLong, TimeUnit.SECONDS)).right.get)
+        Some(Refined.unsafeApply(FiniteDuration(interval.toLong, TimeUnit.SECONDS)))
       case Failure(_) =>
         throw new IllegalArgumentException(s"Cannot convert '$value' to finite positive duration")
     }

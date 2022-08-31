@@ -1,17 +1,6 @@
 version: "3.8"
 services:
 
-  es-proxy:
-    image: mitmproxy/mitmproxy
-    command:
-      mitmdump --set validate_inbound_headers=false --mode reverse:https://es:9200 --ssl-insecure --verbose
-    depends_on:
-      - "es"
-    ports:
-      - "8080:8080"
-    networks:
-      - es-network
-
   es:
     build:
       context: .
@@ -21,13 +10,13 @@ services:
     hostname: es
     container_name: es
     depends_on:
-      - lldap
+      - ldap
       - lagsimulator
     ports:
       - "9200:9200"
       - "9300:9300"
-      - "5000:58672"
-      - "9010:9010"
+      - "5000:58672" #remote debugger port
+      - "9010:9010" # jvisualvm jmx connection port
     environment:
       - cluster.name=es-cluster
       - node.name=es-ror
@@ -50,33 +39,6 @@ services:
         soft: -1
         hard: -1
 
-#  es-ror-proxy:
-#    image: mitmproxy/mitmproxy
-#    command:
-#      mitmdump --mode reverse:https://es:9200 --ssl-insecure --verbose
-#    depends_on:
-#      - es
-#    networks:
-#      - es-network
-#
-#  kbn-ror:
-#    build:
-#      context: .
-#      dockerfile: ror/kbn/Dockerfile
-#      args:
-#        ELK_VERSION: $ELK_VERSION
-#        ROR_KBN: $ROR_KBN
-#    ports:
-#      - "5601:5601"
-#    environment:
-#      ELASTIC_USER_PASSWORD: elastic
-#    networks:
-#      - es-network
-#    ulimits:
-#      memlock:
-#        soft: -1
-#        hard: -1
-
   lagsimulator:
     build:
       context: .
@@ -84,25 +46,20 @@ services:
     hostname: simulatedlag
     container_name: simulatedlag
     depends_on:
-      - lldap
+      - ldap
     networks:
       - es-network
 
-  lldap:
+  ldap:
     image: nitnelave/lldap:stable
-    # Change this to the user:group you want.
     user: "33:33"
-    hostname: lldap
-    container_name: lldap
+    hostname: ldap
+    container_name: ldap
     ports:
-      # For LDAP
-      - "3890:3890"
-      # For the web front-end
-      - "17170:17170"
+      - "3890:3890" # ldap port
+      - "17170:17170" # ldap frontend
     volumes:
-      - "./:/data"
-      # Alternatively, you can mount a local folder
-      # - "./lldap_data:/data"
+      - "./ldap/data/:/data"
     environment:
       - LLDAP_JWT_SECRET=secret
       - LLDAP_LDAP_USER_PASS=password

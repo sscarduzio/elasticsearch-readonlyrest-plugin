@@ -29,10 +29,10 @@ readonlyrest:
       users: ["user*"]
       ldap_authentication: ldap1
 
-#    - name: "LDAP 2"
-#      type: allow
-#      users: ["test*"]
-#      ldap_authentication: ldap2
+    - name: "LDAP 2"
+      type: allow
+      users: ["test*"]
+      ldap_authentication: ldap2
 
   ldaps:
     - name: ldap1
@@ -52,7 +52,7 @@ readonlyrest:
       cache_ttl_in_sec: 30                                      # default 0 - cache disabled
 
     - name: ldap2
-      host: "lldap"
+      host: "ldap"
       port: 3890
       ssl_enabled: false                                        # default true
       ssl_trust_all_certs: true                                 # default false
