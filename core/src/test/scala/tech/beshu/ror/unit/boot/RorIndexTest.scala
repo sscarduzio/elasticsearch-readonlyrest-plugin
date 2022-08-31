@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
+import tech.beshu.ror.boot.RorInstance.TestConfigUpdated
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
@@ -137,7 +138,7 @@ class RorIndexTest extends AnyWordSpec
               .forceReloadTestConfigEngine(rorConfig, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
               .runSyncUnsafe()
 
-          forceReloadingResult should be(Right(()))
+          forceReloadingResult.right.value shouldBe a[TestConfigUpdated]
         }
       }
       "custom index is defined in config" should {
@@ -213,7 +214,7 @@ class RorIndexTest extends AnyWordSpec
               .forceReloadTestConfigEngine(rorConfig, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
               .runSyncUnsafe()
 
-          forceReloadingResult should be(Right(()))
+          forceReloadingResult.right.value shouldBe a[TestConfigUpdated]
         }
       }
     }

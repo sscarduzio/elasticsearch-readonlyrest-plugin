@@ -29,7 +29,7 @@ import tech.beshu.ror.api.TestConfigApi.TestConfigRequest.Type
 import tech.beshu.ror.api.TestConfigApi.TestConfigResponse._
 import tech.beshu.ror.api.TestConfigApi.{TestConfigRequest, TestConfigResponse}
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
-import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, RawConfigReloadError, TestConfig}
+import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, RawConfigReloadError, TestConfig, TestConfigUpdated}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
@@ -62,8 +62,8 @@ class TestConfigApi(rorInstance: RorInstance)
     val result = for {
       updateRequest <- EitherT.fromEither[Task](decodeUpdateConfigRequest(body))
       rorConfig <- rorTestConfig(updateRequest.configString)
-      _ <- forceReloadTestConfig(rorConfig, updateRequest.ttl)
-    } yield TestConfigResponse.UpdateTestConfig.SuccessResponse("updated settings")
+      response <- forceReloadTestConfig(rorConfig, updateRequest.ttl)
+    } yield response
 
     result.value.map(_.merge)
   }
@@ -134,21 +134,28 @@ class TestConfigApi(rorInstance: RorInstance)
 
   private def forceReloadTestConfig(config: RawRorConfig,
                                     ttl: FiniteDuration Refined Positive)
-                                   (implicit requestId: RequestId): EitherT[Task, TestConfigResponse, Unit] = {
+                                   (implicit requestId: RequestId): EitherT[Task, TestConfigResponse, TestConfigResponse] = {
     EitherT(
       rorInstance
         .forceReloadTestConfigEngine(config, ttl)
         .map {
-          _.leftMap {
-            case IndexConfigSavingError(error) =>
-              TestConfigResponse.UpdateTestConfig.FailedResponse(s"Cannot reload new settings: ${error.show}")
-            case ReloadError(RawConfigReloadError.ConfigUpToDate(_)) =>
-              TestConfigResponse.UpdateTestConfig.FailedResponse(s"Current settings are already loaded")
-            case ReloadError(RawConfigReloadError.RorInstanceStopped) =>
-              TestConfigResponse.UpdateTestConfig.FailedResponse(s"ROR instance is being stopped")
-            case ReloadError(RawConfigReloadError.ReloadingFailed(failure)) =>
-              TestConfigResponse.UpdateTestConfig.FailedResponse(s"Cannot reload new settings: ${failure.message}")
-          }
+          _
+            .map { newTestConfig =>
+              TestConfigResponse.UpdateTestConfig.SuccessResponse(
+                message = "updated settings",
+                validTo = newTestConfig.validTo
+              )
+            }
+            .leftMap {
+              case IndexConfigSavingError(error) =>
+                TestConfigResponse.UpdateTestConfig.FailedResponse(s"Cannot reload new settings: ${error.show}")
+              case ReloadError(RawConfigReloadError.ConfigUpToDate(_)) =>
+                TestConfigResponse.UpdateTestConfig.FailedResponse(s"Current settings are already loaded")
+              case ReloadError(RawConfigReloadError.RorInstanceStopped) =>
+                TestConfigResponse.UpdateTestConfig.FailedResponse(s"ROR instance is being stopped")
+              case ReloadError(RawConfigReloadError.ReloadingFailed(failure)) =>
+                TestConfigResponse.UpdateTestConfig.FailedResponse(s"Cannot reload new settings: ${failure.message}")
+            }
         }
     )
   }
@@ -192,7 +199,7 @@ object TestConfigApi {
 
     sealed trait UpdateTestConfig extends TestConfigResponse
     object UpdateTestConfig {
-      final case class SuccessResponse(message: String) extends UpdateTestConfig
+      final case class SuccessResponse(message: String, validTo: Instant) extends UpdateTestConfig
       final case class FailedResponse(message: String) extends UpdateTestConfig
     }
 

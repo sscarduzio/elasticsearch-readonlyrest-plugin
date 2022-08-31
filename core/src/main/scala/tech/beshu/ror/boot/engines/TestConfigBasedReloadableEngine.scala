@@ -69,7 +69,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
 
   def forceReloadTestConfigEngine(config: RawRorConfig,
                                   ttl: FiniteDuration Refined Positive)
-                                 (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, Unit]] = {
+                                 (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, TestRorConfig.Present]] = {
     for {
       _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of ROR test settings was forced (TTL of test engine is ${ttl.toString()}) ..."))
       reloadResult <- reloadInProgress.withPermit {
@@ -89,7 +89,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
               onFailure = IndexConfigReloadWithUpdateError.IndexConfigSavingError.apply
             )
               .leftWiden[IndexConfigReloadWithUpdateError]
-          } yield ()
+          } yield testRorConfig
         }
       }
       _ <- Task.delay(reloadResult match {
