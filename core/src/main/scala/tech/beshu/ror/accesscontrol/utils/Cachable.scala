@@ -25,8 +25,7 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.utils.TaskOps._
 
-import java.util.UUID
-import java.util.concurrent.{ConcurrentHashMap, TimeoutException}
+import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.ExecutionContext._
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Success
@@ -47,42 +46,17 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: FiniteDuration Refined Positi
     .removalListener(onRemoveHook)
     .build[K1, V]
 
-  def call(key: K, requestTimeout: FiniteDuration Refined Positive): Task[V] = {
-    val correlationId = UUID.randomUUID().toString
-    val mappedKey = keyMap(key)
-    val ll = for {
-      semaphore <- semaphoreOf(mappedKey)
-      _ <- Task.delay(logger.debug(s"[${correlationId}] WAITING action for $key"))
-      cachedValue <- semaphore.withPermit {
-        for {
-          _ <- Task.delay(logger.debug(s"[${correlationId}] STARTING action for $key"))
-          res <- getFromCacheOrRunAction(key, mappedKey)
-          _ <- Task.delay(logger.debug(s"[${correlationId}] Finishing action for $key"))
-        } yield res
-      }
-    } yield cachedValue
-    ll.timeoutTo(
-      requestTimeout.value,
-      Task.delay {
-        logger.debug(s"[${correlationId}] Cancelling action for $key")
-        throw new TimeoutException("Action cancelled")
-      }
-    )
+  def call(key: K,
+           requestTimeout: FiniteDuration Refined Positive): Task[V] = {
+    call(key).timeout(requestTimeout.value)
   }
 
-  // todo: refactoring needed
   def call(key: K): Task[V] = {
-    val correlationId = UUID.randomUUID().toString
     val mappedKey = keyMap(key)
     for {
       semaphore <- semaphoreOf(mappedKey)
-      _ <- Task.delay(logger.debug(s"[${correlationId}] WAITING action for $key"))
       cachedValue <- semaphore.withPermit {
-        for {
-          _ <- Task.delay(logger.debug(s"[${correlationId}] STARTING action for $key"))
-          res <- getFromCacheOrRunAction(key, mappedKey)
-          _ <- Task.delay(logger.debug(s"[${correlationId}] Finishing action for $key"))
-        } yield res
+        getFromCacheOrRunAction(key, mappedKey).uncancelable.asyncBoundary
       }
     } yield cachedValue
   }

@@ -37,6 +37,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.User
 import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.utils.LdapConnectionPoolOps._
 import tech.beshu.ror.utils.LoggerOps._
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration._
@@ -93,8 +94,12 @@ object UnboundidLdapAuthenticationService {
             )
         }
       connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](poolProvider.connect(connectionConfig))
-      // todo: add connection timeout?
-    } yield new UnboundidLdapAuthenticationService(id, connectionPool, userSearchFiler, connectionConfig.requestTimeout)).value
+    } yield new UnboundidLdapAuthenticationService(
+      id,
+      connectionPool,
+      userSearchFiler,
+      serviceTimeout = connectionConfig.connectionTimeout + connectionConfig.requestTimeout
+    )).value
   }
 }
 
@@ -294,7 +299,7 @@ final case class LdapConnectionConfig(connectionMethod: ConnectionMethod,
 
 object LdapConnectionConfig {
 
-  val defaultCircuitBreakerConfig = CircuitBreakerConfig(
+  val defaultCircuitBreakerConfig: CircuitBreakerConfig = CircuitBreakerConfig(
     maxFailures = 10,
     resetDuration = Refined.unsafeApply(10 seconds)
   )

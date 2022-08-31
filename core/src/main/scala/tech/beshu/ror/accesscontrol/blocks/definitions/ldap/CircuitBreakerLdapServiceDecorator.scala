@@ -43,14 +43,12 @@ class CircuitBreakerLdapAuthenticationServiceDecorator(underlying: LdapAuthentic
     circuitBreaker.protect(
       underlying.authenticate(user, secret)
     )
-      .uncancelable.asyncBoundary
   }
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
     circuitBreaker.protect(
       underlying.ldapUserBy(userId)
     )
-      .uncancelable.asyncBoundary
   }
 
   override def id: LdapService.Name = underlying.id
@@ -74,14 +72,12 @@ class CircuitBreakerLdapAuthorizationServiceDecorator(underlying: LdapAuthorizat
     circuitBreaker.protect(
       underlying.groupsOf(id)
     )
-      .uncancelable.asyncBoundary
   }
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
     circuitBreaker.protect(
       underlying.ldapUserBy(userId)
     )
-      .uncancelable.asyncBoundary
   }
 
   override def id: LdapService.Name = underlying.id
@@ -105,21 +101,18 @@ class CircuitBreakerLdapServiceDecorator(underlying: LdapAuthService,
     circuitBreaker.protect(
       underlying.authenticate(user, secret)
     )
-      .uncancelable.asyncBoundary
   }
 
   override def groupsOf(id: User.Id): Task[UniqueList[domain.Group]] = {
     circuitBreaker.protect(
       underlying.groupsOf(id)
     )
-      .uncancelable.asyncBoundary
   }
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
     circuitBreaker.protect(
       underlying.ldapUserBy(userId)
     )
-      .uncancelable.asyncBoundary
   }
 
   override def id: LdapService.Name = underlying.id

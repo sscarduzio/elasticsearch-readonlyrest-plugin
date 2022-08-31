@@ -18,7 +18,7 @@ package tech.beshu.ror.es.handler.request.context
 
 import java.time.Instant
 
-import com.softwaremill.sttp.Method
+.getOrElse(UriPath("/"))
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -72,7 +72,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
   override lazy val uriPath: UriPath =
     UriPath
       .from(restRequest.path())
-      .getOrElse(UriPath(NonEmptyString.unsafeFrom("/")))
+      .getOrElse(UriPath("/"))
 
   override lazy val contentLength: Information = Bytes(Option(restRequest.content()).map(_.length()).getOrElse(0))
 

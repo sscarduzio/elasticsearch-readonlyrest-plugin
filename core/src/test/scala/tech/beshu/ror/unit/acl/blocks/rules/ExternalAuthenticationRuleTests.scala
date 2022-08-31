@@ -20,7 +20,6 @@ import cats.data.NonEmptyList
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
-import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -39,12 +38,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{Impersonati
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
-import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, impersonationHeader, impersonatorDefFrom, mocksProviderForExternalAuthnServiceFrom}
 import tech.beshu.ror.utils.UserIdEq
 
-import scala.concurrent.duration.{FiniteDuration, _}
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
@@ -264,7 +262,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
     new ExternalAuthenticationService {
       override def id: ExternalAuthenticationService.Name = ExternalAuthenticationService.Name(name)
       override def authenticate(aCredentials: Credentials): Task[Boolean] = Task.delay { credentials == aCredentials }
-      override def serviceTimeout: Refined[FiniteDuration, Positive] = refineV(5 second).right.get
+      override def serviceTimeout: Refined[FiniteDuration, Positive] = Refined.unsafeApply(5 second)
     }
   }
 

@@ -19,7 +19,6 @@ package tech.beshu.ror.unit.acl.blocks.rules
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
-import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -41,7 +40,6 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, Imper
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, User}
-import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.UserIdEq
@@ -385,6 +383,6 @@ class ExternalAuthorizationRuleTests
         }
       }
 
-      override def serviceTimeout: Refined[FiniteDuration, Positive] = refineV(5 second).right.get
+      override def serviceTimeout: Refined[FiniteDuration, Positive] = Refined.unsafeApply(5 second)
     }
 }

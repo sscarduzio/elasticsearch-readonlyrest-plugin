@@ -17,7 +17,6 @@
 package tech.beshu.ror.configuration
 
 import java.util.concurrent.TimeUnit
-import java.util.regex.Pattern.Pos
 
 import better.files.File
 import cats.Show
