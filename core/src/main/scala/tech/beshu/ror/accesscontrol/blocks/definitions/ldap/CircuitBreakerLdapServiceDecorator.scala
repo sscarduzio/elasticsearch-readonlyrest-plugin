@@ -40,11 +40,17 @@ class CircuitBreakerLdapAuthenticationServiceDecorator(underlying: LdapAuthentic
   }
 
   override def authenticate(user: User.Id, secret: domain.PlainTextSecret): Task[Boolean] = {
-    circuitBreaker.protect(underlying.authenticate(user, secret))
+    circuitBreaker.protect(
+      underlying.authenticate(user, secret)
+    )
+      .uncancelable.asyncBoundary
   }
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
-    circuitBreaker.protect(underlying.ldapUserBy(userId))
+    circuitBreaker.protect(
+      underlying.ldapUserBy(userId)
+    )
+      .uncancelable.asyncBoundary
   }
 
   override def id: LdapService.Name = underlying.id
@@ -65,11 +71,17 @@ class CircuitBreakerLdapAuthorizationServiceDecorator(underlying: LdapAuthorizat
   }
 
   override def groupsOf(id: User.Id): Task[UniqueList[domain.Group]] = {
-    circuitBreaker.protect(underlying.groupsOf(id))
+    circuitBreaker.protect(
+      underlying.groupsOf(id)
+    )
+      .uncancelable.asyncBoundary
   }
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
-    circuitBreaker.protect(underlying.ldapUserBy(userId))
+    circuitBreaker.protect(
+      underlying.ldapUserBy(userId)
+    )
+      .uncancelable.asyncBoundary
   }
 
   override def id: LdapService.Name = underlying.id
@@ -90,15 +102,24 @@ class CircuitBreakerLdapServiceDecorator(underlying: LdapAuthService,
   }
 
   override def authenticate(user: User.Id, secret: domain.PlainTextSecret): Task[Boolean] = {
-    circuitBreaker.protect(underlying.authenticate(user, secret))
+    circuitBreaker.protect(
+      underlying.authenticate(user, secret)
+    )
+      .uncancelable.asyncBoundary
   }
 
   override def groupsOf(id: User.Id): Task[UniqueList[domain.Group]] = {
-    circuitBreaker.protect(underlying.groupsOf(id))
+    circuitBreaker.protect(
+      underlying.groupsOf(id)
+    )
+      .uncancelable.asyncBoundary
   }
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
-    circuitBreaker.protect(underlying.ldapUserBy(userId))
+    circuitBreaker.protect(
+      underlying.ldapUserBy(userId)
+    )
+      .uncancelable.asyncBoundary
   }
 
   override def id: LdapService.Name = underlying.id

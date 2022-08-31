@@ -44,6 +44,8 @@ class AccessControlLoggingDecorator(val underlying: AccessControl,
                                     scheduler: Scheduler)
   extends AccessControl with Logging {
 
+  override def description: String = underlying.description
+
   override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]] = {
     logger.debug(s"checking request: ${requestContext.id.show}")
     underlying

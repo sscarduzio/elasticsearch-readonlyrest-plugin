@@ -52,7 +52,7 @@ class RorInstance private(boot: ReadonlyRest,
   import RorInstance.ScheduledReloadError.{EngineReloadError, ReloadingInProgress}
   import RorInstance._
 
-  logger.info("ReadonlyREST core was loaded ...")
+  logger.info("ReadonlyREST plugin is active ...")
   mode match {
     case Mode.WithPeriodicIndexCheck =>
       RorProperties.rorIndexSettingReloadInterval match {

@@ -21,6 +21,7 @@ import cats.data.{EitherT, NonEmptyList}
 import cats.implicits._
 import com.unboundid.ldap.sdk._
 import eu.timepit.refined.api.Refined
+import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.UrlWithAuthority
@@ -92,6 +93,7 @@ object UnboundidLdapAuthenticationService {
             )
         }
       connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](poolProvider.connect(connectionConfig))
+      // todo: add connection timeout?
     } yield new UnboundidLdapAuthenticationService(id, connectionPool, userSearchFiler, connectionConfig.requestTimeout)).value
   }
 }
@@ -292,7 +294,10 @@ final case class LdapConnectionConfig(connectionMethod: ConnectionMethod,
 
 object LdapConnectionConfig {
 
-  val DEFAULT_CIRCUIT_BREAKER_CONFIG = CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
+  val defaultCircuitBreakerConfig = CircuitBreakerConfig(
+    maxFailures = 10,
+    resetDuration = Refined.unsafeApply(10 seconds)
+  )
 
   final case class LdapHost private(url: UrlWithAuthority) {
     def isSecure: Boolean = url.schemeOption.contains(LdapHost.ldapsSchema)
