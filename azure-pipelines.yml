@@ -63,6 +63,7 @@ stages:
   - stage: TEST
     jobs:
       - job:
+        displayName: Unit
         steps:
           - checkout: self
             fetchDepth: 1
@@ -94,6 +95,7 @@ stages:
             IT_PROXY:
               ROR_TASK: integration_proxy
       - job:
+        displayName: Maven for important branches
         condition: or(eq(variables.isDevelop, true), eq(variables.isMaster, true))
         container: maven:3.8.1-openjdk-17-slim
         steps:
@@ -129,6 +131,7 @@ stages:
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
+        displayName: Maven for secondary branches
         condition: and(ne(variables.isDevelop, true), ne(variables.isMaster, true))
         container: maven:3.8.1-openjdk-17-slim
         steps:
@@ -160,6 +163,7 @@ stages:
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
+        displayName: Full IT for important branches
         condition: or(eq(variables.isDevelop, true), eq(variables.isMaster, true))
         steps:
           - checkout: self
@@ -222,6 +226,7 @@ stages:
             IT_es60x:
               ROR_TASK: integration_es60x
       - job:
+        displayName: Partial IT for secondary branches
         condition: and(ne(variables.isDevelop, true), ne(variables.isMaster, true))
         steps:
           - checkout: self
