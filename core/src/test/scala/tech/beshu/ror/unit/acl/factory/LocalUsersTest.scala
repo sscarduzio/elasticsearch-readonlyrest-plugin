@@ -229,12 +229,15 @@ class LocalUsersTest extends AnyWordSpec with Inside {
              |  - username: user1
              |    groups: ["group1", "group3"]
              |    auth_key: "user1:pass"
+             |
              |  - username: "*"
              |    groups: ["group2", "group4"]
              |    auth_key: "user2:pass"
+             |
              |  - username: "*"
              |    groups: ["group5", "group6"]
              |    auth_key: "user4:pass"
+             |
              |  - username: "*"
              |    groups: ["group5", "group6"]
              |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
