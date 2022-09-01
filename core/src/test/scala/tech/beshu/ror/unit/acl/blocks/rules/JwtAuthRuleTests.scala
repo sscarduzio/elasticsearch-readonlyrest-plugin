@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
@@ -602,6 +603,10 @@ class JwtAuthRuleTests
     (service.id _)
       .expects()
       .returning(Name("external_service"))
+    (service.serviceTimeout _)
+      .expects()
+      .anyNumberOfTimes()
+      .returning(Refined.unsafeApply(10 seconds))
     val ttl = refineV[Positive](1 hour).fold(str => throw new Exception(str), identity)
     new CacheableExternalAuthenticationServiceDecorator(service, ttl)
   }
