@@ -18,8 +18,8 @@ package tech.beshu.ror.es.handler.request.context
 
 import java.time.Instant
 
-.getOrElse(UriPath("/"))
-import eu.timepit.refined.types.string.NonEmptyString
+import com.softwaremill.sttp.Method
+import eu.timepit.refined.auto._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.CompositeIndicesRequest
