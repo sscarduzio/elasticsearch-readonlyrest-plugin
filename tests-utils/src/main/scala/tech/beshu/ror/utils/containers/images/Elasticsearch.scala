@@ -139,6 +139,7 @@ class Elasticsearch(esVersion: String,
       .addWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0),
         entry = s"action.destructive_requires_name: false"
       )
+      .add("xpack.monitoring.enabled: false")
       .add(
         entries = config.additionalElasticsearchYamlEntries.map { case (key, value) => s"$key: $value" }
       )
