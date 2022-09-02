@@ -32,22 +32,21 @@ import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
 import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
-import tech.beshu.ror.boot.RorInstance.{RawConfigReloadError, TestConfig}
-import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.ReloadingFailed
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
+import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.ReloadingFailed
+import tech.beshu.ror.boot.RorInstance.TestConfig
 import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{getResourceContent, getResourcePath, rorConfigFromResource, _}
+
 import java.time.Clock
 import java.util.UUID
-
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -628,6 +627,10 @@ class ReadonlyRestStartingTests
       .expects()
       .anyNumberOfTimes()
       .returns(mockAccessControlStaticContext)
+    (mockedAccessControl.description _)
+      .expects()
+      .anyNumberOfTimes()
+      .returns("ENABLED")
     mockedAccessControl
   }
 
@@ -637,6 +640,10 @@ class ReadonlyRestStartingTests
       .expects()
       .anyNumberOfTimes()
       .returns(mockAccessControlStaticContext)
+    (mockedAccessControl.description _)
+      .expects()
+      .anyNumberOfTimes()
+      .returns("DISABLED")
     mockedAccessControl
   }
 

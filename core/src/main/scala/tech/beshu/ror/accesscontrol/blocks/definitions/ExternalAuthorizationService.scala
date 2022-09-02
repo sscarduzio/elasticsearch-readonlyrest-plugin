@@ -44,6 +44,7 @@ trait ExternalAuthorizationService extends Item {
   override type Id = Name
   def id: Id
   def grantsFor(userId: User.Id): Task[UniqueList[Group]]
+  def serviceTimeout: FiniteDuration Refined Positive
 
   override implicit def show: Show[Name] = Name.nameShow
 }
@@ -64,6 +65,7 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
                                        authTokenSendMethod: AuthTokenSendMethod,
                                        defaultHeaders: Set[Header],
                                        defaultQueryParams: Set[QueryParam],
+                                       override val serviceTimeout: Refined[FiniteDuration, Positive],
                                        httpClient: HttpClient)
   extends ExternalAuthorizationService
   with Logging {
@@ -158,5 +160,8 @@ class CacheableExternalAuthorizationServiceDecorator(underlying: ExternalAuthori
   override val id: ExternalAuthorizationService#Id = underlying.id
 
   override def grantsFor(userId: User.Id): Task[UniqueList[Group]] =
-    cacheableGrantsFor.call(userId)
+    cacheableGrantsFor.call(userId, serviceTimeout)
+
+  override def serviceTimeout: Refined[FiniteDuration, Positive] =
+    underlying.serviceTimeout
 }
