@@ -50,7 +50,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   private val currentEngine: Atomic[EngineState] = AtomicAny[EngineState](
     initialEngine match {
       case Some((engine, config)) =>
-        logger.info(s"ROR $name engine (id=${config.hashString()}) was initiated.")
+        logger.info(s"ROR $name engine (id=${config.hashString()}) was initiated (${engine.core.accessControl.description}).")
         EngineState.Working(EngineWithConfig(engine, config, expirationConfig = None), scheduledShutdownJob = None)
       case None =>
         EngineState.NotStartedYet(recentConfig = None, recentExpirationConfig = None)

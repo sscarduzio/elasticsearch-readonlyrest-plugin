@@ -16,12 +16,16 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.Positive
 import monix.catnap._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.utils.uniquelist.UniqueList
+
+import scala.concurrent.duration.FiniteDuration
 
 class CircuitBreakerLdapAuthenticationServiceDecorator(underlying: LdapAuthenticationService,
                                                        circuitBreakerConfig: CircuitBreakerConfig)
@@ -36,14 +40,20 @@ class CircuitBreakerLdapAuthenticationServiceDecorator(underlying: LdapAuthentic
   }
 
   override def authenticate(user: User.Id, secret: domain.PlainTextSecret): Task[Boolean] = {
-    circuitBreaker.protect(underlying.authenticate(user, secret))
+    circuitBreaker.protect(
+      underlying.authenticate(user, secret)
+    )
   }
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
-    circuitBreaker.protect(underlying.ldapUserBy(userId))
+    circuitBreaker.protect(
+      underlying.ldapUserBy(userId)
+    )
   }
 
   override def id: LdapService.Name = underlying.id
+
+  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 }
 
 class CircuitBreakerLdapAuthorizationServiceDecorator(underlying: LdapAuthorizationService,
@@ -59,14 +69,20 @@ class CircuitBreakerLdapAuthorizationServiceDecorator(underlying: LdapAuthorizat
   }
 
   override def groupsOf(id: User.Id): Task[UniqueList[domain.Group]] = {
-    circuitBreaker.protect(underlying.groupsOf(id))
+    circuitBreaker.protect(
+      underlying.groupsOf(id)
+    )
   }
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
-    circuitBreaker.protect(underlying.ldapUserBy(userId))
+    circuitBreaker.protect(
+      underlying.ldapUserBy(userId)
+    )
   }
 
   override def id: LdapService.Name = underlying.id
+
+  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 }
 
 class CircuitBreakerLdapServiceDecorator(underlying: LdapAuthService,
@@ -82,16 +98,24 @@ class CircuitBreakerLdapServiceDecorator(underlying: LdapAuthService,
   }
 
   override def authenticate(user: User.Id, secret: domain.PlainTextSecret): Task[Boolean] = {
-    circuitBreaker.protect(underlying.authenticate(user, secret))
+    circuitBreaker.protect(
+      underlying.authenticate(user, secret)
+    )
   }
 
   override def groupsOf(id: User.Id): Task[UniqueList[domain.Group]] = {
-    circuitBreaker.protect(underlying.groupsOf(id))
+    circuitBreaker.protect(
+      underlying.groupsOf(id)
+    )
   }
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
-    circuitBreaker.protect(underlying.ldapUserBy(userId))
+    circuitBreaker.protect(
+      underlying.ldapUserBy(userId)
+    )
   }
 
   override def id: LdapService.Name = underlying.id
+
+  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 }

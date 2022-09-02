@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
+import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -233,7 +235,7 @@ class ExternalAuthorizationRuleTests
               ),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List.empty, // not needed in this context
-                mocksProvider =  mocksProviderForExternalAuthzServiceFrom(Map(
+                mocksProvider = mocksProviderForExternalAuthzServiceFrom(Map(
                   ExternalAuthorizationService.Name("service1") -> user2GroupsInService1
                 ))
               )),
@@ -373,11 +375,14 @@ class ExternalAuthorizationRuleTests
   private def mockExternalAuthorizationService(name: NonEmptyString, groups: Map[User.Id, Set[Group]]) =
     new ExternalAuthorizationService {
       override def id: ExternalAuthorizationService.Name = ExternalAuthorizationService.Name(name)
+
       override def grantsFor(userId: User.Id): Task[UniqueList[Group]] = Task.delay {
         groups.get(userId) match {
           case Some(g) => UniqueList.fromList(g.toList)
           case None => UniqueList.empty
         }
       }
+
+      override def serviceTimeout: Refined[FiniteDuration, Positive] = Refined.unsafeApply(5 second)
     }
 }

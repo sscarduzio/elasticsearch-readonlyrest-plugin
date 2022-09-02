@@ -16,10 +16,8 @@
  */
 package tech.beshu.ror.es.handler.request.context
 
-import java.time.Instant
-
 import com.softwaremill.sttp.Method
-import eu.timepit.refined.types.string.NonEmptyString
+import eu.timepit.refined.auto._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.CompositeIndicesRequest
@@ -32,6 +30,8 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.RestRequestOps._
 import tech.beshu.ror.utils.RCUtils
+
+import java.time.Instant
 
 abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
                                                        clusterService: RorClusterService)
@@ -72,7 +72,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
   override lazy val uriPath: UriPath =
     UriPath
       .from(restRequest.path())
-      .getOrElse(UriPath(NonEmptyString.unsafeFrom("/")))
+      .getOrElse(UriPath("/"))
 
   override lazy val contentLength: Information = Bytes(Option(restRequest.content()).map(_.length()).getOrElse(0))
 

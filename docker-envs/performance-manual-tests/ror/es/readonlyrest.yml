@@ -1,0 +1,68 @@
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "elastic-certificates.p12"
+    keystore_pass: test
+    truststore_file: "elastic-certificates.p12"
+    truststore_pass: test
+    key_pass: test
+
+  ssl_internode:
+    enable: true
+    keystore_file: "elastic-certificates.p12"
+    keystore_pass: test
+    truststore_file: "elastic-certificates.p12"
+    truststore_pass: test
+    key_pass: test
+
+  audit:
+    collector: true
+
+  access_control_rules:
+
+    - name: "CONTAINER ADMIN"
+      type: allow
+      auth_key: admin:container
+
+    - name: "LDAP 1"
+      type: allow
+      users: ["user*"]
+      ldap_authentication: ldap1
+
+    - name: "LDAP 2"
+      type: allow
+      users: ["test*"]
+      ldap_authentication: ldap2
+
+  ldaps:
+    - name: ldap1
+      host: "lagsimulator"
+      port: 13890
+      ssl_enabled: false                                        # default true
+      ssl_trust_all_certs: true                                 # default false
+      bind_dn: "uid=admin,ou=people,dc=example,dc=com"
+      bind_password: "password"                                 # skip for anonymous bind
+      search_user_base_DN: "ou=People,dc=example,dc=com"
+      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      user_id_attribute: "uid"                                  # default "uid"
+      unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+      connection_pool_size: 30                                  # default 30
+      connection_timeout_in_sec: 1                             # default 1
+      request_timeout_in_sec: 5                                # default 1
+      cache_ttl_in_sec: 30                                      # default 0 - cache disabled
+
+    - name: ldap2
+      host: "ldap"
+      port: 3890
+      ssl_enabled: false                                        # default true
+      ssl_trust_all_certs: true                                 # default false
+      bind_dn: "uid=admin,ou=people,dc=example,dc=com"
+      bind_password: "password"                                 # skip for anonymous bind
+      search_user_base_DN: "ou=People,dc=example,dc=com"
+      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      user_id_attribute: "uid"                                  # default "uid"
+      unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+      connection_pool_size: 30                                  # default 30
+      connection_timeout_in_sec: 1                             # default 1
+      request_timeout_in_sec: 5                                # default 1
+      cache_ttl_in_sec: 30                                      # default 0 - cache disabled

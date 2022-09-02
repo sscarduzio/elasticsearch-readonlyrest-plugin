@@ -20,6 +20,8 @@ import cats.data.{EitherT, NonEmptyList, NonEmptySet}
 import cats.effect.{ContextShift, IO}
 import cats.implicits._
 import cats.{Functor, Order}
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -216,6 +218,13 @@ object ScalaOps {
 
     def addTrailingSlashIfNotPresent(): String = {
       if(value.endsWith("/")) value else s"$value/"
+    }
+  }
+
+  implicit class PositiveFiniteDurationAdd(val duration: FiniteDuration Refined Positive) {
+
+    def +(duration: FiniteDuration Refined Positive): FiniteDuration Refined Positive = {
+      Refined.unsafeApply(this.duration.value + duration.value)
     }
   }
 }
