@@ -131,13 +131,16 @@ class Elasticsearch(esVersion: String,
       )
       .addWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
         entry = s"cluster.initial_master_nodes: ${config.masterNodes.toList.mkString(",")}",
-        orElseEntry = s"node.master: true"
+        orElseEntry = "node.master: true"
       )
       .addWhen(Version.greaterOrEqualThan(esVersion, 7, 14, 0),
-        entry = s"ingest.geoip.downloader.enabled: false"
+        entry = "ingest.geoip.downloader.enabled: false"
       )
       .addWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0),
-        entry = s"action.destructive_requires_name: false"
+        entry = "action.destructive_requires_name: false"
+      )
+      .addWhen(Version.lowerThan(esVersion, 8, 0, 0),
+        entry = "xpack.monitoring.enabled: false"
       )
       .add(
         entries = config.additionalElasticsearchYamlEntries.map { case (key, value) => s"$key: $value" }

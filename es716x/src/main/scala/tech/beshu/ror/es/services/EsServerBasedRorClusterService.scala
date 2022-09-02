@@ -136,12 +136,17 @@ class EsServerBasedRorClusterService(nodeName: String,
       .keysIt().asScala
       .flatMap { index =>
         val indexMetaData = indices.get(index)
-        IndexName.Full
-          .fromString(indexMetaData.getIndex.getName)
-          .map { indexName =>
-            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Full.fromString)
-            FullLocalIndexWithAliases(indexName, aliases)
-          }
+        indexMetaData.getState.name().toUpperCase match {
+          case "CLOSE" =>
+            None
+          case _ =>
+            IndexName.Full
+              .fromString(indexMetaData.getIndex.getName)
+              .map { indexName =>
+                val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Full.fromString)
+                FullLocalIndexWithAliases(indexName, aliases)
+              }
+        }
       }
       .toSet
   }
