@@ -1,0 +1,19 @@
+ARG ES_VERSION
+ARG ROR_VERSION
+
+FROM docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}
+
+ARG ES_VERSION
+ARG ROR_VERSION
+
+COPY certs/elastic-certificates.p12 /usr/share/elasticsearch/config/
+COPY ror/es/readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
+COPY ror/es/elasticsearch.yml /usr/share/elasticsearch/config/elasticsearch.yml
+COPY ror/es/log4j2.properties /usr/share/elasticsearch/config/log4j2.properties
+
+USER root
+
+RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch "https://api.beshu.tech/download/es?esVersion=$ES_VERSION&pluginVersion=$ROR_VERSION" &&\
+    jdk/bin/java -jar plugins/readonlyrest/ror-tools.jar patch
+
+USER elasticsearch

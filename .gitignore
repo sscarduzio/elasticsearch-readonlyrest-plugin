@@ -45,6 +45,7 @@ target/
 *.pkcs8
 *.p12
 !/docker-envs/**/*.p12
+!/docker-envs/**/*.pem
 
 // OSX
 .DS_Store

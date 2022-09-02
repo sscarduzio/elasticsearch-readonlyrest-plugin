@@ -7,10 +7,8 @@ function addRemoteCluster {
             "cluster":{
                 "remote":{
                     "cloud":{
-                        "seeds":[
-                            "es02:9300", 
-                            "es01:9300"
-                        ]
+                      "mode": "proxy",
+                      "proxy_address": "es02:9300"
                     }
                 }
             }

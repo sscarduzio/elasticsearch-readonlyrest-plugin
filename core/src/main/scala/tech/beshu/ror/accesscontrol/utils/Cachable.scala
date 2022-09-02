@@ -16,17 +16,17 @@
  */
 package tech.beshu.ror.accesscontrol.utils
 
-import java.util.concurrent.ConcurrentHashMap
-
 import com.github.benmanes.caffeine.cache.RemovalCause
 import com.github.blemale.scaffeine.Scaffeine
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.catnap.Semaphore
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.utils.TaskOps._
-import scala.concurrent.ExecutionContext._
 
+import java.util.concurrent.ConcurrentHashMap
+import scala.concurrent.ExecutionContext._
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Success
 
@@ -36,7 +36,7 @@ class CacheableAction[K, V](ttl: FiniteDuration Refined Positive,
 
 class CacheableActionWithKeyMapping[K, K1, V](ttl: FiniteDuration Refined Positive,
                                               action: K => Task[V],
-                                              keyMap: K => K1) {
+                                              keyMap: K => K1) extends Logging {
 
   private val keySemaphoresMap = new ConcurrentHashMap[K1, Semaphore[Task]]()
 
@@ -46,12 +46,17 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: FiniteDuration Refined Positi
     .removalListener(onRemoveHook)
     .build[K1, V]
 
+  def call(key: K,
+           requestTimeout: FiniteDuration Refined Positive): Task[V] = {
+    call(key).timeout(requestTimeout.value)
+  }
+
   def call(key: K): Task[V] = {
     val mappedKey = keyMap(key)
     for {
       semaphore <- semaphoreOf(mappedKey)
       cachedValue <- semaphore.withPermit {
-        getFromCacheOrRunAction(key, mappedKey)
+        getFromCacheOrRunAction(key, mappedKey).uncancelable.asyncBoundary
       }
     } yield cachedValue
   }

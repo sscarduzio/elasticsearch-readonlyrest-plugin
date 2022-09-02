@@ -1,0 +1,11 @@
+cluster.name: "es-cluster"
+network.host: 0.0.0.0
+transport.port: 9400
+xpack.security.enabled: false
+readonlyrest.force_load_from_file: true
+http.type: ssl_netty4
+transport.type: ror_ssl_internode
+
+cluster.remote.cluster_one.mode: proxy
+cluster.remote.cluster_one.proxy_address: c5ea024e4a414aa4a6327dc0dda5350b.us-central1.gcp.cloud.es.io:9400
+cluster.remote.cluster_one.server_name: c5ea024e4a414aa4a6327dc0dda5350b.us-central1.gcp.cloud.es.io
