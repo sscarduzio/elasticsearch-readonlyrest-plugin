@@ -2,11 +2,11 @@ ARG ELK_VERSION
 
 FROM docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION}
 
-ARG KEYSTORE_SECRET=test
-ARG TRUSTSTORE_SECRET=test
+ARG KEYSTORE_SECRET=""
+ARG TRUSTSTORE_SECRET=""
 ARG ELASTIC_USER_SECRET=elastic
 
-COPY certs/es-xpack.p12 /usr/share/elasticsearch/config/
+COPY certs/es01.p12 /usr/share/elasticsearch/config/
 COPY xpack/es/elasticsearch.yml /usr/share/elasticsearch/config/elasticsearch.yml
 
 RUN echo "" | /usr/share/elasticsearch/bin/elasticsearch-keystore create &&\

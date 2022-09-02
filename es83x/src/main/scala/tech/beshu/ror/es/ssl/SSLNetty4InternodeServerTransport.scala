@@ -34,6 +34,7 @@ import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SSLCertHelper
 
 import java.net.SocketAddress
+import javax.net.ssl.{SNIHostName, SNIServerName, SSLContext}
 
 class SSLNetty4InternodeServerTransport(settings: Settings,
                                         threadPool: ThreadPool,
@@ -55,16 +56,37 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
         if (ssl.certificateVerificationEnabled) SSLCertHelper.getTrustManagerFactory(ssl, fipsCompliant)
         else InsecureTrustManagerFactory.INSTANCE
 
-      val sslCtx = SslContextBuilder.forClient()
-        .trustManager(usedTrustManager)
-        .build()
+      val keyManagerFactory = SSLCertHelper.keyManagerFactory(ssl, fipsCompliant)
+
+      val sslContext = SSLContext.getInstance("TLSv1.3")
+      sslContext.init(keyManagerFactory.getKeyManagers, usedTrustManager.getTrustManagers, null)
+//      val sslCtx = SslContextBuilder.forClient()
+//        .trustManager(usedTrustManager)
+//        .build()
       ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter {
         override def connect(ctx: ChannelHandlerContext, remoteAddress: SocketAddress, localAddress: SocketAddress, promise: ChannelPromise): Unit = {
-          val sslEngine = sslCtx.newEngine(ctx.alloc())
+          val sslEngine = sslContext.createSSLEngine()
           sslEngine.setUseClientMode(true)
           sslEngine.setNeedClientAuth(true)
-          ctx.pipeline().replace(this, "internode_ssl_client", new SslHandler(sslEngine))
-          super.connect(ctx, remoteAddress, localAddress, promise)
+
+          import scala.collection.JavaConverters._
+          val configuredServerName = node.getAttributes().get("server_name")
+          val sslParameters = sslEngine.getSSLParameters
+          val serverNames: List[SNIServerName] = List(new SNIHostName("c5ea024e4a414aa4a6327dc0dda5350b.us-central1.gcp.cloud.es.io"))
+          sslParameters.setServerNames(serverNames.asJava)
+          sslEngine.setSSLParameters(sslParameters)
+
+//          sslEngine.setNeedClientAuth(true)
+          val handler = new SslHandler(sslEngine)
+//          handler.setHandshakeTimeoutMillis(100000)
+          ctx.pipeline().replace(this, "internode_ssl_client", handler)
+          try {
+            super.connect(ctx, remoteAddress, localAddress, promise)
+          } catch {
+            case ex: Throwable =>
+              logger.error("MY DEBUG ERROR", ex)
+              throw ex
+          }
         }
       })
     }

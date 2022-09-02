@@ -30,7 +30,6 @@ import java.nio.file.Path
 
 final case class FipsConfiguration(fipsMode: FipsMode)
 
-
 object FipsConfiguration extends Logging {
 
   def load(esConfigFolderPath: Path)

@@ -1,20 +1,19 @@
 readonlyrest:
   ssl:
     enable: true
-    keystore_file: "elastic-certificates.p12"
-    keystore_pass: test
-    truststore_file: "elastic-certificates.p12"
-    truststore_pass: test
-    key_pass: test
+    keystore_file: "es01.p12"
+    keystore_pass: ""
+    truststore_file: "es01.p12"
+    truststore_pass: ""
 
   ssl_internode:
     enable: true
-    keystore_file: "elastic-certificates.p12"
-    keystore_pass: test
-    truststore_file: "elastic-certificates.p12"
-    truststore_pass: test
-    key_pass: test
-#    certificate_verification: true
+    keystore_file: "es01.p12"
+    keystore_pass: ""
+    truststore_file: "es01.p12"
+    truststore_pass: ""
+    key_pass: ""
+    certificate_verification: true
 
   access_control_rules:
 
@@ -26,4 +25,4 @@ readonlyrest:
     - name: "User 1"
       type: allow
       auth_key: "user1:test"
-      indices: ["cluster_one:index"]
+      indices: ["cluster1:kibana_*"]

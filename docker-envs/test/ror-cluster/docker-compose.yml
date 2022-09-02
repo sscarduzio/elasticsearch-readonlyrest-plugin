@@ -13,8 +13,6 @@ services:
       - "9303:9400"
       - "5003:58672"
     environment:
-      - cluster.name=es-cluster
-      - node.name=es-ror
       - discovery.type=single-node
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672"

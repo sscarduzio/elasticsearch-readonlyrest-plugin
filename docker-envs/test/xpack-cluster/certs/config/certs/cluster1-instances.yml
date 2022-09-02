@@ -1,0 +1,9 @@
+instances:
+  - name: "es01" # node name
+    cn:
+      - "es01.node.cluster2.skydive" # {node name}.node.{cluster name}.{scope}
+    dns:
+      - "localhost"
+      - "cluster2-node1"
+    ip:
+      - "127.0.0.1"
