@@ -51,7 +51,7 @@ trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonati
       settings
         .impersonators
         .map { i =>
-          val impersonatorMatcher = new GenericPatternMatcher(i.usernames.patterns.toList)(caseMappingEquality)
+          val impersonatorMatcher = new GenericPatternMatcher(i.impersonatorUsernames.patterns.toList)(caseMappingEquality)
           val userMatcher = new GenericPatternMatcher(i.impersonatedUsers.usernames.patterns.toSet)(caseMappingEquality)
           (i, impersonatorMatcher, userMatcher)
         }

@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.domain.UserIdPatterns
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 
 final case class ImpersonatorDef private(id: ImpersonatorDef#Id,
-                                         usernames: UserIdPatterns,
+                                         impersonatorUsernames: UserIdPatterns,
                                          authenticationRule: AuthenticationRule,
                                          impersonatedUsers: ImpersonatedUsers)
   extends Item {

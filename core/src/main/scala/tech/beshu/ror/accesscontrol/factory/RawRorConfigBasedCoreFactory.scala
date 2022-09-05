@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.acl.AccessControlList.AccessControlListStati
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.blocks.Block.{RuleDefinition, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
@@ -356,11 +356,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
         blocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
         val localUsers: LocalUsers = {
           val fromUserDefs = localUsersFromUserDefs(userDefs)
-          val fromImpersonatorDefs =
-            impersonationDefs.items
-              .map(_.impersonatedUsers.usernames)
-              .map(localUsersFromUsernamePatterns(_, unknownUsersForWildcardPattern = false))
-              .combineAll
+          val fromImpersonatorDefs = localUsersFromImpersonatorDefs(impersonationDefs)
           val fromBlocks = blocksNel.map(_.localUsers).toList
           (fromBlocks :+ fromUserDefs :+ fromImpersonatorDefs).combineAll
         }
@@ -389,21 +385,6 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
     }
   }
 
-  private def localUsersFromUsernamePatterns(userIdPatterns: UserIdPatterns,
-                                             unknownUsersForWildcardPattern: Boolean): LocalUsers = {
-    userIdPatterns
-      .patterns
-      .map(_.value)
-      .map {
-        case Refined(pattern) if pattern.contains(wildcardChar) =>
-          LocalUsers(users = Set.empty, unknownUsers = unknownUsersForWildcardPattern)
-        case patternNotContainingWildcard =>
-          LocalUsers(users = Set(User.Id(patternNotContainingWildcard)), unknownUsers = false)
-      }
-      .toList
-      .combineAll
-  }
-
   private def localUsersFromUserDefs(definitions: Definitions[UserDef]) = {
     definitions.items
       .flatMap { definition =>
@@ -412,6 +393,28 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
           localUsersFromMode(definition.mode)
         )
       }
+      .combineAll
+  }
+
+  private def localUsersFromImpersonatorDefs(definitions: Definitions[ImpersonatorDef]) = {
+    definitions.items
+      .map(_.impersonatedUsers.usernames)
+      .map(localUsersFromUsernamePatterns(_, unknownUsersForWildcardPattern = false))
+      .combineAll
+  }
+
+  private def localUsersFromUsernamePatterns(userIdPatterns: UserIdPatterns,
+                                             unknownUsersForWildcardPattern: Boolean): LocalUsers = {
+    userIdPatterns
+      .patterns
+      .map { userIdPattern =>
+        if (userIdPattern.containsWildcard) {
+          LocalUsers(users = Set.empty, unknownUsers = unknownUsersForWildcardPattern)
+        } else {
+          LocalUsers(users = Set(User.Id(userIdPattern.value)), unknownUsers = false)
+        }
+      }
+      .toList
       .combineAll
   }
 
@@ -427,8 +430,6 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
       case Mode.WithGroupsMapping(Auth.SingleRule(rule), _) => localUsersFor(rule.eligibleUsers)
     }
   }
-
-  private lazy val wildcardChar = "*"
 }
 
 object RawRorConfigBasedCoreFactory {

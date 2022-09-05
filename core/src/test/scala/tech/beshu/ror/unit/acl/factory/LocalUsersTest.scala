@@ -23,6 +23,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.{IndexName, LocalUsers, RorConfigurationIndex, User}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorConfigBasedCoreFactory}
@@ -30,6 +31,7 @@ import tech.beshu.ror.boot.ReadonlyRest.RorMode
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers._
+import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils._
 
 import scala.language.implicitConversions
@@ -140,31 +142,75 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           allUsersResolved(Set(User.Id("admin"), User.Id("dev")))
         )
       }
-      "users section defined without wildcard patterns" in {
-        val config =
-          s"""
-             |readonlyrest:
-             |  access_control_rules:
-             |  - name: test_block1
-             |    auth_key: admin:container
-             |
-             |  users:
-             |  - username: user1
-             |    groups: ["group1", "group3"]
-             |    auth_key: "user1:pass"
-             |
-             |  - username: user2
-             |    groups: ["group2", "group4"]
-             |    auth_key: "user2:pass"
-             |
-             |  - username: user4
-             |    groups: ["group5", "group6"]
-             |    auth_key: "user4:pass"
-             |""".stripMargin
+      "users section defined without wildcard patterns" when {
+        "auth_key rules used" in {
+          val config =
+            s"""
+               |readonlyrest:
+               |  access_control_rules:
+               |  - name: test_block1
+               |    auth_key: admin:container
+               |
+               |  users:
+               |  - username: user1
+               |    groups: ["group1", "group3"]
+               |    auth_key: "user1:pass"
+               |
+               |  - username: user2
+               |    groups: ["group2", "group4"]
+               |    auth_key: "user2:pass"
+               |
+               |  - username: user4
+               |    groups: ["group5", "group6"]
+               |    auth_key: "user4:pass"
+               |""".stripMargin
 
-        assertLocalUsersFromConfig(config, allUsersResolved(Set(
-          User.Id("user1"), User.Id("user2"), User.Id("user4"), User.Id("admin")
-        )))
+          assertLocalUsersFromConfig(config, allUsersResolved(Set(
+            User.Id("user1"), User.Id("user2"), User.Id("user4"), User.Id("admin")
+          )))
+        }
+        "ldap_authentication rule used" in {
+          val config =
+            s"""
+               |readonlyrest:
+               |  access_control_rules:
+               |  - name: test_block1
+               |    auth_key: admin:container
+               |
+               |  users:
+               |    - username: cartman
+               |      groups: ["local_group1", "local_group3"]
+               |      ldap_authentication: "ldap1"
+               |
+               |    - username: Bìlbö Bággįnš
+               |      groups: ["local_group1"]
+               |      ldap_authentication: "ldap1"
+               |
+               |    - username: bong
+               |      groups: ["local_group2"]
+               |      ldap_authentication: "ldap1"
+               |
+               |    - username: morgan
+               |      groups: ["local_group2", "local_group3"]
+               |      ldap_authentication: "ldap1"
+               |
+               |  ldaps:
+               |   - name: ldap1
+               |     host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |     port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |     ssl_enabled: false
+               |     search_user_base_DN: "ou=People,dc=example,dc=com"
+               |     search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |""".stripMargin
+
+          val rorConfig = rorConfigFromUnsafe(config)
+          inside(createCore(rorConfig, new UnboundidLdapConnectionPoolProvider())) {
+            case Right(core) =>
+              core.rorConfig.localUsers should be(allUsersResolved(Set(
+                User.Id("admin"), User.Id("cartman"), User.Id("Bìlbö Bággįnš"), User.Id("bong"), User.Id("morgan")
+              )))
+          }
+        }
       }
       "impersonators section defined with users" in {
         val config =
@@ -262,13 +308,14 @@ class LocalUsersTest extends AnyWordSpec with Inside {
   }
 
   private def createCore(config: RawRorConfig,
+                         ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = MockLdapConnectionPoolProvider,
                          clientsFactory: HttpClientsFactory = MockHttpClientsFactory) = {
     factory
       .createCoreFrom(
         config,
         RorConfigurationIndex(IndexName.Full(".readonlyrest")),
         clientsFactory,
-        MockLdapConnectionPoolProvider,
+        ldapConnectionPoolProvider,
         NoOpMocksProvider
       )
       .runSyncUnsafe()
