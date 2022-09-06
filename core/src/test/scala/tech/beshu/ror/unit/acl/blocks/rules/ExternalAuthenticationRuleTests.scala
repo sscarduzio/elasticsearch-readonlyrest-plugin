@@ -92,7 +92,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = mocksProviderForExternalAuthnServiceFrom(Map(
                   ExternalAuthenticationService.Name("service1") -> Set(User.Id("user1"))
@@ -144,7 +144,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("different_password")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = mocksProviderForExternalAuthnServiceFrom(Map(
                   ExternalAuthenticationService.Name("service1") -> Set(User.Id("user1"))
@@ -167,7 +167,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("user2"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("user2")
                 )),
                 mocksProvider = mocksProviderForExternalAuthnServiceFrom(Map(
                   ExternalAuthenticationService.Name("service1") -> Set(User.Id("user1"))
@@ -195,7 +195,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = mocksProviderForExternalAuthnServiceFrom(Map(
                   ExternalAuthenticationService.Name("service1") -> Set(User.Id("user2"))
@@ -223,7 +223,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = NoOpMocksProvider
               )),
