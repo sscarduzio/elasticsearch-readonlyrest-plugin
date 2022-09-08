@@ -17,6 +17,7 @@
 package tech.beshu.ror.utils.containers.images
 
 import better.files.File
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes.RorConfigReloading
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.{Attributes, Enabled, InternodeSsl, RestSsl}
 
@@ -25,14 +26,14 @@ object ReadonlyRestWithEnabledXpackSecurityPlugin {
                           rorPlugin: File,
                           attributes: Attributes)
   object Config {
-    final case class Attributes(rorHotReloading: Boolean,
+    final case class Attributes(rorConfigReloading: RorConfigReloading,
                                 rorCustomSettingsIndex: Option[String],
                                 restSsl: Enabled[RestSsl],
                                 internodeSsl: Enabled[InternodeSsl],
                                 rorConfigFileName: String)
     object Attributes {
       val default: Attributes = Attributes(
-        rorHotReloading = ReadonlyRestPlugin.Config.Attributes.default.hotReloading,
+        rorConfigReloading = ReadonlyRestPlugin.Config.Attributes.default.rorConfigReloading,
         rorCustomSettingsIndex = ReadonlyRestPlugin.Config.Attributes.default.customSettingsIndex,
         restSsl = if(ReadonlyRestPlugin.Config.Attributes.default.restSslEnabled) Enabled.Yes(RestSsl.Ror) else Enabled.No,
         internodeSsl = if(ReadonlyRestPlugin.Config.Attributes.default.internodeSslEnabled) Enabled.Yes(InternodeSsl.Ror) else Enabled.No,
@@ -95,7 +96,7 @@ class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
       rorConfig = config.rorConfig,
       rorPlugin = config.rorPlugin,
       attributes = ReadonlyRestPlugin.Config.Attributes(
-        config.attributes.rorHotReloading,
+        config.attributes.rorConfigReloading,
         config.attributes.rorCustomSettingsIndex,
         isRorRestSslEnabled,
         isRorInternodeSslEnabled,

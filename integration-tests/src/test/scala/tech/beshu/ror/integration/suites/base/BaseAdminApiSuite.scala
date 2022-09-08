@@ -20,13 +20,13 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 import cats.data.NonEmptyList
-import org.apache.commons.lang.StringEscapeUtils.{escapeJava, unescapeJava}
+import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalatest.concurrent.Eventually
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterProvider, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterProvider}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
@@ -61,7 +61,7 @@ trait BaseAdminApiSuite
 
   private lazy val adminSearchManager = new SearchManager(clients.head.basicAuthClient("admin", "container"))
   private val testSettingsEsDocumentId = "2"
-  private val settingsReloadInterval = 5 seconds
+  protected val settingsReloadInterval: FiniteDuration = 2 seconds
 
   override lazy val esTargets = NonEmptyList.of(ror1_1Node, ror1_2Node, ror2_1Node)
   override lazy val clusterContainers = NonEmptyList.of(rorWithIndexConfig, rorWithNoIndexConfig)
@@ -176,7 +176,7 @@ trait BaseAdminApiSuite
           forceReload("/admin_api/readonlyrest_first_update.yml")
 
           // after first reload only dev1 can access indices
-          Thread.sleep(14000) // have to wait for ROR1_2 instance config reload
+          Thread.sleep(settingsReloadInterval.plus(1 second).toMillis) // have to wait for ROR1_2 instance config reload
           val dev1ror1After1stReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
           dev1ror1After1stReloadResults.responseCode should be(200)
           val dev2ror1After1stReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")
@@ -190,7 +190,7 @@ trait BaseAdminApiSuite
           forceReload("/admin_api/readonlyrest_second_update.yml")
 
           // after second reload dev1 & dev2 can access indices
-          Thread.sleep(7000) // have to wait for ROR1_2 instance config reload
+          Thread.sleep(settingsReloadInterval.plus(1 second).toMillis) // have to wait for ROR1_2 instance config reload
           val dev1ror1After2ndReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
           dev1ror1After2ndReloadResults.responseCode should be(200)
           val dev2ror1After2ndReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")
@@ -569,15 +569,15 @@ trait BaseAdminApiSuite
 
         invalidateRorTestConfig(rorClients.head)
 
-        Thread.sleep(12000) // wait for old engines shutdown
-
-        rorClients.foreach { rorApiManager =>
-          val response = rorApiManager.currentRorTestConfig
-          response.responseCode should be(200)
-          response.responseJson("status").str should be("TEST_SETTINGS_INVALIDATED")
-          response.responseJson("message").str should be("ROR Test settings are invalidated")
-          response.responseJson("settings").str should be(getResourceContent(rorSettingsResource))
-          response.responseJson("ttl").str should be("30 minutes")
+        eventually {
+          rorClients.foreach { rorApiManager =>
+            val response = rorApiManager.currentRorTestConfig
+            response.responseCode should be(200)
+            response.responseJson("status").str should be("TEST_SETTINGS_INVALIDATED")
+            response.responseJson("message").str should be("ROR Test settings are invalidated")
+            response.responseJson("settings").str should be(getResourceContent(rorSettingsResource))
+            response.responseJson("ttl").str should be("30 minutes")
+          }
         }
 
         // after test core invalidation, impersonations requests should be rejected
@@ -636,6 +636,16 @@ trait BaseAdminApiSuite
             configTtlString = "30 minutes"
           )
 
+          eventually { // await until all nodes load config
+            rorClients.foreach { rorApiManager =>
+              assertTestSettingsPresent(
+                rorApiManager = rorApiManager,
+                testConfig = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml"),
+                expectedTtl = "30 minutes"
+              )
+            }
+          }
+
           // after first reload only dev1 can access indices
           dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
           dev1SearchManagers.foreach(operationNotAllowed(_, "test2_index"))
@@ -644,11 +654,22 @@ trait BaseAdminApiSuite
 
           // second reload
           val rorSettingsResource = "/admin_api/readonlyrest_second_update_with_impersonation.yml"
+          val configTtl = FiniteDuration.apply(5, TimeUnit.SECONDS)
           forceReload(
             rorSettingsResource = rorSettingsResource,
-            configTtl = 8 seconds,
-            configTtlString = "8 seconds"
+            configTtl = configTtl,
+            configTtlString = "5 seconds"
           )
+
+          eventually { // await until all nodes load config
+            rorClients.foreach { rorApiManager =>
+              assertTestSettingsPresent(
+                rorApiManager = rorApiManager,
+                testConfig = getResourceContent(rorSettingsResource),
+                expectedTtl = "5 seconds"
+              )
+            }
+          }
 
           // after second reload dev1 & dev2 can access indices
           dev1SearchManagers.foreach(allowedSearch(_, "test1_index"))
@@ -657,10 +678,10 @@ trait BaseAdminApiSuite
           dev2SearchManagers.foreach(allowedSearch(_, "test2_index"))
 
           // wait for test engine auto-destruction
-          Thread.sleep(10000)
+          Thread.sleep(configTtl.toMillis)
 
-          rorClients.foreach {
-            assertTestSettingsInvalidated(_, getResourceContent(rorSettingsResource), "8 seconds")
+          rorClients.foreach { rorApiManager =>
+            assertTestSettingsInvalidated(rorApiManager, getResourceContent(rorSettingsResource), "5 seconds")
           }
 
           dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
@@ -687,7 +708,7 @@ trait BaseAdminApiSuite
           timestamps.size should be(1)
 
           // wait for valid_to comparison purpose
-          Thread.sleep(1000)
+          Thread.sleep(100)
 
           updateRorTestConfig(rorClients.head, testConfig, 45 minutes)
           assertTestSettingsInIndex(expectedConfig = testConfig, expectedTtl = 45 minutes)
@@ -849,7 +870,16 @@ trait BaseAdminApiSuite
 
         invalidateRorTestConfig(rorClients.head)
 
-        Thread.sleep(7000) // wait for engines reload
+        Thread.sleep(settingsReloadInterval.toMillis) // wait for engines reload
+
+        // wait for engines reload
+        rorClients.foreach { rorApiManager =>
+          assertTestSettingsInvalidated(
+            rorApiManager = rorApiManager,
+            testConfig = getResourceContent("/admin_api/readonlyrest_second_update_with_impersonation.yml"),
+            expectedTtl = "30 minutes"
+          )
+        }
 
         // after test core invalidation, impersonations requests should be rejected
         dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
@@ -880,7 +910,7 @@ trait BaseAdminApiSuite
     }
   }
 
-  override implicit val patienceConfig: PatienceConfig = PatienceConfig(timeout = settingsReloadInterval.plus(1 second), interval = 1 second)
+  override implicit val patienceConfig: PatienceConfig = PatienceConfig(timeout = settingsReloadInterval.plus(2 seconds), interval = 1 second)
 
   protected def nodeDataInitializer(): ElasticsearchNodeDataInitializer = {
     (esVersion: String, adminRestClient: RestClient) => {

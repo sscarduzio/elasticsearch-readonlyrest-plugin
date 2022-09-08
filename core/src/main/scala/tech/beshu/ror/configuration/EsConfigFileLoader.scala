@@ -29,7 +29,7 @@ import tech.beshu.ror.utils.yaml
 final class EsConfigFileLoader[CONFIG: Decoder]()(implicit envVarsProvider: EnvVarsProvider) {
 
   def loadConfigFromFile(file: File,
-                         configName: String): Either[MalformedSettings, CONFIG] = {
+                         configDescription: String): Either[MalformedSettings, CONFIG] = {
     file.fileReader { reader =>
       yaml
         .parser
@@ -38,12 +38,12 @@ final class EsConfigFileLoader[CONFIG: Decoder]()(implicit envVarsProvider: EnvV
         .right
         .flatMap { json =>
           JsonConfigStaticVariableResolver.resolve(json)
-            .left.map(e => MalformedSettings(show"""Invalid $configName configuration. $e."""))
+            .left.map(e => MalformedSettings(show"""Invalid $configDescription configuration. $e."""))
         }
         .flatMap { json =>
           implicitly[Decoder[CONFIG]]
             .decodeJson(json)
-            .left.map(_ => MalformedSettings(s"Invalid $configName configuration"))
+            .left.map(_ => MalformedSettings(s"Invalid $configDescription configuration"))
         }
     }
   }

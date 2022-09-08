@@ -20,14 +20,17 @@ import better.files._
 import tech.beshu.ror.utils.containers.images.Elasticsearch.{configDir, esDir, fromResourceBy}
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes.RorConfigReloading
 import tech.beshu.ror.utils.misc.Version
+
+import scala.concurrent.duration.FiniteDuration
 
 object ReadonlyRestPlugin {
   final case class Config(rorConfig: File,
                           rorPlugin: File,
                           attributes: Attributes)
   object Config {
-    final case class Attributes(hotReloading: Boolean,
+    final case class Attributes(rorConfigReloading: RorConfigReloading,
                                 customSettingsIndex: Option[String],
                                 restSslEnabled: Boolean,
                                 internodeSslEnabled: Boolean,
@@ -35,13 +38,19 @@ object ReadonlyRestPlugin {
                                 rorConfigFileName: String)
     object Attributes {
       val default: Attributes = Attributes(
-        hotReloading = true,
+        rorConfigReloading = RorConfigReloading.Disabled,
         customSettingsIndex = None,
         restSslEnabled = true,
         internodeSslEnabled = false,
         isFipsEnabled = false,
         rorConfigFileName = "/basic/readonlyrest.yml"
       )
+
+      sealed trait RorConfigReloading
+      object RorConfigReloading {
+        case object Disabled extends RorConfigReloading
+        final case class Enabled(interval: FiniteDuration) extends RorConfigReloading
+      }
     }
   }
 }
@@ -63,7 +72,7 @@ class ReadonlyRestPlugin(esVersion: String,
 
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {
     builder
-      .addWhen(!config.attributes.hotReloading, "readonlyrest.force_load_from_file: true")
+      .addWhen(!isEnabled(config.attributes.rorConfigReloading), "readonlyrest.force_load_from_file: true")
       .addWhen(config.attributes.customSettingsIndex.isDefined, s"readonlyrest.settings_index: ${config.attributes.customSettingsIndex.get}")
       .addWhen(config.attributes.restSslEnabled, "http.type: ssl_netty4")
       .addWhen(config.attributes.internodeSslEnabled, "transport.type: ror_ssl_internode")
@@ -73,14 +82,24 @@ class ReadonlyRestPlugin(esVersion: String,
   override def updateEsJavaOptsBuilder(builder: EsJavaOptsBuilder): EsJavaOptsBuilder = {
     builder
       .add(unboundidDebug(false))
-      .add(rorHotReloading(config.attributes.hotReloading))
+      .add(rorHotReloading(config.attributes.rorConfigReloading))
+  }
+
+  private def isEnabled(rorConfigReloading: RorConfigReloading) = rorConfigReloading match {
+    case RorConfigReloading.Disabled => false
+    case RorConfigReloading.Enabled(_) => true
   }
 
   private def unboundidDebug(enabled: Boolean) =
     s"-Dcom.unboundid.ldap.sdk.debug.enabled=${if (enabled) true else false}"
 
-  private def rorHotReloading(enabled: Boolean) =
-    if (!enabled) "-Dcom.readonlyrest.settings.refresh.interval=0" else ""
+  private def rorHotReloading(rorConfigReloading: RorConfigReloading) =
+    s"-Dcom.readonlyrest.settings.refresh.interval=${
+      rorConfigReloading match {
+        case RorConfigReloading.Disabled => 0
+        case RorConfigReloading.Enabled(interval) => interval.toSeconds.toInt
+      }
+    }"
 
   private implicit class InstallRorPlugin(val image: DockerImageDescription) {
     def installRorPlugin(config: Config): DockerImageDescription = {

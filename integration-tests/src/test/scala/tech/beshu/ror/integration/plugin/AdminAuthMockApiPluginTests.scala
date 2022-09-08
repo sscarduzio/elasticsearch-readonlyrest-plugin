@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.suites.AdminApiAuthMockWithCustomRorIndexSuite
-import tech.beshu.ror.integration.utils.PluginTestSupport
+import tech.beshu.ror.integration.suites.AdminApiAuthMockSuite
+import tech.beshu.ror.integration.utils.{PluginTestSupport, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.containers.RorConfigAdjuster
 
-class AdminAuthMockApiWithCustomRorIndexPluginTests extends AdminApiAuthMockWithCustomRorIndexSuite with PluginTestSupport
+class AdminAuthMockApiPluginTests extends AdminApiAuthMockSuite with PluginTestSupport

@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.suites.base
+package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
 import eu.timepit.refined.auto._
@@ -35,7 +35,7 @@ import ujson.Value.Value
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-trait BaseAdminApiAuthMockSuite
+trait AdminApiAuthMockSuite
   extends AnyWordSpec
     with BaseManyEsClustersIntegrationTest
     with ESVersionSupportForAnyWordSpecLike
@@ -57,6 +57,7 @@ trait BaseAdminApiAuthMockSuite
       clusterName = "ROR1",
       numberOfInstances = 2,
       securityType = RorSecurity(Attributes.default.copy(
+        rorConfigReloading = Attributes.RorConfigReloading.Enabled(interval = 2 seconds),
         customSettingsIndex = Some(readonlyrestIndexName),
         rorConfigFileName = rorConfigFileName
       )),
@@ -65,7 +66,7 @@ trait BaseAdminApiAuthMockSuite
     )
   )
 
-  protected def clusterDependencies: List[DependencyDef] = List(
+  private def clusterDependencies: List[DependencyDef] = List(
     ldap(name = "LDAP1", SingletonLdapContainers.ldap1),
     ldap(name = "LDAP2", SingletonLdapContainers.ldap2),
     wiremock(name = "EXT1", mappings = "/impersonation/wiremock_service1_ext_user_1.json", "/impersonation/wiremock_group_provider1_gpa_user_1.json"),
