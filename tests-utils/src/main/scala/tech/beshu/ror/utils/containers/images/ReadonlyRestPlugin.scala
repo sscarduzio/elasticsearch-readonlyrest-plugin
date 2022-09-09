@@ -82,7 +82,7 @@ class ReadonlyRestPlugin(esVersion: String,
   override def updateEsJavaOptsBuilder(builder: EsJavaOptsBuilder): EsJavaOptsBuilder = {
     builder
       .add(unboundidDebug(false))
-      .add(rorHotReloading(config.attributes.rorConfigReloading))
+      .add(rorReloadingInterval(config.attributes.rorConfigReloading))
   }
 
   private def isEnabled(rorConfigReloading: RorConfigReloading) = rorConfigReloading match {
@@ -93,13 +93,13 @@ class ReadonlyRestPlugin(esVersion: String,
   private def unboundidDebug(enabled: Boolean) =
     s"-Dcom.unboundid.ldap.sdk.debug.enabled=${if (enabled) true else false}"
 
-  private def rorHotReloading(rorConfigReloading: RorConfigReloading) =
-    s"-Dcom.readonlyrest.settings.refresh.interval=${
-      rorConfigReloading match {
-        case RorConfigReloading.Disabled => 0
-        case RorConfigReloading.Enabled(interval) => interval.toSeconds.toInt
-      }
-    }"
+  private def rorReloadingInterval(rorConfigReloading: RorConfigReloading) = {
+    val intervalSeconds = rorConfigReloading match {
+      case RorConfigReloading.Disabled => 0
+      case RorConfigReloading.Enabled(interval) => interval.toSeconds.toInt
+    }
+    s"-Dcom.readonlyrest.settings.refresh.interval=$intervalSeconds"
+  }
 
   private implicit class InstallRorPlugin(val image: DockerImageDescription) {
     def installRorPlugin(config: Config): DockerImageDescription = {
