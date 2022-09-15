@@ -143,6 +143,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
       value {
         for {
           config <- readCurrentTestConfigForUpdate()
+          _ <- updateMocksProvider(mocks)
           testRorConfig = TestRorConfig.Present(
             rawConfig = config.rawConfig,
             expiration = TestRorConfig.Present.ExpirationConfig(
@@ -155,7 +156,6 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
             newConfig = testRorConfig,
             onFailure = IndexConfigUpdateError.IndexConfigSavingError.apply
           )
-          _ <- updateMocksProvider(mocks)
         } yield ()
       }
     }
