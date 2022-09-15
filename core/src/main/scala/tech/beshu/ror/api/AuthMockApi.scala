@@ -82,29 +82,20 @@ class AuthMockApi(rorInstance: RorInstance)
   private def updateAuthMock(body: String)
                             (implicit requestId: RequestId): Task[AuthMockResponse] = {
     val result = for {
-      updateRequest <- EitherT.fromEither[Task](
-        io.circe.parser.decode[UpdateMocksRequest](body)
-          .left.map(error => AuthMockResponse.Failure.BadRequest(s"JSON body malformed: [${error.getPrettyMessage}]"))
-      )
+      updateRequest <- decodeRequest(body)
       authServices <- readCurrentAuthServices()
-      _ <- EitherT.fromEither[Task](validateProvidedMocks(updateRequest, authServices))
-      result <- EitherT[Task, AuthMockResponse, AuthMockResponse] {
-        rorInstance
-          .updateAuthMocks(toDomain(updateRequest.services))
-          .map {
-            case Right(()) =>
-              Right(UpdateAuthMock.Success("Auth mock updated"))
-            case Left(IndexConfigUpdateError.TestSettingsNotSet) =>
-              Left(AuthMockResponse.UpdateAuthMock.NotConfigured(testSettingsNotConfiguredMessage))
-            case Left(IndexConfigUpdateError.TestSettingsInvalidated) =>
-              Left(AuthMockResponse.UpdateAuthMock.Invalidated(testSettingsInvalidatedMessage))
-            case Left(IndexConfigUpdateError.IndexConfigSavingError(error)) =>
-              Left(AuthMockResponse.UpdateAuthMock.Failed(s"Cannot save auth services mocks: ${error.show}"))
-          }
-      }
+      _ <- validateAuthMocks(updateRequest, authServices)
+      result <- updateAuthMocks(updateRequest)
     } yield result
 
     result.value.map(_.merge)
+  }
+
+  private def decodeRequest(body: String): EitherT[Task, AuthMockResponse, UpdateMocksRequest] = {
+    io.circe.parser.decode[UpdateMocksRequest](body)
+      .leftMap(error => AuthMockResponse.Failure.BadRequest(s"JSON body malformed: [${error.getPrettyMessage}]"))
+      .leftWiden[AuthMockResponse]
+      .toEitherT[Task]
   }
 
   private def readCurrentAuthServices()
@@ -134,8 +125,8 @@ class AuthMockApi(rorInstance: RorInstance)
 
   private val testSettingsNotConfiguredMessage = "ROR Test settings are not configured. To use Auth Services Mock ROR has to have Test settings active."
 
-  private def validateProvidedMocks(updateRequest: UpdateMocksRequest,
-                                    services: RorConfig.Services): Either[AuthMockResponse, Unit] = {
+  private def validateAuthMocks(updateRequest: UpdateMocksRequest,
+                                services: RorConfig.Services): EitherT[Task, AuthMockResponse, Unit] = {
     updateRequest
       .services
       .map {
@@ -155,6 +146,24 @@ class AuthMockApi(rorInstance: RorInstance)
         )
       }
       .toEither
+      .leftWiden[AuthMockResponse]
+      .toEitherT[Task]
+  }
+
+  private def updateAuthMocks(updateRequest: UpdateMocksRequest)
+                             (implicit requestId: RequestId): EitherT[Task, AuthMockResponse, AuthMockResponse] = EitherT {
+    rorInstance
+      .updateAuthMocks(toDomain(updateRequest.services))
+      .map {
+        case Right(()) =>
+          Right(UpdateAuthMock.Success("Auth mock updated"))
+        case Left(IndexConfigUpdateError.TestSettingsNotSet) =>
+          Left(AuthMockResponse.UpdateAuthMock.NotConfigured(testSettingsNotConfiguredMessage))
+        case Left(IndexConfigUpdateError.TestSettingsInvalidated) =>
+          Left(AuthMockResponse.UpdateAuthMock.Invalidated(testSettingsInvalidatedMessage))
+        case Left(IndexConfigUpdateError.IndexConfigSavingError(error)) =>
+          Left(AuthMockResponse.UpdateAuthMock.Failed(s"Cannot save auth services mocks: ${error.show}"))
+      }
   }
 
   private implicit val eqNonEmptyString: Eq[NonEmptyString] = Eq.fromUniversalEquals

@@ -96,8 +96,8 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
         mocks <- getMocks(authMocksConfigString)
       } yield Present(
         rawConfig = rawRorConfig,
-        expiration = Present.ExpirationConfig(ttl = expirationTtl, validTo = expirationTime),
-        mocks = mocks
+        mocks = mocks,
+        expiration = Present.ExpirationConfig(ttl = expirationTtl, validTo = expirationTime)
       )
     }
   }
@@ -106,12 +106,12 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
     config match {
       case TestRorConfig.NotSet =>
         Map.empty
-      case Present(rawConfig, expiration, mocks) =>
+      case Present(rawConfig, mocks, expiration) =>
         Map(
           Const.properties.expirationTime -> expiration.validTo.atOffset(ZoneOffset.UTC).toString,
           Const.properties.expirationTtl -> expiration.ttl.value.toMillis.toString,
-          Const.properties.settings -> rawConfig.raw,
-          Const.properties.mocks -> formatMocks(mocks)
+          Const.properties.mocks -> formatMocks(mocks),
+          Const.properties.settings -> rawConfig.raw
         )
     }
   }

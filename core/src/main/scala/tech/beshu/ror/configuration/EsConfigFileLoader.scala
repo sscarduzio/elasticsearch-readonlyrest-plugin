@@ -20,16 +20,25 @@ import better.files.File
 import cats.Show
 import cats.data.NonEmptyList
 import cats.implicits._
-import io.circe.Decoder
+import io.circe.{Decoder, Json}
 import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver
 import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver.ResolvingError
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.yaml
 
-final class EsConfigFileLoader[CONFIG: Decoder]()(implicit envVarsProvider: EnvVarsProvider) {
+final class EsConfigFileLoader(file: File)
+                              (implicit envVarsProvider: EnvVarsProvider) {
 
-  def loadConfigFromFile(file: File,
-                         configDescription: String): Either[MalformedSettings, CONFIG] = {
+  def loadConfig[CONFIG: Decoder](configName: String): Either[MalformedSettings, CONFIG] = {
+    loadEsConfigJson
+      .flatMap { json =>
+        implicitly[Decoder[CONFIG]]
+          .decodeJson(json)
+          .left.map(_ => MalformedSettings(s"Invalid $configName configuration"))
+      }
+  }
+
+  private def loadEsConfigJson: Either[MalformedSettings, Json] = {
     file.fileReader { reader =>
       yaml
         .parser
@@ -38,12 +47,7 @@ final class EsConfigFileLoader[CONFIG: Decoder]()(implicit envVarsProvider: EnvV
         .right
         .flatMap { json =>
           JsonConfigStaticVariableResolver.resolve(json)
-            .left.map(e => MalformedSettings(show"""Invalid $configDescription configuration. $e."""))
-        }
-        .flatMap { json =>
-          implicitly[Decoder[CONFIG]]
-            .decodeJson(json)
-            .left.map(_ => MalformedSettings(s"Invalid $configDescription configuration"))
+            .left.map(e => MalformedSettings(show"""Unable to resolve environment variables. $e."""))
         }
     }
   }

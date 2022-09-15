@@ -25,7 +25,7 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.Eventually
-import org.scalatest.matchers.should.Matchers.{a, _}
+import org.scalatest.matchers.should.Matchers.{a, be, _}
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{EitherValues, Inside, OptionValues}
 import tech.beshu.ror.RequestId
@@ -63,16 +63,8 @@ class RorIndexTest extends AnyWordSpec
         "start ROR with default index name" in {
           val resourcesPath = "/boot_tests/index_config/no_index_defined/"
           val indexJsonContentService = mock[IndexJsonContentService]
-
-          (indexJsonContentService.sourceOf _)
-            .expects(fullIndexName(defaultRorIndexName), mainRorConfigDocumentId)
-            .once()
-            .returns(Task.now(Right(Map("settings" -> indexRorConfig.raw))))
-
-          (indexJsonContentService.sourceOf _)
-            .expects(fullIndexName(defaultRorIndexName), testRorConfigDocumentId)
-            .once()
-            .returns(Task.now(Left(IndexJsonContentService.ContentNotFound)))
+          mockMainRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
+          mockTestRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
 
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, indexRorConfig)
@@ -90,16 +82,8 @@ class RorIndexTest extends AnyWordSpec
         "save ROR config in default index" in {
           val resourcesPath = "/boot_tests/index_config/no_index_defined/"
           val indexJsonContentService = mock[IndexJsonContentService]
-
-          (indexJsonContentService.sourceOf _)
-            .expects(fullIndexName(defaultRorIndexName), mainRorConfigDocumentId)
-            .once()
-            .returns(Task.now(Right(Map("settings" -> indexRorConfig.raw))))
-
-          (indexJsonContentService.sourceOf _)
-            .expects(fullIndexName(defaultRorIndexName), testRorConfigDocumentId)
-            .once()
-            .returns(Task.now(Left(IndexJsonContentService.ContentNotFound)))
+          mockMainRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
+          mockTestRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
 
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, indexRorConfig)
@@ -115,31 +99,21 @@ class RorIndexTest extends AnyWordSpec
           result shouldBe a[Right[_, RorInstance]]
 
           mockCoreFactory(coreFactory, rorConfig)
-
-          (indexJsonContentService.saveContent _)
-            .expects(fullIndexName(defaultRorIndexName), mainRorConfigDocumentId, Map("settings" -> rorConfig.raw))
-            .once()
-            .returns(Task.now(Right(())))
+          mockMainRorConfigInIndexSaving(indexJsonContentService, defaultRorIndexName)
 
           val rorInstance = result.right.value
+          val forceReloadingResult =
+            rorInstance
+              .forceReloadAndSave(rorConfig)(newRequestId())
+              .runSyncUnsafe()
 
-          rorInstance
-            .forceReloadAndSave(rorConfig)(newRequestId())
-            .runSyncUnsafe() should be(Right(()))
+          forceReloadingResult should be(Right(()))
         }
         "save ROR test config in default index" in {
           val resourcesPath = "/boot_tests/index_config/no_index_defined/"
           val indexJsonContentService = mock[IndexJsonContentService]
-
-          (indexJsonContentService.sourceOf _)
-            .expects(fullIndexName(defaultRorIndexName), mainRorConfigDocumentId)
-            .once()
-            .returns(Task.now(Right(Map("settings" -> indexRorConfig.raw))))
-
-          (indexJsonContentService.sourceOf _)
-            .expects(fullIndexName(defaultRorIndexName), testRorConfigDocumentId)
-            .once()
-            .returns(Task.now(Left(IndexJsonContentService.ContentNotFound)))
+          mockMainRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
+          mockTestRorConfigFromIndexLoading(indexJsonContentService, defaultRorIndexName)
 
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, indexRorConfig)
@@ -155,43 +129,23 @@ class RorIndexTest extends AnyWordSpec
           result shouldBe a[Right[_, RorInstance]]
 
           mockCoreFactory(coreFactory, rorConfig)
-
-          (indexJsonContentService.saveContent _)
-            .expects(
-              where {
-                (config: IndexName.Full, id: String, content: Map[String, String]) =>
-                  config == fullIndexName(defaultRorIndexName) &&
-                    id == testRorConfigDocumentId &&
-                    content.get("settings").contains(rorConfig.raw) &&
-                    content.get("expiration_ttl_millis").contains("300000") &&
-                    content.contains("expiration_timestamp") &&
-                    content.contains("auth_services_mocks")
-              }
-            )
-            .once()
-            .returns(Task.now(Right(())))
+          mockTestRorConfigInIndexSaving(indexJsonContentService, defaultRorIndexName)
 
           val rorInstance = result.right.value
+          val forceReloadingResult =
+            rorInstance
+              .forceReloadTestConfigEngine(rorConfig, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
+              .runSyncUnsafe()
 
-          rorInstance
-            .forceReloadTestConfigEngine(rorConfig, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
-            .runSyncUnsafe() should be(Right(()))
+          forceReloadingResult should be(Right(()))
         }
       }
       "custom index is defined in config" should {
         "start ROR with custom index name" in {
           val resourcesPath = "/boot_tests/index_config/custom_index_defined/"
           val indexJsonContentService = mock[IndexJsonContentService]
-
-          (indexJsonContentService.sourceOf _)
-            .expects(fullIndexName(customRorIndexName), "1")
-            .once()
-            .returns(Task.now(Right(Map("settings" -> indexRorConfig.raw))))
-
-          (indexJsonContentService.sourceOf _)
-            .expects(fullIndexName(customRorIndexName), "2")
-            .once()
-            .returns(Task.now(Left(IndexJsonContentService.ContentNotFound)))
+          mockMainRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
+          mockTestRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
 
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, indexRorConfig)
@@ -208,16 +162,8 @@ class RorIndexTest extends AnyWordSpec
         "save ROR config in custom index" in {
           val resourcesPath = "/boot_tests/index_config/custom_index_defined/"
           val indexJsonContentService = mock[IndexJsonContentService]
-
-          (indexJsonContentService.sourceOf _)
-            .expects(fullIndexName(customRorIndexName), mainRorConfigDocumentId)
-            .once()
-            .returns(Task.now(Right(Map("settings" -> indexRorConfig.raw))))
-
-          (indexJsonContentService.sourceOf _)
-            .expects(fullIndexName(customRorIndexName), testRorConfigDocumentId)
-            .once()
-            .returns(Task.now(Left(IndexJsonContentService.ContentNotFound)))
+          mockMainRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
+          mockTestRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
 
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, indexRorConfig)
@@ -231,31 +177,21 @@ class RorIndexTest extends AnyWordSpec
             .runSyncUnsafe()
 
           mockCoreFactory(coreFactory, rorConfig)
-
-          (indexJsonContentService.saveContent _)
-            .expects(fullIndexName(customRorIndexName), mainRorConfigDocumentId, Map("settings" -> rorConfig.raw))
-            .once()
-            .returns(Task.now(Right(())))
+          mockMainRorConfigInIndexSaving(indexJsonContentService, customRorIndexName)
 
           val rorInstance = result.right.value
+          val forceReloadingResult =
+            rorInstance
+              .forceReloadAndSave(rorConfig)(newRequestId())
+              .runSyncUnsafe()
 
-          rorInstance
-            .forceReloadAndSave(rorConfig)(newRequestId())
-            .runSyncUnsafe() should be(Right(()))
+          forceReloadingResult should be(Right(()))
         }
         "save ROR test config in custom index" in {
           val resourcesPath = "/boot_tests/index_config/custom_index_defined/"
           val indexJsonContentService = mock[IndexJsonContentService]
-
-          (indexJsonContentService.sourceOf _)
-            .expects(fullIndexName(customRorIndexName), mainRorConfigDocumentId)
-            .once()
-            .returns(Task.now(Right(Map("settings" -> indexRorConfig.raw))))
-
-          (indexJsonContentService.sourceOf _)
-            .expects(fullIndexName(customRorIndexName), testRorConfigDocumentId)
-            .once()
-            .returns(Task.now(Left(IndexJsonContentService.ContentNotFound)))
+          mockMainRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
+          mockTestRorConfigFromIndexLoading(indexJsonContentService, customRorIndexName)
 
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, indexRorConfig)
@@ -269,27 +205,15 @@ class RorIndexTest extends AnyWordSpec
             .runSyncUnsafe()
 
           mockCoreFactory(coreFactory, rorConfig)
-
-          (indexJsonContentService.saveContent _)
-            .expects(
-              where {
-                (config: IndexName.Full, id: String, content: Map[String, String]) =>
-                  config == fullIndexName(customRorIndexName) &&
-                    id == testRorConfigDocumentId &&
-                    content.get("settings").contains(rorConfig.raw) &&
-                    content.get("expiration_ttl_millis").contains("300000") &&
-                    content.contains("expiration_timestamp") &&
-                    content.contains("auth_services_mocks")
-              }
-            )
-            .once()
-            .returns(Task.now(Right(())))
+          mockTestRorConfigInIndexSaving(indexJsonContentService, customRorIndexName)
 
           val rorInstance = result.right.value
+          val forceReloadingResult =
+            rorInstance
+              .forceReloadTestConfigEngine(rorConfig, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
+              .runSyncUnsafe()
 
-          rorInstance
-            .forceReloadTestConfigEngine(rorConfig, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
-            .runSyncUnsafe() should be(Right(()))
+          forceReloadingResult should be(Right(()))
         }
       }
     }
@@ -329,6 +253,48 @@ class RorIndexTest extends AnyWordSpec
       .once()
       .returns(Task.now(Right(Core(mockAccessControl, RorConfig.disabled))))
     mockedCoreFactory
+  }
+
+  private def mockMainRorConfigFromIndexLoading(indexJsonContentService: IndexJsonContentService,
+                                                indexName: NonEmptyString) = {
+    (indexJsonContentService.sourceOf _)
+      .expects(fullIndexName(indexName), mainRorConfigDocumentId)
+      .once()
+      .returns(Task.now(Right(Map("settings" -> indexRorConfig.raw))))
+  }
+
+  private def mockTestRorConfigFromIndexLoading(indexJsonContentService: IndexJsonContentService,
+                                                indexName: NonEmptyString) = {
+    (indexJsonContentService.sourceOf _)
+      .expects(fullIndexName(indexName), testRorConfigDocumentId)
+      .once()
+      .returns(Task.now(Left(IndexJsonContentService.ContentNotFound)))
+  }
+
+  private def mockMainRorConfigInIndexSaving(indexJsonContentService: IndexJsonContentService,
+                                             indexName: NonEmptyString) = {
+    (indexJsonContentService.saveContent _)
+      .expects(fullIndexName(indexName), mainRorConfigDocumentId, Map("settings" -> rorConfig.raw))
+      .once()
+      .returns(Task.now(Right(())))
+  }
+
+  private def mockTestRorConfigInIndexSaving(indexJsonContentService: IndexJsonContentService,
+                                             indexName: NonEmptyString) = {
+    (indexJsonContentService.saveContent _)
+      .expects(
+        where {
+          (config: IndexName.Full, id: String, content: Map[String, String]) =>
+            config == fullIndexName(indexName) &&
+              id == testRorConfigDocumentId &&
+              content.get("settings").contains(rorConfig.raw) &&
+              content.get("expiration_ttl_millis").contains("300000") &&
+              content.contains("expiration_timestamp") &&
+              content.contains("auth_services_mocks")
+        }
+      )
+      .once()
+      .returns(Task.now(Right(())))
   }
 
   private def mockAccessControl = {

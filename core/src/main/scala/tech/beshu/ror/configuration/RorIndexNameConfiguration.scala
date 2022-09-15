@@ -40,10 +40,7 @@ object RorIndexNameConfiguration extends Logging {
   }
 
   def load(esConfig: File): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = Task {
-    new EsConfigFileLoader[RorIndexNameConfiguration]().loadConfigFromFile(
-      file = esConfig,
-      configDescription = "ROR index name"
-    )
+    new EsConfigFileLoader(esConfig).loadConfig[RorIndexNameConfiguration](configName = "ROR index name")
   }
 
   private implicit val envVarsProvider: OsEnvVarsProvider.type = OsEnvVarsProvider

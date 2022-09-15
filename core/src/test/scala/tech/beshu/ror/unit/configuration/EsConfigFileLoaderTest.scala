@@ -51,11 +51,11 @@ class EsConfigFileLoaderTest extends AnyWordSpec {
 
   private def loadFromTempFile[A: Decoder](content: String) =
     tempFile(content).map { file =>
-      createFileConfigLoader[A]
-        .loadConfigFromFile(file, "TEST")
+      createFileConfigLoader(file)
+        .loadConfig[A]("TEST")
     }.get
 
   private def tempFile(content: String) = File.temporaryFile().map(_.write(content))
 
-  private def createFileConfigLoader[A: Decoder] = new EsConfigFileLoader[A]()
+  private def createFileConfigLoader(file: File) = new EsConfigFileLoader(file)
 }

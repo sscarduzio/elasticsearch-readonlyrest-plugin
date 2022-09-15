@@ -136,29 +136,37 @@ class ReadonlyRest(coreFactory: CoreFactory,
     loadedTestRorConfig.value match {
       case TestRorConfig.NotSet =>
         Task.now(TestEngine.NotConfigured)
-      case config@TestRorConfig.Present(rawConfig, expiration, mocks) if !config.isExpired(clock) =>
-        for {
-          _ <- Task.delay(authServicesMocksProvider.update(mocks))
-          testEngine <- loadRorCore(rawConfig, esConfig.rorIndex.index)
-            .map {
-              case Right(loadedEngine) =>
-                TestEngine.Configured(
-                  engine = loadedEngine,
-                  config = rawConfig,
-                  expiration = expirationConfig(expiration)
-                )
-              case Left(startingFailure) =>
-                logger.error(s"Unable to start test engine. Cause: ${startingFailure.message}. Test settings engine will be marked as invalidated.")
-                TestEngine.Invalidated(rawConfig, expirationConfig(expiration))
-            }
-        } yield testEngine
-      case TestRorConfig.Present(rawConfig, expiration, mocks) =>
-        Task
-          .delay(authServicesMocksProvider.update(mocks))
-          .map { _ =>
-            TestEngine.Invalidated(rawConfig, expirationConfig(expiration))
-          }
+      case config: TestRorConfig.Present if !config.isExpired(clock) =>
+        loadActiveTestEngine(esConfig, config)
+      case config: TestRorConfig.Present =>
+        loadInvalidatedTestEngine(config)
     }
+  }
+
+  private def loadActiveTestEngine(esConfig: EsConfig, testConfig: TestRorConfig.Present) = {
+    for {
+      _ <- Task.delay(authServicesMocksProvider.update(testConfig.mocks))
+      testEngine <- loadRorCore(testConfig.rawConfig, esConfig.rorIndex.index)
+        .map {
+          case Right(loadedEngine) =>
+            TestEngine.Configured(
+              engine = loadedEngine,
+              config = testConfig.rawConfig,
+              expiration = expirationConfig(testConfig.expiration)
+            )
+          case Left(startingFailure) =>
+            logger.error(s"Unable to start test engine. Cause: ${startingFailure.message}. Test settings engine will be marked as invalidated.")
+            TestEngine.Invalidated(testConfig.rawConfig, expirationConfig(testConfig.expiration))
+        }
+    } yield testEngine
+  }
+
+  private def loadInvalidatedTestEngine(testConfig: TestRorConfig.Present) = {
+    Task
+      .delay(authServicesMocksProvider.update(testConfig.mocks))
+      .map { _ =>
+        TestEngine.Invalidated(testConfig.rawConfig, expirationConfig(testConfig.expiration))
+      }
   }
 
   private def expirationConfig(config: TestRorConfig.Present.ExpirationConfig): TestEngine.Expiration = {
