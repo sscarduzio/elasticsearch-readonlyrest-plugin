@@ -22,18 +22,18 @@ import io.circe.Decoder
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.providers.EnvVarsProvider
-import tech.beshu.ror.configuration.{EsConfigFileLoader, MalformedSettings}
+import tech.beshu.ror.configuration.{YamlFileBasedConfigLoader, MalformedSettings}
 
 import scala.language.postfixOps
 
-class EsConfigFileLoaderTest extends AnyWordSpec {
+class YamlFileBasedConfigLoaderTest extends AnyWordSpec {
   private implicit val envVarsProvider: EnvVarsProvider = name =>
     name.value.value match {
       case "USER_NAME" => Some("John")
       case _ => None
     }
 
-  "FileConfigLoader" should {
+  "YamlFileBasedConfigLoader" should {
     "decode file file" in {
       val result = loadFromTempFile[String](""""encoded value"""")
       result shouldBe "encoded value".asRight
@@ -57,5 +57,5 @@ class EsConfigFileLoaderTest extends AnyWordSpec {
 
   private def tempFile(content: String) = File.temporaryFile().map(_.write(content))
 
-  private def createFileConfigLoader(file: File) = new EsConfigFileLoader(file)
+  private def createFileConfigLoader(file: File) = new YamlFileBasedConfigLoader(file)
 }

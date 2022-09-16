@@ -26,19 +26,19 @@ import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver.Res
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.yaml
 
-final class EsConfigFileLoader(file: File)
-                              (implicit envVarsProvider: EnvVarsProvider) {
+final class YamlFileBasedConfigLoader(file: File)
+                                     (implicit envVarsProvider: EnvVarsProvider) {
 
   def loadConfig[CONFIG: Decoder](configName: String): Either[MalformedSettings, CONFIG] = {
-    loadEsConfigJson
+    loadedConfigJson
       .flatMap { json =>
         implicitly[Decoder[CONFIG]]
           .decodeJson(json)
-          .left.map(_ => MalformedSettings(s"Invalid $configName configuration"))
+          .left.map(_ => MalformedSettings(s"Cannot load $configName from file ${file.pathAsString}"))
       }
   }
 
-  private def loadEsConfigJson: Either[MalformedSettings, Json] = {
+  private lazy val loadedConfigJson: Either[MalformedSettings, Json] = {
     file.fileReader { reader =>
       yaml
         .parser
@@ -47,7 +47,7 @@ final class EsConfigFileLoader(file: File)
         .right
         .flatMap { json =>
           JsonConfigStaticVariableResolver.resolve(json)
-            .left.map(e => MalformedSettings(show"""Unable to resolve environment variables. $e."""))
+            .left.map(e => MalformedSettings(s"Unable to resolve environment variables for file ${file.pathAsString}. $e."))
         }
     }
   }
