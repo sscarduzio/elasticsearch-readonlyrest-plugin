@@ -83,7 +83,7 @@ object ScalaUtils {
 
   def waitForCondition(conditionDescription: String)
                       (condition: => Boolean)
-                      (implicit timeout: FiniteDuration = 10 seconds): Unit = {
+                      (implicit timeout: FiniteDuration = 20 seconds): Unit = {
     import monix.execution.Scheduler.Implicits.global
     val retriesCount = timeout.toSeconds.toInt + 1
     retryBackoff(

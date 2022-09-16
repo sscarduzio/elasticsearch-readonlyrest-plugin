@@ -21,6 +21,7 @@ import java.time.Clock
 import cats.data.{NonEmptyList, State, Validated}
 import cats.implicits._
 import cats.kernel.Monoid
+import eu.timepit.refined.api.Refined
 import io.circe._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -31,12 +32,16 @@ import tech.beshu.ror.accesscontrol.acl.AccessControlList.AccessControlListStati
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.blocks.Block.{RuleDefinition, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, UserDef}
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseAuthenticationRule, Rule}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSupport
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{Header, LocalUsers, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{Header, LocalUsers, RorConfigurationIndex, User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.UsernameCaseMapping
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError._
@@ -52,6 +57,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils._
 import tech.beshu.ror.boot.ReadonlyRest.RorMode
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.{LocalUsersSupport, localUsersMonoid}
+import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
 import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
 import tech.beshu.ror.providers.{EnvVarsProvider, UuidProvider}
@@ -346,13 +352,13 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
             }
         }
       } yield {
-        implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
         val blocks = blocksNel.map(_.block)
         blocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
         val localUsers: LocalUsers = {
-          val fromUserDefs = LocalUsers(users = Set.empty, unknownUsers = userDefs.items.map(_.usernames).nonEmpty)
+          val fromUserDefs = localUsersFromUserDefs(userDefs)
+          val fromImpersonatorDefs = localUsersFromImpersonatorDefs(impersonationDefs)
           val fromBlocks = blocksNel.map(_.localUsers).toList
-          (fromBlocks :+ fromUserDefs).combineAll
+          (fromBlocks :+ fromUserDefs :+ fromImpersonatorDefs).combineAll
         }
 
         val rorConfig = RorConfig(
@@ -376,6 +382,52 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
         Core(accessControl, rorConfig)
       }
       decoder.apply(c)
+    }
+  }
+
+  private def localUsersFromUserDefs(definitions: Definitions[UserDef]) = {
+    definitions.items
+      .flatMap { definition =>
+        List(
+          localUsersFromUsernamePatterns(definition.usernames, unknownUsersForWildcardPattern = true),
+          localUsersFromMode(definition.mode)
+        )
+      }
+      .combineAll
+  }
+
+  private def localUsersFromImpersonatorDefs(definitions: Definitions[ImpersonatorDef]) = {
+    definitions.items
+      .map(_.impersonatedUsers.usernames)
+      .map(localUsersFromUsernamePatterns(_, unknownUsersForWildcardPattern = false))
+      .combineAll
+  }
+
+  private def localUsersFromUsernamePatterns(userIdPatterns: UserIdPatterns,
+                                             unknownUsersForWildcardPattern: Boolean): LocalUsers = {
+    userIdPatterns
+      .patterns
+      .map { userIdPattern =>
+        if (userIdPattern.containsWildcard) {
+          LocalUsers(users = Set.empty, unknownUsers = unknownUsersForWildcardPattern)
+        } else {
+          LocalUsers(users = Set(User.Id(userIdPattern.value)), unknownUsers = false)
+        }
+      }
+      .toList
+      .combineAll
+  }
+
+  private def localUsersFromMode(mode: UserDef.Mode): LocalUsers = {
+    def localUsersFor(support: EligibleUsersSupport) = support match {
+      case EligibleUsersSupport.Available(users) => LocalUsers(users, unknownUsers = false)
+      case EligibleUsersSupport.NotAvailable => LocalUsers.empty
+    }
+
+    mode match {
+      case Mode.WithoutGroupsMapping(rule, _) => localUsersFor(rule.eligibleUsers)
+      case Mode.WithGroupsMapping(Auth.SeparateRules(rule, _), _) => localUsersFor(rule.eligibleUsers)
+      case Mode.WithGroupsMapping(Auth.SingleRule(rule), _) => localUsersFor(rule.eligibleUsers)
     }
   }
 }

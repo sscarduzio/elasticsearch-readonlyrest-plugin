@@ -43,7 +43,6 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
-import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -259,7 +258,7 @@ class EsServerBasedRorClusterService(nodeName: String,
           indexPatterns <- UniqueNonEmptyList.fromList(
             templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString).toList
           )
-          aliases = templateMetaData.aliases().asSafeMap.values.flatMap(a => ClusterIndexName.fromString(a.alias())).toSet
+          aliases = templateMetaData.aliases().asSafeValues.flatMap(a => ClusterIndexName.fromString(a.alias()))
         } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)
       }
       .toSet

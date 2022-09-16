@@ -38,7 +38,14 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
     with BeforeAndAfterAll {
   this: EsClusterProvider =>
 
-  override implicit val rorConfigFileName = "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest.yml"
+  def rorConfigPath: String
+
+  override implicit val rorConfigFileName =
+    if (executedOn(allEs6xBelowEs65x)) {
+      "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_es60x-es65x.yml"
+    } else {
+      rorConfigPath
+    }
 
   override def clusterContainer: EsClusterContainer = generalClusterContainer
 

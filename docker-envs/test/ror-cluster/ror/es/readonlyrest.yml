@@ -13,6 +13,7 @@ readonlyrest:
     truststore_file: "es01.p12"
     truststore_pass: ""
     key_pass: ""
+    client_authentication: true
     certificate_verification: true
 
   access_control_rules:

@@ -16,9 +16,6 @@
  */
 package tech.beshu.ror.utils
 
-import java.util
-import java.util.Base64
-
 import cats.data.{EitherT, NonEmptyList, NonEmptySet}
 import cats.effect.{ContextShift, IO}
 import cats.implicits._
@@ -29,12 +26,14 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
 
+import java.util
+import java.util.Base64
+import scala.collection.JavaConverters._
 import scala.collection.SortedSet
 import scala.concurrent.duration._
 import scala.language.{higherKinds, implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 import scala.util.Try
-import scala.collection.JavaConverters._
 
 object ScalaOps {
 
@@ -53,6 +52,12 @@ object ScalaOps {
 
   implicit class JavaMapOps[K : ClassTag, V : ClassTag](val map: java.util.Map[K, V]) {
     def asSafeMap: Map[K, V] = Option(map).map(_.asScala.toMap).getOrElse(Map.empty)
+    def asSafeKeys: Set[K] = asSafeMap.keys.toSet[K]
+    def asSafeValues: Set[V] = asSafeMap.values.toSet
+  }
+
+  implicit class JavaMapFactoryMethod(val mapObject: Map.type) {
+    def asEmptyJavaMap[K, V]: java.util.Map[K, V] = Map.empty[K, V].asJava
   }
 
   implicit class JavaListOps[T : ClassTag](val list: java.util.List[T]) {

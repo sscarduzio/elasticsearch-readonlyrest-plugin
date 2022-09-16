@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-import java.util.{List => JList}
-
 import cats.data.NonEmptyList
 import cats.implicits._
 import monix.eval.Task
@@ -36,10 +34,10 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap._
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
-import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.utils.ScalaOps._
-import scala.collection.JavaConverters._
 
+import java.util.{List => JList}
+import scala.collection.JavaConverters._
 import scala.language.postfixOps
 
 class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
@@ -138,14 +136,15 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
     val (aliases, streams) = response match {
       case aliasesResponse: GetAliasesResponse =>
         (
-          ImmutableOpenMapOps.from(aliasesResponse.getAliases.filterOutNotAllowedAliases(allowedAliases).asScala.toMap),
+          aliasesResponse.getAliases.filterOutNotAllowedAliases(allowedAliases),
           aliasesResponse.getDataStreamAliases
         )
       case other =>
+        import tech.beshu.ror.utils.ScalaOps._
         logger.error(s"${id.show} Unexpected response type - expected: [${classOf[GetAliasesResponse].getSimpleName}], was: [${other.getClass.getSimpleName}]")
         (
-          ImmutableOpenMapOps.empty[String, JList[AliasMetadata]],
-          Map.empty[String, JList[DataStreamAlias]].asJava
+          Map.asEmptyJavaMap[String, JList[AliasMetadata]],
+          Map.asEmptyJavaMap[String, JList[DataStreamAlias]]
         )
     }
     Task.now(new GetAliasesResponse(aliases, streams))

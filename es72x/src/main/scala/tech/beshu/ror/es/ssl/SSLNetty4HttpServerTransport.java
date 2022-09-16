@@ -81,7 +81,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, handlingSettings);
       AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-        context = Optional.of(SSLCertHelper.prepareSSLContext(ssl, fipsCompliant, ssl.clientAuthenticationEnabled()));
+        context = Optional.of(SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, ssl.clientAuthenticationEnabled()));
         return null;
       });
     }
