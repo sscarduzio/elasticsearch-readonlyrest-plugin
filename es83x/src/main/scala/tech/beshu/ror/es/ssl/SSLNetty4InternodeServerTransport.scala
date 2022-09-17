@@ -29,11 +29,10 @@ import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.netty4.{Netty4Transport, SharedGroupFactory}
 import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration
-import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SSLCertHelper
 
 import java.net.SocketAddress
-import javax.net.ssl.{SNIHostName, SNIServerName}
+import javax.net.ssl.SNIHostName
 
 class SSLNetty4InternodeServerTransport(settings: Settings,
                                         threadPool: ThreadPool,
@@ -47,29 +46,20 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
   extends Netty4Transport(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService, sharedGroupFactory)
     with Logging {
 
+  private val clientSslCtx = SSLCertHelper.prepareClientSSLContext(ssl, fipsCompliant, ssl.certificateVerificationEnabled)
+  private val serverSslContext = SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, clientAuthenticationEnabled = false)
+
   override def getClientChannelInitializer(node: DiscoveryNode): ChannelHandler = new ClientChannelInitializer {
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
-      logger.info(">> internode SSL channel initializing")
 
-      //      val keyManagerFactory = SSLCertHelper.keyManagerFactory(ssl, fipsCompliant)
-      //      val sslContext = SSLContext.getInstance("TLSv1.3")
-      //      sslContext.init(keyManagerFactory.getKeyManagers, usedTrustManager.getTrustManagers, null)
-
-      val sslCtx = SSLCertHelper.prepareClientSSLContext(ssl, fipsCompliant, ssl.certificateVerificationEnabled)
       ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter {
         override def connect(ctx: ChannelHandlerContext, remoteAddress: SocketAddress, localAddress: SocketAddress, promise: ChannelPromise): Unit = {
-          val sslEngine = sslCtx.newEngine(ctx.alloc())
-          sslEngine.setUseClientMode(true)
-          sslEngine.setNeedClientAuth(true)
-
-          import scala.collection.JavaConverters._
-          val configuredServerName = node.getAttributes().get("server_name")
-          val sslParameters = sslEngine.getSSLParameters
-          val serverNames: List[SNIServerName] = List(new SNIHostName("c5ea024e4a414aa4a6327dc0dda5350b.us-central1.gcp.cloud.es.io"))
-          sslParameters.setServerNames(serverNames.asJava)
-          sslEngine.setSSLParameters(sslParameters)
-
+          val sslEngine = SSLCertHelper.prepareSSLEngine(
+            sslContext = clientSslCtx,
+            channelHandlerContext = ctx,
+            serverName = Option(node.getAttributes.get("server_name")).map(new SNIHostName(_))
+          )
           ctx.pipeline().replace(this, "internode_ssl_client", new SslHandler(sslEngine))
           super.connect(ctx, remoteAddress, localAddress, promise)
         }
@@ -86,20 +76,11 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
     }
   }
 
-  override def getServerChannelInitializer(name: String): ChannelHandler = new SslChannelInitializer(name)
-
-  private class SslChannelInitializer(name: String) extends ServerChannelInitializer(name) {
-    private var context = Option.empty[SslContext]
-
-    doPrivileged {
-      context = Option(SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, clientAuthenticationEnabled = false))
-    }
+  override def getServerChannelInitializer(name: String): ChannelHandler = new ServerChannelInitializer(name) {
 
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
-      context.foreach { sslCtx =>
-        ch.pipeline().addFirst("ror_internode_ssl_handler", sslCtx.newHandler(ch.alloc()))
-      }
+      ch.pipeline().addFirst("ror_internode_ssl_handler", serverSslContext.newHandler(ch.alloc()))
     }
   }
 }

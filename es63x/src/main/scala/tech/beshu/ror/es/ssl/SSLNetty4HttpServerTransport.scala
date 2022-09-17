@@ -16,15 +16,14 @@
  */
 package tech.beshu.ror.es.ssl
 
-import io.netty.channel.Channel
+import io.netty.channel.{Channel, ChannelHandlerContext}
 import io.netty.handler.ssl.NotSslRecordException
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.network.NetworkService
-import org.elasticsearch.common.settings.{ClusterSettings, Settings}
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.util.BigArrays
 import org.elasticsearch.common.xcontent.NamedXContentRegistry
+import org.elasticsearch.http.HttpServerTransport
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport
-import org.elasticsearch.http.{HttpChannel, HttpServerTransport}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration
 import tech.beshu.ror.utils.SSLCertHelper
@@ -36,24 +35,24 @@ class SSLNetty4HttpServerTransport(settings: Settings,
                                    xContentRegistry: NamedXContentRegistry,
                                    dispatcher: HttpServerTransport.Dispatcher,
                                    ssl: ExternalSslConfiguration,
-                                   clusterSettings: ClusterSettings,
                                    fipsCompliant: Boolean)
-  extends Netty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, clusterSettings)
-    with Logging {
+  extends Netty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher) {
 
   private val serverSslContext = SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, ssl.clientAuthenticationEnabled)
 
   override def configureServerChannelHandler = new SSLHandler(this)
 
-  override def onException(channel: HttpChannel, cause: Exception): Unit = {
+  override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable): Unit = {
     if (!this.lifecycle.started) return
-    else if (cause.getCause.isInstanceOf[NotSslRecordException]) logger.warn(cause.getMessage + " connecting from: " + channel.getRemoteAddress)
-    else super.onException(channel, cause)
-    channel.close()
+    else if (cause.getCause.isInstanceOf[NotSslRecordException]) logger.warn(s"${cause.getMessage} connecting from: ${ctx.channel().remoteAddress()}")
+    else super.exceptionCaught(ctx, cause)
+    ctx.channel().flush().close()
   }
 
   final class SSLHandler(transport: Netty4HttpServerTransport)
-    extends Netty4HttpServerTransport.HttpChannelHandler(transport, handlingSettings) {
+    extends Netty4HttpServerTransport.HttpChannelHandler(
+      transport, SSLNetty4HttpServerTransport.this.detailedErrorsEnabled, threadPool.getThreadContext
+    ) {
 
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)

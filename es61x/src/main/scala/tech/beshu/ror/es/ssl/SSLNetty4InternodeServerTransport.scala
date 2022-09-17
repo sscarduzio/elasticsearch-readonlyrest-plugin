@@ -18,13 +18,10 @@ package tech.beshu.ror.es.ssl
 
 import io.netty.channel._
 import io.netty.handler.ssl._
-import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.Version
-import org.elasticsearch.cluster.node.DiscoveryNode
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.common.util.PageCacheRecycler
+import org.elasticsearch.common.util.BigArrays
 import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.netty4.Netty4Transport
@@ -32,23 +29,21 @@ import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration
 import tech.beshu.ror.utils.SSLCertHelper
 
 import java.net.SocketAddress
-import javax.net.ssl.SNIHostName
 
 class SSLNetty4InternodeServerTransport(settings: Settings,
                                         threadPool: ThreadPool,
-                                        pageCacheRecycler: PageCacheRecycler,
-                                        circuitBreakerService: CircuitBreakerService,
-                                        namedWriteableRegistry: NamedWriteableRegistry,
                                         networkService: NetworkService,
+                                        bigArrays: BigArrays,
+                                        namedWriteableRegistry: NamedWriteableRegistry,
+                                        circuitBreakerService: CircuitBreakerService,
                                         ssl: InternodeSslConfiguration,
                                         fipsCompliant: Boolean)
-  extends Netty4Transport(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService)
-    with Logging {
+  extends Netty4Transport(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService) {
 
   private val clientSslCtx = SSLCertHelper.prepareClientSSLContext(ssl, fipsCompliant, ssl.certificateVerificationEnabled)
   private val serverSslContext = SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, clientAuthenticationEnabled = false)
 
-  override def getClientChannelInitializer(node: DiscoveryNode): ChannelHandler = new ClientChannelInitializer {
+  override def getClientChannelInitializer: ChannelHandler = new ClientChannelInitializer {
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
 
@@ -57,7 +52,7 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
           val sslEngine = SSLCertHelper.prepareSSLEngine(
             sslContext = clientSslCtx,
             channelHandlerContext = ctx,
-            serverName = Option(node.getAttributes.get("server_name")).map(new SNIHostName(_))
+            serverName = None
           )
           ctx.pipeline().replace(this, "internode_ssl_client", new SslHandler(sslEngine))
           super.connect(ctx, remoteAddress, localAddress, promise)

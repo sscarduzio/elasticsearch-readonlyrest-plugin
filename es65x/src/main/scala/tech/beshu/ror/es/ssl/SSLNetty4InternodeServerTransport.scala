@@ -18,13 +18,11 @@ package tech.beshu.ror.es.ssl
 
 import io.netty.channel._
 import io.netty.handler.ssl._
-import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.Version
 import org.elasticsearch.cluster.node.DiscoveryNode
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.common.util.PageCacheRecycler
+import org.elasticsearch.common.util.BigArrays
 import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.netty4.Netty4Transport
@@ -36,14 +34,13 @@ import javax.net.ssl.SNIHostName
 
 class SSLNetty4InternodeServerTransport(settings: Settings,
                                         threadPool: ThreadPool,
-                                        pageCacheRecycler: PageCacheRecycler,
-                                        circuitBreakerService: CircuitBreakerService,
-                                        namedWriteableRegistry: NamedWriteableRegistry,
                                         networkService: NetworkService,
+                                        bigArrays: BigArrays,
+                                        namedWriteableRegistry: NamedWriteableRegistry,
+                                        circuitBreakerService: CircuitBreakerService,
                                         ssl: InternodeSslConfiguration,
                                         fipsCompliant: Boolean)
-  extends Netty4Transport(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService)
-    with Logging {
+  extends Netty4Transport(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService) {
 
   private val clientSslCtx = SSLCertHelper.prepareClientSSLContext(ssl, fipsCompliant, ssl.certificateVerificationEnabled)
   private val serverSslContext = SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, clientAuthenticationEnabled = false)
