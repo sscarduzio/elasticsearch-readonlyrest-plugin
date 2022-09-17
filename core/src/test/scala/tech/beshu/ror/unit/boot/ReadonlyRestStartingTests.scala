@@ -36,7 +36,10 @@ import org.scalatest.{EitherValues, Inside, OptionValues}
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, User}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
@@ -390,7 +393,8 @@ class ReadonlyRestStartingTests
                   Map(
                     "settings" -> testConfig1.raw,
                     "expiration_ttl_millis" -> "100000",
-                    "expiration_timestamp" -> expirationTimestamp.toString
+                    "expiration_timestamp" -> expirationTimestamp.toString,
+                    "auth_services_mocks" -> configuredAuthServicesMocksJson,
                   )
                 )))
 
@@ -413,6 +417,29 @@ class ReadonlyRestStartingTests
                   validTo = expirationTimestamp
                 )
               )
+
+              rorInstance.mocksProvider.ldapServiceWith(LdapService.Name("ldap1"))(newRequestId()) should be(Some(
+                LdapServiceMock(Set(LdapServiceMock.LdapUserMock(User.Id("Tom"), Set(Group("group1"), Group("group2")))))
+              ))
+              rorInstance.mocksProvider.ldapServiceWith(LdapService.Name("ldap2"))(newRequestId()) should be(None)
+
+              rorInstance.mocksProvider.externalAuthenticationServiceWith(ExternalAuthenticationService.Name("ext1"))(newRequestId()) should be(Some(
+                ExternalAuthenticationServiceMock(Set(
+                  ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock(User.Id("Matt")),
+                  ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock(User.Id("Emily")),
+                ))
+              ))
+              rorInstance.mocksProvider.externalAuthenticationServiceWith(ExternalAuthenticationService.Name("ext2"))(newRequestId()) should be(None)
+
+              rorInstance.mocksProvider.externalAuthorizationServiceWith(ExternalAuthorizationService.Name("grp1"))(newRequestId()) should be(Some(
+                ExternalAuthorizationServiceMock(Set(
+                  ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock(
+                    id = User.Id("Bruce"),
+                    groups = Set(Group("group3"), Group("group4"))
+                  )
+                ))
+              ))
+              rorInstance.mocksProvider.externalAuthorizationServiceWith(ExternalAuthorizationService.Name("grp2"))(newRequestId()) should be(None)
             }
           }
           "load test engine as invalidated" when {
@@ -431,7 +458,8 @@ class ReadonlyRestStartingTests
                   Map(
                     "settings" -> testConfig1.raw,
                     "expiration_ttl_millis" -> "100000",
-                    "expiration_timestamp" -> expirationTimestamp.toString
+                    "expiration_timestamp" -> expirationTimestamp.toString,
+                    "auth_services_mocks" -> notConfiguredAuthServicesMocksJson,
                   )
                 )))
 
@@ -496,7 +524,8 @@ class ReadonlyRestStartingTests
                 Map(
                   "settings" -> "malformed_config", // malformed ror config
                   "expiration_ttl_millis" -> "100000",
-                  "expiration_timestamp" -> expirationTimestamp.toString
+                  "expiration_timestamp" -> expirationTimestamp.toString,
+                  "auth_services_mocks" -> notConfiguredAuthServicesMocksJson,
                 )
               )))
 
@@ -528,7 +557,8 @@ class ReadonlyRestStartingTests
                 Map(
                   "settings" -> testConfigMalformed.raw,
                   "expiration_ttl_millis" -> "100000",
-                  "expiration_timestamp" -> testClock.instant().plusSeconds(100).toString
+                  "expiration_timestamp" -> testClock.instant().plusSeconds(100).toString,
+                  "auth_services_mocks" -> notConfiguredAuthServicesMocksJson,
                 )
               )))
 
@@ -584,7 +614,8 @@ class ReadonlyRestStartingTests
                     id == "2"  &&
                     content.get("settings").contains(testConfig1.raw) &&
                     content.get("expiration_ttl_millis").contains("60000") &&
-                    content.contains("expiration_timestamp")
+                    content.contains("expiration_timestamp") &&
+                    content.contains("auth_services_mocks")
               }
             )
             .repeated(1)
@@ -635,7 +666,8 @@ class ReadonlyRestStartingTests
                       id == "2" &&
                       content.get("settings").contains(testConfig1.raw) &&
                       content.get("expiration_ttl_millis").contains("60000") &&
-                      content.contains("expiration_timestamp")
+                      content.contains("expiration_timestamp") &&
+                      content.contains("auth_services_mocks")
                 }
               )
               .repeated(2)
@@ -703,7 +735,8 @@ class ReadonlyRestStartingTests
                       id == "2" &&
                       content.get("settings").contains(testConfig1.raw) &&
                       content.get("expiration_ttl_millis").contains("600000") &&
-                      content.contains("expiration_timestamp")
+                      content.contains("expiration_timestamp") &&
+                      content.contains("auth_services_mocks")
                 }
               )
               .repeated(1)
@@ -731,7 +764,8 @@ class ReadonlyRestStartingTests
                       id == "2" &&
                       content.get("settings").contains(testConfig1.raw) &&
                       content.get("expiration_ttl_millis").contains("300000") &&
-                      content.contains("expiration_timestamp")
+                      content.contains("expiration_timestamp") &&
+                      content.contains("auth_services_mocks")
                 }
               )
               .repeated(1)
@@ -787,7 +821,8 @@ class ReadonlyRestStartingTests
                     id == "2" &&
                     content.get("settings").contains(testConfig1.raw) &&
                     content.get("expiration_ttl_millis").contains("60000") &&
-                    content.contains("expiration_timestamp")
+                    content.contains("expiration_timestamp") &&
+                    content.contains("auth_services_mocks")
               }
             )
             .repeated(1)
@@ -815,7 +850,8 @@ class ReadonlyRestStartingTests
                     id == "2" &&
                     content.get("settings").contains(testConfig2.raw) &&
                     content.get("expiration_ttl_millis").contains("120000") &&
-                    content.contains("expiration_timestamp")
+                    content.contains("expiration_timestamp") &&
+                    content.contains("auth_services_mocks")
               }
             )
             .repeated(1)
@@ -867,7 +903,8 @@ class ReadonlyRestStartingTests
               Map(
                 "settings" -> testConfig1.raw,
                 "expiration_ttl_millis" -> "100000",
-                "expiration_timestamp" -> expirationTimestamp.toString
+                "expiration_timestamp" -> expirationTimestamp.toString,
+                "auth_services_mocks" -> notConfiguredAuthServicesMocksJson,
               )
             )))
 
@@ -904,7 +941,8 @@ class ReadonlyRestStartingTests
               Map(
                 "settings" -> testConfig1.raw,
                 "expiration_ttl_millis" -> "100000",
-                "expiration_timestamp" -> expirationTimestamp.toString
+                "expiration_timestamp" -> expirationTimestamp.toString,
+                "auth_services_mocks" -> notConfiguredAuthServicesMocksJson,
               )
             )))
 
@@ -933,7 +971,8 @@ class ReadonlyRestStartingTests
               Map(
                 "settings" -> testConfig1.raw,
                 "expiration_ttl_millis" -> "200000",
-                "expiration_timestamp" -> expirationTimestamp2.toString
+                "expiration_timestamp" -> expirationTimestamp2.toString,
+                "auth_services_mocks" -> notConfiguredAuthServicesMocksJson,
               )
             )))
 
@@ -966,7 +1005,8 @@ class ReadonlyRestStartingTests
               Map(
                 "settings" -> testConfig1.raw,
                 "expiration_ttl_millis" -> "100000",
-                "expiration_timestamp" -> expirationTimestamp.toString
+                "expiration_timestamp" -> expirationTimestamp.toString,
+                "auth_services_mocks" -> notConfiguredAuthServicesMocksJson,
               )
             )))
 
@@ -995,7 +1035,8 @@ class ReadonlyRestStartingTests
               Map(
                 "settings" -> testConfig1.raw,
                 "expiration_ttl_millis" -> "100000",
-                "expiration_timestamp" -> expirationTimestamp2.toString
+                "expiration_timestamp" -> expirationTimestamp2.toString,
+                "auth_services_mocks" -> notConfiguredAuthServicesMocksJson,
               )
             )))
 
@@ -1028,7 +1069,8 @@ class ReadonlyRestStartingTests
               Map(
                 "settings" -> testConfig1.raw,
                 "expiration_ttl_millis" -> "100000",
-                "expiration_timestamp" -> expirationTimestamp.toString
+                "expiration_timestamp" -> expirationTimestamp.toString,
+                "auth_services_mocks" -> notConfiguredAuthServicesMocksJson,
               )
             )))
 
@@ -1057,7 +1099,8 @@ class ReadonlyRestStartingTests
               Map(
                 "settings" -> testConfig2.raw,
                 "expiration_ttl_millis" -> "200000",
-                "expiration_timestamp" -> expirationTimestamp2.toString
+                "expiration_timestamp" -> expirationTimestamp2.toString,
+                "auth_services_mocks" -> notConfiguredAuthServicesMocksJson,
               )
             )))
 
@@ -1105,7 +1148,8 @@ class ReadonlyRestStartingTests
                     id == "2" &&
                     content.get("settings").contains(testConfig1.raw) &&
                     content.get("expiration_ttl_millis").contains("3000") &&
-                    content.contains("expiration_timestamp")
+                    content.contains("expiration_timestamp") &&
+                    content.contains("auth_services_mocks")
               }
             )
             .repeated(1)
@@ -1156,7 +1200,8 @@ class ReadonlyRestStartingTests
                   id == "2" &&
                   content.get("settings").contains(testConfig1.raw) &&
                   content.get("expiration_ttl_millis").contains("60000") &&
-                  content.contains("expiration_timestamp")
+                  content.contains("expiration_timestamp") &&
+                  content.contains("auth_services_mocks")
             }
           )
           .repeated(1)
@@ -1178,7 +1223,8 @@ class ReadonlyRestStartingTests
                   id == "2" &&
                   content.get("settings").contains(testConfig1.raw) &&
                   content.get("expiration_ttl_millis").contains("60000") &&
-                  content.contains("expiration_timestamp")
+                  content.contains("expiration_timestamp") &&
+                  content.contains("auth_services_mocks")
             }
           )
           .repeated(1)
@@ -1205,7 +1251,8 @@ class ReadonlyRestStartingTests
               Map(
                 "settings" -> testConfig1.raw,
                 "expiration_ttl_millis" -> "100000",
-                "expiration_timestamp" -> expirationTimestamp.toString
+                "expiration_timestamp" -> expirationTimestamp.toString,
+                "auth_services_mocks" -> notConfiguredAuthServicesMocksJson,
               )
             )))
 
@@ -1428,6 +1475,53 @@ class ReadonlyRestStartingTests
       |
       |""".stripMargin
   )
+
+  private lazy val notConfiguredAuthServicesMocksJson =
+    s"""
+       |{
+       |  "ldapMocks": {},
+       |  "externalAuthenticationMocks": {},
+       |  "externalAuthorizationMocks": {}
+       |}
+       |""".stripMargin
+
+  private lazy val configuredAuthServicesMocksJson =
+    s"""
+       |{
+       |  "ldapMocks": {
+       |    "ldap1": {
+       |      "users": [
+       |        {
+       |          "id": "Tom",
+       |          "groups": ["group1", "group2"]
+       |        }
+       |      ]
+       |    }
+       |  },
+       |  "externalAuthenticationMocks": {
+       |    "ext1": {
+       |      "users": [
+       |        {
+       |          "id": "Matt"
+       |        },
+       |        {
+       |          "id": "Emily"
+       |        }
+       |      ]
+       |    }
+       |  },
+       |  "externalAuthorizationMocks": {
+       |    "grp1": {
+       |      "users": [
+       |        {
+       |          "id": "Bruce",
+       |          "groups": ["group3", "group4"]
+       |        }
+       |      ]
+       |    }
+       |  }
+       |}
+       |""".stripMargin
 
   private implicit def toRefined(fd: FiniteDuration): FiniteDuration Refined Positive = fd.toRefinedPositiveUnsafe
 

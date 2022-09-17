@@ -52,7 +52,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
                                                      clock: Clock)
   extends Logging {
 
-  import BaseReloadableEngine.ConfigUpdate
+  import BaseReloadableEngine.EngineUpdateType
 
   private val currentEngine: Atomic[EngineState] = AtomicAny[EngineState](
     initialEngine match {
@@ -173,12 +173,14 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
                                             expiration: UpdatedConfigExpiration)
                                            (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, EngineExpirationConfig] = {
     for {
-      configUpdate <- checkConfigUpdateType(newConfig)
-      expirationConfig <- configUpdate match {
-        case ConfigUpdate.NewConfig =>
+      engineUpdateType <- checkUpdateType(newConfig, expiration)
+      expirationConfig <- engineUpdateType match {
+        case EngineUpdateType.UpdateConfig =>
           runReload(newConfig, Some(expiration)).map(_.get)
-        case ConfigUpdate.ConfigUpToDate =>
+        case EngineUpdateType.UpdateConfigTtl =>
           updateEngineExpirationConfig(expiration)
+        case EngineUpdateType.ConfigAndTtlUpToDate(engineExpirationConfig) =>
+          EitherT.right[RawConfigReloadError](Task.now(engineExpirationConfig))
       }
     } yield expirationConfig
   }
@@ -200,20 +202,36 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     } yield newEngineWithConfig.expirationConfig
   }
 
-  private def checkConfigUpdateType(newConfig: RawRorConfig): EitherT[Task, RawConfigReloadError, ConfigUpdate] = {
+  private def checkUpdateType(newConfig: RawRorConfig,
+                              newConfigExpiration: UpdatedConfigExpiration): EitherT[Task, RawConfigReloadError, EngineUpdateType] = {
     EitherT {
       Task.delay {
         currentEngine.get() match {
           case EngineState.NotStartedYet(_, _) =>
-            Right(ConfigUpdate.NewConfig)
+            Right(EngineUpdateType.UpdateConfig)
           case EngineState.Working(EngineWithConfig(_, currentConfig, _), _) if currentConfig != newConfig =>
-            Right(ConfigUpdate.NewConfig)
-          case EngineState.Working(EngineWithConfig(_, currentConfig, _), _) =>
-            Right(ConfigUpdate.ConfigUpToDate)
+            Right(EngineUpdateType.UpdateConfig)
+          case EngineState.Working(EngineWithConfig(_, currentConfig, engineExpirationConfig), _) =>
+            checkIfExpirationConfigHasChanged(newConfigExpiration, engineExpirationConfig)
           case EngineState.Stopped =>
             Left(RawConfigReloadError.RorInstanceStopped)
         }
       }
+    }
+  }
+
+  private def checkIfExpirationConfigHasChanged(newConfigExpiration: UpdatedConfigExpiration,
+                                                engineExpirationConfig: Option[EngineExpirationConfig]) = {
+    newConfigExpiration match {
+      case UpdatedConfigExpiration.ByTtl(_) =>
+        Right(EngineUpdateType.UpdateConfigTtl)
+      case UpdatedConfigExpiration.ToTime(validTo, configuredTtl) =>
+        val providedExpirationConfig = EngineExpirationConfig(configuredTtl, validTo)
+        if (engineExpirationConfig.contains(providedExpirationConfig)) {
+          Right(EngineUpdateType.ConfigAndTtlUpToDate(providedExpirationConfig))
+        } else {
+          Right(EngineUpdateType.UpdateConfigTtl)
+        }
     }
   }
 
@@ -452,10 +470,11 @@ object BaseReloadableEngine {
     object Expired extends RemainingEngineTime
   }
 
-  private[BaseReloadableEngine] sealed trait ConfigUpdate
-  private[BaseReloadableEngine] object ConfigUpdate {
-    case object NewConfig extends ConfigUpdate
-    case object ConfigUpToDate extends ConfigUpdate
+  private[BaseReloadableEngine] sealed trait EngineUpdateType
+  private[BaseReloadableEngine] object EngineUpdateType {
+    case object UpdateConfig extends EngineUpdateType
+    case object UpdateConfigTtl extends EngineUpdateType
+    final case class ConfigAndTtlUpToDate(expirationConfig: EngineExpirationConfig) extends EngineUpdateType
   }
 
   private[BaseReloadableEngine] val delayOfOldEngineShutdown = 10 seconds

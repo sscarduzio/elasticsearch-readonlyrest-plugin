@@ -110,8 +110,10 @@ class SslConfigurationTest
     "not be able to load" when {
       "SSL settings are malformed" when {
         "keystore_file entry is missing" in {
-          RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_malformed/")).runSyncUnsafe() shouldBe Left {
-            MalformedSettings("Invalid ROR SSL configuration")
+          val configFolderPath = "/boot_tests/es_api_ssl_settings_malformed/"
+          val expectedFilePath = getResourcePath(s"${configFolderPath}elasticsearch.yml").toString
+          RorSsl.load(getResourcePath(configFolderPath)).runSyncUnsafe() shouldBe Left {
+            MalformedSettings(s"Cannot load ROR SSL configuration from file $expectedFilePath")
           }
         }
       }
@@ -189,8 +191,10 @@ class SslConfigurationTest
     "not be able to load" when {
       "SSL settings are malformed" when {
         "keystore_file entry is missing" in {
-          RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_malformed/")).runSyncUnsafe() shouldBe Left {
-            MalformedSettings("Invalid ROR SSL configuration")
+          val configFolderPath = "/boot_tests/internode_ssl_settings_malformed/"
+          val expectedFilePath = getResourcePath(s"${configFolderPath}elasticsearch.yml").toString
+          RorSsl.load(getResourcePath(configFolderPath)).runSyncUnsafe() shouldBe Left {
+            MalformedSettings(s"Cannot load ROR SSL configuration from file $expectedFilePath")
           }
         }
       }

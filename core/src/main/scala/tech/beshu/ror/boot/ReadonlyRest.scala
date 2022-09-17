@@ -26,7 +26,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.blocks.mocks.{MutableMocksProviderWithCachePerRequest, NoOpMocksProvider}
+import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, MutableMocksProviderWithCachePerRequest, NoOpMocksProvider, AuthServicesMocks}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason
@@ -48,7 +48,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
                    auditSinkCreator: AuditSinkCreator,
                    val indexConfigManager: IndexConfigManager,
                    val indexTestConfigManager: IndexTestConfigManager,
-                   val mocksProvider: MutableMocksProviderWithCachePerRequest,
+                   val authServicesMocksProvider: MutableMocksProviderWithCachePerRequest,
                    val esConfigPath: Path)
                   (implicit scheduler: Scheduler,
                    envVarsProvider: EnvVarsProvider,
@@ -136,22 +136,37 @@ class ReadonlyRest(coreFactory: CoreFactory,
     loadedTestRorConfig.value match {
       case TestRorConfig.NotSet =>
         Task.now(TestEngine.NotConfigured)
-      case config@TestRorConfig.Present(rawConfig, expiration) if !config.isExpired(clock) =>
-        loadRorCore(rawConfig, esConfig.rorIndex.index)
-          .map {
-            case Right(loadedEngine) =>
-              TestEngine.Configured(
-                engine = loadedEngine,
-                config = rawConfig,
-                expiration = expirationConfig(expiration)
-              )
-            case Left(startingFailure) =>
-              logger.error(s"Unable to start test engine. Cause: ${startingFailure.message}. Test settings engine will be marked as invalidated.")
-              TestEngine.Invalidated(rawConfig, expirationConfig(expiration))
-          }
-      case TestRorConfig.Present(rawConfig, expiration) =>
-        Task.now(TestEngine.Invalidated(rawConfig, expirationConfig(expiration)))
+      case config: TestRorConfig.Present if !config.isExpired(clock) =>
+        loadActiveTestEngine(esConfig, config)
+      case config: TestRorConfig.Present =>
+        loadInvalidatedTestEngine(config)
     }
+  }
+
+  private def loadActiveTestEngine(esConfig: EsConfig, testConfig: TestRorConfig.Present) = {
+    for {
+      _ <- Task.delay(authServicesMocksProvider.update(testConfig.mocks))
+      testEngine <- loadRorCore(testConfig.rawConfig, esConfig.rorIndex.index)
+        .map {
+          case Right(loadedEngine) =>
+            TestEngine.Configured(
+              engine = loadedEngine,
+              config = testConfig.rawConfig,
+              expiration = expirationConfig(testConfig.expiration)
+            )
+          case Left(startingFailure) =>
+            logger.error(s"Unable to start test engine. Cause: ${startingFailure.message}. Test settings engine will be marked as invalidated.")
+            TestEngine.Invalidated(testConfig.rawConfig, expirationConfig(testConfig.expiration))
+        }
+    } yield testEngine
+  }
+
+  private def loadInvalidatedTestEngine(testConfig: TestRorConfig.Present) = {
+    Task
+      .delay(authServicesMocksProvider.update(testConfig.mocks))
+      .map { _ =>
+        TestEngine.Invalidated(testConfig.rawConfig, expirationConfig(testConfig.expiration))
+      }
   }
 
   private def expirationConfig(config: TestRorConfig.Present.ExpirationConfig): TestEngine.Expiration = {
@@ -180,7 +195,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
     val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
     coreFactory
-      .createCoreFrom(config, rorIndexNameConfiguration, httpClientsFactory, ldapConnectionPoolProvider, mocksProvider)
+      .createCoreFrom(config, rorIndexNameConfiguration, httpClientsFactory, ldapConnectionPoolProvider, authServicesMocksProvider)
       .map { result =>
         result
           .right
@@ -309,7 +324,7 @@ object ReadonlyRest {
              clock: Clock): ReadonlyRest = {
     val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService)
     val indexTestConfigManager: IndexTestConfigManager = new IndexTestConfigManager(indexContentService)
-    val mocksProvider = new MutableMocksProviderWithCachePerRequest(NoOpMocksProvider)
+    val mocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)
 
     new ReadonlyRest(coreFactory, auditSinkCreator, indexConfigManager, indexTestConfigManager, mocksProvider, esConfigPath)
   }
