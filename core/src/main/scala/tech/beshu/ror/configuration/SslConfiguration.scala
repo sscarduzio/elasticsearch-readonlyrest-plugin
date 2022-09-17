@@ -250,6 +250,7 @@ private object SslDecoders extends Logging {
     whenEnabled(c) {
       for {
         certificateVerification <- c.downField(consts.certificateVerification).as[Option[Boolean]]
+        verification <- c.downField(consts.verification).as[Option[Boolean]]
         sslCommonProperties <- sslCommonPropertiesDecoder(basePath, c)
       } yield
         InternodeSslConfiguration(
@@ -258,7 +259,7 @@ private object SslDecoders extends Logging {
           allowedProtocols = sslCommonProperties.allowedProtocols,
           allowedCiphers = sslCommonProperties.allowedCiphers,
           clientAuthenticationEnabled = sslCommonProperties.clientAuthentication.getOrElse(false),
-          certificateVerificationEnabled = certificateVerification.getOrElse(false)
+          certificateVerificationEnabled = certificateVerification.orElse(verification).getOrElse(false)
         )
     }
   }
@@ -266,6 +267,7 @@ private object SslDecoders extends Logging {
   private def sslExternalConfigurationDecoder(basePath: Path): Decoder[Option[ExternalSslConfiguration]] = Decoder.instance { c =>
     whenEnabled(c) {
       for {
+        verification <- c.downField(consts.verification).as[Option[Boolean]]
         sslCommonProperties <- sslCommonPropertiesDecoder(basePath, c)
       } yield
         ExternalSslConfiguration(
@@ -273,7 +275,7 @@ private object SslDecoders extends Logging {
           clientCertificateConfiguration = sslCommonProperties.clientCertificateConfiguration,
           allowedProtocols = sslCommonProperties.allowedProtocols,
           allowedCiphers = sslCommonProperties.allowedCiphers,
-          clientAuthenticationEnabled = sslCommonProperties.clientAuthentication.getOrElse(false)
+          clientAuthenticationEnabled = sslCommonProperties.clientAuthentication.orElse(verification).getOrElse(false)
         )
     }
   }
