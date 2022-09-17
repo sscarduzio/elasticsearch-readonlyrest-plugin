@@ -62,7 +62,7 @@ object FipsConfiguration extends Logging {
 
   def loadFipsConfigFromFile(configFile: File)
                             (implicit envVarsProvider: EnvVarsProvider): Either[MalformedSettings, FipsConfiguration] = {
-    new EsConfigFileLoader[FipsConfiguration]().loadConfigFromFile(configFile, "ROR FIPS Configuration")
+    new YamlFileBasedConfigLoader(configFile).loadConfig[FipsConfiguration](configName = "ROR FIPS Configuration")
   }
 
   private implicit val fipsModeDecoder: Decoder[FipsMode] = {

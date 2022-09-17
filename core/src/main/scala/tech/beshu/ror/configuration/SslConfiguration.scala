@@ -62,10 +62,10 @@ object RorSsl extends Logging {
     }
   }
 
-  private def loadSslConfigFromFile(config: File)
+  private def loadSslConfigFromFile(configFile: File)
                                    (implicit rorSslDecoder: Decoder[RorSsl],
                                     envVarsProvider: EnvVarsProvider) = {
-    new EsConfigFileLoader[RorSsl]().loadConfigFromFile(config, "ROR SSL")
+    new YamlFileBasedConfigLoader(configFile).loadConfig[RorSsl](configName = "ROR SSL configuration")
   }
 }
 

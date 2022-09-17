@@ -43,7 +43,7 @@ object TestConfigLoadingInterpreter extends Logging {
         loadFromIndex(indexConfigManager, configIndex, inIndexLoadingDelay)
           .map { testConfig =>
             testConfig match {
-              case TestRorConfig.Present(rawConfig, _) =>
+              case TestRorConfig.Present(rawConfig, _, _) =>
                 logger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw test config from index: ${rawConfig.raw}")
               case TestRorConfig.NotSet =>
                 logger.debug("[CLUSTERWIDE SETTINGS] There was no test settings in index. Test settings engine will be not initialized.")
