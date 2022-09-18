@@ -178,15 +178,15 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
           ))
         variable shouldBe Right(NonEmptyList.of("g1", "g2"))
       }
-    }
-    "have not been resolved" when {
       "available groups variable is used without explode" in {
         val variable = forceCreateSingleVariable("@{acl:available_groups}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
             _.withAvailableGroups(UniqueList.of(groupFrom("g1"), groupFrom("g2")))
           ))
-        variable shouldBe Left(CannotExtractValue("Available groups are usable only with @explode"))
+        variable shouldBe Right(""""g1","g2"""")
       }
+    }
+    "have not been resolved" when {
       "available groups are not available in given block context" in {
         val variable = forceCreateMultiVariable("@explode{acl:available_groups}")
           .resolve(currentUserMetadataRequestBlockContextFrom())
