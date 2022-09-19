@@ -464,6 +464,7 @@ components:
       required:
         - status
         - message
+        - valid_to
       properties:
         status:
           type: string
@@ -472,6 +473,11 @@ components:
         message:
           type: string
           description: Human readable message
+        valid_to:
+          type: string
+          format: date-time
+          description: "It says how long the Test Settings will be valid. After that date, the Settings will be invalidated"
+          example: "2022-01-12T07:20:50.52Z"
 
     UpdateTestSettingsFailedResponse:
       type: object
@@ -957,6 +963,7 @@ components:
       value:
         status: OK
         message: updated settings
+        valid_to: "2022-01-12T07:20:50.52Z"
 
     TestSettingsUpdateFailedResponseExample:
       summary: ROR Test settings update failed

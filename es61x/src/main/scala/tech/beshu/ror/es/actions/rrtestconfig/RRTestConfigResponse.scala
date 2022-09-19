@@ -40,7 +40,7 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
         case res: ProvideTestConfig.TestSettingsInvalidated => invalidatedConfigJson(builder, res)
       }
       case updateConfigResponse: UpdateTestConfig => updateConfigResponse match {
-        case UpdateTestConfig.SuccessResponse(message) => addResponseJson(builder, response.status, message)
+        case res: UpdateTestConfig.SuccessResponse => updateConfigSuccessResponseJson(builder, res)
         case UpdateTestConfig.FailedResponse(message) => addResponseJson(builder, response.status, message)
       }
       case invalidateConfigResponse: InvalidateTestConfig => invalidateConfigResponse match {
@@ -103,6 +103,15 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
     builder.field("message", response.message)
     builder.field("settings", response.settings.raw)
     builder.field("ttl", response.ttl.toString())
+    builder.endObject
+  }
+
+
+  private def updateConfigSuccessResponseJson(builder: XContentBuilder, response: UpdateTestConfig.SuccessResponse): Unit = {
+    builder.startObject
+    builder.field("status", response.status)
+    builder.field("message", response.message)
+    builder.field("valid_to", response.validTo.atOffset(ZoneOffset.UTC).toString)
     builder.endObject
   }
 

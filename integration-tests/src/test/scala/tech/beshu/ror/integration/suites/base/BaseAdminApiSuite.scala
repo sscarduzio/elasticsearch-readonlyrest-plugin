@@ -979,14 +979,9 @@ trait BaseAdminApiSuite
 
   private def updateRorTestConfig(rorApiManager: RorApiManager, testConfig: String, configTtl: FiniteDuration = 30 minutes) = {
     val response = rorApiManager.updateRorTestConfig(testConfig, configTtl)
-    (response.responseCode, response.responseJson) should be(200, ujson.read(
-      """
-        |{
-        |  "status": "OK",
-        |  "message": "updated settings"
-        |}
-        |""".stripMargin
-    ))
+    (response.responseCode, response.responseJson("status").str) should be(200, "OK")
+    response.responseJson("message").str should be("updated settings")
+    response.responseJson("valid_to").str.isInIsoDateTimeFormat should be(true)
   }
 
   private def invalidateRorTestConfig(rorApiManager: RorApiManager) = {
