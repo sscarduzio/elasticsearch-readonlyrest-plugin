@@ -34,7 +34,7 @@ import tech.beshu.ror.configuration.SslConfiguration._
 import java.io.{File, FileInputStream, FileReader, IOException}
 import java.security.cert.{CertificateFactory, X509Certificate}
 import java.security.{KeyStore, PrivateKey}
-import javax.net.ssl.{KeyManagerFactory, SNIHostName, SNIServerName, SSLContext, TrustManagerFactory}
+import javax.net.ssl.{KeyManagerFactory, SNIServerName, SSLEngine, TrustManagerFactory}
 import scala.collection.JavaConverters._
 import scala.language.{existentials, implicitConversions}
 import scala.util.Try
@@ -43,17 +43,13 @@ object SSLCertHelper extends Logging {
 
   def prepareSSLEngine(sslContext: SslContext,
                        channelHandlerContext: ChannelHandlerContext,
-                       serverName: Option[SNIServerName]) = {
+                       serverName: Option[SNIServerName]): SSLEngine = {
     val sslEngine = sslContext.newEngine(channelHandlerContext.alloc())
-//    sslEngine.setUseClientMode(true)
-//    sslEngine.setNeedClientAuth(true)
-
     serverName.foreach { name =>
       val sslParameters = sslEngine.getSSLParameters
       sslParameters.setServerNames(List(name).asJava)
       sslEngine.setSSLParameters(sslParameters)
     }
-
     sslEngine
   }
 
