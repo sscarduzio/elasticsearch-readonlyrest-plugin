@@ -2,33 +2,6 @@
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.1.xsd">
     <suppress>
         <notes><![CDATA[
-    because of https://bitbucket.org/asomov/snakeyaml/issues/462/memory-leak
-   ]]></notes>
-        <cve>CVE-2017-18640</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
-   async client is upgraded to
-   group: 'org.asynchttpclient', name: 'async-http-client', version: '2.10.5'
-   don't know, why plugin still finds vulnerability
-   ]]></notes>
-        <cve>CVE-2017-14063</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
-   log4j is forced by ES
-   ]]></notes>
-        <cve>CVE-2020-9488</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
-   according to https://github.com/FasterXML/jackson-databind/issues/2589#issuecomment-714833837
-   should be already fixed
-   ]]></notes>
-        <cve>CVE-2020-25649</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
    file name: circe-refined_2.12-0.13.0.jar - coincidence of names
    ]]></notes>
         <sha1>e48e7de23bba2007ceb0d6bce80e55139d98d9c2</sha1>
@@ -68,5 +41,21 @@
    ]]></notes>
         <sha1>ce88877609b732ab2544f90001ca70e815bbc49c</sha1>
         <cpe>cpe:/a:async_project:async</cpe>
+    </suppress>
+    <!-- The following CVE's are false positive and should be updated to fixed for version 1.32,
+         description: https://bitbucket.org/snakeyaml/snakeyaml/issues/531/stackoverflow-oss-fuzz-47081 -->
+    <suppress>
+        <notes><![CDATA[
+   file name: ror-shadowed-libs-all.jar (shaded: org.yaml:snakeyaml:1.32)
+   ]]></notes>
+        <sha1>d51efbe04924b1b5c38ae59f4003acd040d5f436</sha1>
+        <cve>CVE-2022-38752</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: snakeyaml-1.32.jar
+   ]]></notes>
+        <sha1>e80612549feb5c9191c498de628c1aa80693cf0b</sha1>
+        <cve>CVE-2022-38752</cve>
     </suppress>
 </suppressions>
