@@ -93,7 +93,7 @@ class EsRemoteClustersContainer private[containers](val localCluster: EsClusterC
                                         remoteClustersConfig: Map[String, EsClusterContainer]): Unit = {
     val clusterManager = new ClusterManager(container.nodes.head.adminClient, esVersion = container.nodes.head.esVersion)
     val result = clusterManager.configureRemoteClusters(
-      remoteClustersConfig.mapValues(_.nodes.map(c => s""""${c.esConfig.nodeName}:9300""""))
+      remoteClustersConfig.mapValues(_.nodes.map(c => s"${c.esConfig.nodeName}:9300"))
     )
 
     result.responseCode match {

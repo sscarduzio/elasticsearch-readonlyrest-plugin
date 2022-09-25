@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.ssl
 
 import io.netty.channel.Channel
-import io.netty.handler.ssl.{NotSslRecordException, SslContext}
+import io.netty.handler.ssl.NotSslRecordException
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings.{ClusterSettings, Settings}
@@ -27,7 +27,6 @@ import org.elasticsearch.http.netty4.Netty4HttpServerTransport
 import org.elasticsearch.http.{HttpChannel, HttpServerTransport}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration
-import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SSLCertHelper
 
 class SSLNetty4HttpServerTransport(settings: Settings,
@@ -42,6 +41,10 @@ class SSLNetty4HttpServerTransport(settings: Settings,
   extends Netty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, clusterSettings)
     with Logging {
 
+  private val serverSslContext = SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, ssl.clientAuthenticationEnabled)
+
+  override def configureServerChannelHandler = new SSLHandler(this)
+
   override def onException(channel: HttpChannel, cause: Exception): Unit = {
     if (!this.lifecycle.started) return
     else if (cause.getCause.isInstanceOf[NotSslRecordException]) logger.warn(cause.getMessage + " connecting from: " + channel.getRemoteAddress)
@@ -49,22 +52,12 @@ class SSLNetty4HttpServerTransport(settings: Settings,
     channel.close()
   }
 
-  override def configureServerChannelHandler = new SSLHandler(this)
-
   final class SSLHandler(transport: Netty4HttpServerTransport)
     extends Netty4HttpServerTransport.HttpChannelHandler(transport, handlingSettings) {
 
-    private var context = Option.empty[SslContext]
-
-    doPrivileged {
-      context = Option(SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, ssl.clientAuthenticationEnabled))
-    }
-
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
-      context.foreach { sslCtx =>
-        ch.pipeline().addFirst("ssl_netty4_handler", sslCtx.newHandler(ch.alloc()))
-      }
+      ch.pipeline().addFirst("ssl_netty4_handler", serverSslContext.newHandler(ch.alloc()))
     }
   }
 }

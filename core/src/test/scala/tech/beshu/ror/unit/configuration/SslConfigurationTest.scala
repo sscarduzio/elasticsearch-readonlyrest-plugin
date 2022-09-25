@@ -20,6 +20,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.configuration.SslConfiguration.ServerCertificateConfiguration.{FileBasedConfiguration, KeystoreBasedConfiguration}
 import tech.beshu.ror.configuration.SslConfiguration.{ClientCertificateConfiguration, _}
 import tech.beshu.ror.configuration.{MalformedSettings, RorSsl}
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
@@ -37,7 +38,7 @@ class SslConfigurationTest
       "all properties contain at least one non-digit" in {
         val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
         inside(ssl.externalSsl) {
-          case Some(ExternalSslConfiguration(ServerCertificateConfiguration.KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateConfiguration.TruststoreBasedConfiguration(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
+          case Some(ExternalSslConfiguration(KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateConfiguration.TruststoreBasedConfiguration(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
             keystoreFile.value.getName should be( "ror-keystore.jks")
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
@@ -52,7 +53,7 @@ class SslConfigurationTest
       "some properties contains only digits" in {
         val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_elasticsearch_config_only_digits/")).runSyncUnsafe().right.get
         inside(ssl.externalSsl) {
-          case Some(ExternalSslConfiguration(ServerCertificateConfiguration.KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateConfiguration.TruststoreBasedConfiguration(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
+          case Some(ExternalSslConfiguration(KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateConfiguration.TruststoreBasedConfiguration(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
             keystoreFile.value.getName should be( "ror-keystore.jks")
             keystorePassword should be(KeystorePassword("123456"))
             keyPass should be(KeyPass("12"))
@@ -67,7 +68,7 @@ class SslConfigurationTest
       "server and client are configured using pem files" in {
         val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_pem_files/")).runSyncUnsafe().right.get
         inside(ssl.externalSsl) {
-          case Some(ExternalSslConfiguration(ServerCertificateConfiguration.FileBasedConfiguration(serverCertificateKeyFile, serverCertificateFile), Some(ClientCertificateConfiguration.FileBasedConfiguration(clientTrustedCertificateFile)), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
+          case Some(ExternalSslConfiguration(FileBasedConfiguration(serverCertificateKeyFile, serverCertificateFile), Some(ClientCertificateConfiguration.FileBasedConfiguration(clientTrustedCertificateFile)), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
             serverCertificateKeyFile.value.getName should be("server_certificate_key.pem")
             serverCertificateFile.value.getName should be("server_certificate.pem")
             clientTrustedCertificateFile.value.getName should be("client_certificate.pem")
@@ -81,7 +82,7 @@ class SslConfigurationTest
       "elasticsearch config file doesn't contain ROR ssl section" in {
         val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_readonlyrest_config/")).runSyncUnsafe().right.get
         inside(ssl.externalSsl) {
-          case Some(ExternalSslConfiguration(ServerCertificateConfiguration.KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateConfiguration.TruststoreBasedConfiguration(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
+          case Some(ExternalSslConfiguration(KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateConfiguration.TruststoreBasedConfiguration(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
             keystoreFile.value.getName should be( "ror-keystore.jks")
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
@@ -130,13 +131,14 @@ class SslConfigurationTest
     "be loaded from elasticsearch config file" in {
       val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
       inside(ssl.interNodeSsl) {
-        case Some(InternodeSslConfiguration(ServerCertificateConfiguration.KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), truststoreConfiguration, allowedProtocols, allowedCiphers, certificateVerificationEnabled)) =>
+        case Some(InternodeSslConfiguration(KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), truststoreConfiguration, allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled)) =>
           keystoreFile.value.getName should be( "ror-keystore.jks")
           keystorePassword should be(KeystorePassword("readonlyrest1"))
           keyPass should be(KeyPass("readonlyrest2"))
           truststoreConfiguration should be(None)
           allowedProtocols should be(Set.empty)
           allowedCiphers should be(Set.empty)
+          clientAuthenticationEnabled should be (false)
           certificateVerificationEnabled should be(true)
       }
       ssl.externalSsl should be(None)
@@ -144,12 +146,13 @@ class SslConfigurationTest
     "be loaded from elasticsearch config file when pem files are used" in {
       val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_pem_files/")).runSyncUnsafe().right.get
       inside(ssl.interNodeSsl) {
-        case Some(InternodeSslConfiguration(ServerCertificateConfiguration.FileBasedConfiguration(serverCertificateKeyFile, serverCertificateFile), Some(ClientCertificateConfiguration.FileBasedConfiguration(clientTrustedCertificateFile)), allowedProtocols, allowedCiphers, certificateVerificationEnabled)) =>
+        case Some(InternodeSslConfiguration(FileBasedConfiguration(serverCertificateKeyFile, serverCertificateFile), Some(ClientCertificateConfiguration.FileBasedConfiguration(clientTrustedCertificateFile)), allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled)) =>
           serverCertificateKeyFile.value.getName should be("server_certificate_key.pem")
           serverCertificateFile.value.getName should be("server_certificate.pem")
           clientTrustedCertificateFile.value.getName should be("client_certificate.pem")
           allowedProtocols should be(Set.empty)
           allowedCiphers should be(Set.empty)
+          clientAuthenticationEnabled should be (false)
           certificateVerificationEnabled should be(true)
       }
     }
@@ -157,7 +160,7 @@ class SslConfigurationTest
       "elasticsearch config file doesn't contain ROR ssl section" in {
         val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_readonlyrest_config/")).runSyncUnsafe().right.get
         inside(ssl.interNodeSsl) {
-          case Some(InternodeSslConfiguration(ServerCertificateConfiguration.KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateConfiguration.TruststoreBasedConfiguration(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, certificateVerificationEnabled)) =>
+          case Some(InternodeSslConfiguration(KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateConfiguration.TruststoreBasedConfiguration(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled)) =>
             keystoreFile.value.getName should be( "ror-keystore.jks")
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
@@ -165,6 +168,7 @@ class SslConfigurationTest
             truststorePassword should be(TruststorePassword("readonlyrest3"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
+            clientAuthenticationEnabled should be (false)
             certificateVerificationEnabled should be(true)
         }
         ssl.externalSsl should be(None)
