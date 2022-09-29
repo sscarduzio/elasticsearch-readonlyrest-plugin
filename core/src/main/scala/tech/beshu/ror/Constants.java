@@ -110,6 +110,13 @@ public class Constants {
       "indices:admin/create",
       "indices:admin/create_index",
       "indices:admin/ilm/*",
-      "indices:monitor/*"
+      "indices:monitor/*",
+      "cluster:admin/ingest/pipeline/put",
+      "indices:admin/data_stream/get",
+      "indices:admin/index_template/get",
+      "cluster:monitor/settings",
+      "indices:admin/settings/update",
+      "cluster:admin/ilm/put",
+      "cluster:admin/repository/put"
   );
 }
