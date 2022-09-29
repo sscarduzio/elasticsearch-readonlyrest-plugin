@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: ROR Internal API
   description: The API is designed for ROR KBN plugin. It should be treated as internal. It means that backward compatibility won't be a first-class thing for us.
-  version: 1.0.0
+  version: 2.0.0
 
 paths:
   /_readonlyrest/admin/config/test:
@@ -15,7 +15,7 @@ paths:
         - $ref: '#/components/parameters/XRorCorrelationIdHeader'
       responses:
         200:
-          description: Contains currenlty configured Test Settings or business error
+          description: Contains currently configured Test Settings or business error
           content:
             application/json:
               schema:
@@ -111,8 +111,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/InvalidateTestSettingsResponse'
               examples:
-                InvalidateTestSettingsResponseExample:
-                  $ref: "#/components/examples/InvalidateTestSettingsResponseExample"
+                InvalidateTestSettingsSuccessResponseExample:
+                  $ref: "#/components/examples/InvalidateTestSettingsSuccessResponseExample"
+                InvalidateTestSettingsFailedResponseExample:
+                  $ref: "#/components/examples/InvalidateTestSettingsFailedResponseExample"
         403:
           description: The request was forbidden by ROR's ACL
           content:
@@ -137,7 +139,7 @@ paths:
   /_readonlyrest/admin/config/test/localusers:
     get:
       summary: Getting list of local users
-      description: The endpoint can be used to fetch local users' names defined in currenlty configured Test settings. If Test settings are not configured, the endpoint returns proper error.
+      description: The endpoint can be used to fetch local users' names defined in currently configured Test settings. If Test settings are not configured, the endpoint returns proper error.
       tags:
         - Test Settings
       parameters:
@@ -258,6 +260,8 @@ paths:
                   $ref: "#/components/examples/TestSettingsInvalidatedAuthServicesResponseExample"
                 UnknownAuthServicesDetectedResponseExample:
                   $ref: "#/components/examples/UnknownAuthServicesDetectedResponseExample"
+                AuthMocksUpdateFailedResponseExample:
+                  $ref: "#/components/examples/AuthMocksUpdateFailedResponseExample"
         403:
           description: The request was forbidden by ROR's ACL
           content:
@@ -405,14 +409,14 @@ components:
         warnings:
           type: array
           items:
-            $ref: '#/components/schemas/TestSettingsImperonationWarnings'
+            $ref: '#/components/schemas/TestSettingsImpersonationWarnings'
 
     RorSettingsTtl:
       type: string
       description: "Configured ROR Settings Time To Live value. After this time the Test Setting will be automatically invalidated. Available units: d, day, h, hr, hour m, min, minute s, sec, second"
       example: 30 m
 
-    TestSettingsImperonationWarnings:
+    TestSettingsImpersonationWarnings:
       description: "It warns about problems with impersonation in given block"
       type: object
       required:
@@ -460,6 +464,7 @@ components:
       required:
         - status
         - message
+        - valid_to
       properties:
         status:
           type: string
@@ -468,6 +473,11 @@ components:
         message:
           type: string
           description: Human readable message
+        valid_to:
+          type: string
+          format: date-time
+          description: "It says how long the Test Settings will be valid. After that date, the Settings will be invalidated"
+          example: "2022-01-12T07:20:50.52Z"
 
     UpdateTestSettingsFailedResponse:
       type: object
@@ -484,6 +494,16 @@ components:
           description: Human readable message (cause)
 
     InvalidateTestSettingsResponse:
+      oneOf:
+        - $ref: '#/components/schemas/InvalidateTestSettingsSuccessResponse'
+        - $ref: '#/components/schemas/InvalidateTestSettingsFailedResponse'
+      discriminator:
+        propertyName: status
+        mapping:
+          OK: '#/components/schemas/InvalidateTestSettingsSuccessResponse'
+          FAILED: '#/components/schemas/InvalidateTestSettingsFailedResponse'
+
+    InvalidateTestSettingsSuccessResponse:
       type: object
       required:
         - status
@@ -493,6 +513,20 @@ components:
           type: string
           enum:
             - OK
+        message:
+          type: string
+          description: Human readable message (cause)
+
+    InvalidateTestSettingsFailedResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          enum:
+            - FAILED
         message:
           type: string
           description: Human readable message (cause)
@@ -586,6 +620,18 @@ components:
           type: string
           description: Human readable message
 
+    AuthMockUpdateFailedResponse:
+      type: object
+      required:
+      properties:
+        status:
+          type: string
+          enum:
+            - FAILED
+        message:
+          type: string
+          description: Human readable message
+
     UnknownAuthServicesDetectedResponse:
       type: object
       required:
@@ -616,6 +662,7 @@ components:
         - $ref: '#/components/schemas/AuthMockTestSettingsNotConfiguredResponse'
         - $ref: '#/components/schemas/AuthMockTestSettingsInvalidatedResponse'
         - $ref: '#/components/schemas/UnknownAuthServicesDetectedResponse'
+        - $ref: '#/components/schemas/AuthMockUpdateFailedResponse'
       discriminator:
         propertyName: status
         mapping:
@@ -623,6 +670,7 @@ components:
           TEST_SETTINGS_NOT_CONFIGURED: '#/components/schemas/AuthMockTestSettingsNotConfiguredResponse'
           TEST_SETTINGS_INVALIDATED: '#/components/schemas/AuthMockTestSettingsInvalidatedResponse'
           UNKNOWN_AUTH_SERVICES_DETECTED: '#/components/schemas/UnknownAuthServicesDetectedResponse'
+          FAILED: '#/components/schemas/AuthMockUpdateFailedResponse'
 
     AuthMocksUpdatedResponse:
       type: object
@@ -915,6 +963,7 @@ components:
       value:
         status: OK
         message: updated settings
+        valid_to: "2022-01-12T07:20:50.52Z"
 
     TestSettingsUpdateFailedResponseExample:
       summary: ROR Test settings update failed
@@ -922,11 +971,17 @@ components:
         status: FAILED
         message: Current settings are already loaded
 
-    InvalidateTestSettingsResponseExample:
+    InvalidateTestSettingsSuccessResponseExample:
       summary: ROR Test settings were invalidated
       value:
         status: OK
         message: test settings invalidated
+
+    InvalidateTestSettingsFailedResponseExample:
+      summary: ROR Test settings invalidation failed
+      value:
+        status: FAILED
+        message: cannot invalidate test settings
 
     GetLocalUsersFromTestSettingsResponseExample:
       summary: Local users list response
@@ -1142,6 +1197,12 @@ components:
       value:
         status: UNKNOWN_AUTH_SERVICES_DETECTED
         message: ROR doesn't allow to configure unknown Auth Services. Only the ones used in ROR's Test settings can be configured.
+
+    AuthMocksUpdateFailedResponseExample:
+      summary: Auth Services mocks update has failed
+      value:
+        status: FAILED
+        message: 'Cannot save auth services mocks: Cannot save settings in index'
 
     AuthMocksUpdatedResponseExample:
       summary: Auth Services mocks were updated

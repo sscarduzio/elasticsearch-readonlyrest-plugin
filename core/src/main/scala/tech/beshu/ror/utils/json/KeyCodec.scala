@@ -14,9 +14,17 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.proxy
+package tech.beshu.ror.utils.json
 
-import tech.beshu.ror.integration.suites.AdminApiAuthMockSuite
-import tech.beshu.ror.integration.utils.SingleNodeProxyTestSupport
+import io.circe.{KeyDecoder, KeyEncoder}
 
-class AdminAuthMockApiProxyTests extends AdminApiAuthMockSuite with SingleNodeProxyTestSupport
+trait KeyCodec[A] extends KeyEncoder[A] with KeyDecoder[A]
+
+object KeyCodec {
+  def from[A](decode: String => Option[A],
+              encode: A => String): KeyCodec[A] = new KeyCodec[A] {
+    override def apply(key: String): Option[A] = decode(key)
+
+    override def apply(key: A): String = encode(key)
+  }
+}

@@ -14,9 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.configuration.index
 
-import tech.beshu.ror.integration.suites.AdminApiWithCustomRorIndexSuite
-import tech.beshu.ror.integration.utils.PluginTestSupport
+private[index] object Config {
+  object rorSettingsIndexConst {
+    val id = "1"
+    val settingsKey = "settings"
+  }
 
-class AdminApiWithCustomRorIndexPluginTests extends AdminApiWithCustomRorIndexSuite with PluginTestSupport
+  object rorTestSettingsIndexConst {
+    val id = "2"
+  }
+}

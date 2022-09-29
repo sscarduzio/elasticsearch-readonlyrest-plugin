@@ -33,7 +33,8 @@ trait AdminApiWithDefaultRorIndexSuite extends BaseAdminApiSuite {
       clusterName = "ROR1",
       numberOfInstances = 2,
       securityType = RorSecurity(Attributes.default.copy(
-        rorConfigFileName = rorConfigFileName
+        rorConfigFileName = rorConfigFileName,
+        rorConfigReloading = Attributes.RorConfigReloading.Enabled(interval = settingsReloadInterval)
       )),
       nodeDataInitializer = nodeDataInitializer()
     )

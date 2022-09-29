@@ -21,20 +21,18 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 
-final case class MapsBasedMocksProvider(ldapMocks: Map[LdapService.Name, LdapServiceMock] = Map.empty,
-                                        externalAuthenticationServiceMocks: Map[ExternalAuthenticationService.Name, ExternalAuthenticationServiceMock] = Map.empty,
-                                        externalAuthorizationServiceMocks: Map[ExternalAuthorizationService.Name, ExternalAuthorizationServiceMock] = Map.empty)
+private[mocks] final case class SimpleMocksProvider(mocks: AuthServicesMocks)
   extends MocksProvider {
 
   override def ldapServiceWith(id: LdapService.Name)
                               (implicit context: RequestId): Option[LdapServiceMock] =
-    ldapMocks.get(id)
+    mocks.ldapMocks.get(id)
 
   override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
                                                 (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] =
-    externalAuthenticationServiceMocks.get(id)
+    mocks.externalAuthenticationServiceMocks.get(id)
 
   override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
                                                (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] =
-    externalAuthorizationServiceMocks.get(id)
+    mocks.externalAuthorizationServiceMocks.get(id)
 }

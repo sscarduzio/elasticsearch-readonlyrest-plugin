@@ -10,7 +10,7 @@ trigger:
     include:
     - master
     - develop
-    - epic/*
+    - '*/epic/*'
     - RORDEV*
     - '*/pull/*'
   tags:
