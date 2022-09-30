@@ -117,6 +117,7 @@ public class Constants {
       "cluster:monitor/settings",
       "indices:admin/settings/update",
       "cluster:admin/ilm/put",
-      "cluster:admin/repository/put"
+      "cluster:admin/repository/put",
+      "indices:data/write/update/byquery"
   );
 }
