@@ -15,6 +15,8 @@ readonlyrest:
     truststore_pass: test
     key_pass: test
 
+  enable: false
+
   access_control_rules:
 
     # ES containter initializer need this rule to configure ES instance after startup

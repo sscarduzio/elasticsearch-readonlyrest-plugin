@@ -20,7 +20,7 @@ import cats.implicits._
 import cats.Monoid
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.clusterindices.BaseIndicesProcessor.IndicesManager
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexAttribute}
 import tech.beshu.ror.accesscontrol.matchers.IndicesMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
@@ -29,11 +29,11 @@ class LocalIndicesManager(requestContext: RequestContext,
   extends IndicesManager[ClusterIndexName.Local] {
 
   override def allIndicesAndAliases: Task[Set[ClusterIndexName.Local]] = Task.delay {
-    requestContext.allIndicesAndAliases.flatMap(_.all)
+    indices(requestContext.indexAttributes).flatMap(_.all)
   }
 
   override def allIndices: Task[Set[ClusterIndexName.Local]] = Task.delay {
-    requestContext.allIndicesAndAliases.map(_.index)
+    indices(requestContext.indexAttributes).map(_.index)
   }
 
   override def allAliases: Task[Set[ClusterIndexName.Local]] = Task.delay {
@@ -42,12 +42,17 @@ class LocalIndicesManager(requestContext: RequestContext,
 
   override def indicesPerAliasMap: Task[Map[ClusterIndexName.Local, Set[ClusterIndexName.Local]]] = Task.delay {
     val mapMonoid = Monoid[Map[ClusterIndexName.Local, Set[ClusterIndexName.Local]]]
-    requestContext
-      .allIndicesAndAliases
+    indices(requestContext.indexAttributes)
       .foldLeft(Map.empty[ClusterIndexName.Local, Set[ClusterIndexName.Local]]) {
         case (acc, indexWithAliases) =>
           val localIndicesPerAliasMap = indexWithAliases.aliases.map((_, Set(indexWithAliases.index))).toMap
           mapMonoid.combine(acc, localIndicesPerAliasMap)
       }
+  }
+
+  private def indices(filteredBy: Set[IndexAttribute]) = {
+    requestContext
+      .allIndicesAndAliases
+      .filter(i => filteredBy.contains(i.attribute))
   }
 }

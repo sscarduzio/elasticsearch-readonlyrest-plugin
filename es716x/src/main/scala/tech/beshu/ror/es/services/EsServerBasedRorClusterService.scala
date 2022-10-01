@@ -30,7 +30,7 @@ import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilde
 import org.elasticsearch.action.support.PlainActionFuture
 import org.elasticsearch.client.Client
 import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.cluster.metadata.{Metadata, RepositoriesMetadata}
+import org.elasticsearch.cluster.metadata.{IndexMetadata, Metadata, RepositoriesMetadata}
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
@@ -50,6 +50,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
+import scala.collection.JavaConverters._
 
 class EsServerBasedRorClusterService(nodeName: String,
                                      clusterService: ClusterService,
@@ -136,17 +137,19 @@ class EsServerBasedRorClusterService(nodeName: String,
       .keysIt().asScala
       .flatMap { index =>
         val indexMetaData = indices.get(index)
-        indexMetaData.getState.name().toUpperCase match {
-          case "CLOSE" =>
-            None
-          case _ =>
-            IndexName.Full
-              .fromString(indexMetaData.getIndex.getName)
-              .map { indexName =>
-                val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Full.fromString)
-                FullLocalIndexWithAliases(indexName, aliases)
-              }
-        }
+        IndexName.Full
+          .fromString(indexMetaData.getIndex.getName)
+          .map { indexName =>
+            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Full.fromString)
+            FullLocalIndexWithAliases(
+              indexName,
+              indexMetaData.getState match {
+                case IndexMetadata.State.CLOSE => IndexAttribute.Closed
+                case IndexMetadata.State.OPEN => IndexAttribute.Opened
+              },
+              aliases
+            )
+          }
       }
       .toSet
   }
@@ -161,7 +164,7 @@ class EsServerBasedRorClusterService(nodeName: String,
           .fromString(dataStreamName)
           .map { dataStreamName =>
             val alias = IndexName.Full.fromString(dataStreamAlias.getName)
-            FullLocalIndexWithAliases(dataStreamName, alias.toSet)
+            FullLocalIndexWithAliases(dataStreamName, IndexAttribute.Opened, alias.toSet)
           }
       }
       .toSet
@@ -224,7 +227,13 @@ class EsServerBasedRorClusterService(nodeName: String,
           .getAliases.asSafeList
           .flatMap(IndexName.Full.fromString)
           .toSet
-        FullRemoteIndexWithAliases(remoteClusterName, index, aliases)
+        val indexAttribute = resolvedIndex
+          .getAttributes.toSet
+          .find(_.toLowerCase == "CLOSED") match {
+          case Some(_) => IndexAttribute.Closed
+          case None => IndexAttribute.Opened
+        }
+        FullRemoteIndexWithAliases(remoteClusterName, index, indexAttribute, aliases)
       }
   }
 
