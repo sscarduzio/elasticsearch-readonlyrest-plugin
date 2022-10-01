@@ -98,6 +98,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |     type: allow
        |     groups: ["g1", "g2", "g3"]
        |     indices: ["test-@explode{acl:available_groups}"]
+       |     filter: '{"bool": { "must": { "terms": { "group_id": [@{acl:available_groups}] }}}}'
        |
        |  users:
        |   - username: user1
@@ -339,6 +340,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             )
             blockContext.filteredIndices should be(Set(clusterIndexName("test-g1"), clusterIndexName("test-g3")))
             blockContext.responseHeaders should be(Set.empty)
+            blockContext.filter should be (Some(Filter("""{"bool": { "must": { "terms": { "group_id": ["g1","g3"] }}}}""")))
           }
         }
       }

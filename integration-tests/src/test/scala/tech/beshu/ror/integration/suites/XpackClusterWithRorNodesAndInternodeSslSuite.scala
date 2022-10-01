@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import cats.data.NonEmptyList
 import eu.timepit.refined.auto._
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.concurrent.Eventually
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
@@ -35,7 +36,8 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
     with BaseEsClusterIntegrationTest
     with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
-    with BeforeAndAfterAll {
+    with BeforeAndAfterAll
+    with Eventually {
   this: EsClusterProvider =>
 
   def rorConfigPath: String
@@ -109,11 +111,13 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
   }
   "Field caps request works" in {
     val documentManager = new DocumentManager(clusterContainer.nodes.head.adminClient, esVersion = esVersionUsed)
-    documentManager.createDoc("user2_index", 1, ujson.read("""{ "data1": 1, "data2": 2 }"""))
+    documentManager.createDoc("user2_index", 1, ujson.read("""{ "data1": 1, "data2": 2 }""")).force()
 
-    val searchManager = new SearchManager(basicAuthClient("user2", "test"))
-    val result = searchManager.fieldCaps(indices = "user2_index" :: Nil, fields = "data1" :: Nil)
+    eventually {
+      val searchManager = new SearchManager(basicAuthClient("user2", "test"))
+      val result = searchManager.fieldCaps(indices = "user2_index" :: Nil, fields = "data1" :: Nil)
 
-    result.responseCode should be(200)
+      result.responseCode should be(200)
+    }
   }
 }

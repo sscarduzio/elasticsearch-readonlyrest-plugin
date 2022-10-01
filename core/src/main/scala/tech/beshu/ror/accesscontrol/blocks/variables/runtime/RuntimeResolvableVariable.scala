@@ -151,7 +151,7 @@ object SingleExtractable {
   case object AvailableGroupsVar extends SingleExtractable with VariableType.AvailableGroups {
 
     override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] = {
-      Left(ExtractError(s"Available groups are usable only with @explode"))
+      Right(blockContext.userMetadata.availableGroups.toList.map(v => s""""${v.value.value}"""").mkString(","))
     }
   }
 }

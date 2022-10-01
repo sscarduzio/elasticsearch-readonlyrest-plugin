@@ -103,6 +103,13 @@ object ScalaOps {
         .toList
   }
 
+  implicit class MapOps[K, V](val map: Map[K, V]) extends AnyVal {
+    def asStringMap: Map[String, String] =
+      map.collect {
+        case (key: String, value: String) => (key, value)
+      }
+  }
+
   implicit class ListOfListOps[T](val lists: List[List[T]]) extends AnyVal {
 
     def cartesian: List[List[T]] = {

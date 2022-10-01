@@ -21,15 +21,14 @@ import java.util.concurrent.TimeUnit
 import better.files.File
 import cats.Show
 import cats.implicits._
-import eu.timepit.refined._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.providers.PropertiesProvider.PropName
+import tech.beshu.ror.utils.DurationOps._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -38,8 +37,8 @@ import scala.util.{Failure, Success, Try}
 object RorProperties extends Logging {
 
   object defaults {
-    val refreshInterval: FiniteDuration Refined Positive = Refined.unsafeApply(5 second)
-    val loadingDelay: FiniteDuration Refined Positive = Refined.unsafeApply(5 second)
+    val refreshInterval: FiniteDuration Refined Positive = (5 second).toRefinedPositiveUnsafe
+    val loadingDelay: FiniteDuration Refined Positive = (5 second).toRefinedPositiveUnsafe
     val esHost: String = "localhost"
     val esPort: Int = 9200
     val proxyPort: Int = 5000
@@ -136,7 +135,7 @@ object RorProperties extends Logging {
       case Success(interval) if interval == 0 =>
         None
       case Success(interval) if interval > 0 =>
-        Some(Refined.unsafeApply(FiniteDuration(interval.toLong, TimeUnit.SECONDS)))
+        Some(FiniteDuration(interval.toLong, TimeUnit.SECONDS).toRefinedPositiveUnsafe)
       case Failure(_) =>
         throw new IllegalArgumentException(s"Cannot convert '$value' to finite positive duration")
     }

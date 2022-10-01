@@ -60,10 +60,10 @@ class ImpersonationDefinitionsDecoderCreator(caseMappingEquality: UserIdCaseMapp
         val usersKey = "users"
         for {
           impersonatorPatterns <- c.downField(impersonatorKey).as[UniqueNonEmptyList[UserIdPattern]].map(UserIdPatterns.apply)
-          users <- c.downField(usersKey).as[UniqueNonEmptyList[User.Id]]
+          impersonatedUsers <- c.downField(usersKey).as[UniqueNonEmptyList[UserIdPattern]].map(UserIdPatterns.apply).map(ImpersonatorDef.ImpersonatedUsers)
           authRuleDecoder = authenticationRulesDecoder(impersonatorPatterns)
           authRule <- authRuleDecoder.tryDecode(c.withoutKeys(Set(impersonatorKey, usersKey)))
-        } yield ImpersonatorDef(impersonatorPatterns, authRule, users)
+        } yield ImpersonatorDef(impersonatorPatterns, authRule, impersonatedUsers)
       }
       .withError(DefinitionsLevelCreationError.apply, Message("Impersonation definition malformed"))
       .decoder

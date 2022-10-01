@@ -84,7 +84,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory with Inside with B
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("userA"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("userA")
                 )),
                 mocksProvider = NoOpMocksProvider  // not needed in this context
               )),
@@ -127,7 +127,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory with Inside with B
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("userA"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("userA")
                 )),
                 mocksProvider = NoOpMocksProvider  // not needed in this context
               )),
@@ -142,7 +142,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory with Inside with B
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("userB"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("userB")
                 )),
                 mocksProvider = NoOpMocksProvider  // not needed in this context
               )),
@@ -157,7 +157,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory with Inside with B
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("userA"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("userA")
                 )),
                 mocksProvider = NoOpMocksProvider  // not needed in this context
               ))

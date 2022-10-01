@@ -63,10 +63,10 @@ object RorSsl extends Logging {
     }
   }
 
-  private def loadSslConfigFromFile(config: File)
+  private def loadSslConfigFromFile(configFile: File)
                                    (implicit rorSslDecoder: Decoder[RorSsl],
                                     envVarsProvider: EnvVarsProvider) = {
-    new EsConfigFileLoader[RorSsl]().loadConfigFromFile(config, "ROR SSL")
+    new YamlFileBasedConfigLoader(configFile).loadConfig[RorSsl](configName = "ROR SSL configuration")
   }
 }
 
@@ -75,6 +75,8 @@ sealed trait SslConfiguration {
   def clientCertificateConfiguration: Option[SslConfiguration.ClientCertificateConfiguration]
   def allowedProtocols: Set[SslConfiguration.Protocol]
   def allowedCiphers: Set[SslConfiguration.Cipher]
+  def clientAuthenticationEnabled: Boolean
+  def certificateVerificationEnabled: Boolean
 }
 
 object SslConfiguration {
@@ -112,13 +114,19 @@ object SslConfiguration {
                                             clientCertificateConfiguration: Option[ClientCertificateConfiguration],
                                             allowedProtocols: Set[SslConfiguration.Protocol],
                                             allowedCiphers: Set[SslConfiguration.Cipher],
-                                            clientAuthenticationEnabled: Boolean) extends SslConfiguration
+                                            clientAuthenticationEnabled: Boolean)
+    extends SslConfiguration {
+
+    val certificateVerificationEnabled: Boolean = false
+  }
 
   final case class InternodeSslConfiguration(serverCertificateConfiguration: ServerCertificateConfiguration,
                                              clientCertificateConfiguration: Option[ClientCertificateConfiguration],
                                              allowedProtocols: Set[SslConfiguration.Protocol],
                                              allowedCiphers: Set[SslConfiguration.Cipher],
-                                             certificateVerificationEnabled: Boolean) extends SslConfiguration
+                                             clientAuthenticationEnabled: Boolean,
+                                             certificateVerificationEnabled: Boolean)
+    extends SslConfiguration
 }
 
 private object SslDecoders extends Logging {
@@ -149,7 +157,7 @@ private object SslDecoders extends Logging {
                                        clientCertificateConfiguration: Option[ClientCertificateConfiguration],
                                        allowedProtocols: Set[SslConfiguration.Protocol],
                                        allowedCiphers: Set[SslConfiguration.Cipher],
-                                       verification: Option[Boolean])
+                                       clientAuthentication: Option[Boolean])
 
 
   private implicit val keystorePasswordDecoder: Decoder[KeystorePassword] = DecoderHelpers.decodeStringLike.map(KeystorePassword.apply)
@@ -242,6 +250,7 @@ private object SslDecoders extends Logging {
     whenEnabled(c) {
       for {
         certificateVerification <- c.downField(consts.certificateVerification).as[Option[Boolean]]
+        verification <- c.downField(consts.verification).as[Option[Boolean]]
         sslCommonProperties <- sslCommonPropertiesDecoder(basePath, c)
       } yield
         InternodeSslConfiguration(
@@ -249,7 +258,8 @@ private object SslDecoders extends Logging {
           clientCertificateConfiguration = sslCommonProperties.clientCertificateConfiguration,
           allowedProtocols = sslCommonProperties.allowedProtocols,
           allowedCiphers = sslCommonProperties.allowedCiphers,
-          certificateVerificationEnabled = certificateVerification.orElse(sslCommonProperties.verification).getOrElse(false)
+          clientAuthenticationEnabled = sslCommonProperties.clientAuthentication.getOrElse(false),
+          certificateVerificationEnabled = certificateVerification.orElse(verification).getOrElse(false)
         )
     }
   }
@@ -257,7 +267,7 @@ private object SslDecoders extends Logging {
   private def sslExternalConfigurationDecoder(basePath: Path): Decoder[Option[ExternalSslConfiguration]] = Decoder.instance { c =>
     whenEnabled(c) {
       for {
-        clientAuthentication <- c.downField(consts.clientAuthentication).as[Option[Boolean]]
+        verification <- c.downField(consts.verification).as[Option[Boolean]]
         sslCommonProperties <- sslCommonPropertiesDecoder(basePath, c)
       } yield
         ExternalSslConfiguration(
@@ -265,7 +275,7 @@ private object SslDecoders extends Logging {
           clientCertificateConfiguration = sslCommonProperties.clientCertificateConfiguration,
           allowedProtocols = sslCommonProperties.allowedProtocols,
           allowedCiphers = sslCommonProperties.allowedCiphers,
-          clientAuthenticationEnabled = clientAuthentication.orElse(sslCommonProperties.verification).getOrElse(false)
+          clientAuthenticationEnabled = sslCommonProperties.clientAuthentication.orElse(verification).getOrElse(false)
         )
     }
   }
@@ -280,7 +290,7 @@ private object SslDecoders extends Logging {
     for {
       ciphers <- c.downField(consts.allowedCiphers).as[Option[Set[Cipher]]]
       protocols <- c.downField(consts.allowedProtocols).as[Option[Set[Protocol]]]
-      verification <- c.downField(consts.verification).as[Option[Boolean]]
+      clientAuthentication <- c.downField(consts.clientAuthentication).as[Option[Boolean]]
       serverCertificateConfiguration <- serverCertificateConfigurationDecoder(basePath).apply(c)
       clientCertificateConfiguration <- clientCertificateConfigurationDecoder(basePath).apply(c)
     } yield
@@ -289,7 +299,7 @@ private object SslDecoders extends Logging {
         clientCertificateConfiguration = clientCertificateConfiguration,
         allowedProtocols = protocols.getOrElse(Set.empty[Protocol]),
         allowedCiphers = ciphers.getOrElse(Set.empty[Cipher]),
-        verification = verification,
+        clientAuthentication = clientAuthentication,
       )
   }
 
