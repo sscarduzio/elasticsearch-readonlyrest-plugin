@@ -18,6 +18,7 @@ package tech.beshu.ror.utils
 
 import cats.effect.{IO, Resource}
 import io.netty.buffer.ByteBufAllocator
+import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import io.netty.handler.ssl.{ClientAuth, SslContext, SslContextBuilder}
 import org.apache.logging.log4j.scala.Logging
@@ -33,29 +34,67 @@ import tech.beshu.ror.configuration.SslConfiguration._
 import java.io.{File, FileInputStream, FileReader, IOException}
 import java.security.cert.{CertificateFactory, X509Certificate}
 import java.security.{KeyStore, PrivateKey}
-import javax.net.ssl.{KeyManagerFactory, TrustManagerFactory}
+import javax.net.ssl.{KeyManagerFactory, SNIServerName, SSLEngine, TrustManagerFactory}
 import scala.collection.JavaConverters._
 import scala.language.{existentials, implicitConversions}
 import scala.util.Try
 
 object SSLCertHelper extends Logging {
 
-  def prepareClientSSLContext(sslConfiguration: SslConfiguration, fipsCompliant: Boolean, certificateVerificationEnabled: Boolean): SslContext = {
-    if (certificateVerificationEnabled) {
+  def prepareSSLEngine(sslContext: SslContext,
+                       channelHandlerContext: ChannelHandlerContext,
+                       serverName: Option[SNIServerName]): SSLEngine = {
+    val sslEngine = sslContext.newEngine(channelHandlerContext.alloc())
+    serverName.foreach { name =>
+      val sslParameters = sslEngine.getSSLParameters
+      sslParameters.setServerNames(List(name).asJava)
+      sslEngine.setSSLParameters(sslParameters)
+    }
+    sslEngine
+  }
+
+  def prepareClientSSLContext(sslConfiguration: SslConfiguration,
+                              fipsCompliant: Boolean,
+                              certificateVerificationEnabled: Boolean): SslContext = {
+    val builder = if (certificateVerificationEnabled) {
       sslConfiguration.clientCertificateConfiguration match {
         case Some(truststoreBasedConfiguration: TruststoreBasedConfiguration) =>
-          SslContextBuilder.forClient.trustManager(getTrustManagerFactory(truststoreBasedConfiguration, fipsCompliant)).build()
+          SslContextBuilder.forClient.trustManager(getTrustManagerFactory(truststoreBasedConfiguration, fipsCompliant))
         case Some(fileBasedConfiguration: ClientCertificateConfiguration.FileBasedConfiguration) =>
-          SslContextBuilder.forClient.trustManager(getTrustedCertificatesFromPemFile(fileBasedConfiguration).toIterable.asJava).build()
+          SslContextBuilder.forClient.trustManager(getTrustedCertificatesFromPemFile(fileBasedConfiguration).toIterable.asJava)
         case None =>
           throw new Exception("Client Authentication could not be enabled because trust certificates has not been configured")
       }
     } else {
-      SslContextBuilder.forClient.trustManager(InsecureTrustManagerFactory.INSTANCE).build
+      SslContextBuilder.forClient.trustManager(InsecureTrustManagerFactory.INSTANCE)
     }
+    val result = if(fipsCompliant) {
+      val keystoreBasedConfiguration = sslConfiguration.serverCertificateConfiguration match {
+        case keystoreBasedConfiguration: KeystoreBasedConfiguration => keystoreBasedConfiguration
+        case _ => throw new Exception("KeyStore based configuration is required in FIPS compliant mode")
+      }
+      getFipsCompliantKeyManagerFactory(keystoreBasedConfiguration)
+        .map { keyManagerFactory =>
+          logger.info("Initializing ROR SSL using SSL provider: " + keyManagerFactory.getProvider.getName)
+          builder.keyManager(keyManagerFactory)
+        }
+    } else {
+      (sslConfiguration.serverCertificateConfiguration match {
+        case fileBasedConfiguration: ServerCertificateConfiguration.FileBasedConfiguration =>
+          getPrivateKeyAndCertificateChainFromPemFiles(fileBasedConfiguration)
+        case keystoreBasedConfiguration: KeystoreBasedConfiguration =>
+          getPrivateKeyAndCertificateChainFromKeystore(keystoreBasedConfiguration)
+      }).map { case (privateKey, certificateChain) =>
+        logger.info(s"Initializing ROR SSL using default SSL provider ${SslContext.defaultServerProvider().name()}")
+        builder.keyManager(privateKey, certificateChain.toIterable.asJava)
+      }
+    }
+    result.unsafeRunSync().build()
   }
 
-  def prepareServerSSLContext(sslConfiguration: SslConfiguration, fipsCompliant: Boolean, clientAuthenticationEnabled: Boolean): SslContext = {
+  def prepareServerSSLContext(sslConfiguration: SslConfiguration,
+                              fipsCompliant: Boolean,
+                              clientAuthenticationEnabled: Boolean): SslContext = {
     prepareSslContextBuilder(sslConfiguration, fipsCompliant)
       .attempt
       .map {

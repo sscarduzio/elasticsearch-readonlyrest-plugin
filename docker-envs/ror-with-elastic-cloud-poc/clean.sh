@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/bin/bash
 
-cd ror-cluster && ./clean.sh
-cd ../elastic-cloud && ./clean.sh
+docker-compose stop
+docker-compose rm
+rm ror-cluster.log

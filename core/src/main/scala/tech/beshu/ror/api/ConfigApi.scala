@@ -29,11 +29,11 @@ import tech.beshu.ror.api.ConfigApi._
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigReloadError, RawConfigReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
-import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
-import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexConfigNotExist
+import tech.beshu.ror.configuration.index.{IndexConfigError, IndexConfigManager}
+import tech.beshu.ror.configuration.index.IndexConfigError.IndexConfigNotExist
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
 import tech.beshu.ror.configuration.loader.FileConfigLoader
-import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
+import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 
 import scala.language.postfixOps

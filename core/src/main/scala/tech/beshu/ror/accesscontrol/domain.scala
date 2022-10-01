@@ -76,7 +76,10 @@ object domain {
     }
 
     final case class UserIdPattern(override val value: NonEmptyString)
-      extends Pattern[Id](value)
+      extends Pattern[Id](value) {
+
+      def containsWildcard: Boolean = value.value.contains("*")
+    }
   }
 
   final case class UserIdPatterns(patterns: UniqueNonEmptyList[User.UserIdPattern])

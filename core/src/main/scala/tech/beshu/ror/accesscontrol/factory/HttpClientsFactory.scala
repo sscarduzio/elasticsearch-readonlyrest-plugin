@@ -29,6 +29,7 @@ import org.asynchttpclient.Dsl.asyncHttpClient
 import org.asynchttpclient.netty.channel.DefaultChannelPool
 import org.asynchttpclient.{AsyncHttpClient, DefaultAsyncHttpClientConfig}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.{Config, HttpClient}
+import tech.beshu.ror.utils.DurationOps._
 
 import java.util.concurrent.CopyOnWriteArrayList
 import scala.collection.JavaConverters._
@@ -51,8 +52,8 @@ object HttpClientsFactory {
                           validate: Boolean)
   object Config {
     val default: Config = Config(
-      connectionTimeout = Refined.unsafeApply(2 seconds),
-      requestTimeout = Refined.unsafeApply(5 seconds),
+      connectionTimeout = (2 seconds).toRefinedPositiveUnsafe,
+      requestTimeout = (5 seconds).toRefinedPositiveUnsafe,
       connectionPoolSize = 30,
       validate = true
     )

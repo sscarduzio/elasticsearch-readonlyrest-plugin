@@ -1,0 +1,19 @@
+version: "3.7"
+services:
+
+  generate-certs:
+    build:
+      context: .
+      dockerfile: Dockerfile-genertate-certs
+      args:
+        ES_VERSION: $ELK_VERSION
+    volumes:
+      - certs-volume:/usr/share/elasticsearch/config/certs
+
+volumes:
+  certs-volume:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/certs-generator/certs

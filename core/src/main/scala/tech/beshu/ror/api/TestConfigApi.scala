@@ -20,16 +20,20 @@ import java.time.{Clock, Instant}
 
 import cats.data.EitherT
 import cats.implicits._
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
 import monix.eval.Task
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.api.TestConfigApi.TestConfigRequest.Type
 import tech.beshu.ror.api.TestConfigApi.TestConfigResponse._
 import tech.beshu.ror.api.TestConfigApi.{TestConfigRequest, TestConfigResponse}
-import tech.beshu.ror.boot.RorInstance.{RawConfigReloadError, TestConfig}
+import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
+import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, RawConfigReloadError, TestConfig, TestConfigUpdated}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
+import tech.beshu.ror.utils.DurationOps._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -58,8 +62,8 @@ class TestConfigApi(rorInstance: RorInstance)
     val result = for {
       updateRequest <- EitherT.fromEither[Task](decodeUpdateConfigRequest(body))
       rorConfig <- rorTestConfig(updateRequest.configString)
-      _ <- forceReloadTestConfig(rorConfig, updateRequest.ttl)
-    } yield TestConfigResponse.UpdateTestConfig.SuccessResponse("updated settings")
+      response <- forceReloadTestConfig(rorConfig, updateRequest.ttl)
+    } yield response
 
     result.value.map(_.merge)
   }
@@ -77,8 +81,11 @@ class TestConfigApi(rorInstance: RorInstance)
                                   (implicit requestId: RequestId): Task[TestConfigResponse] = {
     rorInstance
       .invalidateTestConfigEngine()
-      .map { _ =>
-        TestConfigResponse.InvalidateTestConfig.SuccessResponse("ROR Test settings are invalidated")
+      .map {
+        case Right(()) =>
+          TestConfigResponse.InvalidateTestConfig.SuccessResponse("ROR Test settings are invalidated")
+        case Left(IndexConfigInvalidationError.IndexConfigSavingError(error)) =>
+          TestConfigResponse.InvalidateTestConfig.FailedResponse(s"Cannot invalidate test settings: ${error.show}")
       }
   }
 
@@ -91,7 +98,7 @@ class TestConfigApi(rorInstance: RorInstance)
           TestConfigResponse.ProvideTestConfig.TestSettingsNotConfigured("ROR Test settings are not configured")
         case TestConfig.Present(config, rawConfig, configuredTtl, validTo) =>
           TestConfigResponse.ProvideTestConfig.CurrentTestSettings(
-            ttl = configuredTtl,
+            ttl = apiFormat(configuredTtl),
             validTo = validTo,
             settings = rawConfig,
             warnings = config.impersonationWarningsReader.read().map { warning =>
@@ -104,7 +111,7 @@ class TestConfigApi(rorInstance: RorInstance)
             }
           )
         case TestConfig.Invalidated(recentConfig, ttl) =>
-          TestConfigResponse.ProvideTestConfig.TestSettingsInvalidated("ROR Test settings are invalidated", recentConfig, ttl)
+          TestConfigResponse.ProvideTestConfig.TestSettingsInvalidated("ROR Test settings are invalidated", recentConfig, apiFormat(ttl))
       }
   }
 
@@ -126,20 +133,29 @@ class TestConfigApi(rorInstance: RorInstance)
   }
 
   private def forceReloadTestConfig(config: RawRorConfig,
-                                    ttl: FiniteDuration)
-                                   (implicit requestId: RequestId): EitherT[Task, TestConfigResponse, Unit] = {
+                                    ttl: FiniteDuration Refined Positive)
+                                   (implicit requestId: RequestId): EitherT[Task, TestConfigResponse, TestConfigResponse] = {
     EitherT(
       rorInstance
         .forceReloadTestConfigEngine(config, ttl)
         .map {
-          _.leftMap {
-            case RawConfigReloadError.ReloadingFailed(failure) =>
-              TestConfigResponse.UpdateTestConfig.FailedResponse(s"Cannot reload new settings: ${failure.message}")
-            case RawConfigReloadError.ConfigUpToDate(_) =>
-              TestConfigResponse.UpdateTestConfig.FailedResponse(s"Current settings are already loaded")
-            case RawConfigReloadError.RorInstanceStopped =>
-              TestConfigResponse.UpdateTestConfig.FailedResponse(s"ROR instance is being stopped")
-          }
+          _
+            .map { newTestConfig =>
+              TestConfigResponse.UpdateTestConfig.SuccessResponse(
+                message = "updated settings",
+                validTo = newTestConfig.validTo
+              )
+            }
+            .leftMap {
+              case IndexConfigSavingError(error) =>
+                TestConfigResponse.UpdateTestConfig.FailedResponse(s"Cannot reload new settings: ${error.show}")
+              case ReloadError(RawConfigReloadError.ConfigUpToDate(_)) =>
+                TestConfigResponse.UpdateTestConfig.FailedResponse(s"Current settings are already loaded")
+              case ReloadError(RawConfigReloadError.RorInstanceStopped) =>
+                TestConfigResponse.UpdateTestConfig.FailedResponse(s"ROR instance is being stopped")
+              case ReloadError(RawConfigReloadError.ReloadingFailed(failure)) =>
+                TestConfigResponse.UpdateTestConfig.FailedResponse(s"Cannot reload new settings: ${failure.message}")
+            }
         }
     )
   }
@@ -183,13 +199,14 @@ object TestConfigApi {
 
     sealed trait UpdateTestConfig extends TestConfigResponse
     object UpdateTestConfig {
-      final case class SuccessResponse(message: String) extends UpdateTestConfig
+      final case class SuccessResponse(message: String, validTo: Instant) extends UpdateTestConfig
       final case class FailedResponse(message: String) extends UpdateTestConfig
     }
 
     sealed trait InvalidateTestConfig extends TestConfigResponse
     object InvalidateTestConfig {
       final case class SuccessResponse(message: String) extends InvalidateTestConfig
+      final case class FailedResponse(message: String) extends InvalidateTestConfig
     }
 
     sealed trait ProvideLocalUsers extends TestConfigResponse
@@ -213,6 +230,7 @@ object TestConfigApi {
       case _: UpdateTestConfig.SuccessResponse => "OK"
       case _: UpdateTestConfig.FailedResponse => "FAILED"
       case _: InvalidateTestConfig.SuccessResponse => "OK"
+      case _: InvalidateTestConfig.FailedResponse => "FAILED"
       case _: ProvideLocalUsers.SuccessResponse => "OK"
       case _: ProvideLocalUsers.TestSettingsNotConfigured => "TEST_SETTINGS_NOT_CONFIGURED"
       case _: ProvideLocalUsers.TestSettingsInvalidated => "TEST_SETTINGS_INVALIDATED"
@@ -221,20 +239,25 @@ object TestConfigApi {
   }
 
   private object Utils {
-    final case class UpdateTestConfigRequest(configString: String, ttl: FiniteDuration)
+    final case class UpdateTestConfigRequest(configString: String,
+                                             ttl: FiniteDuration Refined Positive)
 
-    private def parseDuration(value: String): Either[String, FiniteDuration] = {
-      Try(Duration(value)).toOption match {
-        case Some(v: FiniteDuration) if v.toMillis > 0 => Right(v)
-        case Some(_) | None =>
-          Left(s"Cannot parse '$value' as duration.")
-      }
+    private def parseDuration(value: String): Either[String, FiniteDuration Refined Positive] = {
+      Try(Duration(value))
+        .toEither
+        .leftMap(_ =>s"Cannot parse '$value' as duration.")
+        .flatMap(_.toRefinedPositive)
     }
 
     object decoders {
-      implicit val durationDecoder: Decoder[FiniteDuration] = Decoder.decodeString.emap(parseDuration)
+      implicit val durationDecoder: Decoder[FiniteDuration Refined Positive] = Decoder.decodeString.emap(parseDuration)
+
       implicit val updateTestConfigRequestDecoder: Decoder[UpdateTestConfigRequest] =
         Decoder.forProduct2("settings", "ttl")(UpdateTestConfigRequest.apply)
+    }
+
+    def apiFormat(duration: FiniteDuration Refined Positive): FiniteDuration = {
+      duration.value.toCoarsest
     }
   }
 }

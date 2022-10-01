@@ -123,7 +123,7 @@ class ClusterManager(client: RestClient,
   private def createAddCLusterSettingsRequest(remoteClusters: Map[String, List[String]]) = {
     val remoteClustersConfigString = remoteClusters
       .map { case (name, seeds) =>
-        s""""$name": { "seeds": [ ${seeds.mkString(",")} ] }"""
+        s""""$name": { "seeds": [ ${seeds.mkString("\"", "\",\"", "\"")} ] }"""
       }
       .mkString(",\n")
 
