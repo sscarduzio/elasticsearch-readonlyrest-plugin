@@ -97,7 +97,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |   - name: "LDAP groups explode"
        |     type: allow
        |     groups: ["g1", "g2", "g3"]
-       |     indices: ["test-@explode{acl:available_groups}"]
+       |     indices: ["@{acl:available_groups}"]
        |     filter: '{"bool": { "must": { "terms": { "group_id": [@{acl:available_groups}] }}}}'
        |
        |  users:

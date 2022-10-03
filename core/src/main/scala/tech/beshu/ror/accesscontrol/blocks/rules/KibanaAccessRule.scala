@@ -16,9 +16,8 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import java.util.regex.Pattern
-
 import cats.implicits._
+import eu.timepit.refined.auto._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
@@ -27,13 +26,14 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local.devNullKibana
+import tech.beshu.ror.accesscontrol.domain.IndexName.Wildcard
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
-import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.matchers.{IndicesMatcher, MatcherWithWildcardsScalaAdapter}
 
+import java.util.regex.Pattern
 import scala.util.Try
 
 class KibanaAccessRule(val settings: Settings)
@@ -48,103 +48,141 @@ class KibanaAccessRule(val settings: Settings)
       Fulfilled(modifyMatched(blockContext))
     else if (requestContext.uriPath.isCurrentUserMetadataPath)
       Fulfilled(modifyMatched(blockContext))
-    // Allow other actions if devnull is targeted to readers and writers
-    else if (blockContext.requestContext.initialBlockContext.indices.contains(devNullKibana))
+    else if (isDevNullKibanaRelated(blockContext))
       Fulfilled(modifyMatched(blockContext))
-    // Any index, read op
-    else if (Matchers.roMatcher.`match`(requestContext.action))
+    else if (isRoAction(blockContext)) // Any index, read op
       Fulfilled(modifyMatched(blockContext))
-    else if (Matchers.clusterMatcher.`match`(requestContext.action))
+    else if (isClusterAction(blockContext))
       Fulfilled(modifyMatched(blockContext))
-    else if (emptyIndicesMatch(requestContext))
+    else if (emptyIndicesMatch(blockContext))
       Fulfilled(modifyMatched(blockContext))
-    else if (isKibanaSimplaData(requestContext))
+    else if (isKibanaSimplaData(blockContext))
       Fulfilled(modifyMatched(blockContext))
-    else
-      processCheck(blockContext)
-  }
-
-  private def processCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): RuleResult[B] = {
-    val kibanaIndex = determineKibanaIndex(blockContext)
-    // Save UI state in discover & Short urls
-    kibanaIndexPattern(kibanaIndex) match {
-      case None =>
-        Rejected()
-      case Some(pattern) if isRoNonStrictCase(blockContext.requestContext, kibanaIndex, pattern) =>
-        Fulfilled(modifyMatched(blockContext, Some(kibanaIndex)))
-      case Some(_) =>
-        continueProcessing(blockContext, kibanaIndex)
-    }
-  }
-
-  private def determineKibanaIndex(blockContext: BlockContext) = {
-    blockContext.userMetadata.kibanaIndex.getOrElse(ClusterIndexName.Local.kibana)
-  }
-
-  private def continueProcessing[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                          kibanaIndex: ClusterIndexName): RuleResult[B] = {
-    val requestContext = blockContext.requestContext
-    if (kibanaCanBeModified && isTargetingKibana(requestContext, kibanaIndex)) {
-      if (Matchers.roMatcher.`match`(requestContext.action) ||
-        Matchers.rwMatcher.`match`(requestContext.action) ||
-        requestContext.action.hasPrefix("indices:data/write")) {
-        logger.debug(s"RW access to Kibana index: ${requestContext.id.show}")
-        Fulfilled(modifyMatched(blockContext, Some(kibanaIndex)))
-      } else {
-        logger.info(s"RW access to Kibana, but unrecognized action ${requestContext.action.show} reqID: ${requestContext.id.show}")
-        Rejected()
-      }
-    } else if (isReadonlyrestAdmin(requestContext)) {
-      Fulfilled(modifyMatched(blockContext, Some(kibanaIndex)))
+    else if (isRoNonStrictCase(blockContext)) {
+      Fulfilled(modifyMatched(blockContext, Some(kibanaIndexFrom(blockContext))))
+    } else if (isAdminRequest(blockContext)) {
+      Fulfilled(modifyMatched(blockContext, Some(kibanaIndexFrom(blockContext))))
+    } else if (isKibanaIndexRequest(blockContext)) {
+      Fulfilled(modifyMatched(blockContext, Some(kibanaIndexFrom(blockContext))))
     } else {
-      logger.debug(s"KIBANA ACCESS DENIED ${requestContext.id.show}")
       Rejected()
     }
   }
 
-  private def isReadonlyrestAdmin(requestContext: RequestContext) = {
-    val originRequestIndices = requestContext.initialBlockContext.indices.map {
-      case ClusterIndexName.Local(value) => value
-      case ClusterIndexName.Remote(value, _) => value
-    }
-    (originRequestIndices.isEmpty || originRequestIndices.contains(settings.rorIndex.index)) &&
-      settings.access === KibanaAccess.Admin &&
-      Matchers.adminMatcher.`match`(requestContext.action)
+  private def isKibanaIndexRequest(blockContext: BlockContext) = {
+    kibanaCanBeModified && isTargetingKibana(blockContext) && (
+      isRoAction(blockContext) || isRwAction(blockContext) || isIndicesWriteAction(blockContext)
+    )
   }
 
-  private def isRoNonStrictCase(requestContext: RequestContext, kibanaIndex: ClusterIndexName, nonStrictAllowedPaths: Pattern) = {
-    isTargetingKibana(requestContext, kibanaIndex) &&
+  private def kibanaIndexFrom(blockContext: BlockContext) = {
+    blockContext.userMetadata.kibanaIndex.getOrElse(ClusterIndexName.Local.kibana)
+  }
+
+  private def isAdminRequest(blockContext: BlockContext) = {
+    isReadonlyrestAdmin(blockContext) || isAdminSpecialCase(blockContext)
+  }
+
+  private def isReadonlyrestAdmin(blockContext: BlockContext) = {
+    settings.access === KibanaAccess.Admin &&
+      isAdminAction(blockContext) &&
+      (isNoIndicesRequest(blockContext) || isRorIndexRelated(blockContext))
+  }
+
+  private def isAdminSpecialCase(blockContext: BlockContext) = {
+    settings.access === KibanaAccess.Admin &&
+      isAdminAction(blockContext) &&
+      isDataStreamGetAction(blockContext)
+  }
+
+  private def isNoIndicesRequest(blockContext: BlockContext) = {
+    blockContext.requestContext.initialBlockContext.indices.isEmpty
+  }
+
+  private def isRoNonStrictCase(blockContext: BlockContext) = {
+    isTargetingKibana(blockContext) &&
       settings.access =!= ROStrict &&
       !kibanaCanBeModified &&
-      nonStrictAllowedPaths.matcher(requestContext.uriPath.value.value).find() &&
-      (requestContext.action.hasPrefix("indices:data/write/") || requestContext.action.hasPrefix("indices:admin/template/put"))
+      isNonStrictAllowedPath(blockContext) &&
+      isNonStrictAction(blockContext)
   }
 
-  private def isKibanaSimplaData(requestContext: RequestContext) = {
-    val originRequestIndices = requestContext.initialBlockContext.indices
-    kibanaCanBeModified && originRequestIndices.size === 1 && originRequestIndices.head.hasPrefix("kibana_sample_data_")
+  private def isKibanaSimplaData(blockContext: BlockContext) = {
+    kibanaCanBeModified && isRelatedToKibanaSampleDataIndex(blockContext)
   }
 
-  private def emptyIndicesMatch(requestContext: RequestContext) = {
-    val originRequestIndices = requestContext.initialBlockContext.indices
-    originRequestIndices.isEmpty && {
-      (kibanaCanBeModified && Matchers.rwMatcher.`match`(requestContext.action)) ||
-        (settings.access === KibanaAccess.Admin && Matchers.adminMatcher.`match`(requestContext.action))
+  private def emptyIndicesMatch(blockContext: BlockContext) = {
+    isNoIndicesRequest(blockContext) && {
+      (kibanaCanBeModified && isRwAction(blockContext)) ||
+        (settings.access === KibanaAccess.Admin && isAdminAction(blockContext))
     }
   }
 
-  private def isTargetingKibana(requestContext: RequestContext, kibanaIndex: ClusterIndexName) = {
-    requestContext.initialBlockContext.indices.toList match {
-      case head :: Nil => head === kibanaIndex
+  // Save UI state in discover & Short urls
+  private def isNonStrictAllowedPath(blockContext: BlockContext) = {
+    val kibanaIndex = kibanaIndexFrom(blockContext)
+    val nonStrictAllowedPaths = Try(Pattern.compile(
+      "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/_template/.*|^/@kibana_index/doc/telemetry.*|^/@kibana_index/(_update/index-pattern.*|_update/url.*)|^/@kibana_index/_create/(url:.*)"
+        .replace("@kibana_index", kibanaIndex.stringify)
+    )).toOption
+    nonStrictAllowedPaths match {
+      case Some(paths) => paths.matcher(blockContext.requestContext.uriPath.value.value).find()
+      case None => false
+    }
+  }
+
+  private def isTargetingKibana(blockContext: BlockContext) = {
+    isRelatedToSingleIndex(blockContext, kibanaIndexFrom(blockContext))
+  }
+
+  private def isRorIndexRelated(blockContext: BlockContext) = {
+    isRelatedToSingleIndex(blockContext, settings.rorIndex.toLocal)
+  }
+
+  // Allow other actions if devnull is targeted to readers and writers
+  private def isDevNullKibanaRelated(blockContext: BlockContext) = {
+    isRelatedToSingleIndex(blockContext, devNullKibana)
+  }
+
+  private def isRelatedToSingleIndex(blockContext: BlockContext,
+                                     index: ClusterIndexName) = {
+    blockContext.requestContext.initialBlockContext.indices == Set(index)
+  }
+
+  private def isRelatedToKibanaSampleDataIndex(blockContext: BlockContext) = {
+    blockContext.requestContext.initialBlockContext.indices.toList match {
+      case Nil => false
+      case head :: Nil => Matchers.kibanaSampleDataIndexMatcher.`match`(head)
       case _ => false
     }
   }
 
-  private def kibanaIndexPattern(kibanaIndex: ClusterIndexName) = {
-    Try(Pattern.compile(
-      "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/_template/.*|^/@kibana_index/doc/telemetry.*|^/@kibana_index/(_update/index-pattern.*|_update/url.*)|^/@kibana_index/_create/(url:.*)"
-        .replace("@kibana_index", kibanaIndex.stringify)
-    )).toOption
+  private def isRoAction(blockContext: BlockContext) = {
+    Matchers.roMatcher.`match`(blockContext.requestContext.action)
+  }
+
+  private def isClusterAction(blockContext: BlockContext) = {
+    Matchers.clusterMatcher.`match`(blockContext.requestContext.action)
+  }
+
+  private def isRwAction(blockContext: BlockContext) = {
+    Matchers.rwMatcher.`match`(blockContext.requestContext.action)
+  }
+
+  private def isAdminAction(blockContext: BlockContext) = {
+    Matchers.adminMatcher.`match`(blockContext.requestContext.action)
+  }
+
+  private def isNonStrictAction(blockContext: BlockContext) = {
+    Matchers.nonStrictActions.`match`(blockContext.requestContext.action)
+  }
+
+  private def isIndicesWriteAction(blockContext: BlockContext) = {
+    Matchers.indicesWriteAction.`match`(blockContext.requestContext.action)
+  }
+
+  private def isDataStreamGetAction(blockContext: BlockContext) = {
+    Matchers.dataStreamGetAction.`match`(blockContext.requestContext.action)
   }
 
   private def modifyMatched[B <: BlockContext : BlockContextUpdater](blockContext: B, kibanaIndex: Option[ClusterIndexName] = None) = {
@@ -181,6 +219,13 @@ object KibanaAccessRule {
     val rwMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.RW_ACTIONS)
     val adminMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.ADMIN_ACTIONS)
     val clusterMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.CLUSTER_ACTIONS)
+    val nonStrictActions = MatcherWithWildcardsScalaAdapter[Action](Set(
+      Action("indices:data/write/*"), Action("indices:admin/template/put")
+    ))
+    val indicesWriteAction = MatcherWithWildcardsScalaAdapter[Action](Set(Action("indices:data/write/*")))
+    val dataStreamGetAction = MatcherWithWildcardsScalaAdapter[Action](Set(Action("indices:admin/data_stream/get")))
+
+    val kibanaSampleDataIndexMatcher = IndicesMatcher.create[ClusterIndexName](Set(Local(Wildcard("kibana_sample_data_*"))))
   }
 
 }

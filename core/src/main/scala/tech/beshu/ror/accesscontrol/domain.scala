@@ -656,7 +656,9 @@ object domain {
     lazy val all: Set[ClusterIndexName.Remote] = aliases + index
   }
 
-  final case class RorConfigurationIndex(index: IndexName.Full) extends AnyVal
+  final case class RorConfigurationIndex(index: IndexName.Full) extends AnyVal {
+    def toLocal: ClusterIndexName.Local = ClusterIndexName.Local(index)
+  }
 
   sealed trait AuditCluster
   object AuditCluster {
