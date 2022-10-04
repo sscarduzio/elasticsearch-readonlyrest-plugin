@@ -118,6 +118,9 @@ public class Constants {
       "indices:admin/settings/update",
       "cluster:admin/ilm/put",
       "cluster:admin/repository/put",
-      "indices:data/write/update/byquery"
+      "indices:data/write/update/byquery",
+      "indices:admin/data_stream/delete",
+      "indices:admin/index_template/delete",
+      "cluster:admin/component_template/delete"
   );
 }
