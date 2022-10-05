@@ -103,6 +103,7 @@ object domain {
       val xForwardedUser = Name("X-Forwarded-User")
       val xUserOrigin = Name(Constants.HEADER_USER_ORIGIN)
       val kibanaHiddenApps = Name(Constants.HEADER_KIBANA_HIDDEN_APPS)
+      val kibanaRequestPath = Name(Constants.HEADER_KIBANA_REQUEST_PATH)
       val cookie = Name("Cookie")
       val setCookie = Name("Set-Cookie")
       val transientFields = Name(Constants.FIELDS_TRANSIENT)

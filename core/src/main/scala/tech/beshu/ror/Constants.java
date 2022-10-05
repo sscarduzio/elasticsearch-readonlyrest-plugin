@@ -62,6 +62,7 @@ public class Constants {
   public static final String HEADER_USER_ORIGIN           = "x-ror-origin";
   public static final String HEADER_CORRELATION_ID        = "x-ror-correlation-id";
   public static final String HEADER_IMPERSONATING         = "x-ror-impersonating";
+  public static final String HEADER_KIBANA_REQUEST_PATH   = "x-ror-kibana-request-path";
 
   public static final Set<String> RO_ACTIONS = Sets.newHashSet(
       "indices:admin/exists",

@@ -60,7 +60,7 @@ class KibanaAccessRule(val settings: Settings)
       Fulfilled(modifyMatched(blockContext))
     else if (isRoNonStrictCase(blockContext)) {
       Fulfilled(modifyMatched(blockContext, Some(kibanaIndexFrom(blockContext))))
-    } else if (isAdminRequest(blockContext)) {
+    } else if (isAdminAccessEligible(blockContext)) {
       Fulfilled(modifyMatched(blockContext, Some(kibanaIndexFrom(blockContext))))
     } else if (isKibanaIndexRequest(blockContext)) {
       Fulfilled(modifyMatched(blockContext, Some(kibanaIndexFrom(blockContext))))
@@ -79,23 +79,19 @@ class KibanaAccessRule(val settings: Settings)
     blockContext.userMetadata.kibanaIndex.getOrElse(ClusterIndexName.Local.kibana)
   }
 
-  private def isAdminRequest(blockContext: BlockContext) = {
-    isReadonlyrestAdmin(blockContext) || isAdminSpecialCase(blockContext)
-  }
-
-  private def isReadonlyrestAdmin(blockContext: BlockContext) = {
+  private def isAdminAccessEligible(blockContext: BlockContext) = {
     settings.access === KibanaAccess.Admin &&
       isAdminAction(blockContext) &&
-      (isNoIndicesRequest(blockContext) || isRorIndexRelated(blockContext))
+      isRequestAllowedForAdminAccess(blockContext)
+  }
+  
+  private def isRequestAllowedForAdminAccess(blockContext: BlockContext) = {
+    isRequestContainsNoIndices(blockContext) ||
+      isRequestRelatedToRorIndex(blockContext) ||
+      isRequestRelatedToIndexManagementPath(blockContext)
   }
 
-  private def isAdminSpecialCase(blockContext: BlockContext) = {
-    settings.access === KibanaAccess.Admin &&
-      isAdminAction(blockContext) &&
-      isDataStreamGetAction(blockContext)
-  }
-
-  private def isNoIndicesRequest(blockContext: BlockContext) = {
+  private def isRequestContainsNoIndices(blockContext: BlockContext) = {
     blockContext.requestContext.initialBlockContext.indices.isEmpty
   }
 
@@ -112,7 +108,7 @@ class KibanaAccessRule(val settings: Settings)
   }
 
   private def emptyIndicesMatch(blockContext: BlockContext) = {
-    isNoIndicesRequest(blockContext) && {
+    isRequestContainsNoIndices(blockContext) && {
       (kibanaCanBeModified && isRwAction(blockContext)) ||
         (settings.access === KibanaAccess.Admin && isAdminAction(blockContext))
     }
@@ -135,8 +131,15 @@ class KibanaAccessRule(val settings: Settings)
     isRelatedToSingleIndex(blockContext, kibanaIndexFrom(blockContext))
   }
 
-  private def isRorIndexRelated(blockContext: BlockContext) = {
+  private def isRequestRelatedToRorIndex(blockContext: BlockContext) = {
     isRelatedToSingleIndex(blockContext, settings.rorIndex.toLocal)
+  }
+
+  private def isRequestRelatedToIndexManagementPath(blockContext: BlockContext) = {
+    blockContext
+      .requestContext.headers
+      .find(_.name === Header.Name.kibanaRequestPath)
+      .exists(_.value.value.contains("/index_management/"))
   }
 
   // Allow other actions if devnull is targeted to readers and writers
@@ -181,10 +184,6 @@ class KibanaAccessRule(val settings: Settings)
     Matchers.indicesWriteAction.`match`(blockContext.requestContext.action)
   }
 
-  private def isDataStreamGetAction(blockContext: BlockContext) = {
-    Matchers.dataStreamGetAction.`match`(blockContext.requestContext.action)
-  }
-
   private def modifyMatched[B <: BlockContext : BlockContextUpdater](blockContext: B, kibanaIndex: Option[ClusterIndexName] = None) = {
     def applyKibanaAccess = (bc: B) => {
       bc.withUserMetadata(_.withKibanaAccess(settings.access))
@@ -223,9 +222,7 @@ object KibanaAccessRule {
       Action("indices:data/write/*"), Action("indices:admin/template/put")
     ))
     val indicesWriteAction = MatcherWithWildcardsScalaAdapter[Action](Set(Action("indices:data/write/*")))
-    val dataStreamGetAction = MatcherWithWildcardsScalaAdapter[Action](Set(Action("indices:admin/data_stream/get")))
 
     val kibanaSampleDataIndexMatcher = IndicesMatcher.create[ClusterIndexName](Set(Local(Wildcard("kibana_sample_data_*"))))
   }
-
 }
