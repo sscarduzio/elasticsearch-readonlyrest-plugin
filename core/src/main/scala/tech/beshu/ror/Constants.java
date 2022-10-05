@@ -130,6 +130,6 @@ public class Constants {
       "indices:admin/index_template/put",
       "cluster:admin/slm/put",
       "cluster:admin/slm/execute",
-      "cluster:admin/slm/delete",
+      "cluster:admin/slm/delete"
   );
 }
