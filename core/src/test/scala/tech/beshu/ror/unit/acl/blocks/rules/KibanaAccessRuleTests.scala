@@ -238,7 +238,7 @@ class KibanaAccessRuleTests extends AnyWordSpec with Inside with BlockContextAss
           uriPath = Some(UriPath("/_ccr/auto_follow"))
         ) {
           assertBlockContext(
-            kibanaIndex = None,
+            kibanaIndex = Some(kibanaIndexFrom(None)),
             kibanaAccess = Some(access)
           )
         }
