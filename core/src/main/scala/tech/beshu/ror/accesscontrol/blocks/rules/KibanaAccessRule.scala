@@ -86,12 +86,12 @@ class KibanaAccessRule(val settings: Settings)
   }
   
   private def isRequestAllowedForAdminAccess(blockContext: BlockContext) = {
-    isRequestContainsNoIndices(blockContext) ||
+    doesRequestContainNoIndices(blockContext) ||
       isRequestRelatedToRorIndex(blockContext) ||
       isRequestRelatedToIndexManagementPath(blockContext)
   }
 
-  private def isRequestContainsNoIndices(blockContext: BlockContext) = {
+  private def doesRequestContainNoIndices(blockContext: BlockContext) = {
     blockContext.requestContext.initialBlockContext.indices.isEmpty
   }
 
@@ -108,7 +108,7 @@ class KibanaAccessRule(val settings: Settings)
   }
 
   private def emptyIndicesMatch(blockContext: BlockContext) = {
-    isRequestContainsNoIndices(blockContext) && {
+    doesRequestContainNoIndices(blockContext) && {
       (kibanaCanBeModified && isRwAction(blockContext)) ||
         (settings.access === KibanaAccess.Admin && isAdminAction(blockContext))
     }
