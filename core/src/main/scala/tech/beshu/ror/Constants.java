@@ -115,16 +115,22 @@ public class Constants {
       "cluster:admin/ingest/pipeline/put",
       "cluster:admin/ingest/pipeline/delete",
       "indices:admin/data_stream/get",
-      "indices:admin/index_template/get",
       "cluster:monitor/settings",
       "indices:admin/settings/update",
       "cluster:admin/ilm/put",
+      "cluster:admin/ilm/delete",
       "cluster:admin/repository/put",
+      "cluster:admin/repository/delete",
       "indices:data/write/update/byquery",
       "indices:admin/data_stream/delete",
-      "indices:admin/index_template/delete",
       "cluster:admin/component_template/delete",
       "cluster:monitor/ccr/follow_info",
-      "indices:admin/delete"
+      "indices:admin/delete",
+      "indices:admin/index_template/get",
+      "indices:admin/index_template/delete",
+      "indices:admin/index_template/put",
+      "cluster:admin/slm/put",
+      "cluster:admin/slm/execute",
+      "cluster:admin/slm/delete"
   );
 }
