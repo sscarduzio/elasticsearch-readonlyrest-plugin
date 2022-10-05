@@ -79,23 +79,25 @@ class KibanaAccessRule(val settings: Settings)
     blockContext.userMetadata.kibanaIndex.getOrElse(ClusterIndexName.Local.kibana)
   }
 
-  private def isAdminAccessEligible(blockContext: BlockContext) = {
-    settings.access === KibanaAccess.Admin &&
-      isAdminAction(blockContext) &&
-      isRequestAllowedForAdminAccess(blockContext)
+  private def isAdminAccessEligible(blockContext: BlockContext): BC[Boolean] = {
+    isAdminAccessConfigured && isAdminAction && isRequestAllowedForAdminAccess
+  }
+
+  private def isAdminAccessConfigured: BC[Boolean] = {
+    _ => settings.access === KibanaAccess.Admin
   }
   
-  private def isRequestAllowedForAdminAccess(blockContext: BlockContext) = {
+  private def isRequestAllowedForAdminAccess: BC[Boolean] = { blockContext =>
     doesRequestContainNoIndices(blockContext) ||
       isRequestRelatedToRorIndex(blockContext) ||
       isRequestRelatedToIndexManagementPath(blockContext)
   }
 
-  private def doesRequestContainNoIndices(blockContext: BlockContext) = {
+  private def doesRequestContainNoIndices: BC[Boolean] = { blockContext =>
     blockContext.requestContext.initialBlockContext.indices.isEmpty
   }
 
-  private def isRoNonStrictCase(blockContext: BlockContext) = {
+  private def isRoNonStrictCase: BC[Boolean] = {
     isTargetingKibana(blockContext) &&
       settings.access =!= ROStrict &&
       !kibanaCanBeModified &&
@@ -127,15 +129,15 @@ class KibanaAccessRule(val settings: Settings)
     }
   }
 
-  private def isTargetingKibana(blockContext: BlockContext) = {
-    isRelatedToSingleIndex(blockContext, kibanaIndexFrom(blockContext))
+  private def isTargetingKibana: BC[Boolean] = { blockContext =>
+    isRelatedToSingleIndex(kibanaIndexFrom(blockContext))
   }
 
-  private def isRequestRelatedToRorIndex(blockContext: BlockContext) = {
-    isRelatedToSingleIndex(blockContext, settings.rorIndex.toLocal)
+  private def isRequestRelatedToRorIndex: BC[Boolean] = {
+    isRelatedToSingleIndex(settings.rorIndex.toLocal)
   }
 
-  private def isRequestRelatedToIndexManagementPath(blockContext: BlockContext) = {
+  private def isRequestRelatedToIndexManagementPath: BC[Boolean] = { blockContext =>
     blockContext
       .requestContext.headers
       .find(_.name === Header.Name.kibanaRequestPath)
@@ -143,16 +145,15 @@ class KibanaAccessRule(val settings: Settings)
   }
 
   // Allow other actions if devnull is targeted to readers and writers
-  private def isDevNullKibanaRelated(blockContext: BlockContext) = {
-    isRelatedToSingleIndex(blockContext, devNullKibana)
+  private def isDevNullKibanaRelated: BC[Boolean] = {
+    isRelatedToSingleIndex(devNullKibana)
   }
 
-  private def isRelatedToSingleIndex(blockContext: BlockContext,
-                                     index: ClusterIndexName) = {
+  private def isRelatedToSingleIndex(index: ClusterIndexName): BC[Boolean] = { blockContext =>
     blockContext.requestContext.initialBlockContext.indices == Set(index)
   }
 
-  private def isRelatedToKibanaSampleDataIndex(blockContext: BlockContext) = {
+  private def isRelatedToKibanaSampleDataIndex: BC[Boolean] = { blockContext =>
     blockContext.requestContext.initialBlockContext.indices.toList match {
       case Nil => false
       case head :: Nil => Matchers.kibanaSampleDataIndexMatcher.`match`(head)
@@ -160,28 +161,35 @@ class KibanaAccessRule(val settings: Settings)
     }
   }
 
-  private def isRoAction(blockContext: BlockContext) = {
+  private def isRoAction: BC[Boolean] = { blockContext =>
     Matchers.roMatcher.`match`(blockContext.requestContext.action)
   }
 
-  private def isClusterAction(blockContext: BlockContext) = {
+  private def isClusterAction: BC[Boolean] = { blockContext =>
     Matchers.clusterMatcher.`match`(blockContext.requestContext.action)
   }
 
-  private def isRwAction(blockContext: BlockContext) = {
+  private def isRwAction: BC[Boolean] = { blockContext =>
     Matchers.rwMatcher.`match`(blockContext.requestContext.action)
   }
 
-  private def isAdminAction(blockContext: BlockContext) = {
+  private def isAdminAction: BC[Boolean] = { blockContext =>
     Matchers.adminMatcher.`match`(blockContext.requestContext.action)
   }
 
-  private def isNonStrictAction(blockContext: BlockContext) = {
+  private def isNonStrictAction: BC[Boolean] = { blockContext =>
     Matchers.nonStrictActions.`match`(blockContext.requestContext.action)
   }
 
-  private def isIndicesWriteAction(blockContext: BlockContext) = {
+  private def isIndicesWriteAction: BC[Boolean] = { blockContext =>
     Matchers.indicesWriteAction.`match`(blockContext.requestContext.action)
+  }
+
+  private def kibanaCanBeModified: BC[Boolean] = { _ =>
+    settings.access match {
+      case RO | ROStrict => false
+      case RW | Admin | Unrestricted => true
+    }
   }
 
   private def modifyMatched[B <: BlockContext : BlockContextUpdater](blockContext: B, kibanaIndex: Option[ClusterIndexName] = None) = {
@@ -197,11 +205,6 @@ class KibanaAccessRule(val settings: Settings)
     }
 
     (applyKibanaAccess :: applyKibanaIndex :: Nil).reduceLeft(_ andThen _).apply(blockContext)
-  }
-
-  private val kibanaCanBeModified: Boolean = settings.access match {
-    case RO | ROStrict => false
-    case RW | Admin | Unrestricted => true
   }
 }
 
@@ -224,5 +227,12 @@ object KibanaAccessRule {
     val indicesWriteAction = MatcherWithWildcardsScalaAdapter[Action](Set(Action("indices:data/write/*")))
 
     val kibanaSampleDataIndexMatcher = IndicesMatcher.create[ClusterIndexName](Set(Local(Wildcard("kibana_sample_data_*"))))
+  }
+
+  type BC[T] = BlockContext => T
+  implicit class BcBooleanOps(val bc1: BC[Boolean]) extends AnyVal {
+    def &&(bc2: BC[Boolean]): BC[Boolean] = { blockContext =>
+      bc1(blockContext) && bc2(blockContext)
+    }
   }
 }
