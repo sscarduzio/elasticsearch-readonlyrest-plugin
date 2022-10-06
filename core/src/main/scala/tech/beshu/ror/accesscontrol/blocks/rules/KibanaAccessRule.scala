@@ -50,7 +50,6 @@ class KibanaAccessRule(val settings: Settings)
     isUnrestrictedAccessConfigured ||
       isCurrentUserMetadataRequest ||
       isDevNullKibanaRelated ||
-      isDevNullKibanaRelated ||
       isRoAction ||
       isClusterAction ||
       emptyIndicesMatch ||
