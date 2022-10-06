@@ -88,7 +88,8 @@ class KibanaAccessRule(val settings: Settings)
   private def isRequestAllowedForAdminAccess: ProcessingContext[Boolean] = {
     doesRequestContainNoIndices ||
       isRequestRelatedToRorIndex ||
-      isRequestRelatedToIndexManagementPath
+      isRequestRelatedToIndexManagementPath ||
+      isRequestRelatedToTagsPath
   }
 
   private def doesRequestContainNoIndices: ProcessingContext[Boolean] = { blockContext =>
@@ -150,11 +151,19 @@ class KibanaAccessRule(val settings: Settings)
     isRelatedToSingleIndex(settings.rorIndex.toLocal)
   }
 
-  private def isRequestRelatedToIndexManagementPath: ProcessingContext[Boolean] = { blockContext =>
+  private def isRequestRelatedToIndexManagementPath: ProcessingContext[Boolean] = {
+    isRequestRelatedToTagsPath("index_management")
+  }
+
+  private def isRequestRelatedToTagsPath: ProcessingContext[Boolean] = {
+    isRequestRelatedToTagsPath("tags")
+  }
+
+  private def isRequestRelatedToTagsPath(pathPart: String): ProcessingContext[Boolean] = { blockContext =>
     blockContext
       .requestContext.headers
       .find(_.name === Header.Name.kibanaRequestPath)
-      .exists(_.value.value.contains("/index_management/"))
+      .exists(_.value.value.contains(s"/$pathPart/"))
   }
 
   // Allow other actions if devnull is targeted to readers and writers
