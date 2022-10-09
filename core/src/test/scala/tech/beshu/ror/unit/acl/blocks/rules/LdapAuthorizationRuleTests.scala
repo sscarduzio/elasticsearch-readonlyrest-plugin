@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
+import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -301,6 +303,8 @@ class LdapAuthorizationRuleTests
 
       override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
         Task.raiseError(new IllegalStateException("Should not be called"))
+
+      override def serviceTimeout: Refined[FiniteDuration, Positive] = Refined.unsafeApply(1 second)
     }
   }
 
@@ -313,6 +317,8 @@ class LdapAuthorizationRuleTests
 
       override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
         Task.raiseError(new IllegalStateException("Should not be called"))
+
+      override def serviceTimeout: Refined[FiniteDuration, Positive] = Refined.unsafeApply(1 second)
     }
   }
 

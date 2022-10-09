@@ -25,8 +25,10 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{HostConnectionError, ServerDiscoveryConnectionError}
+import tech.beshu.ror.boot.RorSchedulers.ldapUnboundIdBlockingScheduler
 import tech.beshu.ror.utils.ScalaOps.retry
 
+import scala.language.postfixOps
 import scala.util.control.NonFatal
 
 class UnboundidLdapConnectionPoolProvider {
@@ -55,7 +57,7 @@ class UnboundidLdapConnectionPoolProvider {
       )
       pool.setMaxConnectionAgeMillis(60000)
       pool
-    }
+    } executeOn(ldapUnboundIdBlockingScheduler) asyncBoundary
   }
 }
 
@@ -72,6 +74,7 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
       }
     }
     bindResult
+      .executeOn(ldapUnboundIdBlockingScheduler)
       .map(_.getResultCode == ResultCode.SUCCESS)
       .recover { case NonFatal(ex) =>
         logger.error("LDAP binding exception", ex)
@@ -87,6 +90,7 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
           }
         )
       }
+      .asyncBoundary
   }
 
   private def bindRequest(bindRequestUser: BindRequestUser) = bindRequestUser match {

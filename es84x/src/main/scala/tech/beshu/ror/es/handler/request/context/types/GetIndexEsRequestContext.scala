@@ -28,7 +28,6 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap._
-import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.ImmutableOpenMapOps
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.language.postfixOps
@@ -70,11 +69,11 @@ class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
         logger.error(s"${id.show} Unexpected response type - expected: [${classOf[GetIndexResponse].getSimpleName}], was: [${other.getClass.getSimpleName}]")
         Task.now(new GetIndexResponse(
           Array.empty,
-          ImmutableOpenMapOps.empty,
-          ImmutableOpenMapOps.empty,
-          ImmutableOpenMapOps.empty,
-          ImmutableOpenMapOps.empty,
-          ImmutableOpenMapOps.empty
+          Map.asEmptyJavaMap,
+          Map.asEmptyJavaMap,
+          Map.asEmptyJavaMap,
+          Map.asEmptyJavaMap,
+          Map.asEmptyJavaMap
         ))
     }
   }

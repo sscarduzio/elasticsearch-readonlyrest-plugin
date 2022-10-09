@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
@@ -39,9 +40,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.DurationOps._
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.misc.JwtUtils._
@@ -602,7 +603,11 @@ class JwtAuthRuleTests
     (service.id _)
       .expects()
       .returning(Name("external_service"))
-    val ttl = refineV[Positive](1 hour).fold(str => throw new Exception(str), identity)
+    (service.serviceTimeout _)
+      .expects()
+      .anyNumberOfTimes()
+      .returning(Refined.unsafeApply(10 seconds))
+    val ttl = (1 hour).toRefinedPositiveUnsafe
     new CacheableExternalAuthenticationServiceDecorator(service, ttl)
   }
 }

@@ -26,6 +26,8 @@ import tech.beshu.ror.accesscontrol.request.RequestContext.Aux
 
 object DisabledAccessControl extends AccessControl {
 
+  override val description: String = "Disabled ROR ACL"
+
   override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: Aux[B]): Task[WithHistory[RegularRequestResult[B], B]] =
     Task.now(WithHistory.withNoHistory(RegularRequestResult.PassedThrough()))
 

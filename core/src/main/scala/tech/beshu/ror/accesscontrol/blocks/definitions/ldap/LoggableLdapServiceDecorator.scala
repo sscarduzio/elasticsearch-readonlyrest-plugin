@@ -17,6 +17,8 @@
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 
 import cats.implicits._
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain
@@ -25,6 +27,7 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.TaskOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
+import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
 
 class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticationService)
@@ -44,11 +47,13 @@ class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticat
       .authenticate(user, secret)
       .andThen {
         case Success(authenticationResult) =>
-          logger.debug(s"User [${user.show}] ${if (authenticationResult) "" else "not"} authenticated by LDAP [${id.show}]")
+          logger.debug(s"User [${user.show}]${if (authenticationResult) "" else " not"} authenticated by LDAP [${id.show}]")
         case Failure(ex) =>
           logger.debug(s"LDAP authentication failed:", ex)
       }
   }
+
+  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 }
 
 class LoggableLdapAuthorizationServiceDecorator(val underlying: LdapAuthorizationService)
@@ -73,6 +78,8 @@ class LoggableLdapAuthorizationServiceDecorator(val underlying: LdapAuthorizatio
           logger.debug(s"Fetching LDAP user's groups failed:", ex)
       }
   }
+
+  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 }
 
 class LoggableLdapServiceDecorator(val underlying: LdapAuthService)
@@ -91,6 +98,8 @@ class LoggableLdapServiceDecorator(val underlying: LdapAuthService)
 
   override def groupsOf(userId: User.Id): Task[UniqueList[domain.Group]] =
     loggableLdapAuthorizationService.groupsOf(userId)
+
+  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 }
 
 private class LoggableLdapUserServiceDecorator(underlying: LdapUserService)
@@ -113,4 +122,6 @@ private class LoggableLdapUserServiceDecorator(underlying: LdapUserService)
           logger.debug(s"Fetching LDAP user failed:", ex)
       }
   }
+
+  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 }

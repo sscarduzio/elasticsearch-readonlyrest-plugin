@@ -34,11 +34,23 @@ class LdapConnectionPoolOps(connectionPool: LDAPConnectionPool)
                            (implicit blockingScheduler: Scheduler)
   extends Logging {
 
+  def asyncBind(request: BindRequest): Task[BindResult] = {
+    Task(connectionPool.getConnection)
+      .bracket(
+        use = connection => Task(connection.bind(request))
+      )(
+        release = connection => Task(connectionPool.releaseAndReAuthenticateConnection(connection))
+      )
+      .executeOn(blockingScheduler)
+      .asyncBoundary
+  }
+
   def process(requestCreator: AsyncSearchResultListener => LDAPRequest,
               timeout: FiniteDuration Refined Positive): Task[Either[SearchResult, List[SearchResultEntry]]] = {
     val searchResultListener = new LdapConnectionPoolOps.UnboundidSearchResultListener
     Task(requestCreator(searchResultListener))
       .map(request => connectionPool.processRequestsAsync((request :: Nil).asJava, timeout.value.toMillis))
+      .executeOn(blockingScheduler)
       .flatMap { results =>
         results.asScala.toList match {
           case Nil => throw new IllegalStateException("LDAP - expected at least one result")
@@ -47,7 +59,7 @@ class LdapConnectionPoolOps(connectionPool: LDAPConnectionPool)
             else searchResultListener.result
         }
       }
-      .executeOn(blockingScheduler)
+      .asyncBoundary
   }
 }
 

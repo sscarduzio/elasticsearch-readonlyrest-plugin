@@ -22,7 +22,6 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.matchers.Matcher.Conversion
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap.AliasesMap
-import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.ImmutableOpenMapOps
 import tech.beshu.ror.utils.ScalaOps.{JavaListOps, JavaMapOps}
 import tech.beshu.ror.utils.{CaseMappingEquality, StringCaseMapping}
 
@@ -32,9 +31,7 @@ import scala.language.{implicitConversions, postfixOps}
 class FilterableAliasesMap(val value: AliasesMap) extends AnyVal {
 
   def filterOutNotAllowedAliases(allowedAliases: NonEmptyList[ClusterIndexName]): AliasesMap = {
-    ImmutableOpenMapOps.from {
-      filter(value.asSafeMap.toList, allowedAliases).toMap
-    }
+    filter(value.asSafeMap.toList, allowedAliases).toMap.asJava
   }
 
   private def filter(responseIndicesNadAliases: List[(String, java.util.List[AliasMetadata])],

@@ -40,6 +40,8 @@ class AccessControlList(val blocks: NonEmptyList[Block],
                         override val staticContext: AccessControlListStaticContext)
   extends AccessControl {
 
+  override val description: String = "Enabled ROR ACL"
+
   override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](context: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]] = {
     blocks
       .tail

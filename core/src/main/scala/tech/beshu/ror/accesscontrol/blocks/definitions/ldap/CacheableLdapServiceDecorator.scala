@@ -44,7 +44,7 @@ class CacheableLdapAuthenticationServiceDecorator(underlying: LdapAuthentication
     cacheableLdapUserService.ldapUserBy(userId)
 
   override def authenticate(user: User.Id, secret: domain.PlainTextSecret): Task[Boolean] =
-    cacheableAuthentication.call((user, secret))
+    cacheableAuthentication.call((user, secret), serviceTimeout)
 
   private def hashCredential(value: (User.Id, domain.PlainTextSecret)) = {
     val (user, secret) = value
@@ -55,6 +55,8 @@ class CacheableLdapAuthenticationServiceDecorator(underlying: LdapAuthentication
     val (userId, secret) = value
     underlying.authenticate(userId, secret)
   }
+
+  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 }
 
 object CacheableLdapAuthenticationServiceDecorator {
@@ -75,7 +77,9 @@ class CacheableLdapAuthorizationServiceDecorator(underlying: LdapAuthorizationSe
     cacheableLdapUserService.ldapUserBy(userId)
 
   override def groupsOf(id: User.Id): Task[UniqueList[domain.Group]] =
-    cacheableGroupsOf.call(id)
+    cacheableGroupsOf.call(id, serviceTimeout)
+
+  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 }
 
 class CacheableLdapServiceDecorator(val underlying: LdapAuthService,
@@ -95,6 +99,8 @@ class CacheableLdapServiceDecorator(val underlying: LdapAuthService,
 
   override def groupsOf(id: User.Id): Task[UniqueList[domain.Group]] =
     cacheableLdapAuthorizationService.groupsOf(id)
+
+  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 }
 
 private class CacheableLdapUserServiceDecorator(underlying: LdapUserService,
@@ -106,6 +112,7 @@ private class CacheableLdapUserServiceDecorator(underlying: LdapUserService,
   override val id: LdapService.Name = underlying.id
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
-    cacheableLdapUserById.call(userId)
+    cacheableLdapUserById.call(userId, serviceTimeout)
 
+  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 }
