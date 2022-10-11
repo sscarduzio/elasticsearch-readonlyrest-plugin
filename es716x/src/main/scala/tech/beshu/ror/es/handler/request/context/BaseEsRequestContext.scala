@@ -91,19 +91,21 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy val indexAttributes: Set[IndexAttribute] = {
     esContext.actionRequest match {
-      case req: IndicesRequest =>
-        req
-          .indicesOptions()
-          .getExpandWildcards.iterator().asScala
-          .flatMap {
-            case WildcardStates.OPEN => Some(IndexAttribute.Opened)
-            case WildcardStates.CLOSED => Some(IndexAttribute.Closed)
-            case _ => None
-          }
-          .toSet
-      case _ =>
-        Set.empty
+      case req: IndicesRequest => indexAttributesFrom(req)
+      case _ => Set.empty
     }
+  }
+
+  protected def indexAttributesFrom(request: IndicesRequest): Set[IndexAttribute] = {
+    request
+      .indicesOptions()
+      .getExpandWildcards.iterator().asScala
+      .flatMap {
+        case WildcardStates.OPEN => Some(IndexAttribute.Opened)
+        case WildcardStates.CLOSED => Some(IndexAttribute.Closed)
+        case _ => None
+      }
+      .toSet
   }
 
   override lazy val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
