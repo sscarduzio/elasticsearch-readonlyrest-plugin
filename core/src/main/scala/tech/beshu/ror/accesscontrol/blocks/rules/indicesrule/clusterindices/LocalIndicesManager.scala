@@ -53,6 +53,9 @@ class LocalIndicesManager(requestContext: RequestContext,
   private def indices(filteredBy: Set[IndexAttribute]) = {
     requestContext
       .allIndicesAndAliases
-      .filter(i => filteredBy.contains(i.attribute))
+      .filter(i =>
+        if(filteredBy.nonEmpty) filteredBy.contains(i.attribute)
+        else true
+      )
   }
 }

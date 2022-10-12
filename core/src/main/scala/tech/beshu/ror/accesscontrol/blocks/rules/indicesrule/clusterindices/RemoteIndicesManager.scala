@@ -56,6 +56,9 @@ class RemoteIndicesManager(requestContext: RequestContext,
   private def remoteIndices(filteredBy: Set[IndexAttribute]) = {
     requestContext
       .allRemoteIndicesAndAliases
-      .map(_.filter(i => filteredBy.contains(i.attribute)))
+      .map(_.filter(i =>
+        if(filteredBy.nonEmpty) filteredBy.contains(i.attribute)
+        else true
+      ))
   }
 }
