@@ -96,18 +96,6 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
-  protected def indexAttributesFrom(request: IndicesRequest): Set[IndexAttribute] = {
-    request
-      .indicesOptions()
-      .getExpandWildcards.iterator().asScala
-      .flatMap {
-        case WildcardStates.OPEN => Some(IndexAttribute.Opened)
-        case WildcardStates.CLOSED => Some(IndexAttribute.Closed)
-        case _ => None
-      }
-      .toSet
-  }
-
   override lazy val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
     clusterService.allIndicesAndAliases
   }
@@ -130,6 +118,18 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
       case sr: SearchRequest if sr.source.profile || (sr.source.suggest != null && !sr.source.suggest.getSuggestions.isEmpty) => false
       case _ => true
     }
+  }
+
+  protected def indexAttributesFrom(request: IndicesRequest): Set[IndexAttribute] = {
+    request
+      .indicesOptions()
+      .getExpandWildcards.iterator().asScala
+      .flatMap {
+        case WildcardStates.OPEN => Some(IndexAttribute.Opened)
+        case WildcardStates.CLOSED => Some(IndexAttribute.Closed)
+        case _ => None
+      }
+      .toSet
   }
 
   protected def indicesOrWildcard(indices: Set[ClusterIndexName]): Set[ClusterIndexName] = {

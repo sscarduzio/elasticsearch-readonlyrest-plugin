@@ -50,7 +50,6 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
-import scala.collection.JavaConverters._
 
 class EsServerBasedRorClusterService(nodeName: String,
                                      clusterService: ClusterService,
@@ -223,18 +222,24 @@ class EsServerBasedRorClusterService(nodeName: String,
     IndexName.Full
       .fromString(resolvedIndex.getName)
       .map { index =>
-        val aliases = resolvedIndex
-          .getAliases.asSafeList
-          .flatMap(IndexName.Full.fromString)
-          .toSet
-        val indexAttribute = resolvedIndex
-          .getAttributes.toSet
-          .find(_.toLowerCase == "CLOSED") match {
-          case Some(_) => IndexAttribute.Closed
-          case None => IndexAttribute.Opened
-        }
-        FullRemoteIndexWithAliases(remoteClusterName, index, indexAttribute, aliases)
+        FullRemoteIndexWithAliases(remoteClusterName, index, indexAttributeFrom(resolvedIndex), aliasesFrom(resolvedIndex))
       }
+  }
+
+  private def aliasesFrom(resolvedIndex: ResolvedIndex) = {
+    resolvedIndex
+      .getAliases.asSafeList
+      .flatMap(IndexName.Full.fromString)
+      .toSet
+  }
+
+  private def indexAttributeFrom(resolvedIndex: ResolvedIndex): IndexAttribute = {
+    resolvedIndex
+      .getAttributes.toSet
+      .find(_.toLowerCase == "CLOSED") match {
+      case Some(_) => IndexAttribute.Closed
+      case None => IndexAttribute.Opened
+    }
   }
 
   private def snapshotsBy(repositoryName: RepositoryName) = {

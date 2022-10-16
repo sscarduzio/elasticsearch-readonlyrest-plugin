@@ -58,7 +58,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   )
 
   override lazy val indexAttributes: Set[IndexAttribute] = {
-    // todo: add a comment
+    // It may be a problem in some cases. We get all possible index attributes and we put them to one bag.
     actionRequest
       .requests().asScala
       .flatMap(indexAttributesFrom)
