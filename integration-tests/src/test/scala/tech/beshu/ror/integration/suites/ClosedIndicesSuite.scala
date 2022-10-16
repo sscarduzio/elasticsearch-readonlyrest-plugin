@@ -49,14 +49,13 @@ trait ClosedIndicesSuite
     }
   }
 
-  // we use admin client here so 'CONTAINER ADMIN' block is matched. We need to match 'Getter' block
-  private lazy val searchManager = new SearchManager(adminClient, additionalHeaders = Map("x-api-key" -> "g"))
-  private lazy val indexManager = new IndexManager(adminClient, esVersionUsed, additionalHeaders = Map("x-api-key" -> "g"))
+  private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"))
+  private lazy val dev1IndexManager = new IndexManager(basicAuthClient("dev1", "test"), esVersionUsed)
 
   "A search request" should {
     "return only data related to a1 index and ignore closed a2 index" when {
       "direct index search is used" in {
-        val response = searchManager.search("intentp1_a1")
+        val response = dev1SearchManager.search("intentp1_a1")
 
         response.responseCode should be(200)
         val foundIndices = response.searchHits.map(_("_index").str)
@@ -64,7 +63,7 @@ trait ClosedIndicesSuite
         foundIndices should not contain ("intentp1_a2")
       }
       "wildcard search is used" in {
-        val response = searchManager.search("*")
+        val response = dev1SearchManager.search("*")
 
         response.responseCode should be(200)
         val foundIndices = response.searchHits.map(_("_index").str)
@@ -72,16 +71,15 @@ trait ClosedIndicesSuite
         foundIndices should not contain ("intentp1_a2")
       }
       "generic search all" in {
-        val response = searchManager.search()
+        val response = dev1SearchManager.search()
 
         response.responseCode should be(200)
         val foundIndices = response.searchHits.map(_("_index").str)
         foundIndices should contain ("intentp1_a1")
         foundIndices should not contain ("intentp1_a2")
       }
-
       "get mappings is used" in {
-        val response = indexManager.getMapping(indexName = "intentp1_*", field = "*")
+        val response = dev1IndexManager.getMapping(indexName = "intentp1_*", field = "*")
 
         response.responseCode should be(200)
         response.body.contains("intentp1_a1") should be(true)

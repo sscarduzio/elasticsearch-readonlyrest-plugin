@@ -57,6 +57,7 @@ trait XpackApiSuite
   private lazy val adminXpackApiManager = new XpackApiManager(adminClient, esVersionUsed)
   private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"))
   private lazy val dev2SearchManager = new SearchManager(basicAuthClient("dev2", "test"))
+  private lazy val dev3SearchManager = new SearchManager(basicAuthClient("dev3", "test"))
   private lazy val dev3XpackApiManager = new XpackApiManager(basicAuthClient("dev3", "test"), esVersionUsed)
   private lazy val dev4XpackApiManager = new XpackApiManager(basicAuthClient("dev4", "test"), esVersionUsed)
   private lazy val dev5XpackApiManager = new XpackApiManager(basicAuthClient("dev5", "test"), esVersionUsed)
@@ -90,6 +91,14 @@ trait XpackApiSuite
       )
       result.searchHits.map(i => i("_source")).toSet should be(
         Set(ujson.read("""{"name":"john"}"""))
+      )
+    }
+    "not be called for closed indices" excludeES(allEs6x, allEs7xBelowEs77x) in {
+      val result = dev3SearchManager.asyncSearch("test3*")
+
+      result.responseCode should be (200)
+      result.searchHits.map(i => i("_index").str).toSet should be(
+        Set("test3_index_a", "test3_index_b")
       )
     }
   }
@@ -946,6 +955,8 @@ object XpackApiSuite {
     storeScriptTemplate(adminRestClient)
     configureBookstore(documentManager, indexManager)
     configureLibrary(documentManager)
+
+    indexManager.closeIndex("test3_index_c").force()
   }
 
   private def createDocs(documentManager: DocumentManager): Unit = {
@@ -957,6 +968,7 @@ object XpackApiSuite {
 
     documentManager.createDoc("test3_index_a", 1, ujson.read("""{"timestamp":"2020-01-01", "count": 10}""")).force()
     documentManager.createDoc("test3_index_b", 1, ujson.read("""{"timestamp":"2020-02-01", "count": 100}""")).force()
+    documentManager.createDoc("test3_index_c", 1, ujson.read("""{"timestamp":"2020-03-01", "count": 100}""")).force()
 
     documentManager.createDoc("test4_index_a", 1, ujson.read("""{"timestamp":"2020-01-01", "count": 10}""")).force()
     documentManager.createDoc("test4_index_b", 1, ujson.read("""{"timestamp":"2020-02-01", "count": 100}""")).force()
