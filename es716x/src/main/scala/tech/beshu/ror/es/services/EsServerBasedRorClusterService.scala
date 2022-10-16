@@ -191,6 +191,7 @@ class EsServerBasedRorClusterService(nodeName: String,
       case Success(client) =>
         resolveRemoteIndicesUsing(client)
           .map { response =>
+            logger.info(response.toString)
             response
               .getIndices.asSafeList
               .flatMap { resolvedIndex =>

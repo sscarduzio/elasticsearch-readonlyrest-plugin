@@ -30,7 +30,7 @@ import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilde
 import org.elasticsearch.action.support.PlainActionFuture
 import org.elasticsearch.client.Client
 import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.cluster.metadata.{Metadata, RepositoriesMetadata}
+import org.elasticsearch.cluster.metadata.{IndexMetadata, Metadata, RepositoriesMetadata}
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
@@ -66,19 +66,8 @@ class EsServerBasedRorClusterService(nodeName: String,
   }
 
   override def allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
-    val indices = clusterService.state.metadata.getIndices
-    indices
-      .keysIt().asScala
-      .flatMap { index =>
-        val indexMetaData = indices.get(index)
-        IndexName.Full
-          .fromString(indexMetaData.getIndex.getName)
-          .map { indexName =>
-            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Full.fromString)
-            FullLocalIndexWithAliases(indexName, aliases)
-          }
-      }
-      .toSet
+    val metadata = clusterService.state.metadata
+    extractIndicesAndAliasesFrom(metadata)
   }
 
   override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = {
@@ -141,6 +130,29 @@ class EsServerBasedRorClusterService(nodeName: String,
       .map(results => zip(results, documents))
   }
 
+  private def extractIndicesAndAliasesFrom(metadata: Metadata) = {
+    val indices = metadata.getIndices
+    indices
+      .keysIt().asScala
+      .flatMap { index =>
+        val indexMetaData = indices.get(index)
+        IndexName.Full
+          .fromString(indexMetaData.getIndex.getName)
+          .map { indexName =>
+            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Full.fromString)
+            FullLocalIndexWithAliases(
+              indexName,
+              indexMetaData.getState match {
+                case IndexMetadata.State.CLOSE => IndexAttribute.Closed
+                case IndexMetadata.State.OPEN => IndexAttribute.Opened
+              },
+              aliases
+            )
+          }
+      }
+      .toSet
+  }
+
   private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService) = {
     val remoteClusterFullNames =
       remoteClusterService
@@ -194,12 +206,24 @@ class EsServerBasedRorClusterService(nodeName: String,
     IndexName.Full
       .fromString(resolvedIndex.getName)
       .map { index =>
-        val aliases = resolvedIndex
-          .getAliases.asSafeList
-          .flatMap(IndexName.Full.fromString)
-          .toSet
-        FullRemoteIndexWithAliases(remoteClusterName, index, aliases)
+        FullRemoteIndexWithAliases(remoteClusterName, index, indexAttributeFrom(resolvedIndex), aliasesFrom(resolvedIndex))
       }
+  }
+
+  private def aliasesFrom(resolvedIndex: ResolvedIndex) = {
+    resolvedIndex
+      .getAliases.asSafeList
+      .flatMap(IndexName.Full.fromString)
+      .toSet
+  }
+
+  private def indexAttributeFrom(resolvedIndex: ResolvedIndex): IndexAttribute = {
+    resolvedIndex
+      .getAttributes.toSet
+      .find(_.toLowerCase == "CLOSED") match {
+      case Some(_) => IndexAttribute.Closed
+      case None => IndexAttribute.Opened
+    }
   }
 
   private def snapshotsBy(repositoryName: RepositoryName) = {
