@@ -74,7 +74,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
   }
 
   private def getRemoteIndicesAndAliasesOf(clusterName: ClusterName.Full) = Task.now {
-    FullRemoteIndexWithAliases(clusterName, IndexName.Full("*"), Set.empty)
+    FullRemoteIndexWithAliases(clusterName, IndexName.Full("*"), IndexAttribute.Opened, Set.empty)
   }
 
   private def getRegisteredRemoteClusterNames = {
@@ -219,7 +219,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       .fromString(indexNameString)
       .map { indexName =>
         val aliases = aliasMetadata.flatMap(am => IndexName.Full.fromString(am.alias()))
-        FullLocalIndexWithAliases(indexName, aliases)
+        FullLocalIndexWithAliases(indexName, IndexAttribute.Opened, aliases)
       }
   }
 
