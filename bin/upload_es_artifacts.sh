@@ -4,6 +4,7 @@ set -xe
 
 echo ">>> ($0) UPLOADING ES ARTIFACTS ..."
 
+./gradlew --stacktrace --info clean ror-tools:uploadArtifactsFromEsBinaries -PesVersion=8.4.3
 ./gradlew --stacktrace --info clean ror-tools:uploadArtifactsFromEsBinaries -PesVersion=8.4.2
 ./gradlew --stacktrace --info clean ror-tools:uploadArtifactsFromEsBinaries -PesVersion=8.4.1
 ./gradlew --stacktrace --info clean ror-tools:uploadArtifactsFromEsBinaries -PesVersion=8.4.0

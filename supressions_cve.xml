@@ -42,20 +42,20 @@
         <sha1>ce88877609b732ab2544f90001ca70e815bbc49c</sha1>
         <cpe>cpe:/a:async_project:async</cpe>
     </suppress>
-    <!-- The following CVE's are false positive and should be updated to fixed for version 1.32,
+    <!-- The following CVE's are false positive and should be updated to fixed for version 1.33,
          description: https://bitbucket.org/snakeyaml/snakeyaml/issues/531/stackoverflow-oss-fuzz-47081 -->
     <suppress>
         <notes><![CDATA[
-   file name: ror-shadowed-libs-all.jar (shaded: org.yaml:snakeyaml:1.32)
+   file name: snakeyaml-1.33.jar
    ]]></notes>
-        <sha1>d51efbe04924b1b5c38ae59f4003acd040d5f436</sha1>
+        <sha1>2cd0a87ff7df953f810c344bdf2fe3340b954c69</sha1>
         <cve>CVE-2022-38752</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[
-   file name: snakeyaml-1.32.jar
+   file name: jackson-databind-2.13.4.2.jar (https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-42003)
    ]]></notes>
-        <sha1>e80612549feb5c9191c498de628c1aa80693cf0b</sha1>
-        <cve>CVE-2022-38752</cve>
+        <sha1>325c06bdfeb628cfb80ebaaf1a26cc1eb558a585</sha1>
+        <cve>CVE-2022-42003</cve>
     </suppress>
 </suppressions>

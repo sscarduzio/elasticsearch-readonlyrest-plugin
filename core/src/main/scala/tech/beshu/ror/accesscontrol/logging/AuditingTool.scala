@@ -134,12 +134,12 @@ class AuditingTool(settings: Settings,
       historyEntries,
       loggingContext,
       generalAuditEvents,
-      hasIndices(blockContext)
+      involvesIndices(blockContext)
     )
   }
 
-  private def hasIndices[B <: BlockContext](blockContext: Option[B]) =
-    blockContext.exists(_.containsIndices)
+  private def involvesIndices[B <: BlockContext](blockContext: Option[B]) =
+    blockContext.exists(_.involvesIndices)
 
 }
 

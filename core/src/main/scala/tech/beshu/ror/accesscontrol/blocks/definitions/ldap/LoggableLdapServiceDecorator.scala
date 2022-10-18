@@ -47,7 +47,7 @@ class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticat
       .authenticate(user, secret)
       .andThen {
         case Success(authenticationResult) =>
-          logger.debug(s"User [${user.show}] ${if (authenticationResult) "" else "not"} authenticated by LDAP [${id.show}]")
+          logger.debug(s"User [${user.show}]${if (authenticationResult) "" else " not"} authenticated by LDAP [${id.show}]")
         case Failure(ex) =>
           logger.debug(s"LDAP authentication failed:", ex)
       }
