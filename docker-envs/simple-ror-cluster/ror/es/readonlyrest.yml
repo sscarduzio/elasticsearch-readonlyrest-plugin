@@ -15,7 +15,7 @@ readonlyrest:
     truststore_pass: test
     key_pass: test
 
-  enable: false
+  enable: true
 
   access_control_rules:
 
