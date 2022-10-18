@@ -64,8 +64,8 @@ compileJava {
 
 dependencies {
     shadowCompile group: 'com.fasterxml.jackson.dataformat',      name: 'jackson-dataformat-yaml',                version: '2.13.4'
-    shadowCompile group: 'com.fasterxml.jackson.core',            name: 'jackson-databind',                       version: '2.13.4'
-    shadowCompile group: 'org.yaml',                              name: 'snakeyaml',                              version: '1.32'
+    shadowCompile group: 'com.fasterxml.jackson.core',            name: 'jackson-databind',                       version: '2.13.4.2'
+    shadowCompile group: 'org.yaml',                              name: 'snakeyaml',                              version: '1.33'
     shadowCompile group: 'com.jayway.jsonpath',                   name: 'json-path',                              version: '2.7.0'
 }
 
