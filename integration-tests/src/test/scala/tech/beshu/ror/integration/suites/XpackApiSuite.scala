@@ -93,7 +93,7 @@ trait XpackApiSuite
         Set(ujson.read("""{"name":"john"}"""))
       )
     }
-    "not be called for closed indices" excludeES(allEs6x, allEs7xBelowEs77x) in {
+    "not be called for closed indices" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
       val result = dev3SearchManager.asyncSearch("test3*")
 
       result.responseCode should be (200)
