@@ -24,7 +24,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, IndexNotFound}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{FullLocalIndexWithAliases, Group, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils._
@@ -200,7 +200,7 @@ class GroupsRuleAccessControlTests
               currentGroupHeader( "admin")
             ),
             filteredIndices = Set(clusterIndexName(".kibana")),
-            allIndicesAndAliases = Set(FullLocalIndexWithAliases(fullIndexName(".kibana"), Set.empty))
+            allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName(".kibana")))
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 5
@@ -214,9 +214,9 @@ class GroupsRuleAccessControlTests
   }
 
   private def allIndicesAndAliasesInTheTestCase() = Set(
-    FullLocalIndexWithAliases(fullIndexName("g12_index"), Set.empty),
-    FullLocalIndexWithAliases(fullIndexName("g13_index"), Set.empty),
-    FullLocalIndexWithAliases(fullIndexName("g34_index"), Set.empty),
-    FullLocalIndexWithAliases(fullIndexName("g5_index"), Set.empty)
+    fullLocalIndexWithAliases(fullIndexName("g12_index")),
+    fullLocalIndexWithAliases(fullIndexName("g13_index")),
+    fullLocalIndexWithAliases(fullIndexName("g34_index")),
+    fullLocalIndexWithAliases(fullIndexName("g5_index"))
   )
 }

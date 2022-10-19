@@ -9,21 +9,9 @@ readonlyrest:
 
   access_control_rules:
 
-  # ES containter initializer need this rule to configure ES instance after startup
   - name: "CONTAINER ADMIN"
     auth_key: admin:container
-    verbosity: error
-
-  - name: passthrough
-    actions: ["cluster:monitor*", "indices:*/write*", "*create*"]
-
-  - name: Poller
-    headers: ["x-api-key:p"]
-    verbosity: error
 
   - name: Getter
-    headers: ["x-api-key:g"]
-    indices:
-    - intentp1_*
-    - ".kibana"
-    - ".kibana_intentp1"
+    auth_key: dev1:test
+    indices: ["intentp1_*", ".kibana", ".kibana_intentp1"]

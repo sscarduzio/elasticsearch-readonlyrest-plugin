@@ -40,17 +40,17 @@ trait FieldRuleEngineSuite
     "specific FLS engine is used" should {
       "match and return filtered document source" when {
         "modifiable at ES level query using not allowed field is passed in request" in {
-          assertNoSearchHitsReturnedFor("user1", modifiableAtEsLevelQuery)
+          assertNoSearchHitsReturnedFor("user", modifiableAtEsLevelQuery)
         }
       }
       "handle unmodifiable at ES level query" when {
         "using not allowed field is passed in request" in {
-          unmodifableQueryAssertion("user1", unmodifiableAtEsLevelQuery)
+          unmodifableQueryAssertion("user", unmodifiableAtEsLevelQuery)
         }
       }
     }
     "test" in {
-      val searchManager = new SearchManager(basicAuthClient("user2", "pass"))
+      val searchManager = new SearchManager(basicAuthClient("user", "pass"))
       val result = searchManager.search(
         "test-index",
         ujson.read(

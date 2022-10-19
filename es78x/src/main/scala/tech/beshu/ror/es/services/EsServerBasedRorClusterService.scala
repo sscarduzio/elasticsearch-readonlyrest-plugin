@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.services
 
-import java.util.function.Supplier
 import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
@@ -24,13 +23,12 @@ import monix.eval.Task
 import monix.execution.CancelablePromise
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.admin.indices.get.GetIndexRequest.Feature
-import org.elasticsearch.action.admin.indices.get.{GetIndexRequest, GetIndexResponse}
+import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateResponse}
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
 import org.elasticsearch.action.support.PlainActionFuture
 import org.elasticsearch.client.Client
 import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.cluster.metadata.RepositoriesMetadata
+import org.elasticsearch.cluster.metadata.{IndexMetadata, Metadata, RepositoriesMetadata}
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
@@ -48,6 +46,8 @@ import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
+import java.util.function.Supplier
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
@@ -66,19 +66,8 @@ class EsServerBasedRorClusterService(nodeName: String,
   }
 
   override def allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
-    val indices = clusterService.state.metadata.getIndices
-    indices
-      .keysIt().asScala
-      .flatMap { index =>
-        val indexMetaData = indices.get(index)
-        IndexName.Full
-          .fromString(indexMetaData.getIndex.getName)
-          .map { indexName =>
-            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Full.fromString)
-            FullLocalIndexWithAliases(indexName, aliases)
-          }
-      }
-      .toSet
+    val metadata = clusterService.state.metadata
+    extractIndicesAndAliasesFrom(metadata)
   }
 
   override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = {
@@ -141,6 +130,29 @@ class EsServerBasedRorClusterService(nodeName: String,
       .map(results => zip(results, documents))
   }
 
+  private def extractIndicesAndAliasesFrom(metadata: Metadata) = {
+    val indices = metadata.getIndices
+    indices
+      .keysIt().asScala
+      .flatMap { index =>
+        val indexMetaData = indices.get(index)
+        IndexName.Full
+          .fromString(indexMetaData.getIndex.getName)
+          .map { indexName =>
+            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Full.fromString)
+            FullLocalIndexWithAliases(
+              indexName,
+              indexMetaData.getState match {
+                case IndexMetadata.State.CLOSE => IndexAttribute.Closed
+                case IndexMetadata.State.OPEN => IndexAttribute.Opened
+              },
+              aliases
+            )
+          }
+      }
+      .toSet
+  }
+
   private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService) = {
     val remoteClusterFullNames =
       remoteClusterService
@@ -164,10 +176,11 @@ class EsServerBasedRorClusterService(nodeName: String,
         resolveRemoteIndicesUsing(client)
           .map { response =>
             response
-              .indices().asSafeList
-              .flatMap { index =>
-                val aliases = response.aliases().get(index).asSafeList.map(_.alias())
-                toFullRemoteIndexWithAliases(index, aliases, remoteClusterName)
+              .getState
+              .metadata()
+              .indices().asSafeValues
+              .flatMap { indexMetadata =>
+                toFullRemoteIndexWithAliases(indexMetadata, remoteClusterName)
               }
           }
     }
@@ -176,30 +189,41 @@ class EsServerBasedRorClusterService(nodeName: String,
   private def resolveRemoteIndicesUsing(client: Client) = {
     import tech.beshu.ror.es.utils.ThreadContextOps._
     threadPool.getThreadContext.addXpackSecurityAuthenticationHeader(nodeName)
-    val promise = CancelablePromise[GetIndexResponse]()
+    val promise = CancelablePromise[ClusterStateResponse]()
     client
       .admin()
-      .indices()
-      .getIndex(
-        new GetIndexRequest().features(Feature.ALIASES),
-        new ActionListener[GetIndexResponse] {
-          override def onResponse(response: GetIndexResponse): Unit = promise.trySuccess(response)
+      .cluster()
+      .state(
+        new ClusterStateRequest().metadata(true),
+        new ActionListener[ClusterStateResponse] {
+          override def onResponse(response: ClusterStateResponse): Unit = promise.trySuccess(response)
           override def onFailure(e: Exception): Unit = promise.tryFailure(e)
-        })
+        }
+      )
     Task.fromCancelablePromise(promise)
   }
 
-  private def toFullRemoteIndexWithAliases(indexName: String,
-                                           aliasesNames: List[String],
+  private def toFullRemoteIndexWithAliases(indexMetadata: IndexMetadata,
                                            remoteClusterName: ClusterName.Full) = {
     IndexName.Full
-      .fromString(indexName)
+      .fromString(indexMetadata.getIndex.getName)
       .map { index =>
-        val aliases = aliasesNames
-          .flatMap(IndexName.Full.fromString)
-          .toSet
-        FullRemoteIndexWithAliases(remoteClusterName, index, aliases)
+        FullRemoteIndexWithAliases(remoteClusterName, index, indexAttributeFrom(indexMetadata), aliasesFrom(indexMetadata))
       }
+  }
+
+  private def aliasesFrom(indexMetadata: IndexMetadata) = {
+    indexMetadata
+      .getAliases.asSafeValues
+      .map(_.alias())
+      .flatMap(IndexName.Full.fromString)
+  }
+
+  private def indexAttributeFrom(indexMetadata: IndexMetadata): IndexAttribute = {
+    indexMetadata.getState.name().toUpperCase() match {
+      case "CLOSED" => IndexAttribute.Closed
+      case _ => IndexAttribute.Opened
+    }
   }
 
   private def snapshotsBy(repositoryName: RepositoryName) = {

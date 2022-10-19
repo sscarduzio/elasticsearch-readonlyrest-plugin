@@ -94,6 +94,13 @@ object TestsUtils {
 
   def localIndexName(str: NonEmptyString): ClusterIndexName.Local = ClusterIndexName.Local.fromString(str.value.value).get
 
+  def fullLocalIndexWithAliases(fullIndexName: IndexName.Full): FullLocalIndexWithAliases =
+    fullLocalIndexWithAliases(fullIndexName, Set.empty)
+
+  def fullLocalIndexWithAliases(fullIndexName: IndexName.Full,
+                                aliasesNames: Set[IndexName.Full]): FullLocalIndexWithAliases =
+    FullLocalIndexWithAliases(fullIndexName, IndexAttribute.Opened, aliasesNames)
+
   def remoteIndexName(str: NonEmptyString): ClusterIndexName.Remote = ClusterIndexName.Remote.fromString(str.value.value).get
 
   def indexName(str: NonEmptyString): IndexName = IndexName.fromString(str.value).get

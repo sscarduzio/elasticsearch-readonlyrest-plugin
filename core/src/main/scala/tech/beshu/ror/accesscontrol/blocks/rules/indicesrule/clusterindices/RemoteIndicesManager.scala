@@ -21,7 +21,7 @@ import cats.Monoid
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.clusterindices.BaseIndicesProcessor.IndicesManager
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote
-import tech.beshu.ror.accesscontrol.domain.FullRemoteIndexWithAliases
+import tech.beshu.ror.accesscontrol.domain.{FullRemoteIndexWithAliases, IndexAttribute}
 import tech.beshu.ror.accesscontrol.matchers.IndicesMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
@@ -30,21 +30,20 @@ class RemoteIndicesManager(requestContext: RequestContext,
   extends IndicesManager[Remote] {
 
   override def allIndicesAndAliases: Task[Set[Remote]] =
-    requestContext.allRemoteIndicesAndAliases.map(_.flatMap(_.all))
+    remoteIndices(requestContext.indexAttributes).map(_.flatMap(_.all))
 
   override def allIndices: Task[Set[Remote]] =
-    requestContext.allRemoteIndicesAndAliases.map(_.map(r => Remote(r.indexName, r.clusterName)))
+    remoteIndices(requestContext.indexAttributes).map(_.map(r => Remote(r.indexName, r.clusterName)))
 
   override def allAliases: Task[Set[Remote]] =
     requestContext.allRemoteIndicesAndAliases.map(_.flatMap(r => r.aliasesNames.map(Remote(_, r.clusterName))))
 
   override def indicesPerAliasMap: Task[Map[Remote, Set[Remote]]] = {
     val mapMonoid = Monoid[Map[Remote, Set[Remote]]]
-    requestContext
-      .allRemoteIndicesAndAliases
+    remoteIndices(requestContext.indexAttributes)
         .map {
           _.foldLeft(Map.empty[Remote, Set[Remote]]) {
-            case (acc, FullRemoteIndexWithAliases(clusterName, index, aliases)) =>
+            case (acc, FullRemoteIndexWithAliases(clusterName, index, _, aliases)) =>
               val localIndicesPerAliasMap = aliases
                 .map(Remote(_, clusterName))
                 .map((_, Set(Remote(index, clusterName))))
@@ -52,5 +51,14 @@ class RemoteIndicesManager(requestContext: RequestContext,
               mapMonoid.combine(acc, localIndicesPerAliasMap)
           }
         }
+  }
+
+  private def remoteIndices(filteredBy: Set[IndexAttribute]) = {
+    requestContext
+      .allRemoteIndicesAndAliases
+      .map(_.filter(i =>
+        if(filteredBy.nonEmpty) filteredBy.contains(i.attribute)
+        else true
+      ))
   }
 }

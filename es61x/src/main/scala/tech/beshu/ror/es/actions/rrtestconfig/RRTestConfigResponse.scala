@@ -106,7 +106,6 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
     builder.endObject
   }
 
-
   private def updateConfigSuccessResponseJson(builder: XContentBuilder, response: UpdateTestConfig.SuccessResponse): Unit = {
     builder.startObject
     builder.field("status", response.status)

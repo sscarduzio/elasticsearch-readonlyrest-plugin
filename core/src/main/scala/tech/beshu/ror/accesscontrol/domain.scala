@@ -369,7 +369,6 @@ object domain {
   object IndexName {
 
     val wildcard: IndexName.Wildcard = IndexName.Wildcard("*")
-    val all: IndexName = IndexName.Full("_all")
 
     final case class Full(name: NonEmptyString)
       extends IndexName
@@ -385,6 +384,7 @@ object domain {
         NonEmptyString
           .unapply(value)
           .flatMap {
+            case str if str.value == "_all" => Some(IndexName.wildcard)
             case str if str.contains("*") => Some(Wildcard(str))
             case _ => None
           }
@@ -403,6 +403,12 @@ object domain {
       )
   }
 
+  sealed trait IndexAttribute
+  object IndexAttribute {
+    case object Opened extends IndexAttribute
+    case object Closed extends IndexAttribute
+  }
+
   sealed trait ClusterIndexName
   object ClusterIndexName {
 
@@ -416,10 +422,6 @@ object domain {
       def fromString(value: String): Option[ClusterIndexName.Local] = {
         IndexName
           .fromString(value)
-          .map {
-            case IndexName.all => IndexName.wildcard
-            case index => index
-          }
           .map(Local.apply)
       }
 
@@ -577,9 +579,9 @@ object domain {
 
     implicit class AllIndicesRequested(val indexName: ClusterIndexName) extends AnyVal {
       def allIndicesRequested: Boolean = indexName match {
-        case Local(IndexName.wildcard | IndexName.all) => true
+        case Local(IndexName.wildcard) => true
         case Local(IndexName.Full(_) | IndexName.Wildcard(_)) => false
-        case Remote(IndexName.wildcard | IndexName.all, ClusterName.wildcard) => true
+        case Remote(IndexName.wildcard, ClusterName.wildcard) => true
         case Remote(IndexName.Full(_) | IndexName.Wildcard(_), _) => false
       }
     }
@@ -643,6 +645,7 @@ object domain {
   }
 
   final case class FullLocalIndexWithAliases(indexName: IndexName.Full,
+                                             attribute: IndexAttribute,
                                              aliasesNames: Set[IndexName.Full]) {
     lazy val index: ClusterIndexName.Local = ClusterIndexName.Local(indexName)
     lazy val aliases: Set[ClusterIndexName.Local] = aliasesNames.map(ClusterIndexName.Local.apply)
@@ -651,6 +654,7 @@ object domain {
 
   final case class FullRemoteIndexWithAliases(clusterName: ClusterName.Full,
                                               indexName: IndexName.Full,
+                                              attribute: IndexAttribute,
                                               aliasesNames: Set[IndexName.Full]) {
     lazy val index: ClusterIndexName.Remote = ClusterIndexName.Remote(indexName, clusterName)
     lazy val aliases: Set[ClusterIndexName.Remote] = aliasesNames.map(ClusterIndexName.Remote(_, clusterName))
