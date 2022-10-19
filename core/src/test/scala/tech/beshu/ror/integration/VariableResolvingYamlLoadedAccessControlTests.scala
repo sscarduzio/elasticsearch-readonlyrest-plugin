@@ -269,7 +269,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           val request = MockRequestContext.indices.copy(
             headers = Set(bearerHeader(jwt)),
             filteredIndices = Set(clusterIndexName("gj0")),
-            allIndicesAndAliases = Set(FullLocalIndexWithAliases(fullIndexName("gj0"), Set.empty))
+            allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("gj0")))
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -320,9 +320,9 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             headers = Set(basicAuthHeader("cartman:user2")),
             indices = Set(clusterIndexName("*")),
             allIndicesAndAliases = Set(
-              FullLocalIndexWithAliases(fullIndexName("test-g1"), Set.empty),
-              FullLocalIndexWithAliases(fullIndexName("test-g2"), Set.empty),
-              FullLocalIndexWithAliases(fullIndexName("test-g3"), Set.empty)
+              fullLocalIndexWithAliases(fullIndexName("test-g1")),
+              fullLocalIndexWithAliases(fullIndexName("test-g2")),
+              fullLocalIndexWithAliases(fullIndexName("test-g3"))
             )
           )
 

@@ -30,7 +30,7 @@ import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilde
 import org.elasticsearch.action.support.PlainActionFuture
 import org.elasticsearch.client.Client
 import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.cluster.metadata.{Metadata, RepositoriesMetadata}
+import org.elasticsearch.cluster.metadata.{IndexMetadata, Metadata, RepositoriesMetadata}
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
@@ -140,7 +140,14 @@ class EsServerBasedRorClusterService(nodeName: String,
           .fromString(indexMetaData.getIndex.getName)
           .map { indexName =>
             val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Full.fromString)
-            FullLocalIndexWithAliases(indexName, aliases)
+            FullLocalIndexWithAliases(
+              indexName,
+              indexMetaData.getState match {
+                case IndexMetadata.State.CLOSE => IndexAttribute.Closed
+                case IndexMetadata.State.OPEN => IndexAttribute.Opened
+              },
+              aliases
+            )
           }
       }
       .toSet
@@ -156,7 +163,7 @@ class EsServerBasedRorClusterService(nodeName: String,
           .fromString(dataStreamName)
           .map { dataStreamName =>
             val alias = IndexName.Full.fromString(dataStreamAlias.getName)
-            FullLocalIndexWithAliases(dataStreamName, alias.toSet)
+            FullLocalIndexWithAliases(dataStreamName, IndexAttribute.Opened, alias.toSet)
           }
       }
       .toSet
@@ -184,6 +191,7 @@ class EsServerBasedRorClusterService(nodeName: String,
       case Success(client) =>
         resolveRemoteIndicesUsing(client)
           .map { response =>
+            logger.info(response.toString)
             response
               .getIndices.asSafeList
               .flatMap { resolvedIndex =>
@@ -215,12 +223,24 @@ class EsServerBasedRorClusterService(nodeName: String,
     IndexName.Full
       .fromString(resolvedIndex.getName)
       .map { index =>
-        val aliases = resolvedIndex
-          .getAliases.asSafeList
-          .flatMap(IndexName.Full.fromString)
-          .toSet
-        FullRemoteIndexWithAliases(remoteClusterName, index, aliases)
+        FullRemoteIndexWithAliases(remoteClusterName, index, indexAttributeFrom(resolvedIndex), aliasesFrom(resolvedIndex))
       }
+  }
+
+  private def aliasesFrom(resolvedIndex: ResolvedIndex) = {
+    resolvedIndex
+      .getAliases.asSafeList
+      .flatMap(IndexName.Full.fromString)
+      .toSet
+  }
+
+  private def indexAttributeFrom(resolvedIndex: ResolvedIndex): IndexAttribute = {
+    resolvedIndex
+      .getAttributes.toSet
+      .find(_.toLowerCase == "CLOSED") match {
+      case Some(_) => IndexAttribute.Closed
+      case None => IndexAttribute.Opened
+    }
   }
 
   private def snapshotsBy(repositoryName: RepositoryName) = {
