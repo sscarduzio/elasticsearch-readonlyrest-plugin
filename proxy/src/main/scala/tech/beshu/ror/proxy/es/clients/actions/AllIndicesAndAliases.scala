@@ -22,18 +22,18 @@ object AllIndicesAndAliases extends Logging {
       if(response.getStatusLine.getStatusCode == 200) {
         parseResponse
           .recover { case ex =>
-            logger.error("Unexpected format of /_resolve/index response", ex)
+            logger.error("Unexpected format of /_cluster/state response", ex)
             throw RorInternalException
           }
       } else {
-        logger.error(s"Unexpected status code [${response.getStatusLine.getStatusCode}] returned by /_resolve/index response")
+        logger.error(s"Unexpected status code [${response.getStatusLine.getStatusCode}] returned by /_cluster/state response")
         Failure(RorInternalException)
       }
     }
 
     private def parseResponse: Try[Set[FullLocalIndexWithAliases]] = Try {
       val json = entityJson
-      json("indices").obj
+      json("metadata")("indices").obj
         .flatMap { case (index, metadata) =>
           for {
             indexName <- IndexName.Full.fromString(index)
