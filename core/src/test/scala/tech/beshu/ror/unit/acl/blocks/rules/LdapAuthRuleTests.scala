@@ -98,7 +98,7 @@ class LdapAuthRuleTests
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = mocksProviderForLdapFrom(Map(
                   LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(Group("g1")))
@@ -192,7 +192,7 @@ class LdapAuthRuleTests
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("password")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = mocksProviderForLdapFrom(Map(
                   LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(Group("g1")))
@@ -214,7 +214,7 @@ class LdapAuthRuleTests
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*_1",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("password")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("user_1"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("user_1")
                 )),
                 mocksProvider = mocksProviderForLdapFrom(Map(
                   LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(Group("g1")))
@@ -236,7 +236,7 @@ class LdapAuthRuleTests
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("password")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = mocksProviderForLdapFrom(Map(
                   LdapService.Name("ldap1") -> Map(User.Id("user2") -> Set(Group("g1")))
@@ -258,7 +258,7 @@ class LdapAuthRuleTests
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("password")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = mocksProviderForLdapFrom(Map(
                   LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(Group("g3")))
@@ -280,7 +280,7 @@ class LdapAuthRuleTests
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*_1",
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("password")),
-                  impersonatedUsers = NonEmptyList.of(User.Id("user1"))
+                  impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = NoOpMocksProvider
               )),

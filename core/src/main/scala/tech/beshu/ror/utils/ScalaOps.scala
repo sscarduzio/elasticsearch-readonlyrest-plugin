@@ -16,23 +16,24 @@
  */
 package tech.beshu.ror.utils
 
-import java.util
-import java.util.Base64
-
 import cats.data.{EitherT, NonEmptyList, NonEmptySet}
 import cats.effect.{ContextShift, IO}
 import cats.implicits._
 import cats.{Functor, Order}
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
 
+import java.util
+import java.util.Base64
+import scala.collection.JavaConverters._
 import scala.collection.SortedSet
 import scala.concurrent.duration._
 import scala.language.{higherKinds, implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 import scala.util.Try
-import scala.collection.JavaConverters._
 
 object ScalaOps {
 
@@ -51,6 +52,12 @@ object ScalaOps {
 
   implicit class JavaMapOps[K : ClassTag, V : ClassTag](val map: java.util.Map[K, V]) {
     def asSafeMap: Map[K, V] = Option(map).map(_.asScala.toMap).getOrElse(Map.empty)
+    def asSafeKeys: Set[K] = asSafeMap.keys.toSet[K]
+    def asSafeValues: Set[V] = asSafeMap.values.toSet
+  }
+
+  implicit class JavaMapFactoryMethod(val mapObject: Map.type) {
+    def asEmptyJavaMap[K, V]: java.util.Map[K, V] = Map.empty[K, V].asJava
   }
 
   implicit class JavaListOps[T : ClassTag](val list: java.util.List[T]) {
@@ -94,6 +101,13 @@ object ScalaOps {
         .groupBy(provideComparatorOf)
         .collect { case (_, List(fst, _, _*)) => fst }
         .toList
+  }
+
+  implicit class MapOps[K, V](val map: Map[K, V]) extends AnyVal {
+    def asStringMap: Map[String, String] =
+      map.collect {
+        case (key: String, value: String) => (key, value)
+      }
   }
 
   implicit class ListOfListOps[T](val lists: List[List[T]]) extends AnyVal {
@@ -211,6 +225,13 @@ object ScalaOps {
 
     def addTrailingSlashIfNotPresent(): String = {
       if(value.endsWith("/")) value else s"$value/"
+    }
+  }
+
+  implicit class PositiveFiniteDurationAdd(val duration: FiniteDuration Refined Positive) {
+
+    def +(duration: FiniteDuration Refined Positive): FiniteDuration Refined Positive = {
+      Refined.unsafeApply(this.duration.value + duration.value)
     }
   }
 }

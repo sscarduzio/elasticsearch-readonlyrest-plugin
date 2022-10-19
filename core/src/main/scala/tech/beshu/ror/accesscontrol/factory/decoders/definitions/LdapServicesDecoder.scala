@@ -234,7 +234,7 @@ object LdapServicesDecoder {
       .instance { c =>
         val circuitBreaker = c.downField("circuit_breaker")
         if (circuitBreaker.failed) {
-          Right(DEFAULT_CIRCUIT_BREAKER_CONFIG)
+          Right(defaultCircuitBreakerConfig)
         } else {
           (for {
             maxRetries <- circuitBreaker.downField("max_retries").as[Int Refined Positive]

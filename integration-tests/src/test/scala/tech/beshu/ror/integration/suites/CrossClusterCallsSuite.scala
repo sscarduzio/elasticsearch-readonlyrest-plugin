@@ -17,71 +17,104 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
+import com.typesafe.scalalogging.StrictLogging
+import org.scalatest.concurrent.Eventually
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.integration.suites.CrossClusterCallsSuite._
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType.RorCluster
+import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, XPackSecurity}
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+
+import scala.language.postfixOps
 
 trait CrossClusterCallsSuite
   extends AnyWordSpec
     with BaseEsRemoteClusterIntegrationTest
     with SingleClientSupport
-    with ESVersionSupportForAnyWordSpecLike {
+    with ESVersionSupportForAnyWordSpecLike
+    with Eventually {
   this: EsClusterProvider =>
+
+  import tech.beshu.ror.integration.suites.CrossClusterCallsSuite._
 
   override implicit val rorConfigFileName = "/cross_cluster_search/readonlyrest.yml"
 
   override lazy val targetEs = container.localCluster.nodes.head
 
   override val remoteClusterContainer: EsRemoteClustersContainer = createRemoteClustersContainer(
-    localClustersSettings = EsClusterSettings(
-      name = "ROR_L1",
-      clusterType = RorCluster(Attributes.default.copy(
+    localClustersSettings = EsClusterSettings.create(
+      clusterName = "ROR_L1",
+      securityType = RorSecurity(Attributes.default.copy(
         rorConfigFileName = rorConfigFileName,
+        internodeSslEnabled = true
       )),
       nodeDataInitializer = localClusterNodeDataInitializer(),
     ),
-    remoteClustersSettings = NonEmptyList.of(
-      EsClusterSettings(
-        name = "ROR_R1",
-        clusterType = RorCluster(Attributes.default.copy(
-          rorConfigFileName = rorConfigFileName,
-        )),
-        nodeDataInitializer = privateRemoteClusterNodeDataInitializer()
-      ),
-      EsClusterSettings(
-        name = "ROR_R2",
-        clusterType = RorCluster(Attributes.default.copy(
-          rorConfigFileName = rorConfigFileName,
-        )),
-        nodeDataInitializer = publicRemoteClusterNodeDataInitializer()
-      ),
-    ),
+    remoteClustersSettings = if (executedOn(allEs6xExceptEs67x)) {
+      NonEmptyList.of(
+        rorClusterSettings("ROR_R1", privateRemoteClusterNodeDataInitializer()),
+        rorClusterSettings("ROR_R2", publicRemoteClusterNodeDataInitializer())
+      )
+    } else {
+      NonEmptyList.of(
+        xpackClusterSettings(),
+        rorClusterSettings("ROR_R1", privateRemoteClusterNodeDataInitializer()),
+        rorClusterSettings("ROR_R2", publicRemoteClusterNodeDataInitializer())
+      )
+    },
     remoteClusterSetup()
   )
+
+  private def xpackClusterSettings() = EsClusterSettings.create(
+    clusterName = "XPACK",
+    securityType = XPackSecurity(XpackSecurityPlugin.Config.Attributes.default.copy(
+      internodeSslEnabled = true
+    )),
+    nodeDataInitializer = xpackRemoteClusterNodeDataInitializer()
+  )
+
+  private def rorClusterSettings(name: String,
+                                 nodeDataInitializer: ElasticsearchNodeDataInitializer) =
+    EsClusterSettings.create(
+      clusterName = name,
+      securityType = RorSecurity(Attributes.default.copy(
+        rorConfigFileName = rorConfigFileName,
+        internodeSslEnabled = true
+      )),
+      nodeDataInitializer = nodeDataInitializer
+    )
+
+  implicit override val patienceConfig: PatienceConfig =
+    PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
 
   private lazy val user1SearchManager = new SearchManager(basicAuthClient("dev1", "test"))
   private lazy val user2SearchManager = new SearchManager(basicAuthClient("dev2", "test"))
   private lazy val user3SearchManager = new SearchManager(basicAuthClient("dev3", "test"))
   private lazy val user4SearchManager = new SearchManager(basicAuthClient("dev4", "test"))
+  private lazy val user5SearchManager = new SearchManager(basicAuthClient("dev5", "test"))
 
   "A cluster _search for given index" should {
     "return 200 and allow user to its content" when {
       "user has permission to do so" when {
-        "he queries local and remote indices"  in {
+        "he queries local and remote indices" in eventually {
           val result = user3SearchManager.search("etl1:etl*", "metrics*")
           result.responseCode should be(200)
           result.searchHits.map(i => i("_index").str).toSet should be(
             Set("metrics_monitoring_2020-03-26", "metrics_monitoring_2020-03-27", "etl1:etl_usage_2020-03-26", "etl1:etl_usage_2020-03-27")
           )
         }
-        "he queries remote indices only"  in {
+        "he queries remote indices only" in {
           val result = user1SearchManager.search("etl2:test1_index")
+          result.responseCode should be(200)
+          result.searchHits.arr.size should be(2)
+        }
+        "he queries remote xpack cluster indices" excludeES (allEs6xExceptEs67x) in {
+          val result = user5SearchManager.search("xpack:xpack*")
           result.responseCode should be(200)
           result.searchHits.arr.size should be(2)
         }
@@ -89,25 +122,25 @@ trait CrossClusterCallsSuite
     }
     "return empty response" when {
       "user has no permission to do so" when {
-        "he queries local and remote indices patterns"  in {
+        "he queries local and remote indices patterns" in {
           val result = user2SearchManager.search("etl1:etl*", "metrics*")
           result.responseCode should be(200)
-          result.searchHits.map(i => i("_index").str).toSet should be (Set.empty)
+          result.searchHits.map(i => i("_index").str).toSet should be(Set.empty)
         }
-        "he queries remote indices patterns only"  in {
+        "he queries remote indices patterns only" in {
           val result = user2SearchManager.search("etl1:etl*")
           result.responseCode should be(200)
-          result.searchHits.map(i => i("_index").str).toSet should be (Set.empty)
+          result.searchHits.map(i => i("_index").str).toSet should be(Set.empty)
         }
       }
     }
     "return 404" when {
       "user has no permission to do so" when {
-        "he queries local and remote indices"  in {
+        "he queries local and remote indices" in {
           val result = user2SearchManager.search("etl1:etl_usage_2020-03-26", "metrics_monitoring_2020-03-26")
           result.responseCode should be(404)
         }
-        "he queries remote indices only"  in {
+        "he queries remote indices only" in {
           val result = user2SearchManager.search("etl2:test1_index")
           result.responseCode should be(404)
         }
@@ -182,12 +215,12 @@ trait CrossClusterCallsSuite
         "he queries local and remote indices patterns" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
           val result = user2SearchManager.asyncSearch("etl1:etl*", "metrics*")
           result.responseCode should be(200)
-          result.searchHits.map(i => i("_index").str).toSet should be (Set.empty)
+          result.searchHits.map(i => i("_index").str).toSet should be(Set.empty)
         }
         "he queries remote indices patterns only" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
           val result = user2SearchManager.asyncSearch("etl1:etl*")
           result.responseCode should be(200)
-          result.searchHits.map(i => i("_index").str).toSet should be (Set.empty)
+          result.searchHits.map(i => i("_index").str).toSet should be(Set.empty)
         }
       }
     }
@@ -214,7 +247,7 @@ trait CrossClusterCallsSuite
             val result = user4SearchManager.asyncSearch("*-logs-smg-*")
             result.responseCode should be(403)
           }
-          "requested index name with wildcard is more specialized version of the configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy)in {
+          "requested index name with wildcard is more specialized version of the configured index name with wildcard" excludeES(allEs6x, allEs7xBelowEs77x, rorProxy) in {
             val result = user4SearchManager.asyncSearch("*-logs-smg-stats-2020*")
             result.responseCode should be(403)
           }
@@ -248,7 +281,7 @@ trait CrossClusterCallsSuite
   "A cluster _msearch for a given index" should {
     "return 200 and allow user to see its content" when {
       "user has permission to do so" when {
-        "he queries local and remote indices"  in {
+        "he queries local and remote indices" in {
           val result = user3SearchManager.mSearch(
             """{"index":"metrics*"}""",
             """{"query" : {"match_all" : {}}}""",
@@ -266,7 +299,7 @@ trait CrossClusterCallsSuite
             Set("etl1:etl_usage_2020-03-26", "etl1:etl_usage_2020-03-27")
           )
         }
-        "he queries remote indices only"  in {
+        "he queries remote indices only" in {
           val result = user3SearchManager.mSearch(
             """{"index":"etl1:etl*"}""",
             """{"query" : {"match_all" : {}}}"""
@@ -280,7 +313,7 @@ trait CrossClusterCallsSuite
         }
       }
       "user has permission to do only one request" when {
-        "both requests contain index patterns"  in {
+        "both requests contain index patterns" in {
           val result = user3SearchManager.mSearch(
             """{"index":"test1*"}""",
             """{"query" : {"match_all" : {}}}""",
@@ -296,7 +329,7 @@ trait CrossClusterCallsSuite
             Set("etl1:etl_usage_2020-03-26", "etl1:etl_usage_2020-03-27")
           )
         }
-        "both requests contain full name indices"  in {
+        "both requests contain full name indices" in {
           val result = user3SearchManager.mSearch(
             """{"index":"test1"}""",
             """{"query" : {"match_all" : {}}}""",
@@ -306,9 +339,9 @@ trait CrossClusterCallsSuite
           result.responseCode should be(200)
           result.responseJson("responses").arr.size should be(2)
           val firstQueryResponse = result.responseJson("responses")(0)
-          firstQueryResponse("status").num should be (404)
+          firstQueryResponse("status").num should be(404)
           val secondQueryResponse = result.responseJson("responses")(1)
-          secondQueryResponse("status").num should be (200)
+          secondQueryResponse("status").num should be(200)
           secondQueryResponse("hits")("hits").arr.map(_ ("_index").str).toSet should be(
             Set("etl1:etl_usage_2020-03-26")
           )
@@ -317,7 +350,7 @@ trait CrossClusterCallsSuite
     }
     "return empty response" when {
       "user has no permission to do so" when {
-        "he queries local and remote indices patterns"  in {
+        "he queries local and remote indices patterns" in {
           val result = user3SearchManager.mSearch(
             """{"index":"metrics_etl*"}""",
             """{"query" : {"match_all" : {}}}""",
@@ -327,11 +360,11 @@ trait CrossClusterCallsSuite
           result.responseCode should be(200)
           result.responseJson("responses").arr.size should be(2)
           val firstQueryResponse = result.responseJson("responses")(0)
-          firstQueryResponse("hits")("hits").arr.size should be (0)
+          firstQueryResponse("hits")("hits").arr.size should be(0)
           val secondQueryResponse = result.responseJson("responses")(1)
-          secondQueryResponse("hits")("hits").arr.size should be (0)
+          secondQueryResponse("hits")("hits").arr.size should be(0)
         }
-        "he queries remote indices only"  in {
+        "he queries remote indices only" in {
           val result = user3SearchManager.mSearch(
             """{"index":"etl2:*"}""",
             """{"query" : {"match_all" : {}}}"""
@@ -339,7 +372,7 @@ trait CrossClusterCallsSuite
           result.responseCode should be(200)
           result.responseJson("responses").arr.size should be(1)
           val firstQueryResponse = result.responseJson("responses")(0)
-          firstQueryResponse("hits")("hits").arr.size should be (0)
+          firstQueryResponse("hits")("hits").arr.size should be(0)
         }
       }
     }
@@ -354,7 +387,7 @@ trait CrossClusterCallsSuite
             fields = List("counter1", "usage")
           )
           result.responseCode should be(200)
-          result.fields.keys.toSet should be (Set("counter1", "usage"))
+          result.fields.keys.toSet should be(Set("counter1", "usage"))
         }
         "he queries remote indices only" in {
           val result = user3SearchManager.fieldCaps(
@@ -362,61 +395,61 @@ trait CrossClusterCallsSuite
             fields = List("counter1", "usage")
           )
           result.responseCode should be(200)
-          result.fields.keys.toSet should be (Set("usage"))
+          result.fields.keys.toSet should be(Set("usage"))
         }
       }
       "user has permission to do only one request" when {
-        "both requests contain index patterns"  in {
+        "both requests contain index patterns" in {
           val result = user3SearchManager.fieldCaps(
             indices = List("test1*", "etl1:etl*"),
             fields = List("hello", "usage")
           )
           result.responseCode should be(200)
-          result.fields.keys.toSet should be (Set("usage"))
+          result.fields.keys.toSet should be(Set("usage"))
         }
-        "both requests contain full name indices"  in {
+        "both requests contain full name indices" in {
           val result = user3SearchManager.fieldCaps(
             indices = List("test1", "etl1:etl_usage_2020-03-26"),
             fields = List("hello", "usage")
           )
           result.responseCode should be(200)
-          result.fields.keys.toSet should be (Set("usage"))
+          result.fields.keys.toSet should be(Set("usage"))
         }
       }
     }
     "return empty response" when {
       "user has no permission to do so" when {
-        "he queries local and remote indices patterns"  in {
+        "he queries local and remote indices patterns" in {
           val result = user3SearchManager.fieldCaps(
             indices = List("metrics_etl*", "etl2:*"),
             fields = List("hello", "usage", "counter1")
           )
           result.responseCode should be(200)
-          result.fields.keys.toSet should be (Set.empty)
+          result.fields.keys.toSet should be(Set.empty)
         }
-        "he queries remote indices only"  in {
+        "he queries remote indices only" in {
           val result = user3SearchManager.fieldCaps(
             indices = List("etl2:*"),
             fields = List("hello", "usage", "counter1")
           )
           result.responseCode should be(200)
-          result.fields.keys.toSet should be (Set.empty)
+          result.fields.keys.toSet should be(Set.empty)
         }
       }
     }
   }
 }
 
-object CrossClusterCallsSuite {
+object CrossClusterCallsSuite extends StrictLogging {
 
   def localClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     documentManager.createFirstDoc("metrics_monitoring_2020-03-26", ujson.read("""{"counter1":"100"}""")).force()
-    documentManager.createFirstDoc("metrics_monitoring_2020-03-27",  ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("metrics_monitoring_2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
 
-    documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-27",  ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-28",  ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-29",  ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
   }
 
   def privateRemoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
@@ -429,9 +462,9 @@ object CrossClusterCallsSuite {
     documentManager.createDoc("etl_usage_2020-03-26", 1, ujson.read("""{"usage":"ROR"}""")).force()
     documentManager.createDoc("etl_usage_2020-03-27", 1, ujson.read("""{"usage":"ROR"}""")).force()
 
-    documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-27",  ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-28",  ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-29",  ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
 
     val indexManager = new IndexManager(adminRestClient, esVersion)
     indexManager.createAliasOf("c02-logs-smg-stats-*", "c02-logs-smg-stats").force()
@@ -439,24 +472,35 @@ object CrossClusterCallsSuite {
 
   def publicRemoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createFirstDoc("c03-logs-smg-stats-2020-03-27",  ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("c03-logs-smg-stats-2020-03-28",  ujson.read("""{"counter1":"50"}""")).force()
-    documentManager.createFirstDoc("c03-logs-smg-stats-2020-03-29",  ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("c03-logs-smg-stats-2020-03-27", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("c03-logs-smg-stats-2020-03-28", ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createFirstDoc("c03-logs-smg-stats-2020-03-29", ujson.read("""{"counter1":"50"}""")).force()
 
     val indexManager = new IndexManager(adminRestClient, esVersion)
     indexManager.createAliasOf("c03-logs-smg-stats-*", "c03-logs-smg-stats").force()
   }
 
+  def xpackRemoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
+    documentManager.createDoc("xpack_cluster_index", 1, ujson.read("""{"counter1":"50"}""")).force()
+    documentManager.createDoc("xpack_cluster_index", 2, ujson.read("""{"counter1":"50"}""")).force()
+  }
+
   def remoteClusterSetup(): SetupRemoteCluster = (remoteClusters: NonEmptyList[EsClusterContainer]) => {
-    Map(
-      "etl1" -> findRemoteClusterByName(name = "ROR_R1", remoteClusters),
-      "etl2" -> findRemoteClusterByName(name = "ROR_R1", remoteClusters),
-      "pub" -> findRemoteClusterByName(name = "ROR_R2", remoteClusters)
-    )
+    List(
+      ("etl1", findRemoteClusterByName(name = "ROR_R1", remoteClusters)),
+      ("etl2", findRemoteClusterByName(name = "ROR_R1", remoteClusters)),
+      ("pub", findRemoteClusterByName(name = "ROR_R2", remoteClusters)),
+      ("xpack", findRemoteClusterByName(name = "XPACK", remoteClusters))
+    ) collect { case (name, Some(foundCluster)) => (name, foundCluster) } toMap
   }
 
   private def findRemoteClusterByName(name: String, remoteClusters: NonEmptyList[EsClusterContainer]) = {
-    remoteClusters.find(_.nodes.exists(_.esClusterSettings.name == name))
-      .getOrElse(throw new IllegalStateException(s"Cannot find remote cluster with name $name"))
+    remoteClusters
+      .find(_.nodes.exists(_.esConfig.clusterName == name))
+      .orElse {
+        logger.warn(s"Cannot find remote cluster with name $name. Skipping")
+        None
+      }
   }
 }

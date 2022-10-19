@@ -76,7 +76,10 @@ object domain {
     }
 
     final case class UserIdPattern(override val value: NonEmptyString)
-      extends Pattern[Id](value)
+      extends Pattern[Id](value) {
+
+      def containsWildcard: Boolean = value.value.contains("*")
+    }
   }
 
   final case class UserIdPatterns(patterns: UniqueNonEmptyList[User.UserIdPattern])
@@ -100,6 +103,7 @@ object domain {
       val xForwardedUser = Name("X-Forwarded-User")
       val xUserOrigin = Name(Constants.HEADER_USER_ORIGIN)
       val kibanaHiddenApps = Name(Constants.HEADER_KIBANA_HIDDEN_APPS)
+      val kibanaRequestPath = Name(Constants.HEADER_KIBANA_REQUEST_PATH)
       val cookie = Name("Cookie")
       val setCookie = Name("Set-Cookie")
       val transientFields = Name(Constants.FIELDS_TRANSIENT)
@@ -653,7 +657,9 @@ object domain {
     lazy val all: Set[ClusterIndexName.Remote] = aliases + index
   }
 
-  final case class RorConfigurationIndex(index: IndexName.Full) extends AnyVal
+  final case class RorConfigurationIndex(index: IndexName.Full) extends AnyVal {
+    def toLocal: ClusterIndexName.Local = ClusterIndexName.Local(index)
+  }
 
   sealed trait AuditCluster
   object AuditCluster {

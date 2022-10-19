@@ -135,6 +135,7 @@ dependencies {
     compile group: 'com.unboundid',                         name: 'unboundid-ldapsdk',                      version: '4.0.14'
     compile group: 'com.lihaoyi',                           name: 'upickle_2.12',                           version: '0.7.1'
     compile group: 'org.bouncycastle',                      name: 'bctls-fips',                             version: '1.0.12.3'
+    compile group: 'org.bouncycastle',                      name: 'bcpkix-fips',                            version: '1.0.6'
 
     testCompile project(':tests-utils')
     testCompile group: 'org.apache.logging.log4j',          name: 'log4j-core',                             version: '2.15.0'

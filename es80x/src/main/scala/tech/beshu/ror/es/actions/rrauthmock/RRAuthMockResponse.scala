@@ -43,6 +43,7 @@ class RRAuthMockResponse(response: AuthMockApi.AuthMockResponse)
         case UpdateAuthMock.NotConfigured(message) => addResponseJson(builder, response.status, message)
         case UpdateAuthMock.Invalidated(message) => addResponseJson(builder, response.status, message)
         case UpdateAuthMock.UnknownAuthServicesDetected(message) => addResponseJson(builder, response.status, message)
+        case UpdateAuthMock.Failed(message) => addResponseJson(builder, response.status, message)
       }
       case failure: Failure => failure match {
         case Failure.BadRequest(message) => addResponseJson(builder, response.status, message)

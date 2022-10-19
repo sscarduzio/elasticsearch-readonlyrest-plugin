@@ -62,6 +62,7 @@ public class Constants {
   public static final String HEADER_USER_ORIGIN           = "x-ror-origin";
   public static final String HEADER_CORRELATION_ID        = "x-ror-correlation-id";
   public static final String HEADER_IMPERSONATING         = "x-ror-impersonating";
+  public static final String HEADER_KIBANA_REQUEST_PATH   = "x-ror-kibana-request-path";
 
   public static final Set<String> RO_ACTIONS = Sets.newHashSet(
       "indices:admin/exists",
@@ -110,6 +111,27 @@ public class Constants {
       "indices:admin/create",
       "indices:admin/create_index",
       "indices:admin/ilm/*",
-      "indices:monitor/*"
+      "indices:monitor/*",
+      "cluster:admin/ingest/pipeline/put",
+      "cluster:admin/ingest/pipeline/delete",
+      "indices:admin/data_stream/get",
+      "cluster:monitor/settings",
+      "indices:admin/settings/update",
+      "cluster:admin/ilm/put",
+      "cluster:admin/ilm/delete",
+      "cluster:admin/repository/put",
+      "cluster:admin/repository/delete",
+      "indices:data/write/update/byquery",
+      "indices:admin/data_stream/delete",
+      "cluster:admin/component_template/delete",
+      "cluster:monitor/ccr/follow_info",
+      "indices:admin/delete",
+      "indices:admin/index_template/get",
+      "indices:admin/index_template/delete",
+      "indices:admin/index_template/put",
+      "cluster:admin/slm/put",
+      "cluster:admin/slm/execute",
+      "cluster:admin/slm/delete",
+      "indices:admin/index_template/simulate"
   );
 }

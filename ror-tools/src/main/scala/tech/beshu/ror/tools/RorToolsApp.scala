@@ -45,6 +45,9 @@ object RorToolsApp {
           case ex: RorToolsException =>
             println(s"ERROR: ${ex.getMessage}")
             sys.exit(1)
+          case ex: Throwable =>
+            println(s"UNEXPECTED ERROR: ${ex.getMessage}")
+            sys.exit(1)
         }
       }
   }

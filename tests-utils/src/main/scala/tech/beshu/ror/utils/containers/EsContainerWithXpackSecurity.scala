@@ -24,15 +24,14 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 import scala.language.postfixOps
 
-class EsContainerWithXpackSecurity private(name: String,
-                                           esVersion: String,
+class EsContainerWithXpackSecurity private(esVersion: String,
+                                           esConfig: Elasticsearch.Config,
                                            startedClusterDependencies: StartedClusterDependencies,
-                                           esClusterSettings: EsClusterSettings,
                                            image: ImageFromDockerfile)
-  extends EsContainer(name, esVersion, startedClusterDependencies, esClusterSettings, image)
+  extends EsContainer(esVersion, esConfig, startedClusterDependencies, image)
     with StrictLogging {
 
-  logger.info(s"[$name] Creating ES with X-Pack plugin installed container ...")
+  logger.info(s"[${esConfig.nodeName}] Creating ES with X-Pack plugin installed container ...")
 
   override val sslEnabled: Boolean = false
 
@@ -47,14 +46,12 @@ object EsContainerWithXpackSecurity extends StrictLogging {
              esConfig: Elasticsearch.Config,
              xpackSecurityConfig: XpackSecurityPlugin.Config,
              initializer: ElasticsearchNodeDataInitializer,
-             startedClusterDependencies: StartedClusterDependencies,
-             esClusterSettings: EsClusterSettings): EsContainer = {
+             startedClusterDependencies: StartedClusterDependencies): EsContainer = {
 
     val rorContainer = new EsContainerWithXpackSecurity(
-      esConfig.nodeName,
       esVersion,
+      esConfig,
       startedClusterDependencies,
-      esClusterSettings,
       esImageWithXpackFromDockerfile(esVersion, esConfig, xpackSecurityConfig)
     )
     EsContainer.init(rorContainer, initializer, logger)

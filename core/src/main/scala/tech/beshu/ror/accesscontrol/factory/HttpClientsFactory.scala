@@ -16,23 +16,22 @@
  */
 package tech.beshu.ror.accesscontrol.factory
 
-import java.util.concurrent.CopyOnWriteArrayList
-
 import com.softwaremill.sttp.asynchttpclient.cats.AsyncHttpClientCatsBackend
 import com.softwaremill.sttp.{MonadError, Request, Response, SttpBackend}
 import eu.timepit.refined.api.Refined
+import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
-import eu.timepit.refined.refineV
 import io.netty.util.HashedWheelTimer
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.refined._
 import org.asynchttpclient.Dsl.asyncHttpClient
 import org.asynchttpclient.netty.channel.DefaultChannelPool
 import org.asynchttpclient.{AsyncHttpClient, DefaultAsyncHttpClientConfig}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.{Config, HttpClient}
+import tech.beshu.ror.utils.DurationOps._
 
+import java.util.concurrent.CopyOnWriteArrayList
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.{higherKinds, postfixOps}
@@ -53,9 +52,9 @@ object HttpClientsFactory {
                           validate: Boolean)
   object Config {
     val default: Config = Config(
-      connectionTimeout = refineV[Positive](2 seconds).right.get,
-      requestTimeout = refineV[Positive](5 seconds).right.get,
-      connectionPoolSize = refineV[Positive](30).right.get,
+      connectionTimeout = (2 seconds).toRefinedPositiveUnsafe,
+      requestTimeout = (5 seconds).toRefinedPositiveUnsafe,
+      connectionPoolSize = 30,
       validate = true
     )
   }

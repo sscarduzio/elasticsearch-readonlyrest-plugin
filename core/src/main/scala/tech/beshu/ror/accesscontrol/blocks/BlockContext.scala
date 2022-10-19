@@ -438,8 +438,8 @@ object BlockContext {
     }
   }
 
-  implicit class ContainsIndices(val b: BlockContext) extends AnyVal {
-    def containsIndices: Boolean = b match {
+  implicit class InvolvesIndices(val b: BlockContext) extends AnyVal {
+    def involvesIndices: Boolean = b match {
       case _: CurrentUserMetadataRequestBlockContext => hasIndices[CurrentUserMetadataRequestBlockContext]
       case _: GeneralNonIndexRequestBlockContext => hasIndices[GeneralNonIndexRequestBlockContext]
       case _: RepositoryRequestBlockContext => hasIndices[RepositoryRequestBlockContext]
@@ -455,7 +455,8 @@ object BlockContext {
     private implicit def toOption[A](implicit a: A): Option[A] = Some(a)
 
     private def hasIndices[B <: BlockContext](implicit hasIndices: Option[HasIndices[B]] = None,
-                                              hasIndexPacks: Option[HasIndexPacks[B]] = None) =
+                                              hasIndexPacks: Option[HasIndexPacks[B]] = None) = {
       hasIndices.nonEmpty || hasIndexPacks.nonEmpty
+    }
   }
 }
