@@ -234,7 +234,7 @@ final class SimpleStatement(val underlyingObject: AnyRef)
     classLoader.loadClass("org.elasticsearch.xpack.sql.analysis.analyzer.TableInfo")
 
   private def tableIdentifierClass(implicit classLoader: ClassLoader) =
-    classLoader.loadClass("org.elasticsearch.xpack.sql.plan.TableIdentifier")
+    classLoader.loadClass("org.elasticsearch.xpack.ql.plan.TableIdentifier")
 }
 
 final class Command(val underlyingObject: Any)
