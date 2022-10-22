@@ -228,6 +228,14 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
     call(createSimulateTemplateRequest(indexPatterns, aliases), new SimulateResponse(_))
   }
 
+  def createTemplate(templateName: String,
+                     body: JSON): JsonResponse = {
+    val request = new HttpPut(client.from(s"/_index_template/$templateName"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(ujson.write(body)))
+    call(request, new JsonResponse(_))
+  }
+
   override protected def createGetTemplateRequest(name: String): HttpGet = {
     val request = new HttpGet(client.from("/_index_template/" + name))
     request.setHeader("timeout", "50s")

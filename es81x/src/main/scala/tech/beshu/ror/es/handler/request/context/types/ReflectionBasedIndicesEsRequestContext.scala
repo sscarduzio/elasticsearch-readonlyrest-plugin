@@ -57,7 +57,7 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
     // Optimistic reflection attempt
     ReflecUtils.setIndices(
       actionRequest,
-      Sets.newHashSet("index", "indices", "setIndex", "setIndices"),
+      Sets.newHashSet("index", "indices", "setIndex", "setIndices", "name", "getName"),
       indices.toList.map(_.stringify).toSet.asJava
     )
   }
@@ -75,6 +75,8 @@ object ReflectionBasedIndicesEsRequestContext {
       .orElse(getIndicesUsingReflection(request, methodName = "getIndices"))
       .orElse(getIndicesUsingReflection(request, methodName = "index"))
       .orElse(getIndicesUsingReflection(request, methodName = "getIndex"))
+      .orElse(getIndicesUsingReflection(request, methodName = "name"))
+      .orElse(getIndicesUsingReflection(request, methodName = "getName"))
       .map(indices => indices.toList.toSet.flatMap(ClusterIndexName.fromString))
   }
 
