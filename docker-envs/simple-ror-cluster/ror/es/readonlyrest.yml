@@ -25,6 +25,11 @@ readonlyrest:
       verbosity: error
       auth_key: admin:container
 
+    - name: "::ADMIN::"
+      auth_key: user:pass
+      # KIBANA ADMIN ACCESS NEEDED TO EDIT SECURITY SETTINGS IN ROR KIBANA APP!
+      kibana_access: admin
+
     - name: "User 1"
       type: allow
       auth_key: "user1:test"

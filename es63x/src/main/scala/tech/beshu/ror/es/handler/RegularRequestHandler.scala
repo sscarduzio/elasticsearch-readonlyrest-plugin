@@ -125,7 +125,8 @@ class RegularRequestHandler(engine: Engine,
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
            TemplateRequestBlockContextUpdater |
-           MultiIndexRequestBlockContextUpdater =>
+           MultiIndexRequestBlockContextUpdater |
+           RorInternalRequestBlockContextUpdater =>
         onForbidden(NonEmptyList.one(OperationNotAllowed))
     }
   }
@@ -142,7 +143,8 @@ class RegularRequestHandler(engine: Engine,
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
            TemplateRequestBlockContextUpdater |
-           MultiIndexRequestBlockContextUpdater =>
+           MultiIndexRequestBlockContextUpdater |
+           RorInternalRequestBlockContextUpdater =>
         onForbidden(NonEmptyList.one(OperationNotAllowed))
     }
   }
@@ -159,7 +161,8 @@ class RegularRequestHandler(engine: Engine,
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
            AliasRequestBlockContextUpdater |
-           MultiIndexRequestBlockContextUpdater =>
+           MultiIndexRequestBlockContextUpdater |
+           RorInternalRequestBlockContextUpdater =>
         onForbidden(NonEmptyList.one(OperationNotAllowed))
     }
   }

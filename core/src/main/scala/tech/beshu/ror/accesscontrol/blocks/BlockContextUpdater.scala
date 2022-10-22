@@ -264,6 +264,25 @@ object BlockContextUpdater {
                                                  responseTransformation: ResponseTransformation): FilterableMultiRequestBlockContext =
       blockContext.copy(responseTransformations = responseTransformation :: blockContext.responseTransformations)
   }
+
+  implicit object RorInternalRequestBlockContextUpdater
+    extends BlockContextUpdater[RorInternalRequestBlockContext] {
+
+    override def emptyBlockContext(blockContext: RorInternalRequestBlockContext): RorInternalRequestBlockContext =
+      RorInternalRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, List.empty)
+
+    override def withUserMetadata(blockContext: RorInternalRequestBlockContext,
+                                  userMetadata: UserMetadata): RorInternalRequestBlockContext =
+      blockContext.copy(userMetadata = userMetadata)
+
+    override def withAddedResponseHeader(blockContext: RorInternalRequestBlockContext,
+                                         header: Header): RorInternalRequestBlockContext =
+      blockContext.copy(responseHeaders = blockContext.responseHeaders + header)
+
+    override def withAddedResponseTransformation(blockContext: RorInternalRequestBlockContext,
+                                                 responseTransformation: ResponseTransformation): RorInternalRequestBlockContext =
+      blockContext.copy(responseTransformations = responseTransformation :: blockContext.responseTransformations)
+  }
 }
 
 abstract class BlockContextWithIndicesUpdater[B <: BlockContext: HasIndices] {

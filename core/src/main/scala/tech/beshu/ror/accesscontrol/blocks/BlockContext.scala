@@ -138,6 +138,12 @@ object BlockContext {
     }
   }
 
+  final case class RorInternalRequestBlockContext(override val requestContext: RequestContext,
+                                                  override val userMetadata: UserMetadata,
+                                                  override val responseHeaders: Set[Header],
+                                                  override val responseTransformations: List[ResponseTransformation])
+    extends BlockContext
+
   trait HasIndices[B <: BlockContext] {
     def indices(blockContext: B): Set[ClusterIndexName]
   }
@@ -345,6 +351,7 @@ object BlockContext {
         case bc: FilterableRequestBlockContext => bc.filteredIndices
         case bc: MultiIndexRequestBlockContext => extractIndicesFrom(bc.indexPacks)
         case bc: FilterableMultiRequestBlockContext => extractIndicesFrom(bc.indexPacks)
+        case _: RorInternalRequestBlockContext => Set.empty
       }
     }
 
@@ -371,6 +378,7 @@ object BlockContext {
         case _: MultiIndexRequestBlockContext => Set.empty
         case _: FilterableRequestBlockContext => Set.empty
         case _: FilterableMultiRequestBlockContext => Set.empty
+        case _: RorInternalRequestBlockContext => Set.empty
       }
     }
   }
@@ -388,6 +396,7 @@ object BlockContext {
         case _: MultiIndexRequestBlockContext => Set.empty
         case _: FilterableRequestBlockContext => Set.empty
         case _: FilterableMultiRequestBlockContext => Set.empty
+        case _: RorInternalRequestBlockContext => Set.empty
       }
     }
   }
@@ -405,6 +414,7 @@ object BlockContext {
         case _: MultiIndexRequestBlockContext => None
         case _: FilterableRequestBlockContext => None
         case _: FilterableMultiRequestBlockContext => None
+        case _: RorInternalRequestBlockContext => None
       }
     }
   }
@@ -422,6 +432,7 @@ object BlockContext {
         case _: MultiIndexRequestBlockContext => None
         case bc: FilterableRequestBlockContext => bc.fieldLevelSecurity
         case bc: FilterableMultiRequestBlockContext => bc.fieldLevelSecurity
+        case _: RorInternalRequestBlockContext => None
       }
     }
   }
@@ -450,6 +461,7 @@ object BlockContext {
       case _: FilterableRequestBlockContext => hasIndices[FilterableRequestBlockContext]
       case _: FilterableMultiRequestBlockContext => hasIndices[FilterableMultiRequestBlockContext]
       case _: MultiIndexRequestBlockContext => hasIndices[MultiIndexRequestBlockContext]
+      case _: RorInternalRequestBlockContext =>  hasIndices[RorInternalRequestBlockContext]
     }
 
     private implicit def toOption[A](implicit a: A): Option[A] = Some(a)

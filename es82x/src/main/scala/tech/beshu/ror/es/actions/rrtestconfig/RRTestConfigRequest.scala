@@ -19,14 +19,17 @@ package tech.beshu.ror.es.actions.rrtestconfig
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
-import tech.beshu.ror.api.TestConfigApi
+import tech.beshu.ror.api.{RorApiRequest, TestConfigApi}
+import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.{Constants, RequestId}
 
 class RRTestConfigRequest(testConfigApiRequest: TestConfigApi.TestConfigRequest,
-                          esRestRequest: RestRequest) extends ActionRequest {
+                          esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
 
-  val getTestConfigRequest: TestConfigApi.TestConfigRequest = testConfigApiRequest
+  def getTestConfigRequest: RorApiRequest[TestConfigApi.TestConfigRequest] =
+    RorApiRequest(testConfigApiRequest, loggerUser)
+
   lazy val requestContextId: RequestId = RequestId(s"${esRestRequest.hashCode()}-${this.hashCode()}")
 
   override def validate(): ActionRequestValidationException = null
@@ -48,7 +51,7 @@ object RRTestConfigRequest {
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }
     new RRTestConfigRequest(
-      new TestConfigApi.TestConfigRequest(
+      TestConfigApi.TestConfigRequest(
         requestType,
         request.content.utf8ToString
       ),

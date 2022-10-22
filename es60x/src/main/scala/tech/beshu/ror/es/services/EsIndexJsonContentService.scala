@@ -58,12 +58,19 @@ class EsIndexJsonContentService(client: NodeClient,
         .actionGet()
     }
       .map { response =>
-        Option(response.getSourceAsMap) match {
-          case Some(map) =>
-            Right(map.asScala.toMap.asStringMap)
-          case None =>
-            logger.warn(s"Document [${index.show} ID=$id] _source is not available. Assuming it's empty")
-            Right(Map.empty[String, String])
+        if (response.isExists) {
+          Option(response.getSourceAsMap) match {
+            case Some(map) =>
+              val source = map.asScala.toMap.asStringMap
+              logger.debug(s"Document [${index.show} ID=$id] _source: ${showSource(source)}")
+              Right(source)
+            case None =>
+              logger.warn(s"Document [${index.show} ID=$id] _source is not available. Assuming it's empty")
+              Right(Map.empty[String, String])
+          }
+        } else {
+          logger.debug(s"Document [${index.show} ID=$id] not exist")
+          Left(ContentNotFound)
         }
       }
       .executeOn(RorSchedulers.blockingScheduler)
@@ -107,5 +114,9 @@ class EsIndexJsonContentService(client: NodeClient,
           logger.error(s"Cannot write to document [${index.show} ID=$id]", ex)
           Left(CannotWriteToIndex)
       }
+  }
+
+  private def showSource(source: Map[String, String]) = {
+    ujson.write(source)
   }
 }
