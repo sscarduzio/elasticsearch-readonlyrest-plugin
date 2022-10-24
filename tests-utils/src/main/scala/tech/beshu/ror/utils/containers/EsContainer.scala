@@ -17,7 +17,7 @@
 package tech.beshu.ror.utils.containers
 
 import com.dimafeng.testcontainers.SingleContainer
-import com.typesafe.scalalogging.Logger
+import com.typesafe.scalalogging.{Logger, StrictLogging}
 import monix.eval.Coeval
 import org.apache.http.message.BasicHeader
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
@@ -40,7 +40,8 @@ abstract class EsContainer(val esVersion: String,
                            val startedClusterDependencies: StartedClusterDependencies,
                            image: ImageFromDockerfile)
   extends SingleContainer[GenericContainer[_]]
-    with ClientProvider {
+    with ClientProvider
+    with StrictLogging {
 
   override implicit val container = new org.testcontainers.containers.GenericContainer(image)
 

@@ -170,6 +170,7 @@ object SearchManager {
 
   class SearchResult(response: HttpResponse) extends BaseSearchResult(response) {
     override lazy val searchHitsWithSettings: Value = force().responseJson("hits")("hits")
+    lazy val aggregations: Map[String, Value] = responseJson("aggregations").obj.toMap
   }
 
   class AsyncSearchResult(response: HttpResponse) extends BaseSearchResult(response) {
