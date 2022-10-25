@@ -21,7 +21,8 @@ import tech.beshu.ror.utils.JavaConverters
 
 import scala.language.implicitConversions
 
-final class ThreadContextOps(threadContext: ThreadContext) {
+final class ThreadContextOps(val threadContext: ThreadContext) extends AnyVal {
+
   def stashAndMergeResponseHeaders(): ThreadContext.StoredContext = {
     val responseHeaders = JavaConverters.flattenPair(threadContext.getResponseHeaders)
     val storedContext = threadContext.stashContext()

@@ -21,8 +21,8 @@ import cats.implicits._
 import eu.timepit.refined.auto._
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateResponse}
-import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.cluster.metadata.MetaData
+import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext

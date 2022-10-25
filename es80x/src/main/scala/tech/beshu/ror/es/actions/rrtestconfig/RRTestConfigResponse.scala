@@ -19,8 +19,8 @@ package tech.beshu.ror.es.actions.rrtestconfig
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.xcontent.StatusToXContentObject
-import org.elasticsearch.xcontent.{ToXContent, XContentBuilder}
 import org.elasticsearch.rest.RestStatus
+import org.elasticsearch.xcontent.{ToXContent, XContentBuilder}
 import tech.beshu.ror.api.TestConfigApi
 import tech.beshu.ror.api.TestConfigApi.TestConfigResponse._
 

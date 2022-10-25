@@ -20,8 +20,8 @@ import com.softwaremill.sttp.Method
 import eu.timepit.refined.auto._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.{CompositeIndicesRequest, IndicesRequest}
 import org.elasticsearch.action.search.SearchRequest
+import org.elasticsearch.action.{CompositeIndicesRequest, IndicesRequest}
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain._

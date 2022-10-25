@@ -17,13 +17,16 @@
 package tech.beshu.ror.es.handler.request
 
 import cats.data.NonEmptyList
-import cats.syntax.show._
+import cats.implicits._
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{AbstractQueryBuilder, QueryBuilder, QueryBuilders}
+import org.elasticsearch.search.aggregations.AggregatorFactories
+import org.elasticsearch.search.aggregations.support.ValuesSourceAggregationBuilder
+import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{NotUsingFields, UsedField, UsingFields}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -32,6 +35,9 @@ import tech.beshu.ror.es.handler.request.queries.QueryFieldsUsage.{Ops => QueryF
 import tech.beshu.ror.es.handler.request.queries.QueryWithModifiableFields.instances._
 import tech.beshu.ror.es.handler.request.queries.QueryWithModifiableFields.{Ops => QueryWithModifiableFieldsOps}
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
+
+import java.util.UUID
+import scala.collection.JavaConverters._
 
 object SearchRequestOps extends Logging {
 
@@ -88,7 +94,7 @@ object SearchRequestOps extends Logging {
               FLSContextHeaderHandler.addContextHeader(threadPool, definedFields.restrictions, requestId)
               disableCaching(requestId)
             case BasedOnBlockContextOnly.NotAllowedFieldsUsed(notAllowedFields) =>
-              modifyNotAllowedFieldsInQuery(notAllowedFields)
+              modifyNotAllowedFieldsInRequest(notAllowedFields)
             case BasedOnBlockContextOnly.EverythingAllowed =>
               request
           }
@@ -98,30 +104,106 @@ object SearchRequestOps extends Logging {
     }
 
     def checkFieldsUsage(): RequestFieldsUsage = {
-      Option(request.source()).flatMap(s => Option(s.scriptFields())) match {
-        case Some(scriptFields) if scriptFields.size() > 0 =>
+      Option(request.source()) match {
+        case Some(source) if source.hasScriptFields =>
           RequestFieldsUsage.CannotExtractFields
-        case _ =>
-          checkQueryFields()
+        case Some(_) | None =>
+          checkFieldsUsageInRequest()
       }
     }
 
-    private def modifyNotAllowedFieldsInQuery(notAllowedFields: NonEmptyList[UsedField.SpecificField]) = {
-      val currentQuery = request.source().query()
-      val newQuery = currentQuery.handleNotAllowedFields(notAllowedFields)
-      request.source().query(newQuery)
-      request
+    private def modifyNotAllowedFieldsInRequest(notAllowedFields: NonEmptyList[UsedField.SpecificField]) = {
+      Option(request.source()) match {
+        case None =>
+          request
+        case Some(sourceBuilder) =>
+          request.source(
+            sourceBuilder
+              .modifyNotAllowedFieldsInQuery(notAllowedFields)
+              .modifyNotAllowedFieldsInAggregations(notAllowedFields)
+          )
+      }
     }
 
-    private def checkQueryFields(): RequestFieldsUsage = {
-      Option(request.source()).flatMap(s => Option(s.query()))
-        .map(_.fieldsUsage)
-        .getOrElse(RequestFieldsUsage.NotUsingFields)
+    private def checkFieldsUsageInRequest(): RequestFieldsUsage = {
+      Option(request.source()) match {
+        case None =>
+          NotUsingFields
+        case Some(source) =>
+          source.fieldsUsageInAggregations |+| source.fieldsUsageInQuery
+      }
     }
 
     private def disableCaching(requestId: RequestContext.Id) = {
       logger.debug(s"[${requestId.show}] ACL uses context header for fields rule, will disable request cache for SearchRequest")
       request.requestCache(false)
+    }
+  }
+
+  private implicit class SearchSourceBuilderOps(val builder: SearchSourceBuilder) extends AnyVal {
+
+    def modifyNotAllowedFieldsInQuery(notAllowedFields: NonEmptyList[UsedField.SpecificField]): SearchSourceBuilder = {
+      Option(builder.query()) match {
+        case None =>
+          builder
+        case Some(currentQuery) =>
+          val newQuery = currentQuery.handleNotAllowedFields(notAllowedFields)
+          builder.query(newQuery)
+      }
+    }
+
+    def modifyNotAllowedFieldsInAggregations(notAllowedFields: NonEmptyList[UsedField.SpecificField]): SearchSourceBuilder = {
+      def modifyBuilder(aggregatorFactoryBuilder: AggregatorFactories.Builder) = {
+        import org.joor.Reflect._
+        on(builder).set("aggregations", aggregatorFactoryBuilder)
+        builder
+      }
+
+      Option(builder.aggregations()) match {
+        case None =>
+          builder
+        case Some(aggregations) =>
+          val aggregatorFactoryBuilder = new AggregatorFactories.Builder()
+          aggregations
+            .getAggregatorFactories.asScala
+            .foreach {
+              case f: ValuesSourceAggregationBuilder[_, _] if notAllowedFields.find(s => s.value == f.field()).isDefined =>
+                aggregatorFactoryBuilder.addAggregator(f.field(s"${f.field()}_${UUID.randomUUID().toString}"))
+              case f =>
+                aggregatorFactoryBuilder.addAggregator(f)
+            }
+          modifyBuilder(aggregatorFactoryBuilder)
+      }
+    }
+
+    def hasScriptFields: Boolean = Option(builder.scriptFields()).exists(_.size() > 0)
+
+    def fieldsUsageInQuery: RequestFieldsUsage = {
+      Option(builder.query()) match {
+        case None => NotUsingFields
+        case Some(query) => query.fieldsUsage
+      }
+    }
+
+    def fieldsUsageInAggregations: RequestFieldsUsage = {
+      Option(builder.aggregations()) match {
+        case None =>
+          NotUsingFields
+        case Some(aggregations) =>
+          NonEmptyList
+            .fromList {
+              aggregations
+                .getAggregatorFactories.asScala
+                .flatMap {
+                  case builder: ValuesSourceAggregationBuilder[_, _] => builder.field() :: Nil
+                  case _ => Nil
+                }
+                .map(UsedField.apply)
+                .toList
+            }
+          .map(UsingFields.apply)
+          .getOrElse(NotUsingFields)
+      }
     }
   }
 }

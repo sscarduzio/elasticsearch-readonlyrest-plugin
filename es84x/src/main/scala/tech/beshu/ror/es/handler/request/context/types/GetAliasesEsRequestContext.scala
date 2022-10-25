@@ -37,7 +37,7 @@ import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsReques
 import tech.beshu.ror.utils.ScalaOps._
 
 import java.util.{List => JList}
-import scala.collection.JavaConverters._
+
 import scala.language.postfixOps
 
 class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
@@ -140,7 +140,6 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
           aliasesResponse.getDataStreamAliases
         )
       case other =>
-        import tech.beshu.ror.utils.ScalaOps._
         logger.error(s"${id.show} Unexpected response type - expected: [${classOf[GetAliasesResponse].getSimpleName}], was: [${other.getClass.getSimpleName}]")
         (
           Map.asEmptyJavaMap[String, JList[AliasMetadata]],
