@@ -42,19 +42,6 @@ trait SingletonPluginTestSupport
     resolveConfig.toTry.get
   }
 
-  private def resolveConfig: Either[Throwable, File] = {
-    Either.cond(
-      test = startedDependencies.values.size === clusterDependencies.size,
-      right = resolvedConfig(startedDependencies),
-      left = new IllegalStateException("Not all dependencies are started. Cannot read resolved config yet")
-    )
-  }
-
-  private def resolvedConfig(startedDependencies: StartedClusterDependencies) = {
-    val configFile = File.apply(getResourcePath(rorConfigFileName))
-    RorConfigAdjuster.adjustUsingDependencies(configFile, startedDependencies, Mode.Plugin)
-  }
-
   override protected def beforeAll(): Unit = {
     startedDependencies = DependencyRunner.startDependencies(clusterDependencies)
     SingletonEsContainerWithRorSecurity.cleanUpContainer()
@@ -67,5 +54,18 @@ trait SingletonPluginTestSupport
   override protected def afterAll(): Unit = {
     super.afterAll()
     startedDependencies.values.foreach(started => started.container.stop())
+  }
+
+  private def resolveConfig: Either[Throwable, File] = {
+    Either.cond(
+      test = startedDependencies.values.size === clusterDependencies.size,
+      right = resolvedConfig(startedDependencies),
+      left = new IllegalStateException("Not all dependencies are started. Cannot read resolved config yet")
+    )
+  }
+
+  private def resolvedConfig(startedDependencies: StartedClusterDependencies) = {
+    val configFile = File.apply(getResourcePath(rorConfigFileName))
+    RorConfigAdjuster.adjustUsingDependencies(configFile, startedDependencies, Mode.Plugin)
   }
 }

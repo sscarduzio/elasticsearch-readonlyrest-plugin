@@ -24,6 +24,6 @@ class RRAuthMockActionType extends Action[RRAuthMockResponse](RRAuthMockActionTy
 }
 
 object RRAuthMockActionType {
-  val name = domain.Action.rorAuthMockAction.value
+  val name: String = domain.Action.rorAuthMockAction.value
   val instance = new RRAuthMockActionType()
 }

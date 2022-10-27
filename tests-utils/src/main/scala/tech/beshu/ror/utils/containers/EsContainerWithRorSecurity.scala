@@ -28,8 +28,7 @@ class EsContainerWithRorSecurity private(esVersion: String,
                                          startedClusterDependencies: StartedClusterDependencies,
                                          image: ImageFromDockerfile,
                                          override val sslEnabled: Boolean)
-  extends EsContainer(esVersion, esConfig, startedClusterDependencies, image)
-    with StrictLogging {
+  extends EsContainer(esVersion, esConfig, startedClusterDependencies, image) {
 
   logger.info(s"[${esConfig.nodeName}] Creating ES with ROR plugin installed container ...")
 

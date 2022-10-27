@@ -27,8 +27,7 @@ class EsContainerWithNoSecurity private(esConfig: Elasticsearch.Config,
                                         esVersion: String,
                                         startedClusterDependencies: StartedClusterDependencies,
                                         image: ImageFromDockerfile)
-  extends EsContainer(esVersion, esConfig, startedClusterDependencies, image)
-    with StrictLogging {
+  extends EsContainer(esVersion, esConfig, startedClusterDependencies, image) {
 
   logger.info(s"[${esConfig.nodeName}] Creating ES without any security installed container ...")
 

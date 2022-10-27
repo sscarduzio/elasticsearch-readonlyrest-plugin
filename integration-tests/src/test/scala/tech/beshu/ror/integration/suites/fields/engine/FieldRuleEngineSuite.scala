@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.integration.suites.fields.engine
 
-import org.scalatest.Assertion
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
@@ -27,71 +27,96 @@ import tech.beshu.ror.utils.httpclient.RestClient
 trait FieldRuleEngineSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
-    with ESVersionSupportForAnyWordSpecLike {
+    with ESVersionSupportForAnyWordSpecLike
+    with BeforeAndAfterAll {
   this: EsClusterProvider =>
 
-  import FieldRuleEngineSuite.QueriesUsingNotAllowedField._
+  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some {
+    FieldRuleEngineSuite.nodeDataInitializer()
+  }
 
-
-  override def nodeDataInitializer = Some(FieldRuleEngineSuite.nodeDataInitializer())
-
-  protected def unmodifableQueryAssertion(user: String, query: String): Assertion
+  private lazy val searchManager = new SearchManager(basicAuthClient("user", "pass"))
 
   "Search request with field rule defined" when {
     "specific FLS engine is used" should {
       "match and return filtered document source" when {
         "modifiable at ES level query using not allowed field is passed in request" in {
-          assertNoSearchHitsReturnedFor("user", modifiableAtEsLevelQuery)
+          val result = searchManager.search(
+            "test-index",
+            ujson.read(
+              """
+                |{
+                |  "query": {
+                |    "match": {
+                |       "notAllowedField": 1
+                |    }
+                |  }
+                |}
+                |""".stripMargin)
+          )
+
+          result.responseCode shouldBe 200
+          result.searchHits shouldBe List.empty
         }
       }
       "handle unmodifiable at ES level query" when {
         "using not allowed field is passed in request" in {
-          unmodifableQueryAssertion("user", unmodifiableAtEsLevelQuery)
+          val result = searchManager.search(
+            "test-index",
+            ujson.read(
+              """
+                |{
+                |  "query": {
+                |    "query_string": {
+                |      "query": "notAllowed\\*: 1"
+                |    }
+                |  }
+                |}
+                |""".stripMargin)
+          )
+
+          unmodifiableQueryAssertion(result)
         }
+      }
+      "properly handle forbidden field in the aggregate" in {
+        val result = searchManager.search(
+          "test-index",
+          ujson.read(
+            s"""
+               |{
+               |  "aggs":{
+               |    "my_aggregate":{
+               |      "terms":{
+               |        "field":"forbiddenField"
+               |      }
+               |    }
+               |  }
+               |}
+             """.stripMargin)
+        )
+
+        result.responseCode shouldBe 200
+        result.searchHits.size shouldBe 5
+        val aggregateName =
+          if(executedOn(rorProxy)) "sterms#my_aggregate" // this is weird and probably we need to fix it. Currently, there is no time for this
+          else "my_aggregate"
+        result.aggregations shouldBe Map(
+          aggregateName -> ujson.read(
+            """{
+              |  "doc_count_error_upper_bound": 0,
+              |  "sum_other_doc_count": 0,
+              |  "buckets": []
+              |}""".stripMargin
+          )
+        )
       }
     }
   }
 
-  def assertNoSearchHitsReturnedFor(user: String, passedQuery: String) = {
-    val searchManager = new SearchManager(basicAuthClient(user, "pass"))
-    val result = searchManager.search("test-index", ujson.read(passedQuery))
-
-    result.responseCode shouldBe 200
-    result.searchHits.isEmpty shouldBe true
-  }
-
-  def assertOperationNotAllowed(user: String, passedQuery: String) = {
-    val searchManager = new SearchManager(basicAuthClient(user, "pass"))
-    val result = searchManager.search("test-index", ujson.read(passedQuery))
-    result.responseCode shouldBe 401
-  }
+  protected def unmodifiableQueryAssertion(searchResult: SearchManager.SearchResult): Unit
 }
 
 object FieldRuleEngineSuite {
-
-  object QueriesUsingNotAllowedField {
-    val modifiableAtEsLevelQuery =
-      """
-        |{
-        |  "query": {
-        |    "match": {
-        |       "notAllowedField": 1
-        |    }
-        |  }
-        |}
-        |""".stripMargin
-
-    val unmodifiableAtEsLevelQuery =
-      """
-        |{
-        |  "query": {
-        |    "query_string": {
-        |      "query": "notAllowed\\*: 1"
-        |    }
-        |  }
-        |}
-        |""".stripMargin
-  }
 
   def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
@@ -99,9 +124,14 @@ object FieldRuleEngineSuite {
       """
         |{
         | "allowedField": "allowedFieldValue",
-        | "notAllowedField": 1
+        | "notAllowedField": 1,
+        | "forbiddenField": 1
         |}""".stripMargin
 
     documentManager.createDoc("test-index", 1, ujson.read(document)).force()
+    documentManager.createDoc("test-index", 2, ujson.read(document)).force()
+    documentManager.createDoc("test-index", 3, ujson.read(document)).force()
+    documentManager.createDoc("test-index", 4, ujson.read(document)).force()
+    documentManager.createDoc("test-index", 5, ujson.read(document)).force()
   }
 }

@@ -28,8 +28,7 @@ class EsContainerWithXpackSecurity private(esVersion: String,
                                            esConfig: Elasticsearch.Config,
                                            startedClusterDependencies: StartedClusterDependencies,
                                            image: ImageFromDockerfile)
-  extends EsContainer(esVersion, esConfig, startedClusterDependencies, image)
-    with StrictLogging {
+  extends EsContainer(esVersion, esConfig, startedClusterDependencies, image) {
 
   logger.info(s"[${esConfig.nodeName}] Creating ES with X-Pack plugin installed container ...")
 

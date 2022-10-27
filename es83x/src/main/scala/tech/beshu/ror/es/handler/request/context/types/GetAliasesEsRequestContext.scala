@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-import java.util.{List => JList}
-
 import cats.data.NonEmptyList
 import cats.implicits._
 import monix.eval.Task
@@ -39,6 +37,8 @@ import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsReques
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.utils.ScalaOps._
 import scala.collection.JavaConverters._
+
+import java.util.{List => JList}
 
 import scala.language.postfixOps
 

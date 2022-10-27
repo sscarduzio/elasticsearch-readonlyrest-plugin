@@ -29,8 +29,7 @@ class EsContainerWithRorAndXpackSecurity private(esConfig: Elasticsearch.Config,
                                                  startedClusterDependencies: StartedClusterDependencies,
                                                  image: ImageFromDockerfile,
                                                  override val sslEnabled: Boolean)
-  extends EsContainer(esVersion, esConfig, startedClusterDependencies, image)
-    with StrictLogging {
+  extends EsContainer(esVersion, esConfig, startedClusterDependencies, image) {
 
   logger.info(s"[${esConfig.nodeName}] Creating ES with ROR and X-Pack plugin installed container ...")
 

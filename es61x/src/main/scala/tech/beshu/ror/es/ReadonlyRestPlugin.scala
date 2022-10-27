@@ -165,7 +165,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       .externalSsl
       .map(ssl =>
         "ssl_netty4" -> new Supplier[HttpServerTransport] {
-          override def get(): HttpServerTransport = doPrivileged{
+          override def get(): HttpServerTransport = doPrivileged {
             new SSLNetty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, ssl, false)
           }
         }
@@ -184,7 +184,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       .interNodeSsl
       .map(ssl =>
         "ror_ssl_internode" -> new Supplier[Transport] {
-          override def get(): Transport = doPrivileged{
+          override def get(): Transport = doPrivileged {
             new SSLNetty4InternodeServerTransport(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService, ssl, false)
           }
         }
