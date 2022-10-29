@@ -55,7 +55,7 @@ class UnboundidLdapConnectionPoolProvider {
         connectionConfig.poolSize.value,
         null
       )
-      pool.setMaxConnectionAgeMillis(60000)
+      pool.setConnectionPoolName("ROR-unboundid-connection-pool")
       pool
     } executeOn(ldapUnboundIdBlockingScheduler) asyncBoundary
   }

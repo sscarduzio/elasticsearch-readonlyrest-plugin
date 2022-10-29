@@ -39,7 +39,7 @@ class LdapConnectionPoolOps(connectionPool: LDAPConnectionPool)
       .bracket(
         use = connection => Task(connection.bind(request))
       )(
-        release = connection => Task(connectionPool.releaseAndReAuthenticateConnection(connection))
+        release = connection => Task(connectionPool.releaseConnection(connection))
       )
       .executeOn(blockingScheduler)
       .asyncBoundary
