@@ -40,6 +40,11 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_proxy" ]]; then
     ./gradlew integration-tests:test '-PesModule=proxy' '-Pmode=proxy' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es85x" ]]; then
+    echo ">>> es85x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es85x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es84x" ]]; then
     echo ">>> es84x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es84x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
