@@ -14,38 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es.actions.rrmetadata
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'core'
-include 'es60x'
-include 'es61x'
-include 'es62x'
-include 'es63x'
-include 'es65x'
-include 'es66x'
-include 'es67x'
-include 'es70x'
-include 'es72x'
-include 'es73x'
-include 'es74x'
-include 'es77x'
-include 'es78x'
-include 'es79x'
-include 'es710x'
-include 'es711x'
-include 'es714x'
-include 'es716x'
-include 'es80x'
-include 'es81x'
-include 'es82x'
-include 'es83x'
-include 'es84x'
-include 'es85x'
-include 'proxy'
-include 'ror-tools-core'
-include 'ror-tools'
-include 'tests-utils'
-include 'integration-tests'
-include 'eshome'
+import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
+
+class RRUserMetadataRequest extends ActionRequest {
+  override def validate(): ActionRequestValidationException = null
+}
