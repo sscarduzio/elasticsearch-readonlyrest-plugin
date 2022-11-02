@@ -111,7 +111,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: RRAuditEventRequest =>
         regularRequestHandler.handle(new AuditEventESRequestContext(request, esContext, clusterService, threadPool))
       case request: RorActionRequest =>
-        regularRequestHandler.handle(new RorInternalEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new RorApiEsRequestContext(request, esContext, clusterService, threadPool))
       // snapshots
       case request: GetSnapshotsRequest =>
         regularRequestHandler.handle(new GetSnapshotsEsRequestContext(request, esContext, clusterService, threadPool))

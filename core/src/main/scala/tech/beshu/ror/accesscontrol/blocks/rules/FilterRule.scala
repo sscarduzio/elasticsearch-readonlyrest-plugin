@@ -56,7 +56,7 @@ class FilterRule(val settings: Settings)
               case MultiIndexRequestBlockContextUpdater => Fulfilled(blockContext)
               case FilterableRequestBlockContextUpdater => addFilter(blockContext, filter)
               case FilterableMultiRequestBlockContextUpdater => addFilter(blockContext, filter)
-              case RorInternalRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)
+              case RorApiRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)
             }
         }
     }

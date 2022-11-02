@@ -265,22 +265,22 @@ object BlockContextUpdater {
       blockContext.copy(responseTransformations = responseTransformation :: blockContext.responseTransformations)
   }
 
-  implicit object RorInternalRequestBlockContextUpdater
-    extends BlockContextUpdater[RorInternalRequestBlockContext] {
+  implicit object RorApiRequestBlockContextUpdater
+    extends BlockContextUpdater[RorApiRequestBlockContext] {
 
-    override def emptyBlockContext(blockContext: RorInternalRequestBlockContext): RorInternalRequestBlockContext =
-      RorInternalRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, List.empty)
+    override def emptyBlockContext(blockContext: RorApiRequestBlockContext): RorApiRequestBlockContext =
+      RorApiRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, List.empty)
 
-    override def withUserMetadata(blockContext: RorInternalRequestBlockContext,
-                                  userMetadata: UserMetadata): RorInternalRequestBlockContext =
+    override def withUserMetadata(blockContext: RorApiRequestBlockContext,
+                                  userMetadata: UserMetadata): RorApiRequestBlockContext =
       blockContext.copy(userMetadata = userMetadata)
 
-    override def withAddedResponseHeader(blockContext: RorInternalRequestBlockContext,
-                                         header: Header): RorInternalRequestBlockContext =
+    override def withAddedResponseHeader(blockContext: RorApiRequestBlockContext,
+                                         header: Header): RorApiRequestBlockContext =
       blockContext.copy(responseHeaders = blockContext.responseHeaders + header)
 
-    override def withAddedResponseTransformation(blockContext: RorInternalRequestBlockContext,
-                                                 responseTransformation: ResponseTransformation): RorInternalRequestBlockContext =
+    override def withAddedResponseTransformation(blockContext: RorApiRequestBlockContext,
+                                                 responseTransformation: ResponseTransformation): RorApiRequestBlockContext =
       blockContext.copy(responseTransformations = responseTransformation :: blockContext.responseTransformations)
   }
 }
