@@ -18,9 +18,9 @@ package tech.beshu.ror.es.actions.rrauditevent
 
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.json.JSONObject
+import tech.beshu.ror.es.actions.RorActionRequest
 
-class RRAuditEventRequest(val auditEvents: JSONObject) extends ActionRequest {
-
+class RRAuditEventRequest(val auditEvents: JSONObject) extends ActionRequest with RorActionRequest {
   def this() {
     this(null)
   }

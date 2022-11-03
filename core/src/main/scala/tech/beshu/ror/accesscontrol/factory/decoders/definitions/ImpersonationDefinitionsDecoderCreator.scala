@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.implicits._
 import cats.{Id, Order}
-import io.circe.Decoder
+import io.circe.{Decoder, DecodingFailure}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
@@ -61,12 +61,28 @@ class ImpersonationDefinitionsDecoderCreator(caseMappingEquality: UserIdCaseMapp
         for {
           impersonatorPatterns <- c.downField(impersonatorKey).as[UniqueNonEmptyList[UserIdPattern]].map(UserIdPatterns.apply)
           impersonatedUsers <- c.downField(usersKey).as[UniqueNonEmptyList[UserIdPattern]].map(UserIdPatterns.apply).map(ImpersonatorDef.ImpersonatedUsers)
+          _ <- verifyIntersection(impersonatorPatterns, impersonatedUsers)
           authRuleDecoder = authenticationRulesDecoder(impersonatorPatterns)
           authRule <- authRuleDecoder.tryDecode(c.withoutKeys(Set(impersonatorKey, usersKey)))
         } yield ImpersonatorDef(impersonatorPatterns, authRule, impersonatedUsers)
       }
       .withError(DefinitionsLevelCreationError.apply, Message("Impersonation definition malformed"))
       .decoder
+  }
+
+  private def verifyIntersection(impersonatorUsernames: UserIdPatterns,
+                                 impersonatedUsers: ImpersonatorDef.ImpersonatedUsers): Either[DecodingFailure, Unit] = {
+    val exactImpersonators = impersonatorUsernames.patterns.filterNot(_.containsWildcard)
+    val exactImpersonatedUsers = impersonatedUsers.usernames.patterns.filterNot(_.containsWildcard)
+
+    UniqueNonEmptyList.fromSortedSet(exactImpersonators.intersect(exactImpersonatedUsers)) match {
+      case Some(duplicatedUsers) =>
+        val users = duplicatedUsers.map(_.value.value).mkString(",")
+        Left(decodingFailure(
+          Message(s"Each of the given users [$users] should be either impersonator or a user to be impersonated")
+        ))
+      case None => Right(())
+    }
   }
 
   private def authenticationRulesDecoder(userIdPatterns: UserIdPatterns) = Decoder.instance { cursor =>

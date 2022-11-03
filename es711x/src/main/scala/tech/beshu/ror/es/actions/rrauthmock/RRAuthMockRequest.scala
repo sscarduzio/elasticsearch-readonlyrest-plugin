@@ -20,11 +20,12 @@ import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
 import tech.beshu.ror.api.AuthMockApi
+import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.{Constants, RequestId}
 
 class RRAuthMockRequest(authMockApiRequest: AuthMockApi.AuthMockRequest,
-                        esRestRequest: RestRequest) extends ActionRequest {
+                        esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
 
   val getAuthMockRequest: AuthMockApi.AuthMockRequest = authMockApiRequest
   lazy val requestContextId: RequestId = RequestId(s"${esRestRequest.hashCode()}-${this.hashCode()}")
