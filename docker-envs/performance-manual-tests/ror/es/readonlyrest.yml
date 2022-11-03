@@ -15,54 +15,55 @@ readonlyrest:
     truststore_pass: test
     key_pass: test
 
-  audit:
-    collector: true
-
+  audit_collector: false
   access_control_rules:
 
-    - name: "CONTAINER ADMIN"
-      type: allow
-      auth_key: admin:container
+    - name: "::MONITORING::"
+      auth_key: monitoring_account:password
+      methods: [GET]
+      verbosity: error
 
-    - name: "LDAP 1"
-      type: allow
-      users: ["user*"]
-      ldap_authentication: ldap1
+    - name: "::KIBANA-SRV::"
+      auth_key: kibana_account:password
+      verbosity: error
 
-    - name: "LDAP 2"
-      type: allow
-      users: ["test*"]
-      ldap_authentication: ldap2
+    - name: "::DATA-IMPORTER::"
+      auth_key: data_importer_account:password
+      methods: [GET, POST]
+      verbosity: error
+
+    - name: "for admin"
+      users: ["admin1"]
+      ldap_authentication: "ldap"
+      verbosity: error
+
+    - name: "for kibana admin"
+      kibana_access: admin
+      users: ["admin1"]
+      ldap_authentication: "ldap"
+      verbosity: error
+
+    - name: "for kibana read-only users"
+      kibana_access: admin
+      users: ["*"]
+      kibana_index: ".kibana_@{user}"
+      kibana_hide_apps: ["readonlyrest_kbn"]
+      ldap_authentication: "ldap"
+      verbosity: error
 
   ldaps:
-    - name: ldap1
-      host: "lagsimulator"
-      port: 13890
-      ssl_enabled: false                                        # default true
-      ssl_trust_all_certs: true                                 # default false
-      bind_dn: "uid=admin,ou=people,dc=example,dc=com"
-      bind_password: "password"                                 # skip for anonymous bind
-      search_user_base_DN: "ou=People,dc=example,dc=com"
-      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-      user_id_attribute: "uid"                                  # default "uid"
-      unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
-      connection_pool_size: 30                                  # default 30
-      connection_timeout_in_sec: 1                             # default 1
-      request_timeout_in_sec: 5                                # default 1
-      cache_ttl_in_sec: 30                                      # default 0 - cache disabled
+    - name: ldap
 
-    - name: ldap2
       host: "ldap"
       port: 3890
-      ssl_enabled: false                                        # default true
-      ssl_trust_all_certs: true                                 # default false
+      ssl_enabled: false
+      ssl_trust_all_certs: true
+
       bind_dn: "uid=admin,ou=people,dc=example,dc=com"
-      bind_password: "password"                                 # skip for anonymous bind
+      bind_password: "password"
       search_user_base_DN: "ou=People,dc=example,dc=com"
       search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-      user_id_attribute: "uid"                                  # default "uid"
-      unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
-      connection_pool_size: 30                                  # default 30
-      connection_timeout_in_sec: 1                             # default 1
-      request_timeout_in_sec: 5                                # default 1
-      cache_ttl_in_sec: 30                                      # default 0 - cache disabled
+      user_id_attribute: "uid"                                  
+      unique_member_attribute: "uniqueMember"
+
+      cache_ttl: 600s

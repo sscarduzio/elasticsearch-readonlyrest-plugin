@@ -200,8 +200,7 @@ class UnboundidLdapAuthenticationServiceTests
           ),
           ignoreLdapConnectivityProblems = false,
         ),
-        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), "uid"),
-        global
+        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), "uid")
       )
       .runSyncUnsafe()
       .right.getOrElse(throw new IllegalStateException("LDAP connection problem"))
@@ -239,8 +238,7 @@ class UnboundidLdapAuthenticationServiceTests
           ),
           ignoreLdapConnectivityProblems = false
         ),
-        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), "uid"),
-        global
+        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), "uid")
       )
       .runSyncUnsafe()
       .right.getOrElse(throw new IllegalStateException("LDAP connection problem"))

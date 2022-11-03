@@ -104,8 +104,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
           Dn("ou=Regions,dc=example,dc=com"),
           "cn",
           "title"
-        )),
-        global
+        ))
       )
       .runSyncUnsafe()
       .right.getOrElse(throw new IllegalStateException("LDAP connection problem"))
