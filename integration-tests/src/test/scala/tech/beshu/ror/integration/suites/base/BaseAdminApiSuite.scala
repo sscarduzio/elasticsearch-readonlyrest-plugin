@@ -60,7 +60,8 @@ trait BaseAdminApiSuite
   private lazy val rorWithNoIndexConfigAdminActionManager = new RorApiManager(clients.last.adminClient, esVersionUsed)
 
   private lazy val adminSearchManager = new SearchManager(clients.head.basicAuthClient("admin", "container"))
-  private val testSettingsEsDocumentId = "2"
+  private lazy val adminIndexManager = new IndexManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
+  private val testConfigEsDocumentId = "2"
   protected val settingsReloadInterval: FiniteDuration = 2 seconds
 
   override lazy val esTargets = NonEmptyList.of(ror1_1Node, ror1_2Node, ror2_1Node)
@@ -155,6 +156,8 @@ trait BaseAdminApiSuite
                 |}
                 |""".stripMargin
             ))
+
+            assertSettingsInIndex(getResourceContent(rorSettingsResource))
           }
 
           val dev1Ror1stInstanceSearchManager = new SearchManager(clients.head.basicAuthClient("dev1", "test"))
@@ -206,6 +209,7 @@ trait BaseAdminApiSuite
         "in-index config is the same as provided one" in {
           val result = ror1WithIndexConfigAdminActionManager
             .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
+          assertSettingsInIndex(getResourceContent("/admin_api/readonlyrest_index.yml"))
 
           (result.responseCode, result.responseJson) should be(200, ujson.read(
             """
@@ -272,6 +276,8 @@ trait BaseAdminApiSuite
               |""".stripMargin
           ))
 
+          assertSettingsInIndex(getResourceContent("/admin_api/readonlyrest_first_update.yml"))
+
           val getIndexConfigResult = ror1WithIndexConfigAdminActionManager.getRorInIndexConfig
           (getIndexConfigResult.responseCode, getIndexConfigResult.responseJson("status").str) should be(200, "ok")
           getIndexConfigResult.responseJson("message").str should be {
@@ -280,16 +286,28 @@ trait BaseAdminApiSuite
         }
       }
       "return info that there is no in-index config" when {
-        "there is none in index" in {
-          val result = rorWithNoIndexConfigAdminActionManager.getRorInIndexConfig
+        "there is no index" in {
+          assertNoRorConfigInIndex(rorWithNoIndexConfigAdminActionManager)
+        }
+        "there is no config document in index" in {
+          val result = ror1WithIndexConfigAdminActionManager
+            .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_first_update.yml"))
+
           (result.responseCode, result.responseJson) should be(200, ujson.read(
             """
               |{
-              |  "status": "empty",
-              |  "message": "Cannot find settings index"
+              |  "status": "ok",
+              |  "message": "updated settings"
               |}
               |""".stripMargin
           ))
+
+          val adminDocumentManager = new DocumentManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
+          val matchAllQuery = ujson.read("""{"query" : {"match_all" : {}}}""".stripMargin)
+          val deleteResponse = adminDocumentManager.deleteByQuery(readonlyrestIndexName, matchAllQuery)
+          deleteResponse.responseCode should be(200)
+
+          assertNoRorConfigInIndex(rorWithNoIndexConfigAdminActionManager)
         }
       }
     }
@@ -510,7 +528,7 @@ trait BaseAdminApiSuite
             val response = rorApiManager.currentRorLocalUsers
             (response.responseCode, response.responseJson("status").str) should be(200, "OK")
             (response.responseJson("unknown_users").bool, response.responseJson("users").arr.toList.map(_.str)) should
-              be(false, List("admin", "dev1"))
+              be(false, List("dev1")) // admin is filtered out
           }
         }
       }
@@ -888,6 +906,102 @@ trait BaseAdminApiSuite
         dev2SearchManagers.foreach(testSettingsNotConfigured(_, "test2_index"))
       }
     }
+    "main ROR config and test ROR config coexistence check" when {
+      "get main ROR index config" should {
+        "return no index config" when {
+          "no main and test config in the index" in {
+            adminIndexManager.removeIndex(readonlyrestIndexName)
+            rorClients.foreach { rorApiManager =>
+              assertNoRorConfigInIndex(rorApiManager)
+              assertTestSettingsNotConfigured(rorApiManager)
+            }
+          }
+          "only test config in the index" in {
+            def forceReloadTestSettings(testConfig: String): Unit = {
+              updateRorTestConfig(rorClients.head, testConfig, 30 minutes)
+              assertTestSettingsInIndex(
+                expectedConfig = testConfig,
+                expectedTtl = 30 minutes
+              )
+            }
+
+            adminIndexManager.removeIndex(readonlyrestIndexName)
+
+            rorClients.foreach { rorApiManager =>
+              assertNoRorConfigInIndex(rorApiManager)
+              assertTestSettingsNotConfigured(rorApiManager)
+            }
+
+            val config = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml")
+            forceReloadTestSettings(config)
+            Thread.sleep(settingsReloadInterval.toMillis) // wait for engines reload
+
+            rorClients.foreach { rorApiManager =>
+              assertNoRorConfigInIndex(rorApiManager)
+              assertTestSettingsPresent(
+                rorApiManager,
+                testConfig = config,
+                expectedTtl = "30 minutes"
+              )
+            }
+          }
+        }
+        "return index config" when {
+          "only main config in the index" in {
+            def forceReloadMainSettings(config: String) = {
+              updateRorMainConfig(rorClients.head, config)
+              assertSettingsInIndex(expectedConfig = config)
+            }
+
+            adminIndexManager.removeIndex(readonlyrestIndexName)
+
+            rorClients.foreach { rorApiManager =>
+              assertNoRorConfigInIndex(rorApiManager)
+              assertTestSettingsNotConfigured(rorApiManager)
+            }
+
+            val config = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml")
+            forceReloadMainSettings(config)
+
+            rorClients.foreach { rorApiManager =>
+              assertInIndexConfigPresent(rorApiManager, config)
+              assertTestSettingsNotConfigured(rorApiManager)
+            }
+          }
+          "main and test configs in the index" in {
+            def forceReloadMainSettings(config: String) = {
+              updateRorMainConfig(rorClients.head, config)
+              assertSettingsInIndex(expectedConfig = config)
+            }
+
+            def forceReloadTestSettings(testConfig: String): Unit = {
+              updateRorTestConfig(rorClients.head, testConfig, 30 minutes)
+              assertTestSettingsInIndex(
+                expectedConfig = testConfig,
+                expectedTtl = 30 minutes
+              )
+            }
+
+            adminIndexManager.removeIndex(readonlyrestIndexName)
+
+            rorClients.foreach { rorApiManager =>
+              assertNoRorConfigInIndex(rorApiManager)
+              assertTestSettingsNotConfigured(rorApiManager)
+            }
+
+            val config = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml")
+            forceReloadMainSettings(config)
+            forceReloadTestSettings(config)
+
+            Thread.sleep(settingsReloadInterval.toMillis) // wait for engines reload
+            rorClients.foreach {
+              assertInIndexConfigPresent(_, config = config)
+              assertTestSettingsPresent(_, testConfig = config, expectedTtl = "30 minutes")
+            }
+          }
+        }
+      }
+    }
   }
 
   override protected def beforeEach(): Unit = {
@@ -898,8 +1012,7 @@ trait BaseAdminApiSuite
 
     new IndexManager(ror2_1Node.adminClient, esVersionUsed).removeIndex(readonlyrestIndexName)
 
-    val indexManager = new IndexManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
-    indexManager.removeIndex(readonlyrestIndexName)
+    adminIndexManager.removeIndex(readonlyrestIndexName)
 
     ror1WithIndexConfigAdminActionManager
       .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
@@ -924,13 +1037,26 @@ trait BaseAdminApiSuite
     }
   }
 
+  private def assertSettingsInIndex(expectedConfig: String) = {
+    val indexSearchResponse = adminSearchManager.search(readonlyrestIndexName)
+    indexSearchResponse.responseCode should be(200)
+    val indexSearchHits = indexSearchResponse.responseJson("hits")("hits").arr.toList
+    indexSearchHits.size should be >= 1 // at least main document or test document should be present
+    val testSettingsDocumentHit = indexSearchHits.find { searchResult =>
+      (searchResult("_index").str, searchResult("_id").str) === (readonlyrestIndexName, "1")
+    }.value
+
+    val testSettingsDocumentContent = testSettingsDocumentHit("_source")
+    testSettingsDocumentContent("settings").str should be(expectedConfig)
+  }
+
   private def assertTestSettingsInIndex(expectedConfig: String, expectedTtl: FiniteDuration) = {
     val indexSearchResponse = adminSearchManager.search(readonlyrestIndexName)
     indexSearchResponse.responseCode should be(200)
     val indexSearchHits = indexSearchResponse.responseJson("hits")("hits").arr.toList
     indexSearchHits.size should be >= 1 // at least main document or test document should be present
     val testSettingsDocumentHit = indexSearchHits.find { searchResult =>
-      (searchResult("_index").str, searchResult("_id").str) === (readonlyrestIndexName, testSettingsEsDocumentId)
+      (searchResult("_index").str, searchResult("_id").str) === (readonlyrestIndexName, testConfigEsDocumentId)
     }.value
 
     val testSettingsDocumentContent = testSettingsDocumentHit("_source")
@@ -941,6 +1067,24 @@ trait BaseAdminApiSuite
     mocksContent("ldapMocks").obj.isEmpty should be(true)
     mocksContent("externalAuthenticationMocks").obj.isEmpty should be(true)
     mocksContent("externalAuthorizationMocks").obj.isEmpty should be(true)
+  }
+
+  private def assertNoRorConfigInIndex(rorApiManager: RorApiManager) = {
+    val result = rorApiManager.getRorInIndexConfig
+    (result.responseCode, result.responseJson) should be(200, ujson.read(
+      """
+        |{
+        |  "status": "empty",
+        |  "message": "Cannot find settings index"
+        |}
+        |""".stripMargin
+    ))
+  }
+
+  private def assertInIndexConfigPresent(rorApiManager: RorApiManager, config: String) = {
+    val getIndexConfigResult = rorApiManager.getRorInIndexConfig
+    (getIndexConfigResult.responseCode, getIndexConfigResult.responseJson("status").str) should be(200, "ok")
+    getIndexConfigResult.responseJson("message").str should be(config)
   }
 
   private def assertTestSettingsNotConfigured(rorApiManager: RorApiManager) = {
@@ -982,6 +1126,18 @@ trait BaseAdminApiSuite
     (response.responseCode, response.responseJson("status").str) should be(200, "OK")
     response.responseJson("message").str should be("updated settings")
     response.responseJson("valid_to").str.isInIsoDateTimeFormat should be(true)
+  }
+
+  private def updateRorMainConfig(rorApiManager: RorApiManager, config: String) = {
+    val result = rorApiManager.updateRorInIndexConfig(config)
+    (result.responseCode, result.responseJson) should be(200, ujson.read(
+      """
+        |{
+        |  "status": "ok",
+        |  "message": "updated settings"
+        |}
+        |""".stripMargin
+    ))
   }
 
   private def invalidateRorTestConfig(rorApiManager: RorApiManager) = {

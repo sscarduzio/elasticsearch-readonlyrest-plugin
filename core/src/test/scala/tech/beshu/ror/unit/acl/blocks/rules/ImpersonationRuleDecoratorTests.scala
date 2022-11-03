@@ -155,6 +155,15 @@ class ImpersonationRuleDecoratorTests
 
         result should be(Rejected())
       }
+      "the impersonator tries to impersonate himself" in {
+        val requestContext = MockRequestContext.indices.copy(
+          headers = Set(basicAuthHeader("admin2:pass"), new Header(Header.Name.impersonateAs, "admin2"))
+        )
+        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
+
+        val result = rule.check(blockContext).runSyncUnsafe()
+        result should be(Rejected(Cause.ImpersonationNotAllowed))
+      }
     }
   }
 

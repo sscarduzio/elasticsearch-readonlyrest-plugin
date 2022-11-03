@@ -17,7 +17,8 @@
 package tech.beshu.ror.es.actions.rrmetadata
 
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
+import tech.beshu.ror.es.actions.RorActionRequest
 
-class RRUserMetadataRequest extends ActionRequest {
+class RRUserMetadataRequest extends ActionRequest with RorActionRequest {
   override def validate(): ActionRequestValidationException = null
 }

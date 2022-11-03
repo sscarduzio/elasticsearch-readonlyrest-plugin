@@ -25,11 +25,12 @@ import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
 import monix.eval.Task
 import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.domain.LoggedUser
 import tech.beshu.ror.api.TestConfigApi.TestConfigRequest.Type
 import tech.beshu.ror.api.TestConfigApi.TestConfigResponse._
 import tech.beshu.ror.api.TestConfigApi.{TestConfigRequest, TestConfigResponse}
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
-import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, RawConfigReloadError, TestConfig, TestConfigUpdated}
+import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, RawConfigReloadError, TestConfig}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
@@ -45,13 +46,13 @@ class TestConfigApi(rorInstance: RorInstance)
   import tech.beshu.ror.api.TestConfigApi.Utils._
   import tech.beshu.ror.api.TestConfigApi.Utils.decoders._
 
-  def call(request: TestConfigRequest)
+  def call(request: RorApiRequest[TestConfigRequest])
           (implicit requestId: RequestId): Task[TestConfigResponse] = {
-    val testConfigResponse = request.aType match {
+    val testConfigResponse = request.request.aType match {
       case Type.ProvideTestConfig => loadCurrentTestConfig()
-      case Type.UpdateTestConfig => updateTestConfig(request.body)
+      case Type.UpdateTestConfig => updateTestConfig(request.request.body)
       case Type.InvalidateTestConfig => invalidateTestConfig()
-      case Type.ProvideLocalUsers => provideLocalUsers()
+      case Type.ProvideLocalUsers => provideLocalUsers(request.loggedUser)
     }
     testConfigResponse
       .executeOn(RorSchedulers.restApiScheduler)
@@ -115,7 +116,7 @@ class TestConfigApi(rorInstance: RorInstance)
       }
   }
 
-  private def provideLocalUsers()
+  private def provideLocalUsers(loggedUser: Option[LoggedUser])
                                (implicit requestId: RequestId): Task[TestConfigResponse] = {
     rorInstance
       .currentTestConfig()
@@ -123,8 +124,9 @@ class TestConfigApi(rorInstance: RorInstance)
         case TestConfig.NotSet =>
           TestConfigResponse.ProvideLocalUsers.TestSettingsNotConfigured("ROR Test settings are not configured")
         case TestConfig.Present(config, _, _, _) =>
+          val filteredLocalUsers = config.localUsers.users -- loggedUser.map(_.id).toSet
           TestConfigResponse.ProvideLocalUsers.SuccessResponse(
-            users = config.localUsers.users.map(_.value.value).toList,
+            users = filteredLocalUsers.map(_.value.value).toList,
             unknownUsers = config.localUsers.unknownUsers
           )
         case _:TestConfig.Invalidated =>

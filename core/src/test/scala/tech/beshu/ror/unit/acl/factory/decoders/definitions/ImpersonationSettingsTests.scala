@@ -182,6 +182,22 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
           }
         )
       }
+      "impersonator and user to be impersonated occurs in the impersonator and users sections" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |impersonation:
+               | - impersonator: ["admin1"]
+               |   auth_key: admin1:pass
+               |   users: ["admin1"]
+           """.stripMargin,
+          assertion = { error =>
+            error should be(DefinitionsLevelCreationError(Message(
+              "Each of the given users [admin1] should be either impersonator or a user to be impersonated"
+            )))
+          }
+        )
+      }
     }
   }
 }
