@@ -22,9 +22,11 @@ import cats.implicits._
 import com.unboundid.ldap.sdk._
 import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
 import monix.eval.Task
+import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{HostConnectionError, ServerDiscoveryConnectionError}
+import tech.beshu.ror.accesscontrol.utils.ReleseablePool
 import tech.beshu.ror.boot.RorSchedulers.ldapUnboundIdBlockingScheduler
 import tech.beshu.ror.utils.ScalaOps.retry
 
@@ -33,35 +35,46 @@ import scala.util.control.NonFatal
 
 class UnboundidLdapConnectionPoolProvider {
 
+  implicit val ldapUnboundIdBlockingSchedulerImplicit: Scheduler = ldapUnboundIdBlockingScheduler
+
   import UnboundidLdapConnectionPoolProvider._
 
-  private val poolOfPools: ReleseablePool[Task, LDAPConnectionPool, LdapConnectionConfig] = new ReleseablePool(createConnection)(pool => Task(pool.close()))
+  private val poolOfPools: ReleseablePool[Task, UnboundidLdapConnectionPool, LdapConnectionConfig] =
+    new ReleseablePool(createConnectionPool)(pool => pool.close())
 
-  def connect(connectionConfig: LdapConnectionConfig): Task[LDAPConnectionPool] =
+  def connect(connectionConfig: LdapConnectionConfig): Task[UnboundidLdapConnectionPool] =
     poolOfPools.get(connectionConfig).flatMap {
       case Left(ReleseablePool.ClosedPool) => Task.raiseError(ClosedLdapPool)
-      case Right(connection) => Task.pure(connection)
+      case Right(pool) => Task.pure(pool)
     }
 
   def close(): Task[Unit] = poolOfPools.close
 
-  private def createConnection(connectionConfig: LdapConnectionConfig): Task[LDAPConnectionPool] = retry {
-    Task {
-      val serverSet = createLdapServerSet(connectionConfig)
-      val pool = new LDAPConnectionPool(
-        serverSet,
-        bindRequest(connectionConfig.bindRequestUser),
-        if (connectionConfig.ignoreLdapConnectivityProblems) 0 else 1,
-        connectionConfig.poolSize.value,
-        null
-      )
-      pool.setConnectionPoolName("ROR-unboundid-connection-pool")
-      pool
-    } executeOn(ldapUnboundIdBlockingScheduler) asyncBoundary
+  private def createConnectionPool(connectionConfig: LdapConnectionConfig): Task[UnboundidLdapConnectionPool] = retry {
+    Task
+      .delay(createLdapConnectionPoolFrom(connectionConfig))
+      .map(new UnboundidLdapConnectionPool(_, connectionConfig.bindRequestUser))
+      .executeOn(ldapUnboundIdBlockingSchedulerImplicit)
+      .asyncBoundary
   }
+
+  private def createLdapConnectionPoolFrom(connectionConfig: LdapConnectionConfig) = {
+    val serverSet = createLdapServerSet(connectionConfig)
+    val pool = new LDAPConnectionPool(
+      serverSet,
+      bindRequest(connectionConfig.bindRequestUser),
+      if (connectionConfig.ignoreLdapConnectivityProblems) 0 else 1,
+      connectionConfig.poolSize.value,
+      null
+    )
+    pool.setConnectionPoolName("ROR-unboundid-connection-pool")
+    pool
+  }
+
 }
 
 object UnboundidLdapConnectionPoolProvider extends Logging {
+
   def testBindingForAllHosts(connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, Unit]] = {
     val serverSet = createLdapServerSet(connectionConfig)
     val bindReq = bindRequest(connectionConfig.bindRequestUser)

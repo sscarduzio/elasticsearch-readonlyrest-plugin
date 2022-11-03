@@ -23,7 +23,7 @@ import monix.execution.atomic.{AtomicBoolean, AtomicInt}
 import monix.execution.schedulers.TestScheduler
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.ReleseablePool
+import tech.beshu.ror.accesscontrol.utils.ReleseablePool
 import tech.beshu.ror.unit.acl.blocks.definitions.ReleasablePoolTest.Counter
 
 import scala.concurrent.Await

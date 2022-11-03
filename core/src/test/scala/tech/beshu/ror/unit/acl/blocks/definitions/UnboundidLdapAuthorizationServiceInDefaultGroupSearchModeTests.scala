@@ -106,8 +106,7 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
           "uniqueMember",
           "(cn=*)",
           groupAttributeIsDN = true
-        )),
-        global
+        ))
       )
       .runSyncUnsafe()
       .right.getOrElse(throw new IllegalStateException("LDAP connection problem"))

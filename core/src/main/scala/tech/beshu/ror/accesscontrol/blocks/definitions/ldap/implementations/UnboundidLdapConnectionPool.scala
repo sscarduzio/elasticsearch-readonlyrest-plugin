@@ -14,9 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.utils
-
-import java.util.concurrent.atomic.AtomicReference
+package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import com.unboundid.ldap.sdk._
 import eu.timepit.refined.api.Refined
@@ -24,30 +22,28 @@ import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.BindRequestUser
 
+import java.util.concurrent.atomic.AtomicReference
 import scala.collection.JavaConverters._
 import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
 
-class LdapConnectionPoolOps(connectionPool: LDAPConnectionPool)
-                           (implicit blockingScheduler: Scheduler)
+class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool,
+                                  bindRequestUser: BindRequestUser)
+                                 (implicit blockingScheduler: Scheduler)
   extends Logging {
 
   def asyncBind(request: BindRequest): Task[BindResult] = {
-    Task(connectionPool.getConnection)
-      .bracket(
-        use = connection => Task(connection.bind(request))
-      )(
-        release = connection => Task(connectionPool.releaseConnection(connection))
-      )
+    bind(request)
       .executeOn(blockingScheduler)
       .asyncBoundary
   }
 
   def process(requestCreator: AsyncSearchResultListener => LDAPRequest,
               timeout: FiniteDuration Refined Positive): Task[Either[SearchResult, List[SearchResultEntry]]] = {
-    val searchResultListener = new LdapConnectionPoolOps.UnboundidSearchResultListener
+    val searchResultListener = new UnboundidLdapConnectionPool.UnboundidSearchResultListener
     Task(requestCreator(searchResultListener))
       .map(request => connectionPool.processRequestsAsync((request :: Nil).asJava, timeout.value.toMillis))
       .executeOn(blockingScheduler)
@@ -61,12 +57,20 @@ class LdapConnectionPoolOps(connectionPool: LDAPConnectionPool)
       }
       .asyncBoundary
   }
+
+  def close(): Task[Unit] = {
+    Task.delay(connectionPool.close())
+  }
+
+  private def bind(request: BindRequest) = {
+    bindRequestUser match {
+      case BindRequestUser.Anonymous => Task(connectionPool.bind(request))
+      case BindRequestUser.CustomUser(_, _) => Task(connectionPool.bindAndRevertAuthentication(request))
+    }
+  }
 }
 
-object LdapConnectionPoolOps {
-  implicit def toOps(connectionPool: LDAPConnectionPool)
-                    (implicit blockingScheduler: Scheduler): LdapConnectionPoolOps =
-    new LdapConnectionPoolOps(connectionPool)
+object UnboundidLdapConnectionPool {
 
   private class UnboundidSearchResultListener extends com.unboundid.ldap.sdk.AsyncSearchResultListener {
     private val searchResultEntries = new AtomicReference(List.empty[SearchResultEntry])
