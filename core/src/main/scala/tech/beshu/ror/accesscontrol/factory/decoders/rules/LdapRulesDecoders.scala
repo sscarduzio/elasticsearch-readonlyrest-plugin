@@ -24,11 +24,10 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule.GroupsLogic
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
-import tech.beshu.ror.accesscontrol.domain.Group
+import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, PermittedGroups}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -36,7 +35,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder.nameDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, LdapServicesDecoder}
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.LdapRulesDecodersHelper.{findLdapService, errorMsgNoGroupsList, errorMsgOnlyOneGroupsList}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.LdapRulesDecodersHelper.{errorMsgNoGroupsList, errorMsgOnlyOneGroupsList, findLdapService}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
@@ -134,8 +133,8 @@ object LdapAuthorizationRuleDecoder {
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          groupsAnd <- c.downField("groups_and").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.And))
-          groupsOr <- c.downField("groups").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.Or))
+          groupsAnd <- c.downField("groups_and").as[Option[PermittedGroups]].map(_.map(GroupsLogic.And))
+          groupsOr <- c.downField("groups").as[Option[PermittedGroups]].map(_.map(GroupsLogic.Or))
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
         } yield (name, ttl, groupsOr, groupsAnd)
       }
@@ -204,8 +203,8 @@ object LdapAuthRuleDecoder {
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          groupsAnd <- c.downField("groups_and").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.And))
-          groupsOr <- c.downField("groups").as[Option[UniqueNonEmptyList[Group]]].map(_.map(GroupsLogic.Or))
+          groupsAnd <- c.downField("groups_and").as[Option[PermittedGroups]].map(_.map(GroupsLogic.And))
+          groupsOr <- c.downField("groups").as[Option[PermittedGroups]].map(_.map(GroupsLogic.Or))
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
         } yield (name, ttl, groupsOr, groupsAnd)
       }

@@ -19,7 +19,6 @@ package tech.beshu.ror.unit.boot
 import java.time.Clock
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-
 import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.api.Refined
@@ -39,7 +38,8 @@ import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
-import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, User}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.{IndexName, User}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
@@ -419,7 +419,7 @@ class ReadonlyRestStartingTests
               )
 
               rorInstance.mocksProvider.ldapServiceWith(LdapService.Name("ldap1"))(newRequestId()) should be(Some(
-                LdapServiceMock(Set(LdapServiceMock.LdapUserMock(User.Id("Tom"), Set(Group("group1"), Group("group2")))))
+                LdapServiceMock(Set(LdapServiceMock.LdapUserMock(User.Id("Tom"), Set(GroupName("group1"), GroupName("group2")))))
               ))
               rorInstance.mocksProvider.ldapServiceWith(LdapService.Name("ldap2"))(newRequestId()) should be(None)
 
@@ -435,7 +435,7 @@ class ReadonlyRestStartingTests
                 ExternalAuthorizationServiceMock(Set(
                   ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock(
                     id = User.Id("Bruce"),
-                    groups = Set(Group("group3"), Group("group4"))
+                    groups = Set(GroupName("group3"), GroupName("group4"))
                   )
                 ))
               ))

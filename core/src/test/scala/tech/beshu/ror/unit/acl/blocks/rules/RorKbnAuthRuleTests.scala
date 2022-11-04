@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
@@ -122,17 +123,17 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = Groups.Defined(
-            Groups.GroupsLogic.Or(
-              UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group2")),
-            )
+            GroupsLogic.Or(PermittedGroups(
+              UniqueNonEmptyList.of(GroupName("group3"), GroupName("group2")),
+            ))
           ),
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              currentGroup = Some(Group("group2")),
-              availableGroups = UniqueList.of(Group("group2")),
+              currentGroup = Some(GroupName("group2")),
+              availableGroups = UniqueList.of(GroupName("group2")),
               jwt = Some(JwtTokenPayload(jwt.defaultClaims()))
             )(blockContext)
         }
@@ -149,18 +150,18 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = Groups.Defined(
-            Groups.GroupsLogic.Or(
-              UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group2"))
-            )
+            GroupsLogic.Or(PermittedGroups(
+              UniqueNonEmptyList.of(GroupName("group3"), GroupName("group2"))
+            ))
           ),
           tokenHeader = bearerHeader(jwt),
-          preferredGroup = Some(groupFrom("group2"))
+          preferredGroup = Some(GroupName("group2"))
         ) {
           blockContext =>
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              currentGroup = Some(Group("group2")),
-              availableGroups = UniqueList.of(Group("group2")),
+              currentGroup = Some(GroupName("group2")),
+              availableGroups = UniqueList.of(GroupName("group2")),
               jwt = Some(JwtTokenPayload(jwt.defaultClaims()))
             )(blockContext)
         }
@@ -223,9 +224,9 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = Groups.Defined(
-            Groups.GroupsLogic.Or(
-              UniqueNonEmptyList.of(Group("g1"))
-            )
+            GroupsLogic.Or(PermittedGroups(
+              UniqueNonEmptyList.of(GroupName("g1"))
+            ))
           ),
           tokenHeader = bearerHeader(jwt)
         )
@@ -242,9 +243,9 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = Groups.Defined(
-            Groups.GroupsLogic.Or(
-              UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group4")),
-            )
+            GroupsLogic.Or(PermittedGroups(
+              UniqueNonEmptyList.of(GroupName("group3"), GroupName("group4")),
+            ))
           ),
           tokenHeader = bearerHeader(jwt)
         )
@@ -261,9 +262,9 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = Groups.Defined(
-            Groups.GroupsLogic.And(
-              UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")),
-            )
+            GroupsLogic.And(PermittedGroups(
+              UniqueNonEmptyList.of(GroupName("group2"), GroupName("group3")),
+            ))
           ),
           tokenHeader = bearerHeader(jwt)
         )
@@ -280,7 +281,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           tokenHeader = bearerHeader(jwt),
-          preferredGroup = Some(groupFrom("group5"))
+          preferredGroup = Some(GroupName("group5"))
         )
       }
       "preferred group is not on the permitted groups list" in {
@@ -295,12 +296,12 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = Groups.Defined(
-            Groups.GroupsLogic.Or(
-              UniqueNonEmptyList.of(groupFrom("group3"), groupFrom("group2"))
-            )
+            GroupsLogic.Or(PermittedGroups(
+              UniqueNonEmptyList.of(GroupName("group3"), GroupName("group2"))
+            ))
           ),
           tokenHeader = bearerHeader(jwt),
-          preferredGroup = Some(groupFrom("group5"))
+          preferredGroup = Some(GroupName("group5"))
         )
       }
     }
@@ -309,20 +310,20 @@ class RorKbnAuthRuleTests
   private def assertMatchRule(configuredRorKbnDef: RorKbnDef,
                               configuredGroups: Groups = Groups.NotDefined,
                               tokenHeader: Header,
-                              preferredGroup: Option[Group] = None)
+                              preferredGroup: Option[GroupName] = None)
                              (blockContextAssertion: BlockContext => Unit): Unit =
     assertRule(configuredRorKbnDef, configuredGroups, tokenHeader, preferredGroup, Some(blockContextAssertion))
 
   private def assertNotMatchRule(configuredRorKbnDef: RorKbnDef,
                                  configuredGroups: Groups = Groups.NotDefined,
                                  tokenHeader: Header,
-                                 preferredGroup: Option[Group] = None): Unit =
+                                 preferredGroup: Option[GroupName] = None): Unit =
     assertRule(configuredRorKbnDef, configuredGroups, tokenHeader, preferredGroup, blockContextAssertion = None)
 
   private def assertRule(configuredRorKbnDef: RorKbnDef,
                          configuredGroups: Groups = Groups.NotDefined,
                          tokenHeader: Header,
-                         preferredGroup: Option[Group],
+                         preferredGroup: Option[GroupName],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, configuredGroups), UserIdEq.caseSensitive)
     val requestContext = MockRequestContext.indices.copy(

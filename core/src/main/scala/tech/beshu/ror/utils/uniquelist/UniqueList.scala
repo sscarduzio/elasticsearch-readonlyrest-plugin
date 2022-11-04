@@ -35,8 +35,8 @@ class UniqueList[T] private (vector: Vector[T])
 object UniqueList {
   def fromVector[T](vector: Vector[T]): UniqueList[T] = new UniqueList[T](vector.distinct)
   def empty[T]: UniqueList[T] = fromVector(Vector.empty)
-  def of[T](t: T*): UniqueList[T] = fromList(t.toList)
-  def fromList[T](list: List[T]): UniqueList[T] = fromVector(list.toVector)
+  def of[T](t: T*): UniqueList[T] = fromTraversable(t.toList)
+  def fromTraversable[T](list: Traversable[T]): UniqueList[T] = fromVector(list.toVector)
   def fromSortedSet[T](set: SortedSet[T]): UniqueList[T] = fromVector(set.toVector)
 
   implicit def show[T: Show]: Show[UniqueList[T]] = Show.show(_.toList.show)

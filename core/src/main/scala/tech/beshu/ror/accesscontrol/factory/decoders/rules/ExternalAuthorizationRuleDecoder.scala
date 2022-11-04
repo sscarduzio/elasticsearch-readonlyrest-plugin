@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthori
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{Group, User}
+import tech.beshu.ror.accesscontrol.domain.{PermittedGroups, User}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -61,10 +61,10 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
       .instance { c =>
         for {
           name <- c.downField("user_groups_provider").as[ExternalAuthorizationService.Name]
-          groups <- c.downField("groups").as[UniqueNonEmptyList[Group]]
+          permittedGroups <- c.downField("groups").as[PermittedGroups]
           users <- c.downField("users").as[Option[UniqueNonEmptyList[User.Id]]]
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
-        } yield (name, ttl, groups, users.getOrElse(UniqueNonEmptyList.of(User.Id(NonEmptyString.unsafeFrom("*")))))
+        } yield (name, ttl, permittedGroups, users.getOrElse(UniqueNonEmptyList.of(User.Id(NonEmptyString.unsafeFrom("*")))))
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)

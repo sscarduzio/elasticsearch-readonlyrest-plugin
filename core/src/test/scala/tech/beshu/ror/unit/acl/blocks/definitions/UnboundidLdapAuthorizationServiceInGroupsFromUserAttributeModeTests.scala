@@ -29,7 +29,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.GroupsFromUserAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
-import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -58,7 +59,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
         "user has groups" in {
           eventually {
             authorizationService.groupsOf(User.Id("jesus")).runSyncUnsafe() should contain only(
-              Group("europe"), Group("north america"), Group("south america"), Group("africa")
+              GroupName("europe"), GroupName("north america"), GroupName("south america"), GroupName("africa")
             )
           }
         }
@@ -66,12 +67,12 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
       "returns empty set of groups" when {
         "user has no groups" in {
           eventually {
-            authorizationService.groupsOf(User.Id("spaghetti")).runSyncUnsafe() should be (UniqueList.empty[Group])
+            authorizationService.groupsOf(User.Id("spaghetti")).runSyncUnsafe() should be (UniqueList.empty[GroupName])
           }
         }
         "there is no user with given name" in {
           eventually {
-            authorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[Group])
+            authorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[GroupName])
           }
         }
       }

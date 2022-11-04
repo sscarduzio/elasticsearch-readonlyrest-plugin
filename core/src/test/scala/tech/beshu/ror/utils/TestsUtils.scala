@@ -19,7 +19,6 @@ package tech.beshu.ror.utils
 import java.nio.file.Path
 import java.time.Duration
 import java.util.Base64
-
 import better.files.File
 import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined.types.string.NonEmptyString
@@ -27,7 +26,7 @@ import io.circe.ParsingFailure
 import io.jsonwebtoken.JwtBuilder
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, RepositoryRequestBlockContext, RorApiRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
@@ -42,6 +41,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, definitions}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
@@ -125,7 +125,7 @@ object TestsUtils {
     )
   }
 
-  def mocksProviderForLdapFrom(map: Map[LdapService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
+  def mocksProviderForLdapFrom(map: Map[LdapService.Name, Map[User.Id, Set[GroupName]]]): MocksProvider = {
     new MocksProvider {
       override def ldapServiceWith(id: LdapService.Name)
                                   (implicit context: RequestId): Option[LdapServiceMock] = {
@@ -161,7 +161,7 @@ object TestsUtils {
     }
   }
 
-  def mocksProviderForExternalAuthzServiceFrom(map: Map[definitions.ExternalAuthorizationService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
+  def mocksProviderForExternalAuthzServiceFrom(map: Map[definitions.ExternalAuthorizationService.Name, Map[User.Id, Set[GroupName]]]): MocksProvider = {
     new MocksProvider {
       override def ldapServiceWith(id: LdapService.Name)(implicit context: RequestId): Option[LdapServiceMock] = None
 
@@ -202,8 +202,8 @@ object TestsUtils {
     }
 
     def assertBlockContext(loggedUser: Option[LoggedUser] = None,
-                           currentGroup: Option[Group] = None,
-                           availableGroups: UniqueList[Group] = UniqueList.empty,
+                           currentGroup: Option[GroupName] = None,
+                           availableGroups: UniqueList[GroupName] = UniqueList.empty,
                            kibanaIndex: Option[ClusterIndexName] = None,
                            kibanaTemplateIndex: Option[ClusterIndexName] = None,
                            hiddenKibanaApps: Set[KibanaApp] = Set.empty,
@@ -218,7 +218,7 @@ object TestsUtils {
                            templates: Set[TemplateOperation] = Set.empty)
                           (blockContext: BlockContext): Unit = {
       blockContext.userMetadata.loggedUser should be(loggedUser)
-      blockContext.userMetadata.availableGroups should be(availableGroups)
+      blockContext.userMetadata.availableGroups should contain allElementsOf availableGroups
       blockContext.userMetadata.currentGroup should be(currentGroup)
       blockContext.userMetadata.kibanaIndex should be(kibanaIndex)
       blockContext.userMetadata.kibanaTemplateIndex should be(kibanaTemplateIndex)
@@ -229,6 +229,7 @@ object TestsUtils {
       blockContext.responseHeaders should be(responseHeaders)
       blockContext match {
         case _: CurrentUserMetadataRequestBlockContext =>
+        case _: RorApiRequestBlockContext =>
         case _: GeneralNonIndexRequestBlockContext =>
         case bc: RepositoryRequestBlockContext =>
           bc.repositories should be(repositories)
@@ -282,21 +283,17 @@ object TestsUtils {
     }
   }
 
-  def nonEmptySetOf(group: Group, groups: Group*): NonEmptySet[Group] = {
+  def nonEmptySetOf(group: GroupName, groups: GroupName*): NonEmptySet[GroupName] = {
     import tech.beshu.ror.accesscontrol.orders._
     NonEmptySet.of(group, groups: _*)
   }
 
-  def groupFrom(value: String): Group = NonEmptyString.from(value) match {
-    case Right(v) => Group(v)
-    case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to Group")
-  }
-
-  implicit class CurrentGroupToHeader(val group: Group) extends AnyVal {
+  implicit class CurrentGroupToHeader(val group: GroupName) extends AnyVal {
     def toCurrentGroupHeader: Header = currentGroupHeader(group.value.value)
   }
 
-  def noGroupMappingFrom(value: String): GroupMappings = GroupMappings.Simple(UniqueNonEmptyList.of(groupFrom(value)))
+  def noGroupMappingFrom(value: String): GroupMappings =
+    GroupMappings.Simple(UniqueNonEmptyList.of(GroupName(NonEmptyString.unsafeFrom(value))))
 
   def apiKeyFrom(value: String): ApiKey = NonEmptyString.from(value) match {
     case Right(v) => ApiKey(v)

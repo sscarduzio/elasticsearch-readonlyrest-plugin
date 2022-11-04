@@ -70,7 +70,7 @@ class FieldsRule(val settings: Settings)
 
   private def processFilterableBlockContext[B <: BlockContext : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B): RuleResult[B] = {
     val maybeResolvedFields = resolveAll(settings.fields.toNonEmptyList, blockContext)
-    UniqueNonEmptyList.fromList(maybeResolvedFields) match {
+    UniqueNonEmptyList.fromTraversable(maybeResolvedFields) match {
       case Some(resolvedFields) =>
         processBlockContextUsingDefinedFLSMode(blockContext, resolvedFields)
       case None =>

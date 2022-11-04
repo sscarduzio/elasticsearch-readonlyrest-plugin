@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableRequestBlockContext, GeneralIndexRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
@@ -171,8 +172,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              currentGroup = Some(groupFrom("g3")),
-              availableGroups = UniqueList.of(groupFrom("g3"))
+              currentGroup = Some(GroupName("g3")),
+              availableGroups = UniqueList.of(GroupName("g3"))
             ) {
               blockContext
             }
@@ -190,8 +191,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              currentGroup = Some(groupFrom("g3")),
-              availableGroups = UniqueList.of(groupFrom("g3"))
+              currentGroup = Some(GroupName("g3")),
+              availableGroups = UniqueList.of(GroupName("g3"))
             ) {
               blockContext
             }
@@ -209,8 +210,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             block.name should be(Block.Name("Group name from env variable (old syntax)"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
-              currentGroup = Some(groupFrom("gs2")),
-              availableGroups = UniqueList.of(groupFrom("gs2"))
+              currentGroup = Some(GroupName("gs2")),
+              availableGroups = UniqueList.of(GroupName("gs2"))
             ) {
               blockContext
             }
@@ -228,8 +229,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             block.name should be(Block.Name("Group name from env variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              currentGroup = Some(groupFrom("gs1")),
-              availableGroups = UniqueList.of(groupFrom("gs1"))
+              currentGroup = Some(GroupName("gs1")),
+              availableGroups = UniqueList.of(GroupName("gs1"))
             ) {
               blockContext
             }
@@ -335,8 +336,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
               UserMetadata
                 .from(request)
                 .withLoggedUser(DirectlyLoggedUser(User.Id("cartman")))
-                .withCurrentGroup(groupFrom("g1"))
-                .withAvailableGroups(UniqueList.of(groupFrom("g1"), groupFrom("g3")))
+                .withCurrentGroup(GroupName("g1"))
+                .withAvailableGroups(UniqueList.of(GroupName("g1"), GroupName("g3")))
             )
             blockContext.filteredIndices should be(Set(clusterIndexName("test-g1"), clusterIndexName("test-g3")))
             blockContext.responseHeaders should be(Set.empty)

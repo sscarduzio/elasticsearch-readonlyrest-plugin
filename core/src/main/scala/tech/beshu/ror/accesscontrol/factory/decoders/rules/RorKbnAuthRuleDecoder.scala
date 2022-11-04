@@ -22,8 +22,8 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.Groups
-import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, PermittedGroups}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
@@ -31,7 +31,6 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.RorKbnDefinitionsDecoder._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
                             implicit val caseMappingEquality: UserIdCaseMappingEquality)
@@ -69,16 +68,16 @@ private object RorKbnAuthRuleDecoder {
           rorKbnDefName <- c.downField("name").as[RorKbnDef.Name]
           groupsOrLogic <- {
             val (cursor, key) = c.downFieldsWithKey("roles", "groups")
-            cursor.as[Option[UniqueNonEmptyList[Group]]]
+            cursor.as[Option[PermittedGroups]]
               .map {
-                _.map(Groups.GroupsLogic.Or).map(Groups.Defined).map((_, key))
+                _.map(GroupsLogic.Or).map(Groups.Defined).map((_, key))
               }
           }
           groupsAndLogic <- {
             val (cursor, key) = c.downFieldsWithKey("roles_and", "groups_and")
-            cursor.as[Option[UniqueNonEmptyList[Group]]]
+            cursor.as[Option[PermittedGroups]]
               .map {
-                _.map(Groups.GroupsLogic.And).map(Groups.Defined).map((_, key))
+                _.map(GroupsLogic.And).map(Groups.Defined).map((_, key))
               }
           }
         } yield (rorKbnDefName, groupsOrLogic, groupsAndLogic)

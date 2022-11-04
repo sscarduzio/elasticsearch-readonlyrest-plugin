@@ -27,20 +27,21 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthorizationRule, R
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{Impersonation, ImpersonationSettings, SimpleAuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, User}
+import tech.beshu.ror.accesscontrol.domain.{LoggedUser, PermittedGroups, User}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 trait BaseAuthorizationRule extends AuthorizationRule with SimpleAuthorizationImpersonationSupport {
 
-  protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]]
+  protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[GroupName]): Option[UniqueNonEmptyList[GroupName]]
 
   protected def caseMappingEquality: UserIdCaseMappingEquality
 
-  protected def groupsPermittedByRule: UniqueNonEmptyList[Group]
+  protected def groupsPermittedByRule: PermittedGroups
 
-  protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[Group]]
+  protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[GroupName]]
 
   protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = Right(())
 
@@ -95,10 +96,10 @@ trait BaseAuthorizationRule extends AuthorizationRule with SimpleAuthorizationIm
 
   private def authorizeLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                            user: LoggedUser,
-                                                                           userGroupsProvider: (B, LoggedUser) => Task[UniqueList[Group]]): Task[RuleResult[B]] = {
+                                                                           userGroupsProvider: (B, LoggedUser) => Task[UniqueList[GroupName]]): Task[RuleResult[B]] = {
     if (blockContext.isCurrentGroupEligible(groupsPermittedByRule)) {
       userGroupsProvider(blockContext, user)
-        .map(uniqueList => UniqueNonEmptyList.fromSet(uniqueList.toSet))
+        .map(uniqueList => UniqueNonEmptyList.fromTraversable(uniqueList.toSet))
         .map {
           case Some(fetchedUserGroups) =>
             calculateAllowedGroupsForUser(fetchedUserGroups) match {
@@ -117,8 +118,11 @@ trait BaseAuthorizationRule extends AuthorizationRule with SimpleAuthorizationIm
     }
   }
 
-  private def allGroupsIntersection(availableGroups: UniqueNonEmptyList[Group]) = {
-    UniqueNonEmptyList.unsafeFromSortedSet(groupsPermittedByRule.intersect(availableGroups)) // it is safe here
+  private def allGroupsIntersection(availableGroups: UniqueNonEmptyList[GroupName]) = {
+    UniqueNonEmptyList.unsafeFromTraversable {
+      // it is safe here
+      groupsPermittedByRule.filterOnlyPermitted(availableGroups)
+    }
   }
 
 }

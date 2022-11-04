@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroup
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseGroupsRule.{Settings => GroupsRuleSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.{BaseGroupsRule, GroupsOrRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.utils.TestsUtils._
@@ -41,10 +42,10 @@ class GroupsOrRuleTests extends BaseGroupsRuleTests {
     "match" when {
       "user has not all groups" in {
         val ruleSettings = GroupsRuleSettings(
-          groups = UniqueNonEmptyList.of(
-            AlreadyResolved(groupFrom("g1").nel),
-            AlreadyResolved(groupFrom("g2").nel),
-          ),
+          permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
+            AlreadyResolved(GroupName("g1").nel),
+            AlreadyResolved(GroupName("g2").nel),
+          )),
           usersDefinitions = NonEmptyList.of(UserDef(
             usernames = userIdPatterns("user1"),
             mode = WithoutGroupsMapping(
@@ -61,8 +62,8 @@ class GroupsOrRuleTests extends BaseGroupsRuleTests {
           preferredGroup = None
         )(defaultOutputBlockContextAssertion(
           user = User.Id("user1"),
-          group = groupFrom("g1"),
-          availableGroups = UniqueList.of(groupFrom("g1"))
+          group = GroupName("g1"),
+          availableGroups = UniqueList.of(GroupName("g1"))
         ))
       }
     }
@@ -70,10 +71,10 @@ class GroupsOrRuleTests extends BaseGroupsRuleTests {
     "match" when {
       "user has all groups" in {
         val ruleSettings = GroupsRuleSettings(
-          groups = UniqueNonEmptyList.of(
-            AlreadyResolved(groupFrom("g1").nel),
-            AlreadyResolved(groupFrom("g2").nel),
-          ),
+          permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
+            AlreadyResolved(GroupName("g1").nel),
+            AlreadyResolved(GroupName("g2").nel),
+          )),
           usersDefinitions = NonEmptyList.of(UserDef(
             usernames = userIdPatterns("user1"),
             mode = WithoutGroupsMapping(
@@ -91,8 +92,8 @@ class GroupsOrRuleTests extends BaseGroupsRuleTests {
         )(
           blockContextAssertion = defaultOutputBlockContextAssertion(
             user = User.Id("user1"),
-            group = groupFrom("g1"),
-            availableGroups = UniqueList.of(groupFrom("g1"), groupFrom("g2"))
+            group = GroupName("g1"),
+            availableGroups = UniqueList.of(GroupName("g1"), GroupName("g2"))
           )
         )
       }
