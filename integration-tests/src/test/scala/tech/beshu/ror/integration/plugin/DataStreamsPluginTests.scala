@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
-class DataStreamTests extends DataStreamApiSuite with SingletonPluginTestSupport
+class DataStreamsPluginTests extends DataStreamApiSuite with SingletonPluginTestSupport

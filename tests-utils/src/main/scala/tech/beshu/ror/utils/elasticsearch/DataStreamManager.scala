@@ -55,6 +55,18 @@ class DataStreamManager(client: RestClient) extends BaseManager(client) {
     call(request, new JsonResponse(_))
   }
 
+  def migrateToDataStream(aliasName: String): JsonResponse = {
+    val request = new HttpPost(client.from(s"/_data_stream/_migrate/$aliasName"))
+    call(request, new JsonResponse(_))
+  }
+
+  def modifyDataStreams(body: JSON): JsonResponse = {
+    val request = new HttpPost(client.from(s"/_data_stream/_modify"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(ujson.write(body)))
+    call(request, new JsonResponse(_))
+  }
+
   def rollover(name: String): JsonResponse = {
     val request = new HttpPost(client.from(s"/$name/_rollover/"))
     request.addHeader("Content-Type", "application/json")

@@ -91,7 +91,6 @@ trait DataStreamApiSuite extends AnyFreeSpec
           allDataStreamsResponse.responseCode should be(200)
           val indicesNames = allDataStreamsResponse.responseJson("data_streams").arr.head("indices").arr.map(v => v("index_name").str)
           indicesNames.foreach { indexName =>
-            println(s"INDEX_NAME: $indexName")
             searchAllowed(searchManager, indexName, 10)
           }
         }
@@ -224,6 +223,62 @@ trait DataStreamApiSuite extends AnyFreeSpec
       statsResponse.responseCode should be(200)
       statsResponse.responseJson("data_stream_count").num.toInt should be(1)
       statsResponse.responseJson("backing_indices").num.toInt should be(3)
+    }
+    "should allow to migrate index alias to data stream" excludeES(allEs6x, allEs7xBelowEs711x) in {
+      val documentManager = new DocumentManager(client, esVersionUsed)
+      val indexManager = new IndexManager(client, esVersionUsed)
+      documentManager.createDoc("logs-0001", 1, ujson.read(s"""{ "message":"test1", "@timestamp": "${format(Instant.now())}"}""")).force()
+      documentManager.createDoc("logs-0001", 2, ujson.read(s"""{ "message":"test2", "@timestamp": "${format(Instant.now())}"}""")).force()
+      documentManager.createDoc("logs-0002", 1, ujson.read(s"""{ "message":"test3", "@timestamp": "${format(Instant.now())}"}""")).force()
+      indexManager.createAliasOf("logs-0001", "all-logs")
+
+      val createIndexTemplateResponse = templateManager.createTemplate("logs-template-name", indexTemplate("all-logs"))
+      createIndexTemplateResponse.responseCode should be(200)
+
+      val migrateToDataStreamResponse = dataStreamManager.migrateToDataStream("all-logs")
+      migrateToDataStreamResponse.responseCode should be(200)
+
+      waitForReindexing()
+      val statsResponse = dataStreamManager.getDataStreamStats("all-logs")
+      statsResponse.responseCode should be(200)
+      statsResponse.responseJson("data_stream_count").num.toInt should be(1)
+      statsResponse.responseJson("backing_indices").num.toInt should be(1)
+    }
+    "should allow to modify data stream" excludeES(allEs6x, allEs7xBelowEs716x) in {
+      createDataStreamWithSuccess(adminIndexTemplate, adminDataStream)
+
+      List.range(0, 2).foreach { _ =>
+        createDocsInDataStream(adminDataStream, 15)
+        dataStreamManager.rollover(adminDataStream).force()
+      }
+
+      waitForReindexing()
+
+      val getDataStreamResponse = dataStreamManager.getDataStream(adminDataStream)
+      getDataStreamResponse.responseCode should be(200)
+      val dsIndices = getDataStreamResponse.responseJson("data_streams").arr.head("indices").arr.map(_ ("index_name").str).toList
+      dsIndices.size should be(3)
+
+      val modifyResponse = dataStreamManager.modifyDataStreams(ujson.read(
+        s"""
+           |{
+           |  "actions": [
+           |    {
+           |      "remove_backing_index": {
+           |        "data_stream": "$adminDataStream",
+           |        "index": "${dsIndices.head}"
+           |      }
+           |    }
+           |  ]
+           |}
+           |""".stripMargin))
+      modifyResponse.responseCode should be(200)
+
+      val getDataStreamResponseAfterModification = dataStreamManager.getDataStream(adminDataStream)
+      getDataStreamResponseAfterModification.responseCode should be(200)
+      val dsIndicesAfterModification = getDataStreamResponseAfterModification
+        .responseJson("data_streams").arr.head("indices").arr.map(_ ("index_name").str).toList
+      dsIndicesAfterModification should be(dsIndices.tail)
     }
   }
 
