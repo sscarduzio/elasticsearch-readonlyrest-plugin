@@ -128,7 +128,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
         templates.flatMap { template =>
           for {
             templateName <- NonEmptyString.unapply(template.getName).map(TemplateName.apply)
-            indexPatterns <- UniqueNonEmptyList.fromList(
+            indexPatterns <- UniqueNonEmptyList.fromTraversable(
               template.patterns().asSafeList.flatMap(IndexPattern.fromString)
             )
             aliases = template.aliases().asSafeValues.flatMap(a => ClusterIndexName.fromString(a.alias()))
@@ -147,7 +147,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
           .flatMap { case (name, template) =>
             for {
               templateName <- NonEmptyString.unapply(name).map(TemplateName.apply)
-              indexPatterns <- UniqueNonEmptyList.fromList(
+              indexPatterns <- UniqueNonEmptyList.fromTraversable(
                 template.indexPatterns().asSafeList.flatMap(IndexPattern.fromString)
               )
               aliases = template.template().asSafeSet
