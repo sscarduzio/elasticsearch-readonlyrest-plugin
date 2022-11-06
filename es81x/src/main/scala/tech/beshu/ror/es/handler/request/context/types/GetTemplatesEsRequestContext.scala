@@ -170,7 +170,7 @@ private[types] object GetTemplatesEsRequestContext extends Logging {
         .fromString(metadata.getName)
         .toRight("Template name should be non-empty")
       patterns <- UniqueNonEmptyList
-        .fromList(metadata.patterns().asSafeList.flatMap(IndexPattern.fromString))
+        .fromTraversable(metadata.patterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
       aliases = metadata.aliases().asSafeKeys.flatMap(ClusterIndexName.fromString)
     } yield LegacyTemplate(name, patterns, aliases)

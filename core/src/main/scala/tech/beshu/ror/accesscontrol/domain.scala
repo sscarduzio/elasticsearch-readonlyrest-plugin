@@ -185,17 +185,17 @@ object domain {
   implicit class GroupsLogicAndExecutor(val groupsLogic: GroupsLogic.And) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[GroupName]): Option[UniqueNonEmptyList[GroupName]] = {
       val atLeastPermittedGroupNotMatched = false
-      val userGroupsMatchedSoFar = Set.empty[GroupName]
+      val userGroupsMatchedSoFar = Vector.empty[GroupName]
       val (isThereNotPermittedGroup, matchedUserGroups) =
         groupsLogic
         .permittedGroups
-        .groups
+        .groups.toList.widen[GroupLike]
         .foldLeft((atLeastPermittedGroupNotMatched, userGroupsMatchedSoFar)) {
-          case ((false, userGroupsMatchedSoFar), permittedGroup) =>
-            val matchedUserGroup = userGroups.find(userGroup => permittedGroup.matches(userGroup))
-            matchedUserGroup match {
-              case Some(userGroup) => (false, userGroupsMatchedSoFar + userGroup)
-              case None => (true, userGroupsMatchedSoFar)
+          case ((false, userGroupsMatchedSoFar), permittedGroup: GroupLike) =>
+            val matchedUserGroups = userGroups.toList.filter(userGroup => permittedGroup.matches(userGroup))
+            matchedUserGroups match {
+              case Nil => (true, userGroupsMatchedSoFar)
+              case nonEmptyList => (false, userGroupsMatchedSoFar ++ nonEmptyList)
             }
           case (result@(true, _), _) =>
             result
@@ -531,7 +531,9 @@ object domain {
     case object Closed extends IndexAttribute
   }
 
-  sealed trait ClusterIndexName
+  sealed trait ClusterIndexName {
+    private [domain] lazy val matcher = MatcherWithWildcardsScalaAdapter.create(this :: Nil)
+  }
   object ClusterIndexName {
 
     final case class Local private(value: IndexName) extends ClusterIndexName
@@ -623,14 +625,12 @@ object domain {
     implicit val eqIndexName: Eq[ClusterIndexName] = Eq.fromUniversalEquals
 
     implicit class IndexMatch(indexName: ClusterIndexName) {
-      // todo: potential improvement needed (performance)
-      private lazy val matcher = MatcherWithWildcardsScalaAdapter.create(indexName :: Nil)
 
       def matches(otherIndexName: ClusterIndexName): Boolean = indexName match {
         case Local(IndexName.Full(_)) => indexName == otherIndexName
         case Remote(IndexName.Full(_), _) => indexName == otherIndexName
-        case Local(IndexName.Wildcard(_)) => matcher.`match`(otherIndexName)
-        case Remote(IndexName.Wildcard(_), _) => matcher.`match`(otherIndexName)
+        case Local(IndexName.Wildcard(_)) => indexName.matcher.`match`(otherIndexName)
+        case Remote(IndexName.Wildcard(_), _) => indexName.matcher.`match`(otherIndexName)
       }
     }
 

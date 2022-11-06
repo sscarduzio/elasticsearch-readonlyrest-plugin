@@ -23,8 +23,8 @@ import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthorizationRule.Settings
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.{PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.{GroupName, GroupNamePattern}
+import tech.beshu.ror.accesscontrol.domain.{GroupLike, PermittedGroups, User}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
@@ -49,7 +49,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
               |    groups_provider_authorization:
               |      user_groups_provider: "GroupsService1"
-              |      groups: ["group3"]
+              |      groups: ["g*"]
               |      users: user1
               |
               |  user_groups_providers:
@@ -66,7 +66,8 @@ class ExternalAuthorizationRuleSettingsTests
             inside(rule.settings) { case Settings(service, permittedGroups, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[HttpExternalAuthorizationService]
-              permittedGroups should be(PermittedGroups(UniqueNonEmptyList.of(GroupName("group3"))))
+              permittedGroups should be(PermittedGroups(UniqueNonEmptyList.of(GroupLike.from("g*"))))
+              permittedGroups.groups.head shouldBe a [GroupNamePattern]
               users should be(UniqueNonEmptyList.of(User.Id("user1")))
             }
           }
@@ -193,7 +194,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
               |    groups_provider_authorization:
               |      user_groups_provider: GroupsService1
-              |      groups: ["group3"]
+              |      groups: ["g*", "r1"]
               |
               |  user_groups_providers:
               |
@@ -213,7 +214,9 @@ class ExternalAuthorizationRuleSettingsTests
             inside(rule.settings) { case Settings(service, permittedGroups, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
-              permittedGroups should be(PermittedGroups(UniqueNonEmptyList.of(GroupName("group3"))))
+              permittedGroups should be(PermittedGroups(UniqueNonEmptyList.of(GroupLike.from("g*"), GroupLike.from("r1"))))
+              permittedGroups.groups.head shouldBe a [GroupNamePattern]
+              permittedGroups.groups.tail.head shouldBe a [GroupName]
               users should be(UniqueNonEmptyList.of(User.Id("*")))
             }
           }

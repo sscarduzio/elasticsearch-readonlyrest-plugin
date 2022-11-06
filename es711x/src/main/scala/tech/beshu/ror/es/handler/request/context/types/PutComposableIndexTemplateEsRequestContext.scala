@@ -58,7 +58,7 @@ object PutComposableIndexTemplateEsRequestContext {
         .fromString(request.name())
         .toRight("Template name should be non-empty")
       patterns <- UniqueNonEmptyList
-        .fromList(request.indexTemplate().indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
+        .fromTraversable(request.indexTemplate().indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
       aliases = request.indexTemplate().template().asSafeSet
         .flatMap(_.aliases().asSafeMap.keys.flatMap(ClusterIndexName.fromString).toSet)

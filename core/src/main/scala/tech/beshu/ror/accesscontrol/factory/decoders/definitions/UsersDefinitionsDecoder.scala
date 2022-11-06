@@ -114,7 +114,7 @@ object UsersDefinitionsDecoder {
       }
 
   private val simpleGroupMappingsDecoder: Decoder[GroupMappings] =
-    groupsUniqueNonEmptyListDecoder.map(GroupMappings.Simple.apply)
+    groupNamesUniqueNonEmptyListDecoder.map(GroupMappings.Simple.apply)
 
   private val advancedGroupMappingsDecoder: Decoder[GroupMappings] =
     Decoder[List[GroupMappings.Advanced.Mapping]]
