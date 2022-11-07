@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
-import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, PermittedGroups}
+import tech.beshu.ror.accesscontrol.domain.GroupsLogic
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -39,7 +39,6 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.LdapRulesDecodersHelp
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
@@ -133,8 +132,8 @@ object LdapAuthorizationRuleDecoder {
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          groupsAnd <- c.downField("groups_and").as[Option[PermittedGroups]].map(_.map(GroupsLogic.And))
-          groupsOr <- c.downField("groups").as[Option[PermittedGroups]].map(_.map(GroupsLogic.Or))
+          groupsAnd <- c.downField("groups_and").as[Option[GroupsLogic.And]]
+          groupsOr <- c.downFields("groups_or", "group").as[Option[GroupsLogic.Or]]
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
         } yield (name, ttl, groupsOr, groupsAnd)
       }
@@ -145,7 +144,8 @@ object LdapAuthorizationRuleDecoder {
         case (name, _, Some(_), Some(_)) => Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(name.value.value))))
         case (name, ttl, Some(groupsOr), None) => createLdapAuthorizationDecoder(name, ttl, groupsOr, ldapDefinitions)
         case (name, ttl, None, Some(groupsAnd)) => createLdapAuthorizationDecoder(name, ttl, groupsAnd, ldapDefinitions)
-      }.decoder
+      }
+      .decoder
 }
 
 // ------ ldap_auth
@@ -168,8 +168,7 @@ object LdapAuthRuleDecoder {
                                     groupsLogic: GroupsLogic, ldapDefinitions: Definitions[LdapService],
                                     impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                     mocksProvider: MocksProvider,
-                                    caseMappingEquality: UserIdCaseMappingEquality
-                                   ) = {
+                                    caseMappingEquality: UserIdCaseMappingEquality) = {
 
     findLdapService[LdapAuthService, LdapAuthRule](ldapDefinitions.items, name)
       .map( svc => {
@@ -203,8 +202,8 @@ object LdapAuthRuleDecoder {
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          groupsAnd <- c.downField("groups_and").as[Option[PermittedGroups]].map(_.map(GroupsLogic.And))
-          groupsOr <- c.downField("groups").as[Option[PermittedGroups]].map(_.map(GroupsLogic.Or))
+          groupsAnd <- c.downField("groups_and").as[Option[GroupsLogic.And]]
+          groupsOr <- c.downFields("groups_or", "group").as[Option[GroupsLogic.Or]]
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
         } yield (name, ttl, groupsOr, groupsAnd)
       }
@@ -223,9 +222,9 @@ object LdapAuthRuleDecoder {
 
 private object LdapRulesDecodersHelper {
 
-  def errorMsgNoGroupsList(name: String) = s"Please specify one between 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
+  def errorMsgNoGroupsList(name: String) = s"Please specify one between 'groups_or'/'groups' or 'groups_and' for LDAP authorization rule '${name}'"
 
-  def errorMsgOnlyOneGroupsList(name: String) = s"Please specify either 'groups' or 'groups_and' for LDAP authorization rule '${name}'"
+  def errorMsgOnlyOneGroupsList(name: String) = s"Please specify either 'groups_or'/'groups' or 'groups_and' for LDAP authorization rule '${name}'"
 
   def findLdapService[T <: LdapService : ClassTag, R <: Rule : RuleName](ldapServices: List[LdapService],
                                                                          searchedServiceName: LdapService.Name): Either[CoreCreationError, T] = {

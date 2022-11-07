@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthor
 import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseAuthorizationRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{LoggedUser, PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, LoggedUser, PermittedGroups, User}
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -42,7 +42,7 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
 
   override val name: Rule.Name = ExternalAuthorizationRule.Name.name
 
-  override protected val groupsPermittedByRule: PermittedGroups = settings.permittedGroups
+  override protected val groupsPermittedByRule: PermittedGroups = settings.permittedGroupsLogic.permittedGroups
 
   override protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = {
     Either.cond(userMatcher.`match`(user.id), (), ())
@@ -69,9 +69,7 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
   }
 
   override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[GroupName]): Option[UniqueNonEmptyList[GroupName]] =
-    UniqueNonEmptyList.fromTraversable {
-      usersGroups.filter(userGroup => settings.permittedGroups.matches(userGroup))
-    }
+    settings.permittedGroupsLogic.availableGroupsFrom(usersGroups)
 }
 
 object ExternalAuthorizationRule {
@@ -81,7 +79,7 @@ object ExternalAuthorizationRule {
   }
 
   final case class Settings(service: ExternalAuthorizationService,
-                            permittedGroups: PermittedGroups,
+                            permittedGroupsLogic: GroupsLogic,
                             users: UniqueNonEmptyList[User.Id])
 
 }

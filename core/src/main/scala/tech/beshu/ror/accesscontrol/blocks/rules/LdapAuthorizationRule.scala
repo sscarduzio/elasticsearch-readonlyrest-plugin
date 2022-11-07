@@ -40,13 +40,13 @@ class LdapAuthorizationRule(val settings: Settings,
 
   override val name: Rule.Name = LdapAuthorizationRule.Name.name
 
-  override protected val groupsPermittedByRule: PermittedGroups = settings.permittedGroups.permittedGroups
+  override protected val groupsPermittedByRule: PermittedGroups = settings.permittedGroupsLogic.permittedGroups
 
   override protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[GroupName]] =
     settings.ldap.groupsOf(user.id)
 
   override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[GroupName]): Option[UniqueNonEmptyList[GroupName]] =
-    settings.permittedGroups.availableGroupsFrom(usersGroups)
+    settings.permittedGroupsLogic.availableGroupsFrom(usersGroups)
 
   override protected def mockedGroupsOf(user: User.Id,
                                         mocksProvider: MocksProvider)
@@ -73,6 +73,6 @@ object LdapAuthorizationRule {
     override val name = Rule.Name("ldap_authorization")
   }
 
-  final case class Settings(ldap: LdapAuthorizationService, permittedGroups: GroupsLogic)
+  final case class Settings(ldap: LdapAuthorizationService, permittedGroupsLogic: GroupsLogic)
 
 }

@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{Address, GroupLike, Header, PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.domain.{Address, GroupLike, GroupsLogic, Header, PermittedGroups, User}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
@@ -278,16 +278,21 @@ object common extends Logging {
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .emapE[JsonPath] { jsonPathStr =>
-      Try(JsonPath.compile(jsonPathStr))
-        .toEither
-        .left
-        .map { ex =>
-          logger.errorEx("JSON path compilation failed", ex)
-          DefinitionsLevelCreationError(Message(s"Cannot compile '$jsonPathStr' to JSON path"))
-        }
-    }
+        Try(JsonPath.compile(jsonPathStr))
+          .toEither
+          .left
+          .map { ex =>
+            logger.errorEx("JSON path compilation failed", ex)
+            DefinitionsLevelCreationError(Message(s"Cannot compile '$jsonPathStr' to JSON path"))
+          }
+      }
       .decoder
 
+  implicit val groupsLogicAndDecoder: Decoder[GroupsLogic.And] =
+    permittedGroupsDecoder.map(GroupsLogic.And.apply)
+
+  implicit val groupsLogicOrDecoder: Decoder[GroupsLogic.Or] =
+    permittedGroupsDecoder.map(GroupsLogic.Or.apply)
 
   private lazy val finiteDurationStringDecoder: Decoder[FiniteDuration] =
     DecoderHelpers
