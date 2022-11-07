@@ -63,17 +63,21 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
           name <- c.downField("user_groups_provider").as[ExternalAuthorizationService.Name]
           users <- c.downField("users").as[Option[UniqueNonEmptyList[User.Id]]]
           groupsAnd <- c.downField("groups_and").as[Option[GroupsLogic.And]]
-          groupsOr <- c.downFields("groups_or", "group").as[Option[GroupsLogic.Or]]
+          groupsOr <- c.downFields("groups_or", "groups").as[Option[GroupsLogic.Or]]
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
         } yield (name, ttl, users, groupsOr, groupsAnd)
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .emapE {
-        case (name, _, _, None, None) => Left(RulesLevelCreationError(Message(errorMsgNoGroupsList(name.value.value))))
-        case (name, _, _, Some(_), Some(_)) => Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(name.value.value))))
-        case (name, ttl, users, Some(groupsOr), None) => createExternalAuthorizationSettings(name, ttl, groupsOr, users)
-        case (name, ttl, users, None, Some(groupsAnd)) => createExternalAuthorizationSettings(name, ttl, groupsAnd, users)
+        case (_, _, _, None, None) =>
+          Left(RulesLevelCreationError(Message(errorMsgNoGroupsList())))
+        case (_, _, _, Some(_), Some(_)) =>
+          Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList())))
+        case (name, ttl, users, Some(groupsOr), None) =>
+          createExternalAuthorizationSettings(name, ttl, groupsOr, users)
+        case (name, ttl, users, None, Some(groupsAnd)) =>
+          createExternalAuthorizationSettings(name, ttl, groupsAnd, users)
       }
       .decoder
   }
@@ -104,11 +108,11 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
     }
   }
 
-  private def errorMsgNoGroupsList(name: String) = {
+  private def errorMsgNoGroupsList() = {
     s"${ExternalAuthorizationRule.Name.show} rule requires to define 'groups_or'/'groups' or 'groups_and' arrays"
   }
 
-  private def errorMsgOnlyOneGroupsList(name: String) =
+  private def errorMsgOnlyOneGroupsList() =
     s"${ExternalAuthorizationRule.Name.show} rule requires to define 'groups_or'/'groups' or 'groups_and' arrays (but not both)"
 
 }

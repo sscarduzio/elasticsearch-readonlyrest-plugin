@@ -103,9 +103,9 @@ trait BaseAuthorizationRule extends AuthorizationRule with SimpleAuthorizationIm
         .map {
           case Some(fetchedUserGroups) =>
             calculateAllowedGroupsForUser(fetchedUserGroups) match {
-              case Some(_) =>
+              case Some(availableGroups) =>
                 Fulfilled(blockContext.withUserMetadata(
-                  _.addAvailableGroups(allGroupsIntersection(fetchedUserGroups))
+                  _.addAvailableGroups(availableGroups)
                 ))
               case None =>
                 RuleResult.Rejected()
@@ -115,13 +115,6 @@ trait BaseAuthorizationRule extends AuthorizationRule with SimpleAuthorizationIm
         }
     } else {
       Task.now(RuleResult.Rejected())
-    }
-  }
-
-  private def allGroupsIntersection(availableGroups: UniqueNonEmptyList[GroupName]) = {
-    UniqueNonEmptyList.unsafeFromTraversable {
-      // it is safe here
-      groupsPermittedByRule.filterOnlyPermitted(availableGroups)
     }
   }
 

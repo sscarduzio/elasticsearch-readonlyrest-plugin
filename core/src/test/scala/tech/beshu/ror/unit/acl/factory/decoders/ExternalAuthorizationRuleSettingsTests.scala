@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthorizationRule.Settings
 import tech.beshu.ror.accesscontrol.domain.GroupLike.{GroupName, GroupNamePattern}
-import tech.beshu.ror.accesscontrol.domain.{GroupLike, PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.domain.{GroupLike, GroupsLogic, PermittedGroups, User}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
@@ -66,8 +66,10 @@ class ExternalAuthorizationRuleSettingsTests
             inside(rule.settings) { case Settings(service, permittedGroupsLogic, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[HttpExternalAuthorizationService]
-              permittedGroupsLogic should be(PermittedGroups(UniqueNonEmptyList.of(GroupLike.from("g*"))))
-              permittedGroupsLogic.permittedGroups.groups.head shouldBe a [GroupNamePattern]
+              permittedGroupsLogic should be(
+                GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupLike.from("g*"))))
+              )
+              permittedGroupsLogic.permittedGroups.groups.head shouldBe a[GroupNamePattern]
               users should be(UniqueNonEmptyList.of(User.Id("user1")))
             }
           }
@@ -107,7 +109,9 @@ class ExternalAuthorizationRuleSettingsTests
             inside(rule.settings) { case Settings(service, permittedGroupsLogic, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService2"))
               service shouldBe a[HttpExternalAuthorizationService]
-              permittedGroupsLogic should be(PermittedGroups(UniqueNonEmptyList.of(GroupName("group3"))))
+              permittedGroupsLogic should be(
+                GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupName("group3"))))
+              )
               users should be(UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2")))
             }
           }
@@ -143,7 +147,9 @@ class ExternalAuthorizationRuleSettingsTests
             inside(rule.settings) { case Settings(service, permittedGroupsLogic, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
-              permittedGroupsLogic should be(PermittedGroups(UniqueNonEmptyList.of(GroupName("group3"))))
+              permittedGroupsLogic should be(
+                GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupName("group3"))))
+              )
               users should be(UniqueNonEmptyList.of(User.Id("user1")))
             }
           }
@@ -176,7 +182,9 @@ class ExternalAuthorizationRuleSettingsTests
             inside(rule.settings) { case Settings(service, permittedGroupsLogic, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[HttpExternalAuthorizationService]
-              permittedGroupsLogic should be(PermittedGroups(UniqueNonEmptyList.of(GroupName("group3"))))
+              permittedGroupsLogic should be(
+                GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupName("group3"))))
+              )
               users should be(UniqueNonEmptyList.of(User.Id("*")))
             }
           }
@@ -214,9 +222,11 @@ class ExternalAuthorizationRuleSettingsTests
             inside(rule.settings) { case Settings(service, permittedGroupsLogic, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
-              permittedGroupsLogic should be(PermittedGroups(UniqueNonEmptyList.of(GroupLike.from("g*"), GroupLike.from("r1"))))
-              permittedGroupsLogic.permittedGroups.groups.head shouldBe a [GroupNamePattern]
-              permittedGroupsLogic.permittedGroups.groups.tail.head shouldBe a [GroupName]
+              permittedGroupsLogic should be(GroupsLogic.Or(
+                PermittedGroups(UniqueNonEmptyList.of(GroupLike.from("g*"), GroupLike.from("r1")))
+              ))
+              permittedGroupsLogic.permittedGroups.groups.head shouldBe a[GroupNamePattern]
+              permittedGroupsLogic.permittedGroups.groups.tail.head shouldBe a[GroupName]
               users should be(UniqueNonEmptyList.of(User.Id("*")))
             }
           }
@@ -258,7 +268,9 @@ class ExternalAuthorizationRuleSettingsTests
             inside(rule.settings) { case Settings(service, permittedGroupsLogic, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
-              permittedGroupsLogic should be(PermittedGroups(UniqueNonEmptyList.of(GroupName("group3"))))
+              permittedGroupsLogic should be(
+                GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupName("group3"))))
+              )
               users should be(UniqueNonEmptyList.of(User.Id("*")))
             }
           }
@@ -326,11 +338,8 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(
-              """groups_provider_authorization:
-                |  user_groups_provider: "GroupsService2"
-                |  users: "user1"
-                |""".stripMargin
+            errors.head should be(RulesLevelCreationError(Message(
+              "groups_provider_authorization rule requires to define 'groups_or'/'groups' or 'groups_and' arrays"
             )))
           }
         )
@@ -710,8 +719,8 @@ class ExternalAuthorizationRuleSettingsTests
           assertion = errors => {
             errors should have size 1
             inside(errors.head) { case DefinitionsLevelCreationError(MalformedValue(msg)) =>
-              msg should include ("name: \"GroupsService1\"")
-              msg should include ("auth_token_name: \"\"")
+              msg should include("name: \"GroupsService1\"")
+              msg should include("auth_token_name: \"\"")
             }
           }
         )

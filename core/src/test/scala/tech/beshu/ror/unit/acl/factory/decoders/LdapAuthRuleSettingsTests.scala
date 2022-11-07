@@ -18,7 +18,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthRule
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.utils.SingletonLdapContainers
 
@@ -132,7 +132,7 @@ class LdapAuthRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Please specify one between 'groups' or 'groups_and' for LDAP authorization rule 'ldap1'")))
+            errors.head should be(RulesLevelCreationError(Message("ldap_auth rule requires to define 'groups_or'/'groups' or 'groups_and' arrays")))
           }
         )
       }
@@ -161,7 +161,7 @@ class LdapAuthRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Non empty list of groups is required")))
+            errors.head should be(RulesLevelCreationError(Message("Non empty list of group names or/and patters is required")))
           }
         )
       }

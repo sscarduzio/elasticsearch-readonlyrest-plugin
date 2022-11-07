@@ -245,7 +245,7 @@ class GroupsRuleSettingsTests
                  |    auth_key: "cartman:pass"
                  |    groups_provider_authorization:
                  |      user_groups_provider: GroupsService1
-                 |      groups: ["group3"]
+                 |      groups_or: ["group3"]
                  |
                  |  - username: morgan
                  |    groups: ["group2", "group3"]
@@ -284,8 +284,8 @@ class GroupsRuleSettingsTests
                   BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
                 }
                 rule2 shouldBe an[ExternalAuthorizationRule]
-                rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroups should be(
-                  PermittedGroups(UniqueNonEmptyList.of(GroupName("group3")))
+                rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
+                  GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupName("group3"))))
                 )
               }
               inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(rule1, localGroups)) =>
@@ -411,8 +411,8 @@ class GroupsRuleSettingsTests
                   BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
                 }
                 rule2 shouldBe an[ExternalAuthorizationRule]
-                rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroups should be(
-                  PermittedGroups(UniqueNonEmptyList.of(GroupName("ldap_group3"), GroupName("ldap_group4")))
+                rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
+                  GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupName("ldap_group3"), GroupName("ldap_group4"))))
                 )
               }
             }
@@ -599,7 +599,7 @@ class GroupsRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of groups is required")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of group names is required")))
           }
         )
       }
@@ -622,7 +622,7 @@ class GroupsRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of groups is required")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of group names is required")))
           }
         )
       }

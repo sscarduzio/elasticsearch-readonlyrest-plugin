@@ -37,6 +37,11 @@ final class GroupsOrRule(override val settings: BaseGroupsRule.Settings,
 
 object GroupsOrRule {
   implicit case object Name extends RuleName[GroupsOrRule] {
-    override val name: Name = Rule.Name("groups")
+    override val name: Name = Rule.Name("groups_or")
   }
+
+  case object DeprecatedName extends RuleName[GroupsOrRule] {
+    override val name = Rule.Name("groups")
+  }
+
 }

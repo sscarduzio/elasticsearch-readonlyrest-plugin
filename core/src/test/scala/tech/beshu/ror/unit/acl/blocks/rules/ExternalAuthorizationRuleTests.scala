@@ -40,7 +40,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{LoggedUser, PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, LoggedUser, PermittedGroups, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.UserIdEq
@@ -67,7 +67,9 @@ class ExternalAuthorizationRuleTests
           assertMatchRule(
             settings = ExternalAuthorizationRule.Settings(
               service = service,
-              permittedGroups = PermittedGroups(UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))),
+              permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+              )),
               users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
             ),
             loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
@@ -89,7 +91,9 @@ class ExternalAuthorizationRuleTests
           assertMatchRule(
             settings = ExternalAuthorizationRule.Settings(
               service = service,
-              permittedGroups = PermittedGroups(UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))),
+              permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+              )),
               users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
             ),
             loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
@@ -111,7 +115,9 @@ class ExternalAuthorizationRuleTests
           assertMatchRule(
             settings = ExternalAuthorizationRule.Settings(
               service = service,
-              permittedGroups = PermittedGroups(UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))),
+              permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+              )),
               users = UniqueNonEmptyList.of(User.Id("*"))
             ),
             loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
@@ -134,7 +140,9 @@ class ExternalAuthorizationRuleTests
             assertMatchRule(
               settings = ExternalAuthorizationRule.Settings(
                 service = service,
-                permittedGroups = PermittedGroups(UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))),
+                permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                  UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+                )),
                 users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
               ),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
@@ -162,7 +170,9 @@ class ExternalAuthorizationRuleTests
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
             service = mock[ExternalAuthorizationService],
-            permittedGroups = PermittedGroups(UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))),
+            permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+              UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+            )),
             users = UniqueNonEmptyList.of(User.Id("user1"))
           ),
           loggedUser = None,
@@ -173,7 +183,9 @@ class ExternalAuthorizationRuleTests
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
             service = mock[ExternalAuthorizationService],
-            permittedGroups = PermittedGroups(UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))),
+            permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+              UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+            )),
             users = UniqueNonEmptyList.of(User.Id("user1"))
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
@@ -189,7 +201,9 @@ class ExternalAuthorizationRuleTests
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
             service = service,
-            permittedGroups = PermittedGroups(UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))),
+            permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+              UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+            )),
             users = UniqueNonEmptyList.of(User.Id("*"))
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
@@ -205,7 +219,9 @@ class ExternalAuthorizationRuleTests
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
             service = service,
-            permittedGroups = PermittedGroups(UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))),
+            permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+              UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+            )),
             users = UniqueNonEmptyList.of(User.Id("*"))
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
@@ -216,7 +232,9 @@ class ExternalAuthorizationRuleTests
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
             service = mock[ExternalAuthorizationService],
-            permittedGroups = PermittedGroups(UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))),
+            permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+              UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+            )),
             users = UniqueNonEmptyList.of(User.Id("*"))
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
@@ -231,7 +249,9 @@ class ExternalAuthorizationRuleTests
             assertNotMatchRule(
               settings = ExternalAuthorizationRule.Settings(
                 service = service,
-                permittedGroups = PermittedGroups(UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))),
+                permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                  UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+                )),
                 users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
               ),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
@@ -251,7 +271,9 @@ class ExternalAuthorizationRuleTests
             assertNotMatchRule(
               settings = ExternalAuthorizationRule.Settings(
                 service = service,
-                permittedGroups = PermittedGroups(UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))),
+                permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                  UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+                )),
                 users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
               ),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
@@ -271,7 +293,9 @@ class ExternalAuthorizationRuleTests
             assertNotMatchRule(
               settings = ExternalAuthorizationRule.Settings(
                 service = service,
-                permittedGroups = PermittedGroups(UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))),
+                permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                  UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+                )),
                 users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
               ),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
@@ -289,7 +313,9 @@ class ExternalAuthorizationRuleTests
             assertNotMatchRule(
               settings = ExternalAuthorizationRule.Settings(
                 service = mock[ExternalAuthorizationService],
-                permittedGroups = PermittedGroups(UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))),
+                permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                  UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+                )),
                 users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
               ),
               impersonation = Impersonation.Disabled,
