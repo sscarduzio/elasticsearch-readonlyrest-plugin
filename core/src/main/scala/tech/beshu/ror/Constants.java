@@ -78,7 +78,7 @@ public class Constants {
       "indices:monitor/settings/get",
       "indices:data/read/xpack/rollup/get/*",
       "indices:monitor/stats",
-      "indices:data/write/bulk*"
+      "indices:data/write/bulk*" // To read kibana UI Discover, Dashboard, and Canvas pages, we need to allow POST /bulk calls performed by kibana
   );
 
   public static final Set<String> CLUSTER_ACTIONS = Sets.newHashSet(
