@@ -77,7 +77,8 @@ public class Constants {
       "indices:admin/*/explain",
       "indices:monitor/settings/get",
       "indices:data/read/xpack/rollup/get/*",
-      "indices:monitor/stats"
+      "indices:monitor/stats",
+      "indices:data/write/bulk*"
   );
 
   public static final Set<String> CLUSTER_ACTIONS = Sets.newHashSet(
@@ -99,7 +100,6 @@ public class Constants {
       "indices:data/write/delete*",
       "indices:data/write/index",
       "indices:data/write/update*",
-      "indices:data/write/bulk*",
       "indices:admin/template/*",
       "cluster:admin/settings/*",
       "indices:admin/aliases/*"
