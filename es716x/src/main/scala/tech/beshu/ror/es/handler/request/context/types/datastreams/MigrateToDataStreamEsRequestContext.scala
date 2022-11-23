@@ -41,7 +41,7 @@ object MigrateToDataStreamEsRequestContext {
       .tryMatchActionRequest(
         actionRequest = arg.esContext.actionRequest,
         expectedClassCanonicalName = "org.elasticsearch.xpack.core.MigrateToDataStreamAction.Request",
-        methodName = "indices"
+        indicesMethodName = "indices"
       ) match {
       case MatchResult.Matched(indices) =>
         Some(new MigrateToDataStreamEsRequestContext(arg.esContext.actionRequest, indices, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))

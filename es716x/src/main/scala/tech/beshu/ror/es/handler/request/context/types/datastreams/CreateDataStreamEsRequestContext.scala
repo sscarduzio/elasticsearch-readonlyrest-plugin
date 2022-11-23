@@ -41,7 +41,7 @@ private[datastreams] object CreateDataStreamEsRequestContext {
       .tryMatchActionRequest(
         actionRequest = arg.esContext.actionRequest,
         expectedClassCanonicalName = "org.elasticsearch.xpack.core.action.CreateDataStreamAction.Request",
-        methodName = "indices"
+        indicesMethodName = "indices"
       ) match {
       case MatchResult.Matched(indices) =>
         Some(new CreateDataStreamEsRequestContext(arg.esContext.actionRequest, indices, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))

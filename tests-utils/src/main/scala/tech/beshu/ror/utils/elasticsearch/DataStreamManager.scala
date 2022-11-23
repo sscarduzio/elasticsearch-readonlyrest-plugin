@@ -28,13 +28,6 @@ class DataStreamManager(client: RestClient) extends BaseManager(client) {
     call(request, new JsonResponse(_))
   }
 
-  def addDocument(name: String, body: JSON): JsonResponse = {
-    val request = new HttpPost(client.from(s"$name/_doc"))
-    request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(body)))
-    call(request, new JsonResponse(_))
-  }
-
   def getAllDataStreams(): JsonResponse = {
     val request = new HttpGet(client.from(s"/_data_stream/"))
     call(request, new JsonResponse(_))
@@ -64,13 +57,6 @@ class DataStreamManager(client: RestClient) extends BaseManager(client) {
     val request = new HttpPost(client.from(s"/_data_stream/_modify"))
     request.setHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(body)))
-    call(request, new JsonResponse(_))
-  }
-
-  def rollover(name: String): JsonResponse = {
-    val request = new HttpPost(client.from(s"/$name/_rollover/"))
-    request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(""))
     call(request, new JsonResponse(_))
   }
 }

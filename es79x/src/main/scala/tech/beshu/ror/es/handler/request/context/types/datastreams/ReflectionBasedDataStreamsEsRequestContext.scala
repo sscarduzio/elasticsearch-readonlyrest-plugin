@@ -34,12 +34,14 @@ object ReflectionBasedDataStreamsEsRequestContext {
       .orElse(GetDataStreamEsRequestContext.unapply(arg))
   }
 
-  private[datastreams] def tryMatchActionRequest(actionRequest: ActionRequest, expectedClassCanonicalName: String, methodName: String): MatchResult = {
+  private[datastreams] def tryMatchActionRequest(actionRequest: ActionRequest,
+                                                 expectedClassCanonicalName: String,
+                                                 indicesMethodName: String): MatchResult = {
     Option(actionRequest.getClass.getCanonicalName)
       .find(_ == expectedClassCanonicalName)
       .flatMap { _ =>
         NonEmptyList
-          .fromList(extractStringArrayFromPrivateMethod(methodName, actionRequest).asSafeList)
+          .fromList(extractStringArrayFromPrivateMethod(indicesMethodName, actionRequest).asSafeList)
           .map(_.toList.toSet.flatMap(ClusterIndexName.fromString))
           .map(Matched.apply)
       }

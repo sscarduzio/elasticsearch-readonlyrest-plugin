@@ -31,7 +31,7 @@ private[datastreams] class DataStreamsStatsEsRequestContext private(actionReques
                                                                     aclContext: AccessControlStaticContext,
                                                                     clusterService: RorClusterService,
                                                                     override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, indices, esContext, aclContext, clusterService, threadPool) {
+  extends BaseReadDataStreamsEsRequestContext(actionRequest, indices, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indicesMethodName: String = "indices"
 }
@@ -42,7 +42,7 @@ object DataStreamsStatsEsRequestContext {
       .tryMatchActionRequest(
         actionRequest = arg.esContext.actionRequest,
         expectedClassCanonicalName = "org.elasticsearch.xpack.core.action.DataStreamsStatsAction.Request",
-        methodName = "indices"
+        indicesMethodName = "indices"
       ) match {
       case MatchResult.Matched(indices) =>
         Some(new DataStreamsStatsEsRequestContext(arg.esContext.actionRequest, indices, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))

@@ -19,7 +19,6 @@ package tech.beshu.ror.utils
 import java.nio.file.Path
 import java.time.Duration
 import java.util.Base64
-
 import better.files.File
 import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined.types.string.NonEmptyString
@@ -27,7 +26,7 @@ import io.circe.ParsingFailure
 import io.jsonwebtoken.JwtBuilder
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, RepositoryRequestBlockContext, RorApiRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
@@ -230,6 +229,7 @@ object TestsUtils {
       blockContext match {
         case _: CurrentUserMetadataRequestBlockContext =>
         case _: GeneralNonIndexRequestBlockContext =>
+        case _: RorApiRequestBlockContext =>
         case bc: RepositoryRequestBlockContext =>
           bc.repositories should be(repositories)
         case bc: SnapshotRequestBlockContext =>

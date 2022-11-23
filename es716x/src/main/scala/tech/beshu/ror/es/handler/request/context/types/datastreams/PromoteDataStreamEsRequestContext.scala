@@ -40,7 +40,7 @@ object PromoteDataStreamEsRequestContext {
       .tryMatchActionRequest(
         actionRequest = arg.esContext.actionRequest,
         expectedClassCanonicalName = "org.elasticsearch.xpack.core.action.PromoteDataStreamAction.Request",
-        methodName = "indices"
+        indicesMethodName = "indices"
       ) match {
       case MatchResult.Matched(indices) =>
         Some(new PromoteDataStreamEsRequestContext(arg.esContext.actionRequest, indices, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
