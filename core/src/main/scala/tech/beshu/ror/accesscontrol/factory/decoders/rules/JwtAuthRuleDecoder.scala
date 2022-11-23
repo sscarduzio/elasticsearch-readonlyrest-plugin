@@ -67,7 +67,7 @@ private object JwtAuthRuleDecoder {
         for {
           rorKbnDefName <- c.downField("name").as[JwtDef.Name]
           groupsOrLogic <- {
-            val (cursor, key) = c.downFieldsWithKey("roles", "groups")
+            val (cursor, key) = c.downFieldsWithKey("roles", "groups", "groups_or")
             cursor.as[Option[PermittedGroups]]
               .map {
                 _.map(GroupsLogic.Or).map(Groups.Defined).map((_, key))

@@ -166,6 +166,118 @@ class RorKbnAuthRuleTests
             )(blockContext)
         }
       }
+      "groups OR logic is used" when {
+        "at least one allowed group matches the JWT groups (1)" in {
+          val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+          val jwt = Jwt(key, claims = List(
+            "user" := "user1",
+            "groups" := List("group1", "group2")
+          ))
+          assertMatchRule(
+            configuredRorKbnDef = RorKbnDef(
+              RorKbnDef.Name("test"),
+              SignatureCheckMethod.Hmac(key.getEncoded)
+            ),
+            configuredGroups = Groups.Defined(
+              GroupsLogic.Or(PermittedGroups(
+                UniqueNonEmptyList.of(GroupName("group3"), GroupName("group2")),
+              ))
+            ),
+            tokenHeader = bearerHeader(jwt)
+          ) {
+            blockContext =>
+              assertBlockContext(
+                loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+                currentGroup = Some(GroupName("group2")),
+                availableGroups = UniqueList.of(GroupName("group2")),
+                jwt = Some(JwtTokenPayload(jwt.defaultClaims()))
+              )(blockContext)
+          }
+        }
+        "at least one allowed group matches the JWT groups (2)" in {
+          val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+          val jwt = Jwt(key, claims = List(
+            "user" := "user1",
+            "groups" := List("group1", "group2")
+          ))
+          assertMatchRule(
+            configuredRorKbnDef = RorKbnDef(
+              RorKbnDef.Name("test"),
+              SignatureCheckMethod.Hmac(key.getEncoded)
+            ),
+            configuredGroups = Groups.Defined(
+              GroupsLogic.Or(PermittedGroups(
+                UniqueNonEmptyList.of(GroupLike.from("*3"), GroupLike.from("*2")),
+              ))
+            ),
+            tokenHeader = bearerHeader(jwt)
+          ) {
+            blockContext =>
+              assertBlockContext(
+                loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+                currentGroup = Some(GroupName("group2")),
+                availableGroups = UniqueList.of(GroupName("group2")),
+                jwt = Some(JwtTokenPayload(jwt.defaultClaims()))
+              )(blockContext)
+          }
+        }
+      }
+      "groups AND logic is used" when {
+        "all allowed groups match the JWT groups (1)" in {
+          val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+          val jwt = Jwt(key, claims = List(
+            "user" := "user1",
+            "groups" := List("group1", "group2", "group3")
+          ))
+          assertMatchRule(
+            configuredRorKbnDef = RorKbnDef(
+              RorKbnDef.Name("test"),
+              SignatureCheckMethod.Hmac(key.getEncoded)
+            ),
+            configuredGroups = Groups.Defined(
+              GroupsLogic.And(PermittedGroups(
+                UniqueNonEmptyList.of(GroupName("group3"), GroupName("group2")),
+              ))
+            ),
+            tokenHeader = bearerHeader(jwt)
+          ) {
+            blockContext =>
+              assertBlockContext(
+                loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+                currentGroup = Some(GroupName("group3")),
+                availableGroups = UniqueList.of(GroupName("group3"), GroupName("group2")),
+                jwt = Some(JwtTokenPayload(jwt.defaultClaims()))
+              )(blockContext)
+          }
+        }
+        "all allowed groups match the JWT groups (2)" in {
+          val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+          val jwt = Jwt(key, claims = List(
+            "user" := "user1",
+            "groups" := List("group1", "group2", "group3")
+          ))
+          assertMatchRule(
+            configuredRorKbnDef = RorKbnDef(
+              RorKbnDef.Name("test"),
+              SignatureCheckMethod.Hmac(key.getEncoded)
+            ),
+            configuredGroups = Groups.Defined(
+              GroupsLogic.And(PermittedGroups(
+                UniqueNonEmptyList.of(GroupLike.from("*3"), GroupLike.from(("*2"))),
+              ))
+            ),
+            tokenHeader = bearerHeader(jwt)
+          ) {
+            blockContext =>
+              assertBlockContext(
+                loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+                currentGroup = Some(GroupName("group3")),
+                availableGroups = UniqueList.of(GroupName("group3"), GroupName("group2")),
+                jwt = Some(JwtTokenPayload(jwt.defaultClaims()))
+              )(blockContext)
+          }
+        }
+      }
     }
     "not match" when {
       "token has invalid HS256 signature" in {

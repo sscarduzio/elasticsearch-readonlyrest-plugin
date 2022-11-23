@@ -40,7 +40,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, LoggedUser, PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.domain.{GroupLike, GroupsLogic, LoggedUser, PermittedGroups, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.UserIdEq
@@ -58,29 +58,107 @@ class ExternalAuthorizationRuleTests
   "An ExternalAuthorizationRule" should {
     "match" when {
       "user is logged and match configured used list" when {
-        "has current groups and the groups is present in intersection set" in {
-          val service = mockExternalAuthorizationService(
-            name = "service1",
-            groups = Map(User.Id("user2") -> Set(GroupName("g2"), GroupName("g3")))
-          )
+        "has current group" when {
+          "groups OR logic is used" when {
+            "at least one allowed group matches the external groups (1)" in {
+              val service = mockExternalAuthorizationService(
+                name = "service1",
+                groups = Map(User.Id("user2") -> Set(GroupName("g2"), GroupName("g3")))
+              )
 
-          assertMatchRule(
-            settings = ExternalAuthorizationRule.Settings(
-              service = service,
-              permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
-                UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
-              )),
-              users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
-            ),
-            loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
-            preferredGroup = Some(GroupName("g2"))
-          )(
-            blockContextAssertion = defaultOutputBlockContextAssertion(
-              user = User.Id("user2"),
-              preferredGroup = GroupName("g2"),
-              availableGroups = UniqueList.of(GroupName("g2"))
-            )
-          )
+              assertMatchRule(
+                settings = ExternalAuthorizationRule.Settings(
+                  service = service,
+                  permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                    UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+                  )),
+                  users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
+                ),
+                loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
+                preferredGroup = Some(GroupName("g2"))
+              )(
+                blockContextAssertion = defaultOutputBlockContextAssertion(
+                  user = User.Id("user2"),
+                  preferredGroup = GroupName("g2"),
+                  availableGroups = UniqueList.of(GroupName("g2"))
+                )
+              )
+            }
+            "at least one allowed group matches the external groups (2)" in {
+              val service = mockExternalAuthorizationService(
+                name = "service1",
+                groups = Map(User.Id("user2") -> Set(GroupName("g2"), GroupName("g3")))
+              )
+
+              assertMatchRule(
+                settings = ExternalAuthorizationRule.Settings(
+                  service = service,
+                  permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                    UniqueNonEmptyList.of(GroupName("g1"), GroupLike.from("*2"))
+                  )),
+                  users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
+                ),
+                loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
+                preferredGroup = Some(GroupName("g2"))
+              )(
+                blockContextAssertion = defaultOutputBlockContextAssertion(
+                  user = User.Id("user2"),
+                  preferredGroup = GroupName("g2"),
+                  availableGroups = UniqueList.of(GroupName("g2"))
+                )
+              )
+            }
+          }
+          "groups AND logic is used" when {
+            "all allowed groups match the external groups (1)" in {
+              val service = mockExternalAuthorizationService(
+                name = "service1",
+                groups = Map(User.Id("user2") -> Set(GroupName("g1"), GroupName("g2"), GroupName("g3")))
+              )
+
+              assertMatchRule(
+                settings = ExternalAuthorizationRule.Settings(
+                  service = service,
+                  permittedGroupsLogic = GroupsLogic.And(PermittedGroups(
+                    UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+                  )),
+                  users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
+                ),
+                loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
+                preferredGroup = Some(GroupName("g2"))
+              )(
+                blockContextAssertion = defaultOutputBlockContextAssertion(
+                  user = User.Id("user2"),
+                  preferredGroup = GroupName("g2"),
+                  availableGroups = UniqueList.of(GroupName("g1"), GroupName("g2"))
+                )
+              )
+            }
+            "all allowed groups match the external groups (2)" in {
+              val service = mockExternalAuthorizationService(
+                name = "service1",
+                groups = Map(User.Id("user2") -> Set(GroupName("g1"), GroupName("g2"), GroupName("g3")))
+              )
+
+              assertMatchRule(
+                settings = ExternalAuthorizationRule.Settings(
+                  service = service,
+                  permittedGroupsLogic = GroupsLogic.And(PermittedGroups(
+                    UniqueNonEmptyList.of(GroupName("g1"), GroupLike.from("*2"))
+                  )),
+                  users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
+                ),
+                loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
+                preferredGroup = Some(GroupName("g2"))
+              )(
+                blockContextAssertion = defaultOutputBlockContextAssertion(
+                  user = User.Id("user2"),
+                  preferredGroup = GroupName("g2"),
+                  availableGroups = UniqueList.of(GroupName("g1"), GroupName("g2"))
+                )
+              )
+            }
+          }
         }
         "doesn't have current group set, but there is non empty intersection set between fetched groups and configured ones" in {
           val service = mockExternalAuthorizationService(
@@ -221,6 +299,24 @@ class ExternalAuthorizationRuleTests
             service = service,
             permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
               UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+            )),
+            users = UniqueNonEmptyList.of(User.Id("*"))
+          ),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
+          preferredGroup = None
+        )
+      }
+      "groups AND logic is used and not all configured groups are matched" in {
+        val service = mockExternalAuthorizationService(
+          name = "service1",
+          groups = Map(User.Id("user2") -> Set(GroupName("g3"), GroupName("g4")))
+        )
+
+        assertNotMatchRule(
+          settings = ExternalAuthorizationRule.Settings(
+            service = service,
+            permittedGroupsLogic = GroupsLogic.And(PermittedGroups(
+              UniqueNonEmptyList.of(GroupName("g1"), GroupLike.from("*2"))
             )),
             users = UniqueNonEmptyList.of(User.Id("*"))
           ),

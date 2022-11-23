@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationService, LdapService, LdapUser}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.{ExternalAuthorizationRule, LdapAuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause.ImpersonationNotSupported
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
@@ -57,27 +57,97 @@ class LdapAuthorizationRuleTests
 
   "An LdapAuthorizationRule" should {
     "match" when {
-      "user has at least one LDAP group which is permitted" in {
-        val ldapService = mockLdapService(
-          name = "ldap1",
-          groups = Map(User.Id("user1") -> Set(GroupName("g1"), GroupName("g2")))
-        )
-        assertMatchRule(
-          settings = LdapAuthorizationRule.Settings(
-            ldap = ldapService,
-            permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
-              UniqueNonEmptyList.of(GroupName("g3"), GroupName("g2"), GroupName("g1"))
-            ))
-          ),
-          loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-          preferredGroup = None
-        )(
-          blockContextAssertion = defaultOutputBlockContextAssertion(
-            user = Id("user1"),
-            group = GroupName("g2"),
-            availableGroups = UniqueList.of(GroupName("g2"), GroupName("g1"))
+      "groups OR logic is used" when {
+        "at least one allowed group matches the LDAP groups (1)" in {
+          val ldapService = mockLdapService(
+            name = "ldap1",
+            groups = Map(User.Id("user1") -> Set(GroupName("g1"), GroupName("g2")))
           )
-        )
+          assertMatchRule(
+            settings = LdapAuthorizationRule.Settings(
+              ldap = ldapService,
+              permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                UniqueNonEmptyList.of(GroupName("g3"), GroupName("g2"), GroupName("g1"))
+              ))
+            ),
+            loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
+            preferredGroup = None
+          )(
+            blockContextAssertion = defaultOutputBlockContextAssertion(
+              user = Id("user1"),
+              group = GroupName("g2"),
+              availableGroups = UniqueList.of(GroupName("g2"), GroupName("g1"))
+            )
+          )
+        }
+        "at least one allowed group matches the LDAP groups (2)" in {
+          val ldapService = mockLdapService(
+            name = "ldap1",
+            groups = Map(User.Id("user1") -> Set(GroupName("g1"), GroupName("g2")))
+          )
+          assertMatchRule(
+            settings = LdapAuthorizationRule.Settings(
+              ldap = ldapService,
+              permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                UniqueNonEmptyList.of(GroupLike.from("*3"), GroupLike.from("*2"))
+              ))
+            ),
+            loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
+            preferredGroup = None
+          )(
+            blockContextAssertion = defaultOutputBlockContextAssertion(
+              user = Id("user1"),
+              group = GroupName("g2"),
+              availableGroups = UniqueList.of(GroupName("g2"))
+            )
+          )
+        }
+      }
+      "groups AND logic is used" when {
+        "all allowed groups match the LDAP groups (1)" in {
+          val ldapService = mockLdapService(
+            name = "ldap1",
+            groups = Map(User.Id("user1") -> Set(GroupName("g1"), GroupName("g2"), GroupName("g3")))
+          )
+          assertMatchRule(
+            settings = LdapAuthorizationRule.Settings(
+              ldap = ldapService,
+              permittedGroupsLogic = GroupsLogic.And(PermittedGroups(
+                UniqueNonEmptyList.of(GroupName("g2"), GroupName("g1"))
+              ))
+            ),
+            loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
+            preferredGroup = None
+          )(
+            blockContextAssertion = defaultOutputBlockContextAssertion(
+              user = Id("user1"),
+              group = GroupName("g2"),
+              availableGroups = UniqueList.of(GroupName("g2"), GroupName("g1"))
+            )
+          )
+        }
+        "all allowed groups match the LDAP groups (2)" in {
+          val ldapService = mockLdapService(
+            name = "ldap1",
+            groups = Map(User.Id("user1") -> Set(GroupName("g1"), GroupName("g2"), GroupName("g3")))
+          )
+          assertMatchRule(
+            settings = LdapAuthorizationRule.Settings(
+              ldap = ldapService,
+              permittedGroupsLogic = GroupsLogic.And(PermittedGroups(
+                UniqueNonEmptyList.of(GroupLike.from("*2"), GroupName("g1"))
+              ))
+            ),
+            loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
+            preferredGroup = None
+          )(
+            blockContextAssertion = defaultOutputBlockContextAssertion(
+              user = Id("user1"),
+              group = GroupName("g2"),
+              availableGroups = UniqueList.of(GroupName("g2"), GroupName("g1"))
+            )
+          )
+        }
       }
       "user is being impersonated" when {
         "impersonation is enabled" when {
@@ -151,6 +221,22 @@ class LdapAuthorizationRuleTests
           ),
           loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
           preferredGroup = Some(GroupName("g3"))
+        )
+      }
+      "groups AND logic is used and not all configured groups are matched" in {
+        val ldapService = mockLdapService(
+          name = "ldap1",
+          groups = Map(User.Id("user1") -> Set(GroupName("g2"), GroupName("g3")))
+        )
+        assertNotMatchRule(
+          settings = LdapAuthorizationRule.Settings(
+            ldap = ldapService,
+            permittedGroupsLogic = GroupsLogic.And(PermittedGroups(
+              UniqueNonEmptyList.of(GroupName("g2"), GroupLike.from("*1"))
+            ))
+          ),
+          loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
+          preferredGroup = None
         )
       }
       "LDAP service fails" in {

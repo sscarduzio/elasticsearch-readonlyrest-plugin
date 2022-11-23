@@ -67,7 +67,7 @@ private object RorKbnAuthRuleDecoder {
         for {
           rorKbnDefName <- c.downField("name").as[RorKbnDef.Name]
           groupsOrLogic <- {
-            val (cursor, key) = c.downFieldsWithKey("roles", "groups")
+            val (cursor, key) = c.downFieldsWithKey("roles", "groups", "groups_or")
             cursor.as[Option[PermittedGroups]]
               .map {
                 _.map(GroupsLogic.Or).map(Groups.Defined).map((_, key))

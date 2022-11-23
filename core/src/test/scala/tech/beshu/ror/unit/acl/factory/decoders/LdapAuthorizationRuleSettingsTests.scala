@@ -105,7 +105,7 @@ class LdapAuthorizationRuleSettingsTests
                |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
                |    ldap_authorization:
                |      name: "ldap1"
-               |      groups: ["group3"]
+               |      groups_or: ["group3", "group4*"]
                |
                |  ldaps:
                |
@@ -119,7 +119,9 @@ class LdapAuthorizationRuleSettingsTests
           assertion = rule => {
             rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
             rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapServiceDecorator]
-            rule.settings.permittedGroupsLogic should be (GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupName("group3")))))
+            rule.settings.permittedGroupsLogic should be (GroupsLogic.Or(PermittedGroups(
+              UniqueNonEmptyList.of(GroupName("group3"), GroupLike.from("group4*"))
+            )))
           }
         )
       }

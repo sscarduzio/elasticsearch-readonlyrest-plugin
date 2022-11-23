@@ -53,39 +53,89 @@ class LdapAuthRuleTests
 
   "An LdapAuthRule" should {
     "match" when {
-      "user can be authenticated and has at least one LDAP group which is permitted" in {
-        assertMatchRule(
-          authenticationSettings = LdapAuthenticationRule.Settings(
-            mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(true))
-          ),
-          authorizationSettings = LdapAuthorizationRule.Settings(
-            ldap = mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.of(GroupName("g1")))),
-            permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
-              UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
-            )),
-          ),
-          basicHeader = basicAuthHeader("user1:pass")
-        )(
-          blockContextAssertion = defaultOutputBlockContextAssertion(
-            user = User.Id("user1"),
-            group = GroupName("g1"),
-            availableGroups = UniqueList.of(GroupName("g1"))
+      "groups OR logic is used" when {
+        "at least one allowed group matches the LDAP groups (1)" in {
+          assertMatchRule(
+            authenticationSettings = LdapAuthenticationRule.Settings(
+              mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(true))
+            ),
+            authorizationSettings = LdapAuthorizationRule.Settings(
+              ldap = mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.of(GroupName("g1")))),
+              permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+              )),
+            ),
+            basicHeader = basicAuthHeader("user1:pass")
+          )(
+            blockContextAssertion = defaultOutputBlockContextAssertion(
+              user = User.Id("user1"),
+              group = GroupName("g1"),
+              availableGroups = UniqueList.of(GroupName("g1"))
+            )
           )
-        )
+        }
+        "at least one allowed group matches the LDAP groups (2)" in {
+          assertMatchRule(
+            authenticationSettings = LdapAuthenticationRule.Settings(
+              mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(true))
+            ),
+            authorizationSettings = LdapAuthorizationRule.Settings(
+              ldap = mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.of(GroupName("g1"), GroupName("g2")))),
+              permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                UniqueNonEmptyList.of(GroupLike.from("*1"), GroupName("g2"))
+              )),
+            ),
+            basicHeader = basicAuthHeader("user1:pass")
+          )(
+            blockContextAssertion = defaultOutputBlockContextAssertion(
+              user = User.Id("user1"),
+              group = GroupName("g1"),
+              availableGroups = UniqueList.of(GroupName("g1"), GroupName("g2"))
+            )
+          )
+        }
       }
-      "[groups_and] user can be authenticated, but does not have all the LDAP groups" in {
-        assertNotMatchRule(
-          authenticationSettings = LdapAuthenticationRule.Settings(
-            mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(true))
-          ),
-          authorizationSettings = LdapAuthorizationRule.Settings(
-            ldap = mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.of(GroupName("g1")))),
-            permittedGroupsLogic = GroupsLogic.And(PermittedGroups(
-              UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
-            ))
-          ),
-          basicHeader = Some(basicAuthHeader("user1:pass"))
-        )
+      "groups AND logic is used" when {
+        "all allowed groups match the LDAP groups (1)" in {
+          assertMatchRule(
+            authenticationSettings = LdapAuthenticationRule.Settings(
+              mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(true))
+            ),
+            authorizationSettings = LdapAuthorizationRule.Settings(
+              ldap = mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.of(GroupName("g1"), GroupName("g2")))),
+              permittedGroupsLogic = GroupsLogic.And(PermittedGroups(
+                UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+              )),
+            ),
+            basicHeader = basicAuthHeader("user1:pass")
+          )(
+            blockContextAssertion = defaultOutputBlockContextAssertion(
+              user = User.Id("user1"),
+              group = GroupName("g1"),
+              availableGroups = UniqueList.of(GroupName("g1"), GroupName("g2"))
+            )
+          )
+        }
+        "all allowed groups match the LDAP groups (2)" in {
+          assertMatchRule(
+            authenticationSettings = LdapAuthenticationRule.Settings(
+              mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(true))
+            ),
+            authorizationSettings = LdapAuthorizationRule.Settings(
+              ldap = mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.of(GroupName("g1"), GroupName("g2")))),
+              permittedGroupsLogic = GroupsLogic.And(PermittedGroups(
+                UniqueNonEmptyList.of(GroupLike.from("*1"), GroupName("g2"))
+              )),
+            ),
+            basicHeader = basicAuthHeader("user1:pass")
+          )(
+            blockContextAssertion = defaultOutputBlockContextAssertion(
+              user = User.Id("user1"),
+              group = GroupName("g1"),
+              availableGroups = UniqueList.of(GroupName("g1"), GroupName("g2"))
+            )
+          )
+        }
       }
       "user is being impersonated" when {
         "impersonation is enabled" when {
@@ -159,6 +209,20 @@ class LdapAuthRuleTests
           authorizationSettings = LdapAuthorizationRule.Settings(
             ldap = mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.empty)),
             permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+              UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
+            ))
+          ),
+          basicHeader = Some(basicAuthHeader("user1:pass"))
+        )
+      }
+      "groups AND logic is used and not all configured groups are matched" in {
+        assertNotMatchRule(
+          authenticationSettings = LdapAuthenticationRule.Settings(
+            mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(true))
+          ),
+          authorizationSettings = LdapAuthorizationRule.Settings(
+            ldap = mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.of(GroupName("g1")))),
+            permittedGroupsLogic = GroupsLogic.And(PermittedGroups(
               UniqueNonEmptyList.of(GroupName("g1"), GroupName("g2"))
             ))
           ),

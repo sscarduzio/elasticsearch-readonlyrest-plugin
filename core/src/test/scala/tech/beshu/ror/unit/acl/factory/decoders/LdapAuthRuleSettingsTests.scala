@@ -63,7 +63,7 @@ class LdapAuthRuleSettingsTests
                |  - name: test_block1
                |    ldap_auth:
                |      name: "ldap1"
-               |      groups: ["group3"]
+               |      groups: ["group3", "group4*"]
                |      cache_ttl: 10 sec
                |
                |  ldaps:
