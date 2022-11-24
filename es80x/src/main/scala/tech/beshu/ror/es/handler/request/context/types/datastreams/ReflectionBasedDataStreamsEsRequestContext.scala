@@ -38,12 +38,12 @@ object ReflectionBasedDataStreamsEsRequestContext {
 
   private[datastreams] def tryMatchActionRequest(actionRequest: ActionRequest,
                                                  expectedClassCanonicalName: String,
-                                                 indicesMethodName: String): MatchResult = {
+                                                 getIndicesMethodName: String): MatchResult = {
     Option(actionRequest.getClass.getCanonicalName)
       .find(_ == expectedClassCanonicalName)
       .flatMap { _ =>
         NonEmptyList
-          .fromList(extractStringArrayFromPrivateMethod(indicesMethodName, actionRequest).asSafeList)
+          .fromList(extractStringArrayFromPrivateMethod(getIndicesMethodName, actionRequest).asSafeList)
           .map(_.toList.toSet.flatMap(ClusterIndexName.fromString))
           .map(Matched.apply)
       }

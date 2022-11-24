@@ -11,6 +11,8 @@ readonlyrest:
       indices:
         - 'data-stream-test*'
       actions:
+        - indices:admin/data_stream/*
+        - indices:monitor/data_stream/*
         - indices:data/read/*
         - cluster:monitor/main
 
@@ -20,6 +22,8 @@ readonlyrest:
         - 'data-stream-dev*'
         - 'data-stream-test*'
       actions:
+        - indices:admin/data_stream/*
+        - indices:monitor/data_stream/*
         - indices:data/read/*
         - cluster:monitor/main
 
@@ -29,5 +33,17 @@ readonlyrest:
         - '.ds-data-stream-dev*'
         - '.ds-data-stream-test*'
       actions:
+        - indices:admin/data_stream/*
+        - indices:monitor/data_stream/*
+        - indices:data/read/*
+        - cluster:monitor/main
+
+    - name: "User4 access streams"
+      auth_key: "user4:pass"
+      indices:
+        - '*'
+      actions:
+        - indices:admin/data_stream/*
+        - indices:monitor/data_stream/*
         - indices:data/read/*
         - cluster:monitor/main

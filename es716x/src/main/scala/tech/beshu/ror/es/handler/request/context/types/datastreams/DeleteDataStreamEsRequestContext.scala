@@ -33,7 +33,7 @@ private[datastreams] class DeleteDataStreamEsRequestContext private(actionReques
                                                                     override val threadPool: ThreadPool)
   extends BaseReadDataStreamsEsRequestContext(actionRequest, indices, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesMethodName: String = "indices"
+  override protected def setIndicesMethodName: String = "indices"
 }
 
 object DeleteDataStreamEsRequestContext {
@@ -42,7 +42,7 @@ object DeleteDataStreamEsRequestContext {
       .tryMatchActionRequest(
         actionRequest = arg.esContext.actionRequest,
         expectedClassCanonicalName = "org.elasticsearch.xpack.core.action.DeleteDataStreamAction.Request",
-        indicesMethodName = "indices"
+        getIndicesMethodName = "indices"
       ) match {
       case MatchResult.Matched(indices) =>
         Some(new DeleteDataStreamEsRequestContext(arg.esContext.actionRequest, indices, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))

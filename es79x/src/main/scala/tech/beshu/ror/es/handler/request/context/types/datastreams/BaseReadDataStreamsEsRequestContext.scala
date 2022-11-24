@@ -56,10 +56,10 @@ private[datastreams] abstract class BaseReadDataStreamsEsRequestContext[R <: Act
     // Optimistic reflection attempt
     ReflecUtils.setIndices(
       actionRequest,
-      Sets.newHashSet(indicesMethodName),
+      Sets.newHashSet(setIndicesMethodName),
       indices.toList.map(_.stringify).toSet.asJava
     )
   }
 
-  protected def indicesMethodName: String
+  protected def setIndicesMethodName: String
 }
