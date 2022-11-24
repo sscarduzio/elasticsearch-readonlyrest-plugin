@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.{WithGroupsM
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
 import tech.beshu.ror.accesscontrol.blocks.rules._
 import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain._
@@ -36,24 +37,30 @@ import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class GroupsRuleSettingsTests
-  extends BaseRuleSettingsDecoderTest[GroupsOrRule]
+import scala.reflect.ClassTag
+
+class GroupsOrRuleSettingsTests extends GroupsRuleSettingsTests(GroupsOrRule.Name)
+class DeprecatedGroupsOrRuleSettingsTests extends GroupsRuleSettingsTests(GroupsOrRule.DeprecatedName)
+class GroupsAndRuleSettingsTests extends GroupsRuleSettingsTests(GroupsAndRule.Name)
+
+sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ruleName: RuleName[R])
+  extends BaseRuleSettingsDecoderTest[R]
     with Inside {
 
-  "A GroupsRule" should {
+  "A GroupsOrRule" should {
     "be able to be loaded from config" when {
       "a groups mapping is not used" when {
         "only one group is defined" when {
           "one, full username is used" in {
             assertDecodingSuccess(
               yaml =
-                """
+                s"""
                   |readonlyrest:
                   |
                   |  access_control_rules:
                   |
                   |  - name: test_block1
-                  |    groups: group1
+                  |    ${ruleName.name.value}: group1
                   |
                   |  users:
                   |  - username: cartman
@@ -79,13 +86,13 @@ class GroupsRuleSettingsTests
           "one, username with wildcard is used" in {
             assertDecodingSuccess(
               yaml =
-                """
+                s"""
                   |readonlyrest:
                   |
                   |  access_control_rules:
                   |
                   |  - name: test_block1
-                  |    groups: group1
+                  |    ${ruleName.name.value}: group1
                   |
                   |  users:
                   |  - username: car*
@@ -111,13 +118,13 @@ class GroupsRuleSettingsTests
           "two usernames are used (the first one - full, the second - with wildcard)" in {
             assertDecodingSuccess(
               yaml =
-                """
+                s"""
                   |readonlyrest:
                   |
                   |  access_control_rules:
                   |
                   |  - name: test_block1
-                  |    groups: group1
+                  |    ${ruleName.name.value}: group1
                   |
                   |  users:
                   |  - username: [cartman, "ca*"]
@@ -145,13 +152,13 @@ class GroupsRuleSettingsTests
           "no variables are used in group names" in {
             assertDecodingSuccess(
               yaml =
-                """
+                s"""
                   |readonlyrest:
                   |
                   |  access_control_rules:
                   |
                   |  - name: test_block1
-                  |    groups: [group1, group2]
+                  |    ${ruleName.name.value}: [group1, group2]
                   |
                   |  users:
                   |  - username: cartman
@@ -193,14 +200,13 @@ class GroupsRuleSettingsTests
           "a variable in used in one group name" in {
             assertDecodingSuccess(
               yaml =
-                """
+                s"""
                   |readonlyrest:
                   |
                   |  access_control_rules:
                   |
                   |  - name: test_block1
-                  |    auth_key: user:pass
-                  |    groups: [group1, "group_@{user}"]
+                  |    ${ruleName.name.value}: [group1, "group_@{header:test}"]
                   |
                   |  users:
                   |  - username: cartman
@@ -237,7 +243,7 @@ class GroupsRuleSettingsTests
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    groups: [group1, group2]
+                 |    ${ruleName.name.value}: [group1*, group2]
                  |
                  |  users:
                  |  - username: cartman
@@ -269,7 +275,7 @@ class GroupsRuleSettingsTests
                  |""".stripMargin,
             assertion = rule => {
               val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                AlreadyResolved(GroupName("group1").nel),
+                AlreadyResolved(GroupLike.from("group1*").nel),
                 AlreadyResolved(GroupName("group2").nel)
               ))
               rule.settings.permittedGroups should be(groups)
@@ -308,7 +314,7 @@ class GroupsRuleSettingsTests
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    groups: [group1, group2]
+                 |    ${ruleName.name.value}: [group1, group2]
                  |
                  |  users:
                  |  - username: cartman
@@ -363,7 +369,7 @@ class GroupsRuleSettingsTests
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    groups: [group1, group3]
+                 |    ${ruleName.name.value}: [group1, group3]
                  |
                  |  users:
                  |  - username: cartman
@@ -422,13 +428,13 @@ class GroupsRuleSettingsTests
       "users inside users sections must have the same username patterns" in {
         assertDecodingSuccess(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups: ["group1"]
+              |    ${ruleName.name.value}: ["group1"]
               |
               |  users:
               |  - username: "*"
@@ -471,13 +477,13 @@ class GroupsRuleSettingsTests
       "groups section is defined, but without any group" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups:
+              |    ${ruleName.name.value}:
               |
               |  users:
               |  - username: cartman
@@ -488,7 +494,7 @@ class GroupsRuleSettingsTests
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
-              """groups: null
+              s"""${ruleName.name.value}: null
                 |""".stripMargin
             )))
           }
@@ -497,31 +503,31 @@ class GroupsRuleSettingsTests
       "no users definitions section is defined" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups: group1
+              |    ${ruleName.name.value}: group1
               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("No user definitions was defined. Rule `groups` requires them.")))
+            errors.head should be(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${ruleName.name.value}` requires them.")))
           }
         )
       }
       "username in user definitions is empty" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups: group1
+              |    ${ruleName.name.value}: group1
               |
               |  users:
               |  - username:
@@ -538,13 +544,13 @@ class GroupsRuleSettingsTests
       "username in users definition is a empty list" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups: group1
+              |    ${ruleName.name.value}: group1
               |
               |  users:
               |  - username: []
@@ -561,13 +567,13 @@ class GroupsRuleSettingsTests
       "username filed is absent in user definition" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups: group1
+              |    ${ruleName.name.value}: group1
               |
               |  users:
               |  - groups: ["group1", "group3"]
@@ -583,13 +589,13 @@ class GroupsRuleSettingsTests
       "groups set in user definitions is not defined" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups:
+              |    ${ruleName.name.value}:
               |
               |  users:
               |  - username: cartman
@@ -606,13 +612,13 @@ class GroupsRuleSettingsTests
       "groups set in user definitions is empty" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups:
+              |    ${ruleName.name.value}:
               |
               |  users:
               |  - username: cartman
@@ -629,13 +635,13 @@ class GroupsRuleSettingsTests
       "only one authentication rule can be defined for user in users section" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups: ["group1"]
+              |    ${ruleName.name.value}: ["group1"]
               |
               |  users:
               |  - username: cartman
@@ -663,7 +669,7 @@ class GroupsRuleSettingsTests
               |  access_control_rules:
                |
               |  - name: test_block1
-               |    groups: ["group1"]
+               |    ${ruleName.name.value}: ["group1"]
                |
               |  users:
                |  - username: cartman
@@ -709,7 +715,7 @@ class GroupsRuleSettingsTests
               |  access_control_rules:
                |
               |  - name: test_block1
-               |    groups:
+               |    ${ruleName.name.value}:
                |
               |  users:
                |  - username: cartman
@@ -748,7 +754,7 @@ class GroupsRuleSettingsTests
               |  access_control_rules:
                |
               |  - name: test_block1
-               |    groups:
+               |    ${ruleName.name.value}:
                |
               |  users:
                |  - username: cartman
@@ -790,13 +796,13 @@ class GroupsRuleSettingsTests
       "auth key rule inside user definition is unparsable" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups: group1
+              |    ${ruleName.name.value}: group1
               |
               |  users:
               |  - username: cartman
@@ -817,13 +823,13 @@ class GroupsRuleSettingsTests
       "user definition doesn't allow to use unknown rules" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups:
+              |    ${ruleName.name.value}:
               |
               |  users:
               |  - username: cartman
@@ -841,13 +847,13 @@ class GroupsRuleSettingsTests
       "auth rule is used, but user cannot be matched by username patterns" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups: group1
+              |    ${ruleName.name.value}: group1
               |
               |  users:
               |  - username: a*
