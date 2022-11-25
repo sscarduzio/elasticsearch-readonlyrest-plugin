@@ -36,8 +36,6 @@ class ModifyDataStreamsEsRequestContext(actionRequest: ModifyDataStreamsAction.R
                                         override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  private lazy val originIndices = getIndicesFrom(actionRequest).toSet
-
   override def indicesFrom(request: ModifyDataStreamsAction.Request): Set[domain.ClusterIndexName] = {
     getIndicesFrom(request).toSet
   }
@@ -45,12 +43,9 @@ class ModifyDataStreamsEsRequestContext(actionRequest: ModifyDataStreamsAction.R
   override def update(request: ModifyDataStreamsAction.Request,
                       filteredIndices: NonEmptyList[ClusterIndexName],
                       allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    if (originIndices == filteredIndices.toList.toSet) {
-      ModificationResult.Modified
-    } else {
-      logger.error(s"[${id.show}] Write request with data streams requires the same set of data streams after filtering as at the beginning. Please report the issue.")
-      ModificationResult.ShouldBeInterrupted
-    }
+    logger.error(s"[${id.show}] This request ${request.getClass.getCanonicalName} cannot be handled by the ROR ACL, " +
+      s"so it's forbidden for security reasons. Please report the issue.")
+    ModificationResult.ShouldBeInterrupted
   }
 
   private def getIndicesFrom(request: ModifyDataStreamsAction.Request) = {
