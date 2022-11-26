@@ -231,6 +231,7 @@ object TestsUtils {
         case _: CurrentUserMetadataRequestBlockContext =>
         case _: RorApiRequestBlockContext =>
         case _: GeneralNonIndexRequestBlockContext =>
+        case _: RorApiRequestBlockContext =>
         case bc: RepositoryRequestBlockContext =>
           bc.repositories should be(repositories)
         case bc: SnapshotRequestBlockContext =>

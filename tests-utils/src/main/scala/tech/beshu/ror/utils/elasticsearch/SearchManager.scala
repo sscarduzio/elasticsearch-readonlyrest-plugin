@@ -39,6 +39,17 @@ class SearchManager(client: RestClient,
   def search(indexNames: String*): SearchResult =
     call(createSearchRequest(indexNames.toList), new SearchResult(_))
 
+  def searchAll(indexName: String): SearchResult = {
+    val queryAll = ujson.read(
+      s"""{
+         |  "query": {
+         |    "match_all": {}
+         |  }
+         |}""".stripMargin
+    )
+    search(indexName, queryAll)
+  }
+
   def asyncSearch(indexName: String, indexNames: String*): AsyncSearchResult = {
     call(createAsyncSearchRequest(indexName :: indexNames.toList, None), new AsyncSearchResult(_))
   }
@@ -171,6 +182,8 @@ object SearchManager {
   class SearchResult(response: HttpResponse) extends BaseSearchResult(response) {
     override lazy val searchHitsWithSettings: Value = force().responseJson("hits")("hits")
     lazy val aggregations: Map[String, Value] = responseJson("aggregations").obj.toMap
+
+    lazy val totalHits: Int = force().responseJson("hits")("total")("value").num.toInt
   }
 
   class AsyncSearchResult(response: HttpResponse) extends BaseSearchResult(response) {

@@ -48,6 +48,7 @@ import org.elasticsearch.action.admin.indices.template.get.{GetComponentTemplate
 import org.elasticsearch.action.admin.indices.template.post.{SimulateIndexTemplateRequest, SimulateTemplateAction}
 import org.elasticsearch.action.admin.indices.template.put.{PutComponentTemplateAction, PutComposableIndexTemplateAction, PutIndexTemplateRequest}
 import org.elasticsearch.action.bulk.{BulkRequest, BulkShardRequest}
+import org.elasticsearch.action.datastreams.{CreateDataStreamAction, DataStreamsStatsAction, DeleteDataStreamAction, GetDataStreamAction, MigrateToDataStreamAction, ModifyDataStreamsAction, PromoteDataStreamAction}
 import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.action.get.{GetRequest, MultiGetRequest}
 import org.elasticsearch.action.index.IndexRequest
@@ -161,6 +162,21 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new GetAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: IndicesAliasesRequest =>
         regularRequestHandler.handle(new IndicesAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      // data streams
+      case request: CreateDataStreamAction.Request =>
+        regularRequestHandler.handle(new CreateDataStreamEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      case request: DataStreamsStatsAction.Request =>
+        regularRequestHandler.handle(new DataStreamsStatsEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      case request: DeleteDataStreamAction.Request =>
+        regularRequestHandler.handle(new DeleteDataStreamEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      case request: GetDataStreamAction.Request =>
+        regularRequestHandler.handle(new GetDataStreamEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      case request: MigrateToDataStreamAction.Request =>
+        regularRequestHandler.handle(new MigrateToDataStreamEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      case request: ModifyDataStreamsAction.Request =>
+        regularRequestHandler.handle(new ModifyDataStreamsEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      case request: PromoteDataStreamAction.Request =>
+        regularRequestHandler.handle(new PromoteDataStreamEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       // indices
       case request: GetIndexRequest =>
         regularRequestHandler.handle(new GetIndexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))

@@ -66,6 +66,10 @@ class DocumentManager(restClient: RestClient, esVersion: String)
     call(createInsertDocRequest(createDocPathWithDefaultType(index, s"$id", Some(`type`)), content, waitForRefresh = true), new JsonResponse(_))
   }
 
+  def createDocWithGeneratedId(index: String, content: JSON): JsonResponse = {
+    call(createInsertDocWithGeneratedIdRequest(s"/$index/_doc", content, waitForRefresh = true), new JsonResponse(_))
+  }
+
   def deleteDoc(index: String, id: Int): JsonResponse = {
     call(createDeleteDocRequest(createDocPathWithDefaultType(index, s"$id"), waitForRefresh = true), new JsonResponse(_))
   }
@@ -105,8 +109,16 @@ class DocumentManager(restClient: RestClient, esVersion: String)
     }
   }
 
-  private def createInsertDocRequest(docPath: String, content: JSON, waitForRefresh: Boolean) = {
+  private def createInsertDocRequest(docPath: String, content: JSON, waitForRefresh: Boolean): HttpPut = {
     val request = new HttpPut(restClient.from(docPath, waitForRefreshParam(waitForRefresh)))
+    request.setHeader("timeout", "50s")
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(ujson.write(content)))
+    request
+  }
+
+  private def createInsertDocWithGeneratedIdRequest(docPath: String, content: JSON, waitForRefresh: Boolean): HttpPost = {
+    val request = new HttpPost(restClient.from(docPath, waitForRefreshParam(waitForRefresh)))
     request.setHeader("timeout", "50s")
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(content)))
