@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.handler.request.context.types.utils
 
 import cats.data.NonEmptyList
+import org.elasticsearch.cluster.metadata.AliasMetadata
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.matchers.Matcher.Conversion
