@@ -1,0 +1,49 @@
+readonlyrest:
+  access_control_rules:
+
+    # ES container initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
+      type: allow
+      auth_key: admin:container
+
+    - name: "User1 access streams"
+      auth_key: "user1:pass"
+      indices:
+        - 'data-stream-test*'
+      actions:
+        - indices:admin/data_stream/*
+        - indices:monitor/data_stream/*
+        - indices:data/read/*
+        - cluster:monitor/main
+
+    - name: "User2 access streams"
+      auth_key: "user2:pass"
+      indices:
+        - 'data-stream-dev*'
+        - 'data-stream-test*'
+      actions:
+        - indices:admin/data_stream/*
+        - indices:monitor/data_stream/*
+        - indices:data/read/*
+        - cluster:monitor/main
+
+    - name: "User3 access streams index"
+      auth_key: "user3:pass"
+      indices:
+        - '.ds-data-stream-dev*'
+        - '.ds-data-stream-test*'
+      actions:
+        - indices:admin/data_stream/*
+        - indices:monitor/data_stream/*
+        - indices:data/read/*
+        - cluster:monitor/main
+
+    - name: "User4 access streams"
+      auth_key: "user4:pass"
+      indices:
+        - '*'
+      actions:
+        - indices:admin/data_stream/*
+        - indices:monitor/data_stream/*
+        - indices:data/read/*
+        - cluster:monitor/main

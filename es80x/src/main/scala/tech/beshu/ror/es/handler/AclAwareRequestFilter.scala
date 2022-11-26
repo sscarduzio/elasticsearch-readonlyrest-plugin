@@ -49,6 +49,7 @@ import org.elasticsearch.action.admin.indices.template.post.{SimulateIndexTempla
 import org.elasticsearch.action.admin.indices.template.put.{PutComponentTemplateAction, PutComposableIndexTemplateAction, PutIndexTemplateRequest}
 import org.elasticsearch.action.bulk.{BulkRequest, BulkShardRequest}
 import org.elasticsearch.action.delete.DeleteRequest
+import org.elasticsearch.action.datastreams.ModifyDataStreamsAction
 import org.elasticsearch.action.get.{GetRequest, MultiGetRequest}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
@@ -59,6 +60,7 @@ import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.es.handler.request.context.types.datastreams.{ModifyDataStreamsEsRequestContext, ReflectionBasedDataStreamsEsRequestContext}
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{Action, Header}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
@@ -161,6 +163,9 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new GetAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: IndicesAliasesRequest =>
         regularRequestHandler.handle(new IndicesAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      // data streams
+      case request: ModifyDataStreamsAction.Request =>
+        regularRequestHandler.handle(new ModifyDataStreamsEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       // indices
       case request: GetIndexRequest =>
         regularRequestHandler.handle(new GetIndexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
@@ -225,6 +230,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
           // rollup
           case PutRollupJobEsRequestContext(request) => regularRequestHandler.handle(request)
           case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)
+          // data streams
+          case ReflectionBasedDataStreamsEsRequestContext(request) => regularRequestHandler.handle(request)
           // indices based
           case ReflectionBasedIndicesEsRequestContext(request) => regularRequestHandler.handle(request)
           // rest
