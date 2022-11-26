@@ -1,4 +1,3 @@
-
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/tech.beshu.ror/audit_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/tech.beshu.ror/audit_2.12)
 [![Codacy Badge](https://api.codacy.com/project/badge/grade/9ef51ae1e6e34deba913f22e2e4cbd56)](https://www.codacy.com/app/scarduzio/elasticsearch-readonlyrest-plugin)
 [![Twitter URL](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/readonlyrest)

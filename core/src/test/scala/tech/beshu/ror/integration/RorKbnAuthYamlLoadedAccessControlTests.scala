@@ -27,6 +27,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{JwtTokenPayload, User}
 import tech.beshu.ror.mocks.MockRequestContext
@@ -122,7 +123,7 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
             .signWith(Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes))
             .setSubject("test")
             .setClaims(claims)
-          val preferredGroup = groupFrom("mapped_viewer_group")
+          val preferredGroup = GroupName("mapped_viewer_group")
           val index = clusterIndexName("index2")
           val request = MockRequestContext.indices.copy(
             filteredIndices = Set(index),

@@ -94,7 +94,7 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
   }
 
   private def indicesFrom(blockContext: SnapshotRequestBlockContext) = {
-    UniqueNonEmptyList.fromList(blockContext.filteredIndices.toList) match {
+    UniqueNonEmptyList.fromTraversable(blockContext.filteredIndices) match {
       case Some(value) => Right(value)
       case None => Left(())
     }

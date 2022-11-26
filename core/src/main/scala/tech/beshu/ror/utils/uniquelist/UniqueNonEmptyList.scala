@@ -35,15 +35,14 @@ class UniqueNonEmptyList[T] private (vector: Vector[T])
 
 object UniqueNonEmptyList {
 
-  def of[T](t: T, ts: T*): UniqueNonEmptyList[T] = unsafeFromList(t :: ts.toList)
+  def of[T](t: T, ts: T*): UniqueNonEmptyList[T] = unsafeFromTraversable(t :: ts.toList)
 
-  def unsafeFromList[T](list: List[T]): UniqueNonEmptyList[T] =
-    fromList(list).getOrElse(throw new IllegalArgumentException("Cannot create UniqueNonEmptyList from empty list"))
+  def unsafeFromTraversable[T](traversable: Traversable[T]): UniqueNonEmptyList[T] =
+    fromTraversable(traversable).getOrElse(throw new IllegalArgumentException("Cannot create UniqueNonEmptyList from empty list"))
 
-  def fromList[T](list: List[T]): Option[UniqueNonEmptyList[T]] = list match {
-    case Nil => None
-    case nel => Some(new UniqueNonEmptyList[T](nel.toVector.distinct))
-  }
+  def fromTraversable[T](traversable: Traversable[T]): Option[UniqueNonEmptyList[T]] =
+    if(traversable.isEmpty) None
+    else Some(new UniqueNonEmptyList[T](traversable.toVector.distinct))
 
   def fromNonEmptyList[T](list: NonEmptyList[T]): UniqueNonEmptyList[T] =
     new UniqueNonEmptyList[T](list.toList.toVector.distinct)
@@ -52,13 +51,6 @@ object UniqueNonEmptyList {
     fromSortedSet(set).getOrElse(throw new IllegalArgumentException("Cannot create UniqueNonEmptyList from empty set"))
 
   def fromSortedSet[T](set: SortedSet[T]): Option[UniqueNonEmptyList[T]] =
-    if(set.nonEmpty) Some(new UniqueNonEmptyList[T](set.toVector.distinct))
-    else None
-
-  def unsafeFromSet[T](set: Set[T]): UniqueNonEmptyList[T] =
-    fromSet(set).getOrElse(throw new IllegalArgumentException("Cannot create UniqueNonEmptyList from empty set"))
-
-  def fromSet[T](set: Set[T]): Option[UniqueNonEmptyList[T]] =
     if(set.nonEmpty) Some(new UniqueNonEmptyList[T](set.toVector.distinct))
     else None
 

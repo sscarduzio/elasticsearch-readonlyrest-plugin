@@ -19,7 +19,6 @@ package tech.beshu.ror.configuration.index
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneOffset}
 import java.util.concurrent.TimeUnit
-
 import cats.data.EitherT
 import cats.implicits._
 import eu.timepit.refined.api.Refined
@@ -36,7 +35,8 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthentic
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
-import tech.beshu.ror.accesscontrol.domain.{Group, RorConfigurationIndex, User}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.{RorConfigurationIndex, User}
 import tech.beshu.ror.configuration.TestRorConfig.Present
 import tech.beshu.ror.configuration.index.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
 import tech.beshu.ror.configuration.index.IndexTestConfigManager.Const
@@ -69,7 +69,8 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
       }
   }
 
-  override def save(config: TestRorConfig, rorConfigurationIndex: RorConfigurationIndex): Task[Either[SavingIndexConfigError, Unit]] = {
+  override def save(config: TestRorConfig,
+                    rorConfigurationIndex: RorConfigurationIndex): Task[Either[SavingIndexConfigError, Unit]] = {
     indexJsonContentService
       .saveContent(
         rorConfigurationIndex.index,
@@ -129,7 +130,8 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
       .toEitherT[Task]
   }
 
-  private def parserError: ConfigLoaderError[IndexConfigError] = SpecializedError[IndexConfigError](IndexConfigUnknownStructure)
+  private def parserError: ConfigLoaderError[IndexConfigError] =
+    SpecializedError[IndexConfigError](IndexConfigUnknownStructure)
 
   private def getInstant(value: String): EitherT[Task, ConfigLoaderError[IndexConfigError], Instant] = {
     Try(DateTimeFormatter.ISO_DATE_TIME.parse(value))
@@ -153,7 +155,7 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
     implicit val nonEmptyStringCodec: Codec[NonEmptyString] =
       Codec.from(Decoder.decodeString.emap(NonEmptyString.from), Encoder.encodeString.contramap(_.value))
     implicit val userIdCodec: Codec[User.Id] = io.circe.generic.extras.semiauto.deriveUnwrappedCodec
-    implicit val groupCodec: Codec[Group] = io.circe.generic.extras.semiauto.deriveUnwrappedCodec
+    implicit val groupCodec: Codec[GroupName] = io.circe.generic.extras.semiauto.deriveUnwrappedCodec
 
     implicit val ldapServiceMock: Codec[LdapServiceMock] = {
       implicit val userMock: Codec[LdapUserMock] =

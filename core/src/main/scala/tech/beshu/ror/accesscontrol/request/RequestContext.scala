@@ -29,6 +29,7 @@ import squants.information.{Bytes, Information}
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
@@ -223,7 +224,7 @@ object RequestContextOps {
 
   sealed trait RequestGroup
   object RequestGroup {
-    final case class AGroup(userGroup: Group) extends RequestGroup
+    final case class AGroup(userGroup: GroupName) extends RequestGroup
     case object `N/A` extends RequestGroup
 
     implicit val show: Show[RequestGroup] = Show.show {
@@ -232,7 +233,7 @@ object RequestContextOps {
     }
 
     implicit class ToOption(val requestGroup: RequestGroup) extends AnyVal {
-      def toOption: Option[Group] = requestGroup match {
+      def toOption: Option[GroupName] = requestGroup match {
         case AGroup(userGroup) => Some(userGroup)
         case `N/A` => None
       }

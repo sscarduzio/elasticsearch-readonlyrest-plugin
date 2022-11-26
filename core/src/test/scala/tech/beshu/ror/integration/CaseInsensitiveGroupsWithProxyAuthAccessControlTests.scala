@@ -22,8 +22,9 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.Allow
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{Group, User}
+import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -70,7 +71,7 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
           result.history should have size 1
           inside(result.result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group1")))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(GroupName("group1")))
           }
         }
         "user i User1" in {
@@ -86,7 +87,7 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
           result.history should have size 1
           inside(result.result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("User1-proxy-id"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group1")))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(GroupName("group1")))
           }
         }
       }

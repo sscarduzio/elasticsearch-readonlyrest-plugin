@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import java.time.Clock
-
 import cats.Id
 import cats.data.NonEmptySet
 import cats.implicits._
@@ -30,9 +29,10 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.GroupsOrRule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{Group, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.UserIdPatterns
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
@@ -101,8 +101,8 @@ object UsersDefinitionsDecoder {
         c.keys.map(_.toList) match {
           case Some(key :: Nil) =>
             for {
-              localGroup <- Decoder[Group].tryDecode(HCursor.fromJson(Json.fromString(key)))
-              externalGroups <- c.downField(key).as[NonEmptySet[Group]]
+              localGroup <- Decoder[GroupName].tryDecode(HCursor.fromJson(Json.fromString(key)))
+              externalGroups <- c.downField(key).as[NonEmptySet[GroupName]]
             } yield {
               GroupMappings.Advanced.Mapping(localGroup, externalGroups)
             }
@@ -114,13 +114,13 @@ object UsersDefinitionsDecoder {
       }
 
   private val simpleGroupMappingsDecoder: Decoder[GroupMappings] =
-    groupsUniqueNonEmptyListDecoder.map(GroupMappings.Simple.apply)
+    groupNamesUniqueNonEmptyListDecoder.map(GroupMappings.Simple.apply)
 
   private val advancedGroupMappingsDecoder: Decoder[GroupMappings] =
     Decoder[List[GroupMappings.Advanced.Mapping]]
       .toSyncDecoder
       .emapE { list =>
-        UniqueNonEmptyList.fromList(list) match {
+        UniqueNonEmptyList.fromTraversable(list) match {
           case Some(mappings) => Right(GroupMappings.Advanced(mappings))
           case None => Left(ValueLevelCreationError(Message("Non empty list of groups or groups mappings are required")))
         }
@@ -209,7 +209,7 @@ object UsersDefinitionsDecoder {
     case r: AuthRule =>
       Decoder[GroupMappings].map(UserDef.Mode.WithGroupsMapping(Auth.SingleRule(r), _))
     case r: AuthenticationRule =>
-      Decoder[UniqueNonEmptyList[Group]].map(UserDef.Mode.WithoutGroupsMapping(r, _))
+      Decoder[UniqueNonEmptyList[GroupName]].map(UserDef.Mode.WithoutGroupsMapping(r, _))
     case other =>
       failed(DefinitionsLevelCreationError(Message(s"Cannot use '${other.name.show}' rule in users definition section")))
   }

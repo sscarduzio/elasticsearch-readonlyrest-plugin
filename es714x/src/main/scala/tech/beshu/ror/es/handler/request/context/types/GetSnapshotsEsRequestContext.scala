@@ -77,7 +77,7 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   }
 
   private def snapshotsFrom(blockContext: SnapshotRequestBlockContext) = {
-    UniqueNonEmptyList.fromList(blockContext.snapshots.toList) match {
+    UniqueNonEmptyList.fromTraversable(blockContext.snapshots) match {
       case Some(list) => Right(list)
       case None => Left(())
     }

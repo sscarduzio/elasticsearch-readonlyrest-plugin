@@ -22,6 +22,7 @@ import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.TaskOps._
@@ -67,7 +68,7 @@ class LoggableLdapAuthorizationServiceDecorator(val underlying: LdapAuthorizatio
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
     loggableLdapUserService.ldapUserBy(userId)
 
-  override def groupsOf(userId: User.Id): Task[UniqueList[domain.Group]] = {
+  override def groupsOf(userId: User.Id): Task[UniqueList[GroupName]] = {
     logger.debug(s"Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}]")
     underlying
       .groupsOf(userId)
@@ -96,7 +97,7 @@ class LoggableLdapServiceDecorator(val underlying: LdapAuthService)
   override def authenticate(userId: User.Id, secret: domain.PlainTextSecret): Task[Boolean] =
     loggableLdapAuthenticationService.authenticate(userId, secret)
 
-  override def groupsOf(userId: User.Id): Task[UniqueList[domain.Group]] =
+  override def groupsOf(userId: User.Id): Task[UniqueList[GroupName]] =
     loggableLdapAuthorizationService.groupsOf(userId)
 
   override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
