@@ -21,6 +21,7 @@ import org.json.JSONObject
 import tech.beshu.ror.es.actions.RorActionRequest
 
 class RRAuditEventRequest(val auditEvents: JSONObject) extends ActionRequest with RorActionRequest {
+
   def this() {
     this(null)
   }

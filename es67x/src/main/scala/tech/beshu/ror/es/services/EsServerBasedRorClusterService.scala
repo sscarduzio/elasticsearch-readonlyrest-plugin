@@ -196,7 +196,6 @@ class EsServerBasedRorClusterService(nodeName: String,
         new ClusterStateRequest().metaData(true),
         new ActionListener[ClusterStateResponse] {
           override def onResponse(response: ClusterStateResponse): Unit = promise.trySuccess(response)
-
           override def onFailure(e: Exception): Unit = promise.tryFailure(e)
         }
       )
@@ -257,8 +256,8 @@ class EsServerBasedRorClusterService(nodeName: String,
         val templateMetaData = templates.get(templateNameString)
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          indexPatterns <- UniqueNonEmptyList.fromList(
-            templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString).toList
+          indexPatterns <- UniqueNonEmptyList.fromTraversable(
+            templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString)
           )
           aliases = templateMetaData.aliases().asSafeValues.flatMap(a => ClusterIndexName.fromString(a.alias()))
         } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)

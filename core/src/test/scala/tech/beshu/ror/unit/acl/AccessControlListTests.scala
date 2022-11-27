@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.{FlsEngine, UsernameCaseMapping}
@@ -46,13 +47,13 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
     "metadata request is called" should {
       "go through all blocks and collect metadata response content" in {
         val blocks = NonEmptyList.of(
-          mockBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(group("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(group("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(group("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b4", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(group("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(group("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(group("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(group("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+          mockBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(GroupName("admins")).withAvailableGroups(UniqueList.of(GroupName("logserver"), GroupName("ext-onlio"), GroupName("admins"), GroupName("ext-odp"), GroupName("ext-enex"), GroupName("dohled-nd-pce"), GroupName("helpdesk")))),
+          mockBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(GroupName("admins")).withAvailableGroups(UniqueList.of(GroupName("logserver"), GroupName("ext-onlio"), GroupName("admins"), GroupName("ext-odp"), GroupName("ext-enex"), GroupName("dohled-nd-pce"), GroupName("helpdesk")))),
+          mockBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(GroupName("admins")).withAvailableGroups(UniqueList.of(GroupName("logserver"), GroupName("ext-onlio"), GroupName("admins"), GroupName("ext-odp"), GroupName("ext-enex"), GroupName("dohled-nd-pce"), GroupName("helpdesk")))),
+          mockBlock("b4", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(GroupName("admins")).withAvailableGroups(UniqueList.of(GroupName("logserver"), GroupName("ext-onlio"), GroupName("admins"), GroupName("ext-odp"), GroupName("ext-enex"), GroupName("dohled-nd-pce"), GroupName("helpdesk")))),
+          mockBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(GroupName("admins")).withAvailableGroups(UniqueList.of(GroupName("logserver"), GroupName("ext-onlio"), GroupName("admins"), GroupName("ext-odp"), GroupName("ext-enex"), GroupName("dohled-nd-pce"), GroupName("helpdesk")))),
+          mockBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(GroupName("admins")).withAvailableGroups(UniqueList.of(GroupName("logserver"), GroupName("ext-onlio"), GroupName("admins"), GroupName("ext-odp"), GroupName("ext-enex"), GroupName("dohled-nd-pce"), GroupName("helpdesk")))),
+          mockBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroup(GroupName("admins")).withAvailableGroups(UniqueList.of(GroupName("logserver"), GroupName("ext-onlio"), GroupName("admins"), GroupName("ext-odp"), GroupName("ext-enex"), GroupName("dohled-nd-pce"), GroupName("helpdesk")))),
         )
         val acl = new AccessControlList(
           blocks,
@@ -75,8 +76,8 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
 
         inside(userMetadataRequestResult) {
           case Allow(userMetadata, _) =>
-            userMetadata.availableGroups shouldBe UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk"))
-            userMetadata.currentGroup shouldBe Some(group("admins"))
+            userMetadata.availableGroups shouldBe UniqueList.of(GroupName("logserver"), GroupName("ext-onlio"), GroupName("admins"), GroupName("ext-odp"), GroupName("ext-enex"), GroupName("dohled-nd-pce"), GroupName("helpdesk"))
+            userMetadata.currentGroup shouldBe Some(GroupName("admins"))
         }
       }
     }
@@ -99,12 +100,11 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
     )
   }
 
-  private def user(userName: String) = LoggedUser.DirectlyLoggedUser(User.Id(NonEmptyString.unsafeFrom(userName)))
-
-  private def group(groupName: String) = Group(NonEmptyString.unsafeFrom(groupName))
+  private def user(userName: String) =
+    LoggedUser.DirectlyLoggedUser(User.Id(NonEmptyString.unsafeFrom(userName)))
 
   private def mockMetadataRequestContext(preferredGroup: String) = {
-    val userMetadata = UserMetadata.empty.withCurrentGroup(groupFrom(preferredGroup))
+    val userMetadata = UserMetadata.empty.withCurrentGroup(GroupName(NonEmptyString.unsafeFrom(preferredGroup)))
     val rc = mock[MetadataRequestContext]
     (rc.initialBlockContext _)
       .expects()

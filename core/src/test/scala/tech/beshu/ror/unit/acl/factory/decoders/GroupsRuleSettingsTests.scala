@@ -27,8 +27,9 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.{WithGroupsM
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
 import tech.beshu.ror.accesscontrol.blocks.rules._
 import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
@@ -36,24 +37,30 @@ import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class GroupsRuleSettingsTests
-  extends BaseRuleSettingsDecoderTest[GroupsOrRule]
+import scala.reflect.ClassTag
+
+class GroupsOrRuleSettingsTests extends GroupsRuleSettingsTests(GroupsOrRule.Name)
+class DeprecatedGroupsOrRuleSettingsTests extends GroupsRuleSettingsTests(GroupsOrRule.DeprecatedName)
+class GroupsAndRuleSettingsTests extends GroupsRuleSettingsTests(GroupsAndRule.Name)
+
+sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ruleName: RuleName[R])
+  extends BaseRuleSettingsDecoderTest[R]
     with Inside {
 
-  "A GroupsRule" should {
+  "A GroupsOrRule" should {
     "be able to be loaded from config" when {
       "a groups mapping is not used" when {
         "only one group is defined" when {
           "one, full username is used" in {
             assertDecodingSuccess(
               yaml =
-                """
+                s"""
                   |readonlyrest:
                   |
                   |  access_control_rules:
                   |
                   |  - name: test_block1
-                  |    groups: group1
+                  |    ${ruleName.name.value}: group1
                   |
                   |  users:
                   |  - username: cartman
@@ -62,12 +69,12 @@ class GroupsRuleSettingsTests
                   |
                   |""".stripMargin,
               assertion = rule => {
-                val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("group1").nel))
-                rule.settings.groups should be(groups)
+                val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("group1").nel)))
+                rule.settings.permittedGroups should be(groups)
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
-                  localGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(GroupName("group1"), GroupName("group3")))
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
@@ -79,13 +86,13 @@ class GroupsRuleSettingsTests
           "one, username with wildcard is used" in {
             assertDecodingSuccess(
               yaml =
-                """
+                s"""
                   |readonlyrest:
                   |
                   |  access_control_rules:
                   |
                   |  - name: test_block1
-                  |    groups: group1
+                  |    ${ruleName.name.value}: group1
                   |
                   |  users:
                   |  - username: car*
@@ -94,12 +101,12 @@ class GroupsRuleSettingsTests
                   |
                   |""".stripMargin,
               assertion = rule => {
-                val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("group1").nel))
-                rule.settings.groups should be(groups)
+                val permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("group1").nel)))
+                rule.settings.permittedGroups should be(permittedGroups)
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("car*"))))
-                  localGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(GroupName("group1"), GroupName("group3")))
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
@@ -111,13 +118,13 @@ class GroupsRuleSettingsTests
           "two usernames are used (the first one - full, the second - with wildcard)" in {
             assertDecodingSuccess(
               yaml =
-                """
+                s"""
                   |readonlyrest:
                   |
                   |  access_control_rules:
                   |
                   |  - name: test_block1
-                  |    groups: group1
+                  |    ${ruleName.name.value}: group1
                   |
                   |  users:
                   |  - username: [cartman, "ca*"]
@@ -126,12 +133,12 @@ class GroupsRuleSettingsTests
                   |
                   |""".stripMargin,
               assertion = rule => {
-                val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("group1").nel))
-                rule.settings.groups should be(groups)
+                val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("group1").nel)))
+                rule.settings.permittedGroups should be(groups)
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"), User.UserIdPattern("ca*"))))
-                  localGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(GroupName("group1"), GroupName("group3")))
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
@@ -145,13 +152,13 @@ class GroupsRuleSettingsTests
           "no variables are used in group names" in {
             assertDecodingSuccess(
               yaml =
-                """
+                s"""
                   |readonlyrest:
                   |
                   |  access_control_rules:
                   |
                   |  - name: test_block1
-                  |    groups: [group1, group2]
+                  |    ${ruleName.name.value}: [group1, group2]
                   |
                   |  users:
                   |  - username: cartman
@@ -164,14 +171,16 @@ class GroupsRuleSettingsTests
                   |
                   |""".stripMargin,
               assertion = rule => {
-                val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] =
-                  UniqueNonEmptyList.of(AlreadyResolved(groupFrom("group1").nel), AlreadyResolved(groupFrom("group2").nel))
-                rule.settings.groups should be(groups)
+                val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
+                  AlreadyResolved(GroupName("group1").nel),
+                  AlreadyResolved(GroupName("group2").nel)
+                ))
+                rule.settings.permittedGroups should be(groups)
                 rule.settings.usersDefinitions.length should be(2)
                 val sortedUserDefinitions = rule.settings.usersDefinitions
                 inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
-                  localGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(GroupName("group1"), GroupName("group3")))
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
@@ -179,7 +188,7 @@ class GroupsRuleSettingsTests
                 }
                 inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("morgan"))))
-                  localGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(GroupName("group2"), GroupName("group3")))
                   authRule shouldBe an[AuthKeySha1Rule]
                   authRule.asInstanceOf[AuthKeySha1Rule].settings should be {
                     BasicAuthenticationRule.Settings(HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a"))
@@ -191,14 +200,13 @@ class GroupsRuleSettingsTests
           "a variable in used in one group name" in {
             assertDecodingSuccess(
               yaml =
-                """
+                s"""
                   |readonlyrest:
                   |
                   |  access_control_rules:
                   |
                   |  - name: test_block1
-                  |    auth_key: user:pass
-                  |    groups: [group1, "group_@{user}"]
+                  |    ${ruleName.name.value}: [group1, "group_@{header:test}"]
                   |
                   |  users:
                   |  - username: cartman
@@ -207,14 +215,14 @@ class GroupsRuleSettingsTests
                   |
                   |""".stripMargin,
               assertion = rule => {
-                rule.settings.groups.size shouldBe 2
-                rule.settings.groups.head should be(AlreadyResolved(groupFrom("group1").nel))
-                rule.settings.groups.tail.head shouldBe a[ToBeResolved[_]]
+                rule.settings.permittedGroups.permittedGroups.size shouldBe 2
+                rule.settings.permittedGroups.permittedGroups.head should be(AlreadyResolved(GroupName("group1").nel))
+                rule.settings.permittedGroups.permittedGroups.tail.head shouldBe a[ToBeResolved[_]]
 
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
-                  localGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(GroupName("group1"), GroupName("group3")))
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
@@ -235,7 +243,7 @@ class GroupsRuleSettingsTests
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    groups: [group1, group2]
+                 |    ${ruleName.name.value}: [group1*, group2]
                  |
                  |  users:
                  |  - username: cartman
@@ -243,7 +251,7 @@ class GroupsRuleSettingsTests
                  |    auth_key: "cartman:pass"
                  |    groups_provider_authorization:
                  |      user_groups_provider: GroupsService1
-                 |      groups: ["group3"]
+                 |      groups_or: ["group3"]
                  |
                  |  - username: morgan
                  |    groups: ["group2", "group3"]
@@ -266,29 +274,29 @@ class GroupsRuleSettingsTests
                  |
                  |""".stripMargin,
             assertion = rule => {
-              val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(
-                AlreadyResolved(groupFrom("group1").nel),
-                AlreadyResolved(groupFrom("group2").nel)
-              )
-              rule.settings.groups should be(groups)
+              val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
+                AlreadyResolved(GroupLike.from("group1*").nel),
+                AlreadyResolved(GroupName("group2").nel)
+              ))
+              rule.settings.permittedGroups should be(groups)
               rule.settings.usersDefinitions.length should be(2)
               val sortedUserDefinitions = rule.settings.usersDefinitions
               inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SeparateRules(rule1, rule2), groupMappings)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
-                groupMappings should be(GroupMappings.Simple(UniqueNonEmptyList.of(groupFrom("group1"))))
+                groupMappings should be(GroupMappings.Simple(UniqueNonEmptyList.of(GroupName("group1"))))
 
                 rule1 shouldBe an[AuthKeyRule]
                 rule1.asInstanceOf[AuthKeyRule].settings should be {
                   BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
                 }
                 rule2 shouldBe an[ExternalAuthorizationRule]
-                rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroups should be(UniqueNonEmptyList.of(
-                  Group("group3")
-                ))
+                rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
+                  GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupName("group3"))))
+                )
               }
               inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(rule1, localGroups)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("morgan"))))
-                localGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
+                localGroups should be(UniqueNonEmptyList.of(GroupName("group2"), GroupName("group3")))
                 rule1 shouldBe an[AuthKeySha1Rule]
                 rule1.asInstanceOf[AuthKeySha1Rule].settings should be {
                   BasicAuthenticationRule.Settings(HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a"))
@@ -306,7 +314,7 @@ class GroupsRuleSettingsTests
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    groups: [group1, group2]
+                 |    ${ruleName.name.value}: [group1, group2]
                  |
                  |  users:
                  |  - username: cartman
@@ -329,21 +337,21 @@ class GroupsRuleSettingsTests
                  |
                  |""".stripMargin,
             assertion = rule => {
-              val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(
-                AlreadyResolved(groupFrom("group1").nel),
-                AlreadyResolved(groupFrom("group2").nel)
-              )
-              rule.settings.groups should be(groups)
+              val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
+                AlreadyResolved(GroupName("group1").nel),
+                AlreadyResolved(GroupName("group2").nel)
+              ))
+              rule.settings.permittedGroups should be(groups)
               rule.settings.usersDefinitions.length should be(2)
               val sortedUserDefinitions = rule.settings.usersDefinitions
               inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SingleRule(rule1), groupMappings)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
-                groupMappings should be(GroupMappings.Simple(UniqueNonEmptyList.of(groupFrom("group1"))))
+                groupMappings should be(GroupMappings.Simple(UniqueNonEmptyList.of(GroupName("group1"))))
                 rule1 shouldBe an[LdapAuthRule]
               }
               inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(rule1, localGroups)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("morgan"))))
-                localGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
+                localGroups should be(UniqueNonEmptyList.of(GroupName("group2"), GroupName("group3")))
                 rule1 shouldBe an[AuthKeySha1Rule]
                 rule1.asInstanceOf[AuthKeySha1Rule].settings should be {
                   BasicAuthenticationRule.Settings(HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a"))
@@ -361,7 +369,7 @@ class GroupsRuleSettingsTests
                  |  access_control_rules:
                  |
                  |  - name: test_block1
-                 |    groups: [group1, group3]
+                 |    ${ruleName.name.value}: [group1, group3]
                  |
                  |  users:
                  |  - username: cartman
@@ -390,18 +398,18 @@ class GroupsRuleSettingsTests
                  |
                  |""".stripMargin,
             assertion = rule => {
-              val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(
-                AlreadyResolved(groupFrom("group1").nel),
-                AlreadyResolved(groupFrom("group3").nel)
-              )
-              rule.settings.groups should be(groups)
+              val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
+                AlreadyResolved(GroupName("group1").nel),
+                AlreadyResolved(GroupName("group3").nel)
+              ))
+              rule.settings.permittedGroups should be(groups)
               rule.settings.usersDefinitions.length should be(1)
               val sortedUserDefinitions = rule.settings.usersDefinitions
               inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SeparateRules(rule1, rule2), groupMappings)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
                 groupMappings should be(GroupMappings.Advanced(UniqueNonEmptyList.of(
-                  Mapping(groupFrom("group1"), nonEmptySetOf(groupFrom("ldap_group3"))),
-                  Mapping(groupFrom("group2"), nonEmptySetOf(groupFrom("ldap_group4")))
+                  Mapping(GroupName("group1"), nonEmptySetOf(GroupName("ldap_group3"))),
+                  Mapping(GroupName("group2"), nonEmptySetOf(GroupName("ldap_group4")))
                 )))
 
                 rule1 shouldBe an[AuthKeyRule]
@@ -409,9 +417,9 @@ class GroupsRuleSettingsTests
                   BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
                 }
                 rule2 shouldBe an[ExternalAuthorizationRule]
-                rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroups should be(UniqueNonEmptyList.of(
-                  Group("ldap_group3"), Group("ldap_group4")
-                ))
+                rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
+                  GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupName("ldap_group3"), GroupName("ldap_group4"))))
+                )
               }
             }
           )
@@ -420,13 +428,13 @@ class GroupsRuleSettingsTests
       "users inside users sections must have the same username patterns" in {
         assertDecodingSuccess(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups: ["group1"]
+              |    ${ruleName.name.value}: ["group1"]
               |
               |  users:
               |  - username: "*"
@@ -439,15 +447,15 @@ class GroupsRuleSettingsTests
               |
               |""".stripMargin,
           assertion = rule => {
-            val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(
-              AlreadyResolved(groupFrom("group1").nel)
-            )
-            rule.settings.groups should be(groups)
+            val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
+              AlreadyResolved(GroupName("group1").nel)
+            ))
+            rule.settings.permittedGroups should be(groups)
             rule.settings.usersDefinitions.length should be(2)
             val sortedUserDefinitions = rule.settings.usersDefinitions
             inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(r, localGroups)) =>
               patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("*"))))
-              localGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
+              localGroups should be(UniqueNonEmptyList.of(GroupName("group1"), GroupName("group3")))
               r shouldBe an[AuthKeyRule]
               r.asInstanceOf[AuthKeyRule].settings should be {
                 BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
@@ -455,7 +463,7 @@ class GroupsRuleSettingsTests
             }
             inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(r, localGroups)) =>
               patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("*"))))
-              localGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
+              localGroups should be(UniqueNonEmptyList.of(GroupName("group2"), GroupName("group3")))
               r shouldBe an[AuthKeyRule]
               r.asInstanceOf[AuthKeyRule].settings should be {
                 BasicAuthenticationRule.Settings(Credentials(User.Id("morgan"), PlainTextSecret("pass")))
@@ -469,13 +477,13 @@ class GroupsRuleSettingsTests
       "groups section is defined, but without any group" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups:
+              |    ${ruleName.name.value}:
               |
               |  users:
               |  - username: cartman
@@ -486,7 +494,7 @@ class GroupsRuleSettingsTests
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
-              """groups: null
+              s"""${ruleName.name.value}: null
                 |""".stripMargin
             )))
           }
@@ -495,31 +503,31 @@ class GroupsRuleSettingsTests
       "no users definitions section is defined" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups: group1
+              |    ${ruleName.name.value}: group1
               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("No user definitions was defined. Rule `groups` requires them.")))
+            errors.head should be(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${ruleName.name.value}` requires them.")))
           }
         )
       }
       "username in user definitions is empty" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups: group1
+              |    ${ruleName.name.value}: group1
               |
               |  users:
               |  - username:
@@ -536,13 +544,13 @@ class GroupsRuleSettingsTests
       "username in users definition is a empty list" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups: group1
+              |    ${ruleName.name.value}: group1
               |
               |  users:
               |  - username: []
@@ -559,13 +567,13 @@ class GroupsRuleSettingsTests
       "username filed is absent in user definition" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups: group1
+              |    ${ruleName.name.value}: group1
               |
               |  users:
               |  - groups: ["group1", "group3"]
@@ -581,13 +589,13 @@ class GroupsRuleSettingsTests
       "groups set in user definitions is not defined" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups:
+              |    ${ruleName.name.value}:
               |
               |  users:
               |  - username: cartman
@@ -597,20 +605,20 @@ class GroupsRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of groups is required")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of group names is required")))
           }
         )
       }
       "groups set in user definitions is empty" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups:
+              |    ${ruleName.name.value}:
               |
               |  users:
               |  - username: cartman
@@ -620,20 +628,20 @@ class GroupsRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of groups is required")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of group names is required")))
           }
         )
       }
       "only one authentication rule can be defined for user in users section" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups: ["group1"]
+              |    ${ruleName.name.value}: ["group1"]
               |
               |  users:
               |  - username: cartman
@@ -661,7 +669,7 @@ class GroupsRuleSettingsTests
               |  access_control_rules:
                |
               |  - name: test_block1
-               |    groups: ["group1"]
+               |    ${ruleName.name.value}: ["group1"]
                |
               |  users:
                |  - username: cartman
@@ -707,7 +715,7 @@ class GroupsRuleSettingsTests
               |  access_control_rules:
                |
               |  - name: test_block1
-               |    groups:
+               |    ${ruleName.name.value}:
                |
               |  users:
                |  - username: cartman
@@ -746,7 +754,7 @@ class GroupsRuleSettingsTests
               |  access_control_rules:
                |
               |  - name: test_block1
-               |    groups:
+               |    ${ruleName.name.value}:
                |
               |  users:
                |  - username: cartman
@@ -788,13 +796,13 @@ class GroupsRuleSettingsTests
       "auth key rule inside user definition is unparsable" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups: group1
+              |    ${ruleName.name.value}: group1
               |
               |  users:
               |  - username: cartman
@@ -815,13 +823,13 @@ class GroupsRuleSettingsTests
       "user definition doesn't allow to use unknown rules" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups:
+              |    ${ruleName.name.value}:
               |
               |  users:
               |  - username: cartman
@@ -839,13 +847,13 @@ class GroupsRuleSettingsTests
       "auth rule is used, but user cannot be matched by username patterns" in {
         assertDecodingFailure(
           yaml =
-            """
+            s"""
               |readonlyrest:
               |
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    groups: group1
+              |    ${ruleName.name.value}: group1
               |
               |  users:
               |  - username: a*

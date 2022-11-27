@@ -20,10 +20,9 @@ import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule
-import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule.GroupsLogic
-import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule.GroupsLogic.Or
-import tech.beshu.ror.accesscontrol.domain.Group
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.{GroupName, GroupNamePattern}
+import tech.beshu.ror.accesscontrol.domain.{GroupLike, GroupsLogic, PermittedGroups}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -59,7 +58,7 @@ class LdapAuthorizationRuleSettingsTests
           assertion = rule => {
             rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
             rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapServiceDecorator]
-            rule.settings.permittedGroups should be(GroupsLogic.Or(UniqueNonEmptyList.of(Group("group3"))))
+            rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupName("group3")))))
           }
         )
       }
@@ -75,7 +74,7 @@ class LdapAuthorizationRuleSettingsTests
                |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
                |    ldap_authorization:
                |      name: "ldap1"
-               |      groups_and: ["group3"]
+               |      groups_and: ["g*"]
                |
                |  ldaps:
                |
@@ -89,8 +88,8 @@ class LdapAuthorizationRuleSettingsTests
           assertion = rule => {
             rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
             rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapServiceDecorator]
-
-            rule.settings.permittedGroups should be (GroupsLogic.And(UniqueNonEmptyList.of(Group("group3"))))
+            rule.settings.permittedGroupsLogic should be (GroupsLogic.And(PermittedGroups(UniqueNonEmptyList.of(GroupLike.from("g*")))))
+            rule.settings.permittedGroupsLogic.permittedGroups.groups.head shouldBe a[GroupNamePattern]
           }
         )
       }
@@ -106,7 +105,7 @@ class LdapAuthorizationRuleSettingsTests
                |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
                |    ldap_authorization:
                |      name: "ldap1"
-               |      groups: ["group3"]
+               |      groups_or: ["group3", "group4*"]
                |
                |  ldaps:
                |
@@ -120,7 +119,9 @@ class LdapAuthorizationRuleSettingsTests
           assertion = rule => {
             rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
             rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapServiceDecorator]
-            rule.settings.permittedGroups should be (GroupsLogic.Or(UniqueNonEmptyList.of(Group("group3"))))
+            rule.settings.permittedGroupsLogic should be (GroupsLogic.Or(PermittedGroups(
+              UniqueNonEmptyList.of(GroupName("group3"), GroupLike.from("group4*"))
+            )))
           }
         )
       }
@@ -151,7 +152,7 @@ class LdapAuthorizationRuleSettingsTests
           assertion = rule => {
             rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
             rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CacheableLdapAuthorizationServiceDecorator]
-            rule.settings.permittedGroups should be(Or(UniqueNonEmptyList.of(Group("group3"))))
+            rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupName("group3")))))
           }
         )
       }
@@ -211,7 +212,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Please specify one between 'groups' or 'groups_and' for LDAP authorization rule 'ldap1'")))
+            errors.head should be(RulesLevelCreationError(Message("ldap_authorization rule requires to define 'groups_or'/'groups' or 'groups_and' arrays")))
           }
         )
       }
@@ -241,7 +242,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Non empty list of groups is required")))
+            errors.head should be(RulesLevelCreationError(Message("Non empty list of group names or/and patters is required")))
           }
         )
       }

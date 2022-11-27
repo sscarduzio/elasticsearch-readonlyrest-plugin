@@ -33,7 +33,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Ldap
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupsFromUserAttribute}
-import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -106,7 +107,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
   extends BaseUnboundidLdapService(connectionPool, userSearchFiler, serviceTimeout)
     with LdapAuthorizationService {
 
-  override def groupsOf(id: User.Id): Task[UniqueList[Group]] = {
+  override def groupsOf(id: User.Id): Task[UniqueList[GroupName]] = {
     ldapUserBy(id)
       .flatMap {
         case Some(user) =>
@@ -119,7 +120,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
       }
   }
 
-  private def groupsFrom(defaultSearchGroupMode: DefaultGroupSearch, user: LdapUser): Task[UniqueList[Group]] = {
+  private def groupsFrom(defaultSearchGroupMode: DefaultGroupSearch, user: LdapUser): Task[UniqueList[GroupName]] = {
     val searchFilter = searchFilterFrom(defaultSearchGroupMode, user)
     logger.debug(s"LDAP search string: $searchFilter | groupNameAttr: ${defaultSearchGroupMode.groupNameAttribute}")
     connectionPool
@@ -127,13 +128,13 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
       .flatMap {
         case Right(results) =>
           Task {
-            UniqueList.fromList(
+            UniqueList.fromTraversable(
               results
                 .flatMap { r =>
                   Option(r.getAttributeValue(defaultSearchGroupMode.groupNameAttribute.value))
                     .flatMap(NonEmptyString.unapply)
                 }
-                .map(Group.apply)
+                .map(GroupName.apply)
             )
           }
         case Left(errorResult) =>
@@ -145,7 +146,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
       }
   }
 
-  private def groupsFrom(mode: GroupsFromUserAttribute, user: LdapUser): Task[UniqueList[Group]] = {
+  private def groupsFrom(mode: GroupsFromUserAttribute, user: LdapUser): Task[UniqueList[GroupName]] = {
     logger.debug(s"LDAP search string: ${user.dn.value.value} | groupsFromUserAttribute: ${mode.groupsFromUserAttribute.value}")
     connectionPool
       .process(searchUserGroupsLdapRequest(_, user, mode), serviceTimeout)
@@ -153,7 +154,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
         case Right(results) =>
           Task {
             UniqueList
-              .fromList(
+              .fromTraversable(
                 results
                   .flatMap { r =>
                     Option(r.getAttributeValues(mode.groupsFromUserAttribute.value))
@@ -161,7 +162,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
                       .flatMap(groupNameFromDn(_, mode))
                       .flatMap(NonEmptyString.unapply)
                   }
-                  .map(Group.apply)
+                  .map(GroupName.apply)
               )
           }
         case Left(errorResult) =>

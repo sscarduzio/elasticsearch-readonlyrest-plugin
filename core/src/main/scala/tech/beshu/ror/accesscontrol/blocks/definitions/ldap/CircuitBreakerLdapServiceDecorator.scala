@@ -22,6 +22,7 @@ import monix.catnap._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -68,7 +69,7 @@ class CircuitBreakerLdapAuthorizationServiceDecorator(underlying: LdapAuthorizat
     )
   }
 
-  override def groupsOf(id: User.Id): Task[UniqueList[domain.Group]] = {
+  override def groupsOf(id: User.Id): Task[UniqueList[GroupName]] = {
     circuitBreaker.protect(
       underlying.groupsOf(id)
     )
@@ -103,7 +104,7 @@ class CircuitBreakerLdapServiceDecorator(underlying: LdapAuthService,
     )
   }
 
-  override def groupsOf(id: User.Id): Task[UniqueList[domain.Group]] = {
+  override def groupsOf(id: User.Id): Task[UniqueList[GroupName]] = {
     circuitBreaker.protect(
       underlying.groupsOf(id)
     )

@@ -215,7 +215,7 @@ class ImpersonationRuleDecoratorTests
 
   private def userIdPatterns(id: String, ids: String*) = {
     UserIdPatterns(
-      UniqueNonEmptyList.unsafeFromList(
+      UniqueNonEmptyList.unsafeFromTraversable(
         (id :: ids.toList).map(str => UserIdPattern(NonEmptyString.unsafeFrom(str)))
       )
     )

@@ -52,7 +52,7 @@ object CirceOps {
       Decoder.decodeNonEmptyList(decodeT).map(UniqueNonEmptyList.fromNonEmptyList)
 
     implicit def decodeUniqueList[T](implicit decodeT: Decoder[T]): Decoder[UniqueList[T]] =
-      Decoder.decodeList[T].map(UniqueList.fromList)
+      Decoder.decodeList[T].map(UniqueList.fromTraversable)
 
     def decodeStringLikeOrNonEmptySet[T: Order](fromString: String => T): Decoder[NonEmptySet[T]] =
       decodeStringLike
@@ -88,7 +88,7 @@ object CirceOps {
       decodeStringLikeOrUniqueNonEmptyListE(str => Right(fromString(str)))
 
     def decodeStringLikeOrUniqueNonEmptyListE[T](fromString: String => Either[String, T]): Decoder[UniqueNonEmptyList[T]] =
-      decodeStringLike.map(str => UniqueNonEmptyList.unsafeFromList(str :: Nil)).or(decodeUniqueNonEmptyList[String]).emap { uniqueList =>
+      decodeStringLike.map(str => UniqueNonEmptyList.of(str)).or(decodeUniqueNonEmptyList[String]).emap { uniqueList =>
         val (errorsUniqueList, valuesUniqueList) = uniqueList.foldLeft((UniqueList.empty[String], UniqueList.empty[T])) {
           case ((errors, values), elem) =>
             fromString(elem) match {
@@ -97,7 +97,7 @@ object CirceOps {
             }
         }
         if (errorsUniqueList.nonEmpty) Left(errorsUniqueList.mkString(","))
-        else Right(UniqueNonEmptyList.unsafeFromList(valuesUniqueList.toList))
+        else Right(UniqueNonEmptyList.unsafeFromTraversable(valuesUniqueList))
       }
 
     def decoderStringLikeOrUniqueNonEmptyList[T: Decoder]: Decoder[UniqueNonEmptyList[T]] =
@@ -109,7 +109,7 @@ object CirceOps {
       decodeStringLikeNonEmpty
         .map(UniqueNonEmptyList.of(_))
         .or(DecoderHelpers.decodeUniqueNonEmptyList[NonEmptyString])
-        .map(a => UniqueNonEmptyList.unsafeFromSet(a.map(fromString).toSet))
+        .map(a => UniqueNonEmptyList.unsafeFromTraversable(a.map(fromString)))
 
     def decodeStringLikeOrSet[T: Order : Decoder]: Decoder[Set[T]] = {
       decodeStringLike.map(Set(_)).or(Decoder.decodeSet[String]).emap { set =>
@@ -126,7 +126,7 @@ object CirceOps {
     }
 
     def decodeStringLikeOrUniqueList[T: Decoder]: Decoder[UniqueList[T]] = {
-      decodeStringLike.map(str => UniqueList.fromList(str :: Nil)).or(decodeUniqueList[String]).emap { uniqueList =>
+      decodeStringLike.map(str => UniqueList.fromTraversable(str :: Nil)).or(decodeUniqueList[String]).emap { uniqueList =>
         val (errorsUniqueList, valuesUniqueList) = uniqueList.foldLeft((UniqueList.empty[String], UniqueList.empty[T])) {
           case ((errors, values), elem) =>
             Decoder[T].decodeJson(Json.fromString(elem)) match {

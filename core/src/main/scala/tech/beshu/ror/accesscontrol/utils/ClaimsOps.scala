@@ -22,7 +22,8 @@ import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.domain.{ClaimName, Group, Header, User}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.{ClaimName, Header, User}
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult._
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.{ClaimSearchResult, CustomClaimValue}
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -54,21 +55,20 @@ class ClaimsOps(val claims: Claims) extends Logging {
       .fold(_ => NotFound, identity)
   }
 
-  def groupsClaim(claimName: ClaimName): ClaimSearchResult[UniqueList[Group]] = {
+  def groupsClaim(claimName: ClaimName): ClaimSearchResult[UniqueList[GroupName]] = {
     Try(claimName.name.read[Any](claims))
       .map {
         case value: String =>
-          Found(UniqueList.fromList((value :: Nil).flatMap(toGroup)))
+          Found(UniqueList.fromTraversable((value :: Nil).flatMap(toGroup)))
         case collection: java.util.Collection[_] =>
           Found {
-            UniqueList.fromList {
+            UniqueList.fromTraversable {
               collection.asScala
                 .collect {
                   case value: String => value
                   case value: Long => value.toString
                 }
                 .flatMap(toGroup)
-                .toList
             }
           }
         case _ =>
@@ -100,7 +100,7 @@ class ClaimsOps(val claims: Claims) extends Logging {
   }
 
   private def toGroup(value: String) = {
-    NonEmptyString.unapply(value).map(Group.apply)
+    NonEmptyString.unapply(value).map(GroupName.apply)
   }
 }
 

@@ -20,25 +20,25 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
+import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport.ImpersonationWarningExtractor
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.{BaseGroupsRule, GroupsAndRule, GroupsOrRule}
+import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
-import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.domain.{GroupLike, ResolvablePermittedGroups}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
-import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport.ImpersonationWarningExtractor
 
 class GroupsOrRuleDecoder(usersDefinitions: Definitions[UserDef],
                           override implicit val caseMappingEquality: UserIdCaseMappingEquality)
+                         (implicit ev: RuleName[GroupsOrRule])
   extends BaseGroupsRuleDecoder[GroupsOrRule](usersDefinitions, caseMappingEquality) {
 
   override protected def createRule(settings: BaseGroupsRule.Settings,
@@ -57,8 +57,9 @@ class GroupsAndRuleDecoder(usersDefinitions: Definitions[UserDef],
   }
 }
 
-abstract class BaseGroupsRuleDecoder[R <: BaseGroupsRule : RuleName : VariableUsage : LocalUsersSupport : ImpersonationWarningExtractor](usersDefinitions: Definitions[UserDef],
-                                                                                                                                         implicit val caseMappingEquality: UserIdCaseMappingEquality)
+abstract class BaseGroupsRuleDecoder[R <: BaseGroupsRule : VariableUsage : LocalUsersSupport : ImpersonationWarningExtractor](usersDefinitions: Definitions[UserDef],
+                                                                                                                              implicit val caseMappingEquality: UserIdCaseMappingEquality)
+                                                                                                                             (implicit ev: RuleName[R])
 
   extends RuleBaseDecoderWithoutAssociatedFields[R] {
 
@@ -66,13 +67,16 @@ abstract class BaseGroupsRuleDecoder[R <: BaseGroupsRule : RuleName : VariableUs
 
   override protected def decoder: Decoder[RuleDefinition[R]] = {
     DecoderHelpers
-      .decoderStringLikeOrUniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]]
+      .decoderStringLikeOrUniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupLike]]
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .emapE { groups =>
         NonEmptyList.fromList(usersDefinitions.items) match {
           case Some(userDefs) =>
-            Right(RuleDefinition.create(createRule(BaseGroupsRule.Settings(groups, userDefs), caseMappingEquality)))
+            Right(RuleDefinition.create(createRule(
+              BaseGroupsRule.Settings(ResolvablePermittedGroups(groups), userDefs),
+              caseMappingEquality
+            )))
           case None =>
             Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${ruleName.show}` requires them.")))
         }
