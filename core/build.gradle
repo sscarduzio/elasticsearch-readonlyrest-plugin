@@ -134,13 +134,13 @@ dependencies {
     compile group: 'org.typelevel',                         name: 'squants_2.12',                           version: '1.4.0'
     compile group: 'com.unboundid',                         name: 'unboundid-ldapsdk',                      version: '6.0.6'
     compile group: 'com.lihaoyi',                           name: 'upickle_2.12',                           version: '0.7.1'
+    compile files('libs/bc-noncert-1.0.2.4.jar') // https://www.bouncycastle.org/latest_releases.html#1.0.2.4-NONCERT
     compile(group: 'org.bouncycastle',                      name: 'bctls-fips',                             version: '1.0.14') {
         exclude group: 'org.bouncycastle', module: 'bc-fips'
     }
     compile(group: 'org.bouncycastle',                      name: 'bcpkix-fips',                            version: '1.0.7') {
         exclude group: 'org.bouncycastle', module: 'bc-fips'
     }
-    compile files('libs/bc-noncert-1.0.2.4.jar')
 
     testCompile project(':tests-utils')
     testCompile group: 'org.apache.logging.log4j',          name: 'log4j-core',                             version: '2.15.0'
