@@ -177,14 +177,12 @@ task toJar(type: Jar, dependsOn: generateVersionsFile) {
     from sourceSets.main.getOutput()
 }
 
-task ror(type: Zip, dependsOn: [cleanOldData, toJar, jarHellCheck, resolvePluginDescriptorTemplate]) {
+task ror(type: Zip, dependsOn: [cleanOldData, jarHellCheck, toJar, resolvePluginDescriptorTemplate]) {
     outputs.upToDateWhen { false }
     archivesBaseName = pluginName
     into('elasticsearch')
             {
-                from configurations.distJars.filter {
-                    x -> !x.name.contains('spatial4j') && !x.name.contains('jts') && !x.name.contains('bc-noncert')
-                }
+                from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && ! x.name.contains('jts')}
                 from 'build/libs/' + pluginFullName + '.jar'
                 from 'build/tmp/' + pluginFullName
             }
