@@ -21,6 +21,7 @@ buildscript {
         pluginVersion = rootProject.properties['pluginVersion']
         esVersion = project.properties['esVersion']
         pluginName = rootProject.properties['pluginName']
+        s3BucketName = System.env.BUCKET ?: "readonlyrest-data"
     }
     repositories {
         mavenLocal()

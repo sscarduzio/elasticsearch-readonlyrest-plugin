@@ -36,6 +36,7 @@ buildscript {
 
 repositories {
     mavenCentral()
+    mavenLocal()
 }
 
 apply plugin: "com.github.hierynomus.license"
