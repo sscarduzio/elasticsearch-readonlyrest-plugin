@@ -38,6 +38,12 @@ buildscript {
 repositories {
     mavenCentral()
     mavenLocal()
+    maven {
+        url = "s3://" + s3BucketName + "/build"
+        authentication {
+            awsIm(AwsImAuthentication)
+        }
+    }
 }
 
 group = 'org.elasticsearch.plugin'
