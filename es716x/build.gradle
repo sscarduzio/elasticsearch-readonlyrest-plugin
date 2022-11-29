@@ -21,6 +21,7 @@ buildscript {
         pluginVersion = rootProject.properties['pluginVersion']
         esVersion = project.properties['esVersion']
         pluginName = rootProject.properties['pluginName']
+        s3BucketName = System.env.BUCKET ?: "readonlyrest-data"
     }
     repositories {
         mavenLocal()
@@ -37,6 +38,12 @@ buildscript {
 repositories {
     mavenCentral()
     mavenLocal()
+    maven {
+        url = "s3://" + s3BucketName + "/build"
+        authentication {
+            awsIm(AwsImAuthentication)
+        }
+    }
 }
 
 group = 'org.elasticsearch.plugin'

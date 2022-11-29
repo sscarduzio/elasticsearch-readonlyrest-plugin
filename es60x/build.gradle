@@ -21,6 +21,7 @@ buildscript {
         pluginVersion = rootProject.properties['pluginVersion']
         esVersion = project.properties['esVersion']
         pluginName = rootProject.properties['pluginName']
+        s3BucketName = System.env.BUCKET ?: "readonlyrest-data"
     }
     repositories {
         mavenLocal()
@@ -36,6 +37,13 @@ buildscript {
 
 repositories {
     mavenCentral()
+    mavenLocal()
+    maven {
+        url = "s3://" + s3BucketName + "/build"
+        authentication {
+            awsIm(AwsImAuthentication)
+        }
+    }
 }
 
 group = 'org.elasticsearch.plugin'
@@ -125,9 +133,7 @@ configurations {
         exclude group: 'org.apache.commons'
         exclude group: 'org.yaml'
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
-        exclude group: 'org.bouncycastle', module: 'bctls-fips'
-        exclude group: 'org.bouncycastle', module: 'bc-fips'
-        exclude group: 'org.bouncycastle', module: 'bcpkix-fips'
+        exclude group: 'org.bouncycastle'
     }
 }
 
