@@ -75,14 +75,21 @@ compileScala {
     targetCompatibility = 1.8
 }
 
+def compatiblePublishedEsVersion() {
+    // At the moment artifacts for ES 7.17.8 are not published to mvn repo. We cannot use 7.17.8 artifacts for HLRC
+    // and transport netty4 client because they are part of our ROR deliverable. So, we decided to use previous version.
+    // When in future the maven artifacts are fixed, we can remove this code.
+    if (esVersion == "7.17.8") "7.17.7" else esVersion
+}
+
 dependencies {
     compile project(path: ':core')
     compile             group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: esVersion
-    compile             group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-high-level-client',   version: esVersion
+    compile             group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-high-level-client',   version: compatiblePublishedEsVersion()
     compile             group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.13'
     compile             group: 'org.apache.logging.log4j',          name: 'log4j-core',                             version: '2.11.1'
     compileClasspath    group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
-    compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: esVersion
+    compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: compatiblePublishedEsVersion()
 }
 
 license {
