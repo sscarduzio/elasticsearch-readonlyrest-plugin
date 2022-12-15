@@ -58,3 +58,4 @@ builds/*
 docker-envs/build-ror-in-docker/builds/
 docker-envs/ror-with-elastic-cloud-poc/certs-generator/certs/ca/*
 docker-envs/ror-with-elastic-cloud-poc/certs-generator/certs/ror-cluster/*
+**/.base

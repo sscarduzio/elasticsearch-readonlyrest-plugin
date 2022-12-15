@@ -1,0 +1,74 @@
+version: "3.8"
+services:
+
+  es-ror:
+    build:
+      context: .
+      dockerfile: .base/es/${ES_DOCKERFILE}
+      args:
+        ES_VERSION: $ES_VERSION
+        ROR_VERSION: $ROR_ES_VERSION
+        ROR_FILE: $ES_ROR_FILE
+    ports:
+      - "19200:9200"
+      - "19300:9300"
+      - "5000:58672"
+    environment:
+      - cluster.name=es-cluster
+      - node.name=es
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672"
+      - ES_VERSION=$ELK_VERSION
+    healthcheck:
+      test: [ "CMD", "curl", "-fk", "-u", "admin:container", "https://localhost:9200/_cluster/health" ]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+    networks:
+      - es-network
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  es-kbn-logging-proxy:
+    image: mitmproxy/mitmproxy
+    command:
+      mitmdump --set validate_inbound_headers=false --mode reverse:https://es-ror:9200 --ssl-insecure --verbose
+    depends_on:
+      es-ror:
+        condition: service_healthy
+    networks:
+      - es-network
+
+  kbn-ror:
+    build:
+      context: .
+      dockerfile: .base/kbn/${KBN_DOCKERFILE}
+      args:
+        KBN_VERSION: $KBN_VERSION
+        ROR_VERSION: $ROR_KBN_VERSION
+        ROR_FILE: $KBN_ROR_FILE
+        ROR_ACTIVATION_KEY: $ROR_ACTIVATION_KEY
+    ports:
+      - "15601:5601"
+    environment:
+      ELASTIC_USER_PASSWORD: elastic
+      ES_API_URL: https://es-kbn-logging-proxy:8080
+    depends_on:
+      es-ror:
+        condition: service_healthy
+      es-kbn-logging-proxy:
+        condition: service_started
+    networks:
+      - es-network
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+networks:
+  es-network:
+    driver: bridge
