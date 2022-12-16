@@ -59,9 +59,10 @@
         <cve>CVE-2022-42003</cve>
     </suppress>
     <suppress>
-    <notes><![CDATA[
-   file name: ror-shadowed-libs-all.jar (shaded: org.yaml:snakeyaml:1.33) - safe constructor is used in ROR
+        <notes><![CDATA[
+   file name: ror-shadowed-libs-all.jar (shaded: org.yaml:snakeyaml:1.33) - safe constructor used
    ]]></notes>
-    <packageUrl regex="true">^pkg:maven/org\.yaml/snakeyaml@.*$</packageUrl>
-    <vulnerabilityName>CVE-2022-1471</vulnerabilityName>
+        <sha1>1d2ec974631aa42efee89c0157ddc39c3ad65286</sha1>
+        <cve>CVE-2022-1471</cve>
+    </suppress>
 </suppressions>
