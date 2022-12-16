@@ -30,7 +30,7 @@ buildscript {
     }
 
     dependencies {
-        classpath group: 'org.owasp',                                    name: 'dependency-check-gradle',  version: '6.5.3'
+        classpath group: 'org.owasp',                                    name: 'dependency-check-gradle',  version: '7.4.1'
         classpath group: 'com.star-zero.gradle',                         name: 'githook',                  version: '1.2.1'
         classpath group: 'gradle.plugin.com.github.maiflai',             name: 'gradle-scalatest',         version: '0.24'
         classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins',  name: 'license-gradle-plugin',    version: '0.15.0'
@@ -162,11 +162,11 @@ dependencies {
     testCompile group: 'com.dimafeng',                      name: 'testcontainers-scala_2.12',              version: '0.39.8'
 
     constraints {
-        compile group: 'io.netty',                          name: 'netty-codec-http2',                      version: '4.1.77.Final'
-        compile group: 'io.netty',                          name: 'netty-handler-proxy',                    version: '4.1.77.Final'
-        compile group: 'io.netty',                          name: 'netty-transport-native-unix-common',     version: '4.1.77.Final'
-        compile group: 'io.netty',                          name: 'netty-transport-native-epoll',           version: '4.1.77.Final'
-        compile group: 'io.netty',                          name: 'netty-transport-native-kqueue',          version: '4.1.77.Final'
+        compile group: 'io.netty',                          name: 'netty-codec-http2',                      version: '4.1.86.Final'
+        compile group: 'io.netty',                          name: 'netty-handler-proxy',                    version: '4.1.86.Final'
+        compile group: 'io.netty',                          name: 'netty-transport-native-unix-common',     version: '4.1.86.Final'
+        compile group: 'io.netty',                          name: 'netty-transport-native-epoll',           version: '4.1.86.Final'
+        compile group: 'io.netty',                          name: 'netty-transport-native-kqueue',          version: '4.1.86.Final'
         compile group: 'com.google.guava',                  name: 'guava',                                  version: '30.0-jre'
         compile group: 'io.spray',                          name: 'spray-json_2.12',                        version: '1.3.5'
         compile group: 'org.scala-lang',                    name: 'scala-reflect',                          version: '2.12.17'
