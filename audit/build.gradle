@@ -25,7 +25,7 @@ buildscript {
     }
 
     dependencies {
-        classpath group: 'org.owasp',                                   name: 'dependency-check-gradle',        version: '6.5.3'
+        classpath group: 'org.owasp',                                   name: 'dependency-check-gradle',        version: '7.4.1'
         classpath group: 'com.github.prokod',                           name: 'gradle-crossbuild-scala',        version: '0.12.0'
         classpath group: 'io.codearte.gradle.nexus',                    name: 'gradle-nexus-staging-plugin',    version: '0.21.1'
         classpath group: 'com.star-zero.gradle',                        name: 'githook',                        version: '1.2.1'
