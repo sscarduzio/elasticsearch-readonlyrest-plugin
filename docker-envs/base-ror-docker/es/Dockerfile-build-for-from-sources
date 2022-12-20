@@ -11,6 +11,8 @@ RUN /ror/bin/build-ror-plugin.sh $ES_VERSION &&\
 FROM docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}
 COPY --from=build /ror/builds/ror.zip /tmp/ror.zip
 
+ARG ES_VERSION
+
 COPY certs/elastic-certificates.p12 /usr/share/elasticsearch/config/
 COPY ror/es/readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
 COPY ror/es/elasticsearch.yml /usr/share/elasticsearch/config/elasticsearch.yml

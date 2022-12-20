@@ -6,24 +6,24 @@ determine_ror_es_dockerfile () {
   read_es_version
 
   read -p "Use ES ROR:
- 1. From SOURCES
- 2. From API
- 3. From FILE
+ 1. From API
+ 2. From FILE
+ 3. From SOURCES
 
 Your choice: " choice
 
   case "$choice" in
     1 )
-      docker build --no-cache --progress=plain -t ror-builder ../../
-      export ES_DOCKERFILE="Dockerfile-build-for-from-sources"
-      ;;
-    2 )
       export ES_DOCKERFILE="Dockerfile-use-ror-binaries-from-api"
       read_ror_es_version
       ;;
-    3 )
+    2 )
       export ES_DOCKERFILE="Dockerfile-use-ror-binaries-from-file"
       read_es_ror_file_path
+      ;;
+    3 )
+      docker build --no-cache --progress=plain -t ror-builder ../../../
+      export ES_DOCKERFILE="Dockerfile-build-for-from-sources"
       ;;
     * )
       echo "There is no such option to pick. Closing ..."
