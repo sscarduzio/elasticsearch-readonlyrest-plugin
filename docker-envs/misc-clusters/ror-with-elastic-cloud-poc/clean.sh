@@ -1,5 +1,5 @@
-#!/bin/bash
+#!/bin/bash -e
 
-docker-compose stop
-docker-compose rm
-rm ror-cluster.log
+./.base/clean.sh
+rm -rf .base
+rm -rf certs

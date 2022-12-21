@@ -1,13 +1,14 @@
-version: "3.7"
+version: "3.8"
 services:
 
   es-ror:
     build:
       context: .
-      dockerfile: es/${DOCKERFILE}
+      dockerfile: .base/es/${ES_DOCKERFILE}
       args:
-        ES_VERSION: $ELK_VERSION
-        ROR_VERSION: $ROR_VERSION
+        ES_VERSION: $ES_VERSION
+        ROR_VERSION: $ROR_ES_VERSION
+        ROR_FILE: $ES_ROR_FILE
         ES_CLOUD_PROXY_ADDRESS: $ES_CLOUD_PROXY_ADDRESS
         ES_CLOUD_SERVER_NAME: $ES_CLOUD_SERVER_NAME
     ports:
@@ -20,7 +21,15 @@ services:
       - discovery.type=single-node
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672"
-      - ES_VERSION=$ELK_VERSION
+      - ES_VERSION=$ES_VERSION
+      - ES_CLOUD_PROXY_ADDRESS=$ES_CLOUD_PROXY_ADDRESS
+      - ES_CLOUD_SERVER_NAME=$ES_CLOUD_SERVER_NAME
+    healthcheck:
+      test: [ "CMD", "curl", "-fk", "-u", "admin:container", "http://localhost:9200/_cluster/health" ]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
     networks:
       - es-ror-network
     ulimits:
@@ -31,16 +40,20 @@ services:
   kbn-ror:
     build:
       context: .
-      dockerfile: kbn/Dockerfile
+      dockerfile: .base/kbn/${KBN_DOCKERFILE}
       args:
-        ELK_VERSION: $ELK_VERSION
-        ROR_VERSION: $ROR_VERSION
+        KBN_VERSION: $KBN_VERSION
+        ROR_VERSION: $ROR_KBN_VERSION
+        ROR_FILE: $KBN_ROR_FILE
+        ROR_ACTIVATION_KEY: $ROR_ACTIVATION_KEY
     depends_on:
-      - "es-ror"
+      es-ror:
+        condition: service_healthy
     ports:
       - "15601:5601"
     environment:
       ELASTIC_USER_PASSWORD: elastic
+      ES_API_URL: http://es-ror:9200
     networks:
       - es-ror-network
     ulimits:

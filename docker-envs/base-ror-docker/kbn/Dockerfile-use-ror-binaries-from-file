@@ -6,8 +6,8 @@ ARG KBN_VERSION
 ARG ROR_FILE
 ARG ROR_ACTIVATION_KEY
 
+COPY certs/ /usr/share/kibana/config/
 COPY ror/kbn/kibana.yml /usr/share/kibana/config/kibana.yml
-COPY certs/elastic-certificates.p12 /usr/share/kibana/config/elastic-certificates.p12
 COPY .base/kbn/install-ror-kbn-using-file.sh /tmp/install-ror.sh
 COPY $ROR_FILE /tmp/ror.zip
 

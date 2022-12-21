@@ -4,16 +4,22 @@ services:
   generate-certs:
     build:
       context: .
-      dockerfile: Dockerfile-genertate-certs
-      args:
-        ES_VERSION: $ELK_VERSION
+      dockerfile: code/Dockerfile
     volumes:
-      - certs-volume:/usr/share/elasticsearch/config/certs
+      - certs-input-volume:/usr/share/elasticsearch/config/certs/input
+      - certs-output-volume:/usr/share/elasticsearch/config/certs/output
 
 volumes:
-  certs-volume:
+  certs-input-volume:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ${PWD}/certs-generator/certs
+      device: ${PWD}/input
+
+  certs-output-volume:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/output

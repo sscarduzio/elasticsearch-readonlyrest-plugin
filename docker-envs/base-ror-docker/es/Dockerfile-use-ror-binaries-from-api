@@ -4,10 +4,13 @@ FROM docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}
 
 ARG ES_VERSION
 ARG ROR_VERSION
+ARG ES_CLOUD_PROXY_ADDRESS
+ARG ES_CLOUD_SERVER_NAME
 
-COPY certs/elastic-certificates.p12 /usr/share/elasticsearch/config/
+COPY certs/ /usr/share/elasticsearch/config/
 COPY ror/es/readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
 COPY ror/es/elasticsearch.yml /usr/share/elasticsearch/config/elasticsearch.yml
+COPY ror/es/log4j2.properties /usr/share/elasticsearch/config/log4j2.properties
 COPY .base/es/install-ror-es-using-api.sh /tmp/install-ror.sh
 
 USER root

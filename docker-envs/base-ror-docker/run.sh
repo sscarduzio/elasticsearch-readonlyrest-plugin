@@ -46,7 +46,7 @@ read_ror_es_version () {
   read -p "Enter ROR ES version: " rorVersion
   if [[ -z "$rorVersion" ]]; then
     echo "ROR ES version is required and cannot be empty"
-    exit 5
+    exit 3
   else
     export ROR_ES_VERSION=$rorVersion
   fi
@@ -58,7 +58,7 @@ read_es_ror_file_path () {
     export ES_ROR_FILE=$path
   else
     echo "Cannot find file $path"
-    exit 3
+    exit 4
   fi
 }
 
@@ -84,7 +84,7 @@ Your choice: " choice
       ;;
     * )
       echo "There is no such option to pick. Closing ..."
-      exit 1
+      exit 5
       ;;
   esac
 }
@@ -93,7 +93,7 @@ read_kbn_version () {
   read -p "Enter KBN version: " kbnVersion
   if [[ -z "$kbnVersion" ]]; then
     echo "KBN version is required and cannot be empty"
-    exit 4
+    exit 6
   else
     export KBN_VERSION=$kbnVersion
   fi
@@ -103,7 +103,7 @@ read_ror_kbn_version () {
   read -p "Enter ROR KBN version: " rorVersion
   if [[ -z "$rorVersion" ]]; then
     echo "ROR KBN version is required and cannot be empty"
-    exit 5
+    exit 7
   else
     export ROR_KBN_VERSION=$rorVersion
   fi
@@ -115,7 +115,7 @@ read_kbn_ror_file_path () {
     export KBN_ROR_FILE=$path
   else
     echo "Cannot find file $path"
-    exit 6
+    exit 8
   fi
 }
 
@@ -125,4 +125,5 @@ echo "-----------------"
 determine_ror_kbn_dockerfile
 echo "-----------------"
 
-docker-compose up --build --remove-orphans --force-recreate
+docker-compose up -d --build --remove-orphans --force-recreate
+docker-compose logs -f > ror-cluster.log 2>&1 &

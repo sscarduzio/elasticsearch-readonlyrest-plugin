@@ -2,9 +2,9 @@ readonlyrest:
 
   ssl_internode:
     enable: true
-    keystore_file: "certs/ror-cluster/ror-es01/ror-es01.p12"
+    keystore_file: "ror-cluster/ror-es01/ror-es01.p12"
     keystore_pass: "mypassword"
-    truststore_file: "certs/ror-cluster/ror-es01/ror-es01.p12"
+    truststore_file: "ror-cluster/ror-es01/ror-es01.p12"
     truststore_pass: "mypassword"
     key_pass: "mypassword"
     client_authentication: true
@@ -15,8 +15,10 @@ readonlyrest:
     - name: "CONTAINER ADMIN"
       type: allow
       auth_key: admin:container
+      kibana_access: admin
 
     - name: "User 1"
       type: allow
       auth_key: "user1:test"
       indices: [".kibana*", "escloud:kibana_sample*", "index*"]
+      kibana_access: ro

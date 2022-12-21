@@ -4,9 +4,11 @@ services:
   es:
     build:
       context: .
-      dockerfile: ror/es/Dockerfile
+      dockerfile: .base/es/${ES_DOCKERFILE}
       args:
-        ES_VERSION: $ELK_VERSION
+        ES_VERSION: $ES_VERSION
+        ROR_VERSION: $ROR_ES_VERSION
+        ROR_FILE: $ES_ROR_FILE
     hostname: es
     container_name: es
     depends_on:
@@ -32,7 +34,7 @@ services:
       -Dcom.sun.management.jmxremote.rmi.port=9010
       -Djava.rmi.server.hostname=127.0.0.1"
 #      -Dcom.unboundid.ldap.sdk.debug.enabled=true"
-      - ES_VERSION=$ELK_VERSION
+      - ES_VERSION=$ES_VERSION
     networks:
       - es-network
     ulimits:
