@@ -12,9 +12,13 @@ readonlyrest:
 
   access_control_rules:
 
-    - name: "CONTAINER ADMIN"
+    - name: "KIBANA"
       type: allow
-      auth_key: admin:container
+      auth_key: kibana:kibana
+
+    - name: "ADMIN"
+      type: allow
+      auth_key: admin:admin
       kibana_access: admin
 
     - name: "User 1"

@@ -1,8 +1,0 @@
-instances:
-  - name: "ror-es01" # node name
-    cn:
-      - "ror-es01.node.ror-cluster.ror-test" # {node name}.node.{cluster name}.{scope}
-    dns:
-      - "localhost"
-    ip:
-      - "127.0.0.1"
