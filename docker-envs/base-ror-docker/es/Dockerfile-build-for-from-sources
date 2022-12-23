@@ -1,8 +1,12 @@
 ARG ES_VERSION
+ARG ES_CLOUD_PROXY_ADDRESS
+ARG ES_CLOUD_SERVER_NAME
 
 FROM ror-builder AS build
 
 ARG ES_VERSION
+ARG ES_CLOUD_PROXY_ADDRESS
+ARG ES_CLOUD_SERVER_NAME
 
 RUN /ror/bin/build-ror-plugin.sh $ES_VERSION &&\
     ls -h /ror/builds &&\
@@ -15,7 +19,7 @@ ARG ES_VERSION
 ARG ES_CLOUD_PROXY_ADDRESS
 ARG ES_CLOUD_SERVER_NAME
 
-COPY certs/* /usr/share/elasticsearch/config/
+COPY certs/ /usr/share/elasticsearch/config/
 COPY ror/es/readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
 COPY ror/es/elasticsearch.yml /usr/share/elasticsearch/config/elasticsearch.yml
 COPY ror/es/log4j2.properties /usr/share/elasticsearch/config/log4j2.properties
