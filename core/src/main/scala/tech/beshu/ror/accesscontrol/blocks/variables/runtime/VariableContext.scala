@@ -47,6 +47,7 @@ object VariableContext {
 
     case object NotUsingVariable extends VariableUsage[Nothing]
 
+    implicit val dataStreamsRule: VariableUsage[DataStreamsRule] = UsingVariable[DataStreamsRule](rule => rule.settings.allowedDataStreams.toNonEmptyList)
     implicit val filterRule: VariableUsage[FilterRule] = UsingVariable[FilterRule](rule => NonEmptyList.one(rule.settings.filter))
     implicit val groupsOrRule: VariableUsage[GroupsOrRule] = UsingVariable[GroupsOrRule](rule => rule.settings.permittedGroups.permittedGroups.toNonEmptyList)
     implicit val groupsAndRule: VariableUsage[GroupsAndRule] = UsingVariable[GroupsAndRule](rule => rule.settings.permittedGroups.permittedGroups.toNonEmptyList)

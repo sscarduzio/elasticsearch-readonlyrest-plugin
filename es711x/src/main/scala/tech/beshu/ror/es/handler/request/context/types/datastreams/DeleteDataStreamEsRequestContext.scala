@@ -16,36 +16,57 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.datastreams
 
+import cats.implicits.toShow
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
+import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.request.context.types.ReflectionBasedActionRequest
-import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.MatchResult
+import tech.beshu.ror.es.handler.request.context.ModificationResult
+import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.{MatchResult, tryUpdateDataStreams}
+import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
 
 private[datastreams] class DeleteDataStreamEsRequestContext private(actionRequest: ActionRequest,
-                                                                    indices: Set[ClusterIndexName],
+                                                                    dataStreams: Set[DataStreamName],
                                                                     esContext: EsContext,
-                                                                    aclContext: AccessControlStaticContext,
                                                                     clusterService: RorClusterService,
                                                                     override val threadPool: ThreadPool)
-  extends BaseReadDataStreamsEsRequestContext(actionRequest, indices, esContext, aclContext, clusterService, threadPool) {
+  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  override protected def setIndicesMethodName: String = "indices"
+  override protected def dataStreamsFrom(request: ActionRequest): Set[DataStreamName] = dataStreams
+
+  override protected def backingIndicesFrom(request: ActionRequest): BackingIndices = BackingIndices.IndicesNotInvolved
+
+  override def modifyRequest(blockContext: DataStreamRequestBlockContext): ModificationResult = {
+    if (modifyActionRequest(blockContext)) {
+      ModificationResult.Modified
+    } else {
+      logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getCanonicalName} request. We're using reflection to modify the request data streams and it fails. Please, report the issue.")
+      ModificationResult.ShouldBeInterrupted
+    }
+  }
+
+  private def modifyActionRequest(blockContext: DataStreamRequestBlockContext): Boolean = {
+    tryUpdateDataStreams(
+      actionRequest = actionRequest,
+      dataStreamsFieldName = "names",
+      dataStreams = blockContext.dataStreams
+    )
+  }
 }
 
 object DeleteDataStreamEsRequestContext {
   def unapply(arg: ReflectionBasedActionRequest): Option[DeleteDataStreamEsRequestContext] = {
     ReflectionBasedDataStreamsEsRequestContext
-      .tryMatchActionRequest(
+      .tryMatchActionRequestWithDataStreams(
         actionRequest = arg.esContext.actionRequest,
         expectedClassCanonicalName = "org.elasticsearch.xpack.core.action.DeleteDataStreamAction.Request",
-        getIndicesMethodName = "indices"
+        getDataStreamsMethodName = "getNames"
       ) match {
-      case MatchResult.Matched(indices) =>
-        Some(new DeleteDataStreamEsRequestContext(arg.esContext.actionRequest, indices, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
+      case MatchResult.Matched(dataStreams) =>
+        Some(new DeleteDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.clusterService, arg.threadPool))
       case MatchResult.NotMatched =>
         None
     }

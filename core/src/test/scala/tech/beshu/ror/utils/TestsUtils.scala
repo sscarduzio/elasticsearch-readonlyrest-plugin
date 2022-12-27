@@ -26,7 +26,7 @@ import io.circe.ParsingFailure
 import io.jsonwebtoken.JwtBuilder
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, RepositoryRequestBlockContext, RorApiRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
@@ -215,6 +215,7 @@ object TestsUtils {
                            aliases: Set[ClusterIndexName] = Set.empty,
                            repositories: Set[RepositoryName] = Set.empty,
                            snapshots: Set[SnapshotName] = Set.empty,
+                           dataStreams: Set[DataStreamName] = Set.empty,
                            templates: Set[TemplateOperation] = Set.empty)
                           (blockContext: BlockContext): Unit = {
       blockContext.userMetadata.loggedUser should be(loggedUser)
@@ -231,6 +232,8 @@ object TestsUtils {
         case _: CurrentUserMetadataRequestBlockContext =>
         case _: RorApiRequestBlockContext =>
         case _: GeneralNonIndexRequestBlockContext =>
+        case bc: DataStreamRequestBlockContext =>
+          bc.dataStreams should be(dataStreams)
         case _: RorApiRequestBlockContext =>
         case bc: RepositoryRequestBlockContext =>
           bc.repositories should be(repositories)

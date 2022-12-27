@@ -162,6 +162,10 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new GetAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: IndicesAliasesRequest =>
         regularRequestHandler.handle(new IndicesAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      // data streams
+      case _: ActionRequest if isReflectionBasedDataStreamRequest(esContext, aclContext) =>
+        val requestContext = ReflectionBasedDataStreamsEsRequestContext.unapply(ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool)).get
+        regularRequestHandler.handle(requestContext)
       // indices
       case request: GetIndexRequest =>
         regularRequestHandler.handle(new GetIndexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
@@ -226,8 +230,6 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
           // rollup
           case PutRollupJobEsRequestContext(request) => regularRequestHandler.handle(request)
           case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)
-          // data streams
-          case ReflectionBasedDataStreamsEsRequestContext(request) => regularRequestHandler.handle(request)
           // indices based
           case ReflectionBasedIndicesEsRequestContext(request) => regularRequestHandler.handle(request)
           // rest
@@ -236,6 +238,14 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
               new GeneralNonIndexEsRequestContext(esContext.actionRequest, esContext, clusterService, threadPool)
             }
         }
+    }
+  }
+
+  private def isReflectionBasedDataStreamRequest(esContext: EsContext, aclContext: AccessControlStaticContext) = {
+    ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool) match {
+      // data streams
+      case ReflectionBasedDataStreamsEsRequestContext(_) => true
+      case _ => false
     }
   }
 

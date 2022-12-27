@@ -124,6 +124,12 @@ object orders {
     case SnapshotName.All => "_all"
     case SnapshotName.Wildcard => "*"
   }
+  implicit val dataStreamOrder: Order[DataStreamName] = Order.by {
+    case DataStreamName.Full(value) => value.value
+    case DataStreamName.Pattern(value) => value.value
+    case DataStreamName.All => "_all"
+    case DataStreamName.Wildcard => "*"
+  }
 
   implicit def accessOrder[T: Order]: Order[AccessRequirement[T]] = Order.from {
     case (MustBeAbsent(v1), MustBeAbsent(v2)) => v1.compare(v2)

@@ -16,42 +16,73 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.datastreams
 
-import cats.data.NonEmptyList
 import cats.implicits._
 import org.elasticsearch.action.ActionRequest
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import org.elasticsearch.common.util.set.Sets
+import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.MatchResult.{Matched, NotMatched}
-import tech.beshu.ror.es.handler.request.context.types.{BaseIndicesEsRequestContext, ReflectionBasedActionRequest}
+import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
+import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod
 import tech.beshu.ror.utils.ScalaOps._
 
+import scala.collection.JavaConverters._
+
 object ReflectionBasedDataStreamsEsRequestContext {
 
-  def unapply(arg: ReflectionBasedActionRequest): Option[BaseIndicesEsRequestContext[ActionRequest]] = {
+  def unapply(arg: ReflectionBasedActionRequest): Option[BaseDataStreamsEsRequestContext[ActionRequest]] = {
     CreateDataStreamEsRequestContext.unapply(arg)
       .orElse(DataStreamsStatsEsRequestContext.unapply(arg))
       .orElse(DeleteDataStreamEsRequestContext.unapply(arg))
       .orElse(GetDataStreamEsRequestContext.unapply(arg))
   }
 
-  private[datastreams] def tryMatchActionRequest(actionRequest: ActionRequest,
-                                                 expectedClassCanonicalName: String,
-                                                 getIndicesMethodName: String): MatchResult = {
+  private[datastreams] def tryMatchActionRequestWithDataStreams(actionRequest: ActionRequest,
+                                                                expectedClassCanonicalName: String,
+                                                                getDataStreamsMethodName: String): MatchResult[DataStreamName] = {
+    tryMatchActionRequest[DataStreamName](
+      actionRequest = actionRequest,
+      expectedClassCanonicalName = expectedClassCanonicalName,
+      getPropsMethodName = getDataStreamsMethodName,
+      toDomain = DataStreamName.fromString
+    )
+  }
+
+  private def tryMatchActionRequest[A](actionRequest: ActionRequest,
+                                       expectedClassCanonicalName: String,
+                                       getPropsMethodName: String,
+                                       toDomain: String => Option[A]): MatchResult[A] = {
     Option(actionRequest.getClass.getCanonicalName)
       .find(_ == expectedClassCanonicalName)
-      .flatMap { _ =>
-        NonEmptyList
-          .fromList(extractStringArrayFromPrivateMethod(getIndicesMethodName, actionRequest).asSafeList)
-          .map(_.toList.toSet.flatMap(ClusterIndexName.fromString))
-          .map(Matched.apply)
+      .map { _ =>
+        Matched.apply[A] {
+          extractStringArrayFromPrivateMethod(getPropsMethodName, actionRequest)
+            .asSafeList
+            .toSet
+            .flatMap((value: String) => toDomain(value))
+        }
       }
       .getOrElse(NotMatched)
   }
 
-  private[datastreams] sealed trait MatchResult
+  private[datastreams] def tryUpdateDataStreams[R <: ActionRequest](actionRequest: R,
+                                                                    dataStreamsFieldName: String,
+                                                                    dataStreams: Set[DataStreamName]): Boolean = {
+    // Optimistic reflection attempt
+    ReflecUtils.setIndices(
+      actionRequest,
+      Sets.newHashSet(dataStreamsFieldName),
+      dataStreams.toList.map(DataStreamName.toString).toSet.asJava
+    )
+  }
+
+
+  private[datastreams] sealed trait MatchResult[+A]
+
   private[datastreams] object MatchResult {
-    final case class Matched(extractedIndices: Set[ClusterIndexName]) extends MatchResult
-    object NotMatched extends MatchResult
+    final case class Matched[A](extracted: Set[A]) extends MatchResult[A]
+
+    object NotMatched extends MatchResult[Nothing]
   }
 
 }

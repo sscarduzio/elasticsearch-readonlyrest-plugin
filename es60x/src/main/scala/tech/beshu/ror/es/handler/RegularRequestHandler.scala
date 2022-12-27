@@ -124,6 +124,7 @@ class RegularRequestHandler(engine: Engine,
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
+           DataStreamRequestBlockContextUpdater |
            TemplateRequestBlockContextUpdater |
            MultiIndexRequestBlockContextUpdater |
            RorApiRequestBlockContextUpdater =>
@@ -142,6 +143,7 @@ class RegularRequestHandler(engine: Engine,
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
+           DataStreamRequestBlockContextUpdater |
            TemplateRequestBlockContextUpdater |
            MultiIndexRequestBlockContextUpdater |
            RorApiRequestBlockContextUpdater =>
@@ -160,6 +162,7 @@ class RegularRequestHandler(engine: Engine,
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
+           DataStreamRequestBlockContextUpdater |
            AliasRequestBlockContextUpdater |
            MultiIndexRequestBlockContextUpdater |
            RorApiRequestBlockContextUpdater =>

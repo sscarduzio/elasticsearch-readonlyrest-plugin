@@ -43,6 +43,7 @@ object LocalUsersContext {
 
     implicit val actionsRule: LocalUsersSupport[ActionsRule] = NotAvailableLocalUsers
     implicit val apiKeyRule: LocalUsersSupport[ApiKeysRule] = NotAvailableLocalUsers
+    implicit val dataStreamsRule: LocalUsersSupport[DataStreamsRule] = NotAvailableLocalUsers
     implicit val externalAuthenticationRule: LocalUsersSupport[ExternalAuthenticationRule] = NotAvailableLocalUsers
     implicit val externalAuthorizationRule: LocalUsersSupport[ExternalAuthorizationRule] = NotAvailableLocalUsers
     implicit val fieldsRule: LocalUsersSupport[FieldsRule] = NotAvailableLocalUsers
