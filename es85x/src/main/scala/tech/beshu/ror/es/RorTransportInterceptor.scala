@@ -31,7 +31,7 @@ class RorTransportInterceptor(threadContext: ThreadContext, nodeName: String)
                                                        request: TransportRequest,
                                                        options: TransportRequestOptions,
                                                        handler: TransportResponseHandler[T]): Unit = {
-        if(Action.isInternal(action)) {
+        if(Action.isInternal(action) || Action.isMonitorState(action)) {
           threadContext.addSystemAuthenticationHeader(nodeName)
         }
         sender.sendRequest(connection, action, request, options, handler)

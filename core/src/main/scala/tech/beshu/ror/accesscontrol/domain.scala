@@ -473,6 +473,7 @@ object domain {
     val putTemplateAction = Action("indices:admin/template/put")
     val putIndexTemplateAction = Action("indices:admin/index_template/put")
     val getSettingsAction = Action("indices:monitor/settings/get")
+    val monitorStateAction = Action("cluster:monitor/state")
     // ROR actions
     val rorUserMetadataAction = Action("cluster:ror/user_metadata/get")
     val rorConfigAction = Action("cluster:ror/config/manage")
@@ -482,6 +483,7 @@ object domain {
     val rorOldConfigAction = Action("cluster:ror/config/refreshsettings")
 
     def isInternal(actionString: String): Boolean = actionString.startsWith("internal:")
+    def isMonitorState(actionString: String): Boolean = monitorStateAction.value == actionString
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
     implicit val caseMappingEqualityAction: CaseMappingEquality[Action] = CaseMappingEquality.instance(_.value, identity)
