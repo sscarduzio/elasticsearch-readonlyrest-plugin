@@ -31,6 +31,7 @@ import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, Search
 import tech.beshu.ror.utils.httpclient.RestClient
 
 import scala.language.postfixOps
+import scala.concurrent.duration._
 
 trait CrossClusterCallsSuite
   extends AnyWordSpec
@@ -117,6 +118,22 @@ trait CrossClusterCallsSuite
           val result = user5SearchManager.search("xpack:xpack*")
           result.responseCode should be(200)
           result.searchHits.arr.size should be(2)
+        }
+        "he searches remote xpack cluster using scroll" in {
+          val result1 = user5SearchManager.searchScroll(
+            size = 1,
+            scroll = 1 minute,
+            "xpack:xpack*"
+          )
+          result1.responseCode should be(200)
+          result1.searchHits.arr.size should be(1)
+
+          val result2 = user5SearchManager.searchScroll(result1.scrollId)
+          result2.responseCode should be(200)
+          result2.searchHits.arr.size should be(1)
+
+          val result3 = user5SearchManager.searchScroll(result1.scrollId)
+          result3.responseCode should be(404)
         }
       }
     }
