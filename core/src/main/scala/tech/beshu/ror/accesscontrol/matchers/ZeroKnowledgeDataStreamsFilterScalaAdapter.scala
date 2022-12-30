@@ -22,10 +22,10 @@ import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 import scala.collection.JavaConverters._
 
 class ZeroKnowledgeDataStreamsFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter)  {
-  def check(repositories: Set[DataStreamName], matcher: Matcher[DataStreamName]): CheckResult = {
+  def check(dataStreams: Set[DataStreamName], matcher: Matcher[DataStreamName]): CheckResult = {
     val processedDataStreams: java.util.Set[String] = scala.collection.mutable.Set.empty[String].asJava
     val result = underlying.alterIndicesIfNecessaryAndCheck(
-      repositories
+      dataStreams
         .collect {
           case DataStreamName.Pattern(v) => v.value
           case DataStreamName.Full(v) => v.value

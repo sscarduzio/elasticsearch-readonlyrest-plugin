@@ -17,8 +17,9 @@
 package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.data.NonEmptySet
-import cats.implicits.{catsKernelStdOrderForInt, catsSyntaxEq}
+import cats.implicits._
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.DataStreamsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
@@ -34,7 +35,8 @@ import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.reso
 import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 class DataStreamsRule(val settings: Settings)
-  extends RegularRule {
+  extends RegularRule
+  with Logging {
 
   override val name: Rule.Name = DataStreamsRule.Name.name
 
@@ -76,7 +78,11 @@ class DataStreamsRule(val settings: Settings)
           Right(processedDataStreams)
         case CheckResult.Ok(processedDataStreams) if processedDataStreams.size === dataStreamsToCheck.size =>
           Right(processedDataStreams)
-        case CheckResult.Ok(_) | CheckResult.Failed =>
+        case CheckResult.Ok(_) =>
+          logger.debug(s"[${requestContext.id.show}] Some of the processed data streams were filtered out by ACL. The request will be rejected..")
+          Left(())
+        case CheckResult.Failed =>
+          logger.debug(s"[${requestContext.id.show}] The processed data streams do not match the allowed data streams. The request will be rejected..")
           Left(())
       }
     }

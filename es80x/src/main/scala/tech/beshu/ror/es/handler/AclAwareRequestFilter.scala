@@ -69,6 +69,7 @@ import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter._
+import tech.beshu.ror.es.handler.request.ActionRequestOps._
 import tech.beshu.ror.es.handler.request.RestRequestOps._
 import tech.beshu.ror.es.handler.request.context.types._
 import tech.beshu.ror.es.handler.request.context.types.datastreams.{ModifyDataStreamsEsRequestContext, ReflectionBasedDataStreamsEsRequestContext}
@@ -166,9 +167,6 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       // data streams
       case request: ModifyDataStreamsAction.Request =>
         regularRequestHandler.handle(new ModifyDataStreamsEsRequestContext(request, esContext, clusterService, threadPool))
-      case _: ActionRequest if isReflectionBasedDataStreamRequest(esContext, aclContext) =>
-        val requestContext = ReflectionBasedDataStreamsEsRequestContext.unapply(ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool)).get
-        regularRequestHandler.handle(requestContext)
       // indices
       case request: GetIndexRequest =>
         regularRequestHandler.handle(new GetIndexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
@@ -209,7 +207,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new RolloverEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: ResolveIndexAction.Request =>
         regularRequestHandler.handle(new ResolveIndexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
-      case request: IndicesRequest.Replaceable =>
+      case request: IndicesRequest.Replaceable if request.notDataStreamRelated =>
         regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: ReindexRequest =>
         regularRequestHandler.handle(new ReindexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
@@ -233,6 +231,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
           // rollup
           case PutRollupJobEsRequestContext(request) => regularRequestHandler.handle(request)
           case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)
+          // data streams
+          case ReflectionBasedDataStreamsEsRequestContext(request) => regularRequestHandler.handle(request)
           // indices based
           case ReflectionBasedIndicesEsRequestContext(request) => regularRequestHandler.handle(request)
           // rest
@@ -241,14 +241,6 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
               new GeneralNonIndexEsRequestContext(esContext.actionRequest, esContext, clusterService, threadPool)
             }
         }
-    }
-  }
-
-  private def isReflectionBasedDataStreamRequest(esContext: EsContext, aclContext: AccessControlStaticContext) = {
-    ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool) match {
-      // data streams
-      case ReflectionBasedDataStreamsEsRequestContext(_) => true
-      case _ => false
     }
   }
 

@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.{MatchResult, tryUpdateDataStreams}
+import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.{ClassCanonicalName, MatchResult, ReflectionBasedDataStreamsEsContextCreator, tryUpdateDataStreams}
 import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
 
 private[datastreams] class DeleteDataStreamEsRequestContext private(actionRequest: ActionRequest,
@@ -57,14 +57,16 @@ private[datastreams] class DeleteDataStreamEsRequestContext private(actionReques
   }
 }
 
-object DeleteDataStreamEsRequestContext {
-  def unapply(arg: ReflectionBasedActionRequest): Option[DeleteDataStreamEsRequestContext] = {
-    ReflectionBasedDataStreamsEsRequestContext
-      .tryMatchActionRequestWithDataStreams(
-        actionRequest = arg.esContext.actionRequest,
-        expectedClassCanonicalName = "org.elasticsearch.xpack.core.action.DeleteDataStreamAction.Request",
-        getDataStreamsMethodName = "getNames"
-      ) match {
+object DeleteDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsContextCreator {
+
+  override val actionRequestClass: ClassCanonicalName =
+    ClassCanonicalName("org.elasticsearch.xpack.core.action.DeleteDataStreamAction.Request")
+
+  override def unapply(arg: ReflectionBasedActionRequest): Option[DeleteDataStreamEsRequestContext] = {
+    tryMatchActionRequestWithDataStreams(
+      actionRequest = arg.esContext.actionRequest,
+      getDataStreamsMethodName = "getNames"
+    ) match {
       case MatchResult.Matched(dataStreams) =>
         Some(new DeleteDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.clusterService, arg.threadPool))
       case MatchResult.NotMatched =>

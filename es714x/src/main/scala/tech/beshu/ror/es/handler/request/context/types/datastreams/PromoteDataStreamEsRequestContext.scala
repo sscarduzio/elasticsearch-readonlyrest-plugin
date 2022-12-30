@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.MatchResult
+import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.{ClassCanonicalName, MatchResult, ReflectionBasedDataStreamsEsContextCreator}
 import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
 
 private[datastreams] class PromoteDataStreamEsRequestContext private(actionRequest: ActionRequest,
@@ -43,14 +43,16 @@ private[datastreams] class PromoteDataStreamEsRequestContext private(actionReque
   }
 }
 
-object PromoteDataStreamEsRequestContext {
-  def unapply(arg: ReflectionBasedActionRequest): Option[PromoteDataStreamEsRequestContext] = {
-    ReflectionBasedDataStreamsEsRequestContext
-      .tryMatchActionRequestWithDataStreams(
-        actionRequest = arg.esContext.actionRequest,
-        expectedClassCanonicalName = "org.elasticsearch.xpack.core.action.PromoteDataStreamAction.Request",
-        getDataStreamsMethodName = "indices"
-      ) match {
+object PromoteDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsContextCreator {
+
+  override val actionRequestClass: ClassCanonicalName =
+    ClassCanonicalName("org.elasticsearch.xpack.core.action.PromoteDataStreamAction.Request")
+
+  override def unapply(arg: ReflectionBasedActionRequest): Option[PromoteDataStreamEsRequestContext] = {
+    tryMatchActionRequestWithDataStreams(
+      actionRequest = arg.esContext.actionRequest,
+      getDataStreamsMethodName = "indices"
+    ) match {
       case MatchResult.Matched(dataStreams) =>
         Some(new PromoteDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.clusterService, arg.threadPool))
       case MatchResult.NotMatched =>

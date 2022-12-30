@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{RepositoryRequestBlockContext, _}
 import tech.beshu.ror.accesscontrol.blocks.rules.RepositoriesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
@@ -34,7 +35,8 @@ import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.reso
 import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 class RepositoriesRule(val settings: Settings)
-  extends RegularRule {
+  extends RegularRule
+  with Logging {
 
   override val name: Rule.Name = RepositoriesRule.Name.name
 
@@ -87,7 +89,11 @@ class RepositoriesRule(val settings: Settings)
           Right(processedRepositories)
         case CheckResult.Ok(processedRepositories) if processedRepositories.size === repositoriesToCheck.size =>
           Right(processedRepositories)
-        case CheckResult.Ok(_) | CheckResult.Failed =>
+        case CheckResult.Ok(_) =>
+          logger.debug(s"[${requestContext.id.show}] Some of the processed repositories were filtered out by ACL. The request will be rejected..")
+          Left(())
+        case CheckResult.Failed =>
+          logger.debug(s"[${requestContext.id.show}] The processed repositories do not match the allowed repositories. The request will be rejected..")
           Left(())
       }
     }

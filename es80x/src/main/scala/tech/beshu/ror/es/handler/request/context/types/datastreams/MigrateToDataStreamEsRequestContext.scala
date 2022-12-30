@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.MatchResult
+import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.{ClassCanonicalName, MatchResult, ReflectionBasedDataStreamsEsContextCreator}
 import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
 
 class MigrateToDataStreamEsRequestContext(actionRequest: ActionRequest,
@@ -46,14 +46,16 @@ class MigrateToDataStreamEsRequestContext(actionRequest: ActionRequest,
 
 }
 
-object MigrateToDataStreamEsRequestContext {
-  def unapply(arg: ReflectionBasedActionRequest): Option[MigrateToDataStreamEsRequestContext] = {
-    ReflectionBasedDataStreamsEsRequestContext
-      .tryMatchActionRequestWithIndices(
-        actionRequest = arg.esContext.actionRequest,
-        expectedClassCanonicalName = "org.elasticsearch.xpack.core.MigrateToDataStreamAction.Request",
-        getIndicesMethodName = "indices"
-      ) match {
+object MigrateToDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsContextCreator {
+
+  override val actionRequestClass: ClassCanonicalName =
+    ClassCanonicalName("org.elasticsearch.xpack.core.MigrateToDataStreamAction.Request")
+
+  override def unapply(arg: ReflectionBasedActionRequest): Option[MigrateToDataStreamEsRequestContext] = {
+    tryMatchActionRequestWithIndices(
+      actionRequest = arg.esContext.actionRequest,
+      getIndicesMethodName = "indices"
+    ) match {
       case MatchResult.Matched(indices) =>
         Some(new MigrateToDataStreamEsRequestContext(arg.esContext.actionRequest, indices, arg.esContext, arg.clusterService, arg.threadPool))
       case MatchResult.NotMatched =>

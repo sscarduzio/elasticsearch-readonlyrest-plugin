@@ -16,10 +16,13 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
+import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
+import tech.beshu.ror.utils.elasticsearch.DataStreamManager.GetDataStreamResult
 import tech.beshu.ror.utils.httpclient.RestClient
+import ujson.Value
 
 class DataStreamManager(client: RestClient) extends BaseManager(client) {
 
@@ -28,14 +31,14 @@ class DataStreamManager(client: RestClient) extends BaseManager(client) {
     call(request, new JsonResponse(_))
   }
 
-  def getAllDataStreams(): JsonResponse = {
+  def getAllDataStreams(): GetDataStreamResult = {
     val request = new HttpGet(client.from(s"/_data_stream/"))
-    call(request, new JsonResponse(_))
+    call(request, new GetDataStreamResult(_))
   }
 
-  def getDataStream(name: String): JsonResponse = {
+  def getDataStream(name: String): GetDataStreamResult = {
     val request = new HttpGet(client.from(s"/_data_stream/$name"))
-    call(request, new JsonResponse(_))
+    call(request, new GetDataStreamResult(_))
   }
 
   def getDataStreamStats(name: String): JsonResponse = {
@@ -58,5 +61,11 @@ class DataStreamManager(client: RestClient) extends BaseManager(client) {
     request.setHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(body)))
     call(request, new JsonResponse(_))
+  }
+}
+
+object DataStreamManager {
+  class GetDataStreamResult(response: HttpResponse) extends JsonResponse(response) {
+    lazy val dataStreams: List[Value] = responseJson("data_streams").arr.toList
   }
 }

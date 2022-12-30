@@ -25,45 +25,27 @@ import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequest
 import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
 
 object ReflectionBasedDataStreamsEsRequestContext {
 
   def unapply(arg: ReflectionBasedActionRequest): Option[BaseDataStreamsEsRequestContext[ActionRequest]] = {
-    CreateDataStreamEsRequestContext.unapply(arg)
-      .orElse(DataStreamsStatsEsRequestContext.unapply(arg))
-      .orElse(DeleteDataStreamEsRequestContext.unapply(arg))
-      .orElse(GetDataStreamEsRequestContext.unapply(arg))
+    esContextCreators
+      .toStream
+      .flatMap(_.unapply(arg))
+      .headOption
   }
 
-  private[datastreams] def tryMatchActionRequestWithDataStreams(actionRequest: ActionRequest,
-                                                                expectedClassCanonicalName: String,
-                                                                getDataStreamsMethodName: String): MatchResult[DataStreamName] = {
-    tryMatchActionRequest[DataStreamName](
-      actionRequest = actionRequest,
-      expectedClassCanonicalName = expectedClassCanonicalName,
-      getPropsMethodName = getDataStreamsMethodName,
-      toDomain = DataStreamName.fromString
-    )
-  }
+  val supportedActionRequests: Set[ClassCanonicalName] = esContextCreators.map(_.actionRequestClass).toSet
 
-  private def tryMatchActionRequest[A](actionRequest: ActionRequest,
-                                       expectedClassCanonicalName: String,
-                                       getPropsMethodName: String,
-                                       toDomain: String => Option[A]): MatchResult[A] = {
-    Option(actionRequest.getClass.getCanonicalName)
-      .find(_ == expectedClassCanonicalName)
-      .map { _ =>
-        Matched.apply[A] {
-          extractStringArrayFromPrivateMethod(getPropsMethodName, actionRequest)
-            .asSafeList
-            .toSet
-            .flatMap((value: String) => toDomain(value))
-        }
-      }
-      .getOrElse(NotMatched)
-  }
+  private lazy val esContextCreators: UniqueNonEmptyList[ReflectionBasedDataStreamsEsContextCreator] = UniqueNonEmptyList.of(
+    CreateDataStreamEsRequestContext,
+    DataStreamsStatsEsRequestContext,
+    DeleteDataStreamEsRequestContext,
+    GetDataStreamEsRequestContext,
+  )
 
   private[datastreams] def tryUpdateDataStreams[R <: ActionRequest](actionRequest: R,
                                                                     dataStreamsFieldName: String,
@@ -83,6 +65,40 @@ object ReflectionBasedDataStreamsEsRequestContext {
     final case class Matched[A](extracted: Set[A]) extends MatchResult[A]
 
     object NotMatched extends MatchResult[Nothing]
+  }
+
+  final case class ClassCanonicalName(value: String) extends AnyVal
+
+  private[datastreams] trait ReflectionBasedDataStreamsEsContextCreator {
+    def actionRequestClass: ClassCanonicalName
+
+    def unapply(arg: ReflectionBasedActionRequest): Option[BaseDataStreamsEsRequestContext[ActionRequest]]
+
+    protected def tryMatchActionRequestWithDataStreams(actionRequest: ActionRequest,
+                                                       getDataStreamsMethodName: String): MatchResult[DataStreamName] = {
+      tryMatchActionRequest[DataStreamName](
+        actionRequest = actionRequest,
+        getPropsMethodName = getDataStreamsMethodName,
+        toDomain = DataStreamName.fromString
+      )
+    }
+
+    private def tryMatchActionRequest[A](actionRequest: ActionRequest,
+                                         getPropsMethodName: String,
+                                         toDomain: String => Option[A]): MatchResult[A] = {
+      Option(actionRequest.getClass.getCanonicalName)
+        .find(_ === actionRequestClass.value)
+        .map { _ =>
+          Matched.apply[A] {
+            extractStringArrayFromPrivateMethod(getPropsMethodName, actionRequest)
+              .asSafeList
+              .toSet
+              .flatMap((value: String) => toDomain(value))
+          }
+        }
+        .getOrElse(NotMatched)
+    }
+
   }
 
 }
