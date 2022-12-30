@@ -36,7 +36,7 @@ import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 class DataStreamsRule(val settings: Settings)
   extends RegularRule
-  with Logging {
+    with Logging {
 
   override val name: Rule.Name = DataStreamsRule.Name.name
 
@@ -78,8 +78,12 @@ class DataStreamsRule(val settings: Settings)
           Right(processedDataStreams)
         case CheckResult.Ok(processedDataStreams) if processedDataStreams.size === dataStreamsToCheck.size =>
           Right(processedDataStreams)
-        case CheckResult.Ok(_) =>
-          logger.debug(s"[${requestContext.id.show}] Some of the processed data streams were filtered out by ACL. The request will be rejected..")
+        case CheckResult.Ok(processedDataStreams) =>
+          val filteredOutDataStreams = dataStreamsToCheck.diff(processedDataStreams).map(_.show)
+          logger.debug(
+            s"[${requestContext.id.show}] Write request with data streams cannot proceed because some of the data streams " +
+              s"[${filteredOutDataStreams.toList.mkString_(",")}] were filtered out by ACL. The request will be rejected.."
+          )
           Left(())
         case CheckResult.Failed =>
           logger.debug(s"[${requestContext.id.show}] The processed data streams do not match the allowed data streams. The request will be rejected..")

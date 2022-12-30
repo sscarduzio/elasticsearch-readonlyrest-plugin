@@ -97,7 +97,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
           createDocsInDataStream(adminDataStream, 1)
 
           val allDataStreamsResponse = adminDataStreamManager.getAllDataStreams().force()
-          val indicesNames = allDataStreamsResponse.dataStreams.head("indices").arr.map(v => v("index_name").str)
+          val indicesNames = allDataStreamsResponse.responseJson("data_streams").arr.head("indices").arr.map(v => v("index_name").str)
           indicesNames.foreach { indexName =>
             val response = adminSearchManager.searchAll(indexName)
             response.totalHits should be(1)
@@ -157,7 +157,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
             }
 
           val searchManager = new SearchManager(user3Client)
-          val dataStreamsJson = adminDataStreamManager.getAllDataStreams().force().dataStreams
+          val dataStreamsJson = adminDataStreamManager.getAllDataStreams().force().responseJson("data_streams").arr
 
           def findIndicesForDataStream(name: String) =
             dataStreamsJson
@@ -178,7 +178,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
           }
         }
       }
-      "with data_streams rule should" - {
+      "with data_streams rule should" ignore { // todo enable when search request will be aware of data streams in ACL
         "allow to search by data stream name" excludeES(allEs6x, allEs7xBelowEs79x) in {
           List(
             (adminDataStream, 4),
@@ -210,13 +210,14 @@ trait DataStreamApiSuite extends AnyFreeSpec
         }
         "allow to search by data stream name with wildcard" excludeES(allEs6x, allEs7xBelowEs79x) in {
           adminTemplateManager.createTemplate(IndexTemplateNameGenerator.next, indexTemplate(adminDataStream)).force()
+          adminTemplateManager.createTemplate(IndexTemplateNameGenerator.next, indexTemplate(testDataStream)).force()
 
           List(
             s"$adminDataStream-x0",
-            s"$adminDataStream-x1",
-            s"$adminDataStream-x2",
+            s"$testDataStream-x1",
+            s"$testDataStream-x2",
             s"$adminDataStream-x10",
-            s"$adminDataStream-x11",
+            s"$testDataStream-x11",
           ).foreach { dataStream =>
             adminDataStreamManager.createDataStream(dataStream).force()
             createDocsInDataStream(dataStream, 1)
@@ -224,15 +225,12 @@ trait DataStreamApiSuite extends AnyFreeSpec
 
           val searchManager = new SearchManager(user1Client)
 
-          List(
-            ("data-stream*", 5),
-            (s"$adminDataStream*", 5),
-            (s"$adminDataStream-x1*", 3),
-          )
-            .foreach { case (dataStream, expectedHits) =>
-              val response = searchManager.searchAll(dataStream)
-              response.totalHits should be(expectedHits)
-            }
+          val response1 = searchManager.searchAll("data-stream*")
+          response1.totalHits should be(3)
+          val response2 = searchManager.searchAll(s"$adminDataStream*")
+          response2.responseCode should be(401)
+          val response3 = searchManager.searchAll(s"$testDataStream-x1*")
+          response3.totalHits should be(2)
         }
       }
     }
@@ -293,7 +291,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
 
             val response = adminDataStreamManager.getAllDataStreams()
             response.responseCode should be(200)
-            response.dataStreams.map(v => v("name").str).toSet should be(Set(dataStream1, dataStream2))
+            response.responseJson("data_streams").arr.map(v => v("name").str).toSet should be(Set(dataStream1, dataStream2))
           }
         }
         "with data_streams rule should" - {
@@ -306,7 +304,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
               val dsm = new DataStreamManager(user2Client)
               val response = dsm.getAllDataStreams()
               response.responseCode should be(200)
-              response.dataStreams.map(v => v("name").str).toSet should be(Set(dataStream))
+              response.responseJson("data_streams").arr.map(v => v("name").str).toSet should be(Set(dataStream))
             }
             "wildcard data stream matching" excludeES(allEs6x, allEs7xBelowEs79x) in {
               val dataStream1 = DataStreamNameGenerator.next("test")
@@ -319,7 +317,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
               val dsm = new DataStreamManager(user1Client)
               val response = dsm.getAllDataStreams()
               response.responseCode should be(200)
-              response.dataStreams.map(v => v("name").str).toSet should be(Set(dataStream1, dataStream2))
+              response.responseJson("data_streams").arr.map(v => v("name").str).toSet should be(Set(dataStream1, dataStream2))
             }
           }
         }
@@ -335,7 +333,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
               val dsm = new DataStreamManager(user4Client)
               val response = dsm.getAllDataStreams()
               response.responseCode should be(200)
-              response.dataStreams.map(v => v("name").str).toSet should be(Set(dataStream1, dataStream2))
+              response.responseJson("data_streams").arr.map(v => v("name").str).toSet should be(Set(dataStream1, dataStream2))
             }
             "user has access to all backing indices" excludeES(allEs6x, allEs7xBelowEs79x) in {
               val dataStream1 = DataStreamNameGenerator.next("admin")
@@ -347,7 +345,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
               val dsm = new DataStreamManager(user4Client)
               val response = dsm.getAllDataStreams()
               response.responseCode should be(200)
-              response.dataStreams.map(v => v("name").str).toSet should be(Set(dataStream1, dataStream2))
+              response.responseJson("data_streams").arr.map(v => v("name").str).toSet should be(Set(dataStream1, dataStream2))
             }
             "user has access to certain backing indices" excludeES(allEs6x, allEs7xBelowEs79x) in {
               val dataStream1 = DataStreamNameGenerator.next("dev")
@@ -361,7 +359,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
               val dsm = new DataStreamManager(user3Client)
               val response = dsm.getAllDataStreams()
               response.responseCode should be(200)
-              response.dataStreams.map(v => v("name").str).toSet should be(Set(dataStream1, dataStream2))
+              response.responseJson("data_streams").arr.map(v => v("name").str).toSet should be(Set(dataStream1, dataStream2))
             }
           }
           "return empty list of data streams when" - {
@@ -372,7 +370,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
               val dsm = new DataStreamManager(user1Client)
               val response = dsm.getAllDataStreams()
               response.responseCode should be(200)
-              response.dataStreams.map(v => v("name").str).toSet should be(Set.empty)
+              response.responseJson("data_streams").arr.map(v => v("name").str).toSet should be(Set.empty)
             }
           }
         }
@@ -388,7 +386,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
 
             val response = adminDataStreamManager.getAllDataStreams()
             response.responseCode should be(200)
-            response.dataStreams.map(v => v("name").str).toSet should be(Set(dataStream1, dataStream2))
+            response.responseJson("data_streams").arr.map(v => v("name").str).toSet should be(Set(dataStream1, dataStream2))
           }
         }
         "with data_streams rule should" - {
@@ -400,7 +398,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
             val dsm = new DataStreamManager(user2Client)
             val response = dsm.getDataStream(dataStream)
             response.responseCode should be(200)
-            response.dataStreams.map(v => v("name").str).toSet should be(Set(dataStream))
+            response.responseJson("data_streams").arr.map(v => v("name").str).toSet should be(Set(dataStream))
           }
           "wildcard data stream matching" excludeES(allEs6x, allEs7xBelowEs79x) in {
             val dataStream1 = DataStreamNameGenerator.next("test")
@@ -413,7 +411,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
             val dsm = new DataStreamManager(user1Client)
             val response = dsm.getDataStream(dataStream1)
             response.responseCode should be(200)
-            response.dataStreams.map(v => v("name").str).toSet should be(Set(dataStream1))
+            response.responseJson("data_streams").arr.map(v => v("name").str).toSet should be(Set(dataStream1))
           }
         }
         "with indices rule should" - {
@@ -425,7 +423,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
               val dsm = new DataStreamManager(user3Client)
               val response = dsm.getDataStream(dataStream)
               response.responseCode should be(200)
-              response.dataStreams.map(v => v("name").str).toSet should be(Set(dataStream))
+              response.responseJson("data_streams").arr.map(v => v("name").str).toSet should be(Set(dataStream))
             }
           }
           "return empty data streams when" - {
@@ -436,7 +434,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
               val dsm = new DataStreamManager(user3Client)
               val response = dsm.getDataStream(dataStream)
               response.responseCode should be(200)
-              response.dataStreams.map(v => v("name").str).toSet should be(Set.empty)
+              response.responseJson("data_streams").arr.map(v => v("name").str).toSet should be(Set.empty)
             }
           }
         }
@@ -503,7 +501,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
             val response = dsm.deleteDataStream(dataStream)
             response.responseCode should be(200)
           }
-          "wildcard data stream matching" in {
+          "wildcard data stream matching" excludeES(allEs6x, allEs7xBelowEs79x) in {
             val dataStream1 = DataStreamNameGenerator.next("test")
             val dataStream2 = DataStreamNameGenerator.next("test")
             createDataStream(dataStream1, IndexTemplateNameGenerator.next)
@@ -829,10 +827,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
     adminDataStreamManager
       .getDataStream(streamName)
       .force()
-      .dataStreams
-      .head("indices").arr
-      .map(_("index_name").str)
-      .toList
+      .backingIndices
   }
 
   private def indexTemplate(dataStreamName: String) = ujson.read(

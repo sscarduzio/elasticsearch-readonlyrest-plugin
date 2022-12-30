@@ -22,7 +22,6 @@ import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.elasticsearch.DataStreamManager.GetDataStreamResult
 import tech.beshu.ror.utils.httpclient.RestClient
-import ujson.Value
 
 class DataStreamManager(client: RestClient) extends BaseManager(client) {
 
@@ -31,9 +30,9 @@ class DataStreamManager(client: RestClient) extends BaseManager(client) {
     call(request, new JsonResponse(_))
   }
 
-  def getAllDataStreams(): GetDataStreamResult = {
+  def getAllDataStreams(): JsonResponse = {
     val request = new HttpGet(client.from(s"/_data_stream/"))
-    call(request, new GetDataStreamResult(_))
+    call(request, new JsonResponse(_))
   }
 
   def getDataStream(name: String): GetDataStreamResult = {
@@ -66,6 +65,11 @@ class DataStreamManager(client: RestClient) extends BaseManager(client) {
 
 object DataStreamManager {
   class GetDataStreamResult(response: HttpResponse) extends JsonResponse(response) {
-    lazy val dataStreams: List[Value] = responseJson("data_streams").arr.toList
+    
+    def backingIndices: List[String] =
+      responseJson("data_streams").arr
+        .head("indices").arr
+        .map(_("index_name").str)
+        .toList
   }
 }

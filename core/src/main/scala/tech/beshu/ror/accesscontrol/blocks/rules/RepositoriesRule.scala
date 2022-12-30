@@ -36,7 +36,7 @@ import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 class RepositoriesRule(val settings: Settings)
   extends RegularRule
-  with Logging {
+    with Logging {
 
   override val name: Rule.Name = RepositoriesRule.Name.name
 
@@ -89,8 +89,12 @@ class RepositoriesRule(val settings: Settings)
           Right(processedRepositories)
         case CheckResult.Ok(processedRepositories) if processedRepositories.size === repositoriesToCheck.size =>
           Right(processedRepositories)
-        case CheckResult.Ok(_) =>
-          logger.debug(s"[${requestContext.id.show}] Some of the processed repositories were filtered out by ACL. The request will be rejected..")
+        case CheckResult.Ok(processedRepositories) =>
+          val filteredOutRepositories = repositoriesToCheck.diff(processedRepositories).map(_.show)
+          logger.debug(
+            s"[${requestContext.id.show}] Write request with repositories cannot proceed because some of the repositories " +
+              s"[${filteredOutRepositories.toList.mkString_(",")}] were filtered out by ACL. The request will be rejected.."
+          )
           Left(())
         case CheckResult.Failed =>
           logger.debug(s"[${requestContext.id.show}] The processed repositories do not match the allowed repositories. The request will be rejected..")
