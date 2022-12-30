@@ -119,7 +119,7 @@ trait CrossClusterCallsSuite
           result.responseCode should be(200)
           result.searchHits.arr.size should be(2)
         }
-        "he searches remote xpack cluster using scroll" in {
+        "he searches remote xpack cluster using scroll" excludeES (allEs6xExceptEs67x) in {
           val result1 = user5SearchManager.searchScroll(
             size = 1,
             scroll = 1 minute,
