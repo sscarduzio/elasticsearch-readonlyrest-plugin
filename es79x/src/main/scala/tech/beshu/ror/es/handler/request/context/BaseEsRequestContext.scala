@@ -143,4 +143,8 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
   protected def snapshotsOrWildcard(snapshots: Set[SnapshotName]): Set[SnapshotName] = {
     if (snapshots.nonEmpty) snapshots else Set(SnapshotName.all)
   }
+
+  protected def dataStreamsOrWildcard(dataStreams: Set[DataStreamName]): Set[DataStreamName] = {
+    if (dataStreams.nonEmpty) dataStreams else Set(DataStreamName.all)
+  }
 }

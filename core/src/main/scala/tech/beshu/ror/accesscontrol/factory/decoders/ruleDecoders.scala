@@ -73,6 +73,7 @@ object ruleDecoders {
       case RepositoriesRule.Name.name => Some(RepositoriesRuleDecoder)
       case SessionMaxIdleRule.Name.name => Some(new SessionMaxIdleRuleDecoder())
       case SnapshotsRule.Name.name => Some(SnapshotsRuleDecoder)
+      case DataStreamsRule.Name.name => Some(DataStreamsRuleDecoder)
       case UriRegexRule.Name.name => Some(UriRegexRuleDecoder)
       case UsersRule.Name.name => Some(new UsersRuleDecoder()(caseMappingEquality))
       case XForwardedForRule.Name.name => Some(XForwardedForRuleDecoder)

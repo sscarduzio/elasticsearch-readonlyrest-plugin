@@ -16,9 +16,11 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
+import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
+import tech.beshu.ror.utils.elasticsearch.DataStreamManager._
 import tech.beshu.ror.utils.httpclient.RestClient
 
 class DataStreamManager(client: RestClient) extends BaseManager(client) {
@@ -28,19 +30,19 @@ class DataStreamManager(client: RestClient) extends BaseManager(client) {
     call(request, new JsonResponse(_))
   }
 
-  def getAllDataStreams(): JsonResponse = {
+  def getAllDataStreams(): GetAllDataStreamsResult = {
     val request = new HttpGet(client.from(s"/_data_stream/"))
-    call(request, new JsonResponse(_))
+    call(request, new GetAllDataStreamsResult(_))
   }
 
-  def getDataStream(name: String): JsonResponse = {
+  def getDataStream(name: String): GetDataStreamResult = {
     val request = new HttpGet(client.from(s"/_data_stream/$name"))
-    call(request, new JsonResponse(_))
+    call(request, new GetDataStreamResult(_))
   }
 
-  def getDataStreamStats(name: String): JsonResponse = {
+  def getDataStreamStats(name: String): DataStreamStatsResult = {
     val request = new HttpGet(client.from(s"/_data_stream/$name/_stats"))
-    call(request, new JsonResponse(_))
+    call(request, new DataStreamStatsResult(_))
   }
 
   def deleteDataStream(name: String): JsonResponse = {
@@ -58,5 +60,48 @@ class DataStreamManager(client: RestClient) extends BaseManager(client) {
     request.setHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(body)))
     call(request, new JsonResponse(_))
+  }
+}
+
+object DataStreamManager {
+
+  class GetAllDataStreamsResult(response: HttpResponse) extends JsonResponse(response) {
+
+    def allBackingIndices: List[String] = {
+      dataStreamWithBackingIndices.values.flatten.toList
+    }
+
+    def allDataStreams: List[String] = {
+      dataStreamWithBackingIndices.keys.toList
+    }
+
+    def backingIndicesByDataStream(dataStream: String): List[String] = {
+      dataStreamWithBackingIndices(dataStream)
+    }
+
+    private lazy val dataStreamWithBackingIndices: Map[String, List[String]] =
+      responseJson("data_streams").arr
+        .map { dataStream =>
+          (
+            dataStream("name").str,
+            dataStream("indices").arr.map(_("index_name").str).toList
+          )
+        }
+        .toMap
+  }
+
+
+  class GetDataStreamResult(response: HttpResponse) extends GetAllDataStreamsResult(response) {
+
+    def dataStreamName: String = allDataStreams.head
+
+    def backingIndices: List[String] = allBackingIndices
+  }
+
+  class DataStreamStatsResult(response: HttpResponse) extends JsonResponse(response) {
+
+    def dataStreamsCount: Int = responseJson("data_stream_count").num.toInt
+
+    def backingIndicesCount: Int = responseJson("backing_indices").num.toInt
   }
 }

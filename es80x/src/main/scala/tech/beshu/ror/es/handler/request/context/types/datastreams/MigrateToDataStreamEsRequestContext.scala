@@ -18,33 +18,46 @@ package tech.beshu.ror.es.handler.request.context.types.datastreams
 
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.request.context.types.ReflectionBasedActionRequest
-import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.MatchResult
+import tech.beshu.ror.es.handler.request.context.ModificationResult
+import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.{ClassCanonicalName, MatchResult, ReflectionBasedDataStreamsEsContextCreator}
+import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
 
 class MigrateToDataStreamEsRequestContext(actionRequest: ActionRequest,
                                           indices: Set[ClusterIndexName],
                                           esContext: EsContext,
-                                          aclContext: AccessControlStaticContext,
                                           clusterService: RorClusterService,
                                           override val threadPool: ThreadPool)
-  extends BaseWriteDataStreamsEsRequestContext(actionRequest, indices, esContext, aclContext, clusterService, threadPool) {
+  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+
+  override protected def dataStreamsFrom(request: ActionRequest): Set[domain.DataStreamName] = Set.empty
+
+  override protected def backingIndicesFrom(request: ActionRequest): BackingIndices =
+    BackingIndices.IndicesInvolved(indices, allAllowedIndices = Set(ClusterIndexName.Local.wildcard))
+
+  override protected def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
+    ModificationResult.Modified // data stream and indices already processed by ACL
+  }
 
 }
 
-object MigrateToDataStreamEsRequestContext {
-  def unapply(arg: ReflectionBasedActionRequest): Option[MigrateToDataStreamEsRequestContext] = {
-    ReflectionBasedDataStreamsEsRequestContext
-      .tryMatchActionRequest(
-        actionRequest = arg.esContext.actionRequest,
-        expectedClassCanonicalName = "org.elasticsearch.xpack.core.MigrateToDataStreamAction.Request",
-        getIndicesMethodName = "indices"
-      ) match {
+object MigrateToDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsContextCreator {
+
+  override val actionRequestClass: ClassCanonicalName =
+    ClassCanonicalName("org.elasticsearch.xpack.core.MigrateToDataStreamAction.Request")
+
+  override def unapply(arg: ReflectionBasedActionRequest): Option[MigrateToDataStreamEsRequestContext] = {
+    tryMatchActionRequestWithIndices(
+      actionRequest = arg.esContext.actionRequest,
+      getIndicesMethodName = "indices"
+    ) match {
       case MatchResult.Matched(indices) =>
-        Some(new MigrateToDataStreamEsRequestContext(arg.esContext.actionRequest, indices, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
+        Some(new MigrateToDataStreamEsRequestContext(arg.esContext.actionRequest, indices, arg.esContext, arg.clusterService, arg.threadPool))
       case MatchResult.NotMatched =>
         None
     }
