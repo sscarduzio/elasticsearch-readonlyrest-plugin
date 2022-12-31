@@ -31,7 +31,6 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Action._
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.{Local, Remote}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
@@ -40,6 +39,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.accesscontrol.matchers.{IndicesNamesMatcher, MatcherWithWildcardsScalaAdapter, TemplateNamePatternMatcher, UniqueIdentifierGenerator}
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.CaseMappingEquality
@@ -902,8 +902,47 @@ object domain {
       case Wildcard => "*"
     }
 
-    implicit val eqRepository: Eq[SnapshotName] = Eq.fromUniversalEquals
+    implicit val eqSnapshotName: Eq[SnapshotName] = Eq.fromUniversalEquals
     implicit val caseMappingEqualitySnapshotName: CaseMappingEquality[SnapshotName] = CaseMappingEquality.instance(
+      {
+        case Full(value) => value.value
+        case Pattern(value) => value.value
+        case All => "*"
+        case Wildcard => "*"
+      },
+      identity
+    )
+  }
+
+  sealed trait DataStreamName
+  object DataStreamName {
+    final case class Full private(value: NonEmptyString) extends DataStreamName
+    final case class Pattern private(value: NonEmptyString) extends DataStreamName
+    case object All extends DataStreamName
+    case object Wildcard extends DataStreamName
+
+    def all: DataStreamName = DataStreamName.All
+
+    def wildcard: DataStreamName = DataStreamName.Wildcard
+
+    def fromString(value: String): Option[DataStreamName] = {
+      NonEmptyString.unapply(value).map {
+        case Refined("_all") => All
+        case Refined("*") => Wildcard
+        case v if v.contains("*") => Pattern(NonEmptyString.unsafeFrom(v))
+        case v => Full(NonEmptyString.unsafeFrom(v))
+      }
+    }
+
+    def toString(dataStreamName: DataStreamName): String = dataStreamName match {
+      case Full(value) => value.value
+      case Pattern(value) => value.value
+      case All => "_all"
+      case Wildcard => "*"
+    }
+
+    implicit val eqDataStreamName: Eq[DataStreamName] = Eq.fromUniversalEquals
+    implicit val caseMappingEqualityDataStreamName: CaseMappingEquality[DataStreamName] = CaseMappingEquality.instance(
       {
         case Full(value) => value.value
         case Pattern(value) => value.value

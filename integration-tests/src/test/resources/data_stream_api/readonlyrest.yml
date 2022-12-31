@@ -8,7 +8,7 @@ readonlyrest:
 
     - name: "User1 access streams"
       auth_key: "user1:pass"
-      indices:
+      data_streams:
         - 'data-stream-test*'
       actions:
         - indices:admin/data_stream/*
@@ -18,16 +18,15 @@ readonlyrest:
 
     - name: "User2 access streams"
       auth_key: "user2:pass"
-      indices:
-        - 'data-stream-dev*'
-        - 'data-stream-test*'
+      data_streams:
+        - 'data-stream-prod'
       actions:
         - indices:admin/data_stream/*
         - indices:monitor/data_stream/*
         - indices:data/read/*
         - cluster:monitor/main
 
-    - name: "User3 access streams index"
+    - name: "User3 access indices"
       auth_key: "user3:pass"
       indices:
         - '.ds-data-stream-dev*'
@@ -38,10 +37,32 @@ readonlyrest:
         - indices:data/read/*
         - cluster:monitor/main
 
-    - name: "User4 access streams"
+    - name: "User4 access indices"
       auth_key: "user4:pass"
       indices:
         - '*'
+      actions:
+        - indices:admin/data_stream/*
+        - indices:monitor/data_stream/*
+        - indices:data/read/*
+        - cluster:monitor/main
+
+    - name: "User5 access indices"
+      auth_key: "user5:pass"
+      indices:
+        - 'data-stream-dev*'
+        - 'data-stream-test*'
+      actions:
+        - indices:admin/data_stream/*
+        - indices:monitor/data_stream/*
+        - indices:data/read/*
+        - cluster:monitor/main
+
+    - name: "User6 access streams"
+      auth_key: "user5:pass"
+      data_streams:
+        - 'data-stream-dev*'
+        - 'data-stream-test*'
       actions:
         - indices:admin/data_stream/*
         - indices:monitor/data_stream/*

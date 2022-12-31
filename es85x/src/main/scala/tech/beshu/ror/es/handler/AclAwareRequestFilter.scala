@@ -164,19 +164,19 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new IndicesAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       // data streams
       case request: CreateDataStreamAction.Request =>
-        regularRequestHandler.handle(new CreateDataStreamEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new CreateDataStreamEsRequestContext(request, esContext, clusterService, threadPool))
       case request: DataStreamsStatsAction.Request =>
-        regularRequestHandler.handle(new DataStreamsStatsEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new DataStreamsStatsEsRequestContext(request, esContext, clusterService, threadPool))
       case request: DeleteDataStreamAction.Request =>
-        regularRequestHandler.handle(new DeleteDataStreamEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new DeleteDataStreamEsRequestContext(request, esContext, clusterService, threadPool))
       case request: GetDataStreamAction.Request =>
-        regularRequestHandler.handle(new GetDataStreamEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new GetDataStreamEsRequestContext(request, esContext, clusterService, threadPool))
       case request: MigrateToDataStreamAction.Request =>
-        regularRequestHandler.handle(new MigrateToDataStreamEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new MigrateToDataStreamEsRequestContext(request, esContext, clusterService, threadPool))
       case request: ModifyDataStreamsAction.Request =>
-        regularRequestHandler.handle(new ModifyDataStreamsEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new ModifyDataStreamsEsRequestContext(request, esContext, clusterService, threadPool))
       case request: PromoteDataStreamAction.Request =>
-        regularRequestHandler.handle(new PromoteDataStreamEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new PromoteDataStreamEsRequestContext(request, esContext, clusterService, threadPool))
       // indices
       case request: GetIndexRequest =>
         regularRequestHandler.handle(new GetIndexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
