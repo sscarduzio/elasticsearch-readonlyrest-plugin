@@ -34,7 +34,7 @@ object FieldsFiltering {
   final case class NewFilteredDocumentFields[T](nonMetadataDocumentFields: NonMetadataDocumentFields[T],
                                                 metadataDocumentFields: MetadataDocumentFields[T])
 
-  def filterSource(sourceAsMap: Map[String, _],
+  def filterSource(sourceAsMap: Map[String, AnyRef],
                    fieldsRestrictions: FieldsRestrictions): NewFilteredSource = {
     val (excluding, including) = splitFieldsByAccessMode(fieldsRestrictions)
     val filteredSource = XContentMapValues.filter(sourceAsMap.asJava, including.toArray, excluding.toArray)
