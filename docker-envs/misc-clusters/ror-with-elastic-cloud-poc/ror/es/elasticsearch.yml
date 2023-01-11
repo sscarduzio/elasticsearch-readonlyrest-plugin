@@ -1,0 +1,10 @@
+cluster.name: ror-cluster
+node.name: ror-es01
+network.host: 0.0.0.0
+
+xpack.security.enabled: false
+transport.type: ror_ssl_internode
+
+cluster.remote.escloud.mode: proxy
+cluster.remote.escloud.proxy_address: '${ES_CLOUD_PROXY_ADDRESS}'
+cluster.remote.escloud.server_name: '${ES_CLOUD_SERVER_NAME}'
