@@ -19,13 +19,14 @@ package tech.beshu.ror.es.services
 import java.util.function.Supplier
 import cats.data.NonEmptyList
 import cats.implicits._
+import cats.kernel.Monoid
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.CancelablePromise
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
-import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.ResolvedIndex
+import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{ResolvedAlias, ResolvedIndex}
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
 import org.elasticsearch.action.support.PlainActionFuture
 import org.elasticsearch.client.internal.Client
@@ -39,6 +40,7 @@ import org.elasticsearch.search.internal.ReaderContext
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -68,7 +70,7 @@ class EsServerBasedRorClusterService(nodeName: String,
 
   override def allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
     val metadata = clusterService.state.metadata
-    extractIndicesAndAliasesFrom(metadata) ++ extractDataStreamsIndicesAndAliasesFrom(metadata)
+    extractIndicesAndAliasesFrom(metadata)
   }
 
   override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = {
@@ -79,6 +81,19 @@ class EsServerBasedRorClusterService(nodeName: String,
         Task.now(Set.empty)
     }
   }
+
+  override def allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = {
+    val metadata = clusterService.state.metadata
+    extractDataStreamsAndAliases(metadata)
+  }
+
+  override def allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]] =
+    remoteClusterServiceSupplier.get() match {
+      case Some(remoteClusterService) =>
+        provideAllRemoteDataStreams(remoteClusterService)
+      case None =>
+        Task.now(Set.empty)
+    }
 
   override def allTemplates: Set[Template] = {
     legacyTemplates() ++ indexTemplates() ++ componentTemplates()
@@ -154,20 +169,123 @@ class EsServerBasedRorClusterService(nodeName: String,
       .toSet
   }
 
-  private def extractDataStreamsIndicesAndAliasesFrom(metadata: Metadata) = {
-    val dataStreams = metadata.dataStreamAliases()
+  private def extractDataStreamsAndAliases(metadata: Metadata): Set[FullLocalDataStreamWithAliases] = {
+    val aliasesPerDataStream = aliasesPerDataStreamFrom(metadata)
+    backingIndicesPerDataStreamFrom(metadata)
+      .map { case (dataStreamName, backingIndices) =>
+        FullLocalDataStreamWithAliases(
+          dataStreamName = dataStreamName,
+          aliasesNames = aliasesPerDataStream.getOrElse(dataStreamName, Set.empty),
+          backingIndices = backingIndices
+        )
+      }
+      .toSet
+  }
+
+  private def aliasesPerDataStreamFrom(metadata: Metadata): Map[DataStreamName.Full, Set[DataStreamName.Full]] = {
+    lazy val mapMonoid: Monoid[Map[DataStreamName.Full, Set[DataStreamName.Full]]] =
+      Monoid[Map[DataStreamName.Full, Set[DataStreamName.Full]]]
+    val dataStreamAliases = metadata.dataStreamAliases()
+    dataStreamAliases
+      .keySet().asScala
+      .flatMap { aliasName =>
+        val dataStreamAlias = dataStreamAliases.get(aliasName)
+        val dataStreams: Set[DataStreamName.Full] =
+          dataStreamAlias
+            .getDataStreams.asScala
+            .flatMap { ds =>
+              DataStreamName.Full.fromString(ds)
+            }
+            .toSet
+
+        DataStreamName.Full.fromString(dataStreamAlias.getName)
+          .map(alias => (alias, dataStreams))
+      }
+      .map {
+        case (alias, dataStreams) =>
+          dataStreams.map(ds => (ds, Set(alias))).toMap
+      }
+      .foldLeft(Map.empty[DataStreamName.Full, Set[DataStreamName.Full]]) { (acc, aliasesPerDataStream) =>
+        mapMonoid.combine(acc, aliasesPerDataStream)
+      }
+  }
+
+  private def backingIndicesPerDataStreamFrom(metadata: Metadata): Map[DataStreamName.Full, Set[IndexName.Full]] = {
+    val dataStreams = metadata.dataStreams()
     dataStreams
       .keySet().asScala
       .flatMap { dataStreamName =>
-        val dataStreamAlias = dataStreams.get(dataStreamName)
-        IndexName.Full
-          .fromString(dataStreamName)
+        val dataStream = dataStreams.get(dataStreamName)
+        val backingIndices =
+          dataStream
+            .getIndices.asScala
+            .map(_.getName)
+            .flatMap(
+              IndexName.Full.fromString
+            )
+            .toSet
+
+        DataStreamName.Full
+          .fromString(dataStream.getName)
+          .map(dataStreamName => (dataStreamName, backingIndices))
+      }
+      .toMap
+  }
+
+  private def provideAllRemoteDataStreams(remoteClusterService: RemoteClusterService) = {
+    val remoteClusterFullNames =
+      remoteClusterService
+        .getRegisteredRemoteClusterNames.asSafeSet
+        .flatMap(ClusterName.Full.fromString)
+
+    Task
+      .gatherUnordered(
+        remoteClusterFullNames.map(resolveAllRemoteDataStreams(_, remoteClusterService))
+      )
+      .map(_.flatten.toSet)
+  }
+
+  private def resolveAllRemoteDataStreams(remoteClusterName: ClusterName.Full,
+                                          remoteClusterService: RemoteClusterService): Task[List[FullRemoteDataStreamWithAliases]] = {
+    Try(remoteClusterService.getRemoteClusterClient(threadPool, remoteClusterName.value.value)) match {
+      case Failure(_) =>
+        logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
+        Task.now(List.empty)
+      case Success(client) =>
+        resolveRemoteIndicesUsing(client)
+          .map { response =>
+            remoteDataStreamsFrom(response, remoteClusterName)
+          }
+    }
+  }
+
+  private def remoteDataStreamsFrom(response: ResolveIndexAction.Response,
+                                    remoteClusterName: ClusterName.Full): List[FullRemoteDataStreamWithAliases] = {
+    val aliasesPerIndex: Map[IndexName.Full, Set[IndexName.Full]] = aliasesPerIndexFrom(response.getAliases.asSafeList)
+    response
+      .getDataStreams.asSafeList
+      .flatMap { resolvedDataStream =>
+        IndexName.Full.fromString(resolvedDataStream.getName)
           .map { dataStreamName =>
-            val alias = IndexName.Full.fromString(dataStreamAlias.getName)
-            FullLocalIndexWithAliases(dataStreamName, IndexAttribute.Opened, alias.toSet)
+            val backingIndices =
+              resolvedDataStream
+                .getBackingIndices.asSafeList
+                .flatMap(IndexName.Full.fromString)
+                .toSet
+
+            val dataStreamAliases =
+              aliasesPerIndex
+                .getOrElse(dataStreamName, Set.empty)
+                .map(index => DataStreamName.Full(index.name))
+
+            FullRemoteDataStreamWithAliases(
+              clusterName = remoteClusterName,
+              dataStreamName = DataStreamName.Full(dataStreamName.name),
+              aliasesNames = dataStreamAliases,
+              backingIndices = backingIndices
+            )
           }
       }
-      .toSet
   }
 
   private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService) = {
@@ -232,6 +350,23 @@ class EsServerBasedRorClusterService(nodeName: String,
       .getAliases.asSafeList
       .flatMap(IndexName.Full.fromString)
       .toSet
+  }
+
+  private def aliasesPerIndexFrom(resolvedAliases: List[ResolvedAlias]) = {
+    lazy val mapMonoid: Monoid[Map[IndexName.Full, Set[IndexName.Full]]] =
+      Monoid[Map[IndexName.Full, Set[IndexName.Full]]]
+    resolvedAliases
+      .map { resolvedAlias =>
+        resolvedAlias
+          .getIndices.asSafeList
+          .flatMap(IndexName.Full.fromString)
+          .map(index => (index, IndexName.Full.fromString(resolvedAlias.getName).toSet))
+          .toMap
+      }
+      .foldLeft(Map.empty[IndexName.Full, Set[IndexName.Full]]) {
+        case (acc, aliasesPerIndex) =>
+          mapMonoid.combine(acc, aliasesPerIndex)
+      }
   }
 
   private def indexAttributeFrom(resolvedIndex: ResolvedIndex): IndexAttribute = {

@@ -41,6 +41,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, definitions}
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
@@ -101,11 +102,27 @@ object TestsUtils {
                                 aliasesNames: Set[IndexName.Full]): FullLocalIndexWithAliases =
     FullLocalIndexWithAliases(fullIndexName, IndexAttribute.Opened, aliasesNames)
 
+  def fullLocalDataStreamWithAliases(dataStreamName: DataStreamName.Full): FullLocalDataStreamWithAliases =
+    fullLocalDataStreamWithAliases(
+      dataStreamName = dataStreamName,
+      aliasesNames = Set.empty,
+    )
+
+  def fullLocalDataStreamWithAliases(dataStreamName: DataStreamName.Full,
+                                     aliasesNames: Set[DataStreamName.Full]): FullLocalDataStreamWithAliases =
+    FullLocalDataStreamWithAliases(
+      dataStreamName = dataStreamName,
+      aliasesNames = aliasesNames,
+      backingIndices = Set(IndexName.Full(NonEmptyString.unsafeFrom(".ds-" + dataStreamName.value.value + "-2023")))
+    )
+
   def remoteIndexName(str: NonEmptyString): ClusterIndexName.Remote = ClusterIndexName.Remote.fromString(str.value.value).get
 
   def indexName(str: NonEmptyString): IndexName = IndexName.fromString(str.value).get
 
   def fullIndexName(str: NonEmptyString): IndexName.Full = IndexName.Full.fromString(str.value).get
+
+  def fullDataStreamName(str: NonEmptyString): DataStreamName.Full = DataStreamName.Full.fromString(str.value).get
 
   def indexPattern(str: NonEmptyString): IndexPattern = IndexPattern(clusterIndexName(str))
 
@@ -234,7 +251,6 @@ object TestsUtils {
         case _: GeneralNonIndexRequestBlockContext =>
         case bc: DataStreamRequestBlockContext =>
           bc.dataStreams should be(dataStreams)
-        case _: RorApiRequestBlockContext =>
         case bc: RepositoryRequestBlockContext =>
           bc.repositories should be(repositories)
         case bc: SnapshotRequestBlockContext =>

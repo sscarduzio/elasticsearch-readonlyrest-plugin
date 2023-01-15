@@ -61,6 +61,7 @@ sealed trait ESVersionSupport {
   val allEs7xBelowEs78x = "^es7[0-7]x$".r
   val allEs7xBelowEs79x = "^es7[0-8]x$".r
   val allEs7xBelowEs716x = "^es7(0?[0-9]|1[0-5])x$".r
+  val allEs7xBelowEs714x = "^es7(0?[0-9]|1[0-3])x$".r
   val allEs7xBelowEs711x = "^es7(0?[0-9]|10)x$".r
   val allEs8x = "^es8\\d+x$".r
   val rorProxy = "^proxy$".r

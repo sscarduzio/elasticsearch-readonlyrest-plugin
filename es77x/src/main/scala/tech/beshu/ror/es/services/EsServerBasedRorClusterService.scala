@@ -28,7 +28,7 @@ import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilde
 import org.elasticsearch.action.support.PlainActionFuture
 import org.elasticsearch.client.Client
 import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.cluster.metadata.{IndexMetaData, MetaData, RepositoriesMetaData}
+import org.elasticsearch.cluster.metadata.{DataStream, IndexMetaData, MetaData, RepositoriesMetaData}
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.repositories.RepositoryData
@@ -36,6 +36,7 @@ import org.elasticsearch.snapshots.SnapshotsService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -78,6 +79,19 @@ class EsServerBasedRorClusterService(nodeName: String,
         Task.now(Set.empty)
     }
   }
+
+  override def allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = {
+    val metadata = clusterService.state.metaData()
+    extractDataStreamsAndAliases(metadata)
+  }
+
+  override def allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]] =
+    remoteClusterServiceSupplier.get() match {
+      case Some(remoteClusterService) =>
+        provideAllRemoteDataStreams(remoteClusterService)
+      case None =>
+        Task.now(Set.empty)
+    }
 
   override def allTemplates: Set[Template] = {
     legacyTemplates() ++ indexTemplates() ++ componentTemplates()
@@ -153,6 +167,73 @@ class EsServerBasedRorClusterService(nodeName: String,
       .toSet
   }
 
+  private def extractDataStreamsAndAliases(metadata: MetaData): Set[FullLocalDataStreamWithAliases] = {
+    backingIndicesPerDataStreamFrom(metadata)
+      .map { case (dataStreamName, backingIndices) =>
+        FullLocalDataStreamWithAliases(
+          dataStreamName = dataStreamName,
+          aliasesNames = Set.empty, // aliases for data streams not supported
+          backingIndices = backingIndices
+        )
+      }
+      .toSet
+  }
+
+  private def backingIndicesPerDataStreamFrom(metadata: MetaData): Map[DataStreamName.Full, Set[IndexName.Full]] = {
+    val dataStreams = metadata.dataStreams()
+    dataStreams
+      .keySet().asScala
+      .flatMap { dataStreamName =>
+        val dataStream = dataStreams.get(dataStreamName)
+        val backingIndices =
+          dataStream
+            .getIndices.asScala
+            .flatMap(
+              IndexName.Full.fromString
+            )
+            .toSet
+
+        DataStreamName.Full
+          .fromString(dataStream.getName)
+          .map(dataStreamName => (dataStreamName, backingIndices))
+      }
+      .toMap
+  }
+
+  private def provideAllRemoteDataStreams(remoteClusterService: RemoteClusterService) = {
+    val remoteClusterFullNames =
+      remoteClusterService
+        .getRegisteredRemoteClusterNames.asSafeSet
+        .flatMap(ClusterName.Full.fromString)
+
+    Task
+      .gatherUnordered(
+        remoteClusterFullNames.map(resolveAllRemoteDataStreams(_, remoteClusterService))
+      )
+      .map(_.flatten.toSet)
+  }
+
+  private def resolveAllRemoteDataStreams(remoteClusterName: ClusterName.Full,
+                                          remoteClusterService: RemoteClusterService): Task[List[FullRemoteDataStreamWithAliases]] = {
+    Try(remoteClusterService.getRemoteClusterClient(threadPool, remoteClusterName.value.value)) match {
+      case Failure(_) =>
+        logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
+        Task.now(List.empty)
+      case Success(client) =>
+        resolveRemoteIndicesUsing(client)
+          .map { response =>
+            response
+              .getState
+              .metaData()
+              .dataStreams().asSafeValues
+              .flatMap { dataStream =>
+                toFullRemoteDataStreamWithAliases(dataStream, remoteClusterName)
+              }
+              .toList
+          }
+    }
+  }
+
   private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService) = {
     val remoteClusterFullNames =
       remoteClusterService
@@ -209,6 +290,19 @@ class EsServerBasedRorClusterService(nodeName: String,
       .fromString(indexMetadata.getIndex.getName)
       .map { index =>
         FullRemoteIndexWithAliases(remoteClusterName, index, indexAttributeFrom(indexMetadata), aliasesFrom(indexMetadata))
+      }
+  }
+
+  private def toFullRemoteDataStreamWithAliases(dataStream: DataStream, remoteClusterName: ClusterName.Full) = {
+    DataStreamName.Full
+      .fromString(dataStream.getName)
+      .map { dataStreamName =>
+        FullRemoteDataStreamWithAliases(
+          clusterName = remoteClusterName,
+          dataStreamName = dataStreamName,
+          aliasesNames = Set.empty,
+          backingIndices = dataStream.getIndices.asSafeList.flatMap(index => IndexName.Full.fromString(index)).toSet
+        )
       }
   }
 
