@@ -18,6 +18,7 @@ package tech.beshu.ror.es
 
 import cats.data.NonEmptyList
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -30,6 +31,10 @@ trait RorClusterService {
   def allIndicesAndAliases: Set[FullLocalIndexWithAliases]
 
   def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]]
+
+  def allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases]
+
+  def allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]]
 
   def allTemplates: Set[Template]
 

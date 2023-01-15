@@ -23,6 +23,7 @@ import tech.beshu.ror.integration.suites.DataStreamApiSuite.{DataStreamNameGener
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyFreeSpecLike
 import tech.beshu.ror.utils.containers.EsClusterProvider
+import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.misc.Version
 
@@ -54,7 +55,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
   private val devDataStream = DataStreamNameGenerator.next("dev")
   private val testDataStream = DataStreamNameGenerator.next("test")
 
-  "Data stream API" - {
+  "Data streams related" - {
     "Search API" - {
       "without rules should" - {
         "allow to search by data stream name" excludeES(allEs6x, allEs7xBelowEs79x) in {
@@ -88,7 +89,34 @@ trait DataStreamApiSuite extends AnyFreeSpec
               response.totalHits should be(expectedHits)
             }
         }
-        "allow to search by data stream index name" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "allow to search by data stream alias" excludeES(allEs6x, allEs7xBelowEs714x) in {
+          createDataStream(adminDataStream, IndexTemplateNameGenerator.next)
+          createDocsInDataStream(adminDataStream, 2)
+
+          adminIndexManager
+            .updateAliases(AliasAction.Add(index = adminDataStream, alias = "ds-alias"))
+            .force()
+
+          val searchResponse = adminSearchManager.search("ds-alias")
+          searchResponse.totalHits should be(2)
+        }
+        "allow to search by data stream alias with wildcard" excludeES(allEs6x, allEs7xBelowEs714x) in {
+          createDataStream(adminDataStream, IndexTemplateNameGenerator.next)
+          createDocsInDataStream(adminDataStream, 2)
+          createDataStream(devDataStream, IndexTemplateNameGenerator.next)
+          createDocsInDataStream(devDataStream, 1)
+
+          adminIndexManager
+            .updateAliases(
+              AliasAction.Add(index = adminDataStream, alias = "ds-alias-1"),
+              AliasAction.Add(index = devDataStream, alias = "ds-alias-2")
+            )
+            .force()
+
+          val response = adminSearchManager.searchAll("ds-alias*")
+          response.totalHits should be(3)
+        }
+        "allow to search by data stream backing index name" excludeES(allEs6x, allEs7xBelowEs79x) in {
           createDataStream(adminDataStream, IndexTemplateNameGenerator.next)
           createDocsInDataStream(adminDataStream, 1)
           adminIndexManager.rollover(adminDataStream).force()
@@ -103,7 +131,7 @@ trait DataStreamApiSuite extends AnyFreeSpec
             response.totalHits should be(1)
           }
         }
-        "allow to search by data stream index with wildcard" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "allow to search by data stream backing index with wildcard" excludeES(allEs6x, allEs7xBelowEs79x) in {
           createDataStream(adminDataStream, IndexTemplateNameGenerator.next)
           createDocsInDataStream(adminDataStream, 1)
           adminIndexManager.rollover(adminDataStream)
@@ -122,6 +150,101 @@ trait DataStreamApiSuite extends AnyFreeSpec
         }
       }
       "with indices rule should" - {
+        "allow to search by data stream name" excludeES(allEs6x, allEs7xBelowEs79x) in {
+          List(
+            ("data-stream-admin", 4),
+            ("data-stream-dev", 2),
+            ("data-stream-test", 1)
+          )
+            .foreach { case (dataStream, docsCount) =>
+              createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              createDocsInDataStream(dataStream, docsCount)
+            }
+
+          val searchManager = new SearchManager(clients.head.basicAuthClient("user7", "pass"))
+
+          val dsAdminSearch = searchManager.searchAll("data-stream-admin")
+          dsAdminSearch.responseCode should be(401)
+
+          List(
+            ("data-stream-dev", 2),
+            ("data-stream-test", 1),
+          )
+            .foreach { case (dataStream, expectedHits) =>
+              val response = searchManager.searchAll(dataStream)
+              response.totalHits should be(expectedHits)
+            }
+        }
+        "allow to search by data stream name with wildcard" excludeES(allEs6x, allEs7xBelowEs79x) in {
+          List(
+            ("data-stream-admin", 4),
+            ("data-stream-dev", 2),
+            ("data-stream-test", 1)
+          )
+            .foreach { case (dataStream, docsCount) =>
+              createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              createDocsInDataStream(dataStream, docsCount)
+            }
+
+          val searchManager = new SearchManager(clients.head.basicAuthClient("user7", "pass"))
+
+          List(
+            ("data-stream-dev*", 2),
+            ("data-stream-test*", 1),
+            ("data-stream-admin*", 0),
+            ("data-stream-*", 3),
+          )
+            .foreach { case (dataStream, expectedHits) =>
+              val response = searchManager.searchAll(dataStream)
+              response.totalHits should be(expectedHits)
+            }
+        }
+        "allow to search by data stream alias" excludeES(allEs6x, allEs7xBelowEs714x) in {
+          List(
+            ("data-stream-admin", 4),
+            ("data-stream-dev", 2),
+            ("data-stream-test", 1)
+          )
+            .foreach { case (dataStream, docsCount) =>
+              createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              createDocsInDataStream(dataStream, docsCount)
+            }
+
+          val searchManager = new SearchManager(clients.head.basicAuthClient("user8", "pass"))
+
+          adminIndexManager
+            .updateAliases(
+              AliasAction.Add(index = "data-stream-test", alias = "data-stream-alias"),
+              AliasAction.Add(index = "data-stream-dev", alias = "data-stream-alias"),
+            )
+            .force()
+
+          val response = searchManager.searchAll("data-stream-alias")
+          response.totalHits should be(3)
+        }
+        "allow to search by data stream alias with wildcard" excludeES(allEs6x, allEs7xBelowEs714x) in {
+          List(
+            ("data-stream-admin", 4),
+            ("data-stream-dev", 2),
+            ("data-stream-test", 1)
+          )
+            .foreach { case (dataStream, docsCount) =>
+              createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              createDocsInDataStream(dataStream, docsCount)
+            }
+
+          val searchManager = new SearchManager(clients.head.basicAuthClient("user8", "pass"))
+
+          adminIndexManager
+            .updateAliases(
+              AliasAction.Add(index = "data-stream-test", alias = "data-stream-alias"),
+              AliasAction.Add(index = "data-stream-dev", alias = "data-stream-alias"),
+            )
+            .force()
+
+          val response = searchManager.searchAll("data-stream-alias")
+          response.totalHits should be(3)
+        }
         "allow to search by data stream index with wildcard" excludeES(allEs6x, allEs7xBelowEs79x) in {
           List(
             (adminDataStream, 4),
@@ -176,62 +299,91 @@ trait DataStreamApiSuite extends AnyFreeSpec
           }
         }
       }
-      "with data_streams rule should" ignore { // todo enable when search request will be aware of data streams in ACL
-        "allow to search by data stream name" excludeES(allEs6x, allEs7xBelowEs79x) in {
-          List(
-            (adminDataStream, 4),
-            (devDataStream, 2),
-            (testDataStream, 1)
-          )
-            .foreach { case (dataStream, docsCount) =>
-              createDataStream(dataStream, IndexTemplateNameGenerator.next)
-              createDocsInDataStream(dataStream, docsCount)
-            }
-
-          val searchManager1 = new SearchManager(user1Client)
-
-          List(devDataStream, adminDataStream).foreach { dataStream =>
-            val response = searchManager1.searchAll(dataStream)
-            response.responseCode should be(401)
-          }
-
-          val sm1TestDataStreamResponse = searchManager1.searchAll(testDataStream)
-          sm1TestDataStreamResponse.totalHits should be(1)
-
-          val searchManager2 = new SearchManager(user6Client)
-          val sm2Response1 = searchManager2.searchAll(devDataStream)
-          sm2Response1.totalHits should be(2)
-          val sm2Response2 = searchManager2.searchAll(testDataStream)
-          sm2Response2.totalHits should be(1)
-          val sm2Response3 = searchManager2.searchAll(adminDataStream)
-          sm2Response3.responseCode should be(401)
-        }
-        "allow to search by data stream name with wildcard" excludeES(allEs6x, allEs7xBelowEs79x) in {
-          adminTemplateManager.createTemplate(IndexTemplateNameGenerator.next, indexTemplate(adminDataStream)).force()
-          adminTemplateManager.createTemplate(IndexTemplateNameGenerator.next, indexTemplate(testDataStream)).force()
-
-          List(
-            s"$adminDataStream-x0",
-            s"$testDataStream-x1",
-            s"$testDataStream-x2",
-            s"$adminDataStream-x10",
-            s"$testDataStream-x11",
-          ).foreach { dataStream =>
-            adminDataStreamManager.createDataStream(dataStream).force()
-            createDocsInDataStream(dataStream, 1)
-          }
-
-          val searchManager = new SearchManager(user1Client)
-
-          val response1 = searchManager.searchAll("data-stream*")
-          response1.totalHits should be(3)
-          val response2 = searchManager.searchAll(s"$adminDataStream*")
-          response2.responseCode should be(401)
-          val response3 = searchManager.searchAll(s"$testDataStream-x1*")
-          response3.totalHits should be(2)
+    }
+    "Document API" - {
+      "without indices rule should" - {
+        "allow to add documents to data stream" excludeES(allEs6x, allEs7xBelowEs79x) in {
+          val dataStream = DataStreamNameGenerator.next("admin")
+          createDataStream(dataStream, IndexTemplateNameGenerator.next)
+          createDocsInDataStream(dataStream, 1)
         }
       }
+      "with indices rule should" - {
+        "allow to add documents to data stream when" - {
+          "data stream name configured" excludeES(allEs6x, allEs7xBelowEs79x) in {
+            List(
+              "data-stream-admin",
+              "data-stream-dev",
+              "data-stream-test"
+            )
+              .foreach { dataStream =>
+                createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              }
+
+            val documentManager = new DocumentManager(clients.head.basicAuthClient("user7", "pass"), esVersionUsed)
+
+            documentManager
+              .createDocWithGeneratedId("data-stream-admin", documentJson)
+              .responseCode should be(401)
+
+            documentManager
+              .createDocWithGeneratedId("data-stream-dev", documentJson)
+              .force()
+
+            documentManager
+              .createDocWithGeneratedId("data-stream-test", documentJson)
+              .force()
+          }
+          "data stream name wildcard configured" excludeES(allEs6x, allEs7xBelowEs79x) in {
+            List(
+              "data-stream-admin",
+              "data-stream-dev",
+              "data-stream-test"
+            )
+              .foreach { dataStream =>
+                createDataStream(dataStream, IndexTemplateNameGenerator.next)
+              }
+
+            val documentManager = new DocumentManager(clients.head.basicAuthClient("user10", "pass"), esVersionUsed)
+
+            documentManager
+              .createDocWithGeneratedId("data-stream-admin", documentJson)
+              .responseCode should be(401)
+
+            documentManager
+              .createDocWithGeneratedId("data-stream-dev", documentJson)
+              .force()
+
+            documentManager
+              .createDocWithGeneratedId("data-stream-test", documentJson)
+              .force()
+          }
+        }
+      }
+
     }
+    "allow to add documents to data stream" excludeES(allEs6x, allEs7xBelowEs79x) in {
+      val dataStream = DataStreamNameGenerator.next("admin")
+      createDataStream(dataStream, IndexTemplateNameGenerator.next)
+      createDocsInDataStream(dataStream, 1)
+    }
+    "should allow to rollover data stream" excludeES(allEs6x, allEs7xBelowEs79x) in {
+      val dataStream = DataStreamNameGenerator.next("admin")
+      createDataStream(dataStream, IndexTemplateNameGenerator.next)
+
+      List.range(0, 2).foreach { _ =>
+        createDocsInDataStream(dataStream, 1)
+        adminIndexManager.rollover(dataStream).force()
+      }
+
+      val statsResponse = adminDataStreamManager.getDataStreamStats(dataStream)
+      statsResponse.responseCode should be(200)
+      statsResponse.dataStreamsCount should be(1)
+      statsResponse.backingIndicesCount should be(3)
+    }
+  }
+
+  "Data stream API" - {
     "create data stream" - {
       "without data_streams rule should" - {
         "allow to create data stream" excludeES(allEs6x, allEs7xBelowEs79x) in {
@@ -271,11 +423,6 @@ trait DataStreamApiSuite extends AnyFreeSpec
           }
         }
       }
-    }
-    "allow to add documents to data stream" excludeES(allEs6x, allEs7xBelowEs79x) in {
-      val dataStream = DataStreamNameGenerator.next("admin")
-      createDataStream(dataStream, IndexTemplateNameGenerator.next)
-      createDocsInDataStream(dataStream, 1)
     }
     "get data stream" - {
       "get all data streams" - {
@@ -523,20 +670,6 @@ trait DataStreamApiSuite extends AnyFreeSpec
           }
         }
       }
-    }
-    "should allow to rollover data stream" excludeES(allEs6x, allEs7xBelowEs79x) in {
-      val dataStream = DataStreamNameGenerator.next("admin")
-      createDataStream(dataStream, IndexTemplateNameGenerator.next)
-
-      List.range(0, 2).foreach { _ =>
-        createDocsInDataStream(dataStream, 1)
-        adminIndexManager.rollover(dataStream).force()
-      }
-
-      val statsResponse = adminDataStreamManager.getDataStreamStats(dataStream)
-      statsResponse.responseCode should be(200)
-      statsResponse.dataStreamsCount should be(1)
-      statsResponse.backingIndicesCount should be(3)
     }
     "migrate index alias to data stream" - {
       "without indices rule should" - {
@@ -819,6 +952,10 @@ trait DataStreamApiSuite extends AnyFreeSpec
       val doc = ujson.read(s"""{ "message":"test$c", "@timestamp": "${format(Instant.now())}"}""")
       adminDocumentManager.createDocWithGeneratedId(streamName, doc).force()
     }
+  }
+
+  private def documentJson: ujson.Value = {
+    ujson.read(s"""{ "message":"test", "@timestamp": "${format(Instant.now())}"}""")
   }
 
   private def dataStreamBackingIndices(streamName: String): List[String] = {

@@ -20,7 +20,9 @@ import cats.implicits._
 import cats.Monoid
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.clusterindices.BaseIndicesProcessor.IndicesManager
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullRemoteDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.domain.{FullRemoteIndexWithAliases, IndexAttribute}
 import tech.beshu.ror.accesscontrol.matchers.IndicesMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -39,26 +41,72 @@ class RemoteIndicesManager(requestContext: RequestContext,
     requestContext.allRemoteIndicesAndAliases.map(_.flatMap(r => r.aliasesNames.map(Remote(_, r.clusterName))))
 
   override def indicesPerAliasMap: Task[Map[Remote, Set[Remote]]] = {
-    val mapMonoid = Monoid[Map[Remote, Set[Remote]]]
     remoteIndices(requestContext.indexAttributes)
-        .map {
-          _.foldLeft(Map.empty[Remote, Set[Remote]]) {
-            case (acc, FullRemoteIndexWithAliases(clusterName, index, _, aliases)) =>
-              val localIndicesPerAliasMap = aliases
-                .map(Remote(_, clusterName))
-                .map((_, Set(Remote(index, clusterName))))
-                .toMap
-              mapMonoid.combine(acc, localIndicesPerAliasMap)
-          }
+      .map {
+        _.foldLeft(Map.empty[Remote, Set[Remote]]) {
+          case (acc, FullRemoteIndexWithAliases(clusterName, index, _, aliases)) =>
+            val remoteIndicesPerAliasMap = aliases
+              .map(Remote(_, clusterName))
+              .map((_, Set(Remote(index, clusterName))))
+              .toMap
+            mapMonoid.combine(acc, remoteIndicesPerAliasMap)
         }
+      }
+  }
+
+  override def allDataStreamsAndDataStreamAliases: Task[Set[Remote]] = {
+    remoteDataStreams(requestContext.indexAttributes).map(_.flatMap(_.all))
+  }
+
+  override def allDataStreams: Task[Set[Remote]] = {
+    remoteDataStreams(requestContext.indexAttributes).map(_.map(_.dataStream))
+  }
+
+
+  override def allDataStreamAliases: Task[Set[Remote]] = {
+    requestContext
+      .allRemoteIndicesAndAliases.map(_.flatMap(_.aliases))
+  }
+
+  override def dataStreamsPerAliasMap: Task[Map[Remote, Set[Remote]]] = {
+    remoteDataStreams(requestContext.indexAttributes)
+      .map {
+        _.foldLeft(Map.empty[Remote, Set[Remote]]) {
+          case (acc, fullRemoteDataStream) =>
+            val aliasesPerDataStream = Map(fullRemoteDataStream.dataStream -> fullRemoteDataStream.aliases)
+            mapMonoid.combine(acc, aliasesPerDataStream)
+        }
+      }
+  }
+
+  override def indicesPerDataStreamMap: Task[Map[Remote, Set[Remote]]] = {
+    remoteDataStreams(requestContext.indexAttributes)
+      .map {
+        _.foldLeft(Map.empty[Remote, Set[Remote]]) {
+          case (acc, fullRemoteDataStream) =>
+            val backingIndicesPerDataStream = Map(fullRemoteDataStream.dataStream -> fullRemoteDataStream.aliases)
+            mapMonoid.combine(acc, backingIndicesPerDataStream)
+        }
+      }
   }
 
   private def remoteIndices(filteredBy: Set[IndexAttribute]) = {
     requestContext
       .allRemoteIndicesAndAliases
       .map(_.filter(i =>
-        if(filteredBy.nonEmpty) filteredBy.contains(i.attribute)
+        if (filteredBy.nonEmpty) filteredBy.contains(i.attribute)
         else true
       ))
   }
+
+  private def remoteDataStreams(filteredBy: Set[IndexAttribute]) = {
+    requestContext
+      .allRemoteDataStreamsAndAliases
+      .map(_.filter(ds =>
+        if (filteredBy.nonEmpty) filteredBy.contains(ds.attribute)
+        else true
+      ))
+  }
+
+  private lazy val mapMonoid: Monoid[Map[Remote, Set[Remote]]] = Monoid[Map[Remote, Set[Remote]]]
 }
