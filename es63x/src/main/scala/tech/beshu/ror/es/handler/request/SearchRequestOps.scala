@@ -195,9 +195,10 @@ object SearchRequestOps extends Logging {
               aggregations
                 .getAggregatorFactories.asScala
                 .flatMap {
-                  case builder: ValuesSourceAggregationBuilder[_, _] => builder.field() :: Nil
+                  case builder: ValuesSourceAggregationBuilder[_, _] => Option(builder.field()) :: Nil
                   case _ => Nil
                 }
+                .flatten
                 .map(UsedField.apply)
                 .toList
             }
