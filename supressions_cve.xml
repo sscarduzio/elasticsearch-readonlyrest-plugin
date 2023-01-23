@@ -79,4 +79,18 @@
         <sha1>18c813fd76780392a046efb185096b6c55825d1f</sha1>
         <cpe>cpe:/a:utils_project:utils</cpe>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: snakeyaml-1.33.jar
+   ]]></notes>
+        <sha1>2cd0a87ff7df953f810c344bdf2fe3340b954c69</sha1>
+        <cve>CVE-2022-3064</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: snakeyaml-1.33.jar
+   ]]></notes>
+        <sha1>2cd0a87ff7df953f810c344bdf2fe3340b954c69</sha1>
+        <cve>CVE-2021-4235</cve>
+    </suppress>
 </suppressions>
