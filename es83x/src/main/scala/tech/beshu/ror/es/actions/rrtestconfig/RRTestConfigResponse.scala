@@ -81,16 +81,7 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
     builder.field("ttl", response.ttl.toString())
     builder.field("settings", response.settings.raw)
     builder.field("valid_to", response.validTo.atOffset(ZoneOffset.UTC).toString)
-    builder.startArray("warnings")
-    response.warnings.foreach { warning =>
-      builder.startObject()
-      builder.field("block_name", warning.blockName)
-      builder.field("rule_name", warning.ruleName)
-      builder.field("message", warning.message)
-      builder.field("hint", warning.hint)
-      builder.endObject()
-    }
-    builder.endArray()
+    warningsJson(builder, response.warnings)
     builder.endObject
   }
 
@@ -108,6 +99,7 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
     builder.field("status", response.status)
     builder.field("message", response.message)
     builder.field("valid_to", response.validTo.atOffset(ZoneOffset.UTC).toString)
+    warningsJson(builder, response.warnings)
     builder.endObject
   }
 
@@ -121,5 +113,18 @@ class RRTestConfigResponse(response: TestConfigApi.TestConfigResponse)
     builder.endArray()
     builder.field("unknown_users", response.unknownUsers)
     builder.endObject
+  }
+
+  private def warningsJson(builder: XContentBuilder, warnings: List[Warning]): Unit = {
+    builder.startArray("warnings")
+    warnings.foreach { warning =>
+      builder.startObject()
+      builder.field("block_name", warning.blockName)
+      builder.field("rule_name", warning.ruleName)
+      builder.field("message", warning.message)
+      builder.field("hint", warning.hint)
+      builder.endObject()
+    }
+    builder.endArray()
   }
 }

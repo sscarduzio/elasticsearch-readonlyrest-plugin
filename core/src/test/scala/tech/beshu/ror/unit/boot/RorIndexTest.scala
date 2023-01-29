@@ -16,9 +16,6 @@
  */
 package tech.beshu.ror.unit.boot
 
-import java.time.Clock
-import java.util.UUID
-
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
@@ -33,7 +30,7 @@ import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
-import tech.beshu.ror.boot.RorInstance.TestConfigUpdated
+import tech.beshu.ror.boot.RorInstance.TestConfig
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
@@ -42,6 +39,8 @@ import tech.beshu.ror.utils.DurationOps._
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils._
 
+import java.time.Clock
+import java.util.UUID
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
@@ -138,7 +137,7 @@ class RorIndexTest extends AnyWordSpec
               .forceReloadTestConfigEngine(rorConfig, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
               .runSyncUnsafe()
 
-          forceReloadingResult.right.value shouldBe a[TestConfigUpdated]
+          forceReloadingResult.right.value shouldBe a[TestConfig.Present]
         }
       }
       "custom index is defined in config" should {
@@ -214,7 +213,7 @@ class RorIndexTest extends AnyWordSpec
               .forceReloadTestConfigEngine(rorConfig, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
               .runSyncUnsafe()
 
-          forceReloadingResult.right.value shouldBe a[TestConfigUpdated]
+          forceReloadingResult.right.value shouldBe a[TestConfig.Present]
         }
       }
     }
