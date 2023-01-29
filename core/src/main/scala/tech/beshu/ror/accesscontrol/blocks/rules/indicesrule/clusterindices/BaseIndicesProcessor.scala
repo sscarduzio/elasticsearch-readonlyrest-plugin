@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.clusterindices.Base
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.CanPass.No.Reason
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.IndicesCheckContinuation.{continue, stop}
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.{CanPass, CheckContinuation}
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName}
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.matchers.{IndicesMatcher, MatcherWithWildcardsScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.CaseMappingEquality

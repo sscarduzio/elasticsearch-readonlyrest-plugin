@@ -20,62 +20,62 @@ import cats.Monoid
 import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.clusterindices.BaseIndicesProcessor.IndicesManager
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.{Local => LocalIndexName}
 import tech.beshu.ror.accesscontrol.domain.IndexAttribute
 import tech.beshu.ror.accesscontrol.matchers.IndicesMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class LocalIndicesManager(requestContext: RequestContext,
-                          override val matcher: IndicesMatcher[Local])
-  extends IndicesManager[Local] {
+                          override val matcher: IndicesMatcher[LocalIndexName])
+  extends IndicesManager[LocalIndexName] {
 
-  override def allIndicesAndAliases: Task[Set[Local]] = Task.delay {
+  override def allIndicesAndAliases: Task[Set[LocalIndexName]] = Task.delay {
     indices(requestContext.indexAttributes).flatMap(_.all)
   }
 
-  override def allIndices: Task[Set[Local]] = Task.delay {
+  override def allIndices: Task[Set[LocalIndexName]] = Task.delay {
     indices(requestContext.indexAttributes).map(_.index)
   }
 
-  override def allAliases: Task[Set[Local]] = Task.delay {
+  override def allAliases: Task[Set[LocalIndexName]] = Task.delay {
     requestContext.allIndicesAndAliases.flatMap(_.aliases)
   }
 
-  override def indicesPerAliasMap: Task[Map[Local, Set[Local]]] = Task.delay {
+  override def indicesPerAliasMap: Task[Map[LocalIndexName, Set[LocalIndexName]]] = Task.delay {
     indices(requestContext.indexAttributes)
-      .foldLeft(Map.empty[Local, Set[Local]]) {
+      .foldLeft(Map.empty[LocalIndexName, Set[LocalIndexName]]) {
         case (acc, indexWithAliases) =>
           val localIndicesPerAliasMap = indexWithAliases.aliases.map((_, Set(indexWithAliases.index))).toMap
           mapMonoid.combine(acc, localIndicesPerAliasMap)
       }
   }
 
-  override def allDataStreamsAndDataStreamAliases: Task[Set[Local]] = Task.delay {
+  override def allDataStreamsAndDataStreamAliases: Task[Set[LocalIndexName]] = Task.delay {
     dataStreams(requestContext.indexAttributes).flatMap(_.all)
   }
 
-  override def allDataStreams: Task[Set[Local]] = Task.delay {
+  override def allDataStreams: Task[Set[LocalIndexName]] = Task.delay {
     dataStreams(requestContext.indexAttributes).map(_.dataStream)
   }
 
-  override def allDataStreamAliases: Task[Set[Local]] = Task.delay {
+  override def allDataStreamAliases: Task[Set[LocalIndexName]] = Task.delay {
     requestContext
       .allDataStreamsAndAliases
       .flatMap(_.aliases)
   }
 
-  override def dataStreamsPerAliasMap: Task[Map[Local, Set[Local]]] = Task.delay {
+  override def dataStreamsPerAliasMap: Task[Map[LocalIndexName, Set[LocalIndexName]]] = Task.delay {
     dataStreams(requestContext.indexAttributes)
-      .foldLeft(Map.empty[Local, Set[Local]]) {
+      .foldLeft(Map.empty[LocalIndexName, Set[LocalIndexName]]) {
         case (acc, dataStreamWithAliases) =>
           val localDataStreamsPerAliasMap = dataStreamWithAliases.aliases.map((_, Set(dataStreamWithAliases.dataStream))).toMap
           mapMonoid.combine(acc, localDataStreamsPerAliasMap)
       }
   }
 
-  override def indicesPerDataStreamMap: Task[Map[Local, Set[Local]]] = Task.delay {
+  override def indicesPerDataStreamMap: Task[Map[LocalIndexName, Set[LocalIndexName]]] = Task.delay {
     dataStreams(requestContext.indexAttributes)
-      .foldLeft(Map.empty[Local, Set[Local]]) {
+      .foldLeft(Map.empty[LocalIndexName, Set[LocalIndexName]]) {
         case (acc, fullDataStream) =>
           val backingIndicesPerDataStream = Map(fullDataStream.dataStream -> fullDataStream.indices)
           mapMonoid.combine(acc, backingIndicesPerDataStream)
@@ -99,6 +99,6 @@ class LocalIndicesManager(requestContext: RequestContext,
       )
   }
 
-  private lazy val mapMonoid: Monoid[Map[Local, Set[Local]]] = Monoid[Map[Local, Set[Local]]]
+  private lazy val mapMonoid: Monoid[Map[LocalIndexName, Set[LocalIndexName]]] = Monoid[Map[LocalIndexName, Set[LocalIndexName]]]
 
 }
