@@ -417,6 +417,9 @@ components:
         x-ror-origin:
           type: string
           description: the value taken from JWT's x-ror-origin claim
+        x-ror-kibana_metadata:
+          type: object
+          description: json with metadata ([key, value] pairs) from the matched block
 
     Group:
       type: string
@@ -965,6 +968,14 @@ components:
           - users
         x-ror-kibana_index: .kibana_7.17_admin
         x-ror-kibana_access: admin
+        x-ror-kibana_metadata:
+          key1: string
+          key2: 1
+          key3: true
+          key4: ["ab", "cd"]
+          key5:
+            a: 1
+            b: 2
 
     NoAclBlockWasMatchedForbiddenResponseExample:
       summary: No ACL block was matched
