@@ -399,6 +399,7 @@ components:
           description: defines the minimum set of actions necessary for browsers to use Kibana.
           enum:
             - admin
+            - api_only
             - ro
             - ro_strict
             - rw
