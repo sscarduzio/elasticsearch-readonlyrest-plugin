@@ -18,8 +18,8 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
-import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
-import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeySha256Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeySha256Rule
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError

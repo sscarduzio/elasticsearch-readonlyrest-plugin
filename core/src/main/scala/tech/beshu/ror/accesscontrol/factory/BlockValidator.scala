@@ -20,9 +20,11 @@ import cats.data.Validated._
 import cats.data._
 import cats.syntax.all._
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.GroupsOrRule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, AuthorizationRule}
-import tech.beshu.ror.accesscontrol.blocks.rules.{ActionsRule, GroupsOrRule, KibanaAccessRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.RequirementVerifier
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.ComplianceResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.{NotUsingVariable, UsingVariable}
@@ -52,7 +54,7 @@ object BlockValidator {
       .map(_.rule)
       .collect { case a: AuthenticationRule => a }
       .filter {
-        case _: GroupsOrRule => false
+        case _: GroupsOrRule => false // todo: only groups or?
         case _ => true
       } match {
       case Nil | _ :: Nil =>

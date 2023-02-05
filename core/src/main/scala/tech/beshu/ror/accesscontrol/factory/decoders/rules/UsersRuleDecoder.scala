@@ -18,8 +18,8 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
-import tech.beshu.ror.accesscontrol.blocks.rules.UsersRule
-import tech.beshu.ror.accesscontrol.blocks.rules.UsersRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.domain.User

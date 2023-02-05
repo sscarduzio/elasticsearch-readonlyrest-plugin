@@ -19,12 +19,12 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
-import tech.beshu.ror.accesscontrol.blocks.rules.KibanaHideAppsRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaHideAppsRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.createSingleResolvableVariableFrom
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaAccess, KibanaApp, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, KibanaAccess, KibanaApp, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -89,17 +89,17 @@ class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorConfigurationIndex)
 }
 
 private object KibanaRulesDecoderHelper {
-  implicit val indexNameConvertible: Convertible[ClusterIndexName] = new Convertible[ClusterIndexName] {
-    override def convert: String => Either[Convertible.ConvertError, ClusterIndexName] = str => {
+  implicit val indexNameConvertible: Convertible[IndexName.Kibana] = new Convertible[IndexName.Kibana] {
+    override def convert: String => Either[Convertible.ConvertError, IndexName.Kibana] = str => {
       ClusterIndexName.Local
         .fromString(str.replace(" ", "_"))
         .toRight(Convertible.ConvertError("Index name cannot be empty"))
     }
   }
-  implicit val kibanaIndexDecoder: Decoder[RuntimeSingleResolvableVariable[ClusterIndexName]] =
+  implicit val kibanaIndexDecoder: Decoder[RuntimeSingleResolvableVariable[IndexName.Kibana]] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
-      .map(createSingleResolvableVariableFrom[ClusterIndexName])
+      .map(createSingleResolvableVariableFrom[IndexName.Kibana])
       .toSyncDecoder
       .emapE {
         case Right(index) => Right(index)

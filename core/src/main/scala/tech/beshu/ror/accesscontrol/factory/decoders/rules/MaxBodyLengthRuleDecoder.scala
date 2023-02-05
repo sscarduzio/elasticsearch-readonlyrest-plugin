@@ -19,8 +19,8 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 import io.circe.Decoder
 import squants.information.Bytes
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
-import tech.beshu.ror.accesscontrol.blocks.rules.MaxBodyLengthRule
-import tech.beshu.ror.accesscontrol.blocks.rules.MaxBodyLengthRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.http.MaxBodyLengthRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.http.MaxBodyLengthRule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields

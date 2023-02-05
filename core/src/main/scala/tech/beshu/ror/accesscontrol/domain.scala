@@ -492,6 +492,8 @@ object domain {
   sealed trait IndexName
   object IndexName {
 
+    type Kibana = ClusterIndexName.Local
+
     val wildcard: IndexName.Wildcard = IndexName.Wildcard("*")
 
     final case class Full(name: NonEmptyString)
@@ -542,8 +544,8 @@ object domain {
     object Local {
 
       val wildcard: ClusterIndexName.Local = Local(IndexName.wildcard)
-      val devNullKibana: ClusterIndexName.Local = Local(IndexName.Full(".kibana-devnull"))
-      val kibana: ClusterIndexName.Local = Local(IndexName.Full(".kibana"))
+      val devNullKibana: IndexName.Kibana = Local(IndexName.Full(".kibana-devnull"))
+      val kibanaDefault: IndexName.Kibana = Local(IndexName.Full(".kibana"))
 
       def fromString(value: String): Option[ClusterIndexName.Local] = {
         IndexName

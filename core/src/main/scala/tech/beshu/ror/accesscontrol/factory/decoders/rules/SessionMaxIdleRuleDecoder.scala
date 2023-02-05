@@ -21,8 +21,8 @@ import java.time.Clock
 import cats.Eq
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
-import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule
-import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule
+import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule.Settings
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common

@@ -22,11 +22,15 @@ import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport.ImpersonationWarningExtractor.noWarnings
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
-import tech.beshu.ror.accesscontrol.blocks.rules._
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials
+import tech.beshu.ror.accesscontrol.blocks.rules.auth._
 import tech.beshu.ror.accesscontrol.blocks.rules.base._
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{Impersonation, ImpersonationSupport}
-import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch._
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
+import tech.beshu.ror.accesscontrol.blocks.rules.http._
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.tranport.{HostsRule, LocalHostsRule}
 
 final case class ImpersonationWarning(block: Block.Name,
                                       ruleName: Rule.Name,

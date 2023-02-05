@@ -17,11 +17,10 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import java.util.regex.Pattern
-
 import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
-import tech.beshu.ror.accesscontrol.blocks.rules.UriRegexRule
+import tech.beshu.ror.accesscontrol.blocks.rules.http.UriRegexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.uriRegexRule

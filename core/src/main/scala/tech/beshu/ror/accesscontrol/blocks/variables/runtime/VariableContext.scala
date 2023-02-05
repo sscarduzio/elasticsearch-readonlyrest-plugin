@@ -17,9 +17,13 @@
 package tech.beshu.ror.accesscontrol.blocks.variables.runtime
 
 import cats.data.NonEmptyList
-import tech.beshu.ror.accesscontrol.blocks.rules._
+import tech.beshu.ror.accesscontrol.blocks.rules.auth._
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch._
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices._
+import tech.beshu.ror.accesscontrol.blocks.rules.http._
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.tranport._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.MultiExtractable.SingleExtractableWrapper
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.UsingVariable
 
@@ -59,7 +63,7 @@ object VariableContext {
     implicit val repositoriesRule: VariableUsage[RepositoriesRule] = UsingVariable[RepositoriesRule](rule => rule.settings.allowedRepositories.toNonEmptyList)
     implicit val snapshotsRule: VariableUsage[SnapshotsRule] = UsingVariable[SnapshotsRule](rule => rule.settings.allowedSnapshots.toNonEmptyList)
     implicit val uriRegexRule: VariableUsage[UriRegexRule] = UsingVariable[UriRegexRule](rule => rule.settings.uriPatterns.toNonEmptyList)
-    implicit val usersRule:  VariableUsage[UsersRule] = UsingVariable[UsersRule](rule => rule.settings.userIds.toNonEmptyList)
+    implicit val usersRule: VariableUsage[UsersRule] = UsingVariable[UsersRule](rule => rule.settings.userIds.toNonEmptyList)
     implicit val xForwarderForRule: VariableUsage[XForwardedForRule] = UsingVariable[XForwardedForRule](rule => rule.settings.allowedAddresses.toNonEmptyList)
     implicit val responseFieldsRule: VariableUsage[ResponseFieldsRule] = UsingVariable[ResponseFieldsRule](rule => rule.settings.responseFields.toNonEmptyList)
 
@@ -124,7 +128,7 @@ object VariableContext {
 
     case object JwtVariableIsAllowedOnlyWhenAuthRuleRelatedToJwtTokenIsProcessedEarlier extends UsageRequirement {
       override def checkIfComplies(context: Context): ComplianceResult =
-        if(ruleWithJwtTokenWasAlreadyProcessed(context.rulesBefore)) ComplianceResult.Compliant
+        if (ruleWithJwtTokenWasAlreadyProcessed(context.rulesBefore)) ComplianceResult.Compliant
         else ComplianceResult.NonCompliantWith(this)
 
       private def ruleWithJwtTokenWasAlreadyProcessed(rulesBefore: List[Rule]) =
