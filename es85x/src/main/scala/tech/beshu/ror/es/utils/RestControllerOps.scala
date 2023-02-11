@@ -48,13 +48,11 @@ class RestControllerOps(val restController: RestController) {
 
     private def update(trieNode: pathTrie.TrieNode,
                        restHandlerDecorator: RestHandler => RestHandler): Unit = {
-      Option(on(trieNode).get[Any]("value")) match {
-        case Some(value) =>
-          MethodHandlersWrapper.updateWithWrapper(value, restHandlerDecorator)
-        case None =>
-          Option(on(pathTrie).get[Any]("rootValue")).foreach { value =>
-            MethodHandlersWrapper.updateWithWrapper(value, restHandlerDecorator)
-          }
+      Option(on(trieNode).get[Any]("value")).foreach { value =>
+        MethodHandlersWrapper.updateWithWrapper(value, restHandlerDecorator)
+      }
+      Option(on(pathTrie).get[Any]("rootValue")).foreach { value =>
+        MethodHandlersWrapper.updateWithWrapper(value, restHandlerDecorator)
       }
       val children = on(trieNode).get[java.util.Map[String, pathTrie.TrieNode]]("children").asSafeMap
       children.values.foreach { trieNode =>
