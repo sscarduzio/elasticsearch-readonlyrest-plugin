@@ -16,39 +16,36 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.datastreams
 
-import cats.data.NonEmptyList
-import cats.implicits._
 import org.elasticsearch.action.datastreams.ModifyDataStreamsAction
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import tech.beshu.ror.es.handler.request.context.types.BaseIndicesEsRequestContext
+import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
 import tech.beshu.ror.utils.ScalaOps._
 
 class ModifyDataStreamsEsRequestContext(actionRequest: ModifyDataStreamsAction.Request,
                                         esContext: EsContext,
-                                        aclContext: AccessControlStaticContext,
                                         clusterService: RorClusterService,
                                         override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  override def indicesFrom(request: ModifyDataStreamsAction.Request): Set[domain.ClusterIndexName] = {
-    getIndicesFrom(request).toSet
+  private lazy val originIndices: Set[domain.ClusterIndexName] = {
+    actionRequest.getActions.asSafeList.map(_.getIndex).flatMap(ClusterIndexName.fromString).toSet
   }
 
-  override def update(request: ModifyDataStreamsAction.Request,
-                      filteredIndices: NonEmptyList[ClusterIndexName],
-                      allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    logger.error(s"[${id.show}] This request ${request.getClass.getCanonicalName} cannot be handled by the ROR ACL, " +
-      s"so it's forbidden for security reasons. Please report the issue.")
-    ModificationResult.ShouldBeInterrupted
+  override protected def backingIndicesFrom(request: ModifyDataStreamsAction.Request): DataStreamRequestBlockContext.BackingIndices =
+    BackingIndices.IndicesInvolved(originIndices, Set(ClusterIndexName.Local.wildcard))
+
+  override def dataStreamsFrom(request: ModifyDataStreamsAction.Request): Set[domain.DataStreamName] = {
+    request.getActions.asSafeList.map(_.getDataStream).flatMap(DataStreamName.fromString).toSet
   }
 
-  private def getIndicesFrom(request: ModifyDataStreamsAction.Request) = {
-    request.indices().asSafeList.flatMap(ClusterIndexName.fromString)
+  override def modifyRequest(blockContext: DataStreamRequestBlockContext): ModificationResult = {
+    ModificationResult.Modified // data stream and indices already processed by ACL
   }
 }

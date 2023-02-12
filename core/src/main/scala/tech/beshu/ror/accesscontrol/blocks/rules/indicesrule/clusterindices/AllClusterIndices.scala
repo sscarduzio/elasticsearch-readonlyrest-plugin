@@ -50,8 +50,11 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       case (None, Some(nonEmptyRequestedRemoteIndices)) =>
         processRemoteIndices(requestContext, allAllowedRemoteIndices, nonEmptyRequestedRemoteIndices)
       case (None, None) =>
-        if(requestContext.allIndicesAndAliases.nonEmpty) Task.now(ProcessResult.Ok(allAllowedIndices))
-        else Task.now(ProcessResult.Failed(Some(Cause.IndexNotFound)))
+        if (requestContext.allIndicesAndAliases.nonEmpty) {
+          Task.now(ProcessResult.Ok(allAllowedIndices))
+        } else {
+          Task.now(ProcessResult.Failed(Some(Cause.IndexNotFound)))
+        }
     }
   }
 
@@ -77,7 +80,7 @@ trait AllClusterIndices extends BaseIndicesProcessor {
   private def processRemoteIndices(requestContext: RequestContext,
                                    allAllowedIndices: Set[ClusterIndexName.Remote],
                                    requestedIndices: UniqueNonEmptyList[ClusterIndexName.Remote]): Task[ProcessResult[ClusterIndexName]] = {
-    if(requestedIndices.isEmpty) {
+    if (requestedIndices.isEmpty) {
       Task.now(ProcessResult.Failed(None))
     } else {
       implicit val indicesManager: RemoteIndicesManager = new RemoteIndicesManager(

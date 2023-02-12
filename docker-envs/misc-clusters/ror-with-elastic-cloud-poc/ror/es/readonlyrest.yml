@@ -1,0 +1,28 @@
+readonlyrest:
+
+  ssl_internode:
+    enable: true
+    keystore_file: "ror-cluster/ror-es01/ror-es01.p12"
+    keystore_pass: "mypassword"
+    truststore_file: "ror-cluster/ror-es01/ror-es01.p12"
+    truststore_pass: "mypassword"
+    key_pass: "mypassword"
+    client_authentication: true
+    certificate_verification: true
+
+  access_control_rules:
+
+    - name: "KIBANA"
+      type: allow
+      auth_key: kibana:kibana
+
+    - name: "ADMIN"
+      type: allow
+      auth_key: admin:admin
+      kibana_access: admin
+
+    - name: "User 1"
+      type: allow
+      auth_key: "user1:test"
+      indices: [".kibana*", "escloud:kibana_sample*", "index*"]
+      kibana_access: ro

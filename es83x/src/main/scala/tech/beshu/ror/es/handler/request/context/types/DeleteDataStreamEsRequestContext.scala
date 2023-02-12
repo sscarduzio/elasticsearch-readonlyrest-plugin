@@ -16,12 +16,11 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-import cats.data.NonEmptyList
 import org.elasticsearch.action.datastreams.DeleteDataStreamAction
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
+import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -29,23 +28,22 @@ import tech.beshu.ror.utils.ScalaOps._
 
 class DeleteDataStreamEsRequestContext(actionRequest: DeleteDataStreamAction.Request,
                                        esContext: EsContext,
-                                       aclContext: AccessControlStaticContext,
                                        clusterService: RorClusterService,
                                        override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  override def indicesFrom(request: DeleteDataStreamAction.Request): Set[domain.ClusterIndexName] = {
-    getIndicesFrom(request).toSet
-  }
+  private lazy val originDataStreams = actionRequest.getNames.asSafeList.flatMap(DataStreamName.fromString).toSet
 
-  override def update(request: DeleteDataStreamAction.Request,
-                      filteredIndices: NonEmptyList[ClusterIndexName],
-                      allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    request.indices(filteredIndices.map(_.stringify).toList: _*)
+  override protected def dataStreamsFrom(request: DeleteDataStreamAction.Request): Set[DataStreamName] = originDataStreams
+
+  override protected def backingIndicesFrom(request: DeleteDataStreamAction.Request): BackingIndices = BackingIndices.IndicesNotInvolved
+
+  override protected def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
+    setDataStreamNames(blockContext.dataStreams)
     ModificationResult.Modified
   }
 
-  private def getIndicesFrom(request: DeleteDataStreamAction.Request) = {
-    request.indices().asSafeList.flatMap(ClusterIndexName.fromString)
+  private def setDataStreamNames(dataStreams: Set[DataStreamName]): Unit = {
+    actionRequest.indices(dataStreams.map(DataStreamName.toString).toList: _*) // method is named indices but it sets data streams
   }
 }

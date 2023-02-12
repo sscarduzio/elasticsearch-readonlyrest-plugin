@@ -26,7 +26,7 @@ import io.circe.ParsingFailure
 import io.jsonwebtoken.JwtBuilder
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, RepositoryRequestBlockContext, RorApiRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
@@ -41,6 +41,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, definitions}
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
@@ -101,11 +102,27 @@ object TestsUtils {
                                 aliasesNames: Set[IndexName.Full]): FullLocalIndexWithAliases =
     FullLocalIndexWithAliases(fullIndexName, IndexAttribute.Opened, aliasesNames)
 
+  def fullLocalDataStreamWithAliases(dataStreamName: DataStreamName.Full): FullLocalDataStreamWithAliases =
+    fullLocalDataStreamWithAliases(
+      dataStreamName = dataStreamName,
+      aliasesNames = Set.empty,
+    )
+
+  def fullLocalDataStreamWithAliases(dataStreamName: DataStreamName.Full,
+                                     aliasesNames: Set[DataStreamName.Full]): FullLocalDataStreamWithAliases =
+    FullLocalDataStreamWithAliases(
+      dataStreamName = dataStreamName,
+      aliasesNames = aliasesNames,
+      backingIndices = Set(IndexName.Full(NonEmptyString.unsafeFrom(".ds-" + dataStreamName.value.value + "-2023")))
+    )
+
   def remoteIndexName(str: NonEmptyString): ClusterIndexName.Remote = ClusterIndexName.Remote.fromString(str.value.value).get
 
   def indexName(str: NonEmptyString): IndexName = IndexName.fromString(str.value).get
 
   def fullIndexName(str: NonEmptyString): IndexName.Full = IndexName.Full.fromString(str.value).get
+
+  def fullDataStreamName(str: NonEmptyString): DataStreamName.Full = DataStreamName.Full.fromString(str.value).get
 
   def indexPattern(str: NonEmptyString): IndexPattern = IndexPattern(clusterIndexName(str))
 
@@ -215,6 +232,7 @@ object TestsUtils {
                            aliases: Set[ClusterIndexName] = Set.empty,
                            repositories: Set[RepositoryName] = Set.empty,
                            snapshots: Set[SnapshotName] = Set.empty,
+                           dataStreams: Set[DataStreamName] = Set.empty,
                            templates: Set[TemplateOperation] = Set.empty)
                           (blockContext: BlockContext): Unit = {
       blockContext.userMetadata.loggedUser should be(loggedUser)
@@ -231,7 +249,8 @@ object TestsUtils {
         case _: CurrentUserMetadataRequestBlockContext =>
         case _: RorApiRequestBlockContext =>
         case _: GeneralNonIndexRequestBlockContext =>
-        case _: RorApiRequestBlockContext =>
+        case bc: DataStreamRequestBlockContext =>
+          bc.dataStreams should be(dataStreams)
         case bc: RepositoryRequestBlockContext =>
           bc.repositories should be(repositories)
         case bc: SnapshotRequestBlockContext =>

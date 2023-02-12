@@ -20,8 +20,9 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, HasIndexPacks, SnapshotRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, DataStreamRequestBlockContext, HasIndexPacks, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater._
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
@@ -54,6 +55,7 @@ class IndicesRule(override val settings: Settings,
       case GeneralNonIndexRequestBlockContextUpdater => processRequestWithoutIndices(blockContext)
       case RepositoryRequestBlockContextUpdater => processRequestWithoutIndices(blockContext)
       case SnapshotRequestBlockContextUpdater => processSnapshotRequest(blockContext)
+      case DataStreamRequestBlockContextUpdater => processDataStreamRequest(blockContext)
       case GeneralIndexRequestBlockContextUpdater => processIndicesRequest(blockContext)
       case FilterableRequestBlockContextUpdater => processIndicesRequest(blockContext)
       case MultiIndexRequestBlockContextUpdater => processIndicesPacks(blockContext)
@@ -76,7 +78,8 @@ class IndicesRule(override val settings: Settings,
       val allAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
       processIndices(blockContext.requestContext, allAllowedIndices, blockContext.indices)
         .map {
-          case ProcessResult.Ok(filteredIndices) => Fulfilled(blockContext.withIndices(filteredIndices, allAllowedIndices))
+          case ProcessResult.Ok(filteredIndices) =>
+            Fulfilled(blockContext.withIndices(filteredIndices, allAllowedIndices))
           case ProcessResult.Failed(cause) => Rejected(cause)
         }
     }
@@ -143,6 +146,12 @@ class IndicesRule(override val settings: Settings,
   private def processSnapshotRequest(blockContext: SnapshotRequestBlockContext): Task[RuleResult[SnapshotRequestBlockContext]] = {
     if (matchAll) Task.now(Fulfilled(blockContext))
     else if (blockContext.filteredIndices.isEmpty) processRequestWithoutIndices(blockContext)
+    else processIndicesRequest(blockContext)
+  }
+
+  private def processDataStreamRequest(blockContext: DataStreamRequestBlockContext): Task[RuleResult[DataStreamRequestBlockContext]] = {
+    if (matchAll) Task.now(Fulfilled(blockContext))
+    else if (blockContext.backingIndices == BackingIndices.IndicesNotInvolved) processRequestWithoutIndices(blockContext)
     else processIndicesRequest(blockContext)
   }
 

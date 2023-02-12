@@ -31,7 +31,6 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Action._
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.{Local, Remote}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
@@ -40,6 +39,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.accesscontrol.matchers.{IndicesNamesMatcher, MatcherWithWildcardsScalaAdapter, TemplateNamePatternMatcher, UniqueIdentifierGenerator}
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.CaseMappingEquality
@@ -902,7 +902,7 @@ object domain {
       case Wildcard => "*"
     }
 
-    implicit val eqRepository: Eq[SnapshotName] = Eq.fromUniversalEquals
+    implicit val eqSnapshotName: Eq[SnapshotName] = Eq.fromUniversalEquals
     implicit val caseMappingEqualitySnapshotName: CaseMappingEquality[SnapshotName] = CaseMappingEquality.instance(
       {
         case Full(value) => value.value
@@ -912,6 +912,78 @@ object domain {
       },
       identity
     )
+  }
+
+  sealed trait DataStreamName
+  object DataStreamName {
+    final case class Full private(value: NonEmptyString) extends DataStreamName
+    object Full {
+      def fromString(value: String): Option[DataStreamName.Full] = {
+        NonEmptyString.unapply(value).map(DataStreamName.Full.apply)
+      }
+    }
+
+    final case class Pattern private(value: NonEmptyString) extends DataStreamName
+    case object All extends DataStreamName
+    case object Wildcard extends DataStreamName
+
+    def all: DataStreamName = DataStreamName.All
+
+    def wildcard: DataStreamName = DataStreamName.Wildcard
+
+    def fromString(value: String): Option[DataStreamName] = {
+      NonEmptyString.unapply(value).map {
+        case Refined("_all") => All
+        case Refined("*") => Wildcard
+        case v if v.contains("*") => Pattern(NonEmptyString.unsafeFrom(v))
+        case v => Full(NonEmptyString.unsafeFrom(v))
+      }
+    }
+
+    def toString(dataStreamName: DataStreamName): String = dataStreamName match {
+      case Full(value) => value.value
+      case Pattern(value) => value.value
+      case All => "_all"
+      case Wildcard => "*"
+    }
+
+    implicit val eqDataStreamName: Eq[DataStreamName] = Eq.fromUniversalEquals
+    implicit val caseMappingEqualityDataStreamName: CaseMappingEquality[DataStreamName] = CaseMappingEquality.instance(
+      {
+        case Full(value) => value.value
+        case Pattern(value) => value.value
+        case All => "*"
+        case Wildcard => "*"
+      },
+      identity
+    )
+
+    final case class FullLocalDataStreamWithAliases(dataStreamName: DataStreamName.Full,
+                                                    aliasesNames: Set[DataStreamName.Full],
+                                                    backingIndices: Set[IndexName.Full]) {
+      lazy val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
+      lazy val dataStream: ClusterIndexName.Local = toLocalIndex(dataStreamName)
+      lazy val aliases: Set[ClusterIndexName.Local] = aliasesNames.map(toLocalIndex)
+      lazy val indices: Set[ClusterIndexName.Local] = backingIndices.map(ClusterIndexName.Local.apply)
+      lazy val all: Set[ClusterIndexName.Local] = aliases ++ indices + dataStream
+
+      private def toLocalIndex(ds: DataStreamName.Full): ClusterIndexName.Local =
+        ClusterIndexName.Local(IndexName.Full(ds.value))
+    }
+
+    final case class FullRemoteDataStreamWithAliases(clusterName: ClusterName.Full,
+                                                     dataStreamName: DataStreamName.Full,
+                                                     aliasesNames: Set[DataStreamName.Full],
+                                                     backingIndices: Set[IndexName.Full]) {
+      lazy val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
+      lazy val dataStream: ClusterIndexName.Remote = toRemoteIndex(dataStreamName)
+      lazy val aliases: Set[ClusterIndexName.Remote] = aliasesNames.map(toRemoteIndex)
+      lazy val indices: Set[ClusterIndexName.Remote] = backingIndices.map(ClusterIndexName.Remote(_, clusterName))
+      lazy val all: Set[ClusterIndexName.Remote] = aliases ++ indices + dataStream
+
+      private def toRemoteIndex(ds: DataStreamName.Full): ClusterIndexName.Remote =
+        ClusterIndexName.Remote(IndexName.Full(ds.value), clusterName)
+    }
   }
 
   sealed trait Template {

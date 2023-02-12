@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-import cats.data.NonEmptyList
 import org.elasticsearch.action.datastreams.DataStreamsStatsAction
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -29,23 +29,17 @@ import tech.beshu.ror.utils.ScalaOps._
 
 class DataStreamsStatsEsRequestContext(actionRequest: DataStreamsStatsAction.Request,
                                        esContext: EsContext,
-                                       aclContext: AccessControlStaticContext,
                                        clusterService: RorClusterService,
                                        override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  override def indicesFrom(request: DataStreamsStatsAction.Request): Set[domain.ClusterIndexName] = {
-    getIndexFrom(request).toSet
-  }
+  override def backingIndicesFrom(request: DataStreamsStatsAction.Request): BackingIndices =  BackingIndices.IndicesNotInvolved
 
-  override def update(request: DataStreamsStatsAction.Request,
-                      filteredIndices: NonEmptyList[ClusterIndexName],
-                      allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
-    request.indices(filteredIndices.map(_.stringify).toList: _*)
+  override def dataStreamsFrom(request: DataStreamsStatsAction.Request): Set[domain.DataStreamName] =
+    actionRequest.indices().asSafeList.flatMap(DataStreamName.fromString).toSet
+
+  override def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
+    actionRequest.indices(blockContext.dataStreams.map(DataStreamName.toString).toList: _*)
     ModificationResult.Modified
-  }
-
-  private def getIndexFrom(request: DataStreamsStatsAction.Request) = {
-    request.indices().asSafeList.flatMap(ClusterIndexName.fromString)
   }
 }

@@ -47,7 +47,7 @@ trait MiscSuite
 
       response.responseCode should be(401)
     }
-    "allows the request when it doesn't contain x-forwarded-for header" in {
+    "allow the request when it doesn't contain x-forwarded-for header" in {
       val userClusterStateManager = new CatManager(
         client = basicAuthClient("admin", "admin123"),
         esVersion = esVersionUsed
@@ -86,7 +86,13 @@ trait MiscSuite
     result.searchHits.size should be(1)
     result.searchHits(0)("_source")("user_id").str should be("alice")
   }
-
+  "Main endpoint" should {
+    "be protected" in {
+      val unknownUserCatManager = new CatManager(basicAuthClient("unknown", "unknown"), esVersion = esVersionUsed)
+      val response = unknownUserCatManager.main()
+      response.responseCode should be (401)
+    }
+  }
 }
 
 object MiscSuite {

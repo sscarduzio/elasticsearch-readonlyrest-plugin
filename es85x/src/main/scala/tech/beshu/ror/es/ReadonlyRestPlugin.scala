@@ -41,7 +41,7 @@ import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.plugins._
 import org.elasticsearch.repositories.{RepositoriesService, VerifyNodeRepositoryAction}
-import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
+import org.elasticsearch.rest.{RestController, RestHandler}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.tracing.Tracer
@@ -67,9 +67,11 @@ import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 import tech.beshu.ror.es.actions.rrtestconfig.rest.RestRRTestConfigAction
 import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, TransportRRTestConfigAction}
+import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, TransportRorWrappedCatAction}
+import tech.beshu.ror.es.actions.wrappers._upgrade.{RorWrappedUpgradeActionType, TransportRorWrappedUpgradeAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
-import tech.beshu.ror.es.utils.{EsPatchVerifier, ThreadRepo}
+import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsPatchVerifier}
 import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SetOnce
@@ -229,6 +231,9 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       new ActionHandler(RRConfigActionType.instance, classOf[TransportRRConfigAction]),
       new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
       new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
+      // wrappers
+      new ActionHandler(RorWrappedCatActionType.instance, classOf[TransportRorWrappedCatAction]),
+      new ActionHandler(RorWrappedUpgradeActionType.instance, classOf[TransportRorWrappedUpgradeAction]),
     ).asJava
   }
 
@@ -240,7 +245,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                indexNameExpressionResolver: IndexNameExpressionResolver,
                                nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
     import tech.beshu.ror.es.utils.RestControllerOps._
-    restController.decorateRestHandlersWith(new ChannelInterceptingRestHandlerDecorator(_))
+    restController.decorateRestHandlersWith(ChannelInterceptingRestHandlerDecorator.create)
     List[RestHandler](
       new RestRRAdminAction(),
       new RestRRAuthMockAction(),
@@ -259,16 +264,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     super.onNodeStarted()
     doPrivileged {
       esInitListener.onEsReady()
-    }
-  }
-
-  private class ChannelInterceptingRestHandlerDecorator(underlying: RestHandler)
-    extends RestHandler {
-
-    override def handleRequest(request: RestRequest, channel: RestChannel, client: NodeClient): Unit = {
-      val rorRestChannel = new RorRestChannel(channel)
-      ThreadRepo.setRestChannel(rorRestChannel)
-      underlying.handleRequest(request, rorRestChannel, client)
     }
   }
 }

@@ -16,44 +16,100 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.datastreams
 
-import cats.data.NonEmptyList
 import cats.implicits._
 import org.elasticsearch.action.ActionRequest
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import org.elasticsearch.common.util.set.Sets
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName}
 import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.MatchResult.{Matched, NotMatched}
-import tech.beshu.ror.es.handler.request.context.types.{BaseIndicesEsRequestContext, ReflectionBasedActionRequest}
+import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
+import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+
+import scala.collection.JavaConverters._
 
 object ReflectionBasedDataStreamsEsRequestContext {
 
-  def unapply(arg: ReflectionBasedActionRequest): Option[BaseIndicesEsRequestContext[ActionRequest]] = {
-    CreateDataStreamEsRequestContext.unapply(arg)
-      .orElse(DataStreamsStatsEsRequestContext.unapply(arg))
-      .orElse(DeleteDataStreamEsRequestContext.unapply(arg))
-      .orElse(GetDataStreamEsRequestContext.unapply(arg))
-      .orElse(MigrateToDataStreamEsRequestContext.unapply(arg))
-      .orElse(PromoteDataStreamEsRequestContext.unapply(arg))
+  def unapply(arg: ReflectionBasedActionRequest): Option[BaseDataStreamsEsRequestContext[ActionRequest]] = {
+    esContextCreators
+      .toStream
+      .flatMap(_.unapply(arg))
+      .headOption
   }
 
-  private[datastreams] def tryMatchActionRequest(actionRequest: ActionRequest,
-                                                 expectedClassCanonicalName: String,
-                                                 getIndicesMethodName: String): MatchResult = {
-    Option(actionRequest.getClass.getCanonicalName)
-      .find(_ == expectedClassCanonicalName)
-      .flatMap { _ =>
-        NonEmptyList
-          .fromList(extractStringArrayFromPrivateMethod(getIndicesMethodName, actionRequest).asSafeList)
-          .map(_.toList.toSet.flatMap(ClusterIndexName.fromString))
-          .map(Matched.apply)
-      }
-      .getOrElse(NotMatched)
+  val supportedActionRequests: Set[ClassCanonicalName] = esContextCreators.map(_.actionRequestClass).toSet
+
+  private lazy val esContextCreators: UniqueNonEmptyList[ReflectionBasedDataStreamsEsContextCreator] = UniqueNonEmptyList.of(
+    CreateDataStreamEsRequestContext,
+    DataStreamsStatsEsRequestContext,
+    DeleteDataStreamEsRequestContext,
+    GetDataStreamEsRequestContext,
+    MigrateToDataStreamEsRequestContext,
+    PromoteDataStreamEsRequestContext
+  )
+
+  private[datastreams] def tryUpdateDataStreams[R <: ActionRequest](actionRequest: R,
+                                                                    dataStreamsFieldName: String,
+                                                                    dataStreams: Set[DataStreamName]): Boolean = {
+    // Optimistic reflection attempt
+    ReflecUtils.setIndices(
+      actionRequest,
+      Sets.newHashSet(dataStreamsFieldName),
+      dataStreams.toList.map(DataStreamName.toString).toSet.asJava
+    )
   }
 
-  private[datastreams] sealed trait MatchResult
+
+  private[datastreams] sealed trait MatchResult[+A]
+
   private[datastreams] object MatchResult {
-    final case class Matched(extractedIndices: Set[ClusterIndexName]) extends MatchResult
-    object NotMatched extends MatchResult
+    final case class Matched[A](extracted: Set[A]) extends MatchResult[A]
+
+    object NotMatched extends MatchResult[Nothing]
+  }
+
+  final case class ClassCanonicalName(value: String) extends AnyVal
+
+  private[datastreams] trait ReflectionBasedDataStreamsEsContextCreator {
+    def actionRequestClass: ClassCanonicalName
+
+    def unapply(arg: ReflectionBasedActionRequest): Option[BaseDataStreamsEsRequestContext[ActionRequest]]
+
+    protected def tryMatchActionRequestWithIndices(actionRequest: ActionRequest,
+                                                   getIndicesMethodName: String): MatchResult[ClusterIndexName] = {
+      tryMatchActionRequest[ClusterIndexName](
+        actionRequest = actionRequest,
+        getPropsMethodName = getIndicesMethodName,
+        toDomain = ClusterIndexName.fromString
+      )
+    }
+
+    protected def tryMatchActionRequestWithDataStreams(actionRequest: ActionRequest,
+                                                       getDataStreamsMethodName: String): MatchResult[DataStreamName] = {
+      tryMatchActionRequest[DataStreamName](
+        actionRequest = actionRequest,
+        getPropsMethodName = getDataStreamsMethodName,
+        toDomain = DataStreamName.fromString
+      )
+    }
+
+    private def tryMatchActionRequest[A](actionRequest: ActionRequest,
+                                         getPropsMethodName: String,
+                                         toDomain: String => Option[A]): MatchResult[A] = {
+      Option(actionRequest.getClass.getCanonicalName)
+        .find(_ === actionRequestClass.value)
+        .map { _ =>
+          Matched.apply[A] {
+            extractStringArrayFromPrivateMethod(getPropsMethodName, actionRequest)
+              .asSafeList
+              .toSet
+              .flatMap((value: String) => toDomain(value))
+          }
+        }
+        .getOrElse(NotMatched)
+    }
+
   }
 
 }

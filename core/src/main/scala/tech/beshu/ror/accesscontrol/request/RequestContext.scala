@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.request
 
-import java.time.Instant
 import cats.Show
 import cats.implicits._
 import com.softwaremill.sttp.Method
@@ -29,6 +28,7 @@ import squants.information.{Bytes, Information}
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain._
@@ -37,6 +37,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.ScalaOps._
 
+import java.time.Instant
 import scala.language.implicitConversions
 
 trait RequestContext {
@@ -74,6 +75,10 @@ trait RequestContext {
   def allIndicesAndAliases: Set[FullLocalIndexWithAliases]
 
   def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]]
+
+  def allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases]
+
+  def allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]]
 
   def allTemplates: Set[Template]
 

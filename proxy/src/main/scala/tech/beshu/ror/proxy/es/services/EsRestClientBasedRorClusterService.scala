@@ -62,6 +62,14 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
     } yield indicesAndAliases
   }
 
+  override def allDataStreamsAndAliases: Set[DataStreamName.FullLocalDataStreamWithAliases] = {
+    Set.empty
+  }
+
+  override def allRemoteDataStreamsAndAliases: Task[Set[DataStreamName.FullRemoteDataStreamWithAliases]] = {
+    Task.now(Set.empty)
+  }
+
   private def getRemoteIndicesAndAliasesOf(clusterName: ClusterName.Full) = Task.now {
     FullRemoteIndexWithAliases(clusterName, IndexName.Full("*"), IndexAttribute.Opened, Set.empty)
   }
