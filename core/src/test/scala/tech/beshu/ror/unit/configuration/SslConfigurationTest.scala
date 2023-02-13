@@ -39,10 +39,10 @@ class SslConfigurationTest
         val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
         inside(ssl.externalSsl) {
           case Some(ExternalSslConfiguration(KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateConfiguration.TruststoreBasedConfiguration(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
-            keystoreFile.value.getName should be( "ror-keystore.jks")
+            keystoreFile.value.getName should be("ror-keystore.jks")
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
-            truststoreFile.value.getName should be( "ror-truststore.jks")
+            truststoreFile.value.getName should be("ror-truststore.jks")
             truststorePassword should be(TruststorePassword("readonlyrest3"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
@@ -54,10 +54,10 @@ class SslConfigurationTest
         val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_elasticsearch_config_only_digits/")).runSyncUnsafe().right.get
         inside(ssl.externalSsl) {
           case Some(ExternalSslConfiguration(KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateConfiguration.TruststoreBasedConfiguration(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
-            keystoreFile.value.getName should be( "ror-keystore.jks")
+            keystoreFile.value.getName should be("ror-keystore.jks")
             keystorePassword should be(KeystorePassword("123456"))
             keyPass should be(KeyPass("12"))
-            truststoreFile.value.getName should be( "ror-truststore.jks")
+            truststoreFile.value.getName should be("ror-truststore.jks")
             truststorePassword should be(TruststorePassword("1234"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
@@ -83,10 +83,10 @@ class SslConfigurationTest
         val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_readonlyrest_config/")).runSyncUnsafe().right.get
         inside(ssl.externalSsl) {
           case Some(ExternalSslConfiguration(KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateConfiguration.TruststoreBasedConfiguration(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
-            keystoreFile.value.getName should be( "ror-keystore.jks")
+            keystoreFile.value.getName should be("ror-keystore.jks")
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
-            truststoreFile.value.getName should be( "ror-truststore.jks")
+            truststoreFile.value.getName should be("ror-truststore.jks")
             truststorePassword should be(TruststorePassword("readonlyrest3"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
@@ -113,7 +113,7 @@ class SslConfigurationTest
           val configFolderPath = "/boot_tests/es_api_ssl_settings_malformed/"
           val expectedFilePath = getResourcePath(s"${configFolderPath}elasticsearch.yml").toString
           RorSsl.load(getResourcePath(configFolderPath)).runSyncUnsafe() shouldBe Left {
-            MalformedSettings(s"Cannot load ROR SSL configuration from file $expectedFilePath")
+            MalformedSettings(s"Cannot load ROR SSL configuration from file $expectedFilePath. Cause: Attempt to decode value on failed cursor")
           }
         }
       }
@@ -126,7 +126,9 @@ class SslConfigurationTest
         val expectedFilePath = getResourcePath(s"${configFolderPath}elasticsearch.yml").toString
 
         RorSsl.load(getResourcePath(configFolderPath)).runSyncUnsafe() shouldBe Left {
-          MalformedSettings(s"Cannot load ROR SSL configuration from file $expectedFilePath")
+          MalformedSettings(
+            s"Cannot load ROR SSL configuration from file $expectedFilePath. " +
+              s"Cause: Field sets [server_certificate_key_file,server_certificate_file] and [keystore_file,keystore_pass,key_pass,key_alias] could not be present in the same configuration section")
         }
       }
     }
@@ -137,13 +139,13 @@ class SslConfigurationTest
       val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
       inside(ssl.interNodeSsl) {
         case Some(InternodeSslConfiguration(KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), truststoreConfiguration, allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled)) =>
-          keystoreFile.value.getName should be( "ror-keystore.jks")
+          keystoreFile.value.getName should be("ror-keystore.jks")
           keystorePassword should be(KeystorePassword("readonlyrest1"))
           keyPass should be(KeyPass("readonlyrest2"))
           truststoreConfiguration should be(None)
           allowedProtocols should be(Set.empty)
           allowedCiphers should be(Set.empty)
-          clientAuthenticationEnabled should be (false)
+          clientAuthenticationEnabled should be(false)
           certificateVerificationEnabled should be(true)
       }
       ssl.externalSsl should be(None)
@@ -157,7 +159,7 @@ class SslConfigurationTest
           clientTrustedCertificateFile.value.getName should be("client_certificate.pem")
           allowedProtocols should be(Set.empty)
           allowedCiphers should be(Set.empty)
-          clientAuthenticationEnabled should be (false)
+          clientAuthenticationEnabled should be(false)
           certificateVerificationEnabled should be(true)
       }
     }
@@ -166,14 +168,14 @@ class SslConfigurationTest
         val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_readonlyrest_config/")).runSyncUnsafe().right.get
         inside(ssl.interNodeSsl) {
           case Some(InternodeSslConfiguration(KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateConfiguration.TruststoreBasedConfiguration(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled)) =>
-            keystoreFile.value.getName should be( "ror-keystore.jks")
+            keystoreFile.value.getName should be("ror-keystore.jks")
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
-            truststoreFile.value.getName should be( "ror-truststore.jks")
+            truststoreFile.value.getName should be("ror-truststore.jks")
             truststorePassword should be(TruststorePassword("readonlyrest3"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
-            clientAuthenticationEnabled should be (false)
+            clientAuthenticationEnabled should be(false)
             certificateVerificationEnabled should be(true)
         }
         ssl.externalSsl should be(None)
@@ -197,7 +199,7 @@ class SslConfigurationTest
           val configFolderPath = "/boot_tests/internode_ssl_settings_malformed/"
           val expectedFilePath = getResourcePath(s"${configFolderPath}elasticsearch.yml").toString
           RorSsl.load(getResourcePath(configFolderPath)).runSyncUnsafe() shouldBe Left {
-            MalformedSettings(s"Cannot load ROR SSL configuration from file $expectedFilePath")
+            MalformedSettings(s"Cannot load ROR SSL configuration from file $expectedFilePath. Cause: Attempt to decode value on failed cursor")
           }
         }
       }

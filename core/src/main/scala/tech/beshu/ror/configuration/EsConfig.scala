@@ -72,8 +72,6 @@ object EsConfig {
 
   final case class RorEsLevelSettings(forceLoadRorFromFile: Boolean)
 
-  final case class RorIndexSettings(name: String)
-
   sealed trait LoadEsConfigError
   object LoadEsConfigError {
     final case class FileNotFound(file: File) extends LoadEsConfigError

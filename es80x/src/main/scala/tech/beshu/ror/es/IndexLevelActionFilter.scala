@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.es
 
+import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
+import monix.execution.schedulers.CanBlock
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
@@ -33,9 +35,10 @@ import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, RorMode}
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot._
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.es.handler.AclAwareRequestFilter
+import tech.beshu.ror.configuration.RorBootConfiguration
+import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
-import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse, createTestSettingsNotConfiguredResponse}
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, RestClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.utils.ThreadRepo
@@ -46,6 +49,7 @@ import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
 import java.time.Clock
 import java.util.function.Supplier
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class IndexLevelActionFilter(nodeName: String,
@@ -62,6 +66,19 @@ class IndexLevelActionFilter(nodeName: String,
   extends ActionFilter with Logging {
 
   private implicit val clock: Clock = Clock.systemUTC()
+
+  private val rorNotAvailableRequestHandler: RorNotAvailableRequestHandler =
+    RorBootConfiguration
+      .load(env.configFile())
+      .map(_.fold(
+        error => {
+          logger.error(s"Failed to load config. Error: ${error.message} Default configuration will be used..")
+          RorBootConfiguration.default
+        },
+        identity
+      ))
+      .map(new RorNotAvailableRequestHandler(_))
+      .runSyncUnsafe(10 seconds)(Scheduler.global, CanBlock.permit)
 
   private val ror = ReadonlyRest.create(
     RorMode.Plugin,
@@ -153,19 +170,16 @@ class IndexLevelActionFilter(nodeName: String,
   private def proceedByRorEngine(esContext: EsContext): Unit = {
     rorInstanceState.get() match {
       case RorInstanceStartingState.Starting =>
-        logger.warn(s"[${esContext.requestContextId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
-        esContext.listener.onFailure(createRorNotReadyYetResponse())
+        handleRorNotReadyYet(esContext)
       case RorInstanceStartingState.Started(instance) =>
         instance.engines match {
           case Some(engines) =>
             handleRequest(engines, esContext)
           case None =>
-            logger.warn(s"[${esContext.requestContextId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
-            esContext.listener.onFailure(createRorNotReadyYetResponse())
+            handleRorNotReadyYet(esContext)
         }
       case RorInstanceStartingState.NotStarted(_) =>
-        logger.error(s"[${esContext.requestContextId}] Cannot handle the ${esContext.channel.request().path()} request because ReadonlyREST failed to start")
-        esContext.listener.onFailure(createRorStartingFailureResponse())
+        handleRorFailedToStart(esContext)
     }
   }
 
@@ -182,6 +196,16 @@ class IndexLevelActionFilter(nodeName: String,
     case Right(_) =>
     case Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured) =>
       esContext.listener.onFailure(createTestSettingsNotConfiguredResponse())
+  }
+
+  private def handleRorNotReadyYet(esContext: EsContext): Unit = {
+    logger.warn(s"[${esContext.requestContextId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
+    rorNotAvailableRequestHandler.handleRorNotReadyYet(esContext)
+  }
+
+  private def handleRorFailedToStart(esContext: EsContext): Unit = {
+    logger.error(s"[${esContext.requestContextId}] Cannot handle the ${esContext.channel.request().path()} request because ReadonlyREST failed to start")
+    rorNotAvailableRequestHandler.handleRorFailedToStart(esContext)
   }
 
   private def startRorInstance() = {

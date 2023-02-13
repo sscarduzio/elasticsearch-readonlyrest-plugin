@@ -34,7 +34,7 @@ final class YamlFileBasedConfigLoader(file: File)
       .flatMap { json =>
         implicitly[Decoder[CONFIG]]
           .decodeJson(json)
-          .left.map(_ => MalformedSettings(s"Cannot load $configName from file ${file.pathAsString}"))
+          .left.map(e => MalformedSettings(s"Cannot load $configName from file ${file.pathAsString}. Cause: ${e.message}"))
       }
   }
 
