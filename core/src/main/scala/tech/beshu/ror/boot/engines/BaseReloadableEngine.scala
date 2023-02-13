@@ -16,9 +16,6 @@
  */
 package tech.beshu.ror.boot.engines
 
-import java.time.{Clock, Instant}
-import java.util.concurrent.TimeUnit
-
 import cats.data.EitherT
 import cats.implicits._
 import eu.timepit.refined.api.Refined
@@ -40,6 +37,8 @@ import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.providers.JavaUuidProvider
 import tech.beshu.ror.utils.DurationOps._
 
+import java.time.{Clock, Instant}
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -138,7 +137,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
 
   protected def reloadEngine(newConfig: RawRorConfig,
                              newConfigEngineTtl: FiniteDuration Refined Positive)
-                            (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, EngineExpirationConfig] = {
+                            (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, ReloadResult] = {
     reloadEngineWithConfiguredTtl(newConfig, UpdatedConfigExpiration.ByTtl(newConfigEngineTtl))
   }
 
@@ -171,16 +170,18 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
 
   private def reloadEngineWithConfiguredTtl(newConfig: RawRorConfig,
                                             expiration: UpdatedConfigExpiration)
-                                           (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, EngineExpirationConfig] = {
+                                           (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, ReloadResult] = {
     for {
       engineUpdateType <- checkUpdateType(newConfig, expiration)
       expirationConfig <- engineUpdateType match {
         case EngineUpdateType.UpdateConfig =>
-          runReload(newConfig, Some(expiration)).map(_.get)
+          runReload(newConfig, Some(expiration)).map { engine =>
+            ReloadResult(engine.engine, engine.expirationConfig.get)
+          }
         case EngineUpdateType.UpdateConfigTtl =>
           updateEngineExpirationConfig(expiration)
-        case EngineUpdateType.ConfigAndTtlUpToDate(engineExpirationConfig) =>
-          EitherT.right[RawConfigReloadError](Task.now(engineExpirationConfig))
+        case EngineUpdateType.ConfigAndTtlUpToDate(engine, expirationConfig) =>
+          EitherT.right[RawConfigReloadError](Task.now(ReloadResult(engine, expirationConfig)))
       }
     } yield expirationConfig
   }
@@ -195,11 +196,11 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
 
   private def runReload(newConfig: RawRorConfig,
                         configExpiration: Option[UpdatedConfigExpiration])
-                       (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, Option[EngineExpirationConfig]] = {
+                       (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, EngineWithConfig] = {
     for {
       newEngineWithConfig <- reloadWith(newConfig, configExpiration)
       _ <- replaceCurrentEngine(newEngineWithConfig)
-    } yield newEngineWithConfig.expirationConfig
+    } yield newEngineWithConfig
   }
 
   private def checkUpdateType(newConfig: RawRorConfig,
@@ -211,8 +212,8 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
             Right(EngineUpdateType.UpdateConfig)
           case EngineState.Working(EngineWithConfig(_, currentConfig, _), _) if currentConfig != newConfig =>
             Right(EngineUpdateType.UpdateConfig)
-          case EngineState.Working(EngineWithConfig(_, currentConfig, engineExpirationConfig), _) =>
-            checkIfExpirationConfigHasChanged(newConfigExpiration, engineExpirationConfig)
+          case EngineState.Working(EngineWithConfig(engine, currentConfig, engineExpirationConfig), _) =>
+            checkIfExpirationConfigHasChanged(engine, newConfigExpiration, engineExpirationConfig)
           case EngineState.Stopped =>
             Left(RawConfigReloadError.RorInstanceStopped)
         }
@@ -220,7 +221,8 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     }
   }
 
-  private def checkIfExpirationConfigHasChanged(newConfigExpiration: UpdatedConfigExpiration,
+  private def checkIfExpirationConfigHasChanged(engine: Engine,
+                                                newConfigExpiration: UpdatedConfigExpiration,
                                                 engineExpirationConfig: Option[EngineExpirationConfig]) = {
     newConfigExpiration match {
       case UpdatedConfigExpiration.ByTtl(_) =>
@@ -228,7 +230,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
       case UpdatedConfigExpiration.ToTime(validTo, configuredTtl) =>
         val providedExpirationConfig = EngineExpirationConfig(configuredTtl, validTo)
         if (engineExpirationConfig.contains(providedExpirationConfig)) {
-          Right(EngineUpdateType.ConfigAndTtlUpToDate(providedExpirationConfig))
+          Right(EngineUpdateType.ConfigAndTtlUpToDate(engine, providedExpirationConfig))
         } else {
           Right(EngineUpdateType.UpdateConfigTtl)
         }
@@ -363,7 +365,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   }
 
   private def updateEngineExpirationConfig(configExpiration: UpdatedConfigExpiration)
-                                          (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, EngineExpirationConfig] = {
+                                          (implicit requestId: RequestId): EitherT[Task, RawConfigReloadError, ReloadResult] = {
     EitherT {
       Task.delay {
         val newEngineState = currentEngine.transformAndGet {
@@ -381,7 +383,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
           case _: EngineState.NotStartedYet =>
             Left(RawConfigReloadError.ReloadingFailed(ReadonlyRest.StartingFailure("Cannot update engine TTL because engine was invalidated")))
           case EngineState.Working(engineWithConfig, _) =>
-            Right(engineWithConfig.expirationConfig.get)
+            Right(ReloadResult(engineWithConfig.engine, engineWithConfig.expirationConfig.get))
           case EngineState.Stopped =>
             Left(RawConfigReloadError.RorInstanceStopped)
         }
@@ -433,7 +435,11 @@ object BaseReloadableEngine {
                                  expirationConfig: EngineExpirationConfig) extends InitialEngine
   }
 
-  private[engines] final case class InvalidationResult(config: RawRorConfig, expirationConfig: EngineExpirationConfig)
+  private[engines] final case class ReloadResult(engine: Engine,
+                                                 expirationConfig: EngineExpirationConfig)
+
+  private[engines] final case class InvalidationResult(config: RawRorConfig,
+                                                       expirationConfig: EngineExpirationConfig)
 
   private[engines] final case class EngineExpirationConfig(ttl: FiniteDuration Refined Positive,
                                                            validTo: Instant)
@@ -474,7 +480,7 @@ object BaseReloadableEngine {
   private[BaseReloadableEngine] object EngineUpdateType {
     case object UpdateConfig extends EngineUpdateType
     case object UpdateConfigTtl extends EngineUpdateType
-    final case class ConfigAndTtlUpToDate(expirationConfig: EngineExpirationConfig) extends EngineUpdateType
+    final case class ConfigAndTtlUpToDate(engine: Engine, expirationConfig: EngineExpirationConfig) extends EngineUpdateType
   }
 
   private[BaseReloadableEngine] val delayOfOldEngineShutdown = 10 seconds
