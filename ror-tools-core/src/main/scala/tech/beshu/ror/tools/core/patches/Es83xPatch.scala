@@ -39,6 +39,9 @@ private[patches] class Es83xPatch(esDirectory: EsDirectory,
   private val xpackCoreJar = s"x-pack-core-${esVersion.render}.jar"
   private val xpackCoreJarPath = modulesPath / "x-pack-core" / xpackCoreJar
   private val xpackCoreRorBackupPath = rorBackupFolderPath / xpackCoreJar
+  private val xpackSecurityJar = s"x-pack-security-${esVersion.render}.jar"
+  private val xpackSecurityJarPath = modulesPath / "x-pack-security" / xpackSecurityJar
+  private val xpackSecurityRorBackupPath = rorBackupFolderPath / xpackSecurityJar
   private val transportNetty4ModulePath = esDirectory.path / "modules" / "transport-netty4"
 
   override def isPatched: Boolean = {
@@ -57,6 +60,7 @@ private[patches] class Es83xPatch(esDirectory: EsDirectory,
     findTransportNetty4JarIn(readonlyRestPluginPath).foreach {
       os.remove
     }
+    os.copy(from = xpackSecurityRorBackupPath, to = xpackSecurityJarPath, replaceExisting = true)
     os.copy(from = xpackCoreRorBackupPath, to = xpackCoreJarPath, replaceExisting = true)
     os.copy(from = elasticsearchJarRorBackupPath, to = elasticsearchJarOriginPath, replaceExisting = true)
     os.remove.all(target = rorBackupFolderPath)
@@ -68,6 +72,7 @@ private[patches] class Es83xPatch(esDirectory: EsDirectory,
         os.copy(from = jar, to = readonlyRestPluginPath / jar.last)
         openModule(elasticsearchJarOriginPath toIO)
         openModule(xpackCoreJarPath toIO)
+        openModule(xpackSecurityJarPath toIO)
       case None =>
         new IllegalStateException(s"ReadonlyREST plugin cannot be patched due to not found transport netty4 jar")
     }
@@ -77,6 +82,7 @@ private[patches] class Es83xPatch(esDirectory: EsDirectory,
     os.makeDir.all(path = rorBackupFolderPath)
     os.copy(from = elasticsearchJarOriginPath, to = elasticsearchJarRorBackupPath)
     os.copy(from = xpackCoreJarPath, to = xpackCoreRorBackupPath)
+    os.copy(from = xpackSecurityJarPath, to = xpackSecurityRorBackupPath)
   }
 
   private def doesBackupFolderExist = {
