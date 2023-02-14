@@ -3,8 +3,8 @@ kind: Kibana
 metadata:
   name: quickstart
 spec:
-  version: 7.17.0
-  image: coutopl/kbn_7.17.0_ror_1.38.0-eck-poc
+  version: 8.6.1
+  image: coutopl/kbn_8.6.1_ror_1.47.0-eck-poc
   count: 1
   elasticsearchRef:
     name: quickstart
