@@ -2,33 +2,6 @@
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.1.xsd">
     <suppress>
         <notes><![CDATA[
-    because of https://bitbucket.org/asomov/snakeyaml/issues/462/memory-leak
-   ]]></notes>
-        <cve>CVE-2017-18640</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
-   async client is upgraded to
-   group: 'org.asynchttpclient', name: 'async-http-client', version: '2.10.5'
-   don't know, why plugin still finds vulnerability
-   ]]></notes>
-        <cve>CVE-2017-14063</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
-   log4j is forced by ES
-   ]]></notes>
-        <cve>CVE-2020-9488</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
-   according to https://github.com/FasterXML/jackson-databind/issues/2589#issuecomment-714833837
-   should be already fixed
-   ]]></notes>
-        <cve>CVE-2020-25649</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
    file name: circe-refined_2.12-0.13.0.jar - coincidence of names
    ]]></notes>
         <sha1>e48e7de23bba2007ceb0d6bce80e55139d98d9c2</sha1>
@@ -68,5 +41,56 @@
    ]]></notes>
         <sha1>ce88877609b732ab2544f90001ca70e815bbc49c</sha1>
         <cpe>cpe:/a:async_project:async</cpe>
+    </suppress>
+    <!-- The following CVE's are false positive and should be updated to fixed for version 1.33,
+         description: https://bitbucket.org/snakeyaml/snakeyaml/issues/531/stackoverflow-oss-fuzz-47081 -->
+    <suppress>
+        <notes><![CDATA[
+   file name: snakeyaml-1.33.jar
+   ]]></notes>
+        <sha1>2cd0a87ff7df953f810c344bdf2fe3340b954c69</sha1>
+        <cve>CVE-2022-38752</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: jackson-databind-2.13.4.2.jar (https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-42003)
+   ]]></notes>
+        <sha1>325c06bdfeb628cfb80ebaaf1a26cc1eb558a585</sha1>
+        <cve>CVE-2022-42003</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: ror-shadowed-libs-all.jar (shaded: org.yaml:snakeyaml:1.33) - safe constructor used
+   ]]></notes>
+        <sha1>1d2ec974631aa42efee89c0157ddc39c3ad65286</sha1>
+        <cve>CVE-2022-1471</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: ror-shadowed-libs-all.jar (shaded: org.yaml:snakeyaml:1.33) - safe constructor used
+   ]]></notes>
+        <sha1>2cd0a87ff7df953f810c344bdf2fe3340b954c69</sha1>
+        <cve>CVE-2022-1471</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: async-http-client-netty-utils-2.10.5.jar
+   ]]></notes>
+        <sha1>18c813fd76780392a046efb185096b6c55825d1f</sha1>
+        <cpe>cpe:/a:utils_project:utils</cpe>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: snakeyaml-1.33.jar
+   ]]></notes>
+        <sha1>2cd0a87ff7df953f810c344bdf2fe3340b954c69</sha1>
+        <cve>CVE-2022-3064</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: snakeyaml-1.33.jar
+   ]]></notes>
+        <sha1>2cd0a87ff7df953f810c344bdf2fe3340b954c69</sha1>
+        <cve>CVE-2021-4235</cve>
     </suppress>
 </suppressions>

@@ -25,6 +25,13 @@ object RorConfigAdjuster {
 
   final case class Replacement(host: String, port: Int)
 
+  def adjustUsingDependencies(config: String,
+                              startedDependencies: StartedClusterDependencies,
+                              mode: Mode): String = {
+    startedDependencies.values
+      .foldLeft(config)(replacePlaceholder(mode))
+  }
+
   def adjustUsingDependencies(source: File,
                               startedDependencies: StartedClusterDependencies,
                               mode: Mode): File = {

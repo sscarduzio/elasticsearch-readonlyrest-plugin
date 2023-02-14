@@ -30,7 +30,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.{Group, Header}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -39,6 +40,8 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 class AccessControlList(val blocks: NonEmptyList[Block],
                         override val staticContext: AccessControlListStaticContext)
   extends AccessControl {
+
+  override val description: String = "Enabled ROR ACL"
 
   override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](context: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]] = {
     blocks
@@ -100,7 +103,7 @@ class AccessControlList(val blocks: NonEmptyList[Block],
   }
 
   private def userMetadataFrom(matchedResults: NonEmptyList[Matched[CurrentUserMetadataRequestBlockContext]],
-                               optPreferredGroup: Option[Group]): Option[(UserMetadata, Block)] = {
+                               optPreferredGroup: Option[GroupName]): Option[(UserMetadata, Block)] = {
     optPreferredGroup match {
       case Some(preferredGroup) =>
         matchedResults
@@ -119,15 +122,16 @@ class AccessControlList(val blocks: NonEmptyList[Block],
   }
 
   private def allAvailableGroupsFrom(matchedResults: NonEmptyList[Matched[CurrentUserMetadataRequestBlockContext]]) = {
-    UniqueList.fromList(
+    UniqueList.fromTraversable(
       matchedResults.toList.flatMap {
-        case Matched(_, bc) => bc.userMetadata.availableGroups.toList
-      })
+        case Matched(_, bc) => bc.userMetadata.availableGroups
+      }
+    )
   }
 
   private def updateUserMetadataGroups(blockContext: CurrentUserMetadataRequestBlockContext,
-                                       currentGroup: Option[Group],
-                                       availableGroups: UniqueList[Group]) = {
+                                       currentGroup: Option[GroupName],
+                                       availableGroups: UniqueList[GroupName]) = {
     currentGroup
       .foldLeft(blockContext.userMetadata.withAvailableGroups(availableGroups)) {
         case (userMetadata, group) => userMetadata.withCurrentGroup(group)

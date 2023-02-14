@@ -13,12 +13,11 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.cluster.remote.RemoteInfoRequest
 import org.elasticsearch.action.admin.cluster.repositories.get.GetRepositoriesRequest
 import org.elasticsearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest
-import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
 import org.elasticsearch.action.admin.indices.template.get.{GetComponentTemplateAction, GetComposableIndexTemplateAction, GetIndexTemplatesRequest}
 import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchResponse}
 import org.elasticsearch.client.Requests
 import org.elasticsearch.client.indices.GetIndexRequest
-import org.elasticsearch.cluster.metadata.{AliasMetadata, IndexMetadata}
+import org.elasticsearch.cluster.metadata.IndexMetadata
 import org.elasticsearch.index.query.QueryBuilders
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
@@ -31,8 +30,6 @@ import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-
-import scala.collection.JavaConverters._
 
 // todo: we need to refactor ROR to be able to use here async API
 class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
@@ -50,15 +47,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
 
   override def allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
     client
-      .getAlias(new GetAliasesRequest())
-      .map { response =>
-        response
-          .getAliases.asScala
-          .flatMap { case (indexNameString, aliases) =>
-            indexWithAliasesFrom(indexNameString, aliases.asScala.toSet)
-          }
-          .toSet
-      }
+      .getAllIndicesAndAliases
       .runSyncUnsafe()
   }
 
@@ -73,8 +62,16 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
     } yield indicesAndAliases
   }
 
+  override def allDataStreamsAndAliases: Set[DataStreamName.FullLocalDataStreamWithAliases] = {
+    Set.empty
+  }
+
+  override def allRemoteDataStreamsAndAliases: Task[Set[DataStreamName.FullRemoteDataStreamWithAliases]] = {
+    Task.now(Set.empty)
+  }
+
   private def getRemoteIndicesAndAliasesOf(clusterName: ClusterName.Full) = Task.now {
-    FullRemoteIndexWithAliases(clusterName, IndexName.Full("*"), Set.empty)
+    FullRemoteIndexWithAliases(clusterName, IndexName.Full("*"), IndexAttribute.Opened, Set.empty)
   }
 
   private def getRegisteredRemoteClusterNames = {
@@ -139,7 +136,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
         templates.flatMap { template =>
           for {
             templateName <- NonEmptyString.unapply(template.getName).map(TemplateName.apply)
-            indexPatterns <- UniqueNonEmptyList.fromList(
+            indexPatterns <- UniqueNonEmptyList.fromTraversable(
               template.patterns().asSafeList.flatMap(IndexPattern.fromString)
             )
             aliases = template.aliases().asSafeValues.flatMap(a => ClusterIndexName.fromString(a.alias()))
@@ -158,7 +155,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
           .flatMap { case (name, template) =>
             for {
               templateName <- NonEmptyString.unapply(name).map(TemplateName.apply)
-              indexPatterns <- UniqueNonEmptyList.fromList(
+              indexPatterns <- UniqueNonEmptyList.fromTraversable(
                 template.indexPatterns().asSafeList.flatMap(IndexPattern.fromString)
               )
               aliases = template.template().asSafeSet
@@ -212,15 +209,6 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
           blockAllDocsReturned(documents)
       }
       .map(results => zip(results, documents))
-  }
-
-  private def indexWithAliasesFrom(indexNameString: String, aliasMetadata: Set[AliasMetadata]) = {
-    IndexName.Full
-      .fromString(indexNameString)
-      .map { indexName =>
-        val aliases = aliasMetadata.flatMap(am => IndexName.Full.fromString(am.alias()))
-        FullLocalIndexWithAliases(indexName, aliases)
-      }
   }
 
   private def extractAccessibilityFrom(searchResponse: SearchResponse) = {

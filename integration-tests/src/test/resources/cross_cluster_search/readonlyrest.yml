@@ -1,9 +1,19 @@
 readonlyrest:
   ssl:
     enable: true
-    keystore_file:  "ror-keystore.jks"
+    keystore_file: "elastic-certificates.p12"
+    keystore_pass: readonlyrest
+    truststore_file: "elastic-certificates.p12"
+    truststore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  ssl_internode:
+    enable: true
+    keystore_file: "elastic-certificates.p12"
     keystore_pass: readonlyrest
     key_pass: readonlyrest
+    truststore_file: "elastic-certificates.p12"
+    truststore_pass: readonlyrest
 
   prompt_for_basic_auth: false
 
@@ -37,3 +47,8 @@ readonlyrest:
     - name: "Dev4 can access other indices"
       type: allow
       auth_key: dev4:test
+
+    - name: "Dev5 can access other xpack remote cluster"
+      type: allow
+      indices: ["xpack:xpack_cluster*"]
+      auth_key: dev5:test

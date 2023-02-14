@@ -24,16 +24,14 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 import scala.language.postfixOps
 
-class EsContainerWithRorAndXpackSecurity private(name: String,
+class EsContainerWithRorAndXpackSecurity private(esConfig: Elasticsearch.Config,
                                                  esVersion: String,
                                                  startedClusterDependencies: StartedClusterDependencies,
-                                                 esClusterSettings: EsClusterSettings,
                                                  image: ImageFromDockerfile,
                                                  override val sslEnabled: Boolean)
-  extends EsContainer(name, esVersion, startedClusterDependencies, esClusterSettings, image)
-    with StrictLogging {
+  extends EsContainer(esVersion, esConfig, startedClusterDependencies, image) {
 
-  logger.info(s"[$name] Creating ES with ROR and X-Pack plugin installed container ...")
+  logger.info(s"[${esConfig.nodeName}] Creating ES with ROR and X-Pack plugin installed container ...")
 
   override lazy val adminClient: RestClient = {
     import EsContainerWithRorSecurity.rorAdminCredentials
@@ -47,13 +45,11 @@ object EsContainerWithRorAndXpackSecurity extends StrictLogging {
              esConfig: Elasticsearch.Config,
              securityConfig: ReadonlyRestWithEnabledXpackSecurityPlugin.Config,
              initializer: ElasticsearchNodeDataInitializer,
-             startedClusterDependencies: StartedClusterDependencies,
-             esClusterSettings: EsClusterSettings): EsContainer = {
+             startedClusterDependencies: StartedClusterDependencies): EsContainer = {
     val rorContainer = new EsContainerWithRorAndXpackSecurity(
-      esConfig.nodeName,
+      esConfig,
       esVersion,
       startedClusterDependencies,
-      esClusterSettings,
       esImageWithRorAndXpackFromDockerfile(esVersion, esConfig, securityConfig),
       securityConfig.attributes.restSsl match {
         case Enabled.Yes(_) => true

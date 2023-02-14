@@ -50,12 +50,14 @@ class FilterRule(val settings: Settings)
               case GeneralNonIndexRequestBlockContextUpdater => Fulfilled(blockContext)
               case RepositoryRequestBlockContextUpdater => Fulfilled(blockContext)
               case SnapshotRequestBlockContextUpdater => Fulfilled(blockContext)
+              case DataStreamRequestBlockContextUpdater => Fulfilled(blockContext)
               case TemplateRequestBlockContextUpdater => Fulfilled(blockContext)
               case GeneralIndexRequestBlockContextUpdater => Fulfilled(blockContext)
               case AliasRequestBlockContextUpdater => Fulfilled(blockContext)
               case MultiIndexRequestBlockContextUpdater => Fulfilled(blockContext)
               case FilterableRequestBlockContextUpdater => addFilter(blockContext, filter)
               case FilterableMultiRequestBlockContextUpdater => addFilter(blockContext, filter)
+              case RorApiRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)
             }
         }
     }

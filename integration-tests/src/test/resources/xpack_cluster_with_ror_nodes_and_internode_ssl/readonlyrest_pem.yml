@@ -1,0 +1,25 @@
+readonlyrest:
+  ssl:
+    enable: true
+    server_certificate_key_file: elastic-certificates-pkey.pem
+    server_certificate_file: elastic-certificates-cert.pem
+    client_trusted_certificate_file: elastic-certificates-cert.pem
+
+  ssl_internode:
+    enable: true
+    server_certificate_key_file: elastic-certificates-pkey.pem
+    server_certificate_file: elastic-certificates-cert.pem
+    client_trusted_certificate_file: elastic-certificates-cert.pem
+
+  access_control_rules:
+
+    # ES containter initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
+      type: allow
+      verbosity: error
+      auth_key: admin:container
+
+    - name: "User 2"
+      type: allow
+      auth_key: "user2:test"
+      indices: ["user2_index"]

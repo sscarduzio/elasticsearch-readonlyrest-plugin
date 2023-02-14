@@ -24,6 +24,7 @@ import tech.beshu.ror.utils.elasticsearch.SearchManager.{AsyncSearchResult, Fiel
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import ujson.Value
 
+import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 
 class SearchManager(client: RestClient,
@@ -38,6 +39,24 @@ class SearchManager(client: RestClient,
 
   def search(indexNames: String*): SearchResult =
     call(createSearchRequest(indexNames.toList), new SearchResult(_))
+
+  def searchScroll(size: Int, scroll: FiniteDuration, indexNames: String*): SearchResult =
+    call(createSearchRequest(indexNames.toList, Some(size), Some(scroll)), new SearchResult(_))
+
+  def searchScroll(scrollId: String): SearchResult = {
+    call(createScrollRequest(scrollId), new SearchResult(_))
+  }
+
+  def searchAll(indexName: String): SearchResult = {
+    val queryAll = ujson.read(
+      s"""{
+         |  "query": {
+         |    "match_all": {}
+         |  }
+         |}""".stripMargin
+    )
+    search(indexName, queryAll)
+  }
 
   def asyncSearch(indexName: String, indexNames: String*): AsyncSearchResult = {
     call(createAsyncSearchRequest(indexName :: indexNames.toList, None), new AsyncSearchResult(_))
@@ -80,20 +99,34 @@ class SearchManager(client: RestClient,
       indexName match {
         case Some(name) => s"/$name/_search"
         case None => "/_search"
-      }
+      },
+      Map("size" -> "100")
     ))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(query)))
     request
   }
 
-  private def createSearchRequest(indexNames: List[String] = Nil) = {
+  private def createSearchRequest(indexNames: List[String] = Nil,
+                                  customSize: Option[Int] = None,
+                                  scroll: Option[FiniteDuration] = None) = {
     new HttpPost(client.from(
       indexNames match {
         case Nil => "/_search"
         case names => s"/${names.mkString(",")}/_search"
-      }
+      },
+      Map(
+        "size" -> (customSize match {
+          case Some(value) => s"$value"
+          case None => "100"
+        })
+      ) ++
+        scroll.map { d => "scroll" -> s"${d.toMillis}ms" }.toMap
     ))
+  }
+
+  private def createScrollRequest(scrollId: String) = {
+    new HttpPost(client.from(s"/_search/scroll/$scrollId"))
   }
 
   private def createAsyncSearchRequest(indexNames: List[String],
@@ -121,7 +154,7 @@ class SearchManager(client: RestClient,
     request
   }
 
-  private def createRenderTemplateRequest(query : String) = {
+  private def createRenderTemplateRequest(query: String) = {
     val request = new HttpGetWithEntity(client.from("_render/template"))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(query))
@@ -168,6 +201,10 @@ object SearchManager {
 
   class SearchResult(response: HttpResponse) extends BaseSearchResult(response) {
     override lazy val searchHitsWithSettings: Value = force().responseJson("hits")("hits")
+    lazy val aggregations: Map[String, Value] = responseJson("aggregations").obj.toMap
+
+    lazy val totalHits: Int = force().responseJson("hits")("total")("value").num.toInt
+    lazy val scrollId: String = responseJson("_scroll_id").str
   }
 
   class AsyncSearchResult(response: HttpResponse) extends BaseSearchResult(response) {

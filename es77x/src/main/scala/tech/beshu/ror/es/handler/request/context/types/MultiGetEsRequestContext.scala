@@ -60,6 +60,14 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     requestFieldsUsage = requestFieldsUsage
   )
 
+  override lazy val indexAttributes: Set[IndexAttribute] = {
+    // It may be a problem in some cases. We get all possible index attributes and we put them to one bag.
+    actionRequest
+      .getItems.asScala
+      .flatMap(indexAttributesFrom)
+      .toSet
+  }
+
   override protected def modifyRequest(blockContext: FilterableMultiRequestBlockContext): ModificationResult = {
     val modifiedPacksOfIndices = blockContext.indexPacks
     val items = actionRequest.getItems.asScala.toList

@@ -27,7 +27,6 @@ import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
@@ -78,14 +77,14 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   }
 
   private def snapshotsFrom(blockContext: SnapshotRequestBlockContext) = {
-    UniqueNonEmptyList.fromList(blockContext.snapshots.toList) match {
+    UniqueNonEmptyList.fromTraversable(blockContext.snapshots) match {
       case Some(list) => Right(list)
       case None => Left(())
     }
   }
 
   private def repositoriesFrom(blockContext: SnapshotRequestBlockContext) = {
-    UniqueNonEmptyList.fromList(blockContext.repositories.toList) match {
+    UniqueNonEmptyList.fromTraversable(blockContext.repositories) match {
       case Some(list) => Right(list)
       case None => Left(())
     }

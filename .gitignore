@@ -45,6 +45,7 @@ target/
 *.pkcs8
 *.p12
 !/docker-envs/**/*.p12
+!/docker-envs/**/*.pem
 
 // OSX
 .DS_Store
@@ -55,3 +56,7 @@ target/
 // docker-envs
 builds/*
 docker-envs/build-ror-in-docker/builds/
+docker-envs/misc-clusters/ror-with-elastic-cloud-poc/certs-generator/ouput/*
+docker-envs/misc-clusters/ror-with-elastic-cloud-poc/certs-generator/input/*
+docker-envs/misc-clusters/ror-with-elastic-cloud-poc/certs/*
+**/.base

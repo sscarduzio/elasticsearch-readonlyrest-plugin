@@ -1,0 +1,13 @@
+node.name: n1_it
+cluster.initial_master_nodes: n1_it
+
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest1
+    key_pass: readonlyrest2
+    server_certificate_file: "server_certificate.pem"
+    server_certificate_key_file: "server_certificate_key.pem"
+    truststore_file: "truststore.jks"
+    truststore_pass: readonlyrest3

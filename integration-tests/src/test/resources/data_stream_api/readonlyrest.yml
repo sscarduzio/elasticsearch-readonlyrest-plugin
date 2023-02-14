@@ -1,0 +1,62 @@
+readonlyrest:
+  access_control_rules:
+
+    # ES container initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
+      type: allow
+      auth_key: admin:container
+
+    - name: "User1 access streams"
+      auth_key: "user1:pass"
+      data_streams:
+        - 'data-stream-test*'
+
+    - name: "User2 access streams"
+      auth_key: "user2:pass"
+      data_streams:
+        - 'data-stream-prod'
+
+    - name: "User3 access indices"
+      auth_key: "user3:pass"
+      indices:
+        - '.ds-data-stream-dev*'
+        - '.ds-data-stream-test*'
+
+    - name: "User4 access indices"
+      auth_key: "user4:pass"
+      indices:
+        - '*'
+
+    - name: "User5 access indices"
+      auth_key: "user5:pass"
+      indices:
+        - 'data-stream-dev*'
+        - 'data-stream-test*'
+
+    - name: "User6 access streams"
+      auth_key: "user6:pass"
+      data_streams:
+        - 'data-stream-dev*'
+        - 'data-stream-test*'
+
+    - name: "User7 access streams"
+      auth_key: "user7:pass"
+      indices:
+        - 'data-stream-dev'
+        - 'data-stream-test'
+
+    - name: "User8 access streams"
+      auth_key: "user8:pass"
+      indices:
+        - 'data-stream-alias'
+
+    - name: "User9 access streams"
+      auth_key: "user9:pass"
+      indices:
+        - 'data-stream-aliases*'
+
+    - name: "User10 access streams"
+      auth_key: "user10:pass"
+      indices:
+        - 'data-stream-d*' #-ev
+        - 'data-stream-t*' #-est

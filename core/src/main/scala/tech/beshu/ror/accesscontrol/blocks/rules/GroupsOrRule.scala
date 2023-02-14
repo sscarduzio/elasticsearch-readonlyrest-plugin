@@ -18,7 +18,8 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule._
-import tech.beshu.ror.accesscontrol.domain.Group
+import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, PermittedGroups}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -28,13 +29,19 @@ final class GroupsOrRule(override val settings: BaseGroupsRule.Settings,
 
   override val name: Rule.Name = GroupsOrRule.Name.name
 
-  override def calculateAllowedGroupsForUser(userGroups: Set[Group], ruleGroups: Set[Group]): Option[UniqueNonEmptyList[Group]] = {
-    UniqueNonEmptyList.fromSet(userGroups intersect ruleGroups)
+  override protected def calculateAllowedGroupsForUser(userGroups: UniqueNonEmptyList[GroupName],
+                                                       permittedGroups: PermittedGroups): Option[UniqueNonEmptyList[GroupName]] = {
+    GroupsLogic.Or(permittedGroups).availableGroupsFrom(userGroups)
   }
 }
 
 object GroupsOrRule {
   implicit case object Name extends RuleName[GroupsOrRule] {
-    override val name: Name = Rule.Name("groups")
+    override val name: Name = Rule.Name("groups_or")
   }
+
+  case object DeprecatedName extends RuleName[GroupsOrRule] {
+    override val name = Rule.Name("groups")
+  }
+
 }

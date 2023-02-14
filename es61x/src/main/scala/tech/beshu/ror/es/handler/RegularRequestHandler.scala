@@ -124,8 +124,10 @@ class RegularRequestHandler(engine: Engine,
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
+           DataStreamRequestBlockContextUpdater |
            TemplateRequestBlockContextUpdater |
-           MultiIndexRequestBlockContextUpdater =>
+           MultiIndexRequestBlockContextUpdater |
+           RorApiRequestBlockContextUpdater =>
         onForbidden(NonEmptyList.one(OperationNotAllowed))
     }
   }
@@ -141,8 +143,10 @@ class RegularRequestHandler(engine: Engine,
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
+           DataStreamRequestBlockContextUpdater |
            TemplateRequestBlockContextUpdater |
-           MultiIndexRequestBlockContextUpdater =>
+           MultiIndexRequestBlockContextUpdater |
+           RorApiRequestBlockContextUpdater =>
         onForbidden(NonEmptyList.one(OperationNotAllowed))
     }
   }
@@ -158,8 +162,10 @@ class RegularRequestHandler(engine: Engine,
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
+           DataStreamRequestBlockContextUpdater |
            AliasRequestBlockContextUpdater |
-           MultiIndexRequestBlockContextUpdater =>
+           MultiIndexRequestBlockContextUpdater |
+           RorApiRequestBlockContextUpdater =>
         onForbidden(NonEmptyList.one(OperationNotAllowed))
     }
   }

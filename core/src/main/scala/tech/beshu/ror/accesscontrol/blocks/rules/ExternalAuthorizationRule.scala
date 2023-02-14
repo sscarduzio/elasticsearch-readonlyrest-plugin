@@ -27,8 +27,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseAuthorizationRule, Rule}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, User}
+import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, LoggedUser, PermittedGroups, User}
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -41,15 +42,14 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
 
   override val name: Rule.Name = ExternalAuthorizationRule.Name.name
 
-  override protected val groupsPermittedByRule: UniqueNonEmptyList[Group] =
-    settings.permittedGroups
+  override protected val groupsPermittedByRule: PermittedGroups = settings.permittedGroupsLogic.permittedGroups
 
   override protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = {
     Either.cond(userMatcher.`match`(user.id), (), ())
   }
 
   override protected def userGroups[B <: BlockContext](blockContext: B,
-                                                       user: LoggedUser): Task[UniqueList[Group]] =
+                                                       user: LoggedUser): Task[UniqueList[GroupName]] =
     settings.service.grantsFor(user.id)
 
   override protected def mockedGroupsOf(user: User.Id, mocksProvider: MocksProvider)
@@ -68,8 +68,8 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
       }
   }
 
-  override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] =
-    UniqueNonEmptyList.fromSet(settings.permittedGroups.toSet.intersect(usersGroups))
+  override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[GroupName]): Option[UniqueNonEmptyList[GroupName]] =
+    settings.permittedGroupsLogic.availableGroupsFrom(usersGroups)
 }
 
 object ExternalAuthorizationRule {
@@ -79,7 +79,7 @@ object ExternalAuthorizationRule {
   }
 
   final case class Settings(service: ExternalAuthorizationService,
-                            permittedGroups: UniqueNonEmptyList[Group],
+                            permittedGroupsLogic: GroupsLogic,
                             users: UniqueNonEmptyList[User.Id])
 
 }

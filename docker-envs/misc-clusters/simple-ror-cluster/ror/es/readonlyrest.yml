@@ -1,0 +1,36 @@
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "elastic-certificates.p12"
+    keystore_pass: test
+    truststore_file: "elastic-certificates.p12"
+    truststore_pass: test
+    key_pass: test
+
+  ssl_internode:
+    enable: true
+    keystore_file: "elastic-certificates.p12"
+    keystore_pass: test
+    truststore_file: "elastic-certificates.p12"
+    truststore_pass: test
+    key_pass: test
+
+  enable: true
+
+  access_control_rules:
+
+    # ES containter initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
+      type: allow
+      verbosity: error
+      auth_key: admin:container
+
+    - name: "::ADMIN::"
+      auth_key: user:pass
+      # KIBANA ADMIN ACCESS NEEDED TO EDIT SECURITY SETTINGS IN ROR KIBANA APP!
+      kibana_access: admin
+
+    - name: "User 1"
+      type: allow
+      auth_key: "user1:test"
+      indices: [".kibana*", "kibana*"]

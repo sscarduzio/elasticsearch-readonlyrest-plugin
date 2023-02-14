@@ -63,10 +63,11 @@ import org.elasticsearch.client.indices._
 import org.elasticsearch.index.reindex.{BulkByScrollResponse, DeleteByQueryRequest, ReindexRequest, UpdateByQueryRequest}
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.script.mustache.{MultiSearchTemplateRequest, MultiSearchTemplateResponse, SearchTemplateRequest, SearchTemplateResponse}
+import tech.beshu.ror.accesscontrol.domain.FullLocalIndexWithAliases
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventRequest, RRAuditEventResponse}
-import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockRequest, RRAuthMockResponse}
 import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter._
+import tech.beshu.ror.proxy.es.clients.actions.AllIndicesAndAliases
 import tech.beshu.ror.proxy.es.clients.actions.ResolveIndex._
 import tech.beshu.ror.proxy.es.clients.actions.utils.ElasticsearchStatusExceptionOps._
 import tech.beshu.ror.proxy.es.exceptions._
@@ -181,6 +182,17 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
     import tech.beshu.ror.proxy.es.clients.actions.GetAliases._
     executeAsync(client.indices().getAlias(request, RequestOptions.DEFAULT))
       .map(_.toResponseWithSpecializedException)
+  }
+
+  def getAllIndicesAndAliases: Task[Set[FullLocalIndexWithAliases]] = {
+    import tech.beshu.ror.proxy.es.clients.actions.AllIndicesAndAliases._
+    executeAsync(
+      client
+        .getLowLevelClient
+        .performRequest(AllIndicesAndAliases.request)
+        .toResponse
+        .get
+    )
   }
 
   def aliasesExist(request: GetAliasesRequest): Task[AliasesExistResponse] = {

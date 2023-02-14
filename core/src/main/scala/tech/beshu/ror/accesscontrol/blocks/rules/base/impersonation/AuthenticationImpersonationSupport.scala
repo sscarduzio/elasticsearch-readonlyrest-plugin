@@ -31,9 +31,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthen
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthenticationImpersonationSupport.{ImpersonationResult, UserExistence}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
-import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.matchers.{GenericPatternMatcher, MatcherWithWildcardsScalaAdapter}
+import tech.beshu.ror.accesscontrol.domain.{LoggedUser, User}
+import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
@@ -51,8 +51,8 @@ trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonati
       settings
         .impersonators
         .map { i =>
-          val impersonatorMatcher = new GenericPatternMatcher(i.usernames.patterns.toList)(caseMappingEquality)
-          val userMatcher = MatcherWithWildcardsScalaAdapter.fromSetString[User.Id](i.users.map(_.value.value).toSet)(caseMappingEquality)
+          val impersonatorMatcher = new GenericPatternMatcher(i.impersonatorUsernames.patterns.toList)(caseMappingEquality)
+          val userMatcher = new GenericPatternMatcher(i.impersonatedUsers.usernames.patterns.toSet)(caseMappingEquality)
           (i, impersonatorMatcher, userMatcher)
         }
     case Impersonation.Disabled =>
@@ -83,6 +83,7 @@ trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonati
       for {
         impersonatorDef <- findImpersonatorWithProperRights[B](theImpersonatedUserId, blockContext.requestContext)
         loggedImpersonator <- authenticateImpersonator(impersonatorDef, blockContext)
+        _ <- checkIfImpersonatorDifferFromTheImpersonatedUser[B](loggedImpersonator, theImpersonatedUserId)
         _ <- checkIfTheImpersonatedUserExist[B](theImpersonatedUserId, settings.mocksProvider)
       } yield {
         blockContext.withUserMetadata(_.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, loggedImpersonator.id)))
@@ -138,6 +139,14 @@ trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonati
         case CannotCheck => Left(Rejected[B](Cause.ImpersonationNotSupported))
       }
   }
+
+  private def checkIfImpersonatorDifferFromTheImpersonatedUser[B <: BlockContext](loggedImpersonator: LoggedUser,
+                                                                                  theImpersonatedUserId: User.Id) =
+    EitherT.cond[Task](
+      test = loggedImpersonator.id != theImpersonatedUserId,
+      right = (),
+      left = Rejected[B](Cause.ImpersonationNotAllowed),
+    )
 
   private def toRuleResult[B <: BlockContext](result: EitherT[Task, Rejected[B], B]): Task[RuleResult[B]] = {
     result

@@ -17,21 +17,22 @@
 package tech.beshu.ror.unit.acl.factory.decoders
 
 import eu.timepit.refined.auto._
-import java.security.KeyPairGenerator
-import java.util.Base64
-
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.Groups
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.{GroupLike, GroupsLogic, PermittedGroups}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
-import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+
+import java.security.KeyPairGenerator
+import java.util.Base64
 
 class RorKbnAuthRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[RorKbnAuthRule] with MockFactory {
@@ -88,7 +89,7 @@ class RorKbnAuthRuleSettingsTests
         )
       }
       "rule is defined using extended version with groups or logic and minimal request set of fields in ROR kbn definition" in {
-        val rolesKeys = List("roles", "groups")
+        val rolesKeys = List("roles", "groups", "groups_or")
         rolesKeys.foreach { roleKey =>
           assertDecodingSuccess(
             yaml =
@@ -100,7 +101,7 @@ class RorKbnAuthRuleSettingsTests
                  |  - name: test_block1
                  |    ror_kbn_auth:
                  |      name: "kbn1"
-                 |      $roleKey: ["group1","group2"]
+                 |      $roleKey: ["group1*","group2"]
                  |
                  |  ror_kbn:
                  |
@@ -113,8 +114,9 @@ class RorKbnAuthRuleSettingsTests
               rule.settings.rorKbn.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
               rule.settings.permittedGroups should be(
                 Groups.Defined(
-                  Groups.GroupsLogic.Or(
-                    UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group2")))
+                  GroupsLogic.Or(PermittedGroups(
+                    UniqueNonEmptyList.of(GroupLike.from("group1*"), GroupName("group2"))
+                  ))
                 )
               )
             }
@@ -134,7 +136,7 @@ class RorKbnAuthRuleSettingsTests
                 |  - name: test_block1
                 |    ror_kbn_auth:
                 |      name: "kbn1"
-                |      $roleKey: ["group1","group2"]
+                |      $roleKey: ["group1*","group2"]
                 |
                 |  ror_kbn:
                 |
@@ -147,8 +149,9 @@ class RorKbnAuthRuleSettingsTests
               rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
               rule.settings.permittedGroups should be(
                 Groups.Defined(
-                  Groups.GroupsLogic.And(
-                    UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group2")))
+                  GroupsLogic.And(PermittedGroups(
+                    UniqueNonEmptyList.of(GroupLike.from("group1*"), GroupName("group2"))
+                  ))
                 )
               )
             }

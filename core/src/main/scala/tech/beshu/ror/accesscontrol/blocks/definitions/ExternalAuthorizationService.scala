@@ -28,6 +28,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.AuthTokenSendMethod.{UsingHeader, UsingQueryParam}
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService._
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
@@ -43,7 +44,8 @@ import scala.util.{Failure, Success, Try}
 trait ExternalAuthorizationService extends Item {
   override type Id = Name
   def id: Id
-  def grantsFor(userId: User.Id): Task[UniqueList[Group]]
+  def grantsFor(userId: User.Id): Task[UniqueList[GroupName]]
+  def serviceTimeout: FiniteDuration Refined Positive
 
   override implicit def show: Show[Name] = Name.nameShow
 }
@@ -64,11 +66,12 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
                                        authTokenSendMethod: AuthTokenSendMethod,
                                        defaultHeaders: Set[Header],
                                        defaultQueryParams: Set[QueryParam],
+                                       override val serviceTimeout: Refined[FiniteDuration, Positive],
                                        httpClient: HttpClient)
   extends ExternalAuthorizationService
   with Logging {
 
-  override def grantsFor(userId: User.Id): Task[UniqueList[Group]] = {
+  override def grantsFor(userId: User.Id): Task[UniqueList[GroupName]] = {
     httpClient
       .send(createRequest(userId))
       .flatMap { response =>
@@ -95,18 +98,18 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
     }
   }
 
-  private def groupsFromResponseBody(body: String): UniqueList[Group] = {
+  private def groupsFromResponseBody(body: String): UniqueList[GroupName] = {
     val groupsFromPath =
       Try(groupsJsonPath.read[java.util.List[String]](body))
         .map(
           _.asScala
             .flatMap(NonEmptyString.from(_).toOption)
-            .map(Group.apply)
+            .map(GroupName.apply)
         )
     groupsFromPath match {
       case Success(groups) =>
         logger.debug(s"Groups returned by groups provider '${id.show}': ${groups.map(_.show).mkString(",")}")
-        UniqueList.fromList(groups.toList)
+        UniqueList.fromTraversable(groups)
       case Failure(ex) =>
         logger.debug(s"Group based authorization response exception - provider '${id.show}'", ex)
         UniqueList.empty
@@ -153,10 +156,13 @@ class CacheableExternalAuthorizationServiceDecorator(underlying: ExternalAuthori
                                                      ttl: FiniteDuration Refined Positive)
   extends ExternalAuthorizationService {
 
-  private val cacheableGrantsFor = new CacheableAction[User.Id, UniqueList[Group]](ttl, underlying.grantsFor)
+  private val cacheableGrantsFor = new CacheableAction[User.Id, UniqueList[GroupName]](ttl, underlying.grantsFor)
 
   override val id: ExternalAuthorizationService#Id = underlying.id
 
-  override def grantsFor(userId: User.Id): Task[UniqueList[Group]] =
-    cacheableGrantsFor.call(userId)
+  override def grantsFor(userId: User.Id): Task[UniqueList[GroupName]] =
+    cacheableGrantsFor.call(userId, serviceTimeout)
+
+  override def serviceTimeout: Refined[FiniteDuration, Positive] =
+    underlying.serviceTimeout
 }

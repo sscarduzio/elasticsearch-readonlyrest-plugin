@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import java.security.KeyPairGenerator
 import java.util.Base64
-
 import eu.timepit.refined.auto._
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
@@ -26,7 +25,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMeth
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, JwtDef}
 import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule.Groups
-import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, ClaimName, Header}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, ClaimName, GroupLike, GroupsLogic, Header, PermittedGroups}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
@@ -100,7 +100,7 @@ class JwtAuthRuleSettingsTests
         )
       }
       "rule is defined using extended version with groups 'or' logic and minimal request set of fields in JWT definition" in {
-        val ruleKeys = List("roles", "groups")
+        val ruleKeys = List("roles", "groups", "groups_or")
         ruleKeys.foreach { ruleKey =>
           assertDecodingSuccess(
             yaml =
@@ -112,7 +112,7 @@ class JwtAuthRuleSettingsTests
                 |  - name: test_block1
                 |    jwt_auth:
                 |      name: "jwt1"
-                |      $ruleKey: ["group1","group2"]
+                |      $ruleKey: ["group1*","group2"]
                 |
                 |  jwt:
                 |
@@ -126,9 +126,9 @@ class JwtAuthRuleSettingsTests
               rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
               rule.settings.jwt.userClaim should be(None)
               rule.settings.jwt.groupsClaim should be(None)
-              rule.settings.permittedGroups should be(Groups.Defined(Groups.GroupsLogic.Or(
-                UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group2"))
-              )))
+              rule.settings.permittedGroups should be(Groups.Defined(GroupsLogic.Or(PermittedGroups(
+                UniqueNonEmptyList.of(GroupLike.from("group1*"), GroupName("group2"))
+              ))))
             }
           )
         }
@@ -146,7 +146,7 @@ class JwtAuthRuleSettingsTests
                 |  - name: test_block1
                 |    jwt_auth:
                 |      name: "jwt1"
-                |      $ruleKey: ["group1","group2"]
+                |      $ruleKey: ["group1*","group2"]
                 |
                 |  jwt:
                 |
@@ -160,9 +160,9 @@ class JwtAuthRuleSettingsTests
               rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
               rule.settings.jwt.userClaim should be(None)
               rule.settings.jwt.groupsClaim should be(None)
-              rule.settings.permittedGroups should be(Groups.Defined(Groups.GroupsLogic.And(
-                UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group2"))
-              )))
+              rule.settings.permittedGroups should be(Groups.Defined(GroupsLogic.And(PermittedGroups(
+                UniqueNonEmptyList.of(GroupLike.from("group1*"), GroupName("group2"))
+              ))))
             }
           )
         }

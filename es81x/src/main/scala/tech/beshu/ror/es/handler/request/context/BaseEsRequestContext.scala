@@ -16,22 +16,25 @@
  */
 package tech.beshu.ror.es.handler.request.context
 
-import java.time.Instant
-
 import com.softwaremill.sttp.Method
-import eu.timepit.refined.types.string.NonEmptyString
+import eu.timepit.refined.auto._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.CompositeIndicesRequest
 import org.elasticsearch.action.search.SearchRequest
+import org.elasticsearch.action.support.IndicesOptions.WildcardStates
+import org.elasticsearch.action.{CompositeIndicesRequest, IndicesRequest}
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.RestRequestOps._
 import tech.beshu.ror.utils.RCUtils
+
+import java.time.Instant
+import scala.collection.JavaConverters._
 
 abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
                                                        clusterService: RorClusterService)
@@ -72,7 +75,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
   override lazy val uriPath: UriPath =
     UriPath
       .from(restRequest.path())
-      .getOrElse(UriPath(NonEmptyString.unsafeFrom("/")))
+      .getOrElse(UriPath("/"))
 
   override lazy val contentLength: Information = Bytes(Option(restRequest.content()).map(_.length()).getOrElse(0))
 
@@ -87,11 +90,26 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy val content: String = Option(restRequest.content()).map(_.utf8ToString()).getOrElse("")
 
-  override lazy val allIndicesAndAliases: Set[FullLocalIndexWithAliases] =
+  override lazy val indexAttributes: Set[IndexAttribute] = {
+    esContext.actionRequest match {
+      case req: IndicesRequest => indexAttributesFrom(req)
+      case _ => Set.empty
+    }
+  }
+
+  override lazy val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
     clusterService.allIndicesAndAliases
+  }
 
   override lazy val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] =
     clusterService.allRemoteIndicesAndAliases.memoize
+
+  override lazy val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = {
+    clusterService.allDataStreamsAndAliases
+  }
+
+  override lazy val allRemoteDataStreamsAndAliases: Task[Set[DataStreamName.FullRemoteDataStreamWithAliases]] =
+    clusterService.allRemoteDataStreamsAndAliases.memoize
 
   override lazy val allTemplates: Set[Template] = clusterService.allTemplates
 
@@ -110,6 +128,18 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
+  protected def indexAttributesFrom(request: IndicesRequest): Set[IndexAttribute] = {
+    request
+      .indicesOptions()
+      .expandWildcards().iterator().asScala
+      .flatMap {
+        case WildcardStates.OPEN => Some(IndexAttribute.Opened)
+        case WildcardStates.CLOSED => Some(IndexAttribute.Closed)
+        case _ => None
+      }
+      .toSet
+  }
+
   protected def indicesOrWildcard(indices: Set[ClusterIndexName]): Set[ClusterIndexName] = {
     if (indices.nonEmpty) indices else Set(ClusterIndexName.Local.wildcard)
   }
@@ -120,5 +150,9 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   protected def snapshotsOrWildcard(snapshots: Set[SnapshotName]): Set[SnapshotName] = {
     if (snapshots.nonEmpty) snapshots else Set(SnapshotName.all)
+  }
+
+  protected def dataStreamsOrWildcard(dataStreams: Set[DataStreamName]): Set[DataStreamName] = {
+    if (dataStreams.nonEmpty) dataStreams else Set(DataStreamName.all)
   }
 }

@@ -48,6 +48,7 @@ sealed trait ESVersionSupport {
 
   type T
 
+  val es60x = "^es60x$".r
   val allEs6x = "^es6\\dx$".r
   val allEs6xBelowEs63x = "^es6[0-2]x$".r
   val allEs6xBelowEs65x = "^es6[0-4]x$".r
@@ -59,6 +60,9 @@ sealed trait ESVersionSupport {
   val allEs7xBelowEs77x = "^es7[0-6]x$".r
   val allEs7xBelowEs78x = "^es7[0-7]x$".r
   val allEs7xBelowEs79x = "^es7[0-8]x$".r
+  val allEs7xBelowEs716x = "^es7(0?[0-9]|1[0-5])x$".r
+  val allEs7xBelowEs714x = "^es7(0?[0-9]|1[0-3])x$".r
+  val allEs7xBelowEs711x = "^es7(0?[0-9]|10)x$".r
   val allEs8x = "^es8\\d+x$".r
   val rorProxy = "^proxy$".r
 

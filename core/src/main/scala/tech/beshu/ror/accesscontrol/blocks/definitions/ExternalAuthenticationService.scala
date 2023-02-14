@@ -38,6 +38,7 @@ trait ExternalAuthenticationService extends Item {
   override type Id = Name
   def id: Id
   def authenticate(credentials: Credentials): Task[Boolean]
+  def serviceTimeout: FiniteDuration Refined Positive
 
   override implicit def show: Show[Name] = Name.nameShow
 }
@@ -53,6 +54,7 @@ object ExternalAuthenticationService {
 class BasicAuthHttpExternalAuthenticationService(override val id: ExternalAuthenticationService#Id,
                                                  uri: Uri,
                                                  successStatusCode: Int,
+                                                 override val serviceTimeout: FiniteDuration Refined Positive,
                                                  httpClient: HttpClient)
   extends ExternalAuthenticationService {
 
@@ -67,6 +69,7 @@ class BasicAuthHttpExternalAuthenticationService(override val id: ExternalAuthen
 class JwtExternalAuthenticationService(override val id: ExternalAuthenticationService#Id,
                                        uri: Uri,
                                        successStatusCode: Int,
+                                       override val serviceTimeout: FiniteDuration Refined Positive,
                                        httpClient: HttpClient)
   extends ExternalAuthenticationService {
 
@@ -87,7 +90,7 @@ class CacheableExternalAuthenticationServiceDecorator(underlying: ExternalAuthen
   override val id: ExternalAuthenticationService#Id = underlying.id
 
   override def authenticate(credentials: Credentials): Task[Boolean] = {
-    cacheableAuthentication.call(credentials)
+    cacheableAuthentication.call(credentials, serviceTimeout)
   }
 
   private def hashCredential(credentials: Credentials) = {
@@ -98,6 +101,7 @@ class CacheableExternalAuthenticationServiceDecorator(underlying: ExternalAuthen
     underlying.authenticate(credentials)
   }
 
+  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 }
 
 object CacheableExternalAuthenticationServiceDecorator {

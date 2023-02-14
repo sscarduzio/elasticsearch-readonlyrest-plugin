@@ -44,6 +44,7 @@ import tech.beshu.ror.accesscontrol.domain.Address.Ip
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, Strategy}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{Blacklist, Whitelist}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
@@ -103,7 +104,7 @@ object orders {
   implicit val userDefOrder: Order[UserDef] = Order.by(_.id.toString)
   implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
   implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)
-  implicit val groupOrder: Order[Group] = Order.by(_.value)
+  implicit val groupNameOrder: Order[GroupName] = Order.by(_.value)
   implicit val ruleWithVariableUsageDefinitionOrder: Order[RuleDefinition[Rule]] = Order.by(_.rule)
   implicit val patternOrder: Order[RegexPattern] = Order.by(_.pattern)
   implicit val forbiddenCauseOrder: Order[ForbiddenCause] = Order.by {
@@ -122,6 +123,12 @@ object orders {
     case SnapshotName.Pattern(value) => value.value
     case SnapshotName.All => "_all"
     case SnapshotName.Wildcard => "*"
+  }
+  implicit val dataStreamOrder: Order[DataStreamName] = Order.by {
+    case DataStreamName.Full(value) => value.value
+    case DataStreamName.Pattern(value) => value.value
+    case DataStreamName.All => "_all"
+    case DataStreamName.Wildcard => "*"
   }
 
   implicit def accessOrder[T: Order]: Order[AccessRequirement[T]] = Order.from {
@@ -164,7 +171,7 @@ object show {
     implicit val indexPatternShow: Show[IndexPattern] = Show.show(_.value.show)
     implicit val aliasPlaceholderShow: Show[AliasPlaceholder] = Show.show(_.alias.show)
     implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value.value)
-    implicit val groupShow: Show[Group] = Show.show(_.value.value)
+    implicit val groupNameShow: Show[GroupName] = Show.show(_.value.value)
     implicit val tokenShow: Show[AuthorizationToken] = Show.show(_.value.value)
     implicit val jwtTokenShow: Show[JwtToken] = Show.show(_.value.value)
     implicit val uriPathShow: Show[UriPath] = Show.show(_.value.value)
@@ -423,8 +430,7 @@ object headerValues {
     implicit val documentFieldR: Reader[DocumentField] = macroR
 
     implicit val setR: Reader[UniqueNonEmptyList[DocumentField]] =
-      SeqLikeReader[List, DocumentField]
-        .map(UniqueNonEmptyList.unsafeFromList)
+      SeqLikeReader[List, DocumentField].map(UniqueNonEmptyList.unsafeFromTraversable)
 
     implicit val fieldsRestrictionsR: Reader[FieldsRestrictions] = macroR
 
@@ -433,5 +439,5 @@ object headerValues {
     ))
   }
 
-  implicit val groupHeaderValue: ToHeaderValue[Group] = ToHeaderValue(_.value)
+  implicit val groupHeaderValue: ToHeaderValue[GroupName] = ToHeaderValue(_.value)
 }

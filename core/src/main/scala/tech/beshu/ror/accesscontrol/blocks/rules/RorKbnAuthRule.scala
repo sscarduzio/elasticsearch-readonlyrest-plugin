@@ -22,7 +22,6 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
-import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.Groups.GroupsLogic
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.{Groups, Settings}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
@@ -30,6 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule._
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain._
@@ -67,7 +67,7 @@ final class RorKbnAuthRule(val settings: Settings,
       settings.permittedGroups match {
         case Groups.NotDefined =>
           authorizeUsingJwtToken(blockContext)
-        case Groups.Defined(groupsLogic) if blockContext.isCurrentGroupEligible(groupsLogic.groups) =>
+        case Groups.Defined(groupsLogic) if blockContext.isCurrentGroupEligible(groupsLogic.permittedGroups) =>
           authorizeUsingJwtToken(blockContext)
         case Groups.Defined(_) =>
           RuleResult.Rejected()
@@ -131,24 +131,29 @@ final class RorKbnAuthRule(val settings: Settings,
   }
 
   private def handleGroupsClaimSearchResult[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                                     result: ClaimSearchResult[UniqueList[Group]]) = {
+                                                                                     result: ClaimSearchResult[UniqueList[GroupName]]) = {
     (result, settings.permittedGroups) match {
       case (NotFound, Groups.Defined(_)) =>
         Left(())
       case (NotFound, Groups.NotDefined) =>
         Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
       case (Found(groups), Groups.Defined(groupsLogic)) =>
-        groupsLogic.availableGroupsFrom(groups) match {
-          case Some(matchedGroups) if blockContext.isCurrentGroupEligible(matchedGroups) =>
-            Right(blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups)))
-          case Some(_) | None =>
+        UniqueNonEmptyList.fromTraversable(groups) match {
+          case Some(nonEmptyGroups) =>
+            groupsLogic.availableGroupsFrom(nonEmptyGroups) match {
+              case Some(matchedGroups) if blockContext.isCurrentGroupEligible(PermittedGroups(matchedGroups)) =>
+                Right(blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups)))
+              case Some(_) | None =>
+                Left(())
+            }
+          case None =>
             Left(())
         }
       case (Found(groups), Groups.NotDefined) =>
-        UniqueNonEmptyList.fromList(groups.toList) match {
+        UniqueNonEmptyList.fromTraversable(groups) match {
           case None =>
             Right(blockContext)
-          case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(nonEmptyGroups) =>
+          case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(PermittedGroups(nonEmptyGroups)) =>
             Right(blockContext)
           case Some(_) =>
             Left(())
@@ -176,30 +181,6 @@ object RorKbnAuthRule {
   object Groups {
     case object NotDefined extends Groups
     final case class Defined(groupsLogic: GroupsLogic) extends Groups
-
-    sealed trait GroupsLogic
-    object GroupsLogic {
-      final case class Or(groups: UniqueNonEmptyList[Group]) extends GroupsLogic
-      final case class And(groups: UniqueNonEmptyList[Group]) extends GroupsLogic
-    }
-  }
-
-  implicit class GroupsLogicExecutor(val groupsLogic: Groups.GroupsLogic) extends AnyVal {
-    def availableGroupsFrom(userGroups: UniqueList[Group]): Option[UniqueNonEmptyList[Group]] = {
-      groupsLogic match {
-        case GroupsLogic.And(groups) =>
-          val intersection = userGroups intersect groups
-          if (intersection.toSet === groups.toSet) Some(groups) else None
-        case GroupsLogic.Or(groups) =>
-          val intersection = userGroups.toSet intersect groups
-          UniqueNonEmptyList.fromSet(intersection)
-      }
-    }
-
-    def groups: UniqueNonEmptyList[Group] = groupsLogic match {
-      case GroupsLogic.And(groups) => groups
-      case GroupsLogic.Or(groups) => groups
-    }
   }
 
   private val userClaimName = ClaimName(JsonPath.compile("user"))

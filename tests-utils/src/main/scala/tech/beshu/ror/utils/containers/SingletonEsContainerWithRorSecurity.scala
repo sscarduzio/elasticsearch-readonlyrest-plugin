@@ -18,9 +18,11 @@ package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
 import org.junit.runner.Description
-import tech.beshu.ror.utils.containers.EsClusterSettings.ClusterType
+import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.{IndexManager, LegacyTemplateManager, RorApiManager, SnapshotManager}
+
+import scala.util.{Failure, Success, Try}
 
 object SingletonEsContainerWithRorSecurity
   extends PluginEsClusterProvider
@@ -30,15 +32,15 @@ object SingletonEsContainerWithRorSecurity
   private implicit val description: Description = Description.EMPTY
 
   val singleton: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR_SINGLE",
-      clusterType = ClusterType.RorCluster(Attributes.default)
+    EsClusterSettings.create(
+      clusterName = "ROR_SINGLE",
+      securityType = RorSecurity(Attributes.default)
     )
   )
 
   private lazy val adminClient = singleton.nodes.head.adminClient
 
-  private lazy val indexManager = new IndexManager(adminClient, singleton.nodes.head.esVersion)
+  private lazy val indexManager = new IndexManager(adminClient, singleton.esVersion)
   private lazy val templateManager = new LegacyTemplateManager(adminClient, singleton.esVersion)
   private lazy val snapshotManager = new SnapshotManager(adminClient)
   private lazy val rorApiManager = new RorApiManager(adminClient, singleton.esVersion)
@@ -47,9 +49,9 @@ object SingletonEsContainerWithRorSecurity
   singleton.start()
 
   def cleanUpContainer(): Unit = {
-    indexManager.removeAllIndices()
-    templateManager.deleteAllTemplates()
-    snapshotManager.deleteAllRepositories()
+    logOnFailure(indexManager.removeAllIndices().force())
+    logOnFailure(templateManager.deleteAllTemplates().force())
+    logOnFailure(snapshotManager.deleteAllRepositories().force())
   }
 
   def updateConfig(rorConfig: String): Unit = {
@@ -58,6 +60,14 @@ object SingletonEsContainerWithRorSecurity
 
   def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer): Unit = {
     nodeDataInitializer.initialize(singleton.esVersion, adminClient)
+  }
+
+  private def logOnFailure[A](action: => A): Unit = {
+    Try(action) match {
+      case Success(_) => ()
+      case Failure(ex) =>
+        logger.error(s"Error occurred while cleanup of singleton ES container: $ex")
+    }
   }
 
   final case class CouldNotUpdateRorConfigException() extends Exception("ROR config update using admin api failed")

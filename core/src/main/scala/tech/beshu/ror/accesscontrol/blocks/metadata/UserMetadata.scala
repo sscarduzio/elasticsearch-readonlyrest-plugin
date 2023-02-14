@@ -18,14 +18,14 @@ package tech.beshu.ror.accesscontrol.blocks.metadata
 
 import cats.data.NonEmptySet
 import cats.implicits._
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 final case class UserMetadata private(loggedUser: Option[LoggedUser],
-                                      currentGroup: Option[Group],
-                                      availableGroups: UniqueList[Group],
+                                      currentGroup: Option[GroupName],
+                                      availableGroups: UniqueList[GroupName],
                                       kibanaIndex: Option[ClusterIndexName],
                                       kibanaTemplateIndex: Option[ClusterIndexName],
                                       hiddenKibanaApps: Set[KibanaApp],
@@ -34,16 +34,16 @@ final case class UserMetadata private(loggedUser: Option[LoggedUser],
                                       jwtToken: Option[JwtTokenPayload]) {
 
   def withLoggedUser(user: LoggedUser): UserMetadata = this.copy(loggedUser = Some(user))
-  def withCurrentGroup(group: Group): UserMetadata = this.copy(currentGroup = Some(group))
-  def addAvailableGroup(group: Group): UserMetadata = addAvailableGroups(UniqueNonEmptyList.of(group))
-  def addAvailableGroups(groups: UniqueNonEmptyList[Group]): UserMetadata = {
+  def withCurrentGroup(group: GroupName): UserMetadata = this.copy(currentGroup = Some(group))
+  def addAvailableGroup(group: GroupName): UserMetadata = addAvailableGroups(UniqueNonEmptyList.of(group))
+  def addAvailableGroups(groups: UniqueNonEmptyList[GroupName]): UserMetadata = {
     val newAvailableGroups = this.availableGroups.mergeWith(groups.toUniqueList)
     this.copy(
       availableGroups = newAvailableGroups,
       currentGroup = this.currentGroup.orElse(newAvailableGroups.headOption)
     )
   }
-  def withAvailableGroups(groups: UniqueList[Group]): UserMetadata = this.copy(
+  def withAvailableGroups(groups: UniqueList[GroupName]): UserMetadata = this.copy(
     availableGroups = groups,
     currentGroup = this.currentGroup.orElse(groups.headOption)
   )
@@ -63,7 +63,7 @@ object UserMetadata {
       .headers
       .find(_.name === Header.Name.currentGroup) match {
       case None => UserMetadata.empty
-      case Some(Header(_, value)) => UserMetadata.empty.withCurrentGroup(Group(value))
+      case Some(Header(_, value)) => UserMetadata.empty.withCurrentGroup(GroupName(value))
     }
   }
 

@@ -23,8 +23,9 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, IndexNotFound}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{FullLocalIndexWithAliases, Group, User}
+import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils._
@@ -136,7 +137,7 @@ class GroupsRuleAccessControlTests
         inside (result.result) {
           case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2"))))
-            blockContext.userMetadata.availableGroups should be (UniqueList.of(Group("group3"), Group("group4")))
+            blockContext.userMetadata.availableGroups should be (UniqueList.of(GroupName("group3"), GroupName("group4")))
         }
       }
     }
@@ -152,7 +153,7 @@ class GroupsRuleAccessControlTests
           result.history should have size 2
           inside(result.result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group1")))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(GroupName("group1")))
           }
         }
       }
@@ -186,7 +187,7 @@ class GroupsRuleAccessControlTests
           result.history should have size 4
           inside(result.result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user3"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group5")))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(GroupName("group5")))
           }
         }
       }
@@ -200,13 +201,13 @@ class GroupsRuleAccessControlTests
               currentGroupHeader( "admin")
             ),
             filteredIndices = Set(clusterIndexName(".kibana")),
-            allIndicesAndAliases = Set(FullLocalIndexWithAliases(fullIndexName(".kibana"), Set.empty))
+            allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName(".kibana")))
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 5
           inside(result.result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("morgan"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("admin")))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(GroupName("admin")))
           }
         }
       }
@@ -214,9 +215,9 @@ class GroupsRuleAccessControlTests
   }
 
   private def allIndicesAndAliasesInTheTestCase() = Set(
-    FullLocalIndexWithAliases(fullIndexName("g12_index"), Set.empty),
-    FullLocalIndexWithAliases(fullIndexName("g13_index"), Set.empty),
-    FullLocalIndexWithAliases(fullIndexName("g34_index"), Set.empty),
-    FullLocalIndexWithAliases(fullIndexName("g5_index"), Set.empty)
+    fullLocalIndexWithAliases(fullIndexName("g12_index")),
+    fullLocalIndexWithAliases(fullIndexName("g13_index")),
+    fullLocalIndexWithAliases(fullIndexName("g34_index")),
+    fullLocalIndexWithAliases(fullIndexName("g5_index"))
   )
 }

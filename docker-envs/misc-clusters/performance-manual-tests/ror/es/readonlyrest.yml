@@ -1,0 +1,69 @@
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "elastic-certificates.p12"
+    keystore_pass: test
+    truststore_file: "elastic-certificates.p12"
+    truststore_pass: test
+    key_pass: test
+
+  ssl_internode:
+    enable: true
+    keystore_file: "elastic-certificates.p12"
+    keystore_pass: test
+    truststore_file: "elastic-certificates.p12"
+    truststore_pass: test
+    key_pass: test
+
+  audit_collector: false
+  access_control_rules:
+
+    - name: "::MONITORING::"
+      auth_key: monitoring_account:password
+      methods: [GET]
+      verbosity: error
+
+    - name: "::KIBANA-SRV::"
+      auth_key: kibana_account:password
+      verbosity: error
+
+    - name: "::DATA-IMPORTER::"
+      auth_key: data_importer_account:password
+      methods: [GET, POST]
+      verbosity: error
+
+    - name: "for admin"
+      users: ["admin1"]
+      ldap_authentication: "ldap"
+      verbosity: error
+
+    - name: "for kibana admin"
+      kibana_access: admin
+      users: ["admin1"]
+      ldap_authentication: "ldap"
+      verbosity: error
+
+    - name: "for kibana read-only users"
+      kibana_access: admin
+      users: ["*"]
+      kibana_index: ".kibana_@{user}"
+      kibana_hide_apps: ["readonlyrest_kbn"]
+      ldap_authentication: "ldap"
+      verbosity: error
+
+  ldaps:
+    - name: ldap
+
+      host: "ldap"
+      port: 3890
+      ssl_enabled: false
+      ssl_trust_all_certs: true
+
+      bind_dn: "uid=admin,ou=people,dc=example,dc=com"
+      bind_password: "password"
+      search_user_base_DN: "ou=People,dc=example,dc=com"
+      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      user_id_attribute: "uid"                                  
+      unique_member_attribute: "uniqueMember"
+
+      cache_ttl: 600s

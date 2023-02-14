@@ -16,11 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol
 
-import java.nio.charset.StandardCharsets.UTF_8
-import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneId}
-import java.util.{Base64, Locale, UUID}
-
 import cats.Eq
 import cats.data.NonEmptyList
 import cats.implicits._
@@ -33,20 +28,28 @@ import io.jsonwebtoken.Claims
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Action._
-import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.{Local, Remote}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.{Local, Remote}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.accesscontrol.matchers.{IndicesNamesMatcher, MatcherWithWildcardsScalaAdapter, TemplateNamePatternMatcher, UniqueIdentifierGenerator}
+import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.CaseMappingEquality
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
+import java.nio.charset.StandardCharsets.UTF_8
+import java.time.format.DateTimeFormatter
+import java.time.{Instant, ZoneId}
+import java.util.{Base64, Locale, UUID}
 import scala.language.postfixOps
 import scala.util.{Failure, Random, Success, Try}
 
@@ -76,14 +79,137 @@ object domain {
     }
 
     final case class UserIdPattern(override val value: NonEmptyString)
-      extends Pattern[Id](value)
+      extends Pattern[Id](value) {
+
+      def containsWildcard: Boolean = value.value.contains("*")
+    }
   }
 
   final case class UserIdPatterns(patterns: UniqueNonEmptyList[User.UserIdPattern])
 
-  final case class Group(value: NonEmptyString)
-  object Group {
-    implicit val eq: Eq[Group] = Eq.by(_.value.value)
+  sealed trait GroupLike
+  object GroupLike {
+    final case class GroupName(value: NonEmptyString)
+      extends GroupLike
+    object GroupName {
+      implicit val eq: Eq[GroupName] = Eq.by(_.value.value)
+    }
+
+    final case class GroupNamePattern private(value: NonEmptyString)
+      extends GroupLike {
+
+      private[GroupLike] lazy val matcher = MatcherWithWildcardsScalaAdapter.create[GroupLike](Set(this))
+    }
+    object GroupNamePattern {
+      implicit val caseMappingEquality: CaseMappingEquality[GroupNamePattern] =
+        CaseMappingEquality.instance(_.value.value, identity)
+    }
+
+    def from(value: NonEmptyString): GroupLike =
+      if (value.contains("*")) GroupNamePattern(value)
+      else GroupName(value)
+
+    implicit val eq: Eq[GroupLike] = Eq.by {
+      case GroupName(value) => value.value
+      case GroupNamePattern(value) => value.value
+    }
+    implicit val caseMappingEquality: CaseMappingEquality[GroupLike] =
+      CaseMappingEquality.instance(
+        {
+          case GroupName(value) => value.value
+          case GroupNamePattern(value) => value.value
+        },
+        identity
+      )
+
+    implicit class GroupsLikeMatcher(val groupLike: GroupLike) extends AnyVal {
+      def matches(groupName: GroupName): Boolean = {
+        groupLike match {
+          case group@GroupName(_) => group === groupName
+          case group@GroupNamePattern(_) => group.matcher.`match`(groupName)
+        }
+      }
+    }
+  }
+
+  final case class PermittedGroups(groups: UniqueNonEmptyList[_ <: GroupLike]) {
+    private[PermittedGroups] lazy val matcher = MatcherWithWildcardsScalaAdapter.create(groups.toSet)
+  }
+  object PermittedGroups {
+
+    implicit class PermittedGroupsMatcher(val permittedGroups: PermittedGroups) extends AnyVal {
+
+      def filterOnlyPermitted(groupsToCheck: Traversable[GroupName]): UniqueList[GroupName] = {
+        val (permitted, _) = permittedGroups
+          .groups.toList.widen[GroupLike]
+          .foldLeft((Traversable.empty[GroupName], groupsToCheck)) {
+            case ((alreadyPermittedGroups, groupsToCheckLeft), permittedGroupLike: GroupLike) =>
+              val (matched, notMatched) = groupsToCheckLeft.partition(permittedGroupLike.matches)
+              (alreadyPermittedGroups ++ matched, notMatched)
+          }
+        UniqueList.fromTraversable(permitted)
+      }
+
+      def matches(groupName: GroupName): Boolean = {
+        permittedGroups.matcher.`match`(groupName)
+      }
+    }
+  }
+
+  final case class ResolvablePermittedGroups(permittedGroups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupLike]]) {
+    def resolveGroups[B <: BlockContext](blockContext: B): Option[PermittedGroups] = {
+      UniqueNonEmptyList
+        .fromTraversable(resolveAll(permittedGroups.toNonEmptyList, blockContext))
+        .map(PermittedGroups.apply)
+    }
+  }
+
+  sealed trait GroupsLogic {
+    val permittedGroups: PermittedGroups
+  }
+
+  object GroupsLogic {
+    final case class Or(override val permittedGroups: PermittedGroups) extends GroupsLogic
+    final case class And(override val permittedGroups: PermittedGroups) extends GroupsLogic
+  }
+
+  implicit class GroupsLogicExecutor(val groupsLogic: GroupsLogic) extends AnyVal {
+    def availableGroupsFrom(userGroups: UniqueNonEmptyList[GroupName]): Option[UniqueNonEmptyList[GroupName]] = {
+      groupsLogic match {
+        case and@GroupsLogic.And(_) => and.availableGroupsFrom(userGroups)
+        case or@GroupsLogic.Or(_) => or.availableGroupsFrom(userGroups)
+      }
+    }
+  }
+
+  implicit class GroupsLogicAndExecutor(val groupsLogic: GroupsLogic.And) extends AnyVal {
+    def availableGroupsFrom(userGroups: UniqueNonEmptyList[GroupName]): Option[UniqueNonEmptyList[GroupName]] = {
+      val atLeastPermittedGroupNotMatched = false
+      val userGroupsMatchedSoFar = Vector.empty[GroupName]
+      val (isThereNotPermittedGroup, matchedUserGroups) =
+        groupsLogic
+        .permittedGroups
+        .groups.toList.widen[GroupLike]
+        .foldLeft((atLeastPermittedGroupNotMatched, userGroupsMatchedSoFar)) {
+          case ((false, userGroupsMatchedSoFar), permittedGroup: GroupLike) =>
+            val matchedUserGroups = userGroups.toList.filter(userGroup => permittedGroup.matches(userGroup))
+            matchedUserGroups match {
+              case Nil => (true, userGroupsMatchedSoFar)
+              case nonEmptyList => (false, userGroupsMatchedSoFar ++ nonEmptyList)
+            }
+          case (result@(true, _), _) =>
+            result
+        }
+      if (isThereNotPermittedGroup) None
+      else UniqueNonEmptyList.fromTraversable(matchedUserGroups)
+    }
+  }
+
+  implicit class GroupsLogicOrExecutor(val groupsLogic: GroupsLogic.Or) extends AnyVal {
+    def availableGroupsFrom(userGroups: UniqueNonEmptyList[GroupName]): Option[UniqueNonEmptyList[GroupName]] = {
+      val someMatchedUserGroups = groupsLogic.permittedGroups.filterOnlyPermitted(userGroups)
+      UniqueNonEmptyList.fromTraversable(someMatchedUserGroups)
+    }
   }
 
   final case class LocalUsers(users: Set[User.Id], unknownUsers: Boolean)
@@ -100,6 +226,7 @@ object domain {
       val xForwardedUser = Name("X-Forwarded-User")
       val xUserOrigin = Name(Constants.HEADER_USER_ORIGIN)
       val kibanaHiddenApps = Name(Constants.HEADER_KIBANA_HIDDEN_APPS)
+      val kibanaRequestPath = Name(Constants.HEADER_KIBANA_REQUEST_PATH)
       val cookie = Name("Cookie")
       val setCookie = Name("Set-Cookie")
       val transientFields = Name(Constants.FIELDS_TRANSIENT)
@@ -186,7 +313,6 @@ object domain {
         case None =>
           Left(RorMetadataInvalidFormat(rorMetadataString, "Decoding Base64 failed"))
       }
-
     }
 
     private def headerFrom(value: String) = {
@@ -349,6 +475,7 @@ object domain {
     val putTemplateAction = Action("indices:admin/template/put")
     val putIndexTemplateAction = Action("indices:admin/index_template/put")
     val getSettingsAction = Action("indices:monitor/settings/get")
+    val monitorStateAction = Action("cluster:monitor/state")
     // ROR actions
     val rorUserMetadataAction = Action("cluster:ror/user_metadata/get")
     val rorConfigAction = Action("cluster:ror/config/manage")
@@ -358,6 +485,7 @@ object domain {
     val rorOldConfigAction = Action("cluster:ror/config/refreshsettings")
 
     def isInternal(actionString: String): Boolean = actionString.startsWith("internal:")
+    def isMonitorState(actionString: String): Boolean = monitorStateAction.value == actionString
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
     implicit val caseMappingEqualityAction: CaseMappingEquality[Action] = CaseMappingEquality.instance(_.value, identity)
@@ -367,7 +495,6 @@ object domain {
   object IndexName {
 
     val wildcard: IndexName.Wildcard = IndexName.Wildcard("*")
-    val all: IndexName = IndexName.Full("_all")
 
     final case class Full(name: NonEmptyString)
       extends IndexName
@@ -383,6 +510,7 @@ object domain {
         NonEmptyString
           .unapply(value)
           .flatMap {
+            case str if str.value == "_all" => Some(IndexName.wildcard)
             case str if str.contains("*") => Some(Wildcard(str))
             case _ => None
           }
@@ -401,7 +529,15 @@ object domain {
       )
   }
 
-  sealed trait ClusterIndexName
+  sealed trait IndexAttribute
+  object IndexAttribute {
+    case object Opened extends IndexAttribute
+    case object Closed extends IndexAttribute
+  }
+
+  sealed trait ClusterIndexName {
+    private [domain] lazy val matcher = MatcherWithWildcardsScalaAdapter.create(this :: Nil)
+  }
   object ClusterIndexName {
 
     final case class Local private(value: IndexName) extends ClusterIndexName
@@ -414,10 +550,6 @@ object domain {
       def fromString(value: String): Option[ClusterIndexName.Local] = {
         IndexName
           .fromString(value)
-          .map {
-            case IndexName.all => IndexName.wildcard
-            case index => index
-          }
           .map(Local.apply)
       }
 
@@ -497,13 +629,12 @@ object domain {
     implicit val eqIndexName: Eq[ClusterIndexName] = Eq.fromUniversalEquals
 
     implicit class IndexMatch(indexName: ClusterIndexName) {
-      private lazy val matcher = MatcherWithWildcardsScalaAdapter.create(indexName :: Nil)
 
       def matches(otherIndexName: ClusterIndexName): Boolean = indexName match {
         case Local(IndexName.Full(_)) => indexName == otherIndexName
         case Remote(IndexName.Full(_), _) => indexName == otherIndexName
-        case Local(IndexName.Wildcard(_)) => matcher.`match`(otherIndexName)
-        case Remote(IndexName.Wildcard(_), _) => matcher.`match`(otherIndexName)
+        case Local(IndexName.Wildcard(_)) => indexName.matcher.`match`(otherIndexName)
+        case Remote(IndexName.Wildcard(_), _) => indexName.matcher.`match`(otherIndexName)
       }
     }
 
@@ -532,7 +663,7 @@ object domain {
         case Local(IndexName.Full(name)) => name
         case Local(IndexName.Wildcard(name)) => name
         case Remote(IndexName.Full(name), cluster) => NonEmptyString.unsafeFrom(s"${cluster.stringify}:$name")
-        case Remote(IndexName.Wildcard(name), cluster)=> NonEmptyString.unsafeFrom(s"${cluster.stringify}:$name")
+        case Remote(IndexName.Wildcard(name), cluster) => NonEmptyString.unsafeFrom(s"${cluster.stringify}:$name")
       }
     }
 
@@ -575,9 +706,9 @@ object domain {
 
     implicit class AllIndicesRequested(val indexName: ClusterIndexName) extends AnyVal {
       def allIndicesRequested: Boolean = indexName match {
-        case Local(IndexName.wildcard | IndexName.all) => true
+        case Local(IndexName.wildcard) => true
         case Local(IndexName.Full(_) | IndexName.Wildcard(_)) => false
-        case Remote(IndexName.wildcard | IndexName.all, ClusterName.wildcard) => true
+        case Remote(IndexName.wildcard, ClusterName.wildcard) => true
         case Remote(IndexName.Full(_) | IndexName.Wildcard(_), _) => false
       }
     }
@@ -641,6 +772,7 @@ object domain {
   }
 
   final case class FullLocalIndexWithAliases(indexName: IndexName.Full,
+                                             attribute: IndexAttribute,
                                              aliasesNames: Set[IndexName.Full]) {
     lazy val index: ClusterIndexName.Local = ClusterIndexName.Local(indexName)
     lazy val aliases: Set[ClusterIndexName.Local] = aliasesNames.map(ClusterIndexName.Local.apply)
@@ -649,13 +781,16 @@ object domain {
 
   final case class FullRemoteIndexWithAliases(clusterName: ClusterName.Full,
                                               indexName: IndexName.Full,
+                                              attribute: IndexAttribute,
                                               aliasesNames: Set[IndexName.Full]) {
     lazy val index: ClusterIndexName.Remote = ClusterIndexName.Remote(indexName, clusterName)
     lazy val aliases: Set[ClusterIndexName.Remote] = aliasesNames.map(ClusterIndexName.Remote(_, clusterName))
     lazy val all: Set[ClusterIndexName.Remote] = aliases + index
   }
 
-  final case class RorConfigurationIndex(index: IndexName.Full) extends AnyVal
+  final case class RorConfigurationIndex(index: IndexName.Full) extends AnyVal {
+    def toLocal: ClusterIndexName.Local = ClusterIndexName.Local(index)
+  }
 
   sealed trait AuditCluster
   object AuditCluster {
@@ -769,7 +904,7 @@ object domain {
       case Wildcard => "*"
     }
 
-    implicit val eqRepository: Eq[SnapshotName] = Eq.fromUniversalEquals
+    implicit val eqSnapshotName: Eq[SnapshotName] = Eq.fromUniversalEquals
     implicit val caseMappingEqualitySnapshotName: CaseMappingEquality[SnapshotName] = CaseMappingEquality.instance(
       {
         case Full(value) => value.value
@@ -779,6 +914,78 @@ object domain {
       },
       identity
     )
+  }
+
+  sealed trait DataStreamName
+  object DataStreamName {
+    final case class Full private(value: NonEmptyString) extends DataStreamName
+    object Full {
+      def fromString(value: String): Option[DataStreamName.Full] = {
+        NonEmptyString.unapply(value).map(DataStreamName.Full.apply)
+      }
+    }
+
+    final case class Pattern private(value: NonEmptyString) extends DataStreamName
+    case object All extends DataStreamName
+    case object Wildcard extends DataStreamName
+
+    def all: DataStreamName = DataStreamName.All
+
+    def wildcard: DataStreamName = DataStreamName.Wildcard
+
+    def fromString(value: String): Option[DataStreamName] = {
+      NonEmptyString.unapply(value).map {
+        case Refined("_all") => All
+        case Refined("*") => Wildcard
+        case v if v.contains("*") => Pattern(NonEmptyString.unsafeFrom(v))
+        case v => Full(NonEmptyString.unsafeFrom(v))
+      }
+    }
+
+    def toString(dataStreamName: DataStreamName): String = dataStreamName match {
+      case Full(value) => value.value
+      case Pattern(value) => value.value
+      case All => "_all"
+      case Wildcard => "*"
+    }
+
+    implicit val eqDataStreamName: Eq[DataStreamName] = Eq.fromUniversalEquals
+    implicit val caseMappingEqualityDataStreamName: CaseMappingEquality[DataStreamName] = CaseMappingEquality.instance(
+      {
+        case Full(value) => value.value
+        case Pattern(value) => value.value
+        case All => "*"
+        case Wildcard => "*"
+      },
+      identity
+    )
+
+    final case class FullLocalDataStreamWithAliases(dataStreamName: DataStreamName.Full,
+                                                    aliasesNames: Set[DataStreamName.Full],
+                                                    backingIndices: Set[IndexName.Full]) {
+      lazy val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
+      lazy val dataStream: ClusterIndexName.Local = toLocalIndex(dataStreamName)
+      lazy val aliases: Set[ClusterIndexName.Local] = aliasesNames.map(toLocalIndex)
+      lazy val indices: Set[ClusterIndexName.Local] = backingIndices.map(ClusterIndexName.Local.apply)
+      lazy val all: Set[ClusterIndexName.Local] = aliases ++ indices + dataStream
+
+      private def toLocalIndex(ds: DataStreamName.Full): ClusterIndexName.Local =
+        ClusterIndexName.Local(IndexName.Full(ds.value))
+    }
+
+    final case class FullRemoteDataStreamWithAliases(clusterName: ClusterName.Full,
+                                                     dataStreamName: DataStreamName.Full,
+                                                     aliasesNames: Set[DataStreamName.Full],
+                                                     backingIndices: Set[IndexName.Full]) {
+      lazy val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
+      lazy val dataStream: ClusterIndexName.Remote = toRemoteIndex(dataStreamName)
+      lazy val aliases: Set[ClusterIndexName.Remote] = aliasesNames.map(toRemoteIndex)
+      lazy val indices: Set[ClusterIndexName.Remote] = backingIndices.map(ClusterIndexName.Remote(_, clusterName))
+      lazy val all: Set[ClusterIndexName.Remote] = aliases ++ indices + dataStream
+
+      private def toRemoteIndex(ds: DataStreamName.Full): ClusterIndexName.Remote =
+        ClusterIndexName.Remote(IndexName.Full(ds.value), clusterName)
+    }
   }
 
   sealed trait Template {
@@ -884,6 +1091,7 @@ object domain {
       def allTheSame(letters: List[Char]) = {
         letters.size > 1 && letters.distinct.size == 1
       }
+
       def minTemplateNameLength() = {
         in.foldLeft(Int.MaxValue) {
           case (minLength, elem) if elem.value.length < minLength => elem.value.length
@@ -983,7 +1191,7 @@ object domain {
     }
 
     def from(value: NonEmptyString): UriPath = {
-      if(value.startsWith("/")) new UriPath(value)
+      if (value.startsWith("/")) new UriPath(value)
       else new UriPath(NonEmptyString.unsafeFrom(s"/$value"))
     }
 

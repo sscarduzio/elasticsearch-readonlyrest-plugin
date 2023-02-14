@@ -1,0 +1,25 @@
+version: "3.7"
+services:
+
+  generate-certs:
+    build:
+      context: .
+      dockerfile: code/Dockerfile
+    volumes:
+      - certs-input-volume:/usr/share/elasticsearch/config/certs/input
+      - certs-output-volume:/usr/share/elasticsearch/config/certs/output
+
+volumes:
+  certs-input-volume:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/input
+
+  certs-output-volume:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/output

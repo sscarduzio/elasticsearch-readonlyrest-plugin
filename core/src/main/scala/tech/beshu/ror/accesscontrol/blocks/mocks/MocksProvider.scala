@@ -23,7 +23,8 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthentic
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
-import tech.beshu.ror.accesscontrol.domain.{Group, User}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.User
 
 trait MocksProvider {
 
@@ -40,7 +41,7 @@ object MocksProvider {
 
   final case class LdapServiceMock(users: Set[LdapUserMock])
   object LdapServiceMock {
-    final case class LdapUserMock(id: User.Id, groups: Set[Group])
+    final case class LdapUserMock(id: User.Id, groups: Set[GroupName])
   }
 
   final case class ExternalAuthenticationServiceMock(users: Set[ExternalAuthenticationUserMock])
@@ -50,7 +51,7 @@ object MocksProvider {
 
   final case class ExternalAuthorizationServiceMock(users: Set[ExternalAuthorizationServiceUserMock])
   object ExternalAuthorizationServiceMock {
-    final case class ExternalAuthorizationServiceUserMock(id: User.Id, groups: Set[Group])
+    final case class ExternalAuthorizationServiceUserMock(id: User.Id, groups: Set[GroupName])
   }
 }
 

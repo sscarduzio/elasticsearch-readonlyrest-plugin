@@ -16,14 +16,14 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater._
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 sealed trait BlockContext {
   def requestContext: RequestContext
@@ -34,10 +34,10 @@ sealed trait BlockContext {
 
   def responseTransformations: List[ResponseTransformation]
 
-  def isCurrentGroupEligible(permittedGroups: UniqueNonEmptyList[Group]): Boolean = {
+  def isCurrentGroupEligible(permittedGroups: PermittedGroups): Boolean = {
     userMetadata.currentGroup match {
       case Some(preferredGroup) =>
-        requestContext.uriPath.isCurrentUserMetadataPath || permittedGroups.contains(preferredGroup)
+        requestContext.uriPath.isCurrentUserMetadataPath || permittedGroups.matches(preferredGroup)
       case None =>
         true
     }
@@ -73,6 +73,22 @@ object BlockContext {
                                                filteredIndices: Set[ClusterIndexName],
                                                allAllowedIndices: Set[ClusterIndexName])
     extends BlockContext
+
+  final case class DataStreamRequestBlockContext(override val requestContext: RequestContext,
+                                                 override val userMetadata: UserMetadata,
+                                                 override val responseHeaders: Set[Header],
+                                                 override val responseTransformations: List[ResponseTransformation],
+                                                 dataStreams: Set[DataStreamName],
+                                                 backingIndices: DataStreamRequestBlockContext.BackingIndices)
+    extends BlockContext
+  object DataStreamRequestBlockContext {
+    sealed trait BackingIndices
+    object BackingIndices {
+      final case class IndicesInvolved(filteredIndices: Set[ClusterIndexName],
+                                       allAllowedIndices: Set[ClusterIndexName]) extends BackingIndices
+      case object IndicesNotInvolved extends BackingIndices
+    }
+  }
 
   final case class AliasRequestBlockContext(override val requestContext: RequestContext,
                                             override val userMetadata: UserMetadata,
@@ -138,6 +154,12 @@ object BlockContext {
     }
   }
 
+  final case class RorApiRequestBlockContext(override val requestContext: RequestContext,
+                                             override val userMetadata: UserMetadata,
+                                             override val responseHeaders: Set[Header],
+                                             override val responseTransformations: List[ResponseTransformation])
+    extends BlockContext
+
   trait HasIndices[B <: BlockContext] {
     def indices(blockContext: B): Set[ClusterIndexName]
   }
@@ -159,6 +181,13 @@ object BlockContext {
 
     implicit val indicesFromSnapshotRequestBlockContext = new HasIndices[SnapshotRequestBlockContext] {
       override def indices(blockContext: SnapshotRequestBlockContext): Set[ClusterIndexName] = blockContext.filteredIndices
+    }
+
+    implicit val indicesFromDataStreamRequestBlockContext = new HasIndices[DataStreamRequestBlockContext] {
+      override def indices(blockContext: DataStreamRequestBlockContext): Set[ClusterIndexName] = blockContext.backingIndices match {
+        case BackingIndices.IndicesInvolved(filteredIndices, allAllowedIndices) => filteredIndices
+        case BackingIndices.IndicesNotInvolved => Set.empty
+      }
     }
 
     implicit class Ops[B <: BlockContext : HasIndices](blockContext: B) {
@@ -273,6 +302,12 @@ object BlockContext {
     }
   }
 
+  implicit class DataStreamOperationBlockContextUpdateOps(val blockContext: DataStreamRequestBlockContext) extends AnyVal {
+    def withDataStreams(dataStreams: Set[DataStreamName]): DataStreamRequestBlockContext = {
+      DataStreamRequestBlockContextUpdater.withDataStreams(blockContext, dataStreams)
+    }
+  }
+
   implicit class BlockContextWithIndicesUpdaterOps[B <: BlockContext : BlockContextWithIndicesUpdater](blockContext: B) {
     def withIndices(filteredIndices: Set[ClusterIndexName], allAllowedIndices: Set[ClusterIndexName]): B = {
       BlockContextWithIndicesUpdater[B].withIndices(blockContext, filteredIndices, allAllowedIndices)
@@ -326,6 +361,10 @@ object BlockContext {
         case _: GeneralNonIndexRequestBlockContext => Set.empty
         case _: RepositoryRequestBlockContext => Set.empty
         case bc: SnapshotRequestBlockContext => bc.filteredIndices
+        case bc: DataStreamRequestBlockContext => bc.backingIndices match {
+          case BackingIndices.IndicesInvolved(filteredIndices, allAllowedIndices) => filteredIndices
+          case BackingIndices.IndicesNotInvolved => Set.empty
+        }
         case bc: TemplateRequestBlockContext =>
           bc.templateOperation match {
             case TemplateOperation.GettingLegacyAndIndexTemplates(_, _) => Set.empty
@@ -345,6 +384,7 @@ object BlockContext {
         case bc: FilterableRequestBlockContext => bc.filteredIndices
         case bc: MultiIndexRequestBlockContext => extractIndicesFrom(bc.indexPacks)
         case bc: FilterableMultiRequestBlockContext => extractIndicesFrom(bc.indexPacks)
+        case _: RorApiRequestBlockContext => Set.empty
       }
     }
 
@@ -365,12 +405,14 @@ object BlockContext {
         case _: GeneralNonIndexRequestBlockContext => Set.empty
         case bc: RepositoryRequestBlockContext => bc.repositories
         case bc: SnapshotRequestBlockContext => bc.repositories
+        case _: DataStreamRequestBlockContext => Set.empty
         case _: TemplateRequestBlockContext => Set.empty
         case _: AliasRequestBlockContext => Set.empty
         case _: GeneralIndexRequestBlockContext => Set.empty
         case _: MultiIndexRequestBlockContext => Set.empty
         case _: FilterableRequestBlockContext => Set.empty
         case _: FilterableMultiRequestBlockContext => Set.empty
+        case _: RorApiRequestBlockContext => Set.empty
       }
     }
   }
@@ -382,12 +424,33 @@ object BlockContext {
         case _: GeneralNonIndexRequestBlockContext => Set.empty
         case _: RepositoryRequestBlockContext => Set.empty
         case bc: SnapshotRequestBlockContext => bc.snapshots
+        case _: DataStreamRequestBlockContext => Set.empty
         case _: TemplateRequestBlockContext => Set.empty
         case _: AliasRequestBlockContext => Set.empty
         case _: GeneralIndexRequestBlockContext => Set.empty
         case _: MultiIndexRequestBlockContext => Set.empty
         case _: FilterableRequestBlockContext => Set.empty
         case _: FilterableMultiRequestBlockContext => Set.empty
+        case _: RorApiRequestBlockContext => Set.empty
+      }
+    }
+  }
+
+  implicit class DataStreamsFromBlockContext(val blockContext: BlockContext) extends AnyVal {
+    def dataStreams: Set[DataStreamName] = {
+      blockContext match {
+        case _: CurrentUserMetadataRequestBlockContext => Set.empty
+        case _: GeneralNonIndexRequestBlockContext => Set.empty
+        case _: RepositoryRequestBlockContext => Set.empty
+        case _: SnapshotRequestBlockContext => Set.empty
+        case bc: DataStreamRequestBlockContext => bc.dataStreams
+        case _: TemplateRequestBlockContext => Set.empty
+        case _: AliasRequestBlockContext => Set.empty
+        case _: GeneralIndexRequestBlockContext => Set.empty
+        case _: MultiIndexRequestBlockContext => Set.empty
+        case _: FilterableRequestBlockContext => Set.empty
+        case _: FilterableMultiRequestBlockContext => Set.empty
+        case _: RorApiRequestBlockContext => Set.empty
       }
     }
   }
@@ -399,12 +462,14 @@ object BlockContext {
         case _: GeneralNonIndexRequestBlockContext => None
         case _: RepositoryRequestBlockContext => None
         case _: SnapshotRequestBlockContext => None
+        case _: DataStreamRequestBlockContext => None
         case bc: TemplateRequestBlockContext => Some(bc.templateOperation)
         case _: AliasRequestBlockContext => None
         case _: GeneralIndexRequestBlockContext => None
         case _: MultiIndexRequestBlockContext => None
         case _: FilterableRequestBlockContext => None
         case _: FilterableMultiRequestBlockContext => None
+        case _: RorApiRequestBlockContext => None
       }
     }
   }
@@ -416,12 +481,14 @@ object BlockContext {
         case _: GeneralNonIndexRequestBlockContext => None
         case _: RepositoryRequestBlockContext => None
         case _: SnapshotRequestBlockContext => None
+        case _: DataStreamRequestBlockContext => None
         case _: TemplateRequestBlockContext => None
         case _: AliasRequestBlockContext => None
         case _: GeneralIndexRequestBlockContext => None
         case _: MultiIndexRequestBlockContext => None
         case bc: FilterableRequestBlockContext => bc.fieldLevelSecurity
         case bc: FilterableMultiRequestBlockContext => bc.fieldLevelSecurity
+        case _: RorApiRequestBlockContext => None
       }
     }
   }
@@ -438,24 +505,27 @@ object BlockContext {
     }
   }
 
-  implicit class ContainsIndices(val b: BlockContext) extends AnyVal {
-    def containsIndices: Boolean = b match {
+  implicit class InvolvesIndices(val b: BlockContext) extends AnyVal {
+    def involvesIndices: Boolean = b match {
       case _: CurrentUserMetadataRequestBlockContext => hasIndices[CurrentUserMetadataRequestBlockContext]
       case _: GeneralNonIndexRequestBlockContext => hasIndices[GeneralNonIndexRequestBlockContext]
       case _: RepositoryRequestBlockContext => hasIndices[RepositoryRequestBlockContext]
       case _: SnapshotRequestBlockContext => hasIndices[SnapshotRequestBlockContext]
+      case _: DataStreamRequestBlockContext => hasIndices[DataStreamRequestBlockContext]
       case _: AliasRequestBlockContext => hasIndices[AliasRequestBlockContext]
       case _: TemplateRequestBlockContext => hasIndices[TemplateRequestBlockContext]
       case _: GeneralIndexRequestBlockContext => hasIndices[GeneralIndexRequestBlockContext]
       case _: FilterableRequestBlockContext => hasIndices[FilterableRequestBlockContext]
       case _: FilterableMultiRequestBlockContext => hasIndices[FilterableMultiRequestBlockContext]
       case _: MultiIndexRequestBlockContext => hasIndices[MultiIndexRequestBlockContext]
+      case _: RorApiRequestBlockContext =>  hasIndices[RorApiRequestBlockContext]
     }
 
     private implicit def toOption[A](implicit a: A): Option[A] = Some(a)
 
     private def hasIndices[B <: BlockContext](implicit hasIndices: Option[HasIndices[B]] = None,
-                                              hasIndexPacks: Option[HasIndexPacks[B]] = None) =
+                                              hasIndexPacks: Option[HasIndexPacks[B]] = None) = {
       hasIndices.nonEmpty || hasIndexPacks.nonEmpty
+    }
   }
 }

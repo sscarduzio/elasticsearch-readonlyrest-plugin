@@ -17,7 +17,7 @@
 package tech.beshu.ror.utils.containers
 
 import com.dimafeng.testcontainers.SingleContainer
-import com.typesafe.scalalogging.Logger
+import com.typesafe.scalalogging.{Logger, StrictLogging}
 import monix.eval.Coeval
 import org.apache.http.message.BasicHeader
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
@@ -25,6 +25,7 @@ import org.testcontainers.containers.{GenericContainer, Network}
 import org.testcontainers.images.builder.ImageFromDockerfile
 import tech.beshu.ror.utils.containers.EsContainer.Credentials
 import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, None, Token}
+import tech.beshu.ror.utils.containers.images.Elasticsearch
 import tech.beshu.ror.utils.containers.providers.ClientProvider
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
@@ -34,13 +35,13 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-abstract class EsContainer(val name: String,
-                           val esVersion: String,
+abstract class EsContainer(val esVersion: String,
+                           val esConfig: Elasticsearch.Config,
                            val startedClusterDependencies: StartedClusterDependencies,
-                           val esClusterSettings: EsClusterSettings,
                            image: ImageFromDockerfile)
   extends SingleContainer[GenericContainer[_]]
-    with ClientProvider {
+    with ClientProvider
+    with StrictLogging {
 
   override implicit val container = new org.testcontainers.containers.GenericContainer(image)
 
@@ -72,11 +73,11 @@ object EsContainer {
     esContainer.container.addExposedPort(9300)
     esContainer.container.addExposedPort(8000)
     esContainer.container.setWaitStrategy(
-      new ElasticsearchNodeWaitingStrategy(esContainer.esVersion, esContainer.name, esClient, initializer)
+      new ElasticsearchNodeWaitingStrategy(esContainer.esVersion, esContainer.esConfig.nodeName, esClient, initializer)
         .withStartupTimeout(5 minutes)
     )
     esContainer.container.setNetwork(Network.SHARED)
-    esContainer.container.setNetworkAliases((esContainer.name :: Nil).asJava)
+    esContainer.container.setNetworkAliases((esContainer.esConfig.nodeName :: Nil).asJava)
     esContainer
   }
 

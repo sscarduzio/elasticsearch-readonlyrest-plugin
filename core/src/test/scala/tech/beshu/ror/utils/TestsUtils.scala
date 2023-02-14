@@ -26,7 +26,8 @@ import io.circe.ParsingFailure
 import io.jsonwebtoken.JwtBuilder
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService, ImpersonatorDef}
@@ -40,6 +41,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, definitions}
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
@@ -92,11 +95,34 @@ object TestsUtils {
 
   def localIndexName(str: NonEmptyString): ClusterIndexName.Local = ClusterIndexName.Local.fromString(str.value.value).get
 
+  def fullLocalIndexWithAliases(fullIndexName: IndexName.Full): FullLocalIndexWithAliases =
+    fullLocalIndexWithAliases(fullIndexName, Set.empty)
+
+  def fullLocalIndexWithAliases(fullIndexName: IndexName.Full,
+                                aliasesNames: Set[IndexName.Full]): FullLocalIndexWithAliases =
+    FullLocalIndexWithAliases(fullIndexName, IndexAttribute.Opened, aliasesNames)
+
+  def fullLocalDataStreamWithAliases(dataStreamName: DataStreamName.Full): FullLocalDataStreamWithAliases =
+    fullLocalDataStreamWithAliases(
+      dataStreamName = dataStreamName,
+      aliasesNames = Set.empty,
+    )
+
+  def fullLocalDataStreamWithAliases(dataStreamName: DataStreamName.Full,
+                                     aliasesNames: Set[DataStreamName.Full]): FullLocalDataStreamWithAliases =
+    FullLocalDataStreamWithAliases(
+      dataStreamName = dataStreamName,
+      aliasesNames = aliasesNames,
+      backingIndices = Set(IndexName.Full(NonEmptyString.unsafeFrom(".ds-" + dataStreamName.value.value + "-2023")))
+    )
+
   def remoteIndexName(str: NonEmptyString): ClusterIndexName.Remote = ClusterIndexName.Remote.fromString(str.value.value).get
 
   def indexName(str: NonEmptyString): IndexName = IndexName.fromString(str.value).get
 
   def fullIndexName(str: NonEmptyString): IndexName.Full = IndexName.Full.fromString(str.value).get
+
+  def fullDataStreamName(str: NonEmptyString): DataStreamName.Full = DataStreamName.Full.fromString(str.value).get
 
   def indexPattern(str: NonEmptyString): IndexPattern = IndexPattern(clusterIndexName(str))
 
@@ -104,7 +130,7 @@ object TestsUtils {
 
   def impersonatorDefFrom(userIdPattern: NonEmptyString,
                           impersonatorCredentials: Credentials,
-                          impersonatedUsers: NonEmptyList[User.Id]): ImpersonatorDef = {
+                          impersonatedUsersIdPatterns: NonEmptyList[NonEmptyString]): ImpersonatorDef = {
     ImpersonatorDef(
       UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(userIdPattern))),
       new AuthKeyRule(
@@ -112,11 +138,11 @@ object TestsUtils {
         Impersonation.Disabled,
         UserIdEq.caseSensitive
       ),
-      UniqueNonEmptyList.fromNonEmptyList(impersonatedUsers)
+      ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.fromNonEmptyList(impersonatedUsersIdPatterns.map(UserIdPattern))))
     )
   }
 
-  def mocksProviderForLdapFrom(map: Map[LdapService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
+  def mocksProviderForLdapFrom(map: Map[LdapService.Name, Map[User.Id, Set[GroupName]]]): MocksProvider = {
     new MocksProvider {
       override def ldapServiceWith(id: LdapService.Name)
                                   (implicit context: RequestId): Option[LdapServiceMock] = {
@@ -152,7 +178,7 @@ object TestsUtils {
     }
   }
 
-  def mocksProviderForExternalAuthzServiceFrom(map: Map[definitions.ExternalAuthorizationService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
+  def mocksProviderForExternalAuthzServiceFrom(map: Map[definitions.ExternalAuthorizationService.Name, Map[User.Id, Set[GroupName]]]): MocksProvider = {
     new MocksProvider {
       override def ldapServiceWith(id: LdapService.Name)(implicit context: RequestId): Option[LdapServiceMock] = None
 
@@ -193,8 +219,8 @@ object TestsUtils {
     }
 
     def assertBlockContext(loggedUser: Option[LoggedUser] = None,
-                           currentGroup: Option[Group] = None,
-                           availableGroups: UniqueList[Group] = UniqueList.empty,
+                           currentGroup: Option[GroupName] = None,
+                           availableGroups: UniqueList[GroupName] = UniqueList.empty,
                            kibanaIndex: Option[ClusterIndexName] = None,
                            kibanaTemplateIndex: Option[ClusterIndexName] = None,
                            hiddenKibanaApps: Set[KibanaApp] = Set.empty,
@@ -206,10 +232,11 @@ object TestsUtils {
                            aliases: Set[ClusterIndexName] = Set.empty,
                            repositories: Set[RepositoryName] = Set.empty,
                            snapshots: Set[SnapshotName] = Set.empty,
+                           dataStreams: Set[DataStreamName] = Set.empty,
                            templates: Set[TemplateOperation] = Set.empty)
                           (blockContext: BlockContext): Unit = {
       blockContext.userMetadata.loggedUser should be(loggedUser)
-      blockContext.userMetadata.availableGroups should be(availableGroups)
+      blockContext.userMetadata.availableGroups should contain allElementsOf availableGroups
       blockContext.userMetadata.currentGroup should be(currentGroup)
       blockContext.userMetadata.kibanaIndex should be(kibanaIndex)
       blockContext.userMetadata.kibanaTemplateIndex should be(kibanaTemplateIndex)
@@ -220,7 +247,10 @@ object TestsUtils {
       blockContext.responseHeaders should be(responseHeaders)
       blockContext match {
         case _: CurrentUserMetadataRequestBlockContext =>
+        case _: RorApiRequestBlockContext =>
         case _: GeneralNonIndexRequestBlockContext =>
+        case bc: DataStreamRequestBlockContext =>
+          bc.dataStreams should be(dataStreams)
         case bc: RepositoryRequestBlockContext =>
           bc.repositories should be(repositories)
         case bc: SnapshotRequestBlockContext =>
@@ -273,21 +303,17 @@ object TestsUtils {
     }
   }
 
-  def nonEmptySetOf(group: Group, groups: Group*): NonEmptySet[Group] = {
+  def nonEmptySetOf(group: GroupName, groups: GroupName*): NonEmptySet[GroupName] = {
     import tech.beshu.ror.accesscontrol.orders._
     NonEmptySet.of(group, groups: _*)
   }
 
-  def groupFrom(value: String): Group = NonEmptyString.from(value) match {
-    case Right(v) => Group(v)
-    case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to Group")
-  }
-
-  implicit class CurrentGroupToHeader(val group: Group) extends AnyVal {
+  implicit class CurrentGroupToHeader(val group: GroupName) extends AnyVal {
     def toCurrentGroupHeader: Header = currentGroupHeader(group.value.value)
   }
 
-  def noGroupMappingFrom(value: String): GroupMappings = GroupMappings.Simple(UniqueNonEmptyList.of(groupFrom(value)))
+  def noGroupMappingFrom(value: String): GroupMappings =
+    GroupMappings.Simple(UniqueNonEmptyList.of(GroupName(NonEmptyString.unsafeFrom(value))))
 
   def apiKeyFrom(value: String): ApiKey = NonEmptyString.from(value) match {
     case Right(v) => ApiKey(v)

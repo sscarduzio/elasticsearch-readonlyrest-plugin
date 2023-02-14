@@ -62,7 +62,7 @@ import tech.beshu.ror.accesscontrol.domain.{Action, Header}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
+import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter._
@@ -107,10 +107,10 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
                                      esContext: EsContext,
                                      aclContext: AccessControlStaticContext) = {
     esContext.actionRequest match {
-      case request: RRAdminRequest =>
-        regularRequestHandler.handle(new GeneralNonIndexEsRequestContext(request, esContext, clusterService, threadPool))
       case request: RRAuditEventRequest =>
         regularRequestHandler.handle(new AuditEventESRequestContext(request, esContext, clusterService, threadPool))
+      case request: RorActionRequest =>
+        regularRequestHandler.handle(new RorApiEsRequestContext(request, esContext, clusterService, threadPool))
       // snapshots
       case request: GetSnapshotsRequest =>
         regularRequestHandler.handle(new GetSnapshotsEsRequestContext(request, esContext, clusterService, threadPool))

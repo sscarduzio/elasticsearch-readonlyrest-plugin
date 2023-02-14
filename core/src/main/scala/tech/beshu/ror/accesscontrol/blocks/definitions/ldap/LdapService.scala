@@ -17,16 +17,22 @@
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 
 import cats.{Eq, Show}
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
-import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.utils.uniquelist.UniqueList
+
+import scala.concurrent.duration.FiniteDuration
 
 sealed trait LdapService extends Item {
   override type Id = Name
   def id: Id
+  def serviceTimeout: FiniteDuration Refined Positive
 
   override implicit def show: Show[Name] = Name.nameShow
 }
@@ -48,7 +54,7 @@ trait LdapAuthenticationService extends LdapUserService {
 }
 
 trait LdapAuthorizationService extends LdapUserService {
-  def groupsOf(id: User.Id): Task[UniqueList[Group]]
+  def groupsOf(id: User.Id): Task[UniqueList[GroupName]]
 }
 
 trait LdapAuthService extends LdapAuthenticationService with LdapAuthorizationService
@@ -64,8 +70,15 @@ class ComposedLdapAuthService(override val id: LdapService#Id,
   override def authenticate(user: User.Id, secret: PlainTextSecret): Task[Boolean] =
     ldapAuthenticationService.authenticate(user, secret)
 
-  override def groupsOf(id: User.Id): Task[UniqueList[Group]] =
+  override def groupsOf(id: User.Id): Task[UniqueList[GroupName]] =
     ldapAuthorizationService.groupsOf(id)
+
+  override val serviceTimeout: Refined[FiniteDuration, Positive] = {
+    val authnServiceTimeout = ldapAuthenticationService.serviceTimeout
+    val authzServiceTimeout = ldapAuthorizationService.serviceTimeout
+    if(authnServiceTimeout.value > authzServiceTimeout.value) authnServiceTimeout
+    else authzServiceTimeout
+  }
 }
 
 

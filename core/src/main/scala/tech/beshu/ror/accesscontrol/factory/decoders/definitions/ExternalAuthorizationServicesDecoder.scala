@@ -119,10 +119,12 @@ object ExternalAuthorizationServicesDecoder extends Logging {
               sendUsing,
               defaultHeaders.getOrElse(Set.empty),
               defaultQueryParams.getOrElse(Set.empty),
+              config.requestTimeout,
               httpClient
             )
           cacheTtl.foldLeft(externalAuthService) {
-            case (cacheableAuthService, ttl) => new CacheableExternalAuthorizationServiceDecorator(cacheableAuthService, ttl)
+            case (cacheableAuthService, ttl) =>
+              new CacheableExternalAuthorizationServiceDecorator(cacheableAuthService, ttl)
           }
         }
       }

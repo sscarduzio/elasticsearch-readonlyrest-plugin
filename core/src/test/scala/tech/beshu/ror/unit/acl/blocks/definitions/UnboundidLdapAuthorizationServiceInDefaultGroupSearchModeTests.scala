@@ -29,7 +29,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.DefaultGroupSearch
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
-import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -58,7 +59,7 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
         "user has groups" in {
           eventually {
             authorizationService.groupsOf(User.Id("morgan")).runSyncUnsafe() should be {
-              UniqueList.of(Group("groupAll"), Group("group3"), Group("group2"))
+              UniqueList.of(GroupName("groupAll"), GroupName("group3"), GroupName("group2"))
             }
           }
         }
@@ -66,12 +67,12 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
       "returns empty set of groups" when {
         "user has no groups" in {
           eventually {
-            authorizationService.groupsOf(User.Id("devito")).runSyncUnsafe() should be(UniqueList.empty[Group])
+            authorizationService.groupsOf(User.Id("devito")).runSyncUnsafe() should be(UniqueList.empty[GroupName])
           }
         }
         "there is no user with given name" in {
           eventually {
-            authorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[Group])
+            authorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[GroupName])
           }
         }
       }
@@ -106,8 +107,7 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
           "uniqueMember",
           "(cn=*)",
           groupAttributeIsDN = true
-        )),
-        global
+        ))
       )
       .runSyncUnsafe()
       .right.getOrElse(throw new IllegalStateException("LDAP connection problem"))

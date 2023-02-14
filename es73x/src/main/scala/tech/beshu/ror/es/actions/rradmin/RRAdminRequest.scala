@@ -20,11 +20,12 @@ import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
 import tech.beshu.ror.api.ConfigApi
+import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.{Constants, RequestId}
 
 class RRAdminRequest(adminApiRequest: ConfigApi.ConfigRequest,
-                     esRestRequest: RestRequest) extends ActionRequest {
+                     esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
 
   val getAdminRequest: ConfigApi.ConfigRequest = adminApiRequest
   lazy val requestContextId: RequestId = RequestId(s"${esRestRequest.hashCode()}-${this.hashCode()}")

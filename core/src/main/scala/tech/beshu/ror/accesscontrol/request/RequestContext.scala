@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.request
 
-import java.time.Instant
 import cats.Show
 import cats.implicits._
 import com.softwaremill.sttp.Method
@@ -29,6 +28,8 @@ import squants.information.{Bytes, Information}
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
@@ -36,6 +37,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.ScalaOps._
 
+import java.time.Instant
 import scala.language.implicitConversions
 
 trait RequestContext {
@@ -68,9 +70,15 @@ trait RequestContext {
 
   def content: String
 
+  def indexAttributes: Set[IndexAttribute]
+
   def allIndicesAndAliases: Set[FullLocalIndexWithAliases]
 
   def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]]
+
+  def allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases]
+
+  def allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]]
 
   def allTemplates: Set[Template]
 
@@ -221,7 +229,7 @@ object RequestContextOps {
 
   sealed trait RequestGroup
   object RequestGroup {
-    final case class AGroup(userGroup: Group) extends RequestGroup
+    final case class AGroup(userGroup: GroupName) extends RequestGroup
     case object `N/A` extends RequestGroup
 
     implicit val show: Show[RequestGroup] = Show.show {
@@ -230,7 +238,7 @@ object RequestContextOps {
     }
 
     implicit class ToOption(val requestGroup: RequestGroup) extends AnyVal {
-      def toOption: Option[Group] = requestGroup match {
+      def toOption: Option[GroupName] = requestGroup match {
         case AGroup(userGroup) => Some(userGroup)
         case `N/A` => None
       }

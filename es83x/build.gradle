@@ -29,7 +29,7 @@ buildscript {
         maven { url "https://plugins.gradle.org/m2/" }
     }
     dependencies {
-        classpath group: 'org.owasp',                                    name: 'dependency-check-gradle',   version: '6.5.3'
+        classpath group: 'org.owasp',                                    name: 'dependency-check-gradle',   version: '8.0.1'
         classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins',  name: 'license-gradle-plugin',     version: '0.15.0'
         classpath group: 'com.star-zero.gradle',                         name: 'githook',                   version: '1.2.1'
     }

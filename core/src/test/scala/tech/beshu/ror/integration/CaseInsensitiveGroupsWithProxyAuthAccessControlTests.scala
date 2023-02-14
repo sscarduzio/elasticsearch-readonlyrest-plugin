@@ -22,8 +22,9 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.Allow
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{Group, FullLocalIndexWithAliases, User}
+import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -62,15 +63,15 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
             headers = Set(header("X-Auth-Token", "user1-proxy-id")),
             filteredIndices = Set(clusterIndexName("g12_index")),
             allIndicesAndAliases = Set(
-              FullLocalIndexWithAliases(fullIndexName("g12_index"), Set.empty),
-              FullLocalIndexWithAliases(fullIndexName("g34_index"), Set.empty)
+              fullLocalIndexWithAliases(fullIndexName("g12_index")),
+              fullLocalIndexWithAliases(fullIndexName("g34_index"))
             )
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
           inside(result.result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group1")))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(GroupName("group1")))
           }
         }
         "user i User1" in {
@@ -78,15 +79,15 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
             headers = Set(header("X-Auth-Token", "User1-proxy-id")),
             filteredIndices = Set(clusterIndexName("g12_index")),
             allIndicesAndAliases = Set(
-              FullLocalIndexWithAliases(fullIndexName("g12_index"), Set.empty),
-              FullLocalIndexWithAliases(fullIndexName("g34_index"), Set.empty)
+              fullLocalIndexWithAliases(fullIndexName("g12_index")),
+              fullLocalIndexWithAliases(fullIndexName("g34_index"))
             )
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
           inside(result.result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("User1-proxy-id"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group1")))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(GroupName("group1")))
           }
         }
       }

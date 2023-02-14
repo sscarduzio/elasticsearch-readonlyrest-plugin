@@ -88,10 +88,10 @@ class TransportRRConfigAction(actionName: String,
     new RRConfigsResponse(clusterService.getClusterName, responses, failures)
   }
 
-  override def newNodeResponse(): RRConfig = new RRConfig()
-
   override def newNodeRequest(nodeId: String, request: RRConfigsRequest): RRConfigRequest =
     new RRConfigRequest(nodeId, request.getNodeConfigRequest)
+
+  override def newNodeResponse(): RRConfig = new RRConfig()
 
   private def loadConfig() =
     RawRorConfigLoadingAction

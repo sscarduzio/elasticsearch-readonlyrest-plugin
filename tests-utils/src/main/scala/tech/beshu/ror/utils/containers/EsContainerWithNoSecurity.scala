@@ -23,15 +23,13 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 import scala.language.postfixOps
 
-class EsContainerWithNoSecurity(name: String,
-                                esVersion: String,
-                                startedClusterDependencies: StartedClusterDependencies,
-                                esClusterSettings: EsClusterSettings,
-                                image: ImageFromDockerfile)
-  extends EsContainer(name, esVersion, startedClusterDependencies, esClusterSettings, image)
-    with StrictLogging {
+class EsContainerWithNoSecurity private(esConfig: Elasticsearch.Config,
+                                        esVersion: String,
+                                        startedClusterDependencies: StartedClusterDependencies,
+                                        image: ImageFromDockerfile)
+  extends EsContainer(esVersion, esConfig, startedClusterDependencies, image) {
 
-  logger.info(s"[$name] Creating ES without any security installed container ...")
+  logger.info(s"[${esConfig.nodeName}] Creating ES without any security installed container ...")
 
   override val sslEnabled: Boolean = false
 
@@ -43,13 +41,11 @@ object EsContainerWithNoSecurity extends StrictLogging {
   def create(esVersion: String,
              esConfig: Elasticsearch.Config,
              initializer: ElasticsearchNodeDataInitializer,
-             startedClusterDependencies: StartedClusterDependencies,
-             esClusterSettings: EsClusterSettings): EsContainer = {
+             startedClusterDependencies: StartedClusterDependencies): EsContainer = {
     val esContainer = new EsContainerWithNoSecurity(
-      esConfig.nodeName,
+      esConfig,
       esVersion,
       startedClusterDependencies,
-      esClusterSettings,
       esImageFromDockerfile(esVersion, esConfig)
     )
     EsContainer.init(esContainer, initializer, logger)

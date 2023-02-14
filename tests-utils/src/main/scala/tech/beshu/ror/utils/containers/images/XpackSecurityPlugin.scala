@@ -50,8 +50,9 @@ class XpackSecurityPlugin(esVersion: String,
   override def updateEsImage(image: DockerImageDescription): DockerImageDescription = {
     image
       .copyFile(configDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
+      .copyFile(configDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
+      .copyFile(configDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
       .configureKeystore()
-      .configureCustomEntrypoint()
   }
 
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {
@@ -89,28 +90,6 @@ class XpackSecurityPlugin(esVersion: String,
         .runWhen(Version.greaterOrEqualThan(esVersion, 6, 6, 0),
           s"printf 'elastic\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add bootstrap.password"
         )
-    }
-  }
-
-  private implicit class ConfigureCustomEntrypoint(val image: DockerImageDescription) {
-
-    def configureCustomEntrypoint(): DockerImageDescription = {
-      val entrypointScriptFile = esDir / "xpack-setup-entry.sh"
-      image
-        .runWhen(Version.greaterOrEqualThan(esVersion, 6, 0, 0),
-          command = s"echo '/usr/local/bin/docker-entrypoint.sh &' > ${entrypointScriptFile.toString()}",
-          orElseCommand = s"echo '${esDir.toString()}/bin/es-docker &' > ${entrypointScriptFile.toString()}"
-        )
-        // Time needed to bootstrap cluster as elasticsearch-setup-passwords has to be run after cluster is ready
-        .run(s"echo 'sleep 15' >> ${entrypointScriptFile.toString()}")
-        .run(s"""echo 'export ES_JAVA_OPTS="-Xms1g -Xmx1g -Djava.security.egd=file:/dev/./urandoms"' >> ${entrypointScriptFile.toString()}""")
-        .run(s"""echo 'echo "Trying to add assign superuser role to elastic"' >> ${entrypointScriptFile.toString()}""")
-        .runWhen(Version.greaterOrEqualThan(esVersion, 6, 7, 0),
-          s"""echo "for i in {1..30}; do curl -X POST -u elastic:elastic "http://localhost:9200/_security/user/admin?pretty" -H 'Content-Type: application/json' -d'{"password" : "container", "roles" : ["superuser"]}'; sleep 2; done" >> ${entrypointScriptFile.toString()}"""
-        )
-        .run(s"echo 'wait' >> ${entrypointScriptFile.toString()}")
-        .run(s"chmod +x ${entrypointScriptFile.toString()}")
-        .setEntrypoint(entrypointScriptFile)
     }
   }
 }

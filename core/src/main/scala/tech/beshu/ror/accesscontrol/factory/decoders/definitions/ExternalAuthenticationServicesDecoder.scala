@@ -47,21 +47,21 @@ object ExternalAuthenticationServicesDecoder {
 
   private implicit def basicAuthExternalAuthenticationServiceDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[ExternalAuthenticationService] = {
     cacheableAuthenticationServiceDecoder(
-      (id: ExternalAuthenticationService#Id, uri: Uri, successStatusCode: Int, httpClient: HttpClient) =>
-        new BasicAuthHttpExternalAuthenticationService(id, uri, successStatusCode, httpClient),
+      (id: ExternalAuthenticationService#Id, uri: Uri, successStatusCode: Int, requestTimeout: FiniteDuration Refined Positive, httpClient: HttpClient) =>
+        new BasicAuthHttpExternalAuthenticationService(id, uri, successStatusCode, requestTimeout, httpClient),
       httpClientFactory
     )
   }
 
   implicit def jwtExternalAuthenticationServiceDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[ExternalAuthenticationService] = {
     cacheableAuthenticationServiceDecoder(
-      (id: ExternalAuthenticationService#Id, uri: Uri, successStatusCode: Int, httpClient: HttpClient) =>
-        new JwtExternalAuthenticationService(id, uri, successStatusCode, httpClient),
+      (id: ExternalAuthenticationService#Id, uri: Uri, successStatusCode: Int, requestTimeout: FiniteDuration Refined Positive, httpClient: HttpClient) =>
+        new JwtExternalAuthenticationService(id, uri, successStatusCode, requestTimeout, httpClient),
       httpClientFactory
     )
   }
 
-  private def cacheableAuthenticationServiceDecoder(creator: (ExternalAuthenticationService#Id, Uri, Int, HttpClient) => ExternalAuthenticationService,
+  private def cacheableAuthenticationServiceDecoder(creator: (ExternalAuthenticationService#Id, Uri, Int, FiniteDuration Refined Positive, HttpClient) => ExternalAuthenticationService,
                                                     httpClientFactory: HttpClientsFactory) = {
     SyncDecoderCreator
       .instance { c =>
@@ -88,7 +88,7 @@ object ExternalAuthenticationServicesDecoder {
         httpClientConfig.map { config =>
           val httpClient = httpClientFactory.create(config)
           val externalAuthService: ExternalAuthenticationService =
-            creator(name, url, httpSuccessCode.getOrElse(defaults.successHttpCode), httpClient)
+            creator(name, url, httpSuccessCode.getOrElse(defaults.successHttpCode), config.requestTimeout, httpClient)
           cacheTtl.foldLeft(externalAuthService) {
             case (cacheableAuthService, ttl) => new CacheableExternalAuthenticationServiceDecorator(cacheableAuthService, ttl)
           }

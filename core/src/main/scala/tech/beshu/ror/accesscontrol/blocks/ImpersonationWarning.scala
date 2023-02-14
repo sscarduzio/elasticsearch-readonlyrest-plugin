@@ -61,6 +61,7 @@ object ImpersonationWarning {
 
     implicit val actionsRule: ImpersonationWarningSupport[ActionsRule] = NotSupported
     implicit val apiKeyRule: ImpersonationWarningSupport[ApiKeysRule] = NotSupported
+    implicit val dataStreamsRule: ImpersonationWarningSupport[DataStreamsRule] = NotSupported
     implicit val fieldsRule: ImpersonationWarningSupport[FieldsRule] = NotSupported
     implicit val filterRule: ImpersonationWarningSupport[FilterRule] = NotSupported
     implicit val headersAndRule: ImpersonationWarningSupport[HeadersAndRule] = NotSupported

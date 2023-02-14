@@ -37,7 +37,8 @@ object RawRorConfig {
   def fromString(content: String): Task[Either[ParsingRorConfigError, RawRorConfig]] = {
     val contentResource = Resource.make(Task(new StringReader(content))) { reader => Task(reader.close()) }
     contentResource.use { reader => Task {
-      handleParseResult(yaml.parser.parse(reader))
+      handleParseResult(
+        yaml.parser.parse(reader))
         .map(RawRorConfig(_, content))
     }}
   }

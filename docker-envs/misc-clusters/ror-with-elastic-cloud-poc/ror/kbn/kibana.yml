@@ -1,0 +1,7 @@
+server.name: kibana-ror
+server.host: 0.0.0.0
+elasticsearch.hosts: [ "${ES_API_URL}" ]
+monitoring.ui.container.elasticsearch.enabled: true
+
+elasticsearch.username: kibana
+elasticsearch.password: kibana

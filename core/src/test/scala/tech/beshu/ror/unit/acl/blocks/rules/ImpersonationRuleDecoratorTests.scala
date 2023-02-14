@@ -25,6 +25,7 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
+import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
@@ -154,6 +155,15 @@ class ImpersonationRuleDecoratorTests
 
         result should be(Rejected())
       }
+      "the impersonator tries to impersonate himself" in {
+        val requestContext = MockRequestContext.indices.copy(
+          headers = Set(basicAuthHeader("admin2:pass"), new Header(Header.Name.impersonateAs, "admin2"))
+        )
+        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
+
+        val result = rule.check(blockContext).runSyncUnsafe()
+        result should be(Rejected(Cause.ImpersonationNotAllowed))
+      }
     }
   }
 
@@ -176,17 +186,17 @@ class ImpersonationRuleDecoratorTests
         ImpersonatorDef(
           userIdPatterns("admin1"),
           authKeyRule("admin1", "pass"),
-          UniqueNonEmptyList.of(User.Id("*"))
+          ImpersonatedUsers(userIdPatterns("*"))
         ),
         ImpersonatorDef(
           userIdPatterns("admin2"),
           authKeyRule("admin2", "pass"),
-          UniqueNonEmptyList.of(User.Id("user2"), User.Id("user3"))
+          ImpersonatedUsers(userIdPatterns("user2", "user3"))
         ),
         ImpersonatorDef(
           userIdPatterns("a*"),
           authKeyRule("admin3", "pass"),
-          UniqueNonEmptyList.of(User.Id("user1"))
+          ImpersonatedUsers(userIdPatterns("user1"))
         )
       )
     }
@@ -205,7 +215,7 @@ class ImpersonationRuleDecoratorTests
 
   private def userIdPatterns(id: String, ids: String*) = {
     UserIdPatterns(
-      UniqueNonEmptyList.unsafeFromList(
+      UniqueNonEmptyList.unsafeFromTraversable(
         (id :: ids.toList).map(str => UserIdPattern(NonEmptyString.unsafeFrom(str)))
       )
     )

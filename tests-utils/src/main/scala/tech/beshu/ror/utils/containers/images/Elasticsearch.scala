@@ -28,7 +28,7 @@ object Elasticsearch {
 
   final case class Config(clusterName: String,
                           nodeName: String,
-                          nodes: NonEmptyList[String],
+                          masterNodes: NonEmptyList[String],
                           additionalElasticsearchYamlEntries: Map[String, String],
                           envs: Map[String, String])
 
@@ -126,18 +126,21 @@ class Elasticsearch(esVersion: String,
         entry = "indices.lifecycle.history_index_enabled: false"
       )
       .addWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
-        entry = s"discovery.seed_hosts: ${config.nodes.toList.mkString(",")}",
-        orElseEntry = s"discovery.zen.ping.unicast.hosts: ${config.nodes.toList.mkString(",")}"
+        entry = s"discovery.seed_hosts: ${config.masterNodes.toList.mkString(",")}",
+        orElseEntry = s"discovery.zen.ping.unicast.hosts: ${config.masterNodes.toList.mkString(",")}"
       )
       .addWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
-        entry = s"cluster.initial_master_nodes: ${config.nodes.toList.mkString(",")}",
-        orElseEntry = s"node.master: true"
+        entry = s"cluster.initial_master_nodes: ${config.masterNodes.toList.mkString(",")}",
+        orElseEntry = "node.master: true"
       )
       .addWhen(Version.greaterOrEqualThan(esVersion, 7, 14, 0),
-        entry = s"ingest.geoip.downloader.enabled: false"
+        entry = "ingest.geoip.downloader.enabled: false"
       )
       .addWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0),
-        entry = s"action.destructive_requires_name: false"
+        entry = "action.destructive_requires_name: false"
+      )
+      .addWhen(Version.lowerThan(esVersion, 8, 0, 0),
+        entry = "xpack.monitoring.enabled: false"
       )
       .add(
         entries = config.additionalElasticsearchYamlEntries.map { case (key, value) => s"$key: $value" }

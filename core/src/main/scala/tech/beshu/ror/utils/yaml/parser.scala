@@ -16,10 +16,9 @@
 package tech.beshu.ror.utils.yaml
 
 import java.io.{Reader, StringReader}
-
 import cats.syntax.either._
 import io.circe._
-import tech.beshu.ror.org.yaml.snakeyaml.Yaml
+import tech.beshu.ror.org.yaml.snakeyaml.{LoaderOptions, Yaml}
 import tech.beshu.ror.org.yaml.snakeyaml.constructor.SafeConstructor
 import tech.beshu.ror.org.yaml.snakeyaml.nodes._
 
@@ -43,11 +42,13 @@ object parser {
 
   def parseDocuments(yaml: String): Stream[Either[ParsingFailure, Json]] = parseDocuments(new StringReader(yaml))
 
-  private[this] def parseSingle(reader: Reader) =
-    Either.catchNonFatal(new Yaml().compose(reader)).leftMap(err => ParsingFailure(err.getMessage, err))
+  private[this] def parseSingle(reader: Reader) = Either.catchNonFatal(
+    new Yaml(new SafeConstructor(new LoaderOptions()))
+      .compose(reader)).leftMap(err => ParsingFailure(err.getMessage, err)
+  )
 
   private[this] def parseStream(reader: Reader) =
-    new Yaml().composeAll(reader).asScala.toStream
+    new Yaml(new SafeConstructor(new LoaderOptions())).composeAll(reader).asScala.toStream
 
   private[this] object CustomTag {
     def unapply(tag: Tag): Option[String] = if (!tag.startsWith(Tag.PREFIX))

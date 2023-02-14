@@ -42,7 +42,6 @@ import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils._
-import tech.beshu.ror.boot.RorSchedulers
 
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.language.postfixOps
@@ -106,8 +105,7 @@ object LdapServicesDecoder {
         name,
         ldapConnectionPoolProvider,
         connectionConfig,
-        userSearchFiler,
-        RorSchedulers.ldapUnboundIdBlockingScheduler
+        userSearchFiler
       )
       ldapServiceDecodingResult match {
         case Left(error) => Task.now(Left(error))
@@ -137,8 +135,7 @@ object LdapServicesDecoder {
         ldapConnectionPoolProvider,
         connectionConfig,
         userSearchFiler,
-        userGroupsSearchFilter,
-        RorSchedulers.ldapUnboundIdBlockingScheduler
+        userGroupsSearchFilter
       )
       ldapServiceDecodingResult match {
         case Left(error) => Task.now(Left(error))
@@ -234,7 +231,7 @@ object LdapServicesDecoder {
       .instance { c =>
         val circuitBreaker = c.downField("circuit_breaker")
         if (circuitBreaker.failed) {
-          Right(DEFAULT_CIRCUIT_BREAKER_CONFIG)
+          Right(defaultCircuitBreakerConfig)
         } else {
           (for {
             maxRetries <- circuitBreaker.downField("max_retries").as[Int Refined Positive]

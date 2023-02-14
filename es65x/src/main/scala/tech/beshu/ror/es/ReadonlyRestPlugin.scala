@@ -41,6 +41,7 @@ import org.elasticsearch.index.mapper.MapperService
 import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.plugins._
+import org.elasticsearch.rest.action.cat.RestCatAction
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
@@ -64,6 +65,8 @@ import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 import tech.beshu.ror.es.actions.rrtestconfig.rest.RestRRTestConfigAction
 import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, TransportRRTestConfigAction}
+import tech.beshu.ror.es.actions.wrappers._cat.rest.RorWrappedRestCatAction
+import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, TransportRorWrappedCatAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.ThreadRepo
@@ -175,7 +178,9 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       .externalSsl
       .map(ssl =>
         "ssl_netty4" -> new Supplier[HttpServerTransport] {
-          override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, ssl, fipsConfig.isSslFipsCompliant)
+          override def get(): HttpServerTransport = doPrivileged{
+            new SSLNetty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, ssl, fipsConfig.isSslFipsCompliant)
+          }
         }
       )
       .toMap
@@ -193,7 +198,9 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       .interNodeSsl
       .map(ssl =>
         "ror_ssl_internode" -> new Supplier[Transport] {
-          override def get(): Transport = new SSLNetty4InternodeServerTransport(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService, ssl, fipsConfig.isSslFipsCompliant)
+          override def get(): Transport = doPrivileged {
+            new SSLNetty4InternodeServerTransport(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService, ssl, fipsConfig.isSslFipsCompliant)
+          }
         }
       )
       .toMap
@@ -212,6 +219,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       new ActionHandler(RRConfigActionType.instance, classOf[TransportRRConfigAction]),
       new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
       new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
+      // wrappers
+      new ActionHandler(RorWrappedCatActionType.instance, classOf[TransportRorWrappedCatAction]),
     ).asJava
   }
 
@@ -235,9 +244,13 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
     restHandler: RestHandler =>
       (request: RestRequest, channel: RestChannel, client: NodeClient) => {
+        val handlerToUse = restHandler match {
+          case action: RestCatAction => new RorWrappedRestCatAction(Settings.EMPTY, action)
+          case _ => restHandler
+        }
         val rorRestChannel = new RorRestChannel(channel)
         ThreadRepo.setRestChannel(rorRestChannel)
-        restHandler.handleRequest(request, rorRestChannel, client)
+        handlerToUse.handleRequest(request, rorRestChannel, client)
       }
   }
 

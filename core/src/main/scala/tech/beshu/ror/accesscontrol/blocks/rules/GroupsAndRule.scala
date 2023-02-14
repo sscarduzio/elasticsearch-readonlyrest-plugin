@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.implicits._
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule._
-import tech.beshu.ror.accesscontrol.domain.Group
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, PermittedGroups}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final class GroupsAndRule(override val settings: BaseGroupsRule.Settings,
@@ -29,12 +29,11 @@ final class GroupsAndRule(override val settings: BaseGroupsRule.Settings,
 
   override val name: Rule.Name = GroupsAndRule.Name.name
 
-  override def calculateAllowedGroupsForUser(userGroups: Set[Group], ruleGroups: Set[Group]): Option[UniqueNonEmptyList[Group]] = {
-   val intersection = userGroups intersect ruleGroups
-    UniqueNonEmptyList.fromSet(
-      if (intersection === ruleGroups) ruleGroups else Set.empty
-    )
+  override protected def calculateAllowedGroupsForUser(userGroups: UniqueNonEmptyList[GroupName],
+                                                       permittedGroups: PermittedGroups): Option[UniqueNonEmptyList[GroupName]] = {
+    GroupsLogic.And(permittedGroups).availableGroupsFrom(userGroups)
   }
+  
 }
 
 object GroupsAndRule {
