@@ -24,6 +24,8 @@ spec:
               memory: 1Gi
               cpu: 1024m
           env:
+#          - name: xpack.security.enabled
+#            value: "false"
           - name: INTERNAL_USR_PASS
             valueFrom:
               secretKeyRef:
@@ -34,15 +36,18 @@ spec:
               secretKeyRef:
                 name: quickstart-es-internal-users
                 key: elastic-internal-probe
-          - name: KIBANA_USER_PASS
-            valueFrom:
-              secretKeyRef:
-                name: quickstart-kibana-user
-                key: default-quickstart-kibana-user
+#          - name: KIBANA_USER_PASS
+#            valueFrom:
+#              secretKeyRef:
+#                name: quickstart-kibana-user
+#                key: default-quickstart-kibana-user
           volumeMounts:
           - name: config
             mountPath: /usr/share/elasticsearch/config/readonlyrest.yml
             subPath: readonlyrest.yml
+          - name: config2
+            mountPath: /usr/share/elasticsearch/config/log4j2.properties
+            subPath: log4j2.properties
         initContainers:
         - name: sysctl
           securityContext:
@@ -52,3 +57,6 @@ spec:
         - name: config
           configMap:
             name: ror-config
+        - name: config2
+          configMap:
+            name: log4j2-config

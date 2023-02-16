@@ -17,6 +17,7 @@
 package tech.beshu.ror.es
 
 import monix.execution.Scheduler
+import monix.execution.atomic.Atomic
 import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.support.ActionFilter
@@ -167,9 +168,10 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     List(Constants.FIELDS_TRANSIENT).asJava
   }
 
+  private val indexModuleAtomic: Atomic[Option[IndexModule]] = Atomic(Option.empty[IndexModule])
+
   override def onIndexModule(indexModule: IndexModule): Unit = {
-    import tech.beshu.ror.es.utils.IndexModuleOps._
-    indexModule.overwrite(RoleIndexSearcherWrapper.instance)
+    indexModuleAtomic.set(Some(indexModule))
   }
 
   override def getSettings: util.List[Setting[_]] = {
@@ -262,6 +264,11 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   override def onNodeStarted(): Unit = {
     super.onNodeStarted()
+    import tech.beshu.ror.es.utils.IndexModuleOps._
+    indexModuleAtomic.get().foreach { indexModule =>
+      println("Setting RoleIndexSearcherWrapper")
+      indexModule.overwrite(RoleIndexSearcherWrapper.instance)
+    }
     doPrivileged {
       esInitListener.onEsReady()
     }

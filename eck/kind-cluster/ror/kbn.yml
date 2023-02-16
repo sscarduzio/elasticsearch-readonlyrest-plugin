@@ -8,11 +8,6 @@ spec:
   count: 1
   elasticsearchRef:
     name: quickstart
-  config:
-    elasticsearch.username: "kibana"
-    elasticsearch.password: "kibana"
-    xpack.security.enabled: false
-    readonlyrest_kbn.logLevel: debug
   podTemplate:
     spec:
       containers:
@@ -21,3 +16,11 @@ spec:
           requests:
             memory: 1Gi
             cpu: 0.5
+        volumeMounts:
+        - name: config
+          mountPath: /usr/share/kibana/config/kibana.yml
+          subPath: kibana.yml
+      volumes:
+      - name: config
+        configMap:
+          name: kibana-config

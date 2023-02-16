@@ -26,6 +26,7 @@ import tech.beshu.ror.utils.ScalaOps._
 import java.util.function.UnaryOperator
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
+import scala.util.{Failure, Success, Try}
 
 class RestControllerOps(val restController: RestController) {
 
@@ -69,7 +70,12 @@ class RestControllerOps(val restController: RestController) {
           val newHandlersMap = handlersMap
             .asSafeMap
             .map { case (apiVersion, handler) =>
-              (apiVersion, restHandlerDecorator(handler))
+              Try(on(handler).get[RestHandler]("restHandler")) match {
+                case Success(underlyingHandler) =>
+                  (apiVersion, restHandlerDecorator(underlyingHandler))
+                case Failure(_) =>
+                  (apiVersion, restHandlerDecorator(handler))
+              }
             }
             .asJava
           (key, newHandlersMap)

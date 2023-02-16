@@ -8,10 +8,6 @@ data:
          #verbosity: error
          auth_key: kibana:kibana
 
-       - name: "DEFAULT KIBANA USER"
-         #verbosity: error
-         auth_key: "default-quickstart-kibana-user:${KIBANA_USER_PASS}"
- 
        - name: "PROBE"
          #verbosity: error
          auth_key: "elastic-internal-probe:${INTERNAL_PROBE_PASS}"

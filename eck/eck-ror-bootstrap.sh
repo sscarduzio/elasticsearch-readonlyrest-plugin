@@ -26,7 +26,7 @@ docker exec ror-eck-control-plane bash -c 'cd ror && ls | xargs -n 1 kubectl app
 
 echo ""
 echo "------------------------------------------"
-echo "ECK and ROR is being bootstrapped. Wait for all pods to be run and then open your browser and try to access http://localhost:15601/ (credentials admin:container)"
+echo "ECK and ROR is being bootstrapped. Wait for all pods to be run and then open your browser and try to access https://localhost:15601/ (credentials admin:container)"
 echo ""
 
 docker exec -ti ror-eck-control-plane kubectl get pods --watch

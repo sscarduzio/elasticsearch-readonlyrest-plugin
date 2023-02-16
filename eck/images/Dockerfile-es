@@ -1,4 +1,6 @@
 FROM docker.elastic.co/elasticsearch/elasticsearch:8.6.1
 COPY ror-es.zip /tmp
 RUN bin/elasticsearch-plugin install -b file:///tmp/ror-es.zip
+USER root
 RUN /usr/share/elasticsearch/jdk/bin/java -jar /usr/share/elasticsearch/plugins/readonlyrest/ror-tools.jar patch
+USER elasticsearch
