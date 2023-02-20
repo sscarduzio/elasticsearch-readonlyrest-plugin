@@ -14,6 +14,9 @@ fi
 
 echo "CONFIGURING K8S CLUSTER ..."
 kind create cluster --name ror-eck --config kind-cluster/kind-cluster-config.yml
+docker exec ror-eck-control-plane /bin/bash -c "sysctl -w vm.max_map_count=262144"
+docker exec ror-eck-worker        /bin/bash -c "sysctl -w vm.max_map_count=262144"
+docker exec ror-eck-worker2       /bin/bash -c "sysctl -w vm.max_map_count=262144"
 
 echo "CONFIGURING ECK ..."
 docker cp kind-cluster/bootstrap-eck.sh ror-eck-control-plane:/
