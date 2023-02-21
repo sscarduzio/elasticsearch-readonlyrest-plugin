@@ -277,7 +277,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
   private val obfuscatedHeadersAsyncDecoder: Decoder[Set[Header.Name]] = {
     import tech.beshu.ror.accesscontrol.factory.decoders.common.headerName
     Decoder.instance(_.downField("obfuscated_headers").as[Option[Set[Header.Name]]])
-      .map(_.getOrElse(Set(Header.Name.rorAuthorization)))
+      .map(_.getOrElse(Set(Header.Name.authorization)))
   }
 
   private def localUsersForRule[R <: Rule](rule: RuleDefinition[R]) = {

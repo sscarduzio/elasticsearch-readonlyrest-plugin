@@ -151,7 +151,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |""".stripMargin)
         val acl = createCore(config)
         val obfuscatedHeaders = acl.right.get.accessControl.staticContext.obfuscatedHeaders
-        obfuscatedHeaders shouldEqual Set(Header.Name.rorAuthorization)
+        obfuscatedHeaders shouldEqual Set(Header.Name.authorization)
       }
       "the section exists, and obfuscated header is not defined" in {
         val config = rorConfigFromUnsafe(

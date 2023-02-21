@@ -30,7 +30,7 @@ class ObfuscatedHeaderShowFactoryTest
   private val customHeaderName = Header.Name(NonEmptyString.unsafeFrom("CustomHeader"))
   private val secretHeaderName = Header.Name(NonEmptyString.unsafeFrom("Secret"))
 
-  private val basicHeader = Header(Header.Name.rorAuthorization, NonEmptyString.unsafeFrom("secretButAuth"))
+  private val basicHeader = Header(Header.Name.authorization, NonEmptyString.unsafeFrom("secretButAuth"))
   private val customHeader = Header(customHeaderName, NonEmptyString.unsafeFrom("business value"))
   private val secretHeader = Header(secretHeaderName, NonEmptyString.unsafeFrom("secret"))
   private val capitalizedAuthorization = Header.Name(NonEmptyString.unsafeFrom("authorization"))
@@ -40,8 +40,8 @@ class ObfuscatedHeaderShowFactoryTest
         val table = Table(("conf", "authorization", "custom", "secret"),
           (Set.empty[Header.Name], "Authorization=secretButAuth", "CustomHeader=business value", "Secret=secret"),
           (Set(capitalizedAuthorization), "Authorization=<OMITTED>", "CustomHeader=business value", "Secret=secret"),
-          (Set(Header.Name.rorAuthorization), "Authorization=<OMITTED>", "CustomHeader=business value", "Secret=secret"),
-          (Set(Header.Name.rorAuthorization, secretHeaderName), "Authorization=<OMITTED>", "CustomHeader=business value", "Secret=<OMITTED>"),
+          (Set(Header.Name.authorization), "Authorization=<OMITTED>", "CustomHeader=business value", "Secret=secret"),
+          (Set(Header.Name.authorization, secretHeaderName), "Authorization=<OMITTED>", "CustomHeader=business value", "Secret=<OMITTED>"),
         )
         forAll(table) { (conf, authorization, custom, secret) =>
           obfuscatedHeaderShow(conf).show(basicHeader) shouldEqual authorization

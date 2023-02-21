@@ -63,7 +63,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(secret.getEncoded),
             userClaim = None,
             groupsClaim = None
@@ -81,7 +81,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Rsa(pub),
             userClaim = None,
             groupsClaim = None
@@ -98,7 +98,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.NoCheck(authService(jwt.stringify(), authenticated = true)),
             userClaim = None,
             groupsClaim = None
@@ -116,7 +116,7 @@ class JwtAuthRuleTests
         val authService = cachedAuthService(validJwt.stringify(), invalidJwt.stringify())
         val jwtDef = JwtDef(
           JwtDef.Name("test"),
-          AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+          AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
           SignatureCheckMethod.NoCheck(authService),
           userClaim = None,
           groupsClaim = None
@@ -147,7 +147,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = None
@@ -169,7 +169,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
@@ -191,7 +191,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
@@ -215,7 +215,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("https://{domain}/claims/roles")))
@@ -236,7 +236,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
@@ -259,7 +259,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("tech.beshu.groups")))
@@ -281,7 +281,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
@@ -308,7 +308,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
@@ -428,7 +428,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key1.getEncoded),
             userClaim = None,
             groupsClaim = None
@@ -443,7 +443,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Rsa(pub),
             userClaim = None,
             groupsClaim = None
@@ -456,7 +456,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.NoCheck(authService(jwt.stringify(), authenticated = false)),
             userClaim = None,
             groupsClaim = None
@@ -470,7 +470,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = None
@@ -484,7 +484,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
@@ -501,7 +501,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("tech.beshu.groups.subgroups")))
@@ -521,7 +521,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
@@ -541,7 +541,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
@@ -561,7 +561,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
@@ -579,7 +579,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.rorAuthorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))

@@ -17,8 +17,15 @@ data:
          auth_key: "elastic-internal:${INTERNAL_USR_PASS}"
 
        - name: "CONTAINER ADMIN - file"
-         type: "allow"
+         type: allow
          auth_key: "admin:container"
+         kibana_access: admin
+     
+       - name: "User 1"
+         type: allow
+         auth_key: "user1:test"
+         indices: [".kibana*", "kibana*"]
+
 
 kind: ConfigMap
 metadata:
