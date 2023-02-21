@@ -104,7 +104,7 @@ class RestClient(ssl: Boolean,
 
   private def createBasicAuthHeader(user: String, password: String) = {
     val authenticate = BasicScheme.authenticate(new UsernamePasswordCredentials(user, password), "UTF-8", false)
-    new BasicHeader("X-ROR-Authorization", authenticate.getValue)
+    new BasicHeader("Authorization", authenticate.getValue)
   }
 
   private def buildUri(path: String, queryParams: Map[String, String]) = {

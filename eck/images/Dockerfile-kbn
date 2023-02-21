@@ -1,4 +1,5 @@
 FROM docker.elastic.co/kibana/kibana:8.6.1
-COPY ror-kbn.zip /tmp
-RUN bin/kibana-plugin install file:///tmp/ror-kbn.zip
+#COPY ror-kbn.zip /tmp
+#RUN bin/kibana-plugin install file:///tmp/ror-kbn.zip
+RUN /usr/share/kibana/bin/kibana-plugin install "https://api.beshu.tech/download/kbn?esVersion=8.6.1&pluginVersion=1.47.0&edition=kbn_universal&email=support%40readonlyrest.com"
 RUN node/bin/node plugins/readonlyrestkbn/ror-tools.js patch

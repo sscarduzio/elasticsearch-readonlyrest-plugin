@@ -75,7 +75,7 @@ final class RorKbnAuthRule(val settings: Settings,
     }
 
   private def authorizeUsingJwtToken[B <: BlockContext : BlockContextUpdater](blockContext: B): RuleResult[B] = {
-    val authHeaderName = Header.Name.rorAuthorization
+    val authHeaderName = Header.Name.authorization
     blockContext.requestContext.bearerToken.map(h => JwtToken(h.value)) match {
       case None =>
         logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")

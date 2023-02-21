@@ -60,12 +60,12 @@ object TestsUtils {
 
   def basicAuthHeader(value: String): Header =
     new Header(
-      Header.Name.rorAuthorization,
+      Header.Name.authorization,
       NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(value.getBytes)}")
     )
 
   def bearerHeader(jwt: Jwt): Header =
-    bearerHeader(Header.Name.rorAuthorization.value, jwt)
+    bearerHeader(Header.Name.authorization.value, jwt)
 
   def bearerHeader(headerName: NonEmptyString, jwt: Jwt): Header =
     new Header(
@@ -75,7 +75,7 @@ object TestsUtils {
 
   def bearerHeader(jwt: JwtBuilder): Header =
     new Header(
-      Header.Name.rorAuthorization,
+      Header.Name.authorization,
       NonEmptyString.unsafeFrom(s"Bearer ${jwt.compact}")
     )
 
