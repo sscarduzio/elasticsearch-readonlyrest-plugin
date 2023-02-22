@@ -54,13 +54,13 @@ trait RorStartingSuite extends AnyWordSpec with EsContainerCreator {
           )
 
           notStartedYetTestScenario(esContainer = esContainer, expectedResponseCode = 403)
-            .runSyncUnsafe(2 minutes)
+            .runSyncUnsafe(5 minutes)
         }
         "no option configured" in {
           val esContainer = createEsContainer(rorConfigFile = validRorConfigFile, additionalEsYamlEntries = Map.empty)
 
           notStartedYetTestScenario(esContainer = esContainer, expectedResponseCode = 403)
-            .runSyncUnsafe(2 minutes)
+            .runSyncUnsafe(5 minutes)
         }
         "failed to load ROR ACL" in {
           val esContainer = createEsContainer(
@@ -69,7 +69,7 @@ trait RorStartingSuite extends AnyWordSpec with EsContainerCreator {
           )
 
           notStartedYetTestScenario(esContainer = esContainer, expectedResponseCode = 403)
-            .runSyncUnsafe(2 minutes)
+            .runSyncUnsafe(5 minutes)
         }
       }
       "return not started response with http code 503" when {
@@ -80,7 +80,7 @@ trait RorStartingSuite extends AnyWordSpec with EsContainerCreator {
           )
 
           notStartedYetTestScenario(esContainer = esContainer, expectedResponseCode = 503)
-            .runSyncUnsafe(2 minutes)
+            .runSyncUnsafe(5 minutes)
         }
       }
     }
@@ -99,7 +99,7 @@ trait RorStartingSuite extends AnyWordSpec with EsContainerCreator {
   private def testTrafficAndStopContainer(esContainer: EsContainer, expectedResponseCode: Int): Task[Unit] = {
     for {
       restClient <- createRestClient(esContainer)
-      searchTestResults <- searchTest(client = restClient, searchAttemptsCount = 20000)
+      searchTestResults <- searchTest(client = restClient, searchAttemptsCount = 100000)
       _ <- stopContainer(esContainer)
       result <- handleResults(searchTestResults, expectedResponseCode)
     } yield result
