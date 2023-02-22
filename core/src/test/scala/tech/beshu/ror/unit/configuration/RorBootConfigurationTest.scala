@@ -52,6 +52,16 @@ class RorBootConfigurationTest
           RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`)
         ))
       }
+      "configuration contains all codes" in {
+        val config = RorBootConfiguration
+          .load(getResourcePath("/boot_tests/boot_config/all_codes_defined/"))
+          .runSyncUnsafe()
+
+        config should be(Right(RorBootConfiguration(
+          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
+          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
+        )))
+      }
     }
     "there is no response codes defined in config, default values should be used" in {
       val config = RorBootConfiguration
@@ -72,7 +82,7 @@ class RorBootConfigurationTest
       RorBootConfiguration.load(getResourcePath(configFolderPath)).runSyncUnsafe() shouldBe Left {
         MalformedSettings(
           s"Cannot load ROR boot configuration from file $expectedFilePath. " +
-          s"Cause: Unsupported response code [200] for not_started_response_code. Supported response codes are: 403, 503."
+          s"Cause: Unsupported response code [200] for readonlyrest.not_started_response_code. Supported response codes are: 403, 503."
         )
       }
     }
@@ -83,7 +93,7 @@ class RorBootConfigurationTest
       RorBootConfiguration.load(getResourcePath(configFolderPath)).runSyncUnsafe() shouldBe Left {
         MalformedSettings(
           s"Cannot load ROR boot configuration from file $expectedFilePath. " +
-          s"Cause: Unsupported response code [200] for failed_to_start_response_code. Supported response codes are: 403, 503."
+          s"Cause: Unsupported response code [200] for readonlyrest.failed_to_start_response_code. Supported response codes are: 403, 503."
         )
       }
     }

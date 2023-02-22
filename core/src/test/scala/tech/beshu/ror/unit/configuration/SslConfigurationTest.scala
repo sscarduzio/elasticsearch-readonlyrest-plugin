@@ -113,7 +113,7 @@ class SslConfigurationTest
           val configFolderPath = "/boot_tests/es_api_ssl_settings_malformed/"
           val expectedFilePath = getResourcePath(s"${configFolderPath}elasticsearch.yml").toString
           RorSsl.load(getResourcePath(configFolderPath)).runSyncUnsafe() shouldBe Left {
-            MalformedSettings(s"Cannot load ROR SSL configuration from file $expectedFilePath. Cause: Attempt to decode value on failed cursor")
+            MalformedSettings(s"Cannot load ROR SSL configuration from file $expectedFilePath. Cause: yaml is malformed")
           }
         }
       }
@@ -199,7 +199,7 @@ class SslConfigurationTest
           val configFolderPath = "/boot_tests/internode_ssl_settings_malformed/"
           val expectedFilePath = getResourcePath(s"${configFolderPath}elasticsearch.yml").toString
           RorSsl.load(getResourcePath(configFolderPath)).runSyncUnsafe() shouldBe Left {
-            MalformedSettings(s"Cannot load ROR SSL configuration from file $expectedFilePath. Cause: Attempt to decode value on failed cursor")
+            MalformedSettings(s"Cannot load ROR SSL configuration from file $expectedFilePath. Cause: yaml is malformed")
           }
         }
       }

@@ -16,18 +16,10 @@
  */
 package tech.beshu.ror.es.handler
 
-import cats.Show
-import cats.implicits.toShow
-import org.elasticsearch.ElasticsearchException
-import org.elasticsearch.rest.RestStatus
-import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.configuration.RorBootConfiguration
 import tech.beshu.ror.configuration.RorBootConfiguration.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.handler.RorNotAvailableRequestHandler.RorNotAvailableResponse
-import tech.beshu.ror.es.handler.response.ForbiddenResponse
-
-import scala.collection.JavaConverters._
+import tech.beshu.ror.es.handler.response.{ForbiddenResponse, ServiceNotAvailableResponse}
 
 final class RorNotAvailableRequestHandler(config: RorBootConfiguration) {
 
@@ -46,7 +38,7 @@ final class RorNotAvailableRequestHandler(config: RorBootConfiguration) {
       case RorNotStartedResponse.HttpCode.`403` =>
         ForbiddenResponse.createRorNotReadyYetResponse()
       case RorNotStartedResponse.HttpCode.`503` =>
-        RorNotAvailableResponse.createRorNotReadyYetResponse()
+        ServiceNotAvailableResponse.createRorNotReadyYetResponse()
     }
   }
 
@@ -55,38 +47,7 @@ final class RorNotAvailableRequestHandler(config: RorBootConfiguration) {
       case RorFailedToStartResponse.HttpCode.`403` =>
         ForbiddenResponse.createRorStartingFailureResponse()
       case RorFailedToStartResponse.HttpCode.`503` =>
-        RorNotAvailableResponse.createRorStartingFailureResponse()
+        ServiceNotAvailableResponse.createRorStartingFailureResponse()
     }
-  }
-}
-
-private object RorNotAvailableRequestHandler {
-
-  class RorNotAvailableResponse private(cause: RorNotAvailableResponse.Cause)
-    extends ElasticsearchException(GlobalSettings.defaultForbiddenRequestMessage) {
-
-    addMetadata("es.due_to", List(cause).map(_.show).asJava)
-
-    override def status(): RestStatus = RestStatus.SERVICE_UNAVAILABLE
-  }
-
-  object RorNotAvailableResponse {
-
-    sealed trait Cause
-    object Cause {
-      case object RorNotReadyYet extends Cause
-      case object RorFailedToStart extends Cause
-    }
-
-    private implicit val causeShow: Show[Cause] = Show.show {
-      case Cause.RorNotReadyYet => "READONLYREST_NOT_READY_YET"
-      case Cause.RorFailedToStart => "READONLYREST_FAILED_TO_START"
-    }
-
-    def createRorStartingFailureResponse(): RorNotAvailableResponse =
-      new RorNotAvailableResponse(Cause.RorFailedToStart)
-
-    def createRorNotReadyYetResponse(): RorNotAvailableResponse =
-      new RorNotAvailableResponse(Cause.RorNotReadyYet)
   }
 }

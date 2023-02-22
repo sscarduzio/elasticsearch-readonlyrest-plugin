@@ -25,22 +25,20 @@ import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
-import tech.beshu.ror.utils.elasticsearch.{ClusterManager, SearchManager}
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject
+import tech.beshu.ror.utils.elasticsearch.SearchManager
 import tech.beshu.ror.utils.httpclient.RestClient
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-trait RorStartingSuite extends AnyWordSpec with EsContainerCreator {
+trait RorStartingSuite extends AnyWordSpec {
 
   import RorStartingSuite._
 
   implicit val scheduler: Scheduler = Scheduler.computation(10)
 
   private val validRorConfigFile = "/basic/readonlyrest.yml"
-  private val atomicInt: AtomicInt = AtomicInt(1)
 
   private val notStartedResponseCodeKey = "readonlyrest.not_started_response_code"
 
@@ -48,7 +46,7 @@ trait RorStartingSuite extends AnyWordSpec with EsContainerCreator {
     "ROR does not started yet" should {
       "return not started response with http code 403" when {
         "403 configured" in {
-          val esContainer = createEsContainer(
+          val esContainer = new TestEsContainerManager(
             rorConfigFile = validRorConfigFile,
             additionalEsYamlEntries = Map(notStartedResponseCodeKey -> "403")
           )
@@ -57,13 +55,16 @@ trait RorStartingSuite extends AnyWordSpec with EsContainerCreator {
             .runSyncUnsafe(5 minutes)
         }
         "no option configured" in {
-          val esContainer = createEsContainer(rorConfigFile = validRorConfigFile, additionalEsYamlEntries = Map.empty)
+          val esContainer = new TestEsContainerManager(
+            rorConfigFile = validRorConfigFile,
+            additionalEsYamlEntries = Map.empty
+          )
 
           notStartedYetTestScenario(esContainer = esContainer, expectedResponseCode = 403)
             .runSyncUnsafe(5 minutes)
         }
         "failed to load ROR ACL" in {
-          val esContainer = createEsContainer(
+          val esContainer = new TestEsContainerManager(
             rorConfigFile = validRorConfigFile,
             additionalEsYamlEntries = Map(notStartedResponseCodeKey -> "200") // unsupported response code
           )
@@ -74,7 +75,7 @@ trait RorStartingSuite extends AnyWordSpec with EsContainerCreator {
       }
       "return not started response with http code 503" when {
         "503 configured" in {
-          val esContainer = createEsContainer(
+          val esContainer = new TestEsContainerManager(
             rorConfigFile = validRorConfigFile,
             additionalEsYamlEntries = Map(notStartedResponseCodeKey -> "503")
           )
@@ -86,21 +87,21 @@ trait RorStartingSuite extends AnyWordSpec with EsContainerCreator {
     }
   }
 
-  private def notStartedYetTestScenario(esContainer: EsContainer, expectedResponseCode: Int) = {
+  private def notStartedYetTestScenario(esContainer: TestEsContainerManager, expectedResponseCode: Int) = {
     Task
       .gatherUnordered(
         List(
-          startContainer(esContainer),
+          esContainer.start(),
           testTrafficAndStopContainer(esContainer, expectedResponseCode)
         )
       )
   }
 
-  private def testTrafficAndStopContainer(esContainer: EsContainer, expectedResponseCode: Int): Task[Unit] = {
+  private def testTrafficAndStopContainer(esContainer: TestEsContainerManager, expectedResponseCode: Int): Task[Unit] = {
     for {
-      restClient <- createRestClient(esContainer)
+      restClient <- esContainer.createRestClient
       searchTestResults <- searchTest(client = restClient, searchAttemptsCount = 100000)
-      _ <- stopContainer(esContainer)
+      _ <- esContainer.stop()
       result <- handleResults(searchTestResults, expectedResponseCode)
     } yield result
   }
@@ -141,49 +142,54 @@ trait RorStartingSuite extends AnyWordSpec with EsContainerCreator {
       Task.raiseError(new IllegalStateException(s"Test failed. Expected success response and ROR failed to start response but was: [$results]"))
     }
   }
-
-  private def createEsContainer(rorConfigFile: String,
-                                additionalEsYamlEntries: Map[String, String]): EsContainer = {
-    val clusterName = s"ROR_${atomicInt.getAndIncrement()}"
-    val nodeName = s"${clusterName}_1"
-    create(
-      mode = Mode.Plugin,
-      nodeSettings = EsNodeSettings(
-        nodeName = nodeName,
-        clusterName = clusterName,
-        securityType = SecurityType.RorSecurity(Attributes.default.copy(
-          rorConfigFileName = rorConfigFile
-        )),
-        containerSpecification = ContainerSpecification.empty.copy(
-          additionalElasticsearchYamlEntries = additionalEsYamlEntries
-        ),
-        esVersion = EsVersion.DeclaredInProject
-      ),
-      allNodeNames = NonEmptyList.of(nodeName),
-      nodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-      startedClusterDependencies = StartedClusterDependencies(List.empty)
-    )
-  }
-
-  private def startContainer(container: EsContainer) = Task.delay(container.start())
-
-  private def stopContainer(container: EsContainer) = {
-    Task.delay(container.stop())
-  }
-
-  private def createRestClient(container: EsContainer): Task[RestClient] = {
-    Task.tailRecM(()) { _ =>
-      Task.delay(createAdminClient(container))
-    }
-  }
-
-  private def createAdminClient(container: EsContainer) = {
-    Try(container.adminClient)
-      .toEither
-      .left.map(_ => ())
-  }
 }
 
-object RorStartingSuite {
+private object RorStartingSuite {
   final case class TestResponse(responseCode: Int, responseJson: JSON)
+
+  private val uniqueClusterId: AtomicInt = AtomicInt(1)
+
+  final class TestEsContainerManager(rorConfigFile: String,
+                                     additionalEsYamlEntries: Map[String, String]) extends EsContainerCreator {
+
+    private val esContainer = createEsContainer
+
+    def start(): Task[Unit] = Task.delay(esContainer.start())
+
+    def stop(): Task[Unit] = Task.delay(esContainer.stop())
+
+    def createRestClient: Task[RestClient] = {
+      Task.tailRecM(()) { _ =>
+        Task.delay(createAdminClient)
+      }
+    }
+
+    private def createAdminClient = {
+      Try(esContainer.adminClient)
+        .toEither
+        .left.map(_ => ())
+    }
+
+    private def createEsContainer: EsContainer = {
+      val clusterName = s"ROR_${uniqueClusterId.getAndIncrement()}"
+      val nodeName = s"${clusterName}_1"
+      create(
+        mode = Mode.Plugin,
+        nodeSettings = EsNodeSettings(
+          nodeName = nodeName,
+          clusterName = clusterName,
+          securityType = SecurityType.RorSecurity(Attributes.default.copy(
+            rorConfigFileName = rorConfigFile
+          )),
+          containerSpecification = ContainerSpecification.empty.copy(
+            additionalElasticsearchYamlEntries = additionalEsYamlEntries
+          ),
+          esVersion = EsVersion.DeclaredInProject
+        ),
+        allNodeNames = NonEmptyList.of(nodeName),
+        nodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
+        startedClusterDependencies = StartedClusterDependencies(List.empty)
+      )
+    }
+  }
 }

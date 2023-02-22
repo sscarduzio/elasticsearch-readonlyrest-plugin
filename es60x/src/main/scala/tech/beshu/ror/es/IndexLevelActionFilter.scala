@@ -77,10 +77,7 @@ class IndexLevelActionFilter(settings: Settings,
     RorBootConfiguration
       .load(env.configFile())
       .map(_.fold(
-        error => {
-          logger.error(s"Failed to load config. Error: ${error.message} Default configuration will be used..")
-          RorBootConfiguration.default
-        },
+        error => throw new IllegalStateException(s"Failed to load ROR boot config. Error: ${error.message}"),
         identity
       ))
       .map(new RorNotAvailableRequestHandler(_))

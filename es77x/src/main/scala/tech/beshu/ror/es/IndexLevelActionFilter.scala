@@ -16,9 +16,7 @@
  */
 package tech.beshu.ror.es
 
-import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
-import monix.execution.schedulers.CanBlock
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
@@ -35,7 +33,6 @@ import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, RorMode}
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot._
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.configuration.RorBootConfiguration
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
@@ -49,7 +46,6 @@ import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
 import java.time.Clock
 import java.util.function.Supplier
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class IndexLevelActionFilter(nodeName: String,
@@ -59,7 +55,8 @@ class IndexLevelActionFilter(nodeName: String,
                              env: Environment,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                              snapshotsServiceSupplier: Supplier[Option[SnapshotsService]],
-                             esInitListener: EsInitListener)
+                             esInitListener: EsInitListener,
+                             rorEsConfig: ReadonlyRestEsConfig)
                             (implicit envVarsProvider: EnvVarsProvider,
                              propertiesProvider: PropertiesProvider,
                              generator: UniqueIdentifierGenerator)
@@ -68,17 +65,7 @@ class IndexLevelActionFilter(nodeName: String,
   private implicit val clock: Clock = Clock.systemUTC()
 
   private val rorNotAvailableRequestHandler: RorNotAvailableRequestHandler =
-    RorBootConfiguration
-      .load(env.configFile())
-      .map(_.fold(
-        error => {
-          logger.error(s"Failed to load config. Error: ${error.message} Default configuration will be used..")
-          RorBootConfiguration.default
-        },
-        identity
-      ))
-      .map(new RorNotAvailableRequestHandler(_))
-      .runSyncUnsafe(10 seconds)(Scheduler.global, CanBlock.permit)
+    new RorNotAvailableRequestHandler(rorEsConfig.bootConfig)
 
   private val ror = ReadonlyRest.create(
     RorMode.Plugin,
