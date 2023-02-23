@@ -179,7 +179,6 @@ class EsServerBasedRorClusterService(nodeName: String,
       .toSet
   }
 
-
   private def backingIndicesPerDataStreamFrom(metadata: Metadata): Map[DataStreamName.Full, Set[IndexName.Full]] = {
     val dataStreams = metadata.dataStreams()
     dataStreams
