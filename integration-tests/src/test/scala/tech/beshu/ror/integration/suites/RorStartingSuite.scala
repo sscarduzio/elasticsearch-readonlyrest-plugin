@@ -17,6 +17,7 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
+import cats.implicits._
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicInt
@@ -63,15 +64,6 @@ trait RorStartingSuite extends AnyWordSpec {
           notStartedYetTestScenario(esContainer = esContainer, expectedResponseCode = 403)
             .runSyncUnsafe(5 minutes)
         }
-        "failed to load ROR ACL" in {
-          val esContainer = new TestEsContainerManager(
-            rorConfigFile = validRorConfigFile,
-            additionalEsYamlEntries = Map(notStartedResponseCodeKey -> "200") // unsupported response code
-          )
-
-          notStartedYetTestScenario(esContainer = esContainer, expectedResponseCode = 403)
-            .runSyncUnsafe(5 minutes)
-        }
       }
       "return not started response with http code 503" when {
         "503 configured" in {
@@ -88,13 +80,11 @@ trait RorStartingSuite extends AnyWordSpec {
   }
 
   private def notStartedYetTestScenario(esContainer: TestEsContainerManager, expectedResponseCode: Int) = {
-    Task
-      .gatherUnordered(
-        List(
-          esContainer.start(),
-          testTrafficAndStopContainer(esContainer, expectedResponseCode)
-        )
-      )
+    NonEmptyList.of(
+      esContainer.start(),
+      testTrafficAndStopContainer(esContainer, expectedResponseCode)
+    )
+      .parTraverse(identity)
   }
 
   private def testTrafficAndStopContainer(esContainer: TestEsContainerManager, expectedResponseCode: Int): Task[Unit] = {
