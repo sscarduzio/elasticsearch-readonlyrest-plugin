@@ -15,60 +15,11 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-buildscript {
-    ext {
-        publishedPluginVersion = rootProject.properties['pluginVersion']
-        pluginVersion = rootProject.properties['pluginVersion']
-        esVersion = project.properties['esVersion']
-        pluginName = rootProject.properties['pluginName']
-        s3BucketName = System.env.BUCKET ?: "readonlyrest-data"
-    }
-    repositories {
-        mavenLocal()
-        mavenCentral()
-        maven { url "https://plugins.gradle.org/m2/" }
-    }
-    dependencies {
-        classpath group: 'org.owasp',                                    name: 'dependency-check-gradle',   version: '7.4.1'
-        classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins',  name: 'license-gradle-plugin',     version: '0.15.0'
-        classpath group: 'com.star-zero.gradle',                         name: 'githook',                   version: '1.2.1'
-    }
+plugins {
+    id "readonlyrest.plugin-common-conventions"
 }
 
-repositories {
-    mavenCentral()
-    mavenLocal()
-    maven {
-        url = "s3://" + s3BucketName + "/build"
-        authentication {
-            awsIm(AwsImAuthentication)
-        }
-    }
-}
-
-group = 'org.elasticsearch.plugin'
-version = pluginVersion + '_es' + esVersion
 def pluginFullName = pluginName + '-' + version
-
-apply plugin: "com.github.hierynomus.license"
-apply plugin: "com.star-zero.gradle.githook"
-apply plugin: 'maven'
-apply plugin: 'org.owasp.dependencycheck'
-apply plugin: 'scala'
-
-dependencyCheck {
-    /*
-       Severity	Base Score
-       None     0
-       Low      0.1-3.9
-       Medium   4.0-6.9
-       High     7.0-8.9
-       Critical 9.0-10.0
-     */
-    failBuildOnCVSS = 3
-    scanConfigurations = ['distJars']
-    suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
-}
 
 compileScala {
     sourceCompatibility = 1.8
@@ -76,47 +27,12 @@ compileScala {
 }
 
 dependencies {
-    compile project(path: ':core')
-    compile             group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: esVersion
-    compile             group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-high-level-client',   version: esVersion
-    compile             group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.13'
-    compileClasspath    group: 'org.codelibs.elasticsearch.lib',    name: 'plugin-classloader',                     version: esVersion
-    compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: esVersion
-}
-
-license {
-    header rootProject.file('ReadonlyRESTLicenseHeader.txt')
-    skipExistingHeaders true
-    useDefaultMappings = false
-    mapping {
-        java = 'SLASHSTAR_STYLE'
-        scala = 'SLASHSTAR_STYLE'
-    }
-}
-
-test {
-    reports {
-        junitXml.enabled = true
-        html.enabled = false
-    }
-}
-
-githook {
-    hooks {
-        "pre-commit" {
-            shell = "./gradlew license --rerun-tasks"
-        }
-    }
-}
-
-tasks.withType(ScalaCompile) {
-    scalaCompileOptions.additionalParameters = ["-Ypartial-unification", "-Ywarn-macros:after", "-feature"]
-}
-
-tasks.withType(Zip) { task ->
-    task.doLast {
-        ant.checksum file: it.archivePath, algorithm: 'sha1'
-    }
+    implementation  project(path: ':core')
+    implementation  group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: esVersion
+    implementation  group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-high-level-client',   version: esVersion
+    implementation  group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.13'
+    compileOnly     group: 'org.codelibs.elasticsearch.lib',    name: 'plugin-classloader',                     version: esVersion
+    implementation  group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: esVersion
 }
 
 configurations {
@@ -125,7 +41,6 @@ configurations {
         exclude group: 'org.bouncycastle'
     }
     distJars {
-        extendsFrom runtime
         exclude group: 'org.elasticsearch'
         exclude group: 'lucene-core'
         exclude module: 'log4j-api'
@@ -138,38 +53,20 @@ configurations {
     }
 }
 
-task cleanOldData {
+tasks.register('cleanOldData') {
     doLast {
         delete 'build/tmp/' + pluginFullName
     }
 }
 
-task jarHellCheck(type: JavaExec) {
+tasks.register('jarHellCheck', JavaExec) {
     outputs.upToDateWhen { false }
-    main = "org.elasticsearch.bootstrap.JarHell"
+    mainClass.set("org.elasticsearch.bootstrap.JarHell")
     classpath = project.sourceSets.main.compileClasspath.filter { it.exists() }
 }
 
-task configureEsVersion() {
-    doLast {
-        if (project.hasProperty('esVersion')) {
-            esVersion = project.properties['esVersion']
-        }
-    }
-}
-
-task generateVersionsFile() {
-    outputs.upToDateWhen { false }
-    doFirst {
-        def resourcesDir = sourceSets.main.output.resourcesDir
-        
-        resourcesDir.mkdirs()
-        def contents = "es_version=$esVersion\nplugin_version=$pluginVersion"
-        new File(resourcesDir, "ror-build-info.properties").text = contents
-    }
-}
-
-task resolvePluginDescriptorTemplate(type: Copy, dependsOn: configureEsVersion) {
+tasks.register('resolvePluginDescriptorTemplate', Copy) {
+    dependsOn configureEsVersion
     outputs.upToDateWhen { false }
     from './plugin-metadata'
     into 'build/tmp/' + pluginFullName
@@ -182,16 +79,13 @@ task resolvePluginDescriptorTemplate(type: Copy, dependsOn: configureEsVersion) 
     ])
 }
 
-task toJar(type: Jar, dependsOn: generateVersionsFile) {
-    from sourceSets.main.getOutput()
-}
-
-task ror(type: Zip, dependsOn: [cleanOldData, jarHellCheck, toJar, resolvePluginDescriptorTemplate]) {
+tasks.register('ror', Zip) {
+    dependsOn(cleanOldData, jarHellCheck, toJar, resolvePluginDescriptorTemplate)
     outputs.upToDateWhen { false }
     archivesBaseName = pluginName
     into('elasticsearch')
             {
-                from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && ! x.name.contains('jts')}
+                from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && !x.name.contains('jts') }
                 from 'build/libs/' + pluginFullName + '.jar'
                 from 'build/tmp/' + pluginFullName
             }

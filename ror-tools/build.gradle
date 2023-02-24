@@ -18,34 +18,19 @@ buildscript {
     ext {
         esVersion = project.properties['esVersion'] ?: "unknown"
     }
-    repositories {
-        mavenLocal()
-        mavenCentral()
-        maven { url "https://plugins.gradle.org/m2/" }
-    }
+}
 
-    dependencies {
-        classpath group: 'org.owasp',                                    name: 'dependency-check-gradle',  version: '7.4.1'
-        classpath group: 'com.star-zero.gradle',                         name: 'githook',                  version: '1.2.1'
-        classpath group: 'gradle.plugin.com.github.maiflai',             name: 'gradle-scalatest',         version: '0.24'
-        classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins',  name: 'license-gradle-plugin',    version: '0.15.0'
-        classpath group: 'com.github.jengelman.gradle.plugins',          name: 'shadow',                   version: '4.0.4'
-    }
+plugins {
+    id "readonlyrest.base-common-conventions"
+
+    id "com.github.johnrengelman.shadow" version "7.1.2"
+    id "com.github.maiflai.scalatest"    version "0.32"
 }
 
 repositories {
-    mavenCentral()
     maven { url 'https://repo.gradle.org/gradle/libs-releases' }
     maven { url 'https://jitpack.io' }
 }
-
-apply plugin: 'com.github.johnrengelman.shadow'
-apply plugin: 'com.github.maiflai.scalatest'
-apply plugin: "com.github.hierynomus.license"
-apply plugin: "com.star-zero.gradle.githook"
-apply plugin: 'scala'
-apply plugin: 'maven'
-apply plugin: 'org.owasp.dependencycheck'
 
 dependencyCheck {
     /*
@@ -57,7 +42,7 @@ dependencyCheck {
        Critical 9.0-10.0
      */
     failBuildOnCVSS = 3
-    scanConfigurations = ['runtime']
+    scanConfigurations = ['runtimeClasspath']
     suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
 }
 
@@ -72,38 +57,15 @@ test {
         exceptionFormat = 'full'
         events "standardOut", "started", "passed", "skipped", "failed"
     }
-    reports {
-        junitXml.enabled = true
-        html.enabled = false
-    }
 }
 
 configurations {
     shadowCompile
     compile.extendsFrom(shadowCompile)
 }
-
 dependencies {
-    shadowCompile project(path: ':ror-tools-core')
-    shadowCompile group: 'com.github.scopt',              name: 'scopt_2.12',                       version: '4.0.1'
-}
-
-license {
-    header rootProject.file('ReadonlyRESTLicenseHeader.txt')
-    skipExistingHeaders true
-    useDefaultMappings = false
-    mapping {
-        java = 'SLASHSTAR_STYLE'
-        scala = 'SLASHSTAR_STYLE'
-    }
-}
-
-githook {
-    hooks {
-        "pre-commit" {
-            shell = "./gradlew license --rerun-tasks"
-        }
-    }
+    implementation project(path: ':ror-tools-core')
+    implementation group: 'com.github.scopt',              name: 'scopt_2.12',                       version: '4.0.1'
 }
 
 compileScala {
@@ -112,7 +74,7 @@ compileScala {
     options.compilerArgs << "-Ywarn-macros:after"
 }
 
-tasks.withType(ScalaCompile) {
+tasks.withType(ScalaCompile).configureEach {
     scalaCompileOptions.additionalParameters = ["-Ypartial-unification", "-Ywarn-macros:after", "-feature", "-Xfatal-warnings"]
 }
 
@@ -121,21 +83,21 @@ shadowJar {
     manifest {
         attributes 'Main-Class': 'tech.beshu.ror.tools.RorToolsApp'
     }
-    archiveName = "ror-tools.${extension}"
+    archiveFileName = "ror-tools.${archiveExtension}"
     configurations = [project.configurations.shadowCompile]
 }
 
 // Configure Auto Relocation
 import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
 
-task relocateShadowJar(type: ConfigureShadowRelocation) {
+tasks.register('relocateShadowJar', ConfigureShadowRelocation) {
     target = tasks.shadowJar
     prefix = "tech.beshu.ror.tools"
 }
 
 tasks.shadowJar.dependsOn tasks.relocateShadowJar
 
-tasks.withType(AbstractArchiveTask) {
+tasks.withType(AbstractArchiveTask).configureEach {
     preserveFileTimestamps = false
     reproducibleFileOrder = true
 }
@@ -143,11 +105,11 @@ tasks.withType(AbstractArchiveTask) {
 def netty4TransportArtifactName = "transport-netty4-" + esVersion + ".jar"
 def netty4TransportArtifactDestinationPath = "org/elasticsearch/plugin/transport-netty4/" + esVersion + "/" + netty4TransportArtifactName
 
-task uploadArtifactsFromEsBinaries(type: Exec) {
+tasks.register('uploadArtifactsFromEsBinaries', Exec) {
     commandLine '../ci/upload-file-to-s3.sh', layout.buildDirectory.get().asFile.path + "/" + netty4TransportArtifactName, "build/" + netty4TransportArtifactDestinationPath
 }
 
-task getArtifactsFromEsBinaries {
+tasks.register('getArtifactsFromEsBinaries') {
     doLast {
         def esDir = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion)
         def netty4TransportArtifactPath = esDir.path + "/elasticsearch-" + esVersion + "/modules/transport-netty4/" + netty4TransportArtifactName
@@ -162,7 +124,7 @@ task getArtifactsFromEsBinaries {
 
 uploadArtifactsFromEsBinaries.dependsOn getArtifactsFromEsBinaries
 
-task downloadEsBinaries {
+tasks.register('downloadEsBinaries') {
     doLast {
         def esTar = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion + ".tar.gz")
         if (!esTar.exists()) {

@@ -1,23 +1,11 @@
-buildscript {
-    repositories {
-        mavenLocal()
-        mavenCentral()
-        maven { url "https://plugins.gradle.org/m2/" }
-    }
-    dependencies {
-        classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins',  name: 'license-gradle-plugin', version: '0.15.0'
-        classpath group: 'com.star-zero.gradle',                         name: 'githook',               version: '1.2.1'
-    }
+plugins {
+    id "readonlyrest.base-common-conventions"
+
+    id 'java'
+    id "java-library"
 }
 
-apply plugin: "com.github.hierynomus.license"
-apply plugin: "com.star-zero.gradle.githook"
-apply plugin: 'java'
-apply plugin: 'maven'
-apply plugin: 'scala'
-
 repositories {
-    mavenCentral()
     maven { url 'https://repo.gradle.org/gradle/libs-releases' }
     maven { url 'https://jitpack.io' }
 }
@@ -33,11 +21,11 @@ configurations {
     }
 }
 
-tasks.withType(ScalaCompile) {
+tasks.withType(ScalaCompile).configureEach {
     // Map plugin jars to -Xplugin parameter
     List<String> parameters =
             configurations.scalaCompilerPlugin.files.collect {
-                '-Xplugin:'+ it.absolutePath
+                '-Xplugin:' + it.absolutePath
             }
 
     // Add whatever flags you typically add
@@ -48,56 +36,38 @@ tasks.withType(ScalaCompile) {
 }
 
 dependencies {
-    compile group: 'com.github.pathikrit',           name: 'better-files_2.12',             version: '3.8.0'
-    compile group: 'com.github.cb372',               name: 'cats-retry-core_2.12',          version: '0.2.5'
-    compile group: 'commons-io',                     name: 'commons-io',                    version: '2.6'
-    compile group: 'org.apache.commons',             name: 'commons-lang3',                 version: '3.9'
-    compile group: 'commons-lang',                   name: 'commons-lang',                  version: '2.6'
-    compile group: 'net.jodah',                      name: 'failsafe',                      version: '2.0.1'
-    compile group: 'org.gradle',                     name: 'gradle-tooling-api',            version: '4.10.2'
-    compile group: 'com.google.code.gson',           name: 'gson',                          version: '2.9.0'
-    compile group: 'com.google.guava',               name: 'guava',                         version: '21.0'
-    compile group: 'org.apache.httpcomponents',      name: 'httpclient',                    version: '4.5.13'
-    compile group: 'org.apache.logging.log4j',       name: 'log4j-1.2-api',                 version: '2.15.0'
-    compile group: 'org.apache.logging.log4j',       name: 'log4j-core',                    version: '2.15.0'
-    compile group: 'io.jsonwebtoken',                name: 'jjwt-api',                      version: '0.11.2'
-    compile group: 'io.jsonwebtoken',                name: 'jjwt-impl',                     version: '0.11.2'
-    compile group: 'io.jsonwebtoken',                name: 'jjwt-orgjson',                  version: '0.11.2'
-    compile group: 'com.jayway.jsonpath',            name: 'json-path',                     version: '2.5.0'
-    compile group: 'io.monix',                       name: 'monix_2.12',                    version: '3.0.0-RC3'
-    compile group: 'com.lihaoyi',                    name: 'os-lib_2.12',                   version: '0.7.0'
-    compile group: 'eu.timepit',                     name: 'refined_2.12',                  version: '0.9.5'
-    compile group: 'org.scala-lang',                 name: 'scala-library',                 version: '2.12.4'
-    compile group: 'org.scala-lang.modules',         name: 'scala-java8-compat_2.12',       version: '0.9.0'
-    compile group: 'com.typesafe.scala-logging',     name: 'scala-logging_2.12',            version: '3.9.2'
-    compile group: 'org.scalatest',                  name: 'scalatest_2.12',                version: '3.1.0'
-    compile group: 'com.dimafeng',                   name: 'testcontainers-scala_2.12',     version: '0.39.0'
-    compile group: 'org.testcontainers',             name: 'testcontainers',                version: "1.15.0"
-    compile group: 'eu.rekawek.toxiproxy',           name: 'toxiproxy-java',                version: "2.1.4"
-    compile group: 'com.unboundid',                  name: 'unboundid-ldapsdk',             version: '6.0.6'
-    compile group: 'com.mashape.unirest',            name: 'unirest-java',                  version: '1.4.9'
-    compile group: 'com.lihaoyi',                    name: 'upickle_2.12',                  version: '0.7.1'
+    api group: 'com.github.pathikrit',           name: 'better-files_2.12',             version: '3.8.0'
+    api group: 'com.github.cb372',               name: 'cats-retry-core_2.12',          version: '0.2.5'
+    api group: 'commons-io',                     name: 'commons-io',                    version: '2.6'
+    api group: 'org.apache.commons',             name: 'commons-lang3',                 version: '3.9'
+    api group: 'commons-lang',                   name: 'commons-lang',                  version: '2.6'
+    api group: 'net.jodah',                      name: 'failsafe',                      version: '2.0.1'
+    api group: 'org.gradle',                     name: 'gradle-tooling-api',            version: '4.10.2'
+    api group: 'com.google.code.gson',           name: 'gson',                          version: '2.9.0'
+    api group: 'com.google.guava',               name: 'guava',                         version: '21.0'
+    api group: 'org.apache.httpcomponents',      name: 'httpclient',                    version: '4.5.13'
+    api group: 'org.apache.logging.log4j',       name: 'log4j-1.2-api',                 version: '2.15.0'
+    api group: 'org.apache.logging.log4j',       name: 'log4j-core',                    version: '2.15.0'
+    api group: 'io.jsonwebtoken',                name: 'jjwt-api',                      version: '0.11.2'
+    api group: 'io.jsonwebtoken',                name: 'jjwt-impl',                     version: '0.11.2'
+    api group: 'io.jsonwebtoken',                name: 'jjwt-orgjson',                  version: '0.11.2'
+    api group: 'com.jayway.jsonpath',            name: 'json-path',                     version: '2.5.0'
+    api group: 'io.monix',                       name: 'monix_2.12',                    version: '3.0.0-RC3'
+    api group: 'com.lihaoyi',                    name: 'os-lib_2.12',                   version: '0.7.0'
+    api group: 'eu.timepit',                     name: 'refined_2.12',                  version: '0.9.5'
+    api group: 'org.scala-lang',                 name: 'scala-library',                 version: '2.12.4'
+    api group: 'org.scala-lang.modules',         name: 'scala-java8-compat_2.12',       version: '0.9.0'
+    api group: 'com.typesafe.scala-logging',     name: 'scala-logging_2.12',            version: '3.9.2'
+    api group: 'org.scalatest',                  name: 'scalatest_2.12',                version: '3.1.0'
+    api group: 'com.dimafeng',                   name: 'testcontainers-scala_2.12',     version: '0.39.0'
+    api group: 'org.testcontainers',             name: 'testcontainers',                version: "1.15.0"
+    api group: 'eu.rekawek.toxiproxy',           name: 'toxiproxy-java',                version: "2.1.4"
+    api group: 'com.unboundid',                  name: 'unboundid-ldapsdk',             version: '6.0.6'
+    api group: 'com.mashape.unirest',            name: 'unirest-java',                  version: '1.4.9'
+    api group: 'com.lihaoyi',                    name: 'upickle_2.12',                  version: '0.7.1'
 
 }
 
-license {
-    header rootProject.file('ReadonlyRESTLicenseHeader.txt')
-    skipExistingHeaders true
-    useDefaultMappings = false
-    mapping {
-        java = 'SLASHSTAR_STYLE'
-        scala = 'SLASHSTAR_STYLE'
-    }
-}
-
-githook {
-    hooks {
-        "pre-commit" {
-            shell = "./gradlew license --rerun-tasks"
-        }
-    }
-}
-
-task wrapper(type: Wrapper) {
+tasks.register('wrapper', Wrapper) {
     gradleVersion = '3.5'
 }
