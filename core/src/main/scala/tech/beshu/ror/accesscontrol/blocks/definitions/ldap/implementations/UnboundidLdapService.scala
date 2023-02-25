@@ -128,7 +128,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
       .flatMap {
         case Right(results) =>
           Task {
-            UniqueList.fromTraversable(
+            UniqueList.fromIterable(
               results
                 .flatMap { r =>
                   Option(r.getAttributeValue(defaultSearchGroupMode.groupNameAttribute.value))
@@ -154,7 +154,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
         case Right(results) =>
           Task {
             UniqueList
-              .fromTraversable(
+              .fromIterable(
                 results
                   .flatMap { r =>
                     Option(r.getAttributeValues(mode.groupsFromUserAttribute.value))
@@ -231,7 +231,7 @@ object UnboundidLdapAuthorizationService {
         .recoverWith {
           case error: ConnectionError =>
             if (connectionConfig.ignoreLdapConnectivityProblems)
-              EitherT.rightT(Unit)
+              EitherT.rightT(())
             else
               EitherT.leftT(error)
         }

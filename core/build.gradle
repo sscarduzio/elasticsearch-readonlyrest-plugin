@@ -87,48 +87,42 @@ dependencies {
     api project(path: ':audit', configuration: 'default')
     api project(path: ':ror-shadowed-libs', configuration: 'shadow')
 
-    // todo: bring it back when ROR core is upgraded to scala 2.13
-    scalaCompilerPlugin     "org.scalamacros:paradise_2.12.17:2.1.1"
-//    compileClasspath        "com.github.ghik:silencer-lib_2.12.8:1.6.0"
-//    testCompileClasspath    "com.github.ghik:silencer-lib_2.12.8:1.6.0"
-//    scalaCompilerPlugin     "com.github.ghik:silencer-plugin_2.12.8:1.6.0"
-
-    api(group: 'com.softwaremill.sttp',     name: 'async-http-client-backend-cats_2.12',    version: '1.7.2') {
+    api(group: 'com.softwaremill.sttp',     name: 'async-http-client-backend-cats_2.13',    version: '1.7.2') {
         exclude group: 'io.netty', module: 'netty-tcnative-classes'
     }
-    api group: 'com.github.pathikrit',      name: 'better-files_2.12',                      version: '3.8.0'
-    api group: 'io.circe',                  name: 'circe-core_2.12',                        version: '0.13.0'
-    api group: 'io.circe',                  name: 'circe-generic_2.12',                     version: '0.13.0'
-    api group: 'io.circe',                  name: 'circe-generic-extras_2.12',              version: '0.13.0'
-    api group: 'io.circe',                  name: 'circe-parser_2.12',                      version: '0.13.0'
-    api group: 'io.circe',                  name: 'circe-refined_2.12',                     version: '0.13.0'
-    api group: 'io.circe',                  name: 'circe-shapes_2.12',                      version: '0.13.0'
+    api group: 'com.github.pathikrit',      name: 'better-files_2.13',                      version: '3.9.2'
+    api group: 'io.circe',                  name: 'circe-core_2.13',                        version: '0.14.4'
+    api group: 'io.circe',                  name: 'circe-generic_2.13',                     version: '0.14.4'
+    api group: 'io.circe',                  name: 'circe-generic-extras_2.13',              version: '0.14.3'
+    api group: 'io.circe',                  name: 'circe-parser_2.13',                      version: '0.14.4'
+    api group: 'io.circe',                  name: 'circe-refined_2.13',                     version: '0.14.4'
+    api group: 'io.circe',                  name: 'circe-shapes_2.13',                      version: '0.14.4'
     api group: 'commons-codec',             name: 'commons-codec',                          version: '1.15'
-    api group: 'org.typelevel',             name: 'cats-free_2.12',                         version: '2.1.1'
-    api group: 'com.softwaremill.sttp',     name: 'core_2.12',                              version: '1.7.2'
-    api group: 'com.comcast',               name: 'ip4s-cats_2.12',                         version: '1.1.1'
-    api group: 'org.typelevel',             name: 'jawn-parser_2.12',                       version: '1.3.2'
-    api(group: 'io.jsonwebtoken',           name: 'jjwt-api',                               version: '0.11.5')
-    api(group: 'io.jsonwebtoken',           name: 'jjwt-impl',                              version: '0.11.5')
+    api group: 'org.typelevel',             name: 'cats-free_2.13',                         version: '2.1.1'
+    api group: 'com.softwaremill.sttp',     name: 'core_2.13',                              version: '1.7.2'
+    api group: 'com.comcast',               name: 'ip4s-core_2.13',                         version: '1.4.1'
+    api group: 'org.typelevel',             name: 'jawn-parser_2.13',                       version: '1.4.0'
+    api group: 'io.jsonwebtoken',           name: 'jjwt-api',                               version: '0.11.5'
+    api group: 'io.jsonwebtoken',           name: 'jjwt-impl',                              version: '0.11.5'
     api(group: 'io.jsonwebtoken',           name: 'jjwt-orgjson',                           version: '0.11.5') {
         // jjwt-orgjson:0.11.5 uses json version, which has known security vulnerabilities
         exclude group: 'org.json', module: 'json'
     }
     api group: 'org.jooq',                  name: 'joor-java-8',                            version: '0.9.13'
-    api group: 'org.apache.logging.log4j',  name: 'log4j-api-scala_2.12',                   version: '11.0'
+    api group: 'org.apache.logging.log4j',  name: 'log4j-api-scala_2.13',                   version: '12.0'
     api(group: 'org.apache.logging.log4j',  name: 'log4j-slf4j-impl',                       version: '2.11.2') {
         exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
     }
-    api group: 'io.monix',                  name: 'monix_2.12',                             version: '3.0.0'
-    api group: 'eu.timepit',                name: 'refined_2.12',                           version: '0.9.5'
+    api group: 'io.monix',                  name: 'monix_2.13',                             version: '3.4.1'
+    api group: 'eu.timepit',                name: 'refined_2.13',                           version: '0.9.5'
     api group: 'org.reflections',           name: 'reflections',                            version: '0.9.11'
-    api group: 'com.github.blemale',        name: 'scaffeine_2.12',                         version: '3.1.0'
-    api group: 'com.github.tototoshi',      name: 'scala-csv_2.12',                         version: '1.3.6'
-    api group: 'org.scala-lang.modules',    name: 'scala-java8-compat_2.12',                version: '0.9.0'
-    api group: 'io.lemonlabs',              name: 'scala-uri_2.12',                         version: '1.4.1'
-    api group: 'org.typelevel',             name: 'squants_2.12',                           version: '1.4.0'
+    api group: 'com.github.blemale',        name: 'scaffeine_2.13',                         version: '3.1.0'
+    api group: 'com.github.tototoshi',      name: 'scala-csv_2.13',                         version: '1.3.6'
+    api group: 'org.scala-lang.modules',    name: 'scala-parallel-collections_2.13',        version: '1.0.4'
+    api group: 'io.lemonlabs',              name: 'scala-uri_2.13',                         version: '3.5.0'
+    api group: 'org.typelevel',             name: 'squants_2.13',                           version: '1.8.3'
     api group: 'com.unboundid',             name: 'unboundid-ldapsdk',                      version: '6.0.6'
-    api group: 'com.lihaoyi',               name: 'upickle_2.12',                           version: '0.7.1'
+    api group: 'com.lihaoyi',               name: 'upickle_2.13',                           version: '2.0.0'
     // https://www.bouncycastle.org/latest_releases.html#1.0.2.4-NONCERT
     api group: 'org.bouncycastle',          name: 'bc-noncert',                             version: '1.0.2.4'
     api(group: 'org.bouncycastle',          name: 'bctls-fips',                             version: '1.0.14.1') {
@@ -142,11 +136,11 @@ dependencies {
     testImplementation  group: 'org.apache.logging.log4j',   name: 'log4j-core',                 version: '2.15.0'
     testRuntimeOnly     group: 'ch.qos.logback',             name: 'logback-classic',            version: '1.2.3'
     testRuntimeOnly     group: 'org.pegdown',                name: 'pegdown',                    version: '1.4.2'
-    testImplementation  group: 'com.typesafe.scala-logging', name: 'scala-logging_2.12',         version: '3.9.2'
-    testImplementation  group: 'org.scalamock',              name: 'scalamock_2.12',             version: '5.1.0'
-    testImplementation  group: 'org.scalatestplus',          name: 'scalacheck-1-14_2.12',       version: '3.1.0.0'
-    testImplementation  group: 'org.scalatest',              name: 'scalatest_2.12',             version: '3.1.0'
-    testImplementation  group: 'com.dimafeng',               name: 'testcontainers-scala_2.12',  version: '0.39.8'
+    testImplementation  group: 'com.typesafe.scala-logging', name: 'scala-logging_2.13',         version: '3.9.2'
+    testImplementation  group: 'org.scalamock',              name: 'scalamock_2.13',             version: '5.1.0'
+    testImplementation  group: 'org.scalatestplus',          name: 'scalacheck-1-14_2.13',       version: '3.1.0.0'
+    testImplementation  group: 'org.scalatest',              name: 'scalatest_2.13',             version: '3.2.15'
+    testImplementation  group: 'com.dimafeng',               name: 'testcontainers-scala_2.13',  version: '0.39.8'
 
     constraints {
         api group: 'io.netty',              name: 'netty-codec-http2',                  version: '4.1.86.Final'
@@ -155,12 +149,11 @@ dependencies {
         api group: 'io.netty',              name: 'netty-transport-native-epoll',       version: '4.1.86.Final'
         api group: 'io.netty',              name: 'netty-transport-native-kqueue',      version: '4.1.86.Final'
         api group: 'com.google.guava',      name: 'guava',                              version: '31.1-jre'
-        api group: 'io.spray',              name: 'spray-json_2.12',                    version: '1.3.5'
-        api group: 'org.scala-lang',        name: 'scala-reflect',                      version: '2.12.17'
+        api group: 'io.spray',              name: 'spray-json_2.13',                    version: '1.3.5'
+        api group: 'org.scala-lang',        name: 'scala-reflect',                      version: '2.13.10'
         api group: 'org.asynchttpclient',   name: 'async-http-client',                  version: '2.10.5'
     }
 }
-
 
 tasks.withType(ScalaCompile).configureEach {
     // Map plugin jars to -Xplugin parameter
@@ -170,7 +163,7 @@ tasks.withType(ScalaCompile).configureEach {
             }
 
     // Add whatever flags you typically add
-    parameters += ["-Ypartial-unification", "-Ywarn-macros:after", "-feature"] //, "-Xfatal-warnings"]
+    parameters += ["-Ywarn-macros:after", "-feature", "-Ymacro-annotations"]
 
     // Finally set the additionalParameters
     scalaCompileOptions.additionalParameters = parameters

@@ -74,7 +74,7 @@ class CacheableActionWithKeyMappingTests extends AnyWordSpec with MockFactory {
 
       val result = for {
         _ <- Task.now(mockKey1Call())
-        _ <- Task.gatherUnordered(
+        _ <- Task.parSequenceUnordered(
           List.fill(100)(cache.call("key1"))
         )
       } yield ()

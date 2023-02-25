@@ -996,9 +996,9 @@ trait BaseAdminApiSuite
             forceReloadTestSettings(config)
 
             Thread.sleep(settingsReloadInterval.toMillis) // wait for engines reload
-            rorClients.foreach {
-              assertInIndexConfigPresent(_, config = config)
-              assertTestSettingsPresent(_, testConfig = config, expectedTtl = "30 minutes")
+            rorClients.foreach { client =>
+              assertInIndexConfigPresent(client, config = config)
+              assertTestSettingsPresent(client, testConfig = config, expectedTtl = "30 minutes")
             }
           }
         }

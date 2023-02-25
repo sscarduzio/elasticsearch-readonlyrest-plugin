@@ -28,7 +28,7 @@ class RepositoriesServiceInterceptor(repositoriesService: RepositoriesService,
   extends AbstractLifecycleComponent() {
 
   @Inject
-  def this(repositoriesService: RepositoriesService) {
+  def this(repositoriesService: RepositoriesService) = {
     this(repositoriesService, ())
   }
 

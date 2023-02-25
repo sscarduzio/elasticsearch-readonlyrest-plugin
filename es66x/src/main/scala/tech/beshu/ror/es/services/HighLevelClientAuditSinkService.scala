@@ -35,6 +35,8 @@ import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.es.utils.GenericResponseListener
 
+import scala.collection.parallel.CollectionConverters._
+
 class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLevelClient])
                                              (implicit scheduler: Scheduler)
   extends AuditSinkService

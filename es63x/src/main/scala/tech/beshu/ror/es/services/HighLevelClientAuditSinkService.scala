@@ -17,9 +17,9 @@
 package tech.beshu.ror.es.services
 
 import java.security.cert.X509Certificate
-
 import cats.data.NonEmptyList
 import io.lemonlabs.uri.Uri
+
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 import monix.execution.Scheduler
 import org.apache.http.HttpHost
@@ -29,11 +29,13 @@ import org.apache.http.impl.client.BasicCredentialsProvider
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
-import org.elasticsearch.client.{RestClient, RestHighLevelClient}
+import org.elasticsearch.client.{RequestOptions, RestClient, RestHighLevelClient}
 import org.elasticsearch.common.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.es.utils.GenericResponseListener
+
+import scala.collection.parallel.CollectionConverters._
 
 class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLevelClient])
                                              (implicit scheduler: Scheduler)
@@ -43,9 +45,10 @@ class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLeve
   override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
     clients.toList.par.foreach { client =>
       val request = new IndexRequest(indexName, "ror_audit_evt", documentId).source(jsonRecord, XContentType.JSON)
+      val options = RequestOptions.DEFAULT
       val listener = new GenericResponseListener[IndexResponse]
 
-      client.indexAsync(request, listener)
+      client.indexAsync(request, options, listener)
 
       listener.result
         .runAsync {

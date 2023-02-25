@@ -112,7 +112,6 @@ class HostsRuleTests extends AnyWordSpec with MockFactory {
       AlwaysRightConvertible
         .from(extracted => Address.from(extracted.value).getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value")))
     }
-      .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }
 }

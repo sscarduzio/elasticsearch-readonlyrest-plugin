@@ -205,14 +205,14 @@ object show {
       Show.show { bc =>
         (showOption("user", bc.userMetadata.loggedUser) ::
           showOption("group", bc.userMetadata.currentGroup) ::
-          showNamedTraversable("av_groups", bc.userMetadata.availableGroups) ::
-          showNamedTraversable("indices", bc.indices) ::
+          showNamedIterable("av_groups", bc.userMetadata.availableGroups) ::
+          showNamedIterable("indices", bc.indices) ::
           showOption("kibana_idx", bc.userMetadata.kibanaIndex) ::
           showOption("fls", bc.fieldLevelSecurity) ::
-          showNamedTraversable("response_hdr", bc.responseHeaders) ::
-          showNamedTraversable("repositories", bc.repositories) ::
-          showNamedTraversable("snapshots", bc.snapshots) ::
-          showNamedTraversable("response_transformations", bc.responseTransformations) ::
+          showNamedIterable("response_hdr", bc.responseHeaders) ::
+          showNamedIterable("repositories", bc.repositories) ::
+          showNamedIterable("snapshots", bc.snapshots) ::
+          showNamedIterable("response_transformations", bc.responseTransformations) ::
           showOption("template", bc.templateOperation) ::
           Nil flatten) mkString ";"
       }
@@ -239,10 +239,10 @@ object show {
     implicit val userMetadataShow: Show[UserMetadata] = Show.show { u =>
       (showOption("user", u.loggedUser) ::
         showOption("curr_group", u.currentGroup) ::
-        showNamedTraversable("av_groups", u.availableGroups) ::
+        showNamedIterable("av_groups", u.availableGroups) ::
         showOption("kibana_idx", u.kibanaIndex) ::
-        showNamedTraversable("hidden_apps", u.hiddenKibanaApps) ::
-        showNamedTraversable("allowed_api_paths", u.allowedKibanaApiPaths) ::
+        showNamedIterable("hidden_apps", u.hiddenKibanaApps) ::
+        showNamedIterable("allowed_api_paths", u.allowedKibanaApiPaths) ::
         showOption("kibana_access", u.kibanaAccess) ::
         showOption("user_origin", u.userOrigin) ::
         Nil flatten) mkString ";"
@@ -258,27 +258,27 @@ object show {
 
     implicit val templateOperationShow: Show[TemplateOperation] = Show.show {
       case TemplateOperation.GettingLegacyAndIndexTemplates(op1, op2) =>
-        s"GETALL(${showTraversable(op1.namePatterns.toList)}|${showTraversable(op2.namePatterns.toList)})"
+        s"GETALL(${showIterable(op1.namePatterns.toList)}|${showIterable(op2.namePatterns.toList)})"
       case TemplateOperation.GettingLegacyTemplates(namePatterns) =>
-        s"GET(${showTraversable(namePatterns.toList)})"
+        s"GET(${showIterable(namePatterns.toList)})"
       case TemplateOperation.AddingLegacyTemplate(name, patterns, aliases) =>
-        s"ADD(${name.show}:${showTraversable(patterns)}:${showTraversable(aliases)})"
+        s"ADD(${name.show}:${showIterable(patterns)}:${showIterable(aliases)})"
       case TemplateOperation.DeletingLegacyTemplates(namePatterns) =>
-        s"DEL(${showTraversable(namePatterns.toList)})"
+        s"DEL(${showIterable(namePatterns.toList)})"
       case TemplateOperation.GettingIndexTemplates(namePatterns) =>
-        s"GET(${showTraversable(namePatterns.toList)})"
+        s"GET(${showIterable(namePatterns.toList)})"
       case TemplateOperation.AddingIndexTemplate(name, patterns, aliases) =>
-        s"ADD(${name.show}:${showTraversable(patterns.toList)}:${showTraversable(aliases)})"
+        s"ADD(${name.show}:${showIterable(patterns.toList)}:${showIterable(aliases)})"
       case TemplateOperation.AddingIndexTemplateAndGetAllowedOnes(name, patterns, aliases, allowedTemplates) =>
-        s"ADDGET(${name.show}:${showTraversable(patterns.toList)}:${showTraversable(aliases)}:${showTraversable(allowedTemplates)})"
+        s"ADDGET(${name.show}:${showIterable(patterns.toList)}:${showIterable(aliases)}:${showIterable(allowedTemplates)})"
       case TemplateOperation.DeletingIndexTemplates(namePatterns) =>
-        s"DEL(${showTraversable(namePatterns.toList)})"
+        s"DEL(${showIterable(namePatterns.toList)})"
       case TemplateOperation.GettingComponentTemplates(namePatterns) =>
-        s"GET(${showTraversable(namePatterns.toList)})"
+        s"GET(${showIterable(namePatterns.toList)})"
       case TemplateOperation.AddingComponentTemplate(name, aliases) =>
-        s"ADD(${name.show}:${showTraversable(aliases)})"
+        s"ADD(${name.show}:${showIterable(aliases)})"
       case TemplateOperation.DeletingComponentTemplates(namePatterns) =>
-        s"DEL(${showTraversable(namePatterns.toList)})"
+        s"DEL(${showIterable(namePatterns.toList)})"
     }
 
     implicit val specificFieldShow: Show[FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField] = Show.show(_.value)
@@ -374,21 +374,21 @@ object show {
         s"The '${block.show}' block contains '${KibanaUserDataRule.Name.name.show}' rule and '${conflictingRule.show}' rule. The second one is deprecated. The first one offers all the second one is able to provide."
     }
 
-    private def showNamedTraversable[T: Show](name: String, traversable: Traversable[T]) = {
-      if (traversable.isEmpty) None
-      else Some(s"$name=${showTraversable(traversable)}")
+    private def showNamedIterable[T: Show](name: String, iterable: Iterable[T]) = {
+      if (iterable.isEmpty) None
+      else Some(s"$name=${showIterable(iterable)}")
     }
 
     private def showNamedNonEmptyList[T: Show](name: String, nonEmptyList: NonEmptyList[T]) = {
-      showNamedTraversable(name, nonEmptyList.toList)
+      showNamedIterable(name, nonEmptyList.toList)
     }
 
     private def showOption[T: Show](name: String, option: Option[T]) = {
-      showNamedTraversable(name, option.toList)
+      showNamedIterable(name, option.toList)
     }
 
-    private def showTraversable[T: Show](traversable: Traversable[T]) = {
-      traversable.map(_.show).mkString(",")
+    private def showIterable[T: Show](iterable: Iterable[T]) = {
+      iterable.map(_.show).mkString(",")
     }
 
     implicit val authorizationValueErrorShow: Show[AuthorizationValueError] = Show.show {
@@ -461,7 +461,7 @@ object headerValues {
     implicit val documentFieldR: Reader[DocumentField] = macroR
 
     implicit val setR: Reader[UniqueNonEmptyList[DocumentField]] =
-      SeqLikeReader[List, DocumentField].map(UniqueNonEmptyList.unsafeFromTraversable)
+      SeqLikeReader[List, DocumentField].map(UniqueNonEmptyList.unsafeFromIterable)
 
     implicit val fieldsRestrictionsR: Reader[FieldsRestrictions] = macroR
 

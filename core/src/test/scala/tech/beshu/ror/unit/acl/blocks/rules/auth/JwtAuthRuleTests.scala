@@ -645,18 +645,18 @@ class JwtAuthRuleTests
 
   private def cachedAuthService(authenticatedToken: String, unauthenticatedToken: String) = {
     val service = mock[ExternalAuthenticationService]
-    (service.authenticate _)
+    ((credentials: Credentials) => service.authenticate(credentials))
       .expects(where { credentials: Credentials => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(authenticatedToken)) })
       .returning(Task.now(true))
       .once()
-    (service.authenticate _)
+    ((credentials: Credentials) => service.authenticate(credentials))
       .expects(where { credentials: Credentials => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(unauthenticatedToken)) })
       .returning(Task.now(false))
       .once()
-    (service.id _)
+    (() => service.id)
       .expects()
       .returning(Name("external_service"))
-    (service.serviceTimeout _)
+    (() => service.serviceTimeout)
       .expects()
       .anyNumberOfTimes()
       .returning(Refined.unsafeApply(10 seconds))

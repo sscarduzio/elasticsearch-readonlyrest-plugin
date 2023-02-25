@@ -402,6 +402,7 @@ class RawRorConfigBasedCoreFactory()
                                              unknownUsersForWildcardPattern: Boolean): LocalUsers = {
     userIdPatterns
       .patterns
+      .unsorted
       .map { userIdPattern =>
         if (userIdPattern.containsWildcard) {
           LocalUsers(users = Set.empty, unknownUsers = unknownUsersForWildcardPattern)

@@ -17,11 +17,11 @@
 package tech.beshu.ror.configuration.loader.external.dto
 
 import cats.implicits._
-import io.circe.generic.extras.ConfiguredJsonCodec
+import io.circe.Codec
 import tech.beshu.ror.configuration.loader.distributed.Summary
 import tech.beshu.ror.configuration.loader.distributed.Summary.{Error, Result}
+import tech.beshu.ror.configuration.loader.distributed.internode.dto.NodeConfigRequestDTO
 
-@ConfiguredJsonCodec
 final case class ResultDTO(config: Option[LoadedConfigDTO],
                            warnings: List[NodesResponseWaringDTO],
                            error: Option[String])
@@ -41,4 +41,6 @@ object ResultDTO {
     }
     ResultDTO(None, Nil, message.some)
   }
+
+  implicit val codec: Codec[ResultDTO] = io.circe.generic.extras.semiauto.deriveConfiguredCodec
 }

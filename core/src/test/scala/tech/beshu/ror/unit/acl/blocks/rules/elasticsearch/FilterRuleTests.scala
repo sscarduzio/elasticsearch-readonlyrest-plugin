@@ -135,7 +135,6 @@ class FilterRuleTests extends AnyWordSpec with MockFactory {
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
     RuntimeResolvableVariableCreator
       .createSingleResolvableVariableFrom[Filter](NonEmptyString.unsafeFrom(value))(AlwaysRightConvertible.from(Filter.apply))
-      .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Filter Value from $value"))
   }
 }

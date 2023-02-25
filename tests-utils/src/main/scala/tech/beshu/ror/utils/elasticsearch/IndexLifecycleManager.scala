@@ -123,7 +123,7 @@ object IndexLifecycleManager {
   class PoliciesResponse(response: HttpResponse) extends JsonResponse(response) {
     lazy val policies: Map[String, JSON] =
       responseJson.obj.toMap.map { case (policyName, json) =>
-        val policy = ujson.Obj.from(json.obj.filterKeys(_ == "policy").toList)
+        val policy = ujson.Obj.from(json.obj.view.filterKeys(_ == "policy").toList)
         (policyName, policy)
       }
   }

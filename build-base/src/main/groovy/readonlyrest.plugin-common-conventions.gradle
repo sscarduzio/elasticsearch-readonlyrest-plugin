@@ -64,7 +64,7 @@ dependencyCheck {
 }
 
 tasks.withType(ScalaCompile).configureEach {
-    scalaCompileOptions.additionalParameters = ["-Ypartial-unification", "-Ywarn-macros:after", "-feature"]
+    scalaCompileOptions.additionalParameters = ["-Ywarn-macros:after", "-feature"]
 }
 
 tasks.withType(Zip).configureEach { task ->

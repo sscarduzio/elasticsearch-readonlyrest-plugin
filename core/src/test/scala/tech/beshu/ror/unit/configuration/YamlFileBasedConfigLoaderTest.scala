@@ -19,14 +19,15 @@ package tech.beshu.ror.unit.configuration
 import better.files.File
 import cats.implicits._
 import io.circe.Decoder
+import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.providers.EnvVarsProvider
-import tech.beshu.ror.configuration.{YamlFileBasedConfigLoader, MalformedSettings}
+import tech.beshu.ror.configuration.{MalformedSettings, YamlFileBasedConfigLoader}
 
 import scala.language.postfixOps
 
-class YamlFileBasedConfigLoaderTest extends AnyWordSpec {
+class YamlFileBasedConfigLoaderTest extends AnyWordSpec with Inside {
   private implicit val envVarsProvider: EnvVarsProvider = name =>
     name.value.value match {
       case "USER_NAME" => Some("John")
@@ -44,8 +45,10 @@ class YamlFileBasedConfigLoaderTest extends AnyWordSpec {
     }
     "fail for non existing vairable" in {
       val result = loadFromTempFile[String](""""${WRONG_VARIABLE}"""")
-      result shouldBe a[Left[MalformedSettings, _]]
-      result.left.get.message should include("WRONG_VARIABLE")
+      inside(result) {
+        case Left(error) =>
+          error.message should include("WRONG_VARIABLE")
+      }
     }
   }
 
@@ -53,7 +56,7 @@ class YamlFileBasedConfigLoaderTest extends AnyWordSpec {
     tempFile(content).map { file =>
       createFileConfigLoader(file)
         .loadConfig[A]("TEST")
-    }.get
+    }.get()
 
   private def tempFile(content: String) = File.temporaryFile().map(_.write(content))
 

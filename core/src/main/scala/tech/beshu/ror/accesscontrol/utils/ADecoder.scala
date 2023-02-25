@@ -184,7 +184,7 @@ object AsyncDecoderCreator extends ADecoderCreator[Task, AsyncDecoder] {
             }
           }
       } else {
-        if (c.value.isArray) Task.now(Right(List.newBuilder[A].result))
+        if (c.value.isArray) Task.now(Right(List.newBuilder[A].result()))
         else Task.now(Left(DecodingFailure("C[A]", c.history)))
       }
     }

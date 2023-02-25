@@ -22,7 +22,7 @@ import tech.beshu.ror.es.actions.RorActionRequest
 
 class RRAuditEventRequest(val auditEvents: JSONObject) extends ActionRequest with RorActionRequest {
 
-  def this() {
+  def this() = {
     this(null)
   }
 

@@ -58,14 +58,14 @@ private sealed abstract class ReleasablePoolTest[M[_] : Monad] extends AnyWordSp
       "create new resource" in {
         val counter = new Counter
         val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleseablePool(counter)
-        val resource = await(releasablePool.get(())).right.get
+        val resource = await(releasablePool.get(())).toOption.get
         resource.isClosed shouldBe false
         counter.count shouldBe 1
       }
       "resource can be closed"in {
         val counter = new Counter
         val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleseablePool(counter)
-        val resource = await(releasablePool.get(())).right.get
+        val resource = await(releasablePool.get(())).toOption.get
         resource.isClosed shouldBe false
         counter.count shouldBe 1
         resource.close
@@ -75,7 +75,7 @@ private sealed abstract class ReleasablePoolTest[M[_] : Monad] extends AnyWordSp
       "close on pool closes resource"in {
         val counter = new Counter
         val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleseablePool(counter)
-        val resource = await(releasablePool.get(())).right.get
+        val resource = await(releasablePool.get(())).toOption.get
         resource.isClosed shouldBe false
         counter.count shouldBe 1
         await(releasablePool.close)
@@ -85,8 +85,8 @@ private sealed abstract class ReleasablePoolTest[M[_] : Monad] extends AnyWordSp
       "close on pool closes all resources"in {
         val counter = new Counter
         val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleseablePool(counter)
-        val resource1 = await(releasablePool.get(())).right.get
-        val resource2 = await(releasablePool.get(())).right.get
+        val resource1 = await(releasablePool.get(())).toOption.get
+        val resource2 = await(releasablePool.get(())).toOption.get
         counter.count shouldBe 2
         await(releasablePool.close)
         resource1.isClosed shouldBe true
@@ -111,7 +111,7 @@ private sealed abstract class ReleasablePoolTest[M[_] : Monad] extends AnyWordSp
 
     def releaseR(resource: counter.ReleasableResource): M[Unit] = release(counter)(resource)
 
-    new ReleseablePool[M, counter.ReleasableResource, Unit](acquireR(counter)(_))(releaseR _)
+    new ReleseablePool[M, counter.ReleasableResource, Unit](acquireR(counter)(_))(releaseR)
 
   }
 }

@@ -38,7 +38,7 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-import scala.collection.SortedSet
+import scala.collection.immutable.SortedSet
 import scala.language.{existentials, higherKinds}
 
 object CirceOps {
@@ -52,7 +52,7 @@ object CirceOps {
       Decoder.decodeNonEmptyList(decodeT).map(UniqueNonEmptyList.fromNonEmptyList)
 
     implicit def decodeUniqueList[T](implicit decodeT: Decoder[T]): Decoder[UniqueList[T]] =
-      Decoder.decodeList[T].map(UniqueList.fromTraversable)
+      Decoder.decodeList[T].map(UniqueList.fromIterable)
 
     def decodeStringLikeOrNonEmptySet[T: Order](fromString: String => T): Decoder[NonEmptySet[T]] =
       decodeStringLike
@@ -97,7 +97,7 @@ object CirceOps {
             }
         }
         if (errorsUniqueList.nonEmpty) Left(errorsUniqueList.mkString(","))
-        else Right(UniqueNonEmptyList.unsafeFromTraversable(valuesUniqueList))
+        else Right(UniqueNonEmptyList.unsafeFromIterable(valuesUniqueList))
       }
 
     def decoderStringLikeOrUniqueNonEmptyList[T: Decoder]: Decoder[UniqueNonEmptyList[T]] =
@@ -109,7 +109,7 @@ object CirceOps {
       decodeStringLikeNonEmpty
         .map(UniqueNonEmptyList.of(_))
         .or(DecoderHelpers.decodeUniqueNonEmptyList[NonEmptyString])
-        .map(a => UniqueNonEmptyList.unsafeFromTraversable(a.map(fromString)))
+        .map(a => UniqueNonEmptyList.unsafeFromIterable(a.toList.map(fromString)))
 
     def decodeStringLikeOrSet[T: Order : Decoder]: Decoder[Set[T]] = {
       decodeStringLike.map(Set(_)).or(Decoder.decodeSet[String]).emap { set =>
@@ -126,7 +126,7 @@ object CirceOps {
     }
 
     def decodeStringLikeOrUniqueList[T: Decoder]: Decoder[UniqueList[T]] = {
-      decodeStringLike.map(str => UniqueList.fromTraversable(str :: Nil)).or(decodeUniqueList[String]).emap { uniqueList =>
+      decodeStringLike.map(str => UniqueList.fromIterable(str :: Nil)).or(decodeUniqueList[String]).emap { uniqueList =>
         val (errorsUniqueList, valuesUniqueList) = uniqueList.foldLeft((UniqueList.empty[String], UniqueList.empty[T])) {
           case ((errors, values), elem) =>
             Decoder[T].decodeJson(Json.fromString(elem)) match {
@@ -262,13 +262,14 @@ object CirceOps {
   }
 
   object AclCreationErrorCoders {
-    private implicit val config: Configuration = Configuration.default.withDiscriminator("type")
     implicit val aclCreationErrorEncoder: Encoder[CoreCreationError] = {
-      implicit val _ = extras.semiauto.deriveConfiguredEncoder[Reason]
+      implicit val config: Configuration = Configuration.default.withDiscriminator("type")
+      implicit val reasonEncoder = extras.semiauto.deriveConfiguredEncoder[Reason]
       extras.semiauto.deriveConfiguredEncoder
     }
     implicit val aclCreationErrorDecoder: Decoder[CoreCreationError] = {
-      implicit val _ = extras.semiauto.deriveConfiguredDecoder[Reason]
+      implicit val config: Configuration = Configuration.default.withDiscriminator("type")
+      implicit val reasonDecoder = extras.semiauto.deriveConfiguredDecoder[Reason]
       extras.semiauto.deriveConfiguredDecoder
     }
 

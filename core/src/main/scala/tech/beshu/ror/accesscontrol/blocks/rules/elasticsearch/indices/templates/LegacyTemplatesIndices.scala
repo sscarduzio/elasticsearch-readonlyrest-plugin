@@ -112,7 +112,7 @@ private[indices] trait LegacyTemplatesIndices
           case Result.Allowed(t) =>
             Right(t :: acc)
           case Result.NotFound(t) =>
-            implicit val _ = identifierGenerator
+            implicit val _generator = identifierGenerator
             val nonExistentTemplateNamePattern = TemplateNamePattern.generateNonExistentBasedOn(t)
             Right(nonExistentTemplateNamePattern :: acc)
           case Result.Forbidden(_) =>

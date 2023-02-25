@@ -62,7 +62,7 @@ configurations {
 
 dependencies {
     implementation project(path: ':ror-tools-core')
-    implementation group: 'com.github.scopt',              name: 'scopt_2.12',                       version: '4.0.1'
+    implementation group: 'com.github.scopt',              name: 'scopt_2.13',                       version: '4.0.1'
 }
 
 compileScala {
@@ -72,7 +72,7 @@ compileScala {
 }
 
 tasks.withType(ScalaCompile).configureEach {
-    scalaCompileOptions.additionalParameters = ["-Ypartial-unification", "-Ywarn-macros:after", "-feature", "-Xfatal-warnings"]
+    scalaCompileOptions.additionalParameters = ["-Ywarn-macros:after", "-feature", "-Xfatal-warnings"]
 }
 
 shadowJar {

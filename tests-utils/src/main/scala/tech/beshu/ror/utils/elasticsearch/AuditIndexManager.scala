@@ -45,7 +45,7 @@ object AuditIndexManager {
 
   class AuditEntriesResult(response: HttpResponse) extends SearchResult(response) {
 
-    def this(searchResult: SearchResult) {
+    def this(searchResult: SearchResult) = {
       this(AuditEntriesResult.refreshEntity(searchResult))
     }
 

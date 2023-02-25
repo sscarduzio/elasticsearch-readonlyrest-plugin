@@ -148,7 +148,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |
             |""".stripMargin)
         val acl = createCore(config)
-        val obfuscatedHeaders = acl.right.get.accessControl.staticContext.obfuscatedHeaders
+        val obfuscatedHeaders = acl.toOption.get.accessControl.staticContext.obfuscatedHeaders
         obfuscatedHeaders shouldEqual Set(Header.Name.authorization)
       }
       "the section exists, and obfuscated header is not defined" in {
@@ -165,7 +165,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |  obfuscated_headers: []
             |""".stripMargin)
         val acl = createCore(config)
-        val headers = acl.right.get.accessControl.staticContext.obfuscatedHeaders
+        val headers = acl.toOption.get.accessControl.staticContext.obfuscatedHeaders
         headers shouldBe empty
       }
       "the section exists, and obfuscated header is defined" in {
@@ -183,7 +183,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |  - CorpoAuth
             |""".stripMargin)
         val acl = createCore(config)
-        val headers = acl.right.get.accessControl.staticContext.obfuscatedHeaders
+        val headers = acl.toOption.get.accessControl.staticContext.obfuscatedHeaders
         headers should have size 1
         headers.head should be(Header.Name(NonEmptyString.unsafeFrom("CorpoAuth")))
       }

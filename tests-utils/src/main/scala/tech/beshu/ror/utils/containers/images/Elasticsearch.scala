@@ -56,7 +56,7 @@ class Elasticsearch(esVersion: String,
                     plugins: Seq[Plugin])
   extends LazyLogging {
 
-  def this(esVersion: String, config: Config) {
+  def this(esVersion: String, config: Config) = {
     this(esVersion, config, Seq.empty)
   }
 

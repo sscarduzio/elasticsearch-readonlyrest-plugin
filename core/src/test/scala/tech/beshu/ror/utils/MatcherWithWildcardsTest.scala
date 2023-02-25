@@ -165,13 +165,13 @@ class MatcherWithWildcardsTest
   testMatchersShouldntMatchHaystack(List("A*"), "ab")
   testMatchersShouldntMatchHaystack(List("b"), "a")
 
-  private def testMatchersShouldMatchHaystack(matchers: List[String], haystack: String) =
+  private def testMatchersShouldMatchHaystack(matchers: List[String], haystack: String): Unit =
     testMatchersMatchHaystack(matchers, haystack, true)
 
-  private def testMatchersShouldntMatchHaystack(matchers: List[String], haystack: String) =
+  private def testMatchersShouldntMatchHaystack(matchers: List[String], haystack: String): Unit =
     testMatchersMatchHaystack(matchers, haystack, false)
 
-  private def testMatchersMatchHaystack(matchers: List[String], haystack: String, result: Boolean) = {
+  private def testMatchersMatchHaystack(matchers: List[String], haystack: String, result: Boolean): Unit = {
     s"$haystack should${if (!result) "n't"} match $matchers" in {
       val matcher = new MatcherWithWildcards(matchers.asJava, caseSensitive)
       matcher.`match`(haystack) shouldBe result
@@ -200,7 +200,7 @@ object MatcherWithWildcardsTest {
   def genLiteralString(wildcardPattern: WildcardPattern,
                        genString: Gen[String]): Gen[MatchingString] = {
     for {
-      stream <- Gen.infiniteStream(genString)
+      stream <- Gen.infiniteLazyList(genString)
       iterator = stream.iterator
       str = wildcardPattern.toList
         .map {

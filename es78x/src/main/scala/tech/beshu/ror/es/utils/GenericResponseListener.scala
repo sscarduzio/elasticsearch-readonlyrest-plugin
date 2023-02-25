@@ -23,7 +23,7 @@ import scala.concurrent.Promise
 
 final class GenericResponseListener[RESPONSE <: ActionResponse] extends ActionListener[RESPONSE] {
 
-  private val promise = Promise[RESPONSE]
+  private val promise = Promise[RESPONSE]()
 
   def result: Task[RESPONSE] = Task.fromFuture(promise.future)
 

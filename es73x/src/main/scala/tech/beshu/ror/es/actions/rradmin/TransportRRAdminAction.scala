@@ -33,7 +33,7 @@ class TransportRRAdminAction(transportService: TransportService,
 
   @Inject
   def this(transportService: TransportService,
-           actionFilters: ActionFilters) {
+           actionFilters: ActionFilters) = {
     this(transportService, actionFilters, ())
   }
 

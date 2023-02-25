@@ -28,7 +28,7 @@ class TransportServiceInterceptor(transportService: TransportService,
   extends AbstractLifecycleComponent() {
 
   @Inject
-  def this(transportService: TransportService) {
+  def this(transportService: TransportService) = {
     this(transportService, ())
   }
   Option(transportService.getRemoteClusterService).foreach { r =>

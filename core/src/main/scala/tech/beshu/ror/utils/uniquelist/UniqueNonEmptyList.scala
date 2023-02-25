@@ -35,14 +35,14 @@ class UniqueNonEmptyList[T] private (vector: Vector[T])
 
 object UniqueNonEmptyList {
 
-  def of[T](t: T, ts: T*): UniqueNonEmptyList[T] = unsafeFromTraversable(t :: ts.toList)
+  def of[T](t: T, ts: T*): UniqueNonEmptyList[T] = unsafeFromIterable(t :: ts.toList)
 
-  def unsafeFromTraversable[T](traversable: Traversable[T]): UniqueNonEmptyList[T] =
-    fromTraversable(traversable).getOrElse(throw new IllegalArgumentException("Cannot create UniqueNonEmptyList from empty list"))
+  def unsafeFromIterable[T](iterable: Iterable[T]): UniqueNonEmptyList[T] =
+    fromTraversable(iterable).getOrElse(throw new IllegalArgumentException("Cannot create UniqueNonEmptyList from empty list"))
 
-  def fromTraversable[T](traversable: Traversable[T]): Option[UniqueNonEmptyList[T]] =
-    if(traversable.isEmpty) None
-    else Some(new UniqueNonEmptyList[T](traversable.toVector.distinct))
+  def fromTraversable[T](iterable: Iterable[T]): Option[UniqueNonEmptyList[T]] =
+    if(iterable.isEmpty) None
+    else Some(new UniqueNonEmptyList[T](iterable.toVector.distinct))
 
   def fromNonEmptyList[T](list: NonEmptyList[T]): UniqueNonEmptyList[T] =
     new UniqueNonEmptyList[T](list.toList.toVector.distinct)

@@ -184,7 +184,7 @@ private class LdapWaitStrategy(name: String,
   private def runOnBindedLdapConnection(action: LDAPConnection => Task[Unit]): Task[Unit] = {
     defaults.ldap.bindDn match {
       case Some(bindDn) =>
-        Task(new LDAPConnection(waitStrategyTarget.getContainerIpAddress, waitStrategyTarget.getMappedPort(defaults.ldap.port)))
+        Task(new LDAPConnection(waitStrategyTarget.getHost, waitStrategyTarget.getMappedPort(defaults.ldap.port)))
           .bracket(connection =>
             Task(connection.bind(bindDn, defaults.ldap.adminPassword))
               .flatMap {

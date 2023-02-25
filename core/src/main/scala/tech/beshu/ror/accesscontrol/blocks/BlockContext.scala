@@ -369,11 +369,11 @@ object BlockContext {
           bc.templateOperation match {
             case TemplateOperation.GettingLegacyAndIndexTemplates(_, _) => Set.empty
             case TemplateOperation.GettingLegacyTemplates(_) => Set.empty
-            case TemplateOperation.AddingLegacyTemplate(_, patterns, aliases) => patterns.map(_.value).toSet ++ aliases
+            case TemplateOperation.AddingLegacyTemplate(_, patterns, aliases) => patterns.unsorted.map(_.value).toSet ++ aliases
             case TemplateOperation.DeletingLegacyTemplates(_) => Set.empty
             case TemplateOperation.GettingIndexTemplates(_) => Set.empty
-            case TemplateOperation.AddingIndexTemplate(_, patterns, aliases) => patterns.map(_.value).toSet ++ aliases
-            case TemplateOperation.AddingIndexTemplateAndGetAllowedOnes(_, patterns, aliases, _) => patterns.map(_.value).toSet ++ aliases
+            case TemplateOperation.AddingIndexTemplate(_, patterns, aliases) => patterns.unsorted.map(_.value).toSet ++ aliases
+            case TemplateOperation.AddingIndexTemplateAndGetAllowedOnes(_, patterns, aliases, _) => patterns.unsorted.map(_.value).toSet ++ aliases
             case TemplateOperation.DeletingIndexTemplates(_) => Set.empty
             case TemplateOperation.GettingComponentTemplates(_) => Set.empty
             case TemplateOperation.AddingComponentTemplate(_, aliases) => aliases

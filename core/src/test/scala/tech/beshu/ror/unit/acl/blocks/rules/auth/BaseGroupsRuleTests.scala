@@ -71,7 +71,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).right.get
+                createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
@@ -153,7 +153,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).right.get
+                createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
@@ -168,7 +168,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).right.get
+                createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
@@ -436,7 +436,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
 
   def userIdPatterns(id: String, ids: String*): UserIdPatterns = {
     UserIdPatterns(
-      UniqueNonEmptyList.unsafeFromTraversable(
+      UniqueNonEmptyList.unsafeFromIterable(
         (id :: ids.toList).map(str => UserIdPattern(NonEmptyString.unsafeFrom(str)))
       )
     )
@@ -496,7 +496,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
 
       override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
         Task.now(Fulfilled(blockContext.withUserMetadata(
-          _.withAvailableGroups(UniqueList.fromTraversable(groups.toList))
+          _.withAvailableGroups(UniqueList.fromIterable(groups.toList))
         )))
       }
     }
@@ -524,7 +524,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
 
       override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
         Task.now(Fulfilled(blockContext.withUserMetadata(
-          _.withAvailableGroups(UniqueList.fromTraversable(groups.toList))
+          _.withAvailableGroups(UniqueList.fromIterable(groups.toList))
         )))
     }
 

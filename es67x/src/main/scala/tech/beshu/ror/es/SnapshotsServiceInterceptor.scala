@@ -27,10 +27,10 @@ import org.elasticsearch.snapshots.SnapshotsService
 class SnapshotsServiceInterceptor(settings: Settings,
                                   snapshotsService: SnapshotsService,
                                   ignore: Unit) // hack!
-  extends AbstractLifecycleComponent(settings) {
+  extends AbstractLifecycleComponent() {
 
   @Inject
-  def this(settings: Settings, snapshotsService: SnapshotsService) {
+  def this(settings: Settings, snapshotsService: SnapshotsService) = {
     this(settings, snapshotsService, ())
   }
 

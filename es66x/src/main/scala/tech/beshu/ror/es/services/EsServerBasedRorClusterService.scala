@@ -157,7 +157,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
 
   private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService) = {
     Task
-      .gatherUnordered(
+      .parSequenceUnordered(
         getRegisteredRemoteClusterNames(remoteClusterService).map(resolveAllRemoteIndices(_, remoteClusterService))
       )
       .map(_.flatten.toSet)

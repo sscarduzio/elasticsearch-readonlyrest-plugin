@@ -33,7 +33,6 @@ dependencies {
     implementation  group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.13'
     compileOnly     group: 'org.codelibs.elasticsearch.lib',    name: 'plugin-classloader',                     version: esVersion
     implementation  group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: esVersion
-    implementation  group: 'org.scala-lang',                    name: 'scala-library',                          version: '2.12.17'
 
 }
 

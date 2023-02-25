@@ -44,7 +44,6 @@ final class YamlFileBasedConfigLoader(file: File)
         .parser
         .parse(reader)
         .left.map(e => MalformedSettings(s"Cannot parse file ${file.pathAsString} content. Cause: ${e.message}"))
-        .right
         .flatMap { json =>
           JsonConfigStaticVariableResolver.resolve(json)
             .left.map(e => MalformedSettings(s"Unable to resolve environment variables for file ${file.pathAsString}. $e."))

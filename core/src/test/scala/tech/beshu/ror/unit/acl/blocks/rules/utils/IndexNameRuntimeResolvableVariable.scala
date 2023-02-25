@@ -28,7 +28,6 @@ object IndexNameRuntimeResolvableVariable{
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
     RuntimeResolvableVariableCreator
       .createSingleResolvableVariableFrom[ClusterIndexName.Local](NonEmptyString.unsafeFrom(value))(AlwaysRightConvertible.from(localIndexName))
-      .right
       .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))
   }
 }

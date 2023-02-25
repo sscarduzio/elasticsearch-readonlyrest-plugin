@@ -211,7 +211,7 @@ object XpackApiManager {
 
   class RollupCapabilitiesResult(response: HttpResponse) extends JsonResponse(response) {
     lazy val capabilities: Map[String, List[JSON]] = {
-      responseJson.obj.toMap.mapValues(_("rollup_jobs").arr.toList)
+      responseJson.obj.toMap.view.mapValues(_("rollup_jobs").arr.toList).toMap
     }
   }
 }

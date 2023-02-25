@@ -55,7 +55,9 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
   extends BaseIndexConfigManager[TestRorConfig]
     with Logging {
 
-  override def load(indexName: RorConfigurationIndex): Task[Either[ConfigLoaderError[IndexConfigError], TestRorConfig]] = {
+  type Error = ConfigLoaderError[IndexConfigError]
+
+  override def load(indexName: RorConfigurationIndex): Task[Either[Error, TestRorConfig]] = {
     indexJsonContentService
       .sourceOf(indexName.index, Config.rorTestSettingsIndexConst.id)
       .flatMap {
@@ -82,9 +84,9 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
       }
   }
 
-  private def getSettings(config: Map[String, String]): EitherT[Task, ConfigLoaderError[IndexConfigError], TestRorConfig] = {
+  private def getSettings(config: Map[String, String]): EitherT[Task, Error, TestRorConfig] = {
     if (config.isEmpty) {
-      EitherT.right(Task.now(TestRorConfig.NotSet))
+      EitherT.right[Error](Task.now(TestRorConfig.NotSet)).widen[TestRorConfig]
     } else {
       for {
         expirationTimeString <- getConfigProperty(config, Const.properties.expirationTime)
@@ -117,7 +119,7 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
     }
   }
 
-  private def getExpirationTtl(value: String): EitherT[Task, ConfigLoaderError[IndexConfigError], FiniteDuration Refined Positive] = {
+  private def getExpirationTtl(value: String): EitherT[Task, Error, FiniteDuration Refined Positive] = {
     Try {
       Duration
         .apply(value.toLong, TimeUnit.MILLISECONDS)
@@ -130,10 +132,10 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
       .toEitherT[Task]
   }
 
-  private def parserError: ConfigLoaderError[IndexConfigError] =
+  private def parserError: Error =
     SpecializedError[IndexConfigError](IndexConfigUnknownStructure)
 
-  private def getInstant(value: String): EitherT[Task, ConfigLoaderError[IndexConfigError], Instant] = {
+  private def getInstant(value: String): EitherT[Task, Error, Instant] = {
     Try(DateTimeFormatter.ISO_DATE_TIME.parse(value))
       .map(Instant.from)
       .toEither
@@ -145,7 +147,7 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
     mocks.asJson.noSpaces
   }
 
-  private def getMocks(config: String): EitherT[Task, ConfigLoaderError[IndexConfigError], AuthServicesMocks] = {
+  private def getMocks(config: String): EitherT[Task, Error, AuthServicesMocks] = {
     io.circe.parser.decode[AuthServicesMocks](config)
       .leftMap(x => parserError)
       .toEitherT[Task]
@@ -199,7 +201,7 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
     )(AuthServicesMocks.apply)(e => (e.ldapMocks, e.externalAuthenticationServiceMocks, e.externalAuthorizationServiceMocks))
   }
 
-  private def getConfigProperty[A, B](map: Map[A, B], key: A): EitherT[Task, ConfigLoaderError[IndexConfigError], B] = {
+  private def getConfigProperty[A, B](map: Map[A, B], key: A): EitherT[Task, Error, B] = {
     map
       .get(key)
       .toRight(parserError)

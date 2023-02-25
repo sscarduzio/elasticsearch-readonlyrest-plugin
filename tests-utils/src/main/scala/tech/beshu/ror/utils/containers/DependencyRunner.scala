@@ -37,7 +37,7 @@ object DependencyRunner {
 
   private def startContainersAsynchronously(dependencies: List[EvaluatedDependency]): Unit = {
     Task
-      .gatherUnordered {
+      .parSequenceUnordered {
         dependencies.map(dependency => Task(dependency.container.start()))
       }
       .runSyncUnsafe()

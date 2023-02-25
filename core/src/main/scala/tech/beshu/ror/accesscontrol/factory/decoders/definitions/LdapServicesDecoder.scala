@@ -203,7 +203,7 @@ object LdapServicesDecoder {
     }
 
   private val connectionConfigDecoder: Decoder[LdapConnectionConfig] = {
-    implicit val _ = positiveValueDecoder[Int]
+    implicit val positiveIntDecoder: Decoder[Int Refined Positive] = positiveValueDecoder[Int]
     Decoder
       .instance { c =>
         for {

@@ -163,7 +163,7 @@ class EsServerBasedRorClusterService(nodeName: String,
         .flatMap(ClusterName.Full.fromString)
 
     Task
-      .gatherUnordered(
+      .parSequenceUnordered(
         remoteClusterFullNames.map(resolveAllRemoteIndices(_, remoteClusterService))
       )
       .map(_.flatten.toSet)

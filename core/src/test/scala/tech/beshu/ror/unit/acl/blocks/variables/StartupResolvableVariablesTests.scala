@@ -109,11 +109,11 @@ class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
   }
 
   private def createSingleVariable(text: String) = {
-    createSingleVariableFrom(NonEmptyString.unsafeFrom(text)).right.get
+    createSingleVariableFrom(NonEmptyString.unsafeFrom(text)).toOption.get
   }
 
   private def createMultiVariable(text: String) = {
-    StartupResolvableVariableCreator.createMultiVariableFrom(NonEmptyString.unsafeFrom(text)).right.get
+    StartupResolvableVariableCreator.createMultiVariableFrom(NonEmptyString.unsafeFrom(text)).toOption.get
   }
 
   private def mockEnvVarProvider(envs: Map[String, Option[String]]) = {

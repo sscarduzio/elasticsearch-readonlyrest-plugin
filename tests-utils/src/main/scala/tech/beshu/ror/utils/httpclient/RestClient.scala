@@ -34,8 +34,8 @@ import org.apache.http.util.EntityUtils
 import org.apache.http.{Header, HttpResponse}
 
 import java.net.URI
-import scala.collection.JavaConverters._
 import scala.concurrent.duration._
+import scala.collection.JavaConverters._
 import scala.language.postfixOps
 import scala.util.Try
 
@@ -72,7 +72,7 @@ class RestClient(ssl: Boolean,
       .runSyncUnsafe()
   }
 
-  private def createUnderlyingClient(headers: Traversable[Header]) = {
+  private def createUnderlyingClient(headers: Iterable[Header]) = {
     val timeout = readTimeout()
     val builder =
       if (ssl) withSsl(HttpClients.custom())
