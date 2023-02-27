@@ -10,7 +10,7 @@ spec:
     - secretName: amin-role-secret
   nodeSets:
   - name: default
-    count: 2
+    count: 1
     config:
       xpack.security.authc.anonymous.username: anonymous
       xpack.security.authc.anonymous.roles: superuser, admins

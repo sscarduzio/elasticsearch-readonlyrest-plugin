@@ -5,6 +5,7 @@ metadata:
 spec:
   version: 8.6.1
   image: coutopl/kbn_8.6.1_ror_1.47.0-eck-poc
+#  image: docker.elastic.co/kibana/kibana:8.6.1
   count: 1
   elasticsearchRef:
     name: quickstart

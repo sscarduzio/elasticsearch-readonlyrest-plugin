@@ -20,15 +20,18 @@ import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.rest.action.admin.indices.RestUpgradeActionDeprecated
 import org.elasticsearch.rest.action.cat.RestCatAction
 import org.elasticsearch.rest.{RestChannel, RestHandler, RestRequest}
+import org.elasticsearch.threadpool.ThreadPool
+import org.joor.Reflect.on
 import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.actions.wrappers._cat.rest.RorWrappedRestCatAction
 import tech.beshu.ror.es.actions.wrappers._upgrade.rest.RorWrappedRestUpgradeAction
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.ReflectUtils._
 
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
-class ChannelInterceptingRestHandlerDecorator private(underlying: RestHandler)
+class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandler,
+                                                      sThreadPool: ThreadPool)
   extends RestHandler {
 
   private val wrapped = doPrivileged {
@@ -38,6 +41,8 @@ class ChannelInterceptingRestHandlerDecorator private(underlying: RestHandler)
   override def handleRequest(request: RestRequest, channel: RestChannel, client: NodeClient): Unit = {
     val rorRestChannel = new RorRestChannel(channel)
     ThreadRepo.setRestChannel(rorRestChannel)
+    sThreadPool.
+
     wrapped.handleRequest(request, rorRestChannel, client)
   }
 
@@ -54,6 +59,13 @@ class ChannelInterceptingRestHandlerDecorator private(underlying: RestHandler)
     restHandler match {
       case action: RestCatAction => Some(new RorWrappedRestCatAction(action))
       case action: RestUpgradeActionDeprecated => Some(new RorWrappedRestUpgradeAction(action))
+      case action if action.getClass.getName.contains("SecurityRestFilter") =>
+        Try(on(action).get[RestHandler]("restHandler")) match {
+          case Success(underlyingHandler) =>
+            Some(underlyingHandler)
+          case Failure(_) =>
+            Some(action)
+        }
       case _ => None
     }
   }

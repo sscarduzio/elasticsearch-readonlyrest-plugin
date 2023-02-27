@@ -70,12 +70,7 @@ class RestControllerOps(val restController: RestController) {
           val newHandlersMap = handlersMap
             .asSafeMap
             .map { case (apiVersion, handler) =>
-              Try(on(handler).get[RestHandler]("restHandler")) match {
-                case Success(underlyingHandler) =>
-                  (apiVersion, restHandlerDecorator(underlyingHandler))
-                case Failure(_) =>
-                  (apiVersion, restHandlerDecorator(handler))
-              }
+              (apiVersion, restHandlerDecorator(removeSecurityHandler(handler)))
             }
             .asJava
           (key, newHandlersMap)
@@ -90,9 +85,25 @@ class RestControllerOps(val restController: RestController) {
                                             restHandlerDecorator: RestHandler => RestHandler)
     extends UnaryOperator[RestHandler] {
 
-    override def apply(restHandler: RestHandler): RestHandler = restHandlerDecorator(wrapper.apply(restHandler))
+    override def apply(restHandler: RestHandler): RestHandler = doPrivileged {
+      restHandlerDecorator(removeSecurityHandler(wrapper.apply(restHandler)))
+    }
   }
 
+  private def removeSecurityHandler(handler: RestHandler) = {
+    val toProcessing = handler match {
+      case h: ChannelInterceptingRestHandlerDecorator => h.underlying
+      case h => h
+    }
+    Try(on(toProcessing).get[RestHandler]("restHandler")) match {
+      case Success(underlyingHandler) =>
+        println(s"Removing rest handler wrapper (${toProcessing.getClass.getSimpleName}) from ${underlyingHandler.getClass.getSimpleName}")
+        underlyingHandler
+      case Failure(ex) =>
+        println(s"Leaving handler ${toProcessing.getClass.getSimpleName} as it is\n${ex.printStackTrace()}")
+        toProcessing
+    }
+  }
 }
 
 object RestControllerOps {

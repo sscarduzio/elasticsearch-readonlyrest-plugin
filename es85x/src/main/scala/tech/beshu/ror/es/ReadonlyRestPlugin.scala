@@ -125,6 +125,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   SecurityProviderConfiguratorForFips.configureIfRequired(fipsConfig)
 
+  private var sThreadPool: ThreadPool = null
+
   override def createComponents(client: Client,
                                 clusterService: ClusterService,
                                 threadPool: ThreadPool,
@@ -139,6 +141,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                 tracer: Tracer,
                                 allocationDeciders: AllocationDeciders): util.Collection[AnyRef] = {
     doPrivileged {
+      sThreadPool = threadPool
       ilaf = new IndexLevelActionFilter(
         client.settings().get("node.name"),
         clusterService,
