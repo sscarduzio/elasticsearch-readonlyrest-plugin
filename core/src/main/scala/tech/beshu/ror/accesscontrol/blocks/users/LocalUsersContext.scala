@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.El
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch._
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices._
 import tech.beshu.ror.accesscontrol.blocks.rules.http._
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule, KibanaUserDataRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.LocalUsers
@@ -59,6 +59,7 @@ object LocalUsersContext {
     implicit val hostsRule: LocalUsersSupport[HostsRule] = NotAvailableLocalUsers
     implicit val indicesRule: LocalUsersSupport[IndicesRule] = NotAvailableLocalUsers
     implicit val jwtAuthRule: LocalUsersSupport[JwtAuthRule] = NotAvailableLocalUsers
+    implicit val kibanaUserDataRule: LocalUsersSupport[KibanaUserDataRule] = NotAvailableLocalUsers
     implicit val kibanaAccessRule: LocalUsersSupport[KibanaAccessRule] = NotAvailableLocalUsers
     implicit val kibanaHideAppsRule: LocalUsersSupport[KibanaHideAppsRule] = NotAvailableLocalUsers
     implicit val kibanaIndexRule: LocalUsersSupport[KibanaIndexRule] = NotAvailableLocalUsers

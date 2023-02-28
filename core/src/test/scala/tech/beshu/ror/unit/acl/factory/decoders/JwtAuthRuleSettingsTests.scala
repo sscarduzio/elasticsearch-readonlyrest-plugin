@@ -23,8 +23,8 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, JwtDef}
-import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule
-import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule.Groups
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule.Groups
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, ClaimName, GroupLike, GroupsLogic, Header, PermittedGroups}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory

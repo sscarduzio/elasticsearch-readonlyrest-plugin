@@ -21,8 +21,8 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions._
-import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthorizationRule
-import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthorizationRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthorizationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthorizationRule.Settings
 import tech.beshu.ror.accesscontrol.domain.GroupLike.{GroupName, GroupNamePattern}
 import tech.beshu.ror.accesscontrol.domain.{GroupLike, GroupsLogic, PermittedGroups, User}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory

@@ -360,7 +360,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    actions: ["cluster:*"]
             |""".stripMargin)
         val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
-        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block contains Kibana Access Rule and Actions Rule. These two cannot be used together in one block.")))))
+        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block contains 'kibana_access' rule and 'actions' rule. These two cannot be used together in one block.")))))
       }
       "block uses user variable without defining authentication rule beforehand" in {
         val config = rorConfigFromUnsafe(

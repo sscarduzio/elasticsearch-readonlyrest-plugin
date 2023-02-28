@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.El
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch._
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices._
 import tech.beshu.ror.accesscontrol.blocks.rules.http._
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule, KibanaUserDataRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport._
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{User, UserIdPatterns}
@@ -67,6 +67,7 @@ object ruleDecoders {
       case HeadersOrRule.Name.name => Some(HeadersOrRuleDecoder)
       case HostsRule.Name.name => Some(HostsRuleDecoder)
       case IndicesRule.Name.name => Some(IndicesRuleDecoders)
+      case KibanaUserDataRule.Name.name => Some(new KibanaUserDataRuleDecoder(globalSettings.configurationIndex))
       case KibanaAccessRule.Name.name => Some(new KibanaAccessRuleDecoder(globalSettings.configurationIndex))
       case KibanaHideAppsRule.Name.name => Some(KibanaHideAppsRuleDecoder)
       case KibanaIndexRule.Name.name => Some(KibanaIndexRuleDecoder)

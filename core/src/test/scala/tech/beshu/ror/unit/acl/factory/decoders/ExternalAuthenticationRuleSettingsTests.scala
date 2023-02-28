@@ -20,7 +20,7 @@ import eu.timepit.refined.auto._
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.{BasicAuthHttpExternalAuthenticationService, CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService}
-import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}

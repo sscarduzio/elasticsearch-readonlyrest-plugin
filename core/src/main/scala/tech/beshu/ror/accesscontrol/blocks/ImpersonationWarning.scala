@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{Impersonati
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch._
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.rules.http._
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule, KibanaUserDataRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.{HostsRule, LocalHostsRule}
 
 final case class ImpersonationWarning(block: Block.Name,
@@ -72,6 +72,7 @@ object ImpersonationWarning {
     implicit val headersOrRule: ImpersonationWarningSupport[HeadersOrRule] = NotSupported
     implicit val hostsRule: ImpersonationWarningSupport[HostsRule] = NotSupported
     implicit val indicesRule: ImpersonationWarningSupport[IndicesRule] = NotSupported
+    implicit val kibanaUserDataRule: ImpersonationWarningSupport[KibanaUserDataRule] = NotSupported
     implicit val kibanaAccessRule: ImpersonationWarningSupport[KibanaAccessRule] = NotSupported
     implicit val kibanaHideAppsRule: ImpersonationWarningSupport[KibanaHideAppsRule] = NotSupported
     implicit val kibanaIndexRule: ImpersonationWarningSupport[KibanaIndexRule] = NotSupported

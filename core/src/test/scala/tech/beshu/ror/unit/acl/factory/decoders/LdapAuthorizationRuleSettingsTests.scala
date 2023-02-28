@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
-import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.GroupLike.{GroupName, GroupNamePattern}
 import tech.beshu.ror.accesscontrol.domain.{GroupLike, GroupsLogic, PermittedGroups}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message

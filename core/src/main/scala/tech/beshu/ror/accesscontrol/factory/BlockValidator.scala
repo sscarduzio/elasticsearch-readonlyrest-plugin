@@ -24,11 +24,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.GroupsOrRule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule, KibanaUserDataRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.RequirementVerifier
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.ComplianceResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.{NotUsingVariable, UsingVariable}
-import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.RuleDoesNotMeetRequirement
+import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaUserDataRuleTogetherWith, RuleDoesNotMeetRequirement}
 
 object BlockValidator {
 
@@ -37,7 +37,8 @@ object BlockValidator {
       validateAuthorizationWithAuthenticationPrinciple(rules),
       validateOnlyOneAuthenticationRulePrinciple(rules),
       validateKibanaAccessRuleAndActionsRuleSeparationPrinciple(rules),
-      validateRequirementsForRulesUsingVariables(rules)
+      validateRequirementsForRulesUsingVariables(rules),
+      validateKibanaUserDataRule(rules),
     ).mapN { case _ => () }
   }
 
@@ -85,6 +86,28 @@ object BlockValidator {
     }
   }
 
+  private def validateKibanaUserDataRule(allRules: NonEmptyList[RuleDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
+    val kibanaUserDataRuleOpt = allRules.map(_.rule).collect { case r: KibanaUserDataRule => r }.headOption
+    kibanaUserDataRuleOpt match {
+      case None => Validated.Valid(())
+      case Some(_) =>
+        NonEmptyList
+          .fromList {
+            allRules
+              .map(_.rule)
+              .collect[KibanaUserDataRuleTogetherWith] {
+                case _: KibanaAccessRule => KibanaUserDataRuleTogetherWith.KibanaAccessRule
+                case _: KibanaHideAppsRule => KibanaUserDataRuleTogetherWith.KibanaHideAppsRule
+                case _: KibanaIndexRule => KibanaUserDataRuleTogetherWith.KibanaIndexRule
+                case _: KibanaTemplateIndexRule => KibanaUserDataRuleTogetherWith.KibanaTemplateIndexRule
+              }
+          } match {
+          case None => Validated.Valid(())
+          case Some(errors) => Validated.Invalid(errors)
+        }
+    }
+  }
+
   private def validateRequirementsForSingleRule(allRules: NonEmptyList[Rule])
                                                (ruleDefinition: RuleDefinition[Rule]): Validated[NonEmptyList[RuleDoesNotMeetRequirement], Unit] = {
     ruleDefinition match {
@@ -104,6 +127,13 @@ object BlockValidator {
     final case class OnlyOneAuthenticationRuleAllowed(authRules: NonEmptyList[AuthenticationRule]) extends BlockValidationError
     case object KibanaAccessRuleTogetherWithActionsRule extends BlockValidationError
     final case class RuleDoesNotMeetRequirement(nonCompliant: ComplianceResult.NonCompliantWith) extends BlockValidationError
+    sealed trait KibanaUserDataRuleTogetherWith extends BlockValidationError
+    object KibanaUserDataRuleTogetherWith {
+      case object KibanaAccessRule extends KibanaUserDataRuleTogetherWith
+      case object KibanaIndexRule extends KibanaUserDataRuleTogetherWith
+      case object KibanaTemplateIndexRule extends KibanaUserDataRuleTogetherWith
+      case object KibanaHideAppsRule extends KibanaUserDataRuleTogetherWith
+    }
   }
 
 }
