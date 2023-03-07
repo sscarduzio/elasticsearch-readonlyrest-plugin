@@ -17,6 +17,7 @@
 
 plugins {
     id "readonlyrest.plugin-common-conventions"
+    id "java-library"
 }
 
 def pluginFullName = pluginName + '-' + version
@@ -27,13 +28,13 @@ compileScala {
 }
 
 dependencies {
-    implementation  project(path: ':core')
-    implementation  group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: esVersion
-    implementation  group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-high-level-client',   version: esVersion
-    implementation  group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.13'
+    api             project(path: ':core')
+    api             group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: esVersion
+    api             group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-high-level-client',   version: esVersion
+    api             group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.13'
     compileOnly     group: 'org.codelibs.elasticsearch.lib',    name: 'plugin-classloader',                     version: esVersion
     compileOnly     group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
-    implementation  group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: esVersion
+    api             group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: esVersion
 }
 
 configurations {

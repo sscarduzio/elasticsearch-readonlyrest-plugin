@@ -19,21 +19,21 @@ plugins {
     id "readonlyrest.plugin-common-conventions"
 }
 
-def proxyFullName = pluginName + '-' + version
+configurations {
+    distJars {
+        extendsFrom runtimeClasspath
+        exclude group: 'org.bouncycastle'
+    }
+}
 
 compileScala {
     sourceCompatibility = 1.8
     targetCompatibility = 1.8
 }
 
-configurations {
-    distJars {
-        exclude group: 'org.bouncycastle'
-    }
-}
-
 dependencies {
-    implementation  project(path: ':es79x')
+    implementation project(path: ':core', configuration: 'default')
+    implementation project(path: ':es79x', configuration: 'default')
 
     implementation  group: 'org.elasticsearch.client',             name: 'elasticsearch-rest-high-level-client',   version: esVersion
     implementation  group: 'com.github.finagle',                   name: 'finchx-circe_2.12',                      version: '0.32.1'
@@ -57,13 +57,17 @@ license {
 
 tasks.register('rorproxy', Jar) {
     dependsOn(configureEsVersion, generateVersionsFile)
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
     manifest {
         attributes 'Implementation-Title': 'ReadonlyREST ES Proxy',
-                'Implementation-Version': project.properties['pluginVersion'],
-                'Main-Class': 'tech.beshu.ror.proxy.Boot'
+                   'Implementation-Version': project.properties['pluginVersion'],
+                   'Main-Class': 'tech.beshu.ror.proxy.Boot'
     }
-    archiveBaseName.convention(pluginName + '-proxy')
-    archiveBaseName.set(pluginName + '-proxy')
-    from { configurations.distJars.collect { it.isDirectory() ? it : zipTree(it) } }
+    archivesBaseName = pluginName + '-proxy'
+    from {
+        configurations.distJars.collect { it.isDirectory() ? it : zipTree(it) }
+    }
     with jar
 }

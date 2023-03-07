@@ -67,7 +67,3 @@ dependencies {
     api group: 'com.lihaoyi',                    name: 'upickle_2.12',                  version: '0.7.1'
 
 }
-
-tasks.register('wrapper', Wrapper) {
-    gradleVersion = '3.5'
-}

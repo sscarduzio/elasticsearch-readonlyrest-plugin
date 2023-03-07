@@ -47,11 +47,6 @@ dependencyCheck {
     suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
 }
 
-compileScala {
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
-}
-
 test {
     testLogging {
         showStandardStreams = true
@@ -60,34 +55,10 @@ test {
     }
 }
 
-configurations {
-    shadowCompile
-    compile.extendsFrom(api)
-}
-
 dependencies {
     api group: 'org.ow2.asm',                   name: 'asm',                              version: '9.3'
     api group: 'io.kevinlee',                   name: 'just-semver_2.12',                 version: '0.5.0'
     api group: 'com.lihaoyi',                   name: 'os-lib_2.12',                      version: '0.8.1'
-    api group: 'org.scala-lang',                name: 'scala-library',                    version: '2.12.8'
-}
-
-license {
-    header rootProject.file('ReadonlyRESTLicenseHeader.txt')
-    skipExistingHeaders true
-    useDefaultMappings = false
-    mapping {
-        java = 'SLASHSTAR_STYLE'
-        scala = 'SLASHSTAR_STYLE'
-    }
-}
-
-githook {
-    hooks {
-        "pre-commit" {
-            shell = "./gradlew license --rerun-tasks"
-        }
-    }
 }
 
 compileScala {
@@ -97,7 +68,7 @@ compileScala {
 }
 
 shadowJar {
-    configurations = [project.configurations.shadowCompile]
+    configurations = [project.configurations.runtimeClasspath]
 }
 
 // Configure Auto Relocation

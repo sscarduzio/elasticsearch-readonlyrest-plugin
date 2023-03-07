@@ -61,10 +61,6 @@ dependencies {
     testImplementation  group: 'org.scalatest',                 name: 'scalatest_2.12',             version: '3.1.0'
 }
 
-tasks.register('wrapper', Wrapper) {
-    gradleVersion = '3.5'
-}
-
 tasks.register('ldapserver', JavaExec) {
     systemProperties = System.properties
     mainClass.set('tech.beshu.ror.integration.LDAPServer')

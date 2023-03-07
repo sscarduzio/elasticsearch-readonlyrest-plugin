@@ -23,8 +23,8 @@ buildscript {
 plugins {
     id "readonlyrest.base-common-conventions"
 
-    id "com.github.johnrengelman.shadow" version "7.1.2"
-    id "com.github.maiflai.scalatest"    version "0.32"
+    id "com.github.johnrengelman.shadow"        version "7.1.2"
+    id "com.github.maiflai.scalatest"           version "0.32"
 }
 
 repositories {
@@ -46,11 +46,6 @@ dependencyCheck {
     suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
 }
 
-compileScala {
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
-}
-
 test {
     testLogging {
         showStandardStreams = true
@@ -60,9 +55,11 @@ test {
 }
 
 configurations {
-    shadowCompile
-    compile.extendsFrom(shadowCompile)
+    shadowRuntime {
+        extendsFrom runtimeClasspath
+    }
 }
+
 dependencies {
     implementation project(path: ':ror-tools-core')
     implementation group: 'com.github.scopt',              name: 'scopt_2.12',                       version: '4.0.1'
@@ -83,8 +80,8 @@ shadowJar {
     manifest {
         attributes 'Main-Class': 'tech.beshu.ror.tools.RorToolsApp'
     }
-    archiveFileName = "ror-tools.${archiveExtension}"
-    configurations = [project.configurations.shadowCompile]
+    archiveFileName = "ror-tools.${getArchiveExtension().get()}"
+    configurations = [project.configurations.shadowRuntime]
 }
 
 // Configure Auto Relocation
