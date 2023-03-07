@@ -58,7 +58,7 @@ object VariableContext {
     implicit val hostsRule: VariableUsage[HostsRule] = UsingVariable[HostsRule](rule => rule.settings.allowedHosts.toNonEmptyList)
     implicit val indicesRule: VariableUsage[IndicesRule] = UsingVariable[IndicesRule](rule => rule.settings.allowedIndices.toNonEmptyList)
     implicit val kibanaUserDataRule: VariableUsage[KibanaUserDataRule] = UsingVariable[KibanaUserDataRule](rule =>
-      NonEmptyList.of(rule.settings.kibanaIndex, rule.settings.kibanaTemplateIndex)
+      NonEmptyList.of(rule.settings.kibanaIndex, rule.settings.kibanaTemplateIndex.toList: _*)
     )
     implicit val kibanaIndexRule: VariableUsage[KibanaIndexRule] = UsingVariable[KibanaIndexRule](rule => NonEmptyList.one(rule.settings.kibanaIndex))
     implicit val kibanaTemplateIndexRule: VariableUsage[KibanaTemplateIndexRule] = UsingVariable[KibanaTemplateIndexRule](rule => NonEmptyList.one(rule.settings.kibanaTemplateIndex))

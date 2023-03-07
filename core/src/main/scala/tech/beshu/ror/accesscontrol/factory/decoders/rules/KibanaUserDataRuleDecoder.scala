@@ -16,17 +16,15 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
-import cats.data.NonEmptySet
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, KibanaApp, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, KibanaAccess, KibanaApp, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex)
@@ -37,11 +35,15 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex)
       .instance { c =>
         for {
           access <- c.downField("access").as[KibanaAccess]
-          kibanaIndex <- c.downField("kibana_index").as[RuntimeSingleResolvableVariable[IndexName.Kibana]]
-          kibanaTemplateIndex <- c.downField("kibana_template_index").as[RuntimeSingleResolvableVariable[IndexName.Kibana]]
-          appsToHide <- c.downField("hide_app").as[NonEmptySet[KibanaApp]]
+          kibanaIndex <- c.downField("kibana_index").as[Option[RuntimeSingleResolvableVariable[IndexName.Kibana]]]
+          kibanaTemplateIndex <- c.downField("kibana_template_index").as[Option[RuntimeSingleResolvableVariable[IndexName.Kibana]]]
+          appsToHide <- c.downField("hide_app").as[Set[KibanaApp]]
         } yield new KibanaUserDataRule(KibanaUserDataRule.Settings(
-          access, kibanaIndex, kibanaTemplateIndex, appsToHide, configurationIndex
+          access,
+          kibanaIndex.getOrElse(RuntimeSingleResolvableVariable.AlreadyResolved(ClusterIndexName.Local.kibanaDefault)),
+          kibanaTemplateIndex,
+          appsToHide,
+          configurationIndex
         ))
       }
       .map(RuleDefinition.create[KibanaUserDataRule](_))

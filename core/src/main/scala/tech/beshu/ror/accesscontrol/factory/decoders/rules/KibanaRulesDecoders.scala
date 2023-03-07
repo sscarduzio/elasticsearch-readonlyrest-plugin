@@ -32,7 +32,7 @@ object KibanaHideAppsRuleDecoder
 
   override protected def decoder: Decoder[RuleDefinition[KibanaHideAppsRule]] = {
     DecoderHelpers
-      .decodeNonEmptyStringLikeOrNonEmptySet(KibanaApp.apply)
+      .decodeNonEmptyStringLikeOrUniqueNonEmptyList(KibanaApp.apply)
       .map(apps => new KibanaHideAppsRule(Settings(apps)))
       .map(RuleDefinition.create(_))
   }

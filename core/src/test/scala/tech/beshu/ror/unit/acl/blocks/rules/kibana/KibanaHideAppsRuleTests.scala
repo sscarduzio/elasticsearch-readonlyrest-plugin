@@ -31,13 +31,14 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class KibanaHideAppsRuleTests extends AnyWordSpec with MockFactory {
 
   "A KibanaHideAppsRule" should {
     "always match" should {
-      "set kibana app header" in {
-        val rule = new KibanaHideAppsRule(KibanaHideAppsRule.Settings(NonEmptySet.of(KibanaApp("app1"))))
+      "set kibana app" in {
+        val rule = new KibanaHideAppsRule(KibanaHideAppsRule.Settings(UniqueNonEmptyList.of(KibanaApp("app1"))))
         val requestContext = mock[RequestContext]
         val blockContext = CurrentUserMetadataRequestBlockContext(
           requestContext = requestContext,
@@ -53,7 +54,7 @@ class KibanaHideAppsRuleTests extends AnyWordSpec with MockFactory {
             userMetadata = UserMetadata
               .empty
               .withLoggedUser(DirectlyLoggedUser(Id("user1")))
-              .withHiddenKibanaApps(NonEmptySet.one(KibanaApp("app1"))),
+              .withHiddenKibanaApps(UniqueNonEmptyList.of(KibanaApp("app1"))),
             responseHeaders = Set.empty,
             responseTransformations = List.empty
           )

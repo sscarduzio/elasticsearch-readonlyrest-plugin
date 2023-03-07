@@ -18,25 +18,31 @@ package tech.beshu.ror.unit.acl.blocks.rules.kibana
 
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule._
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.IndexName.Kibana
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, RorConfigurationIndex}
 
-import scala.language.postfixOps
-
-class KibanaAccessRuleTests
+class KibanaUserDataRuleTests
   extends AnyWordSpec
-    with BaseKibanaAccessBasedTests[KibanaAccessRule, KibanaAccessRule.Settings] {
+    with BaseKibanaAccessBasedTests[KibanaUserDataRule, KibanaUserDataRule.Settings] {
 
-  override protected def createRuleFrom(settings: Settings): KibanaAccessRule = new KibanaAccessRule(settings)
+  override protected def createRuleFrom(settings: KibanaUserDataRule.Settings): KibanaUserDataRule =
+    new KibanaUserDataRule(settings)
 
-  override protected def settingsOf(access: KibanaAccess,
-                                    customKibanaIndex: Option[IndexName.Kibana] = None): Settings =
-    Settings(access, RorConfigurationIndex(rorIndex))
+  override protected def settingsOf(access: domain.KibanaAccess,
+                                    customKibanaIndex: Option[IndexName.Kibana] = None): KibanaUserDataRule.Settings =
+    KibanaUserDataRule.Settings(
+      access = access,
+      kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
+      kibanaTemplateIndex = None,
+      appsToHide = Set.empty,
+      rorIndex = RorConfigurationIndex(rorIndex)
+    )
 
-  override protected def defaultOutputBlockContextAssertion(settings: Settings,
-                                                            indices: Set[ClusterIndexName],
+  override protected def defaultOutputBlockContextAssertion(settings: KibanaUserDataRule.Settings,
+                                                            indices: Set[domain.ClusterIndexName],
                                                             customKibanaIndex: Option[Kibana]): BlockContext => Unit =
     (blockContext: BlockContext) => {
       assertBlockContext(

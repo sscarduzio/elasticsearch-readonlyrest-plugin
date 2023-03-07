@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
-import cats.data.NonEmptySet
-import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
@@ -25,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{MatchingAlwaysRule, 
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaHideAppsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.KibanaApp
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class KibanaHideAppsRule(val settings: Settings)
   extends MatchingAlwaysRule with Logging {
@@ -43,6 +41,6 @@ object KibanaHideAppsRule {
     override val name = Rule.Name("kibana_hide_apps")
   }
 
-  final case class Settings(kibanaAppsToHide: NonEmptySet[KibanaApp])
+  final case class Settings(kibanaAppsToHide: UniqueNonEmptyList[KibanaApp])
 
 }

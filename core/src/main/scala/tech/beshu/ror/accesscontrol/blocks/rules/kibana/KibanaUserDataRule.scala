@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
-import cats.data.NonEmptySet
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{RegularRule, RuleName, RuleResult}
@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule.Setti
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, KibanaApp, RorConfigurationIndex}
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class KibanaUserDataRule(override val settings: Settings)
   extends BaseKibanaRule(settings) with RegularRule {
@@ -40,13 +41,27 @@ class KibanaUserDataRule(override val settings: Settings)
 
   private def matched[B <: BlockContext : BlockContextUpdater](blockContext: B): Fulfilled[B] = {
     RuleResult.Fulfilled[B] {
-      blockContext.withUserMetadata { metadata =>
-        metadata
-          .withKibanaAccess(settings.access)
-          .withKibanaIndex(resolveKibanaIndex(using = blockContext))
-          .withKibanaTemplateIndex(resolveKibanaIndexTemplate(using = blockContext))
-          .withHiddenKibanaApps(settings.appsToHide)
+      blockContext.withUserMetadata {
+        updateUserMetadata(blockContext)
       }
+    }
+  }
+
+  private def updateUserMetadata(using: BlockContext) = {
+    applyToUserMetadata(Some(settings.access))(
+      _.withKibanaAccess(_)
+    ) andThen {
+      applyToUserMetadata(Some(resolveKibanaIndex(using)))(
+        _.withKibanaIndex(_)
+      )
+    } andThen {
+      applyToUserMetadata(resolveKibanaIndexTemplate(using))(
+        _.withKibanaTemplateIndex(_)
+      )
+    } andThen {
+      applyToUserMetadata(resolveAppsToHide)(
+        _.withHiddenKibanaApps(_)
+      )
     }
   }
 
@@ -59,8 +74,18 @@ class KibanaUserDataRule(override val settings: Settings)
   private def resolveKibanaIndexTemplate(using: BlockContext) =
     settings
       .kibanaTemplateIndex
-      .resolve(using)
-      .toTry.get
+      .flatMap(_.resolve(using).toOption)
+
+  private lazy val resolveAppsToHide =
+    UniqueNonEmptyList.fromTraversable(settings.appsToHide)
+
+  private def applyToUserMetadata[T](opt: Option[T])
+                                    (userMetadataUpdateFunction: (UserMetadata, T) => UserMetadata): UserMetadata => UserMetadata = {
+    opt match {
+      case Some(value) => userMetadataUpdateFunction(_, value)
+      case None => identity[UserMetadata]
+    }
+  }
 }
 
 object KibanaUserDataRule {
@@ -71,8 +96,8 @@ object KibanaUserDataRule {
 
   final case class Settings(override val access: KibanaAccess,
                             kibanaIndex: RuntimeSingleResolvableVariable[IndexName.Kibana],
-                            kibanaTemplateIndex: RuntimeSingleResolvableVariable[IndexName.Kibana],
-                            appsToHide: NonEmptySet[KibanaApp],
+                            kibanaTemplateIndex: Option[RuntimeSingleResolvableVariable[IndexName.Kibana]],
+                            appsToHide: Set[KibanaApp],
                             override val rorIndex: RorConfigurationIndex)
     extends BaseKibanaRule.Settings(access, rorIndex)
 }

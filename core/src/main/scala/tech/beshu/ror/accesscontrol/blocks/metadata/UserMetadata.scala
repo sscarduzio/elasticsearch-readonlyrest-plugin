@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.metadata
 
-import cats.data.NonEmptySet
 import cats.implicits._
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain._
@@ -50,7 +49,7 @@ final case class UserMetadata private(loggedUser: Option[LoggedUser],
   def withKibanaIndex(index: IndexName.Kibana): UserMetadata = this.copy(kibanaIndex = Some(index))
   def withKibanaTemplateIndex(index: IndexName.Kibana): UserMetadata = this.copy(kibanaTemplateIndex = Some(index))
   def addHiddenKibanaApp(app: KibanaApp): UserMetadata = this.copy(hiddenKibanaApps = this.hiddenKibanaApps + app)
-  def withHiddenKibanaApps(apps: NonEmptySet[KibanaApp]): UserMetadata = this.copy(hiddenKibanaApps = this.hiddenKibanaApps ++ apps.toSortedSet)
+  def withHiddenKibanaApps(apps: UniqueNonEmptyList[KibanaApp]): UserMetadata = this.copy(hiddenKibanaApps = this.hiddenKibanaApps ++ apps)
   def withKibanaAccess(access: KibanaAccess): UserMetadata = this.copy(kibanaAccess = Some(access))
   def withUserOrigin(origin: UserOrigin): UserMetadata = this.copy(userOrigin = Some(origin))
   def withJwtToken(token: JwtTokenPayload): UserMetadata = this.copy(jwtToken = Some(token))
