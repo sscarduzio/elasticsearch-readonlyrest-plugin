@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW, Unrestricted}
@@ -37,10 +38,10 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-trait BaseKibanaAccessBasedTests[RULE <: Rule, SETTINGS]
+abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
   extends AnyWordSpec with Inside with BlockContextAssertion {
 
-  "A KibanaAccessRule" when {
+  s"A '${RuleName[RULE].name.value}' rule" when {
     "All and any actions are passed when Unrestricted access" in {
       val anyActions = Set("xyz") ++ asScalaSet(ADMIN_ACTIONS) ++ asScalaSet(RW_ACTIONS) ++ asScalaSet(RO_ACTIONS) ++ asScalaSet(CLUSTER_ACTIONS)
       anyActions.map(Action.apply).foreach { action =>
@@ -345,13 +346,13 @@ trait BaseKibanaAccessBasedTests[RULE <: Rule, SETTINGS]
   protected def settingsOf(access: KibanaAccess,
                            customKibanaIndex: Option[IndexName.Kibana] = None): SETTINGS
 
-  protected lazy val rorIndex = fullIndexName(".readonlyrest")
+  protected lazy val rorIndex: IndexName.Full = fullIndexName(".readonlyrest")
 
   protected def defaultOutputBlockContextAssertion(settings: SETTINGS,
                                                    indices: Set[ClusterIndexName],
                                                    customKibanaIndex: Option[IndexName.Kibana]): BlockContext => Unit
 
-  protected def kibanaIndexFrom(customKibanaIndex: Option[IndexName.Kibana]) = {
+  protected def kibanaIndexFrom(customKibanaIndex: Option[IndexName.Kibana]): Local = {
     customKibanaIndex match {
       case Some(index) => index
       case None => Local(fullIndexName(".kibana"))

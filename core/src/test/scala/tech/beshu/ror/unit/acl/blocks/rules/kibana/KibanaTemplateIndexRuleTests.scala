@@ -47,7 +47,8 @@ class KibanaTemplateIndexRuleTests
             requestContext,
             UserMetadata.empty.withKibanaTemplateIndex(localIndexName("kibana_template_index")),
             Set.empty,
-            List.empty)
+            List.empty
+          )
         ))
       }
       "not set kibana index if cannot be resolved" in {

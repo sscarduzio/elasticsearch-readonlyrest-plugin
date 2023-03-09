@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.kibana
 
-import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule._
@@ -26,8 +25,7 @@ import tech.beshu.ror.accesscontrol.domain._
 import scala.language.postfixOps
 
 class KibanaAccessRuleTests
-  extends AnyWordSpec
-    with BaseKibanaAccessBasedTests[KibanaAccessRule, KibanaAccessRule.Settings] {
+  extends BaseKibanaAccessBasedTests[KibanaAccessRule, KibanaAccessRule.Settings] {
 
   override protected def createRuleFrom(settings: Settings): KibanaAccessRule = new KibanaAccessRule(settings)
 

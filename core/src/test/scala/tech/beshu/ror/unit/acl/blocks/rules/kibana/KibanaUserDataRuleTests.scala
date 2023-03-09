@@ -16,17 +16,89 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.kibana
 
-import org.scalatest.wordspec.AnyWordSpec
+import eu.timepit.refined.auto._
+import monix.execution.Scheduler.Implicits.global
+import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.IndexName.Kibana
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, KibanaAccess, KibanaApp, RorConfigurationIndex}
+import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 class KibanaUserDataRuleTests
-  extends AnyWordSpec
-    with BaseKibanaAccessBasedTests[KibanaUserDataRule, KibanaUserDataRule.Settings] {
+  extends BaseKibanaAccessBasedTests[KibanaUserDataRule, KibanaUserDataRule.Settings] {
+
+  s"A '${RuleName[KibanaUserDataRule].name.value}' rule" when {
+    "kibana index template is configured" should {
+      "pass the index template to the User Metadata object in the rule matches" in {
+        val kibanaTemplateIndex = localIndexName("kibana_template_index")
+        val rule = createRuleFrom(KibanaUserDataRule.Settings(
+          access = KibanaAccess.Unrestricted,
+          kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
+          kibanaTemplateIndex = Some(AlreadyResolved(kibanaTemplateIndex)),
+          appsToHide = Set.empty,
+          rorIndex = RorConfigurationIndex(rorIndex)
+        ))
+        val blockContext = checkRule(rule)
+        blockContext.userMetadata should be {
+          UserMetadata
+            .empty
+            .withKibanaAccess(KibanaAccess.Unrestricted)
+            .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
+            .withKibanaTemplateIndex(kibanaTemplateIndex)
+        }
+      }
+    }
+    "kibana apps are configured" should {
+      "pass the apps to the User Metadata object in the rule matches" in {
+        val apps = UniqueNonEmptyList.of(KibanaApp("app1"), KibanaApp("app2"))
+        val rule = createRuleFrom(KibanaUserDataRule.Settings(
+          access = KibanaAccess.Unrestricted,
+          kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
+          kibanaTemplateIndex = None,
+          appsToHide = apps.toSet,
+          rorIndex = RorConfigurationIndex(rorIndex)
+        ))
+        val blockContext = checkRule(rule)
+        blockContext.userMetadata should be {
+          UserMetadata
+            .empty
+            .withKibanaAccess(KibanaAccess.Unrestricted)
+            .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
+            .withHiddenKibanaApps(apps)
+        }
+      }
+    }
+  }
+
+  private def checkRule(rule: KibanaUserDataRule): BlockContext = {
+    val requestContext = MockRequestContext.indices
+    val blockContext = GeneralIndexRequestBlockContext(
+      requestContext = requestContext,
+      userMetadata = UserMetadata.from(requestContext),
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty,
+      filteredIndices = Set.empty,
+      allAllowedIndices = Set.empty
+    )
+    val result = rule.check(blockContext).runSyncUnsafe(1 second)
+    result match {
+      case RuleResult.Fulfilled(blockContext) =>
+        blockContext
+      case RuleResult.Rejected(_) =>
+        fail("Expected rule matched")
+    }
+  }
 
   override protected def createRuleFrom(settings: KibanaUserDataRule.Settings): KibanaUserDataRule =
     new KibanaUserDataRule(settings)

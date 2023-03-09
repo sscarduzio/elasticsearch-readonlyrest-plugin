@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.El
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch._
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices._
 import tech.beshu.ror.accesscontrol.blocks.rules.http._
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule, KibanaUserDataRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana._
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport._
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{User, UserIdPatterns}
@@ -37,6 +37,11 @@ import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules._
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth._
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.elasticsearch._
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.http._
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.kibana._
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.transport._
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.providers.UuidProvider
