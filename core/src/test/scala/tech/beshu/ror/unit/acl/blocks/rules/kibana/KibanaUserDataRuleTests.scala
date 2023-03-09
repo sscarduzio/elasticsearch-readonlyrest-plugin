@@ -35,7 +35,7 @@ class KibanaUserDataRuleTests
                                     customKibanaIndex: Option[IndexName.Kibana] = None): KibanaUserDataRule.Settings =
     KibanaUserDataRule.Settings(
       access = access,
-      kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
+      kibanaIndex = AlreadyResolved(customKibanaIndex.getOrElse(ClusterIndexName.Local.kibanaDefault)),
       kibanaTemplateIndex = None,
       appsToHide = Set.empty,
       rorIndex = RorConfigurationIndex(rorIndex)
