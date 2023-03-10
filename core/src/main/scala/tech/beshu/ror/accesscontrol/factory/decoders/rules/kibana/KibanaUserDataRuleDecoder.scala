@@ -25,10 +25,14 @@ import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, KibanaA
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.orders.kibanaAppOrder
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex)
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaUserDataRule] {
+
+  private implicit val uniqueNonEmptyListOfKibanaAppsDecoder: Decoder[Set[KibanaApp]] =
+    DecoderHelpers.decodeStringLikeOrSet[KibanaApp]
 
   override protected def decoder: Decoder[Block.RuleDefinition[KibanaUserDataRule]] = {
     Decoder
@@ -37,12 +41,12 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex)
           access <- c.downField("access").as[KibanaAccess]
           kibanaIndex <- c.downField("kibana_index").as[Option[RuntimeSingleResolvableVariable[IndexName.Kibana]]]
           kibanaTemplateIndex <- c.downField("kibana_template_index").as[Option[RuntimeSingleResolvableVariable[IndexName.Kibana]]]
-          appsToHide <- c.downField("hide_app").as[Set[KibanaApp]]
+          appsToHide <- c.downField("hide_apps").as[Option[Set[KibanaApp]]]
         } yield new KibanaUserDataRule(KibanaUserDataRule.Settings(
           access,
           kibanaIndex.getOrElse(RuntimeSingleResolvableVariable.AlreadyResolved(ClusterIndexName.Local.kibanaDefault)),
           kibanaTemplateIndex,
-          appsToHide,
+          appsToHide.getOrElse(Set.empty),
           configurationIndex
         ))
       }
