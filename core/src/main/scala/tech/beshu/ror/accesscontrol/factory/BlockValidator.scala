@@ -20,7 +20,7 @@ import cats.data.Validated._
 import cats.data._
 import cats.syntax.all._
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.GroupsOrRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.{GroupsAndRule, GroupsOrRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule
@@ -36,7 +36,7 @@ object BlockValidator {
     (
       validateAuthorizationWithAuthenticationPrinciple(rules),
       validateOnlyOneAuthenticationRulePrinciple(rules),
-      validateKibanaAccessRuleAndActionsRuleSeparationPrinciple(rules),
+      validateKibanaRuleAndActionsRuleSeparationPrinciple(rules),
       validateRequirementsForRulesUsingVariables(rules),
       validateKibanaUserDataRule(rules),
     ).mapN { case _ => () }
@@ -55,7 +55,8 @@ object BlockValidator {
       .map(_.rule)
       .collect { case a: AuthenticationRule => a }
       .filter {
-        case _: GroupsOrRule => false // todo: only groups or?
+        case _: GroupsOrRule => false
+        case _: GroupsAndRule => false
         case _ => true
       } match {
       case Nil | _ :: Nil =>
@@ -67,14 +68,17 @@ object BlockValidator {
     }
   }
 
-  private def validateKibanaAccessRuleAndActionsRuleSeparationPrinciple(rules: NonEmptyList[RuleDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
-    val kibanaAccessRules = rules.map(_.rule).collect { case r: KibanaAccessRule => r }
+  private def validateKibanaRuleAndActionsRuleSeparationPrinciple(rules: NonEmptyList[RuleDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
+    val kibanaAccessRules = rules.map(_.rule).collect {
+      case r: KibanaAccessRule => r
+      case r: KibanaUserDataRule => r
+    }
     val actionsRules = rules.map(_.rule).collect { case r: ActionsRule => r }
     (kibanaAccessRules, actionsRules) match {
       case (Nil, Nil) => Validated.Valid(())
       case (Nil, _) => Validated.Valid(())
       case (_, Nil) => Validated.Valid(())
-      case (_, _) => Validated.Invalid(NonEmptyList.one(BlockValidationError.KibanaAccessRuleTogetherWithActionsRule))
+      case (_, _) => Validated.Invalid(NonEmptyList.one(BlockValidationError.KibanaRuleTogetherWithActionsRule))
     }
   }
 
@@ -125,7 +129,7 @@ object BlockValidator {
   object BlockValidationError {
     case object AuthorizationWithoutAuthentication extends BlockValidationError
     final case class OnlyOneAuthenticationRuleAllowed(authRules: NonEmptyList[AuthenticationRule]) extends BlockValidationError
-    case object KibanaAccessRuleTogetherWithActionsRule extends BlockValidationError
+    case object KibanaRuleTogetherWithActionsRule extends BlockValidationError
     final case class RuleDoesNotMeetRequirement(nonCompliant: ComplianceResult.NonCompliantWith) extends BlockValidationError
     sealed trait KibanaUserDataRuleTogetherWith extends BlockValidationError
     object KibanaUserDataRuleTogetherWith {

@@ -41,7 +41,6 @@ abstract class BaseKibanaRule(val settings: Settings) extends Logging {
   import BaseKibanaRule._
 
   protected def shouldMatch: ProcessingContext = {
-    // todo: not logged user + current metadata request = not matched rule
     isUnrestrictedAccessConfigured ||
       isCurrentUserMetadataRequest ||
       isDevNullKibanaRelated ||

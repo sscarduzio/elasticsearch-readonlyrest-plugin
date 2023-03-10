@@ -46,33 +46,38 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
       |
       |  - name: "Template Tenancy"
       |    verbosity: error
-      |    kibana_access: admin
-      |    kibana_index: ".kibana_template"
+      |    kibana:
+      |      access: admin
+      |      kibana_index: ".kibana_template"
       |    auth_key: john:dev
       |
       |  - name: "Read-Write access with RoR custom kibana index"
       |    indices: [".kibana_ror_custom", ".reporting.kibana_ror_custom-*", "logstash*", "readonlyrest_audit-*"]
-      |    kibana_index: ".kibana_ror_custom"
-      |    kibana_access: rw
+      |    kibana:
+      |      access: rw
+      |      kibana_index: ".kibana_ror_custom"
       |    groups: ["RW_ror_custom"]
       |
       |  - name: PERSONAL_GRP
       |    groups: [ Personal ]
-      |    kibana_access: rw
-      |    kibana_hide_apps: [ "Enterprise Search|Overview", "Observability" ]
-      |    kibana_index: '.kibana_@{user}'
+      |    kibana:
+      |      access: rw
+      |      hide_apps: [ "Enterprise Search|Overview", "Observability" ]
+      |      kibana_index: '.kibana_@{user}'
       |
       |  - name: ADMIN_GRP
       |    groups: [ Administrators ]
-      |    kibana_access: admin
-      |    kibana_hide_apps: [ "Enterprise Search|Overview", "Observability" ]
-      |    kibana_index: '.kibana_admins'
+      |    kibana:
+      |      access: admin
+      |      kibana_hide_apps: [ "Enterprise Search|Overview", "Observability" ]
+      |      kibana_index: '.kibana_admins'
       |
       |  - name: Infosec
       |    groups: [ Infosec ]
-      |    kibana_access: rw
-      |    kibana_hide_apps: [ "Enterprise Search|Overview", "Observability" ]
-      |    kibana_index: .kibana_infosec
+      |    kibana:
+      |      access: rw
+      |      kibana_hide_apps: [ "Enterprise Search|Overview", "Observability" ]
+      |      kibana_index: .kibana_infosec
       |
       |  users:
       |  - username: testuser_ro_master

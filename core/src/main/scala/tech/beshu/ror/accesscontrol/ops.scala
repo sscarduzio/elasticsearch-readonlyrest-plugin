@@ -345,8 +345,8 @@ object show {
         s"The '${block.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule."
       case BlockValidationError.OnlyOneAuthenticationRuleAllowed(authRules) =>
         s"The '${block.show}' block should contain only one authentication rule, but contains: [${authRules.map(_.name.show).mkString_(",")}]"
-      case BlockValidationError.KibanaAccessRuleTogetherWithActionsRule =>
-        s"The '${block.show}' block contains '${KibanaAccessRule.Name.name.show}' rule and '${ActionsRule.Name.name.show}' rule. These two cannot be used together in one block."
+      case BlockValidationError.KibanaRuleTogetherWithActionsRule =>
+        s"The '${block.show}' block contains '${KibanaUserDataRule.Name.name.show}' rule (or deprecated '${KibanaAccessRule.Name.name.show}' rule) and '${ActionsRule.Name.name.show}' rule. These two cannot be used together in one block."
       case BlockValidationError.RuleDoesNotMeetRequirement(complianceResult) =>
         s"The '${block.show}' block doesn't meet requirements for defined variables. ${complianceResult.show}"
       case error: BlockValidationError.KibanaUserDataRuleTogetherWith =>

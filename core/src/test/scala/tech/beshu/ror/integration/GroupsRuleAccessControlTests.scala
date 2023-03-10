@@ -68,7 +68,8 @@ class GroupsRuleAccessControlTests
       |    jwt_auth: "jwt1"
       |
       |  - name: "::ELKADMIN::"
-      |    kibana_access: unrestricted
+      |    kibana:
+      |      access: unrestricted
       |    groups: ["admin"]
       |
       |  users:
