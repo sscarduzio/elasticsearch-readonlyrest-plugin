@@ -16,19 +16,19 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.templates
 
-import cats.implicits._
 import cats.data.NonEmptyList
+import cats.implicits._
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.resultBasedOnCondition
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingIndexTemplateAndGetAllowedOnes, GettingIndexTemplates}
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 private[indices] trait IndexTemplateIndices
   extends Logging {
@@ -116,10 +116,10 @@ private[indices] trait IndexTemplateIndices
   }
 
   private def processAddingIndexTemplate(newTemplateName: TemplateName,
-                                           newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                           aliases: Set[ClusterIndexName])
-                                          (implicit blockContext: TemplateRequestBlockContext,
-                                           allowedIndices: AllowedIndices): Boolean = {
+                                         newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
+                                         aliases: Set[ClusterIndexName])
+                                        (implicit blockContext: TemplateRequestBlockContext,
+                                         allowedIndices: AllowedIndices): Boolean = {
     logger.debug(
       s"""[${blockContext.requestContext.id.show}] * adding Index Template [${newTemplateName.show}] with index
          | patterns [${newTemplateIndicesPatterns.show}] and aliases [${aliases.show}] ...""".oneLiner

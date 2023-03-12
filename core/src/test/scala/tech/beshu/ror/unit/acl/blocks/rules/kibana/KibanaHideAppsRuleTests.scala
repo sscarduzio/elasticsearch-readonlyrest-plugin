@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.kibana
 
-import cats.data.NonEmptySet
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -24,7 +23,7 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Fulfilled
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaHideAppsRule
 import tech.beshu.ror.accesscontrol.domain.KibanaApp
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser

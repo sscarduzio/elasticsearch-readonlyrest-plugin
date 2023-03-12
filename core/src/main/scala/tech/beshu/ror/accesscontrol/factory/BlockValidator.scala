@@ -20,9 +20,9 @@ import cats.data.Validated._
 import cats.data._
 import cats.syntax.all._
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{GroupsAndRule, GroupsOrRule}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, AuthorizationRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule, KibanaUserDataRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.RequirementVerifier

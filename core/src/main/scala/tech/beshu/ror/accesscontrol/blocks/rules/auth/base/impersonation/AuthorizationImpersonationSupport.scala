@@ -14,20 +14,20 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation
+package tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation
 
 import cats.Eq
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthorizationRule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthorizationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-trait AuthorizationImpersonationSupport extends ImpersonationSupport
+private[rules] trait AuthorizationImpersonationSupport extends ImpersonationSupport
 
-trait SimpleAuthorizationImpersonationSupport extends AuthorizationImpersonationSupport {
+private[rules] trait SimpleAuthorizationImpersonationSupport extends AuthorizationImpersonationSupport {
   this: AuthorizationRule =>
 
   protected def impersonation: Impersonation

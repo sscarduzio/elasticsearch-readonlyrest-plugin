@@ -28,11 +28,11 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.ImpersonationNotAllowed
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ProxyAuthRule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause.ImpersonationNotAllowed
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{Impersonation, ImpersonationSettings}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{Credentials, Header, PlainTextSecret, User}
@@ -86,7 +86,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory with Inside with B
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
                   impersonatedUsersIdPatterns = NonEmptyList.of("userA")
                 )),
-                mocksProvider = NoOpMocksProvider  // not needed in this context
+                mocksProvider = NoOpMocksProvider // not needed in this context
               )),
             )(
               blockContextAssertion = impersonatedUserOutputBlockContextAssertion(
@@ -129,7 +129,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory with Inside with B
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
                   impersonatedUsersIdPatterns = NonEmptyList.of("userA")
                 )),
-                mocksProvider = NoOpMocksProvider  // not needed in this context
+                mocksProvider = NoOpMocksProvider // not needed in this context
               )),
               rejectionCause = Some(ImpersonationNotAllowed)
             )
@@ -144,7 +144,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory with Inside with B
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
                   impersonatedUsersIdPatterns = NonEmptyList.of("userB")
                 )),
-                mocksProvider = NoOpMocksProvider  // not needed in this context
+                mocksProvider = NoOpMocksProvider // not needed in this context
               )),
               rejectionCause = Some(ImpersonationNotAllowed)
             )
@@ -159,7 +159,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory with Inside with B
                   impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
                   impersonatedUsersIdPatterns = NonEmptyList.of("userA")
                 )),
-                mocksProvider = NoOpMocksProvider  // not needed in this context
+                mocksProvider = NoOpMocksProvider // not needed in this context
               ))
             )
           }

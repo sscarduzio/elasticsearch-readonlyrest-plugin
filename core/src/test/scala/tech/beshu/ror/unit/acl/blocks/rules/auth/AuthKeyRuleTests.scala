@@ -18,8 +18,8 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import eu.timepit.refined.auto._
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyRule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
 import tech.beshu.ror.utils.UserIdEq
 

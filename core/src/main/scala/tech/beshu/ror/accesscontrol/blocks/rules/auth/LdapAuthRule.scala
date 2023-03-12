@@ -16,8 +16,9 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
-import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseComposedAuthenticationAndAuthorizationRule, Rule}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule._
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleName}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseComposedAuthenticationAndAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 
 final class LdapAuthRule(val authentication: LdapAuthenticationRule,

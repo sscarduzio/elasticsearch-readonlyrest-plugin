@@ -22,10 +22,11 @@ import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport.ImpersonationWarningExtractor.noWarnings
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.auth._
-import tech.beshu.ror.accesscontrol.blocks.rules.base._
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{Impersonation, ImpersonationSupport}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch._
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.rules.http._

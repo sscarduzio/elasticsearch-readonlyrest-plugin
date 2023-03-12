@@ -19,8 +19,8 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 import eu.timepit.refined.auto._
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeySha256Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.utils.UserIdEq
 

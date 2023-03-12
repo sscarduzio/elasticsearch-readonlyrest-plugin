@@ -30,11 +30,11 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequ
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.{ImpersonationNotAllowed, ImpersonationNotSupported}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthenticationRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause.{ImpersonationNotAllowed, ImpersonationNotSupported}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{Impersonation, ImpersonationSettings}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
@@ -261,7 +261,11 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
   private def mockExternalAuthService(name: NonEmptyString, credentials: Credentials) = {
     new ExternalAuthenticationService {
       override def id: ExternalAuthenticationService.Name = ExternalAuthenticationService.Name(name)
-      override def authenticate(aCredentials: Credentials): Task[Boolean] = Task.delay { credentials == aCredentials }
+
+      override def authenticate(aCredentials: Credentials): Task[Boolean] = Task.delay {
+        credentials == aCredentials
+      }
+
       override def serviceTimeout: Refined[FiniteDuration, Positive] = Refined.unsafeApply(5 second)
     }
   }

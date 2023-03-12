@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.http
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.http.{HeadersAndRule, HeadersOrRule}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}

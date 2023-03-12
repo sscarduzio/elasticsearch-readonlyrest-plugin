@@ -23,10 +23,9 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.AllowsFieldsInRequest
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.AllowsFieldsInRequest._
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater._
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{RegularRule, RuleName, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFLSUpdater}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity

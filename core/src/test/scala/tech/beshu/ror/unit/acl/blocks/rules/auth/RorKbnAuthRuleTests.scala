@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckM
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule.Groups
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._

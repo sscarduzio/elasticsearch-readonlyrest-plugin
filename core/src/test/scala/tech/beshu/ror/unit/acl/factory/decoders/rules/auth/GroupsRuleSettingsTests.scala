@@ -24,10 +24,10 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.{WithGroupsMapping, WithoutGroupsMapping}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
 import tech.beshu.ror.accesscontrol.blocks.rules.auth._
-import tech.beshu.ror.accesscontrol.blocks.rules.base.BasicAuthenticationRule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain._
@@ -56,19 +56,19 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
             assertDecodingSuccess(
               yaml =
                 s"""
-                  |readonlyrest:
-                  |
-                  |  access_control_rules:
-                  |
-                  |  - name: test_block1
-                  |    ${ruleName.name.value}: group1
-                  |
-                  |  users:
-                  |  - username: cartman
-                  |    groups: ["group1", "group3"]
-                  |    auth_key: "cartman:pass"
-                  |
-                  |""".stripMargin,
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    ${ruleName.name.value}: group1
+                   |
+                   |  users:
+                   |  - username: cartman
+                   |    groups: ["group1", "group3"]
+                   |    auth_key: "cartman:pass"
+                   |
+                   |""".stripMargin,
               assertion = rule => {
                 val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("group1").nel)))
                 rule.settings.permittedGroups should be(groups)
@@ -88,19 +88,19 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
             assertDecodingSuccess(
               yaml =
                 s"""
-                  |readonlyrest:
-                  |
-                  |  access_control_rules:
-                  |
-                  |  - name: test_block1
-                  |    ${ruleName.name.value}: group1
-                  |
-                  |  users:
-                  |  - username: car*
-                  |    groups: ["group1", "group3"]
-                  |    auth_key: "cartman:pass"
-                  |
-                  |""".stripMargin,
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    ${ruleName.name.value}: group1
+                   |
+                   |  users:
+                   |  - username: car*
+                   |    groups: ["group1", "group3"]
+                   |    auth_key: "cartman:pass"
+                   |
+                   |""".stripMargin,
               assertion = rule => {
                 val permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("group1").nel)))
                 rule.settings.permittedGroups should be(permittedGroups)
@@ -120,19 +120,19 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
             assertDecodingSuccess(
               yaml =
                 s"""
-                  |readonlyrest:
-                  |
-                  |  access_control_rules:
-                  |
-                  |  - name: test_block1
-                  |    ${ruleName.name.value}: group1
-                  |
-                  |  users:
-                  |  - username: [cartman, "ca*"]
-                  |    groups: ["group1", "group3"]
-                  |    auth_key: "cartman:pass"
-                  |
-                  |""".stripMargin,
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    ${ruleName.name.value}: group1
+                   |
+                   |  users:
+                   |  - username: [cartman, "ca*"]
+                   |    groups: ["group1", "group3"]
+                   |    auth_key: "cartman:pass"
+                   |
+                   |""".stripMargin,
               assertion = rule => {
                 val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("group1").nel)))
                 rule.settings.permittedGroups should be(groups)
@@ -154,23 +154,23 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
             assertDecodingSuccess(
               yaml =
                 s"""
-                  |readonlyrest:
-                  |
-                  |  access_control_rules:
-                  |
-                  |  - name: test_block1
-                  |    ${ruleName.name.value}: [group1, group2]
-                  |
-                  |  users:
-                  |  - username: cartman
-                  |    groups: ["group1", "group3"]
-                  |    auth_key: "cartman:pass"
-                  |
-                  |  - username: morgan
-                  |    groups: ["group2", "group3"]
-                  |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
-                  |
-                  |""".stripMargin,
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    ${ruleName.name.value}: [group1, group2]
+                   |
+                   |  users:
+                   |  - username: cartman
+                   |    groups: ["group1", "group3"]
+                   |    auth_key: "cartman:pass"
+                   |
+                   |  - username: morgan
+                   |    groups: ["group2", "group3"]
+                   |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+                   |
+                   |""".stripMargin,
               assertion = rule => {
                 val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
                   AlreadyResolved(GroupName("group1").nel),
@@ -202,19 +202,19 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
             assertDecodingSuccess(
               yaml =
                 s"""
-                  |readonlyrest:
-                  |
-                  |  access_control_rules:
-                  |
-                  |  - name: test_block1
-                  |    ${ruleName.name.value}: [group1, "group_@{header:test}"]
-                  |
-                  |  users:
-                  |  - username: cartman
-                  |    groups: ["group1", "group3"]
-                  |    auth_key: "cartman:pass"
-                  |
-                  |""".stripMargin,
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    ${ruleName.name.value}: [group1, "group_@{header:test}"]
+                   |
+                   |  users:
+                   |  - username: cartman
+                   |    groups: ["group1", "group3"]
+                   |    auth_key: "cartman:pass"
+                   |
+                   |""".stripMargin,
               assertion = rule => {
                 rule.settings.permittedGroups.permittedGroups.size shouldBe 2
                 rule.settings.permittedGroups.permittedGroups.head should be(AlreadyResolved(GroupName("group1").nel))
@@ -430,23 +430,23 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
         assertDecodingSuccess(
           yaml =
             s"""
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ${ruleName.name.value}: ["group1"]
-              |
-              |  users:
-              |  - username: "*"
-              |    groups: ["group1", "group3"]
-              |    auth_key: "cartman:pass"
-              |
-              |  - username: "*"
-              |    groups: ["group2", "group3"]
-              |    auth_key: "morgan:pass"
-              |
-              |""".stripMargin,
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    ${ruleName.name.value}: ["group1"]
+               |
+               |  users:
+               |  - username: "*"
+               |    groups: ["group1", "group3"]
+               |    auth_key: "cartman:pass"
+               |
+               |  - username: "*"
+               |    groups: ["group2", "group3"]
+               |    auth_key: "morgan:pass"
+               |
+               |""".stripMargin,
           assertion = rule => {
             val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
               AlreadyResolved(GroupName("group1").nel)
@@ -479,24 +479,24 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
         assertDecodingFailure(
           yaml =
             s"""
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ${ruleName.name.value}:
-              |
-              |  users:
-              |  - username: cartman
-              |    groups: ["group1", "group3"]
-              |    auth_key: "cartman:pass"
-              |
-              |""".stripMargin,
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    ${ruleName.name.value}:
+               |
+               |  users:
+               |  - username: cartman
+               |    groups: ["group1", "group3"]
+               |    auth_key: "cartman:pass"
+               |
+               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
               s"""${ruleName.name.value}: null
-                |""".stripMargin
+                 |""".stripMargin
             )))
           }
         )
@@ -505,14 +505,14 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
         assertDecodingFailure(
           yaml =
             s"""
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ${ruleName.name.value}: group1
-              |
-              |""".stripMargin,
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    ${ruleName.name.value}: group1
+               |
+               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${ruleName.name.value}` requires them.")))
@@ -523,19 +523,19 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
         assertDecodingFailure(
           yaml =
             s"""
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ${ruleName.name.value}: group1
-              |
-              |  users:
-              |  - username:
-              |    groups: ["group1", "group3"]
-              |    auth_key: "cartman:pass"
-              |
-              |""".stripMargin,
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    ${ruleName.name.value}: group1
+               |
+               |  users:
+               |  - username:
+               |    groups: ["group1", "group3"]
+               |    auth_key: "cartman:pass"
+               |
+               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of user ID patterns are required")))
@@ -546,19 +546,19 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
         assertDecodingFailure(
           yaml =
             s"""
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ${ruleName.name.value}: group1
-              |
-              |  users:
-              |  - username: []
-              |    groups: ["group1", "group3"]
-              |    auth_key: "cartman:pass"
-              |
-              |""".stripMargin,
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    ${ruleName.name.value}: group1
+               |
+               |  users:
+               |  - username: []
+               |    groups: ["group1", "group3"]
+               |    auth_key: "cartman:pass"
+               |
+               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of user ID patterns are required")))
@@ -569,18 +569,18 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
         assertDecodingFailure(
           yaml =
             s"""
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ${ruleName.name.value}: group1
-              |
-              |  users:
-              |  - groups: ["group1", "group3"]
-              |    auth_key: "cartman:pass"
-              |
-              |""".stripMargin,
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    ${ruleName.name.value}: group1
+               |
+               |  users:
+               |  - groups: ["group1", "group3"]
+               |    auth_key: "cartman:pass"
+               |
+               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message("User definition malformed")))
@@ -591,19 +591,19 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
         assertDecodingFailure(
           yaml =
             s"""
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ${ruleName.name.value}:
-              |
-              |  users:
-              |  - username: cartman
-              |    groups:
-              |    auth_key: "cartman:pass"
-              |
-              |""".stripMargin,
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    ${ruleName.name.value}:
+               |
+               |  users:
+               |  - username: cartman
+               |    groups:
+               |    auth_key: "cartman:pass"
+               |
+               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of group names is required")))
@@ -614,19 +614,19 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
         assertDecodingFailure(
           yaml =
             s"""
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ${ruleName.name.value}:
-              |
-              |  users:
-              |  - username: cartman
-              |    groups: []
-              |    auth_key: "cartman:pass"
-              |
-              |""".stripMargin,
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    ${ruleName.name.value}:
+               |
+               |  users:
+               |  - username: cartman
+               |    groups: []
+               |    auth_key: "cartman:pass"
+               |
+               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of group names is required")))
@@ -637,20 +637,20 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
         assertDecodingFailure(
           yaml =
             s"""
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ${ruleName.name.value}: ["group1"]
-              |
-              |  users:
-              |  - username: cartman
-              |    groups: ["group1", "group3"]
-              |    auth_key: "cartman:pass"
-              |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
-              |
-              |""".stripMargin,
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    ${ruleName.name.value}: ["group1"]
+               |
+               |  users:
+               |  - username: cartman
+               |    groups: ["group1", "group3"]
+               |    auth_key: "cartman:pass"
+               |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+               |
+               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message(
@@ -667,12 +667,12 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
             s"""
                |readonlyrest:
                |
-              |  access_control_rules:
+               |  access_control_rules:
                |
-              |  - name: test_block1
+               |  - name: test_block1
                |    ${ruleName.name.value}: ["group1"]
                |
-              |  users:
+               |  users:
                |  - username: cartman
                |    groups: ["group1", "group3"]
                |    auth_key: "cartman:pass"
@@ -683,7 +683,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |      user_groups_provider: GroupsService1
                |      groups: ["group3"]
                |
-              |  ldaps:
+               |  ldaps:
                |  - name: ldap1
                |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                |    port: ${SingletonLdapContainers.ldap1.ldapPort}
@@ -691,14 +691,14 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
                |
-              |  user_groups_providers:
+               |  user_groups_providers:
                |  - name: GroupsService1
                |    groups_endpoint: "http://localhost:8080/groups"
                |    auth_token_name: "user"
                |    auth_token_passed_as: QUERY_PARAM
                |    response_groups_json_path: "$$..groups[?(@.name)].name"
                |
-              |""".stripMargin,
+               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message(
@@ -713,12 +713,12 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
             s"""
                |readonlyrest:
                |
-              |  access_control_rules:
+               |  access_control_rules:
                |
-              |  - name: test_block1
+               |  - name: test_block1
                |    ${ruleName.name.value}:
                |
-              |  users:
+               |  users:
                |  - username: cartman
                |    groups: ["group1", "group3"]
                |    auth_key: "cartman:pass"
@@ -726,7 +726,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |      name: "ldap1"
                |      groups: ["ldap_group1"]
                |
-              |  ldaps:
+               |  ldaps:
                |  - name: ldap1
                |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                |    port: ${SingletonLdapContainers.ldap1.ldapPort}
@@ -734,7 +734,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
                |
-              |""".stripMargin,
+               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message(
@@ -752,12 +752,12 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
             s"""
                |readonlyrest:
                |
-              |  access_control_rules:
+               |  access_control_rules:
                |
-              |  - name: test_block1
+               |  - name: test_block1
                |    ${ruleName.name.value}:
                |
-              |  users:
+               |  users:
                |  - username: cartman
                |    groups: ["group1", "group3"]
                |    ldap_auth:
@@ -767,7 +767,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |      user_groups_provider: GroupsService1
                |      groups: ["group3"]
                |
-              |  ldaps:
+               |  ldaps:
                |  - name: ldap1
                |    host: ${SingletonLdapContainers.ldap1.ldapHost}
                |    port: ${SingletonLdapContainers.ldap1.ldapPort}
@@ -775,14 +775,14 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
                |
-              |  user_groups_providers:
+               |  user_groups_providers:
                |  - name: GroupsService1
                |    groups_endpoint: "http://localhost:8080/groups"
                |    auth_token_name: "user"
                |    auth_token_passed_as: QUERY_PARAM
                |    response_groups_json_path: "$$..groups[?(@.name)].name"
                |
-              |""".stripMargin,
+               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message(
@@ -798,20 +798,20 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
         assertDecodingFailure(
           yaml =
             s"""
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ${ruleName.name.value}: group1
-              |
-              |  users:
-              |  - username: cartman
-              |    groups: ["group1", "group3"]
-              |    auth_key:
-              |      key: "cartman:pass"
-              |
-              |""".stripMargin,
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    ${ruleName.name.value}: group1
+               |
+               |  users:
+               |  - username: cartman
+               |    groups: ["group1", "group3"]
+               |    auth_key:
+               |      key: "cartman:pass"
+               |
+               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(MalformedValue(
@@ -825,20 +825,20 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
         assertDecodingFailure(
           yaml =
             s"""
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ${ruleName.name.value}:
-              |
-              |  users:
-              |  - username: cartman
-              |    groups: ["group1", "group3"]
-              |    unknown_field: "abc"
-              |    auth_key: "cartman:pass"
-              |
-              |""".stripMargin,
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    ${ruleName.name.value}:
+               |
+               |  users:
+               |  - username: cartman
+               |    groups: ["group1", "group3"]
+               |    unknown_field: "abc"
+               |    auth_key: "cartman:pass"
+               |
+               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message("Unknown rule 'unknown_field' in users definitions section")))
@@ -849,19 +849,19 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
         assertDecodingFailure(
           yaml =
             s"""
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ${ruleName.name.value}: group1
-              |
-              |  users:
-              |  - username: a*
-              |    groups: ["group1", "group3"]
-              |    auth_key: "cartman:pass"
-              |
-              |""".stripMargin,
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    ${ruleName.name.value}: group1
+               |
+               |  users:
+               |  - username: a*
+               |    groups: ["group1", "group3"]
+               |    auth_key: "cartman:pass"
+               |
+               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message("Users [cartman] are allowed to be authenticated by rule [auth_key], but it's used in a context of user patterns [a*]. It seems that this is not what you expect.")))

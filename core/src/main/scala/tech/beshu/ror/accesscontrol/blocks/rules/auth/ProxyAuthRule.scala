@@ -22,14 +22,14 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ProxyAuthRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.ProxyAuthRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{RuleName, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
-import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseAuthenticationRule, Rule}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
@@ -65,7 +65,7 @@ final class ProxyAuthRule(val settings: Settings,
   override protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)
                                       (implicit requestId: RequestId,
                                        userIdEq: Eq[Id]): Task[UserExistence] = Task.delay {
-    if(shouldAuthenticate(user)) UserExistence.Exists
+    if (shouldAuthenticate(user)) UserExistence.Exists
     else UserExistence.NotExist
   }
 

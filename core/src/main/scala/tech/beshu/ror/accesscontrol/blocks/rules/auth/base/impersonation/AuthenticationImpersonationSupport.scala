@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation
+package tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation
 
 import cats.Eq
 import cats.data.EitherT
@@ -22,13 +22,14 @@ import monix.eval.Task
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.Impersonation.Enabled
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence.{CannotCheck, Exists, NotExist}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthenticationImpersonationSupport.{ImpersonationResult, UserExistence}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.ImpersonationResult.Handled
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleResult}
+import Impersonation.Enabled
+import SimpleAuthenticationImpersonationSupport.UserExistence.{CannotCheck, Exists, NotExist}
+import SimpleAuthenticationImpersonationSupport.{ImpersonationResult, UserExistence}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -37,9 +38,9 @@ import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
-trait AuthenticationImpersonationSupport extends ImpersonationSupport
+private [rules] trait AuthenticationImpersonationSupport extends ImpersonationSupport
 
-trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonationSupport {
+private [rules]trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonationSupport {
   this: AuthenticationRule =>
 
   def caseMappingEquality: UserIdCaseMappingEquality
@@ -89,7 +90,7 @@ trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonati
         blockContext.withUserMetadata(_.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, loggedImpersonator.id)))
       }
     } map {
-      ImpersonationResult.Handled.apply
+      Handled.apply
     }
   }
 

@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.templates
 
-import cats.implicits._
 import cats.data.NonEmptyList
+import cats.implicits._
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.resultBasedOnCondition
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.ScalaOps._

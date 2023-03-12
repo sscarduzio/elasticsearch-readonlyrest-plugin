@@ -18,8 +18,8 @@ package tech.beshu.ror.accesscontrol.blocks.rules.tranport
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{RuleName, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseHostsRule, HostnameResolver, Rule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.LocalHostsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}

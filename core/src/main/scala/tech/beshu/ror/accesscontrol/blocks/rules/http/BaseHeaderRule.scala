@@ -14,15 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.base
+package tech.beshu.ror.accesscontrol.blocks.rules.http
 
 import cats.implicits._
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RegularRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 
-abstract class BaseHeaderRule extends RegularRule with Logging {
+private[http] abstract class BaseHeaderRule
+  extends RegularRule with Logging {
 
   protected def isFulfilled(accessRequirement: AccessRequirement[Header],
                             requestHeaders: Set[Header]): Boolean = {

@@ -26,9 +26,9 @@ import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Misma
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, HistoryItem, Policy}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult.Rejected
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Header

@@ -14,15 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.base
+package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthRule, AuthenticationRule, AuthorizationRule, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 
-abstract class BaseComposedAuthenticationAndAuthorizationRule(authenticationRule: AuthenticationRule,
-                                                              authorizationRule: AuthorizationRule)
+private[auth] abstract class BaseComposedAuthenticationAndAuthorizationRule(authenticationRule: AuthenticationRule,
+                                                                            authorizationRule: AuthorizationRule)
   extends AuthRule
     with AuthenticationImpersonationCustomSupport
     with AuthorizationImpersonationCustomSupport {

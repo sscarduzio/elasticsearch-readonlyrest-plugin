@@ -14,15 +14,17 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.base
+package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{AuthenticationRule, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthenticationImpersonationSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.SimpleAuthenticationImpersonationSupport.ImpersonationResult
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleResult}
+import SimpleAuthenticationImpersonationSupport.ImpersonationResult
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 
-trait BaseAuthenticationRule extends AuthenticationRule with SimpleAuthenticationImpersonationSupport {
+private [auth] trait BaseAuthenticationRule
+  extends AuthenticationRule
+    with SimpleAuthenticationImpersonationSupport {
 
   protected def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]]
 

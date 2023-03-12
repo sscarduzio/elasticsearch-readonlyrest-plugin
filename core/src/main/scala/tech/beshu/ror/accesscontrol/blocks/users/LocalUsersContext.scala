@@ -18,10 +18,10 @@ package tech.beshu.ror.accesscontrol.blocks.users
 
 import cats.implicits._
 import cats.kernel.Monoid
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth._
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch._
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices._
 import tech.beshu.ror.accesscontrol.blocks.rules.http._
