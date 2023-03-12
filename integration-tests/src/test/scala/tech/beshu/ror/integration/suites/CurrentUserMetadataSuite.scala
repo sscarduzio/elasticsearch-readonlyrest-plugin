@@ -55,7 +55,7 @@ trait CurrentUserMetadataSuite
           val result = user1MetadataManager.fetchMetadata("group6")
 
           assertEquals(200, result.responseCode)
-          result.responseJson.obj.size should be(6)
+          result.responseJson.obj.size should be(7)
           result.responseJson("x-ror-username").str should be("user4")
           result.responseJson("x-ror-current-group").str should be("group6")
           result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group5"), Str("group6")))
@@ -84,8 +84,9 @@ trait CurrentUserMetadataSuite
           val result = user3MetadataManager.fetchMetadata()
 
           assertEquals(200, result.responseCode)
-          result.responseJson.obj.size should be(4)
+          result.responseJson.obj.size should be(5)
           result.responseJson("x-ror-username").str should be("user3")
+          result.responseJson("x-ror-kibana_access").str should be("unrestricted")
           result.responseJson("x-ror-kibana_index").str should be("user3_kibana_index")
           result.responseJson("x-ror-kibana-hidden-apps").arr.toList should be(List(Str("user3_app1"), Str("user3_app2")))
           result.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex()

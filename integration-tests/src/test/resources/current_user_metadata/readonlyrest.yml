@@ -27,9 +27,9 @@ readonlyrest:
       groups: [group2, group3]
       uri_re: "^/_readonlyrest/metadata/current_user/?$"
       kibana:
+        access: ro
         kibana_index: "user2_kibana_index"
         hide_apps: ["user2_app1", "user2_app2"]
-        access: ro
 
     - name: "User 3"
       auth_key: "user3:pass"
@@ -40,20 +40,18 @@ readonlyrest:
 
     - name: "User 4 - index1"
       users: ["user4"]
-      actions: ["cluster:ror/user_metadata/get"]
+      groups: [group5]
       kibana:
         access: unrestricted
         kibana_index: "user4_group5_kibana_index"
-      groups: [group5]
 
     - name: "User 4 - index2"
       users: ["user4"]
-      actions: ["cluster:ror/user_metadata/get"]
+      groups: [group6]
       kibana:
         access: unrestricted
         kibana_index: "user4_group6_kibana_index"
         kibana_template_index: "user4_group6_kibana_template_index"
-      groups: [group6]
 
   users:
 

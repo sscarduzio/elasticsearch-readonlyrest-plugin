@@ -13,7 +13,6 @@ readonlyrest:
       auth_key: admin:container
 
     - name: "::BLUE-TEAM::"
-      actions: ["*"]
       indices: ["*"]
       kibana:
         access: unrestricted
@@ -21,8 +20,9 @@ readonlyrest:
       auth_key: blue:dev
 
     - name: "::RED-TEAM::"
+      auth_key: red:dev
       kibana:
         access: rw
         kibana_index: ".kibana"
       indices: ["*"]
-      auth_key: red:dev
+

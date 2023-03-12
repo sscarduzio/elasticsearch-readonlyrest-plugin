@@ -36,7 +36,7 @@ import tech.beshu.ror.accesscontrol.domain.{User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
-import tech.beshu.ror.accesscontrol.factory.decoders.rules._
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.elasticsearch._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.http._
