@@ -304,11 +304,13 @@ object common extends Logging {
       .toSyncDecoder
       .emapE[KibanaAccess] {
         case "ro" => Right(KibanaAccess.RO)
-        case "rw" => Right(KibanaAccess.RW)
         case "ro_strict" => Right(KibanaAccess.ROStrict)
+        case "rw" => Right(KibanaAccess.RW)
         case "admin" => Right(KibanaAccess.Admin)
         case "unrestricted" => Right(KibanaAccess.Unrestricted)
-        case unknown => Left(CoreCreationError.ValueLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
+        case unknown => Left(CoreCreationError.ValueLevelCreationError(Message(
+          s"Unknown kibana access '$unknown'. Available options: 'ro', 'ro_strict', 'rw', 'admin', 'unrestricted'"
+        )))
       }
       .decoder
 

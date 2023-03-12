@@ -95,8 +95,8 @@ class KibanaUserDataRuleTests
     result match {
       case RuleResult.Fulfilled(blockContext) =>
         blockContext
-      case RuleResult.Rejected(_) =>
-        fail("Expected rule matched")
+      case r@RuleResult.Rejected(_) =>
+        fail(s"Expected rule was not matched. Result: $r")
     }
   }
 
