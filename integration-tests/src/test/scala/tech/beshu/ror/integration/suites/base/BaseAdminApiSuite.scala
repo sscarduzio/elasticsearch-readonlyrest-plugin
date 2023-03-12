@@ -455,9 +455,22 @@ trait BaseAdminApiSuite
           dev2SearchManagers.foreach(allowedSearch(_, "test2_index"))
         }
         "configuration is valid and response with warnings" in {
-          def forceReload(rorSettingsResource: String): Unit = {
+          val warningsJson = ujson.read(
+            """
+              |[
+              |  {
+              |    "block_name": "test1",
+              |    "rule_name": "auth_key_sha256",
+              |    "message": "The rule contains fully hashed username and password. It doesn't support impersonation in this configuration",
+              |    "hint": "You can use second version of the rule and use not hashed username. Like that: `auth_key_sha256: USER_NAME:hash(PASSWORD)"
+              |  }
+              |]
+              |""".stripMargin
+          )
+          
+          def forceReload(rorSettingsResource: String, warnings: ujson.Value): Unit = {
             val testConfig = getResourceContent(rorSettingsResource)
-            updateRorTestConfig(rorClients.head, testConfig, 30 minutes)
+            updateRorTestConfig(rorClients.head, testConfig, 30 minutes, warnings)
 
             // check if config is present in index
             assertTestSettingsInIndex(
@@ -484,7 +497,7 @@ trait BaseAdminApiSuite
           dev1SearchManagers.foreach(testSettingsNotConfigured(_, "test1_index"))
 
           val rorSettingsResource = "/admin_api/readonlyrest_with_warnings.yml"
-          forceReload(rorSettingsResource)
+          forceReload(rorSettingsResource, warningsJson)
 
           val testConfig = getResourceContent(rorSettingsResource)
           rorClients.foreach { rorApiManager =>
@@ -492,18 +505,7 @@ trait BaseAdminApiSuite
               rorApiManager,
               testConfig,
               "30 minutes",
-              ujson.read(
-                """
-                  |[
-                  |  {
-                  |    "block_name": "test1",
-                  |    "rule_name": "auth_key_sha256",
-                  |    "message": "The rule contains fully hashed username and password. It doesn't support impersonation in this configuration",
-                  |    "hint": "You can use second version of the rule and use not hashed username. Like that: `auth_key_sha256: USER_NAME:hash(PASSWORD)"
-                  |  }
-                  |]
-                  |""".stripMargin
-              )
+              warningsJson
             )
           }
 
@@ -1121,11 +1123,15 @@ trait BaseAdminApiSuite
     response.responseJson("ttl").str should be(expectedTtl)
   }
 
-  private def updateRorTestConfig(rorApiManager: RorApiManager, testConfig: String, configTtl: FiniteDuration = 30 minutes) = {
+  private def updateRorTestConfig(rorApiManager: RorApiManager,
+                                  testConfig: String,
+                                  configTtl: FiniteDuration = 30 minutes,
+                                  expectedWarningsJson: Value = ujson.read("[]")) = {
     val response = rorApiManager.updateRorTestConfig(testConfig, configTtl)
     (response.responseCode, response.responseJson("status").str) should be(200, "OK")
     response.responseJson("message").str should be("updated settings")
     response.responseJson("valid_to").str.isInIsoDateTimeFormat should be(true)
+    response.responseJson("warnings") should be(expectedWarningsJson)
   }
 
   private def updateRorMainConfig(rorApiManager: RorApiManager, config: String) = {

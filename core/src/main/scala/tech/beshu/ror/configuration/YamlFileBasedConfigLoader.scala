@@ -20,7 +20,7 @@ import better.files.File
 import cats.Show
 import cats.data.NonEmptyList
 import cats.implicits._
-import io.circe.{Decoder, Json}
+import io.circe.{Decoder, DecodingFailure, Json}
 import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver
 import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver.ResolvingError
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -34,7 +34,7 @@ final class YamlFileBasedConfigLoader(file: File)
       .flatMap { json =>
         implicitly[Decoder[CONFIG]]
           .decodeJson(json)
-          .left.map(_ => MalformedSettings(s"Cannot load $configName from file ${file.pathAsString}"))
+          .left.map(e => MalformedSettings(s"Cannot load $configName from file ${file.pathAsString}. Cause: ${prettyCause(e)}"))
       }
   }
 
@@ -49,6 +49,13 @@ final class YamlFileBasedConfigLoader(file: File)
           JsonConfigStaticVariableResolver.resolve(json)
             .left.map(e => MalformedSettings(s"Unable to resolve environment variables for file ${file.pathAsString}. $e."))
         }
+    }
+  }
+
+  private def prettyCause(error: DecodingFailure) = {
+    error.message match {
+      case message if message.startsWith("Attempt to decode") => "yaml is malformed"
+      case other => other
     }
   }
 

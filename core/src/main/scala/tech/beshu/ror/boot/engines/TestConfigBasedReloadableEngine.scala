@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.boot.engines
 
-import java.time.Clock
-
 import cats.data.EitherT
 import cats.implicits._
 import eu.timepit.refined.api.Refined
@@ -26,12 +24,12 @@ import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.RequestId
-import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
+import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.{StartingFailure, TestEngine}
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
-import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, IndexConfigReloadError, IndexConfigReloadWithUpdateError, IndexConfigUpdateError, RawConfigReloadError, TestConfig}
+import tech.beshu.ror.boot.RorInstance._
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineExpirationConfig, EngineState, InitialEngine}
 import tech.beshu.ror.boot.engines.ConfigHash._
 import tech.beshu.ror.configuration.TestRorConfig.Present.ExpirationConfig
@@ -39,6 +37,7 @@ import tech.beshu.ror.configuration.index.SavingIndexConfigError
 import tech.beshu.ror.configuration.{RawRorConfig, TestRorConfig}
 import tech.beshu.ror.utils.ScalaOps.value
 
+import java.time.Clock
 import scala.concurrent.duration.FiniteDuration
 
 private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
@@ -69,7 +68,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
 
   def forceReloadTestConfigEngine(config: RawRorConfig,
                                   ttl: FiniteDuration Refined Positive)
-                                 (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, TestRorConfig.Present]] = {
+                                 (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, TestConfig.Present]] = {
     for {
       _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of ROR test settings was forced (TTL of test engine is ${ttl.toString()}) ..."))
       reloadResult <- reloadInProgress.withPermit {
@@ -79,8 +78,8 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
             testRorConfig = TestRorConfig.Present(
               rawConfig = config,
               expiration = TestRorConfig.Present.ExpirationConfig(
-                ttl = ttl,
-                validTo = engineExpirationConfig.validTo
+                ttl = engineExpirationConfig.expirationConfig.ttl,
+                validTo = engineExpirationConfig.expirationConfig.validTo
               ),
               mocks = boot.authServicesMocksProvider.currentMocks
             )
@@ -89,7 +88,12 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
               onFailure = IndexConfigReloadWithUpdateError.IndexConfigSavingError.apply
             )
               .leftWiden[IndexConfigReloadWithUpdateError]
-          } yield testRorConfig
+          } yield TestConfig.Present(
+            config = engineExpirationConfig.engine.core.rorConfig,
+            rawConfig = config,
+            configuredTtl = engineExpirationConfig.expirationConfig.ttl,
+            validTo = engineExpirationConfig.expirationConfig.validTo
+          )
         }
       }
       _ <- Task.delay(reloadResult match {

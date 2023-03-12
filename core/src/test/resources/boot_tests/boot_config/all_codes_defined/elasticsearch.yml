@@ -1,0 +1,6 @@
+node.name: n1_it
+cluster.initial_master_nodes: n1_it
+
+readonlyrest:
+  failed_to_start_response_code: 503
+  not_started_response_code: 403
