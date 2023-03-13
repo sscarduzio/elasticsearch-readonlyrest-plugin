@@ -355,7 +355,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message(
-              "Unknown kibana access 'unknown'"
+              "Unknown kibana access 'unknown'. Available options: 'ro', 'ro_strict', 'rw', 'admin', 'unrestricted'"
             )))
           }
         )
