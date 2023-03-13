@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import com.comcast.ip4s.Cidr
 import com.comcast.ip4s.interop.cats.HostnameResolver
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.rules.base.HostnameResolver
+import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostnameResolver
 import tech.beshu.ror.accesscontrol.domain.Address.{Ip, Name}
 
 class Ip4sBasedHostnameResolver extends HostnameResolver {

@@ -5,6 +5,46 @@ info:
   version: 2.1.0
 
 paths:
+  /_readonlyrest/metadata/current_user:
+    get:
+      summary: Getting logged user metadata from ES ROR
+      description: Then endpoint is used by ROR Kibana to figure out if user can be authenticated and authorized. In response metadata of the user are sent back to Kibana.
+      tags:
+        - ROR Kibana logging in
+      parameters:
+        - $ref: '#/components/parameters/XRorCorrelationIdHeader'
+        - $ref: '#/components/parameters/XRorCurrentGroupHeader'
+      responses:
+        200:
+          description: Contains currently configured Test Settings or business error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCurrentUserMetadataResponse'
+              examples:
+                GetCurrentUserMetadataResponseExample:
+                  $ref: "#/components/examples/GetCurrentUserMetadataResponseExample"
+        403:
+          description: The request was forbidden by ROR's ACL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenRorResponse'
+              examples:
+                NoAclBlockWasMatchedForbiddenResponseExample:
+                  $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
+                ForbidBlockMatchedResponseExample:
+                  $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                TestSettingsNotConfiguredForbiddenResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredForbiddenResponseExample"
+                ImpersonationNotSupportedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
+                ImpersonationNotAllowedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotAllowedResponseExample"
+                RorIsNotStartedYetResponseExample:
+                  $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
+                RorFailedToStartResponseExample:
+                  $ref: "#/components/examples/RorFailedToStartResponseExample"
   /_readonlyrest/admin/config/test:
     get:
       summary: Getting currently applied Test Settings
@@ -339,6 +379,64 @@ components:
       description: "Correlation ID to correlate requests/responses logs within one ROR KBN session"
       example: "CED054A0-9881-401E-AEED-4FB4C5915DD6"
 
+    GetCurrentUserMetadataResponse:
+      type: object
+      properties:
+        x-ror-correlation-id:
+          type: string
+          description: the correlation ID sent in request header
+        x-ror-username:
+          type: string
+          description: the logged username
+        x-ror-available-groups:
+          type: array
+          description: all of the user's groups
+          items:
+            $ref: '#/components/schemas/Group'
+        x-ror-current-group:
+          type: string
+          description: the user's group that will be selected in tenancy selector
+        x-ror-kibana_access:
+          type: string
+          description: defines the minimum set of actions necessary for browsers to use Kibana.
+          enum:
+            - admin
+            - ro
+            - ro_strict
+            - rw
+            - unrestricted
+        x-ror-kibana_index:
+          type: string
+          description: the user's Kibana index name
+        x-ror-kibana_template_index:
+          type: string
+          description: the user's Kibana template index name
+        x-ror-kibana-hidden-apps:
+          type: array
+          description: it tells which Kibana apps should be hidden by ROR Kibana
+          items:
+            $ref: '#/components/schemas/KibanaHiddenAppLike'
+        x-ror-origin:
+          type: string
+          description: the value taken from JWT's x-ror-origin claim
+
+    Group:
+      type: string
+      description: It's a group that the user belongs to. It is used in tenancy selector in ROR Kibana
+
+    KibanaHiddenAppLike:
+      oneOf:
+        - $ref: '#/components/schemas/KibanaHiddenAppName'
+        - $ref: '#/components/schemas/KibanaHiddenAppPattern'
+
+    KibanaHiddenAppName:
+      type: string
+      description: It's a Kibana app name
+
+    KibanaHiddenAppPattern:
+      type: string
+      description: It's a Kibana app name regex pattern
+
     GetTestSettingsResponse:
       oneOf:
         - $ref: '#/components/schemas/CurrentTestSettingsResponse'
@@ -630,6 +728,8 @@ components:
     AuthMockUpdateFailedResponse:
       type: object
       required:
+        - status
+        - message
       properties:
         status:
           type: string
@@ -852,7 +952,28 @@ components:
       schema:
         $ref: '#/components/schemas/XRorCorrelationId'
 
+    XRorCurrentGroupHeader:
+      name: X-ROR-Current-Group
+      in: header
+      required: false
+      description: The selected user's group in the tenancy selector
+      schema:
+        $ref: '#/components/schemas/Group'
+
   examples:
+
+    GetCurrentUserMetadataResponseExample:
+      summary: Logged user metadata
+      value:
+        x-ror-correlation-id: 7D2695DF-C2CC-419A-9D0D-8A309D429786
+        x-ror-username: admin
+        x-ror-current-group: administration
+        x-ror-available-groups:
+          - administration
+          - management
+          - users
+        x-ror-kibana_index: .kibana_7.17_admin
+        x-ror-kibana_access: admin
 
     NoAclBlockWasMatchedForbiddenResponseExample:
       summary: No ACL block was matched

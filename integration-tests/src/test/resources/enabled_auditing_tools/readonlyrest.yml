@@ -33,7 +33,8 @@ readonlyrest:
       methods: POST
       auth_key: username:dev
       indices: ["other"]
-      kibana_access: "ro"
+      kibana:
+        access: "ro"
 
     - name: "Rule 4"
       auth_key: restricted:dev

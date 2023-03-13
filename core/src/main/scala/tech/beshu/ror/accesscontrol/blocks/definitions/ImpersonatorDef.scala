@@ -17,10 +17,9 @@
 package tech.beshu.ror.accesscontrol.blocks.definitions
 
 import java.util.UUID
-
 import cats.Show
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.domain.UserIdPatterns
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 
