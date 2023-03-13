@@ -1021,7 +1021,6 @@ components:
           - http_method: GET
             path: ^\/api\/saved_objects\/.*$
 
-
     NoAclBlockWasMatchedForbiddenResponseExample:
       summary: No ACL block was matched
       value:
