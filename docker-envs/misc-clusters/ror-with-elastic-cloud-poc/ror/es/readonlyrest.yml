@@ -19,10 +19,12 @@ readonlyrest:
     - name: "ADMIN"
       type: allow
       auth_key: admin:admin
-      kibana_access: admin
+      kibana:
+        access: admin
 
     - name: "User 1"
       type: allow
       auth_key: "user1:test"
       indices: [".kibana*", "escloud:kibana_sample*", "index*"]
-      kibana_access: ro
+      kibana:
+        access: ro

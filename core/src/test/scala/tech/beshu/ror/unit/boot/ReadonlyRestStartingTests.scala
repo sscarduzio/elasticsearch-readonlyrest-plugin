@@ -16,9 +16,6 @@
  */
 package tech.beshu.ror.unit.boot
 
-import java.time.Clock
-import java.util.UUID
-import java.util.concurrent.TimeUnit
 import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.api.Refined
@@ -35,8 +32,8 @@ import org.scalatest.{EitherValues, Inside, OptionValues}
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.{IndexName, User}
@@ -45,7 +42,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
 import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest
-import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, TestConfig, TestConfigUpdated}
+import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, TestConfig}
 import tech.beshu.ror.configuration.index.SavingIndexConfigError
 import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound, WriteError}
@@ -55,6 +52,9 @@ import tech.beshu.ror.utils.DurationOps._
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils._
 
+import java.time.Clock
+import java.util.UUID
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
@@ -625,7 +625,7 @@ class ReadonlyRestStartingTests
             .forceReloadTestConfigEngine(testConfig1, 1 minute)(newRequestId())
             .runSyncUnsafe()
 
-          testEngineReloadResult.right.value shouldBe a[TestConfigUpdated]
+          testEngineReloadResult.right.value shouldBe a[TestConfig.Present]
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
 
           val testEngineConfig = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
@@ -677,7 +677,7 @@ class ReadonlyRestStartingTests
               .forceReloadTestConfigEngine(testConfig1, 1 minute)(newRequestId())
               .runSyncUnsafe()
 
-            testEngineReloadResult1stAttempt.right.value shouldBe a[TestConfigUpdated]
+            testEngineReloadResult1stAttempt.right.value shouldBe a[TestConfig.Present]
             rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
 
             val testEngineConfig = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
@@ -691,7 +691,7 @@ class ReadonlyRestStartingTests
               .forceReloadTestConfigEngine(testConfig1, 1 minute)(newRequestId())
               .runSyncUnsafe()
 
-            testEngineReloadResult2ndAttempt.right.value shouldBe a[TestConfigUpdated]
+            testEngineReloadResult2ndAttempt.right.value shouldBe a[TestConfig.Present]
             rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
 
             val testEngineConfigAfterReload = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
@@ -746,7 +746,7 @@ class ReadonlyRestStartingTests
               .forceReloadTestConfigEngine(testConfig1, 10 minute)(newRequestId())
               .runSyncUnsafe()
 
-            testEngineReloadResult1stAttempt.right.value shouldBe a[TestConfigUpdated]
+            testEngineReloadResult1stAttempt.right.value shouldBe a[TestConfig.Present]
             rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
 
             val testEngineConfig = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
@@ -775,7 +775,7 @@ class ReadonlyRestStartingTests
               .forceReloadTestConfigEngine(testConfig1, 5 minute)(newRequestId())
               .runSyncUnsafe()
 
-            testEngineReloadResult2ndAttempt.right.value shouldBe a[TestConfigUpdated]
+            testEngineReloadResult2ndAttempt.right.value shouldBe a[TestConfig.Present]
             rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
 
             val testEngineConfigAfterReload = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
@@ -832,7 +832,7 @@ class ReadonlyRestStartingTests
             .forceReloadTestConfigEngine(testConfig1, 1 minute)(newRequestId())
             .runSyncUnsafe()
 
-          testEngineReloadResult1stAttempt.right.value shouldBe a[TestConfigUpdated]
+          testEngineReloadResult1stAttempt.right.value shouldBe a[TestConfig.Present]
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
 
           val testEngineConfig = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
@@ -861,7 +861,7 @@ class ReadonlyRestStartingTests
             .forceReloadTestConfigEngine(testConfig2, 2 minutes)(newRequestId())
             .runSyncUnsafe()
 
-          testEngineReloadResult2ndAttempt.right.value shouldBe a[TestConfigUpdated]
+          testEngineReloadResult2ndAttempt.right.value shouldBe a[TestConfig.Present]
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
 
           val testEngineConfigAfterReload = rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()
@@ -1159,7 +1159,7 @@ class ReadonlyRestStartingTests
             .forceReloadTestConfigEngine(testConfig1, 3 seconds)(newRequestId())
             .runSyncUnsafe()
 
-          testEngineReloadResult.right.value shouldBe a[TestConfigUpdated]
+          testEngineReloadResult.right.value shouldBe a[TestConfig.Present]
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
 
           Task.sleep(5 seconds).runSyncUnsafe()
@@ -1211,7 +1211,7 @@ class ReadonlyRestStartingTests
           .forceReloadTestConfigEngine(testConfig1, 1 minute)(newRequestId())
           .runSyncUnsafe()
 
-        testEngineReloadResult.right.value shouldBe a[TestConfigUpdated]
+        testEngineReloadResult.right.value shouldBe a[TestConfig.Present]
         rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
         rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe()  shouldBe a[TestConfig.Present]
 

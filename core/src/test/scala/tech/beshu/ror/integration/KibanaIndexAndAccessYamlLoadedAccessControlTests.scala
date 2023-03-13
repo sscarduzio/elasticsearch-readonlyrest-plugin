@@ -159,7 +159,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             loggedUser = Some(DirectlyLoggedUser(User.Id("admin"))),
             currentGroup = Some(GroupName("Administrators")),
             availableGroups = UniqueList.of(GroupName("Administrators"), GroupName("Infosec")),
-            kibanaIndex = Some(clusterIndexName(".kibana_admins")),
+            kibanaIndex = Some(localIndexName(".kibana_admins")),
             kibanaTemplateIndex = None,
             hiddenKibanaApps = Set(KibanaApp("Enterprise Search|Overview"), KibanaApp("Observability")),
             kibanaAccess = Some(KibanaAccess.Admin),

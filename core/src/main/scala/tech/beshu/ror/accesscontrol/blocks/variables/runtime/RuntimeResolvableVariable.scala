@@ -39,7 +39,7 @@ private[runtime] trait RuntimeResolvableVariable[VALUE] {
 
 object RuntimeResolvableVariable {
 
-  sealed trait Unresolvable
+  sealed trait Unresolvable extends Throwable
   object Unresolvable {
     final case class CannotExtractValue(msg: String) extends Unresolvable
     final case class CannotInstantiateResolvedValue(msg: String) extends Unresolvable

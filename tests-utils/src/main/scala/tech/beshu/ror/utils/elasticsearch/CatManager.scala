@@ -30,6 +30,8 @@ class CatManager(client: RestClient,
 
   def main(): JsonResponse = call(new HttpGet(client.from("/")), new JsonResponse(_))
 
+  def cat(): JsonResponse = call(genericCatRequest(""), new JsonResponse(_))
+
   def healthCheck(): JsonResponse = call(genericCatRequest("health"), new JsonResponse(_))
 
   def templates(): CatResponse = call(createCatTemplatesRequest(None), new CatResponse(_))

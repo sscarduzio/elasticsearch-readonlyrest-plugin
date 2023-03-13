@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.es.utils
 
-import java.util.function.UnaryOperator
-
 import org.elasticsearch.common.path.PathTrie
 import org.elasticsearch.core.RestApiVersion
 import org.elasticsearch.rest.{RestController, RestHandler, RestRequest}
@@ -25,6 +23,7 @@ import org.joor.Reflect.on
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.ScalaOps._
 
+import java.util.function.UnaryOperator
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
@@ -49,8 +48,12 @@ class RestControllerOps(val restController: RestController) {
 
     private def update(trieNode: pathTrie.TrieNode,
                        restHandlerDecorator: RestHandler => RestHandler): Unit = {
-      val value = on(trieNode).get[Any]("value")
-      if (value != null) MethodHandlersWrapper.updateWithWrapper(value, restHandlerDecorator)
+      Option(on(trieNode).get[Any]("value")).foreach { value =>
+        MethodHandlersWrapper.updateWithWrapper(value, restHandlerDecorator)
+      }
+      Option(on(pathTrie).get[Any]("rootValue")).foreach { value =>
+        MethodHandlersWrapper.updateWithWrapper(value, restHandlerDecorator)
+      }
       val children = on(trieNode).get[java.util.Map[String, pathTrie.TrieNode]]("children").asSafeMap
       children.values.foreach { trieNode =>
         update(trieNode, restHandlerDecorator)

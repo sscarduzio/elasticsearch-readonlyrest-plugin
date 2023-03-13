@@ -65,8 +65,6 @@ read_es_ror_file_path () {
 determine_ror_kbn_dockerfile () {
   read_kbn_version
 
-# todo: license
-
   read -p "Use KBN ROR:
  1. From API
  2. From FILE

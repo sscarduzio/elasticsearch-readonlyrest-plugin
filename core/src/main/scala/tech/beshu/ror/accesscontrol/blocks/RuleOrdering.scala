@@ -16,12 +16,16 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
-import cats.implicits._
 import cats.Order
+import cats.implicits._
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.rules._
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth._
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch._
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices._
+import tech.beshu.ror.accesscontrol.blocks.rules.http._
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule, KibanaUserDataRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.tranport._
 import tech.beshu.ror.accesscontrol.orders._
 
 class RuleOrdering extends Ordering[Rule] with Logging {
@@ -61,10 +65,12 @@ object RuleOrdering {
     classOf[LdapAuthenticationRule],
     classOf[ExternalAuthenticationRule],
     classOf[GroupsOrRule],
+    classOf[GroupsAndRule],
     // all authorization rules should be placed after any authentication rule
     classOf[LdapAuthorizationRule],
     classOf[ExternalAuthorizationRule],
     // Inspection rules next; these act based on properties of the request.
+    classOf[KibanaUserDataRule],
     classOf[KibanaHideAppsRule],
     classOf[KibanaIndexRule],
     classOf[KibanaTemplateIndexRule],
