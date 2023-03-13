@@ -432,16 +432,38 @@ components:
 
     KibanaAllowedApiPathLike:
       oneOf:
-        - $ref: '#/components/schemas/KibanaAllowedApiPath'
-        - $ref: '#/components/schemas/KibanaAllowedApiPathRegex'
+        - $ref: '#/components/schemas/SimpleKibanaAllowedApiPath'
+        - $ref: '#/components/schemas/SimpleKibanaAllowedApiPathRegex'
+        - $ref: '#/components/schemas/ExtendedKibanaAllowedApi'
 
-    KibanaAllowedApiPath:
+    SimpleKibanaAllowedApiPath:
       type: string
-      description: It's a allowed Kibana API path
+      description: It's a allowed Kibana API path (any HTTP method)
 
-    KibanaAllowedApiPathRegex:
+    SimpleKibanaAllowedApiPathRegex:
       type: string
-      description: It's a allowed Kibana API path regex
+      description: It's a allowed Kibana API path regex (any HTTP method)
+
+    ExtendedKibanaAllowedApi:
+      type: object
+      required:
+        - http_method
+        - path
+      properties:
+        http_method:
+          type: string
+          enum:
+            - GET
+            - PUT
+            - POST
+            - DELETE
+        path:
+          $ref: '#/components/schemas/SimpleKibanaAllowedApiPath'
+
+    SimpleAllowedApiPathLike:
+      oneOf:
+        - $ref: '#/components/schemas/SimpleKibanaAllowedApiPath'
+        - $ref: '#/components/schemas/SimpleKibanaAllowedApiPathRegex'
 
     KibanaHiddenAppLike:
       oneOf:
@@ -996,6 +1018,9 @@ components:
         x-ror-kibana-allowed-api-paths:
           - /api/index_management/indices
           - ^\/api\/spaces\/.*$
+          - http_method: GET
+            path: ^\/api\/saved_objects\/.*$
+
 
     NoAclBlockWasMatchedForbiddenResponseExample:
       summary: No ACL block was matched
