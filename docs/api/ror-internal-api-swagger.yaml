@@ -401,6 +401,7 @@ components:
           description: defines the minimum set of actions necessary for browsers to use Kibana.
           enum:
             - admin
+            - api_only
             - ro
             - ro_strict
             - rw
@@ -413,9 +414,14 @@ components:
           description: the user's Kibana template index name
         x-ror-kibana-hidden-apps:
           type: array
-          description: it tells which Kibana apps should be hidden by ROR Kibana
+          description: it defines which Kibana apps should be hidden by ROR Kibana (it supports regexes)
           items:
             $ref: '#/components/schemas/KibanaHiddenAppLike'
+        x-ror-kibana-allowed-api-paths:
+          type: array
+          description: it defines which Kibana API paths should be allowed by ROR Kibana (it supports regexes)
+          items:
+            $ref: '#/components/schemas/KibanaAllowedApiPathLike'
         x-ror-origin:
           type: string
           description: the value taken from JWT's x-ror-origin claim
@@ -423,6 +429,19 @@ components:
     Group:
       type: string
       description: It's a group that the user belongs to. It is used in tenancy selector in ROR Kibana
+
+    KibanaAllowedApiPathLike:
+      oneOf:
+        - $ref: '#/components/schemas/KibanaAllowedApiPath'
+        - $ref: '#/components/schemas/KibanaAllowedApiPathRegex'
+
+    KibanaAllowedApiPath:
+      type: string
+      description: It's a allowed Kibana API path
+
+    KibanaAllowedApiPathRegex:
+      type: string
+      description: It's a allowed Kibana API path regex
 
     KibanaHiddenAppLike:
       oneOf:
@@ -974,6 +993,9 @@ components:
           - users
         x-ror-kibana_index: .kibana_7.17_admin
         x-ror-kibana_access: admin
+        x-ror-kibana-allowed-api-paths:
+          - /api/index_management/indices
+          - ^\/api\/spaces\/.*$
 
     NoAclBlockWasMatchedForbiddenResponseExample:
       summary: No ACL block was matched
