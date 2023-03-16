@@ -37,6 +37,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
+import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.accesscontrol.matchers.{IndicesNamesMatcher, MatcherWithWildcardsScalaAdapter, TemplateNamePatternMatcher, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -49,7 +50,7 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
-import java.util.{Base64, Locale, UUID}
+import java.util.{Base64, Locale, UUID, regex}
 import scala.language.postfixOps
 import scala.util.{Failure, Random, Success, Try}
 
@@ -1141,6 +1142,24 @@ object domain {
     implicit val eqKibanaApps: Eq[KibanaApp] = Eq.fromUniversalEquals
   }
 
+  final case class KibanaAllowedApiPath(httpMethod: AllowedHttpMethod, pathRegex: Regex)
+  object KibanaAllowedApiPath {
+
+    sealed trait AllowedHttpMethod
+    object AllowedHttpMethod {
+      case object Any extends AllowedHttpMethod
+      final case class Specific(httpMethod: HttpMethod) extends AllowedHttpMethod
+
+      sealed trait HttpMethod
+      object HttpMethod {
+        case object Get extends HttpMethod
+        case object Post extends HttpMethod
+        case object Put extends HttpMethod
+        case object Delete extends HttpMethod
+      }
+    }
+  }
+
   final case class UserOrigin(value: NonEmptyString)
 
   final case class Type(value: String) extends AnyVal
@@ -1152,6 +1171,7 @@ object domain {
     case object RO extends KibanaAccess
     case object RW extends KibanaAccess
     case object ROStrict extends KibanaAccess
+    case object ApiOnly extends KibanaAccess
     case object Admin extends KibanaAccess
     case object Unrestricted extends KibanaAccess
 
@@ -1351,6 +1371,25 @@ object domain {
         case (NotUsingFields, other) => other
         case (UsingFields(firstFields), UsingFields(secondFields)) => UsingFields(firstFields ::: secondFields)
       })
+    }
+
+  }
+
+  final case class Regex private(value: String) {
+    val pattern: regex.Pattern = regex.Pattern.compile(value)
+  }
+  object Regex {
+    private val specialChars = """<([{\^-=$!|]})?*+.>"""
+
+    def compile(value: String): Try[Regex] = Try(new Regex(value))
+    def buildFromLiteral(value: String): Regex = {
+      val escapedValue = value
+        .map {
+          case c if specialChars.contains(c) => s"""\\$c"""
+          case c => c
+        }
+        .mkString
+      new Regex(s"^$escapedValue$$")
     }
   }
 }

@@ -21,7 +21,9 @@ import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, KibanaApp, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
+import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
+import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, KibanaAllowedApiPath, KibanaApp, Regex, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
@@ -49,6 +51,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
             rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
             rule.settings.kibanaTemplateIndex should be(None)
             rule.settings.appsToHide should be(Set.empty)
+            rule.settings.allowedApiPaths should be(Set.empty)
             rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
           }
         )
@@ -67,6 +70,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               |      kibana_index: ".kibana_custom"
               |      kibana_template_index: ".kibana_template"
               |      hide_apps: ["app1", "app2"]
+              |      allowed_api_paths: ["^/api/spaces/.*$"]
               |
               |""".stripMargin,
           assertion = rule => {
@@ -74,6 +78,9 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
             rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana_custom")))
             rule.settings.kibanaTemplateIndex should be(Some(AlreadyResolved(clusterIndexName(".kibana_template"))))
             rule.settings.appsToHide should be(Set(KibanaApp("app1"), KibanaApp("app2")))
+            rule.settings.allowedApiPaths should be(
+              Set(KibanaAllowedApiPath(AllowedHttpMethod.Any, Regex.compile("""^/api/spaces/.*$""").get))
+            )
             rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
           }
         )
@@ -97,6 +104,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
+              rule.settings.allowedApiPaths should be(Set.empty)
               rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
             }
           )
@@ -119,6 +127,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
+              rule.settings.allowedApiPaths should be(Set.empty)
               rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
             }
           )
@@ -141,11 +150,35 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
+              rule.settings.allowedApiPaths should be(Set.empty)
               rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
             }
           )
         }
-        "RO strict access is used" in {
+        "'API only' access is used" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    kibana:
+                |      access: api_only
+                |
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.access should be(KibanaAccess.ApiOnly)
+              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaTemplateIndex should be(None)
+              rule.settings.appsToHide should be(Set.empty)
+              rule.settings.allowedApiPaths should be(Set.empty)
+              rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
+            }
+          )
+        }
+        "'RO strict' access is used" in {
           assertDecodingSuccess(
             yaml =
               """
@@ -185,6 +218,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
+              rule.settings.allowedApiPaths should be(Set.empty)
               rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
             }
           )
@@ -210,6 +244,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set(KibanaApp("app1")))
+              rule.settings.allowedApiPaths should be(Set.empty)
               rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
             }
           )
@@ -233,6 +268,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set(KibanaApp("app1"), KibanaApp("app2")))
+              rule.settings.allowedApiPaths should be(Set.empty)
               rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
             }
           )
@@ -256,7 +292,156 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
+              rule.settings.allowedApiPaths should be(Set.empty)
               rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
+            }
+          )
+        }
+      }
+      "'allowed_api_paths' property is set" when {
+        "it contains regex path" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    kibana:
+                |      access: "ro"
+                |      allowed_api_paths: ["^/api/spaces/.*$"]
+                |
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.access should be(KibanaAccess.RO)
+              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaTemplateIndex should be(None)
+              rule.settings.appsToHide should be(Set.empty)
+              rule.settings.allowedApiPaths should be(
+                Set(KibanaAllowedApiPath(AllowedHttpMethod.Any, Regex.compile("""^/api/spaces/.*$""").get))
+              )
+              rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
+            }
+          )
+        }
+        "it contains non-regex path" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    kibana:
+                |      access: "ro"
+                |      allowed_api_paths: ["/api/spaces?test=12.2"]
+                |
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.access should be(KibanaAccess.RO)
+              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaTemplateIndex should be(None)
+              rule.settings.appsToHide should be(Set.empty)
+              rule.settings.allowedApiPaths should be(
+                Set(KibanaAllowedApiPath(
+                  AllowedHttpMethod.Any,
+                  Regex.compile("""^/api/spaces\?test\=12\.2$""").get
+                ))
+              )
+              rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
+            }
+          )
+        }
+        "it uses specific http method" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    kibana:
+                |      access: "ro"
+                |      allowed_api_paths:
+                |        - http_method: GET
+                |          path: "/api/spaces?test=12.2"
+                |
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.access should be(KibanaAccess.RO)
+              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaTemplateIndex should be(None)
+              rule.settings.appsToHide should be(Set.empty)
+              rule.settings.allowedApiPaths should be(
+                Set(KibanaAllowedApiPath(
+                  AllowedHttpMethod.Specific(HttpMethod.Get),
+                  Regex.compile("""^/api/spaces\?test\=12\.2$""").get
+                ))
+              )
+              rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
+            }
+          )
+        }
+        "there are several API paths defined" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    kibana:
+                |      access: "ro"
+                |      allowed_api_paths:
+                |        - "^/api/spaces/.*$"
+                |        - http_method: GET
+                |          path: "/api/spaces?test=12.2"
+                |
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.access should be(KibanaAccess.RO)
+              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaTemplateIndex should be(None)
+              rule.settings.appsToHide should be(Set.empty)
+              rule.settings.allowedApiPaths should be(Set(
+                KibanaAllowedApiPath(
+                  AllowedHttpMethod.Any,
+                  Regex.compile("""^/api/spaces/.*$""").get
+                ),
+                KibanaAllowedApiPath(
+                  AllowedHttpMethod.Specific(HttpMethod.Get),
+                  Regex.compile("""^/api/spaces\?test\=12\.2$""").get
+                )
+              ))
+              rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
+            }
+          )
+        }
+        "empty API paths array is defined" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    kibana:
+                |      access: "ro"
+                |      allowed_api_paths: []
+                |
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.access should be(KibanaAccess.RO)
+              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaTemplateIndex should be(None)
+              rule.settings.appsToHide should be(Set.empty)
+              rule.settings.allowedApiPaths should be(Set.empty)
+              rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
             }
           )
         }
@@ -281,6 +466,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
             rule.settings.kibanaIndex shouldBe a [ToBeResolved[_]]
             rule.settings.kibanaTemplateIndex should be(None)
             rule.settings.appsToHide should be(Set.empty)
+            rule.settings.allowedApiPaths should be(Set.empty)
             rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
           }
         )
@@ -305,6 +491,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
             rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
             rule.settings.kibanaTemplateIndex.value shouldBe a [ToBeResolved[_]]
             rule.settings.appsToHide should be(Set.empty)
+            rule.settings.allowedApiPaths should be(Set.empty)
             rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
           }
         )
@@ -355,7 +542,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message(
-              "Unknown kibana access 'unknown'. Available options: 'ro', 'ro_strict', 'rw', 'admin', 'unrestricted'"
+              "Unknown kibana access 'unknown'. Available options: 'ro', 'ro_strict', 'rw', 'api_only', 'admin', 'unrestricted'"
             )))
           }
         )

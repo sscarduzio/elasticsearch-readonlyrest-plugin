@@ -123,13 +123,13 @@ class UriRegexRuleTests extends AnyWordSpec with MockFactory {
     val rule = new UriRegexRule(UriRegexRule.Settings(uriRegex))
     val requestContext = MockRequestContext.metadata.copy(uriPath = uriPath)
     val blockContext = CurrentUserMetadataRequestBlockContext(
-      requestContext,
-      loggedUser match {
+      requestContext = requestContext,
+      userMetadata = loggedUser match {
         case Some(userId) => UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(userId))
         case None => UserMetadata.empty
       },
-      Set.empty,
-      List.empty
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty
     )
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)

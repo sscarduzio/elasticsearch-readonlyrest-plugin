@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, Ru
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, KibanaApp, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, KibanaAllowedApiPath, KibanaApp, RorConfigurationIndex}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class KibanaUserDataRule(override val settings: Settings)
@@ -62,6 +62,10 @@ class KibanaUserDataRule(override val settings: Settings)
       applyToUserMetadata(resolveAppsToHide)(
         _.withHiddenKibanaApps(_)
       )
+    } andThen {
+      applyToUserMetadata(resolveAllowedApiPaths)(
+        _.withAllowedKibanaApiPaths(_)
+      )
     }
   }
 
@@ -78,6 +82,9 @@ class KibanaUserDataRule(override val settings: Settings)
 
   private lazy val resolveAppsToHide =
     UniqueNonEmptyList.fromTraversable(settings.appsToHide)
+
+  private lazy val resolveAllowedApiPaths =
+    UniqueNonEmptyList.fromTraversable(settings.allowedApiPaths)
 
   private def applyToUserMetadata[T](opt: Option[T])
                                     (userMetadataUpdateFunction: (UserMetadata, T) => UserMetadata): UserMetadata => UserMetadata = {
@@ -98,6 +105,7 @@ object KibanaUserDataRule {
                             kibanaIndex: RuntimeSingleResolvableVariable[IndexName.Kibana],
                             kibanaTemplateIndex: Option[RuntimeSingleResolvableVariable[IndexName.Kibana]],
                             appsToHide: Set[KibanaApp],
+                            allowedApiPaths: Set[KibanaAllowedApiPath],
                             override val rorIndex: RorConfigurationIndex)
     extends BaseKibanaRule.Settings(access, rorIndex)
 }

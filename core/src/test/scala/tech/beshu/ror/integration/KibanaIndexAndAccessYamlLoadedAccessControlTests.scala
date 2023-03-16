@@ -162,6 +162,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             kibanaIndex = Some(localIndexName(".kibana_admins")),
             kibanaTemplateIndex = None,
             hiddenKibanaApps = Set(KibanaApp("Enterprise Search|Overview"), KibanaApp("Observability")),
+            allowedKibanaApiPaths = Set.empty,
             kibanaAccess = Some(KibanaAccess.Admin),
             userOrigin = None,
             jwtToken = None
