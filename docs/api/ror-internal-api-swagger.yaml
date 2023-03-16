@@ -421,7 +421,7 @@ components:
           type: array
           description: it defines which Kibana API paths should be allowed by ROR Kibana (it supports regexes)
           items:
-            $ref: '#/components/schemas/KibanaAllowedApiPathLike'
+            $ref: '#/components/schemas/KibanaAllowedApiPath'
         x-ror-origin:
           type: string
           description: the value taken from JWT's x-ror-origin claim
@@ -430,40 +430,24 @@ components:
       type: string
       description: It's a group that the user belongs to. It is used in tenancy selector in ROR Kibana
 
-    KibanaAllowedApiPathLike:
-      oneOf:
-        - $ref: '#/components/schemas/SimpleKibanaAllowedApiPath'
-        - $ref: '#/components/schemas/SimpleKibanaAllowedApiPathRegex'
-        - $ref: '#/components/schemas/ExtendedKibanaAllowedApi'
-
-    SimpleKibanaAllowedApiPath:
-      type: string
-      description: It's a allowed Kibana API path (any HTTP method)
-
-    SimpleKibanaAllowedApiPathRegex:
-      type: string
-      description: It's a allowed Kibana API path regex (any HTTP method)
-
-    ExtendedKibanaAllowedApi:
+    KibanaAllowedApiPath:
       type: object
       required:
         - http_method
-        - path
+        - path_regex
       properties:
         http_method:
           type: string
           enum:
+            - ANY
             - GET
             - PUT
             - POST
             - DELETE
-        path:
-          $ref: '#/components/schemas/SimpleKibanaAllowedApiPath'
-
-    SimpleAllowedApiPathLike:
-      oneOf:
-        - $ref: '#/components/schemas/SimpleKibanaAllowedApiPath'
-        - $ref: '#/components/schemas/SimpleKibanaAllowedApiPathRegex'
+          description: HTTP method can be set to specific one (GET, PUT, POST, DELETE) or be ANY
+        path_regex:
+          type: string
+          description: It's a Java 8 regex (https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html) for Kibana API path (it can include query string and fragments too)
 
     KibanaHiddenAppLike:
       oneOf:
@@ -1016,10 +1000,12 @@ components:
         x-ror-kibana_index: .kibana_7.17_admin
         x-ror-kibana_access: admin
         x-ror-kibana-allowed-api-paths:
-          - /api/index_management/indices
-          - ^\/api\/spaces\/.*$
+          - http_method: ANY
+            path_regex: "^/api/index_management/indices$"
+          - http_method: ANY
+            path_regex: "^\/api\/spaces\/.*$"
           - http_method: GET
-            path: ^\/api\/saved_objects\/.*$
+            path_regex: "^/api/saved_objects/.*$"
 
     NoAclBlockWasMatchedForbiddenResponseExample:
       summary: No ACL block was matched

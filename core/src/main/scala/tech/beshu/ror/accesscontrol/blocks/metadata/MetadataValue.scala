@@ -18,9 +18,12 @@ package tech.beshu.ror.accesscontrol.blocks.metadata
 
 import cats.Show
 import cats.data.NonEmptyList
-import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.domain.{CorrelationId, KibanaAccess}
 import cats.implicits._
+import tech.beshu.ror.Constants
+import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
+import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
+import tech.beshu.ror.accesscontrol.domain.{CorrelationId, KibanaAccess}
+import scala.collection.JavaConverters._
 
 sealed trait MetadataValue
 
@@ -28,22 +31,26 @@ object MetadataValue {
 
   final case class MetadataString(value: String) extends MetadataValue
   final case class MetadataList(value: NonEmptyList[String]) extends MetadataValue
+  final case class MetadataListOfMaps(value: NonEmptyList[Map[String, String]]) extends MetadataValue
+
   def read(userMetadata: UserMetadata,
            correlationId: CorrelationId): Map[String, MetadataValue] = {
     loggingId(correlationId) ++
       loggedUser(userMetadata) ++
+      availableGroups(userMetadata) ++
       currentGroup(userMetadata) ++
+      kibanaAccess(userMetadata) ++
       foundKibanaIndex(userMetadata) ++
       foundKibanaTemplateIndex(userMetadata) ++
-      availableGroups(userMetadata) ++
       hiddenKibanaApps(userMetadata) ++
-      kibanaAccess(userMetadata) ++
+      kibanaApiAllowedPaths(userMetadata) ++
       userOrigin(userMetadata)
   }
 
   def toAny(metadataValue: MetadataValue): Any = metadataValue match {
     case MetadataString(value) => value: String
     case MetadataList(nel) => nel.toList.toArray: Array[String]
+    case MetadataListOfMaps(listOfMaps) => listOfMaps.map(_.asJava).toList.toArray[java.util.Map[String, String]]
   }
 
   private def loggingId(correlationId: CorrelationId) = {
@@ -62,6 +69,19 @@ object MetadataValue {
     NonEmptyList
       .fromList(userMetadata.hiddenKibanaApps.toList)
       .map(apps => (Constants.HEADER_KIBANA_HIDDEN_APPS, MetadataList(apps.map(_.value.value))))
+      .toMap
+  }
+
+  private def kibanaApiAllowedPaths(userMetadata: UserMetadata) = {
+    NonEmptyList
+      .fromList(userMetadata.allowedKibanaApiPaths.toList)
+      .map(paths => (
+        Constants.HEADER_KIBANA_ALLOWED_API_PATHS,
+        MetadataListOfMaps(paths.map(p => Map(
+          Constants.HEADER_KIBANA_ALLOWED_API_HTTP_METHOD -> p.httpMethod.show,
+          Constants.HEADER_KIBANA_ALLOWED_API_PATH_REGEX -> p.pathRegex.pattern.pattern()
+        )))
+      ))
       .toMap
   }
 
@@ -94,5 +114,16 @@ object MetadataValue {
     case KibanaAccess.RW => "rw"
     case KibanaAccess.Admin => "admin"
     case KibanaAccess.Unrestricted => "unrestricted"
+  }
+
+  private implicit val kibanaApiAllowedHttpMethodShow: Show[AllowedHttpMethod] = Show {
+    case AllowedHttpMethod.Any => "ANY"
+    case AllowedHttpMethod.Specific(httpMethod) =>
+      httpMethod match {
+        case HttpMethod.Get => "GET"
+        case HttpMethod.Post => "POST"
+        case HttpMethod.Put => "PUT"
+        case HttpMethod.Delete => "DELTE"
+      }
   }
 }
