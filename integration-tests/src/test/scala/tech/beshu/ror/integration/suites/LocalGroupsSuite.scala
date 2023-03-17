@@ -23,7 +23,8 @@ import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, RorApiManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
-import ujson.Str
+
+import java.util.UUID
 
 //TODO change test names. Current names are copies from old java integration tests
 trait LocalGroupsSuite
@@ -74,32 +75,38 @@ trait LocalGroupsSuite
   "identify retrieval" in {
     val userMetadataManager = new RorApiManager(basicAuthClient("user", "passwd"), esVersionUsed)
 
-    val response = userMetadataManager.fetchMetadata()
+    val correlationId = UUID.randomUUID().toString
+    val response = userMetadataManager.fetchMetadata(correlationId = Some(correlationId))
 
     response.responseCode should be(200)
-    response.responseJson.obj.size should be(7)
-    response.responseJson("x-ror-username").str should be("user")
-    response.responseJson("x-ror-current-group").str should be("a_testgroup")
-    response.responseJson("x-ror-available-groups").arr.toList should be(List(Str("a_testgroup"), Str("foogroup")))
-    response.responseJson("x-ror-kibana_index").str should be(".kibana_user")
-    response.responseJson("x-ror-kibana-hidden-apps").arr.toList should be(List(Str("timelion")))
-    response.responseJson("x-ror-kibana_access").str should be("admin")
-    response.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex()
+    response.responseJson should be (ujson.read(
+      s"""{
+         |  "x-ror-username": "user",
+         |  "x-ror-current-group": "a_testgroup",
+         |  "x-ror-available-groups": [ "a_testgroup", "foogroup" ],
+         |  "x-ror-correlation-id": "$correlationId",
+         |  "x-ror-kibana_index": ".kibana_user",
+         |  "x-ror-kibana-hidden-apps": [ "timelion" ],
+         |  "x-ror-kibana_access": "admin"
+         |}""".stripMargin))
   }
 
   "identify retrieval with preferred group" in {
     val userMetadataManager = new RorApiManager(basicAuthClient("user", "passwd"), esVersionUsed)
 
-    val response = userMetadataManager.fetchMetadata(preferredGroup = "foogroup")
+    val correlationId = UUID.randomUUID().toString
+    val response = userMetadataManager.fetchMetadata(preferredGroup = Some("foogroup"), correlationId = Some(correlationId))
 
     response.responseCode should be(200)
-    response.responseJson.obj.size should be(7)
-    response.responseJson("x-ror-username").str should be("user")
-    response.responseJson("x-ror-current-group").str should be("foogroup")
-    response.responseJson("x-ror-available-groups").arr.toList should be(List(Str("a_testgroup"), Str("foogroup")))
-    response.responseJson("x-ror-kibana_index").str should be(".kibana_foogroup")
-    response.responseJson("x-ror-kibana-hidden-apps").arr.toList should be(List(Str("foo:app")))
-    response.responseJson("x-ror-kibana_access").str should be("admin")
-    response.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex()
+    response.responseJson should be (ujson.read(
+      s"""{
+         |  "x-ror-username": "user",
+         |  "x-ror-current-group": "foogroup",
+         |  "x-ror-available-groups": [ "a_testgroup", "foogroup" ],
+         |  "x-ror-correlation-id": "$correlationId",
+         |  "x-ror-kibana_index": ".kibana_foogroup",
+         |  "x-ror-kibana-hidden-apps": [ "foo:app" ],
+         |  "x-ror-kibana_access": "admin"
+         |}""".stripMargin))
   }
 }
