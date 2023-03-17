@@ -222,23 +222,20 @@ object domain {
   object Header {
     final case class Name(value: NonEmptyString)
     object Name {
+      val authorization = Name("Authorization")
       val xApiKeyHeaderName = Header.Name("X-Api-Key")
       val xForwardedFor = Name("X-Forwarded-For")
       val xForwardedUser = Name("X-Forwarded-User")
-      val xUserOrigin = Name(Constants.HEADER_USER_ORIGIN)
-      val kibanaHiddenApps = Name(Constants.HEADER_KIBANA_HIDDEN_APPS)
-      val kibanaRequestPath = Name(Constants.HEADER_KIBANA_REQUEST_PATH)
       val cookie = Name("Cookie")
       val setCookie = Name("Set-Cookie")
-      val transientFields = Name(Constants.FIELDS_TRANSIENT)
-      val currentGroup = Name(Constants.HEADER_GROUP_CURRENT)
-      val availableGroups = Name(Constants.HEADER_GROUPS_AVAILABLE)
+      val transientFields = Name("_fields")
       val userAgent = Name("User-Agent")
-      val authorization = Name("Authorization")
-      val rorUser = Name(Constants.HEADER_USER_ROR)
-      val kibanaAccess = Name(Constants.HEADER_KIBANA_ACCESS)
-      val impersonateAs = Name(Constants.HEADER_IMPERSONATING)
-      val correlationId = Name(Constants.HEADER_CORRELATION_ID)
+
+      val xUserOrigin = Name("x-ror-origin")
+      val kibanaRequestPath = Name("x-ror-kibana-request-path")
+      val currentGroup = Name("x-ror-current-group")
+      val impersonateAs = Name("x-ror-impersonating")
+      val correlationId = Name("x-ror-correlation-id")
 
       implicit val eqName: Eq[Name] = Eq.by(_.value.value.toLowerCase(Locale.US))
     }

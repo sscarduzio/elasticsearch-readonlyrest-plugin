@@ -54,21 +54,21 @@ object MetadataValue {
   }
 
   private def loggingId(correlationId: CorrelationId) = {
-    Map(Constants.HEADER_CORRELATION_ID -> MetadataString(correlationId.value.value))
+    Map("x-ror-correlation-id" -> MetadataString(correlationId.value.value))
   }
 
   private def userOrigin(userMetadata: UserMetadata) = {
-    userMetadata.userOrigin.map(uo => (Constants.HEADER_USER_ORIGIN, MetadataString(uo.value.value))).toMap
+    userMetadata.userOrigin.map(uo => ("x-ror-origin", MetadataString(uo.value.value))).toMap
   }
 
   private def kibanaAccess(userMetadata: UserMetadata) = {
-    userMetadata.kibanaAccess.map(ka => (Constants.HEADER_KIBANA_ACCESS, MetadataString(ka.show))).toMap
+    userMetadata.kibanaAccess.map(ka => ("x-ror-kibana_access", MetadataString(ka.show))).toMap
   }
 
   private def hiddenKibanaApps(userMetadata: UserMetadata) = {
     NonEmptyList
       .fromList(userMetadata.hiddenKibanaApps.toList)
-      .map(apps => (Constants.HEADER_KIBANA_HIDDEN_APPS, MetadataList(apps.map(_.value.value))))
+      .map(apps => ("x-ror-kibana-hidden-apps", MetadataList(apps.map(_.value.value))))
       .toMap
   }
 
@@ -76,10 +76,10 @@ object MetadataValue {
     NonEmptyList
       .fromList(userMetadata.allowedKibanaApiPaths.toList)
       .map(paths => (
-        Constants.HEADER_KIBANA_ALLOWED_API_PATHS,
+        "x-ror-kibana-allowed-api-paths",
         MetadataListOfMaps(paths.map(p => Map(
-          Constants.HEADER_KIBANA_ALLOWED_API_HTTP_METHOD -> p.httpMethod.show,
-          Constants.HEADER_KIBANA_ALLOWED_API_PATH_REGEX -> p.pathRegex.pattern.pattern()
+          "http_method" -> p.httpMethod.show,
+          "path_regex" -> p.pathRegex.pattern.pattern()
         )))
       ))
       .toMap
@@ -88,24 +88,24 @@ object MetadataValue {
   private def availableGroups(userMetadata: UserMetadata) = {
     NonEmptyList
       .fromList(userMetadata.availableGroups.toList)
-      .map(groups => (Constants.HEADER_GROUPS_AVAILABLE, MetadataList(groups.map(_.value.value))))
+      .map(groups => ("x-ror-available-groups", MetadataList(groups.map(_.value.value))))
       .toMap
   }
 
   private def foundKibanaIndex(userMetadata: UserMetadata) = {
-    userMetadata.kibanaIndex.map(i => (Constants.HEADER_KIBANA_INDEX, MetadataString(i.stringify))).toMap
+    userMetadata.kibanaIndex.map(i => ("x-ror-kibana_index", MetadataString(i.stringify))).toMap
   }
 
   private def foundKibanaTemplateIndex(userMetadata: UserMetadata) = {
-    userMetadata.kibanaTemplateIndex.map(i => (Constants.HEADER_KIBANA_TEMPLATE_INDEX, MetadataString(i.stringify))).toMap
+    userMetadata.kibanaTemplateIndex.map(i => ("x-ror-kibana_template_index", MetadataString(i.stringify))).toMap
   }
 
   private def currentGroup(userMetadata: UserMetadata) = {
-    userMetadata.currentGroup.map(g => (Constants.HEADER_GROUP_CURRENT, MetadataString(g.value.value))).toMap
+    userMetadata.currentGroup.map(g => ("x-ror-current-group", MetadataString(g.value.value))).toMap
   }
 
   private def loggedUser(userMetadata: UserMetadata) = {
-    userMetadata.loggedUser.map(u => (Constants.HEADER_USER_ROR, MetadataString(u.id.value.value))).toMap
+    userMetadata.loggedUser.map(u => ("x-ror-username", MetadataString(u.id.value.value))).toMap
   }
 
   private implicit val kibanaAccessShow: Show[KibanaAccess] = Show {

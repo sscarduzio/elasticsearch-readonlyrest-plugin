@@ -53,7 +53,7 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMetho
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{Blacklist, Whitelist}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{KibanaAllowedApiPath, _}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.KibanaUserDataRuleTogetherWith
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
