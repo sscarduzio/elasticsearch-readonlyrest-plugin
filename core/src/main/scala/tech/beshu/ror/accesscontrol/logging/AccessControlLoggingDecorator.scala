@@ -30,11 +30,11 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.logging.ResponseContext._
+import tech.beshu.ror.accesscontrol.logging.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.TaskOps._
 
-import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 

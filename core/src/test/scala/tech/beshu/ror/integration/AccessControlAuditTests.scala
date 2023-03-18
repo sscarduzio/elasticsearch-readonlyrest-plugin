@@ -16,20 +16,22 @@
  */
 package tech.beshu.ror.integration
 
-import java.time.{Clock, Instant, ZoneId}
+import cats.data.NonEmptyList
+import monix.execution.Scheduler.Implicits.global
+import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
-import org.scalatest.matchers.should.Matchers._
-import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
+import tech.beshu.ror.accesscontrol.logging.audit.AuditingTool
+import tech.beshu.ror.accesscontrol.logging.audit.AuditingTool.Settings.AuditSinkConfig
+import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, LoggingContext}
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.header
 
+import java.time.{Clock, Instant, ZoneId}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
-import monix.execution.Scheduler.Implicits.global
-
 import scala.language.postfixOps
 
 class AccessControlAuditTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest {
@@ -64,8 +66,8 @@ class AccessControlAuditTests extends AnyWordSpec with BaseYamlLoadedAccessContr
         acl.handleRegularRequest(request).runSyncUnsafe()
 
         val (index, jsonString) = Await.result(auditSinkService.result, 5 seconds)
-        index should startWith ("readonlyrest_audit-")
-        ujson.read(jsonString) should be (ujson.read(
+        index should startWith("readonlyrest_audit-")
+        ujson.read(jsonString) should be(ujson.read(
           s"""{
              |  "headers":["x-forwarded-for", "custom-one"],
              |  "acl_history":"[CONTAINER ADMIN-> RULES:[auth_key->false]], [User 1-> RULES:[auth_key->false]]",
@@ -101,8 +103,8 @@ class AccessControlAuditTests extends AnyWordSpec with BaseYamlLoadedAccessContr
         acl.handleRegularRequest(request).runSyncUnsafe()
 
         val (index, jsonString) = Await.result(auditSinkService.result, 5 seconds)
-        index should startWith ("readonlyrest_audit-")
-        ujson.read(jsonString) should be (ujson.read(
+        index should startWith("readonlyrest_audit-")
+        ujson.read(jsonString) should be(ujson.read(
           s"""{
              |  "headers":["X-Forwarded-For", "Custom-One"],
              |  "acl_history":"[CONTAINER ADMIN-> RULES:[auth_key->false]], [User 1-> RULES:[auth_key->false]]",
@@ -132,13 +134,18 @@ class AccessControlAuditTests extends AnyWordSpec with BaseYamlLoadedAccessContr
 
   private def auditedAcl(auditSinkService: AuditSinkService) = {
     implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
-    new AccessControlLoggingDecorator(acl, Some(new AuditingTool(
-      AuditingTool.Settings(
-        RorAuditIndexTemplate.default,
-        new DefaultAuditLogSerializer,
-        AuditCluster.LocalAuditCluster
-      ),
-      auditSinkService
+    val settings = AuditingTool.Settings(
+      NonEmptyList.of(
+        AuditSinkConfig.EsIndexBasedSink(
+          new DefaultAuditLogSerializer,
+          RorAuditIndexTemplate.default,
+          AuditCluster.LocalAuditCluster
+        )
+      )
+    )
+    new AccessControlLoggingDecorator(acl, Some(AuditingTool.create(
+      settings = settings,
+      auditSinkServiceCreator = _ => auditSinkService
     )))
   }
 

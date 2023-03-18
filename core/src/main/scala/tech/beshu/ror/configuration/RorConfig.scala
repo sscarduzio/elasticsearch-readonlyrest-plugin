@@ -21,7 +21,7 @@ import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.domain.LocalUsers
-import tech.beshu.ror.accesscontrol.logging.AuditingTool
+import tech.beshu.ror.accesscontrol.logging.audit.AuditingTool
 import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
 
 final case class RorConfig(services: RorConfig.Services,

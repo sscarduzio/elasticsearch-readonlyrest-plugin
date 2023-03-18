@@ -14,50 +14,39 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.logging
+package tech.beshu.ror.accesscontrol.logging.audit
 
+import cats.data.NonEmptyList
 import cats.implicits._
 import monix.eval.Task
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
-import tech.beshu.ror.accesscontrol.logging.AuditingTool.Settings
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate, RorAuditLoggerName}
+import tech.beshu.ror.accesscontrol.logging.{LoggingContext, ResponseContext}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.es.AuditSinkService
 
-import java.time.{Clock, Instant}
+import java.time.Clock
 
-class AuditingTool(settings: Settings,
-                   auditSink: AuditSinkService)
-                  (implicit clock: Clock,
-                   loggingContext: LoggingContext) {
+class AuditingTool private(auditSinks: NonEmptyList[AuditSink])
+                          (implicit loggingContext: LoggingContext) {
 
   def audit[B <: BlockContext](response: ResponseContext[B]): Task[Unit] = {
-    safeRunSerializer(response)
-      .map {
-        case Some(entry) =>
-          auditSink.submit(
-            settings.rorAuditIndexTemplate.indexName(Instant.now(clock)).name.value,
-            response.requestContext.id.value,
-            entry.toString
-          )
-        case None =>
-      }
+    val auditResponseContext = toAuditResponse(response)
+    auditSinks
+      .parTraverse(_.submit(auditResponseContext))
+      .map((_: NonEmptyList[Unit]) => ())
   }
 
   def close(): Unit = {
-    auditSink.close()
+    auditSinks.toList.par.foreach(_.close())
   }
 
-  private def safeRunSerializer[B <: BlockContext](response: ResponseContext[B]) = {
-    Task(settings.logSerializer.onResponse(toAuditResponse(response)))
-  }
-
-  private def toAuditResponse[B <: BlockContext](responseContext: ResponseContext[B]) = {
+  private def toAuditResponse[B <: BlockContext](responseContext: ResponseContext[B]): AuditResponseContext = {
     responseContext match {
       case allowedBy: ResponseContext.AllowedBy[B] =>
         AuditResponseContext.Allowed(
@@ -145,8 +134,32 @@ class AuditingTool(settings: Settings,
 
 object AuditingTool {
 
-  final case class Settings(rorAuditIndexTemplate: RorAuditIndexTemplate,
-                            logSerializer: AuditLogSerializer,
-                            auditCluster: AuditCluster)
+  final case class Settings(auditSinksConfig: NonEmptyList[Settings.AuditSinkConfig])
+  object Settings {
+
+    sealed trait AuditSinkConfig
+    object AuditSinkConfig {
+      final case class EsIndexBasedSink(logSerializer: AuditLogSerializer,
+                                        rorAuditIndexTemplate: RorAuditIndexTemplate,
+                                        auditCluster: AuditCluster) extends AuditSinkConfig
+
+      final case class LogBasedSink(logSerializer: AuditLogSerializer,
+                                    loggerName: RorAuditLoggerName) extends AuditSinkConfig
+    }
+
+  }
+
+  def create(settings: Settings,
+             auditSinkServiceCreator: AuditCluster => AuditSinkService)
+            (implicit clock: Clock,
+             loggingContext: LoggingContext): AuditingTool = {
+    val auditSinks = settings.auditSinksConfig.map {
+      case Settings.AuditSinkConfig.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, auditCluster) =>
+        EsIndexBasedAuditSink(logSerializer, rorAuditIndexTemplate, auditSinkServiceCreator(auditCluster))
+      case Settings.AuditSinkConfig.LogBasedSink(serializer, loggerName) =>
+        new LogBasedAuditSink(serializer, loggerName)
+    }
+    new AuditingTool(auditSinks)
+  }
 
 }
