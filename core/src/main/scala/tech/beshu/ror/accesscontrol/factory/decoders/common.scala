@@ -306,10 +306,11 @@ object common extends Logging {
         case "ro" => Right(KibanaAccess.RO)
         case "ro_strict" => Right(KibanaAccess.ROStrict)
         case "rw" => Right(KibanaAccess.RW)
+        case "api_only" =>  Right(KibanaAccess.ApiOnly)
         case "admin" => Right(KibanaAccess.Admin)
         case "unrestricted" => Right(KibanaAccess.Unrestricted)
         case unknown => Left(CoreCreationError.ValueLevelCreationError(Message(
-          s"Unknown kibana access '$unknown'. Available options: 'ro', 'ro_strict', 'rw', 'admin', 'unrestricted'"
+          s"Unknown kibana access '$unknown'. Available options: 'ro', 'ro_strict', 'rw', 'api_only', 'admin', 'unrestricted'"
         )))
       }
       .decoder

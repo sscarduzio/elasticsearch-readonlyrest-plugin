@@ -30,6 +30,10 @@ readonlyrest:
         access: ro
         kibana_index: "user2_kibana_index"
         hide_apps: ["user2_app1", "user2_app2"]
+        allowed_api_paths:
+          - "^/api/spaces/.*$"
+          - http_method: GET
+            path: "/api/spaces?test=12.2"
 
     - name: "User 3"
       auth_key: "user3:pass"

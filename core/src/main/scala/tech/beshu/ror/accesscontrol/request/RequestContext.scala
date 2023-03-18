@@ -40,7 +40,7 @@ import tech.beshu.ror.utils.ScalaOps._
 import java.time.Instant
 import scala.language.implicitConversions
 
-trait RequestContext {
+trait RequestContext extends Logging {
 
   type BLOCK_CONTEXT <: BlockContext
 

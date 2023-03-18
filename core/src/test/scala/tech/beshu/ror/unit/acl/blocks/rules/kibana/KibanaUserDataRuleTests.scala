@@ -27,7 +27,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.IndexName.Kibana
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, KibanaAccess, KibanaApp, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
+import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, KibanaAccess, KibanaAllowedApiPath, KibanaApp, Regex, RorConfigurationIndex}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -47,6 +49,7 @@ class KibanaUserDataRuleTests
           kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
           kibanaTemplateIndex = Some(AlreadyResolved(kibanaTemplateIndex)),
           appsToHide = Set.empty,
+          allowedApiPaths = Set.empty,
           rorIndex = RorConfigurationIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
@@ -67,6 +70,7 @@ class KibanaUserDataRuleTests
           kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
           kibanaTemplateIndex = None,
           appsToHide = apps.toSet,
+          allowedApiPaths = Set.empty,
           rorIndex = RorConfigurationIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
@@ -76,6 +80,40 @@ class KibanaUserDataRuleTests
             .withKibanaAccess(KibanaAccess.Unrestricted)
             .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
             .withHiddenKibanaApps(apps)
+        }
+      }
+    }
+    "kibana allowed API paths are configured" should {
+      "pass the allowed API paths to the User Metadata object in the rule matches" in {
+        val paths: UniqueNonEmptyList[KibanaAllowedApiPath] = UniqueNonEmptyList.of(
+          KibanaAllowedApiPath(
+            AllowedHttpMethod.Any,
+            Regex.buildFromLiteral("/api/index_management/indices")
+          ),
+          KibanaAllowedApiPath(
+            AllowedHttpMethod.Any,
+            Regex.compile("""^\/api\/spaces\/.*$""").get
+          ),
+          KibanaAllowedApiPath(
+            AllowedHttpMethod.Specific(HttpMethod.Get),
+            Regex.compile("""^\/api\/alerting\/rule\/.*$""").get
+          )
+        )
+        val rule = createRuleFrom(KibanaUserDataRule.Settings(
+          access = KibanaAccess.Unrestricted,
+          kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
+          kibanaTemplateIndex = None,
+          appsToHide = Set.empty,
+          allowedApiPaths = paths.toSet,
+          rorIndex = RorConfigurationIndex(rorIndex)
+        ))
+        val blockContext = checkRule(rule)
+        blockContext.userMetadata should be {
+          UserMetadata
+            .empty
+            .withKibanaAccess(KibanaAccess.Unrestricted)
+            .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
+            .withAllowedKibanaApiPaths(paths)
         }
       }
     }
@@ -110,6 +148,7 @@ class KibanaUserDataRuleTests
       kibanaIndex = AlreadyResolved(customKibanaIndex.getOrElse(ClusterIndexName.Local.kibanaDefault)),
       kibanaTemplateIndex = None,
       appsToHide = Set.empty,
+      allowedApiPaths = Set.empty,
       rorIndex = RorConfigurationIndex(rorIndex)
     )
 
