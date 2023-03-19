@@ -25,14 +25,14 @@ import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, Core, CoreFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.accesscontrol.logging.audit.AuditingTool
-import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, LoggingContext}
+import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest._
 import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
 import tech.beshu.ror.configuration.TestConfigLoading._
@@ -291,7 +291,7 @@ object ReadonlyRest {
     private[ror] def shutdown(): Unit = {
       httpClientsFactory.shutdown()
       ldapConnectionPoolProvider.close().runAsyncAndForget
-      auditingTool.foreach(_.close())
+      auditingTool.foreach(_.close().runAsyncAndForget)
     }
   }
 

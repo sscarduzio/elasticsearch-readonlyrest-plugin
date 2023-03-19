@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.logging.audit
+package tech.beshu.ror.accesscontrol.audit
 
 import cats.data.NonEmptyList
 import cats.implicits._
@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate, RorAuditLoggerName}
-import tech.beshu.ror.accesscontrol.logging.{LoggingContext, ResponseContext}
+import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
@@ -32,7 +32,7 @@ import tech.beshu.ror.es.AuditSinkService
 
 import java.time.Clock
 
-class AuditingTool private(auditSinks: NonEmptyList[AuditSink])
+class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
                           (implicit loggingContext: LoggingContext) {
 
   def audit[B <: BlockContext](response: ResponseContext[B]): Task[Unit] = {
@@ -42,8 +42,10 @@ class AuditingTool private(auditSinks: NonEmptyList[AuditSink])
       .map((_: NonEmptyList[Unit]) => ())
   }
 
-  def close(): Unit = {
-    auditSinks.toList.par.foreach(_.close())
+  def close(): Task[Unit] = {
+    auditSinks
+      .parTraverse(_.close())
+      .map((_: NonEmptyList[Unit]) => ())
   }
 
   private def toAuditResponse[B <: BlockContext](responseContext: ResponseContext[B]): AuditResponseContext = {

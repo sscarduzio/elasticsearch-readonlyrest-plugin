@@ -14,21 +14,8 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.logging.audit
+package tech.beshu.ror.accesscontrol.audit
 
-import org.apache.logging.log4j.{LogManager, Logger}
-import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.domain.RorAuditLoggerName
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
+import tech.beshu.ror.accesscontrol.domain.Header
 
-private[audit] class LogBasedAuditSink(serializer: AuditLogSerializer,
-                                       loggerName: RorAuditLoggerName) extends AuditSink(serializer) {
-
-  private val logger: Logger = LogManager.getLogger(loggerName.value.value)
-
-  override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject): Unit = {
-    logger.info(serializedEvent.toString)
-  }
-
-  override def close(): Unit = ()
-}
+final case class LoggingContext(obfuscatedHeaders: Set[Header.Name])

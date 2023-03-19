@@ -25,6 +25,9 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.audit.AuditingTool
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSinkConfig
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.{Policy, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
@@ -32,9 +35,6 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate, RorAuditLoggerName}
 import tech.beshu.ror.accesscontrol.logging.ResponseContext._
-import tech.beshu.ror.accesscontrol.logging.audit.AuditingTool
-import tech.beshu.ror.accesscontrol.logging.audit.AuditingTool.Settings
-import tech.beshu.ror.accesscontrol.logging.audit.AuditingTool.Settings.AuditSinkConfig
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
@@ -136,9 +136,10 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     }
     "log sink is used" should {
       "saved audit log to file defined in log4j config" in {
-        for {
-          file <- File("./core/build/tmp/readonlyrest_audit.log").toTemporary
-        } yield {
+        File.usingTemporaryFile("test_ror_audit_log", ".log") { logFile =>
+          val logFilePath = logFile.path.toAbsolutePath.toString
+          System.setProperty("ROR_AUDIT_LOG_FILE_PATH", logFilePath)
+
           val auditingTool = AuditingTool.create(
             settings = Settings(
               NonEmptyList.of(
@@ -156,7 +157,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           val responseContext = Errored(requestContext, new Exception("error"))
 
           auditingTool.audit(responseContext).runSyncUnsafe()
-          val logFileContent = file.contentAsString
+          val logFileContent = logFile.contentAsString
 
           logFileContent should include(requestContextId.value)
         }

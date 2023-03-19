@@ -8,7 +8,9 @@ readonlyrest:
     key_pass: readonlyrest
 
   audit:
-    collector: true
+    enabled: true
+    outputs:
+      - type: index
 
   access_control_rules:
 

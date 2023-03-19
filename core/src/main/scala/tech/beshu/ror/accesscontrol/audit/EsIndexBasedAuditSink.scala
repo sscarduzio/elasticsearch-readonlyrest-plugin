@@ -14,8 +14,9 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.logging.audit
+package tech.beshu.ror.accesscontrol.audit
 
+import monix.eval.Task
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
@@ -27,9 +28,9 @@ private[audit] class EsIndexBasedAuditSink private(serializer: AuditLogSerialize
                                                    rorAuditIndexTemplate: RorAuditIndexTemplate,
                                                    auditSinkService: AuditSinkService)
                                                   (implicit clock: Clock)
-  extends AuditSink(serializer) {
+  extends BaseAuditSink(serializer) {
 
-  override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject): Unit = {
+  override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject): Task[Unit] = Task {
     auditSinkService.submit(
       rorAuditIndexTemplate.indexName(Instant.now(clock)).name.value,
       event.requestContext.id,
@@ -37,7 +38,7 @@ private[audit] class EsIndexBasedAuditSink private(serializer: AuditLogSerialize
     )
   }
 
-  override def close(): Unit = auditSinkService.close()
+  override def close(): Task[Unit] = Task.delay(auditSinkService.close())
 }
 
 object EsIndexBasedAuditSink {

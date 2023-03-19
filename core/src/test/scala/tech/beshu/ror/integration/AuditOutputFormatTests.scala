@@ -20,10 +20,10 @@ import cats.data.NonEmptyList
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSinkConfig
+import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
-import tech.beshu.ror.accesscontrol.logging.audit.AuditingTool
-import tech.beshu.ror.accesscontrol.logging.audit.AuditingTool.Settings.AuditSinkConfig
-import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, LoggingContext}
+import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.mocks.MockRequestContext
@@ -34,7 +34,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
 import scala.language.postfixOps
 
-class AccessControlAuditTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest {
+class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest {
 
   override protected def configYaml: String =
     """
