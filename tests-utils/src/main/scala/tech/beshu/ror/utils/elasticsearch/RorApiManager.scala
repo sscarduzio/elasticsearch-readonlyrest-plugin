@@ -24,6 +24,7 @@ import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
 
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
 
@@ -34,12 +35,9 @@ class RorApiManager(client: RestClient,
 
   private lazy val documentManager = new DocumentManager(client, esVersion)
 
-  def fetchMetadata(): JsonResponse = {
-    call(createUserMetadataRequest(None), new JsonResponse(_))
-  }
-
-  def fetchMetadata(preferredGroup: String): JsonResponse = {
-    call(createUserMetadataRequest(Some(preferredGroup)), new JsonResponse(_))
+  def fetchMetadata(preferredGroup: Option[String] = None,
+                    correlationId: Option[String] = None): JsonResponse = {
+    call(createUserMetadataRequest(preferredGroup, correlationId), new JsonResponse(_))
   }
 
   def sendAuditEvent(payload: JSON): JsonResponse = {
@@ -117,9 +115,11 @@ class RorApiManager(client: RestClient,
     )
   }
 
-  private def createUserMetadataRequest(preferredGroup: Option[String]) = {
+  private def createUserMetadataRequest(preferredGroup: Option[String],
+                                        correlationId: Option[String]) = {
     val request = new HttpGet(client.from("/_readonlyrest/metadata/current_user"))
     preferredGroup.foreach(request.addHeader("x-ror-current-group", _))
+    correlationId.foreach(request.addHeader("x-ror-correlation-id", _))
     request
   }
 

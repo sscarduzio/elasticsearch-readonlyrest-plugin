@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.factory
 
 import java.time.Clock
-
 import cats.data.{NonEmptyList, State, Validated}
 import cats.implicits._
 import cats.kernel.Monoid
@@ -37,9 +36,10 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseAuthenticationRule, Rule}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.ImpersonationSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, LocalUsers, RorConfigurationIndex, User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.UsernameCaseMapping

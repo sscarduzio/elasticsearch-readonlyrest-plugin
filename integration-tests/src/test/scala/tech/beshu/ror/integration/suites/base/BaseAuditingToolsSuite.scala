@@ -148,21 +148,21 @@ trait BaseAuditingToolsSuite
           def fetchMetadata(correlationId: Option[String] = None) = {
             val userMetadataManager = new RorApiManager(
               client = basicAuthClient("username", "dev"),
-              esVersion = esVersionUsed,
-              additionalHeaders = correlationId.map(("x-ror-correlation-id", _)).toMap
+              esVersion = esVersionUsed
             )
-            userMetadataManager.fetchMetadata()
+            userMetadataManager.fetchMetadata(correlationId = correlationId)
           }
 
-          val response1 = fetchMetadata()
+          val correlationId = UUID.randomUUID().toString
+          val response1 = fetchMetadata(correlationId = Some(correlationId))
           response1.responseCode should be(200)
           val loggingId1 = response1.responseJson("x-ror-correlation-id").str
 
-          val response2 = fetchMetadata(correlationId = Some(loggingId1))
+          val response2 = fetchMetadata(correlationId = Some(correlationId))
           response2.responseCode should be(200)
           val loggingId2 = response2.responseJson("x-ror-correlation-id").str
 
-          loggingId1 shouldNot be(loggingId2)
+          loggingId1 should be(loggingId2)
 
           eventually {
             val auditEntries = adminAuditIndexManager.getEntries.jsons

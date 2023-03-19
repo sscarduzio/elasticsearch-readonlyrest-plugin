@@ -32,13 +32,15 @@ import tech.beshu.ror.accesscontrol.blocks.Block.{History, Name, Policy, RuleDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks._
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana._
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
 import tech.beshu.ror.accesscontrol.domain.Address.Ip
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
@@ -46,11 +48,14 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, Strategy}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
+import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
+import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{Blacklist, Whitelist}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
+import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.KibanaUserDataRuleTogetherWith
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
@@ -160,6 +165,16 @@ object show {
     implicit val lemonUriShow: Show[LemonUri] = Show.show(_.toString())
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
     implicit val kibanaAppShow: Show[KibanaApp] = Show.show(_.value.value)
+    implicit val kibanaAllowedApiPathShow: Show[KibanaAllowedApiPath] = Show.show { p =>
+      val httpMethodStr = p.httpMethod match {
+        case AllowedHttpMethod.Any => "*"
+        case AllowedHttpMethod.Specific(HttpMethod.Get) => "GET"
+        case AllowedHttpMethod.Specific(HttpMethod.Put) => "PUT"
+        case AllowedHttpMethod.Specific(HttpMethod.Post) => "POST"
+        case AllowedHttpMethod.Specific(HttpMethod.Delete) => "DELETE"
+      }
+      s"$httpMethodStr:${p.pathRegex.pattern.pattern()}"
+    }
     implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
     implicit val clusterIndexNameShow: Show[ClusterIndexName] = Show.show(_.stringify)
     implicit val clusterNameFullShow: Show[ClusterName.Full] = Show.show(_.value.value)
@@ -225,6 +240,7 @@ object show {
         showNamedTraversable("av_groups", u.availableGroups) ::
         showOption("kibana_idx", u.kibanaIndex) ::
         showNamedTraversable("hidden_apps", u.hiddenKibanaApps) ::
+        showNamedTraversable("allowed_api_paths", u.allowedKibanaApiPaths) ::
         showOption("kibana_access", u.kibanaAccess) ::
         showOption("user_origin", u.userOrigin) ::
         Nil flatten) mkString ";"
@@ -342,10 +358,18 @@ object show {
         s"The '${block.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule."
       case BlockValidationError.OnlyOneAuthenticationRuleAllowed(authRules) =>
         s"The '${block.show}' block should contain only one authentication rule, but contains: [${authRules.map(_.name.show).mkString_(",")}]"
-      case BlockValidationError.KibanaAccessRuleTogetherWithActionsRule =>
-        s"The '${block.show}' block contains Kibana Access Rule and Actions Rule. These two cannot be used together in one block."
+      case BlockValidationError.KibanaRuleTogetherWithActionsRule =>
+        s"The '${block.show}' block contains '${KibanaUserDataRule.Name.name.show}' rule (or deprecated '${KibanaAccessRule.Name.name.show}' rule) and '${ActionsRule.Name.name.show}' rule. These two cannot be used together in one block."
       case BlockValidationError.RuleDoesNotMeetRequirement(complianceResult) =>
         s"The '${block.show}' block doesn't meet requirements for defined variables. ${complianceResult.show}"
+      case error: BlockValidationError.KibanaUserDataRuleTogetherWith =>
+        val conflictingRule = error match {
+          case KibanaUserDataRuleTogetherWith.KibanaAccessRule => KibanaAccessRule.Name.name
+          case KibanaUserDataRuleTogetherWith.KibanaIndexRule => KibanaIndexRule.Name.name
+          case KibanaUserDataRuleTogetherWith.KibanaTemplateIndexRule => KibanaTemplateIndexRule.Name.name
+          case KibanaUserDataRuleTogetherWith.KibanaHideAppsRule => KibanaHideAppsRule.Name.name
+        }
+        s"The '${block.show}' block contains '${KibanaUserDataRule.Name.name.show}' rule and '${conflictingRule.show}' rule. The second one is deprecated. The first one offers all the second one is able to provide."
     }
 
     private def showNamedTraversable[T: Show](name: String, traversable: Traversable[T]) = {

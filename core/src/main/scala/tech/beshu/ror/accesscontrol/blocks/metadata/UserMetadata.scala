@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.metadata
 
-import cats.data.NonEmptySet
 import cats.implicits._
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain._
@@ -26,9 +25,10 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 final case class UserMetadata private(loggedUser: Option[LoggedUser],
                                       currentGroup: Option[GroupName],
                                       availableGroups: UniqueList[GroupName],
-                                      kibanaIndex: Option[ClusterIndexName],
-                                      kibanaTemplateIndex: Option[ClusterIndexName],
+                                      kibanaIndex: Option[IndexName.Kibana],
+                                      kibanaTemplateIndex: Option[IndexName.Kibana],
                                       hiddenKibanaApps: Set[KibanaApp],
+                                      allowedKibanaApiPaths: Set[KibanaAllowedApiPath],
                                       kibanaAccess: Option[KibanaAccess],
                                       userOrigin: Option[UserOrigin],
                                       jwtToken: Option[JwtTokenPayload]) {
@@ -47,10 +47,13 @@ final case class UserMetadata private(loggedUser: Option[LoggedUser],
     availableGroups = groups,
     currentGroup = this.currentGroup.orElse(groups.headOption)
   )
-  def withKibanaIndex(index: ClusterIndexName): UserMetadata = this.copy(kibanaIndex = Some(index))
-  def withKibanaTemplateIndex(index: ClusterIndexName): UserMetadata = this.copy(kibanaTemplateIndex = Some(index))
+  def withKibanaIndex(index: IndexName.Kibana): UserMetadata = this.copy(kibanaIndex = Some(index))
+  def withKibanaTemplateIndex(index: IndexName.Kibana): UserMetadata = this.copy(kibanaTemplateIndex = Some(index))
   def addHiddenKibanaApp(app: KibanaApp): UserMetadata = this.copy(hiddenKibanaApps = this.hiddenKibanaApps + app)
-  def withHiddenKibanaApps(apps: NonEmptySet[KibanaApp]): UserMetadata = this.copy(hiddenKibanaApps = this.hiddenKibanaApps ++ apps.toSortedSet)
+  def withHiddenKibanaApps(apps: UniqueNonEmptyList[KibanaApp]): UserMetadata =
+    this.copy(hiddenKibanaApps = this.hiddenKibanaApps ++ apps)
+  def withAllowedKibanaApiPaths(paths: UniqueNonEmptyList[KibanaAllowedApiPath]): UserMetadata =
+    this.copy(allowedKibanaApiPaths = this.allowedKibanaApiPaths ++ paths)
   def withKibanaAccess(access: KibanaAccess): UserMetadata = this.copy(kibanaAccess = Some(access))
   def withUserOrigin(origin: UserOrigin): UserMetadata = this.copy(userOrigin = Some(origin))
   def withJwtToken(token: JwtTokenPayload): UserMetadata = this.copy(jwtToken = Some(token))
@@ -74,6 +77,7 @@ object UserMetadata {
     kibanaIndex = None,
     kibanaTemplateIndex = None,
     hiddenKibanaApps = Set.empty,
+    allowedKibanaApiPaths = Set.empty,
     kibanaAccess = None,
     userOrigin = None,
     jwtToken = None
