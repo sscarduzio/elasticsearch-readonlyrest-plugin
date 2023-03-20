@@ -33,7 +33,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-trait RorStartingSuite extends AnyWordSpec {
+class RorStartingSuite extends AnyWordSpec {
 
   import RorStartingSuite._
 

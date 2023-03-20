@@ -18,19 +18,18 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsClusterProvider
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.RorApiManager
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 import java.util.UUID
 
-trait CurrentUserMetadataSuite
+class CurrentUserMetadataSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
-  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/current_user_metadata/readonlyrest.yml"
 
@@ -43,8 +42,8 @@ trait CurrentUserMetadataSuite
           val correlationId = UUID.randomUUID().toString
           val result = user1MetadataManager.fetchMetadata(correlationId = Some(correlationId))
 
-          result.responseCode should be (200)
-          result.responseJson should be (ujson.read(
+          result.responseCode should be(200)
+          result.responseJson should be(ujson.read(
             s"""{
                |  "x-ror-username": "user1",
                |  "x-ror-current-group": "group1",
@@ -61,8 +60,8 @@ trait CurrentUserMetadataSuite
             correlationId = Some(correlationId)
           )
 
-          result.responseCode should be (200)
-          result.responseJson should be (ujson.read(
+          result.responseCode should be(200)
+          result.responseJson should be(ujson.read(
             s"""{
                |  "x-ror-username": "user4",
                |  "x-ror-current-group": "group6",
@@ -79,8 +78,8 @@ trait CurrentUserMetadataSuite
           val correlationId = UUID.randomUUID().toString
           val result = user2MetadataManager.fetchMetadata(correlationId = Some(correlationId))
 
-          result.responseCode should be (200)
-          result.responseJson should be (ujson.read(
+          result.responseCode should be(200)
+          result.responseJson should be(ujson.read(
             s"""{
                |  "x-ror-username": "user2",
                |  "x-ror-current-group": "group2",
@@ -107,8 +106,8 @@ trait CurrentUserMetadataSuite
           val correlationId = UUID.randomUUID().toString
           val result = user3MetadataManager.fetchMetadata(correlationId = Some(correlationId))
 
-          result.responseCode should be (200)
-          result.responseJson should be (ujson.read(
+          result.responseCode should be(200)
+          result.responseJson should be(ujson.read(
             s"""{
                |  "x-ror-username": "user3",
                |  "x-ror-correlation-id": "$correlationId",
@@ -124,21 +123,21 @@ trait CurrentUserMetadataSuite
 
           val result = unknownUserMetadataManager.fetchMetadata()
 
-          result.responseCode should be (401)
+          result.responseCode should be(401)
         }
         "current group is set but it doesn't exist on available groups list" in {
           val user4MetadataManager = new RorApiManager(basicAuthClient("user4", "pass"), esVersionUsed)
 
           val result = user4MetadataManager.fetchMetadata(preferredGroup = Some("group7"))
 
-          result.responseCode should be (401)
+          result.responseCode should be(401)
         }
         "block with no available groups collected is matched and current group is set" in {
           val user3MetadataManager = new RorApiManager(basicAuthClient("user3", "pass"), esVersionUsed)
 
           val result = user3MetadataManager.fetchMetadata(preferredGroup = Some("group7"))
 
-          result.responseCode should be (401)
+          result.responseCode should be(401)
         }
       }
     }

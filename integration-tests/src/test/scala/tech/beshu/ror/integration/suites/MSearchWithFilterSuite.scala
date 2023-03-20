@@ -16,25 +16,24 @@
  */
 package tech.beshu.ror.integration.suites
 
-import java.time.Duration
-import java.util.function.BiPredicate
-
 import net.jodah.failsafe.{Failsafe, RetryPolicy}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsClusterProvider
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.SearchManager.MSearchResult
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, SearchManager}
 
+import java.time.Duration
+import java.util.function.BiPredicate
+
 //TODO: change test names. Current names are copies from old java integration tests
-trait MSearchWithFilterSuite
+class MSearchWithFilterSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with Matchers {
-  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/msearch_with_filter/readonlyrest.yml"
 

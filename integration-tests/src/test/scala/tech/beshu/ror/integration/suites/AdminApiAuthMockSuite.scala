@@ -23,11 +23,11 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import tech.beshu.ror.integration.suites.base.support.BaseManyEsClustersIntegrationTest
-import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonLdapContainers}
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport, SingletonLdapContainers}
 import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
+import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
-import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.{IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 import ujson.Value.Value
@@ -35,15 +35,15 @@ import ujson.Value.Value
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-trait AdminApiAuthMockSuite
+class AdminApiAuthMockSuite
   extends AnyWordSpec
     with BaseManyEsClustersIntegrationTest
+    with PluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with BeforeAndAfterEach
     with Eventually
     with OptionValues
     with Matchers {
-  this: EsClusterProvider =>
 
   override lazy val clusterContainers = NonEmptyList.of(esCluster)
   override lazy val esTargets = NonEmptyList.fromListUnsafe(esCluster.nodes)

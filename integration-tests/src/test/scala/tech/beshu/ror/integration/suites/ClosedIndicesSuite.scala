@@ -19,17 +19,16 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsClusterProvider
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait ClosedIndicesSuite
+class ClosedIndicesSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with Matchers {
-  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/closed_indices/readonlyrest.yml"
 
@@ -59,7 +58,7 @@ trait ClosedIndicesSuite
 
         response.responseCode should be(200)
         val foundIndices = response.searchHits.map(_("_index").str)
-        foundIndices should contain ("intentp1_a1")
+        foundIndices should contain("intentp1_a1")
         foundIndices should not contain ("intentp1_a2")
       }
       "wildcard search is used" in {
@@ -67,7 +66,7 @@ trait ClosedIndicesSuite
 
         response.responseCode should be(200)
         val foundIndices = response.searchHits.map(_("_index").str)
-        foundIndices should contain ("intentp1_a1")
+        foundIndices should contain("intentp1_a1")
         foundIndices should not contain ("intentp1_a2")
       }
       "generic search all" in {
@@ -75,7 +74,7 @@ trait ClosedIndicesSuite
 
         response.responseCode should be(200)
         val foundIndices = response.searchHits.map(_("_index").str)
-        foundIndices should contain ("intentp1_a1")
+        foundIndices should contain("intentp1_a1")
         foundIndices should not contain ("intentp1_a2")
       }
       "get mappings is used" in {

@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.suites
+package tech.beshu.ror.integration.suites.base
 
 import cats.data.NonEmptyList
 import eu.timepit.refined.auto._
@@ -22,7 +22,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
 import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, XPackSecurity}
 import tech.beshu.ror.utils.containers._
@@ -34,11 +34,11 @@ import tech.beshu.ror.utils.misc.Resources.getResourceContent
 trait XpackClusterWithRorNodesAndInternodeSslSuite
   extends AnyWordSpec
     with BaseEsClusterIntegrationTest
+    with PluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
     with BeforeAndAfterAll
     with Eventually {
-  this: EsClusterProvider =>
 
   def rorConfigPath: String
 

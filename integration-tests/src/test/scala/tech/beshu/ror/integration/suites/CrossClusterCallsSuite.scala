@@ -22,7 +22,7 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, XPackSecurity}
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
@@ -30,16 +30,16 @@ import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-import scala.language.postfixOps
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
-trait CrossClusterCallsSuite
+class CrossClusterCallsSuite
   extends AnyWordSpec
     with BaseEsRemoteClusterIntegrationTest
+    with PluginTestSupport
     with SingleClientSupport
     with ESVersionSupportForAnyWordSpecLike
     with Eventually {
-  this: EsClusterProvider =>
 
   import tech.beshu.ror.integration.suites.CrossClusterCallsSuite._
 
@@ -308,11 +308,11 @@ trait CrossClusterCallsSuite
           result.responseCode should be(200)
           result.responseJson("responses").arr.size should be(2)
           val firstQueryResponse = result.responseJson("responses")(0)
-          firstQueryResponse("hits")("hits").arr.map(_ ("_index").str).toSet should be(
+          firstQueryResponse("hits")("hits").arr.map(_("_index").str).toSet should be(
             Set("metrics_monitoring_2020-03-26", "metrics_monitoring_2020-03-27")
           )
           val secondQueryResponse = result.responseJson("responses")(1)
-          secondQueryResponse("hits")("hits").arr.map(_ ("_index").str).toSet should be(
+          secondQueryResponse("hits")("hits").arr.map(_("_index").str).toSet should be(
             Set("etl1:etl_usage_2020-03-26", "etl1:etl_usage_2020-03-27")
           )
         }
@@ -324,7 +324,7 @@ trait CrossClusterCallsSuite
           result.responseCode should be(200)
           result.responseJson("responses").arr.size should be(1)
           val secondQueryResponse = result.responseJson("responses")(0)
-          secondQueryResponse("hits")("hits").arr.map(_ ("_index").str).toSet should be(
+          secondQueryResponse("hits")("hits").arr.map(_("_index").str).toSet should be(
             Set("etl1:etl_usage_2020-03-26", "etl1:etl_usage_2020-03-27")
           )
         }
@@ -342,7 +342,7 @@ trait CrossClusterCallsSuite
           val firstQueryResponse = result.responseJson("responses")(0)
           firstQueryResponse("hits")("hits").arr.toSet should be(Set.empty)
           val secondQueryResponse = result.responseJson("responses")(1)
-          secondQueryResponse("hits")("hits").arr.map(_ ("_index").str).toSet should be(
+          secondQueryResponse("hits")("hits").arr.map(_("_index").str).toSet should be(
             Set("etl1:etl_usage_2020-03-26", "etl1:etl_usage_2020-03-27")
           )
         }
@@ -359,7 +359,7 @@ trait CrossClusterCallsSuite
           firstQueryResponse("status").num should be(404)
           val secondQueryResponse = result.responseJson("responses")(1)
           secondQueryResponse("status").num should be(200)
-          secondQueryResponse("hits")("hits").arr.map(_ ("_index").str).toSet should be(
+          secondQueryResponse("hits")("hits").arr.map(_("_index").str).toSet should be(
             Set("etl1:etl_usage_2020-03-26")
           )
         }

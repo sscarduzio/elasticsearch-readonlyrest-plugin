@@ -16,10 +16,11 @@
  */
 package tech.beshu.ror.integration.suites.fields.querydsl
 
-import tech.beshu.ror.utils.containers.EsClusterProvider
+import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
-trait FieldRuleSearchQueryDSLSuite extends FieldRuleQueryDSLSuite {
-  this: EsClusterProvider =>
+class FieldRuleSearchQueryDSLSuite
+  extends FieldRuleQueryDSLSuite
+    with SingletonPluginTestSupport {
 
   override protected def assertNoSearchHitsReturnedFor(index: String, query: String): Unit = {
     val result = searchManager.search(index, ujson.read(query))

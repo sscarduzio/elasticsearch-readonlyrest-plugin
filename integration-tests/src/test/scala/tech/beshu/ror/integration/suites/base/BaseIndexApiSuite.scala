@@ -49,7 +49,7 @@ trait BaseIndexApiSuite
             val indexResponse = dev1IndexManager.getIndex("index1")
 
             indexResponse.responseCode should be(200)
-            indexResponse.indicesAndAliases should be (Map(
+            indexResponse.indicesAndAliases should be(Map(
               "index1" -> Set("index1_alias")
             ))
           }
@@ -57,7 +57,7 @@ trait BaseIndexApiSuite
             val indexResponse = dev1IndexManager.getIndex("index1_alias")
 
             indexResponse.responseCode should be(200)
-            indexResponse.indicesAndAliases should be (Map(
+            indexResponse.indicesAndAliases should be(Map(
               "index1" -> Set("index1_alias")
             ))
           }
@@ -66,7 +66,7 @@ trait BaseIndexApiSuite
               val indexResponse = dev1IndexManager.getIndex("index*")
 
               indexResponse.responseCode should be(200)
-              indexResponse.indicesAndAliases should be (Map(
+              indexResponse.indicesAndAliases should be(Map(
                 "index1" -> Set("index1_alias")
               ))
             }
@@ -76,7 +76,7 @@ trait BaseIndexApiSuite
               val indexResponse = dev1IndexManager.getIndex("index1_a*")
 
               indexResponse.responseCode should be(200)
-              indexResponse.indicesAndAliases should be (Map(
+              indexResponse.indicesAndAliases should be(Map(
                 "index1" -> Set("index1_alias")
               ))
             }
@@ -85,7 +85,7 @@ trait BaseIndexApiSuite
             val indexResponse = dev1IndexManager.getIndex("index1", "index3")
 
             indexResponse.responseCode should be(200)
-            indexResponse.indicesAndAliases should be (Map(
+            indexResponse.indicesAndAliases should be(Map(
               "index1" -> Set("index1_alias")
             ))
           }
@@ -95,7 +95,7 @@ trait BaseIndexApiSuite
             val indexResponse = dev2IndexManager.getIndex("index2_alias")
 
             indexResponse.responseCode should be(200)
-            indexResponse.indicesAndAliases should be (Map(
+            indexResponse.indicesAndAliases should be(Map(
               "index2" -> Set("index2_alias")
             ))
           }
@@ -107,7 +107,7 @@ trait BaseIndexApiSuite
             val indexResponse = dev1IndexManager.getIndex("my_index*")
 
             indexResponse.responseCode should be(200)
-            indexResponse.indicesAndAliases should be (Map.empty)
+            indexResponse.indicesAndAliases should be(Map.empty)
           }
         }
         "the alias name with wildcard is used" when {
@@ -115,7 +115,7 @@ trait BaseIndexApiSuite
             val indexResponse = dev1IndexManager.getIndex("my_index1_a*")
 
             indexResponse.responseCode should be(200)
-            indexResponse.indicesAndAliases should be (Map.empty)
+            indexResponse.indicesAndAliases should be(Map.empty)
           }
         }
       }
@@ -140,7 +140,7 @@ trait BaseIndexApiSuite
         val indexResponse = dev7IndexManager.getIndex("index7*")
 
         indexResponse.responseCode should be(200)
-        indexResponse.indicesAndAliases should be (Map(
+        indexResponse.indicesAndAliases should be(Map(
           "index7-000001" -> Set("index7"),
           "index7-000002" -> Set.empty
         ))
@@ -152,7 +152,7 @@ trait BaseIndexApiSuite
           val aliasResponse = dev1IndexManager.getAliases
 
           aliasResponse.responseCode should be(200)
-          aliasResponse.aliasesOfIndices should be (Map(
+          aliasResponse.aliasesOfIndices should be(Map(
             "index1" -> Set("index1_alias")
           ))
         }
@@ -161,7 +161,7 @@ trait BaseIndexApiSuite
             val aliasResponse = dev1IndexManager.getAlias("index1")
 
             aliasResponse.responseCode should be(200)
-            aliasResponse.aliasesOfIndices should be (Map(
+            aliasResponse.aliasesOfIndices should be(Map(
               "index1" -> Set("index1_alias")
             ))
           }
@@ -169,7 +169,7 @@ trait BaseIndexApiSuite
             val aliasResponse = dev1IndexManager.getAlias("index*")
 
             aliasResponse.responseCode should be(200)
-            aliasResponse.aliasesOfIndices should be (Map(
+            aliasResponse.aliasesOfIndices should be(Map(
               "index1" -> Set("index1_alias")
             ))
           }
@@ -177,7 +177,7 @@ trait BaseIndexApiSuite
             val aliasResponse = dev1IndexManager.getAlias(indices = "index1", "nonexistent")
 
             aliasResponse.responseCode should be(200)
-            aliasResponse.aliasesOfIndices should be (Map(
+            aliasResponse.aliasesOfIndices should be(Map(
               "index1" -> Set("index1_alias")
             ))
           }
@@ -185,7 +185,7 @@ trait BaseIndexApiSuite
             val aliasResponse = dev7IndexManager.getAlias("index7*")
 
             aliasResponse.responseCode should be(200)
-            aliasResponse.aliasesOfIndices should be (Map(
+            aliasResponse.aliasesOfIndices should be(Map(
               "index7-000001" -> Set("index7"),
               "index7-000002" -> Set.empty
             ))
@@ -196,7 +196,7 @@ trait BaseIndexApiSuite
             val aliasResponse = dev1IndexManager.getAliasByName("index1", "index1_alias")
 
             aliasResponse.responseCode should be(200)
-            aliasResponse.aliasesOfIndices should be (Map(
+            aliasResponse.aliasesOfIndices should be(Map(
               "index1" -> Set("index1_alias")
             ))
           }
@@ -204,7 +204,7 @@ trait BaseIndexApiSuite
             val aliasResponse = dev1IndexManager.getAliasByName("index1", "index1*")
 
             aliasResponse.responseCode should be(200)
-            aliasResponse.aliasesOfIndices should be (Map(
+            aliasResponse.aliasesOfIndices should be(Map(
               "index1" -> Set("index1_alias")
             ))
           }
@@ -216,15 +216,15 @@ trait BaseIndexApiSuite
             val aliasResponse = dev1IndexManager.getAlias("nonexistent*")
 
             aliasResponse.responseCode should be(200)
-            aliasResponse.aliasesOfIndices should be (Map.empty)
+            aliasResponse.aliasesOfIndices should be(Map.empty)
           }
         }
         "the alias name with wildcard is used" when {
-          "there is no matching alias" excludeES(allEs6xExceptEs67x) in {
+          "there is no matching alias" excludeES (allEs6xExceptEs67x) in {
             val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent*")
 
             aliasResponse.responseCode should be(200)
-            aliasResponse.aliasesOfIndices should be (Map.empty)
+            aliasResponse.aliasesOfIndices should be(Map.empty)
           }
         }
       }
@@ -362,85 +362,85 @@ trait BaseIndexApiSuite
         "user has access to rollover target and rollover index (defined)" in {
           val result = dev5IndexManager.rollover("index5", "index5-000010")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
         }
         "user gas access to rollover target (rollover index not defined)" in {
           val result = dev5IndexManager.rollover("index5")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
         }
       }
       "not be allowed" when {
         "user has no access to rollover target" in {
           val result = dev5IndexManager.rollover("index1")
 
-          result.responseCode should be (forbiddenStatusReturned)
+          result.responseCode should be(forbiddenStatusReturned)
         }
         "user has no access to rollover index" in {
           val result = dev5IndexManager.rollover("index5", "index1")
 
-          result.responseCode should be (forbiddenStatusReturned)
+          result.responseCode should be(forbiddenStatusReturned)
         }
       }
     }
     "Resolve index API is used" should {
       "be allowed" when {
-        "user has access to the requested index" excludeES (allEs6x, allEs7xBelowEs79x) in {
+        "user has access to the requested index" excludeES(allEs6x, allEs7xBelowEs79x) in {
           val result = dev7IndexManager.resolve("index7-000001")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
 
-          result.indices.size should be (1)
-          result.indices.head.name should be ("index7-000001")
-          result.indices.head.aliases should be (List("index7"))
+          result.indices.size should be(1)
+          result.indices.head.name should be("index7-000001")
+          result.indices.head.aliases should be(List("index7"))
 
-          result.aliases.size should be (0)
+          result.aliases.size should be(0)
         }
-        "user has access to the requested index pattern" excludeES (allEs6x, allEs7xBelowEs79x) in {
+        "user has access to the requested index pattern" excludeES(allEs6x, allEs7xBelowEs79x) in {
           val result = dev7IndexManager.resolve("index7*")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
 
-          result.indices.size should be (2)
-          result.indices.head.name should be ("index7-000001")
-          result.indices.head.aliases should be (List("index7"))
-          result.indices(1).name should be ("index7-000002")
-          result.indices(1).aliases should be (List.empty)
+          result.indices.size should be(2)
+          result.indices.head.name should be("index7-000001")
+          result.indices.head.aliases should be(List("index7"))
+          result.indices(1).name should be("index7-000002")
+          result.indices(1).aliases should be(List.empty)
 
-          result.aliases.size should be (1)
-          result.aliases.head.name should be ("index7")
-          result.aliases.head.indices should be (List("index7-000001"))
+          result.aliases.size should be(1)
+          result.aliases.head.name should be("index7")
+          result.aliases.head.indices should be(List("index7-000001"))
         }
-        "user has access to narrowed index pattern" excludeES (allEs6x, allEs7xBelowEs79x) in {
+        "user has access to narrowed index pattern" excludeES(allEs6x, allEs7xBelowEs79x) in {
           val result = dev7IndexManager.resolve("*")
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
 
-          result.indices.size should be (2)
-          result.indices.head.name should be ("index7-000001")
-          result.indices.head.aliases should be (List("index7"))
-          result.indices(1).name should be ("index7-000002")
-          result.indices(1).aliases should be (List.empty)
+          result.indices.size should be(2)
+          result.indices.head.name should be("index7-000001")
+          result.indices.head.aliases should be(List("index7"))
+          result.indices(1).name should be("index7-000002")
+          result.indices(1).aliases should be(List.empty)
 
-          result.aliases.size should be (1)
-          result.aliases.head.name should be ("index7")
-          result.aliases.head.indices should be (List("index7-000001"))
+          result.aliases.size should be(1)
+          result.aliases.head.name should be("index7")
+          result.aliases.head.indices should be(List("index7-000001"))
         }
       }
       "return empty result" when {
-        "user has no access to requested index pattern" excludeES (allEs6x, allEs7xBelowEs79x) in {
+        "user has no access to requested index pattern" excludeES(allEs6x, allEs7xBelowEs79x) in {
           val result = dev7IndexManager.resolve("index2*")
 
-          result.responseCode should be (200)
-          result.indices.size should be (0)
-          result.aliases.size should be (0)
+          result.responseCode should be(200)
+          result.indices.size should be(0)
+          result.aliases.size should be(0)
         }
-        "user has no access to the requested index" excludeES (allEs6x, allEs7xBelowEs79x) in {
+        "user has no access to the requested index" excludeES(allEs6x, allEs7xBelowEs79x) in {
           val result = dev7IndexManager.resolve("index2")
 
-          result.responseCode should be (200)
-          result.indices.size should be (0)
-          result.aliases.size should be (0)
+          result.responseCode should be(200)
+          result.indices.size should be(0)
+          result.aliases.size should be(0)
         }
       }
     }

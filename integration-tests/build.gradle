@@ -39,7 +39,7 @@ test {
             exclude 'tech.beshu.tags.ExcludeESModule.' + module
         }
 
-        suite 'tech.beshu.ror.integration.plugin.*'
+        suite 'tech.beshu.ror.integration.suites.*'
     }
     outputs.upToDateWhen { false }
     maxParallelForks = 1

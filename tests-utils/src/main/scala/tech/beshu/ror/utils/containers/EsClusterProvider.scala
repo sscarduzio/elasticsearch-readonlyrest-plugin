@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 
-sealed trait EsClusterProvider extends EsContainerCreator {
+trait EsClusterProvider extends EsContainerCreator {
 
   def createLocalClusterContainer(esClusterSettings: EsClusterSettings): EsClusterContainer = {
     val nodesSettings = NonEmptyList.fromListUnsafe {
@@ -66,5 +66,3 @@ sealed trait EsClusterProvider extends EsContainerCreator {
     this.create(nodeSettings, allNodeNames, nodeDataInitializer, deps)
   }
 }
-
-trait PluginEsClusterProvider extends EsClusterProvider

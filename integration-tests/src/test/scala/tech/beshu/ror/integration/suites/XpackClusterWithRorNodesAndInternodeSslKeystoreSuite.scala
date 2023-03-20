@@ -14,9 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.integration.suites
 
-import tech.beshu.ror.integration.suites.LocalGroupsSuite
-import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
+import tech.beshu.ror.integration.suites.base.XpackClusterWithRorNodesAndInternodeSslSuite
+import tech.beshu.ror.integration.utils.PluginTestSupport
 
-class LocalGroupsPluginTests extends LocalGroupsSuite with SingletonPluginTestSupport
+class XpackClusterWithRorNodesAndInternodeSslKeystoreSuite
+  extends XpackClusterWithRorNodesAndInternodeSslSuite
+    with PluginTestSupport {
+
+  override def rorConfigPath: String = "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_keystore.yml"
+}

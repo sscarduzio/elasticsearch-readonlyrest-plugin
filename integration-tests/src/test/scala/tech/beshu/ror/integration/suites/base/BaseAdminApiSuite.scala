@@ -467,7 +467,7 @@ trait BaseAdminApiSuite
               |]
               |""".stripMargin
           )
-          
+
           def forceReload(rorSettingsResource: String, warnings: ujson.Value): Unit = {
             val testConfig = getResourceContent(rorSettingsResource)
             updateRorTestConfig(rorClients.head, testConfig, 30 minutes, warnings)

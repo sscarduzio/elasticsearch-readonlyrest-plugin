@@ -19,21 +19,20 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsClusterProvider
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, RorApiManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 import java.util.UUID
 
 //TODO change test names. Current names are copies from old java integration tests
-trait LocalGroupsSuite
+class LocalGroupsSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with Matchers
     with CustomScalaTestMatchers {
-  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/local_groups/readonlyrest.yml"
 
@@ -79,7 +78,7 @@ trait LocalGroupsSuite
     val response = userMetadataManager.fetchMetadata(correlationId = Some(correlationId))
 
     response.responseCode should be(200)
-    response.responseJson should be (ujson.read(
+    response.responseJson should be(ujson.read(
       s"""{
          |  "x-ror-username": "user",
          |  "x-ror-current-group": "a_testgroup",
@@ -98,7 +97,7 @@ trait LocalGroupsSuite
     val response = userMetadataManager.fetchMetadata(preferredGroup = Some("foogroup"), correlationId = Some(correlationId))
 
     response.responseCode should be(200)
-    response.responseJson should be (ujson.read(
+    response.responseJson should be(ujson.read(
       s"""{
          |  "x-ror-username": "user",
          |  "x-ror-current-group": "foogroup",

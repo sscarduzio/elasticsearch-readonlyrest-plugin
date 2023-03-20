@@ -19,17 +19,16 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsClusterProvider
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction.{Add, Delete}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, IndexManager}
 
-trait IndexAliasesManagementSuite
+class IndexAliasesManagementSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with SingletonPluginTestSupport
     with BeforeAndAfterEach
     with ESVersionSupportForAnyWordSpecLike {
-  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/aliases/readonlyrest.yml"
 
@@ -43,32 +42,32 @@ trait IndexAliasesManagementSuite
     "be allowed to be used" when {
       "there is no indices rule in block" in {
         adminDocumentManager.createFirstDoc("index", exampleDocument).force()
-        adminDocumentManager.createFirstDoc("dev1-0001",  exampleDocument).force()
+        adminDocumentManager.createFirstDoc("dev1-0001", exampleDocument).force()
         adminDocumentManager.createFirstDoc("dev2-0001", exampleDocument).force()
 
         val result = adminIndexManager.createAliasOf("index", "admin-alias")
 
-        result.responseCode should be (200)
+        result.responseCode should be(200)
         val allAliasesResponse = adminIndexManager.getAliases
-        allAliasesResponse.responseCode should be (200)
-        allAliasesResponse.aliasesOfIndices("index") should be (Set("admin-alias"))
+        allAliasesResponse.responseCode should be(200)
+        allAliasesResponse.aliasesOfIndices("index") should be(Set("admin-alias"))
       }
       "user has access to both: index pattern and alias name" when {
         "an index of the pattern exists" in {
           adminDocumentManager.createFirstDoc("index", exampleDocument).force()
-          adminDocumentManager.createFirstDoc("dev1-0001",  exampleDocument).force()
+          adminDocumentManager.createFirstDoc("dev1-0001", exampleDocument).force()
           adminDocumentManager.createFirstDoc("dev2-0001", exampleDocument).force()
 
           val result = dev1IndexManager.createAliasOf("dev1-000*", "dev1")
 
           result.responseCode should be(200)
           val allAliasesResponse = adminIndexManager.getAliases
-          allAliasesResponse.responseCode should be (200)
-          allAliasesResponse.aliasesOfIndices("dev1-0001") should be (Set("dev1"))
+          allAliasesResponse.responseCode should be(200)
+          allAliasesResponse.aliasesOfIndices("dev1-0001") should be(Set("dev1"))
         }
         "no index of the pattern exists" in {
           adminDocumentManager.createFirstDoc("index", exampleDocument).force()
-          adminDocumentManager.createFirstDoc("dev1-0001",  exampleDocument).force()
+          adminDocumentManager.createFirstDoc("dev1-0001", exampleDocument).force()
           adminDocumentManager.createFirstDoc("dev2-0001", exampleDocument).force()
 
           val result = dev1IndexManager.createAliasOf("dev1-0000*", "dev1")
@@ -80,21 +79,21 @@ trait IndexAliasesManagementSuite
     "not be allowed to be used" when {
       "user has no access to given at least one index pattern" in {
         adminDocumentManager.createFirstDoc("index", exampleDocument).force()
-        adminDocumentManager.createFirstDoc("dev1-0001",  exampleDocument).force()
+        adminDocumentManager.createFirstDoc("dev1-0001", exampleDocument).force()
         adminDocumentManager.createFirstDoc("dev2-0001", exampleDocument).force()
 
         val result = dev1IndexManager.createAliasOf("dev1-000*", "dev2")
 
-        result.responseCode should be (403)
+        result.responseCode should be(403)
       }
       "user has no access to alias name" in {
         adminDocumentManager.createFirstDoc("index", exampleDocument).force()
-        adminDocumentManager.createFirstDoc("dev1-0001",  exampleDocument).force()
+        adminDocumentManager.createFirstDoc("dev1-0001", exampleDocument).force()
         adminDocumentManager.createFirstDoc("dev2-0001", exampleDocument).force()
 
         val result = dev1IndexManager.createAliasOf("dev2-000*", "dev1")
 
-        result.responseCode should be (403)
+        result.responseCode should be(403)
       }
     }
   }
@@ -103,21 +102,21 @@ trait IndexAliasesManagementSuite
     "be allowed to be used" when {
       "there is no indices rule in block" in {
         adminDocumentManager.createFirstDoc("index", exampleDocument).force()
-        adminDocumentManager.createFirstDoc("dev1-0001",  exampleDocument).force()
+        adminDocumentManager.createFirstDoc("dev1-0001", exampleDocument).force()
         adminDocumentManager.createFirstDoc("dev2-0001", exampleDocument).force()
         adminIndexManager.createAliasOf("index", "admin-alias").force()
 
         val result = adminIndexManager.deleteAliasOf("index", "admin-alias")
 
-        result.responseCode should be (200)
+        result.responseCode should be(200)
         val allAliasesResponse = adminCatManager.aliases()
-        allAliasesResponse.responseCode should be (200)
-        allAliasesResponse.results.size should be (0)
+        allAliasesResponse.responseCode should be(200)
+        allAliasesResponse.results.size should be(0)
       }
       "user has access to both: index pattern and alias name" when {
         "an index of the pattern exists" in {
           adminDocumentManager.createFirstDoc("index", exampleDocument).force()
-          adminDocumentManager.createFirstDoc("dev1-0001",  exampleDocument).force()
+          adminDocumentManager.createFirstDoc("dev1-0001", exampleDocument).force()
           adminDocumentManager.createFirstDoc("dev2-0001", exampleDocument).force()
           adminIndexManager.createAliasOf("dev1-000*", "dev1").force()
 
@@ -126,12 +125,12 @@ trait IndexAliasesManagementSuite
           result.responseCode should be(200)
 
           val allAliasesResponse = adminCatManager.aliases()
-          allAliasesResponse.responseCode should be (200)
-          allAliasesResponse.results.size should be (0)
+          allAliasesResponse.responseCode should be(200)
+          allAliasesResponse.results.size should be(0)
         }
         "no index of the pattern exists" in {
           adminDocumentManager.createFirstDoc("index", exampleDocument).force()
-          adminDocumentManager.createFirstDoc("dev1-0001",  exampleDocument).force()
+          adminDocumentManager.createFirstDoc("dev1-0001", exampleDocument).force()
           adminDocumentManager.createFirstDoc("dev2-0001", exampleDocument).force()
 
           val result = dev1IndexManager.deleteAliasOf("dev1-0000*", "dev1")
@@ -140,7 +139,7 @@ trait IndexAliasesManagementSuite
         }
         "no alias exists" in {
           adminDocumentManager.createFirstDoc("index", exampleDocument).force()
-          adminDocumentManager.createFirstDoc("dev1-0001",  exampleDocument).force()
+          adminDocumentManager.createFirstDoc("dev1-0001", exampleDocument).force()
           adminDocumentManager.createFirstDoc("dev2-0001", exampleDocument).force()
 
           val result = dev1IndexManager.deleteAliasOf("dev1-0001", "dev1-000x")
@@ -152,23 +151,23 @@ trait IndexAliasesManagementSuite
     "not be allowed to be used" when {
       "user has no access to given at least one index pattern" in {
         adminDocumentManager.createFirstDoc("index", exampleDocument).force()
-        adminDocumentManager.createFirstDoc("dev1-0001",  exampleDocument).force()
+        adminDocumentManager.createFirstDoc("dev1-0001", exampleDocument).force()
         adminDocumentManager.createFirstDoc("dev2-0001", exampleDocument).force()
         adminIndexManager.createAliasOf("dev1-000*", "dev2").force()
 
         val result = dev1IndexManager.deleteAliasOf("dev1-000*", "dev2")
 
-        result.responseCode should be (403)
+        result.responseCode should be(403)
       }
       "user has no access to alias name" in {
         adminDocumentManager.createFirstDoc("index", exampleDocument).force()
-        adminDocumentManager.createFirstDoc("dev1-0001",  exampleDocument).force()
+        adminDocumentManager.createFirstDoc("dev1-0001", exampleDocument).force()
         adminDocumentManager.createFirstDoc("dev2-0001", exampleDocument).force()
         adminIndexManager.createAliasOf("dev2-000*", "dev1").force()
 
         val result = dev1IndexManager.deleteAliasOf("dev2-000*", "dev1")
 
-        result.responseCode should be (403)
+        result.responseCode should be(403)
       }
     }
   }
@@ -176,25 +175,25 @@ trait IndexAliasesManagementSuite
   "Update index alias API" should {
     "be allowed to be used" when {
       "user has access to all indices and aliases from actions" in {
-        adminDocumentManager.createFirstDoc("dev3-0001",  exampleDocument).force()
-        adminDocumentManager.createFirstDoc("dev3-0002",  exampleDocument).force()
+        adminDocumentManager.createFirstDoc("dev3-0001", exampleDocument).force()
+        adminDocumentManager.createFirstDoc("dev3-0002", exampleDocument).force()
 
         val result = dev3IndexManager.updateAliases(
           Add("dev3-0001", "dev3"),
           Add("dev3-0002", "dev3")
         )
 
-        result.responseCode should be (200)
+        result.responseCode should be(200)
         val allAliasesResponse = adminIndexManager.getAliases
-        allAliasesResponse.responseCode should be (200)
-        allAliasesResponse.aliasesOfIndices("dev3-0001") should be (Set("dev3"))
-        allAliasesResponse.aliasesOfIndices("dev3-0002") should be (Set("dev3"))
+        allAliasesResponse.responseCode should be(200)
+        allAliasesResponse.aliasesOfIndices("dev3-0001") should be(Set("dev3"))
+        allAliasesResponse.aliasesOfIndices("dev3-0002") should be(Set("dev3"))
       }
     }
     "be not allowed to be used" when {
       "user doesn't have access to at least one index from actions" in {
-        adminDocumentManager.createFirstDoc("dev2-0001",  exampleDocument).force()
-        adminDocumentManager.createFirstDoc("dev3-0001",  exampleDocument).force()
+        adminDocumentManager.createFirstDoc("dev2-0001", exampleDocument).force()
+        adminDocumentManager.createFirstDoc("dev3-0001", exampleDocument).force()
         adminIndexManager.createAliasOf("dev3-0001", "dev3").force()
 
         val result = dev3IndexManager.updateAliases(
@@ -202,25 +201,25 @@ trait IndexAliasesManagementSuite
           Add("dev2-0001", "dev3")
         )
 
-        result.responseCode should be (403)
+        result.responseCode should be(403)
         val allAliasesResponse = adminIndexManager.getAliases
-        allAliasesResponse.responseCode should be (200)
-        allAliasesResponse.aliasesOfIndices("dev3-0001") should be (Set("dev3"))
+        allAliasesResponse.responseCode should be(200)
+        allAliasesResponse.aliasesOfIndices("dev3-0001") should be(Set("dev3"))
       }
       "user doesn't have access to at least one alias from actions" in {
-        adminDocumentManager.createFirstDoc("dev3-0001",  exampleDocument).force()
+        adminDocumentManager.createFirstDoc("dev3-0001", exampleDocument).force()
         adminIndexManager.createAliasOf("dev3-0001", "dev3").force()
-        adminDocumentManager.createFirstDoc("dev3-0002",  exampleDocument).force()
+        adminDocumentManager.createFirstDoc("dev3-0002", exampleDocument).force()
 
         val result = dev3IndexManager.updateAliases(
           Delete("dev3-0001", "dev3"),
           Add("dev3-0002", "dev2")
         )
 
-        result.responseCode should be (403)
+        result.responseCode should be(403)
         val allAliasesResponse = adminIndexManager.getAliases
-        allAliasesResponse.responseCode should be (200)
-        allAliasesResponse.aliasesOfIndices("dev3-0001") should be (Set("dev3"))
+        allAliasesResponse.responseCode should be(200)
+        allAliasesResponse.aliasesOfIndices("dev3-0001") should be(Set("dev3"))
       }
     }
   }

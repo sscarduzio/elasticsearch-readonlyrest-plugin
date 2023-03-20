@@ -17,7 +17,6 @@
 package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
-import org.junit.runner.Description
 import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.{IndexManager, LegacyTemplateManager, RorApiManager, SnapshotManager}
@@ -25,11 +24,9 @@ import tech.beshu.ror.utils.elasticsearch.{IndexManager, LegacyTemplateManager, 
 import scala.util.{Failure, Success, Try}
 
 object SingletonEsContainerWithRorSecurity
-  extends PluginEsClusterProvider
+  extends EsClusterProvider
     with EsContainerCreator
     with StrictLogging {
-
-  private implicit val description: Description = Description.EMPTY
 
   val singleton: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings.create(
@@ -69,6 +66,4 @@ object SingletonEsContainerWithRorSecurity
         logger.error(s"Error occurred while cleanup of singleton ES container: $ex")
     }
   }
-
-  final case class CouldNotUpdateRorConfigException() extends Exception("ROR config update using admin api failed")
 }
