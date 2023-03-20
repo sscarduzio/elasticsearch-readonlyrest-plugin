@@ -222,7 +222,7 @@ abstract class BaseKibanaRule(val settings: Settings) extends Logging {
 
   private def kibanaCanBeModified = ProcessingContext.create { (r, _) =>
     val result = settings.access match {
-      case RO | ROStrict => false
+      case RO | ROStrict | ApiOnly => false
       case RW | Admin | Unrestricted => true
     }
     logger.debug(s"[${r.id.show}] Can Kibana be modified? $result")

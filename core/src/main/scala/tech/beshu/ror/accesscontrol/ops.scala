@@ -231,6 +231,7 @@ object show {
       case KibanaAccess.ROStrict => "ro_strict"
       case KibanaAccess.RW => "rw"
       case KibanaAccess.Admin => "admin"
+      case KibanaAccess.ApiOnly => "api_only"
       case KibanaAccess.Unrestricted => "unrestricted"
     }
     private implicit val userOriginShow: Show[UserOrigin] = Show.show(_.value.value)
