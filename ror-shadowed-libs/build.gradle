@@ -15,17 +15,11 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-buildscript {
-    repositories {
-        mavenLocal()
-        mavenCentral()
-        maven { url "https://plugins.gradle.org/m2/" }
-    }
-
-    dependencies {
-        classpath group: 'org.owasp',                            name: 'dependency-check-gradle',  version: '7.4.1'
-        classpath group: 'com.github.jengelman.gradle.plugins',  name: 'shadow',                   version: '4.0.4'
-    }
+plugins {
+    id "com.github.johnrengelman.shadow" version "7.1.2"
+    id "org.owasp.dependencycheck"       version "8.1.2"
+    id "java"
+    id "maven-publish"
 }
 
 repositories {
@@ -33,11 +27,6 @@ repositories {
     maven { url 'https://repo.gradle.org/gradle/libs-releases' }
     maven { url 'https://jitpack.io' }
 }
-
-apply plugin: 'com.github.johnrengelman.shadow'
-apply plugin: 'java'
-apply plugin: 'maven'
-apply plugin: 'org.owasp.dependencycheck'
 
 dependencyCheck {
     /*
@@ -71,19 +60,20 @@ dependencies {
 
 shadowJar {
     configurations = [project.configurations.shadowCompile]
+    exclude('META-INF/versions/9/module-info.class')
 }
 
 // Configure Auto Relocation
 import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
 
-task relocateShadowJar(type: ConfigureShadowRelocation) {
+tasks.register('relocateShadowJar', ConfigureShadowRelocation) {
     target = tasks.shadowJar
     prefix = "tech.beshu.ror"
 }
 
 tasks.shadowJar.dependsOn tasks.relocateShadowJar
 
-tasks.withType(AbstractArchiveTask) {
+tasks.withType(AbstractArchiveTask).configureEach {
     preserveFileTimestamps = false
     reproducibleFileOrder = true
 }

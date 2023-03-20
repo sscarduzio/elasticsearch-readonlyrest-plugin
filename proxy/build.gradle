@@ -15,67 +15,34 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-buildscript {
-    ext {
-        pluginVersion = rootProject.properties['pluginVersion']
-        esVersion = project.properties['esVersion']
-        pluginName = rootProject.properties['pluginName']
-        s3BucketName = System.env.BUCKET ?: "readonlyrest-data"
-    }
-    repositories {
-        mavenLocal()
-        mavenCentral()
-        maven { url "https://plugins.gradle.org/m2/" }
-    }
-    dependencies {
-        classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins',  name: 'license-gradle-plugin', version: '0.15.0'
-        classpath group: 'com.star-zero.gradle',                         name: 'githook',               version: '1.2.1'
-    }
+plugins {
+    id "readonlyrest.plugin-common-conventions"
 }
 
-repositories {
-    mavenCentral()
-    mavenLocal()
-    maven {
-        url = "s3://" + s3BucketName + "/build"
-        authentication {
-            awsIm(AwsImAuthentication)
-        }
+configurations {
+    distJars {
+        extendsFrom runtimeClasspath
+        exclude group: 'org.bouncycastle'
     }
 }
-
-group = 'org.elasticsearch.plugin'
-version = pluginVersion + '_es' + esVersion
-def proxyFullName = pluginName + '-' + version
-
-apply plugin: "com.github.hierynomus.license"
-apply plugin: "com.star-zero.gradle.githook"
-apply plugin: 'maven'
-apply plugin: 'scala'
 
 compileScala {
     sourceCompatibility = 1.8
     targetCompatibility = 1.8
 }
 
-configurations {
-    distJars {
-        extendsFrom runtime
-        exclude group: 'org.bouncycastle'
-    }
-}
-
 dependencies {
-    compile  project(path: ':es79x')
+    implementation project(path: ':core', configuration: 'default')
+    implementation project(path: ':es79x', configuration: 'default')
 
-    compile  group: 'org.elasticsearch.client',             name: 'elasticsearch-rest-high-level-client',   version: esVersion
-    compile  group: 'com.github.finagle',                   name: 'finchx-circe_2.12',                      version: '0.32.1'
-    compile  group: 'com.github.finagle',                   name: 'finchx-core_2.12',                       version: '0.32.1'
-    compile  group: 'org.javassist',                        name: 'javassist',                              version: '3.26.0-GA'
-    compile  group: 'org.jooq',                             name: 'joor-java-8',                            version: '0.9.13'
-    compile  group: 'org.codelibs.elasticsearch.module',    name: 'lang-mustache',                          version: esVersion
-    compile  group: 'org.apache.logging.log4j',             name: 'log4j-core',                             version: '2.15.0'
-    compile  group: 'org.codelibs.elasticsearch.module',    name: 'reindex',                                version: esVersion
+    implementation  group: 'org.elasticsearch.client',             name: 'elasticsearch-rest-high-level-client',   version: esVersion
+    implementation  group: 'com.github.finagle',                   name: 'finchx-circe_2.12',                      version: '0.32.1'
+    implementation  group: 'com.github.finagle',                   name: 'finchx-core_2.12',                       version: '0.32.1'
+    implementation  group: 'org.javassist',                        name: 'javassist',                              version: '3.26.0-GA'
+    implementation  group: 'org.jooq',                             name: 'joor-java-8',                            version: '0.9.13'
+    implementation  group: 'org.codelibs.elasticsearch.module',    name: 'lang-mustache',                          version: esVersion
+    implementation  group: 'org.apache.logging.log4j',             name: 'log4j-core',                             version: '2.15.0'
+    implementation  group: 'org.codelibs.elasticsearch.module',    name: 'reindex',                                version: esVersion
 }
 
 license {
@@ -88,57 +55,19 @@ license {
     }
 }
 
-test {
-    reports {
-        junitXml.enabled = true
-        html.enabled = false
-    }
-}
+tasks.register('rorproxy', Jar) {
+    dependsOn(configureEsVersion, generateVersionsFile)
 
-githook {
-    hooks {
-        "pre-commit" {
-            shell = "./gradlew license --rerun-tasks"
-        }
-    }
-}
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
-tasks.withType(ScalaCompile) {
-    scalaCompileOptions.additionalParameters = ["-Ypartial-unification", "-Ywarn-macros:after", "-feature"]
-}
-
-tasks.withType(Zip) { task ->
-    task.doLast {
-        ant.checksum file: it.archivePath, algorithm: 'sha1'
-    }
-}
-
-task generateVersionsFile() {
-    outputs.upToDateWhen { false }
-    doFirst {
-        def resourcesDir = sourceSets.main.output.resourcesDir
-        
-        resourcesDir.mkdirs()
-        def contents = "es_version=$esVersion\nplugin_version=$pluginVersion"
-        new File(resourcesDir, "ror-build-info.properties").text = contents
-    }
-}
-
-task configureEsVersion() {
-    doLast {
-        if (project.hasProperty('esVersion')) {
-            esVersion = project.properties['esVersion']
-        }
-    }
-}
-
-task rorproxy(type: Jar, dependsOn: [configureEsVersion, generateVersionsFile]) {
     manifest {
-        attributes  'Implementation-Title': 'ReadonlyREST ES Proxy',
-                    'Implementation-Version': project.properties['pluginVersion'],
-                    'Main-Class': 'tech.beshu.ror.proxy.Boot'
+        attributes 'Implementation-Title': 'ReadonlyREST ES Proxy',
+                   'Implementation-Version': project.properties['pluginVersion'],
+                   'Main-Class': 'tech.beshu.ror.proxy.Boot'
     }
-    baseName = pluginName + '-proxy'
-    from { configurations.distJars.collect { it.isDirectory() ? it : zipTree(it) } }
+    archivesBaseName = pluginName + '-proxy'
+    from {
+        configurations.distJars.collect { it.isDirectory() ? it : zipTree(it) }
+    }
     with jar
 }
