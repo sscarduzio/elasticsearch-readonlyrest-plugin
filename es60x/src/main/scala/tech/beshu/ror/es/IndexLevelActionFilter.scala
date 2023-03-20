@@ -31,7 +31,7 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
-import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, RorMode}
+import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot._
 import tech.beshu.ror.boot.engines.Engines
@@ -84,7 +84,6 @@ class IndexLevelActionFilter(settings: Settings,
       .runSyncUnsafe(10 seconds)(Scheduler.global, CanBlock.permit)
 
   private val ror = ReadonlyRest.create(
-    RorMode.Plugin,
     new EsIndexJsonContentService(client),
     auditSinkCreator,
     env.configFile

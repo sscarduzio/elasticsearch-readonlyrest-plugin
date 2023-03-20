@@ -164,7 +164,6 @@ private object RorStartingSuite {
       val clusterName = s"ROR_${uniqueClusterId.getAndIncrement()}"
       val nodeName = s"${clusterName}_1"
       create(
-        mode = Mode.Plugin,
         nodeSettings = EsNodeSettings(
           nodeName = nodeName,
           clusterName = clusterName,

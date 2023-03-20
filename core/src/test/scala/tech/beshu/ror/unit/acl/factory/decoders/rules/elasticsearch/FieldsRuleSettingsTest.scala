@@ -24,7 +24,6 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{GeneralReadonlyrestSettingsError, RulesLevelCreationError}
-import tech.beshu.ror.boot.ReadonlyRest.RorMode
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -176,30 +175,6 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
           )
         }
       }
-      "ror is run in proxy mode" should {
-        "use 'es' fls engine" when {
-          "only one field is defined" in {
-            assertDecodingSuccess(
-              yaml =
-                """
-                  |readonlyrest:
-                  |
-                  |  access_control_rules:
-                  |
-                  |  - name: test_block1
-                  |    fields: "field1"
-                  |
-                  |""".stripMargin,
-              assertion = rule => {
-                rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1").nel))
-                rule.settings.accessMode should be(AccessMode.Whitelist)
-                rule.settings.flsEngine should be(FlsEngine.ES)
-              },
-              aFactory = factory(rorMode = RorMode.Proxy)
-            )
-          }
-        }
-      }
     }
     "not be able to be loaded from config" when {
       "no field is defined" in {
@@ -323,27 +298,6 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
             errors should have size 1
             errors.head should be(GeneralReadonlyrestSettingsError(Message("Unknown fls engine: 'something'. Supported: 'es_with_lucene', 'es'.")))
           }
-        )
-      }
-      "ror is run in proxy mode and unsupported by proxy fls engine is defined" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  fls_engine: "lucene"
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    fields: "field1"
-              |
-              |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(GeneralReadonlyrestSettingsError(Message("Fls engine: 'lucene' is not allowed for ROR proxy")))
-          },
-          aFactory = factory(rorMode = RorMode.Proxy)
         )
       }
     }

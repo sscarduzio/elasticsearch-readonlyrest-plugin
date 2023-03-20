@@ -27,7 +27,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.{IndexName, LocalUsers, RorConfigurationIndex, User}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.boot.ReadonlyRest.RorMode
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers._
@@ -325,7 +324,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
-    new RawRorConfigBasedCoreFactory(RorMode.Plugin)
+    new RawRorConfigBasedCoreFactory()
   }
 
 }

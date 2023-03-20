@@ -266,12 +266,6 @@ object ReadonlyRest {
 
   final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
 
-  sealed trait RorMode
-  object RorMode {
-    case object Plugin extends RorMode
-    case object Proxy extends RorMode
-  }
-
   final case class MainEngine(engine: Engine,
                               config: RawRorConfig)
 
@@ -300,8 +294,7 @@ object ReadonlyRest {
     }
   }
 
-  def create(mode: RorMode,
-             indexContentService: IndexJsonContentService,
+  def create(indexContentService: IndexJsonContentService,
              auditSinkCreator: AuditSinkCreator,
              esConfigPath: Path)
             (implicit scheduler: Scheduler,
@@ -309,7 +302,7 @@ object ReadonlyRest {
              propertiesProvider: PropertiesProvider,
              clock: Clock): ReadonlyRest = {
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory(mode)
+    val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory()
 
     create(coreFactory, indexContentService, auditSinkCreator, esConfigPath)
   }

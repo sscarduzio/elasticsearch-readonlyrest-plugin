@@ -37,8 +37,7 @@ object EsContainerCreator extends EsContainerCreator {
 }
 trait EsContainerCreator {
 
-  def create(mode: Mode,
-             nodeSettings: EsNodeSettings,
+  def create(nodeSettings: EsNodeSettings,
              allNodeNames: NonEmptyList[String],
              nodeDataInitializer: ElasticsearchNodeDataInitializer,
              startedClusterDependencies: StartedClusterDependencies): EsContainer = {
@@ -50,12 +49,7 @@ trait EsContainerCreator {
       case SecurityType.RorWithXpackSecurity(attributes) =>
         createEsWithRorAndXpackSecurityContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies)
       case SecurityType.RorSecurity(attributes) =>
-        mode match {
-          case Mode.Plugin =>
-            createEsWithRorContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies)
-          case Mode.Proxy =>
-            createEsWithNoSecurityContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, startedClusterDependencies)
-        }
+        createEsWithRorContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies)
       case SecurityType.XPackSecurity(attributes) =>
         createEsWithXpackContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies)
       case SecurityType.NoSecurityCluster =>
@@ -75,7 +69,6 @@ trait EsContainerCreator {
     val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
       source = rawRorConfigFile.toScala,
       startedDependencies = startedClusterDependencies,
-      mode = Mode.Plugin
     )
 
     EsContainerWithRorAndXpackSecurity.create(
@@ -109,7 +102,6 @@ trait EsContainerCreator {
     val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
       source = rawRorConfigFile.toScala,
       startedDependencies = startedClusterDependencies,
-      mode = Mode.Plugin
     )
 
     EsContainerWithRorSecurity.create(

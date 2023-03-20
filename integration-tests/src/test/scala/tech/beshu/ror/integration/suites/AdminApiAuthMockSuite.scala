@@ -886,7 +886,7 @@ trait AdminApiAuthMockSuite
     )
   }
 
-  private def testEngineConfig(): String = esCluster.resolvedRorConfig(getResourceContent(rorConfigFileName), mode)
+  private def testEngineConfig(): String = esCluster.resolvedRorConfig(getResourceContent(rorConfigFileName))
 
   override implicit val patienceConfig: PatienceConfig = PatienceConfig(timeout = testEngineReloadInterval.plus(2 second), interval = 1 second)
 

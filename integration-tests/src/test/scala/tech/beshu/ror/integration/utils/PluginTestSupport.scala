@@ -66,6 +66,6 @@ trait SingletonPluginTestSupport
 
   private def resolvedConfig(startedDependencies: StartedClusterDependencies) = {
     val configFile = File.apply(getResourcePath(rorConfigFileName))
-    RorConfigAdjuster.adjustUsingDependencies(configFile, startedDependencies, Mode.Plugin)
+    RorConfigAdjuster.adjustUsingDependencies(configFile, startedDependencies)
   }
 }
