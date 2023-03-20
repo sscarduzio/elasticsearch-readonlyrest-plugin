@@ -101,6 +101,24 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
           }
         )
       }
+      "api_only access is defined" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    kibana_access: api_only
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            rule.settings.access should be(KibanaAccess.ApiOnly)
+            rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
+          }
+        )
+      }
       "unrestricted access is defined" in {
         assertDecodingSuccess(
           yaml =

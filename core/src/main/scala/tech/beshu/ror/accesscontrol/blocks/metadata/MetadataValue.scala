@@ -19,10 +19,10 @@ package tech.beshu.ror.accesscontrol.blocks.metadata
 import cats.Show
 import cats.data.NonEmptyList
 import cats.implicits._
-import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.{CorrelationId, KibanaAccess}
+
 import scala.collection.JavaConverters._
 
 sealed trait MetadataValue
@@ -113,6 +113,7 @@ object MetadataValue {
     case KibanaAccess.ROStrict => "ro_strict"
     case KibanaAccess.RW => "rw"
     case KibanaAccess.Admin => "admin"
+    case KibanaAccess.ApiOnly => "api_only"
     case KibanaAccess.Unrestricted => "unrestricted"
   }
 
