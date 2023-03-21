@@ -15,6 +15,10 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
+pluginManagement {
+    includeBuild('build-base')
+}
+
 rootProject.name = 'readonlyrest'
 include 'ror-shadowed-libs'
 include 'audit'
@@ -43,7 +47,6 @@ include 'es82x'
 include 'es83x'
 include 'es84x'
 include 'es85x'
-include 'proxy'
 include 'ror-tools-core'
 include 'ror-tools'
 include 'tests-utils'

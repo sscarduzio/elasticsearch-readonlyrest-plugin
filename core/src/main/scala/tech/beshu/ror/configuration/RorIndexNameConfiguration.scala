@@ -18,8 +18,8 @@ package tech.beshu.ror.configuration
 
 import java.io.{File => JFile}
 import java.nio.file.Path
-
 import better.files.File
+import cats.data.NonEmptyList
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
@@ -28,6 +28,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers._
 import tech.beshu.ror.providers.OsEnvVarsProvider
+import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 final case class RorIndexNameConfiguration(index: RorConfigurationIndex)
 
@@ -46,15 +47,13 @@ object RorIndexNameConfiguration extends Logging {
   private implicit val envVarsProvider: OsEnvVarsProvider.type = OsEnvVarsProvider
 
   private implicit val rorIndexNameConfigurationDecoder: Decoder[RorIndexNameConfiguration] = {
-    Decoder.instance { c =>
-      val oneLine = c.downField("readonlyrest.settings_index").as[Option[NonEmptyString]]
-      val twoLines = c.downField("readonlyrest").downField("settings_index").as[Option[NonEmptyString]]
-      val customIndexName = (oneLine.toOption.flatten, twoLines.toOption.flatten) match {
-        case (Some(result), _) => IndexName.Full(result)
-        case (_, Some(result)) => IndexName.Full(result)
-        case (_, _) => defaultIndexName
-      }
-      Right(RorIndexNameConfiguration(RorConfigurationIndex(customIndexName)))
-    }
+    implicit val indexNameDecoder: Decoder[IndexName.Full] = Decoder[NonEmptyString].map(IndexName.Full.apply)
+
+    YamlKeyDecoder[IndexName.Full](
+      segments = NonEmptyList.of("readonlyrest", "settings_index"),
+      default = defaultIndexName
+    )
+      .map(RorConfigurationIndex.apply)
+      .map(RorIndexNameConfiguration.apply)
   }
 }

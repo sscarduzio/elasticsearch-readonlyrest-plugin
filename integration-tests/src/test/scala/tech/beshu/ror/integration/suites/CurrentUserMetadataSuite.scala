@@ -16,21 +16,20 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.junit.Assert.assertEquals
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsClusterProvider
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.RorApiManager
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
-import ujson.Str
 
-trait CurrentUserMetadataSuite
+import java.util.UUID
+
+class CurrentUserMetadataSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
-  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/current_user_metadata/readonlyrest.yml"
 
@@ -40,55 +39,82 @@ trait CurrentUserMetadataSuite
         "several blocks are matched" in {
           val user1MetadataManager = new RorApiManager(basicAuthClient("user1", "pass"), esVersionUsed)
 
-          val result = user1MetadataManager.fetchMetadata()
+          val correlationId = UUID.randomUUID().toString
+          val result = user1MetadataManager.fetchMetadata(correlationId = Some(correlationId))
 
-          assertEquals(200, result.responseCode)
-          result.responseJson.obj.size should be(4)
-          result.responseJson("x-ror-username").str should be("user1")
-          result.responseJson("x-ror-current-group").str should be("group1")
-          result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group1")))
-          result.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex()
+          result.responseCode should be(200)
+          result.responseJson should be(ujson.read(
+            s"""{
+               |  "x-ror-username": "user1",
+               |  "x-ror-current-group": "group1",
+               |  "x-ror-available-groups": [ "group1" ],
+               |  "x-ror-correlation-id": "$correlationId"
+               |}""".stripMargin))
         }
         "several blocks are matched and current group is set" in {
           val user1MetadataManager = new RorApiManager(basicAuthClient("user4", "pass"), esVersionUsed)
 
-          val result = user1MetadataManager.fetchMetadata("group6")
+          val correlationId = UUID.randomUUID().toString
+          val result = user1MetadataManager.fetchMetadata(
+            preferredGroup = Some("group6"),
+            correlationId = Some(correlationId)
+          )
 
-          assertEquals(200, result.responseCode)
-          result.responseJson.obj.size should be(6)
-          result.responseJson("x-ror-username").str should be("user4")
-          result.responseJson("x-ror-current-group").str should be("group6")
-          result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group5"), Str("group6")))
-          result.responseJson("x-ror-kibana_index").str should be("user4_group6_kibana_index")
-          result.responseJson("x-ror-kibana_template_index").str should be("user4_group6_kibana_template_index")
-          result.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex()
+          result.responseCode should be(200)
+          result.responseJson should be(ujson.read(
+            s"""{
+               |  "x-ror-username": "user4",
+               |  "x-ror-current-group": "group6",
+               |  "x-ror-available-groups": [ "group5", "group6" ],
+               |  "x-ror-correlation-id": "$correlationId",
+               |  "x-ror-kibana_index": "user4_group6_kibana_index",
+               |  "x-ror-kibana_template_index": "user4_group6_kibana_template_index",
+               |  "x-ror-kibana_access":"unrestricted"
+               |}""".stripMargin))
         }
         "at least one block is matched" in {
           val user2MetadataManager = new RorApiManager(basicAuthClient("user2", "pass"), esVersionUsed)
 
-          val result = user2MetadataManager.fetchMetadata()
+          val correlationId = UUID.randomUUID().toString
+          val result = user2MetadataManager.fetchMetadata(correlationId = Some(correlationId))
 
-          assertEquals(200, result.responseCode)
-          result.responseJson.obj.size should be(7)
-          result.responseJson("x-ror-username").str should be("user2")
-          result.responseJson("x-ror-current-group").str should be("group2")
-          result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group2")))
-          result.responseJson("x-ror-kibana_index").str should be("user2_kibana_index")
-          result.responseJson("x-ror-kibana-hidden-apps").arr.toList should be(List(Str("user2_app1"), Str("user2_app2")))
-          result.responseJson("x-ror-kibana_access").str should be("ro")
-          result.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex()
+          result.responseCode should be(200)
+          result.responseJson should be(ujson.read(
+            s"""{
+               |  "x-ror-username": "user2",
+               |  "x-ror-current-group": "group2",
+               |  "x-ror-available-groups": [ "group2" ],
+               |  "x-ror-correlation-id": "$correlationId",
+               |  "x-ror-kibana_index": "user2_kibana_index",
+               |  "x-ror-kibana_access": "ro",
+               |  "x-ror-kibana-hidden-apps": [ "user2_app1", "user2_app2" ],
+               |  "x-ror-kibana-allowed-api-paths":[
+               |    {
+               |      "http_method":"ANY",
+               |      "path_regex":"^/api/spaces/.*$$"
+               |    },
+               |    {
+               |      "http_method":"GET",
+               |      "path_regex":"^/api/spaces\\\\?test\\\\=12\\\\.2$$"
+               |    }
+               |  ]
+               |}""".stripMargin))
         }
         "block with no available groups collected is matched" in {
           val user3MetadataManager = new RorApiManager(basicAuthClient("user3", "pass"), esVersionUsed)
 
-          val result = user3MetadataManager.fetchMetadata()
+          val correlationId = UUID.randomUUID().toString
+          val result = user3MetadataManager.fetchMetadata(correlationId = Some(correlationId))
 
-          assertEquals(200, result.responseCode)
-          result.responseJson.obj.size should be(4)
-          result.responseJson("x-ror-username").str should be("user3")
-          result.responseJson("x-ror-kibana_index").str should be("user3_kibana_index")
-          result.responseJson("x-ror-kibana-hidden-apps").arr.toList should be(List(Str("user3_app1"), Str("user3_app2")))
-          result.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex()
+          result.responseCode should be(200)
+          result.responseJson should be(ujson.read(
+            s"""{
+               |  "x-ror-username": "user3",
+               |  "x-ror-correlation-id": "$correlationId",
+               |  "x-ror-kibana_index": "user3_kibana_index",
+               |  "x-ror-kibana_access": "unrestricted",
+               |  "x-ror-kibana-hidden-apps": [ "user3_app1", "user3_app2" ]
+               |}""".stripMargin))
         }
       }
       "return forbidden" when {
@@ -97,21 +123,21 @@ trait CurrentUserMetadataSuite
 
           val result = unknownUserMetadataManager.fetchMetadata()
 
-          assertEquals(401, result.responseCode)
+          result.responseCode should be(401)
         }
         "current group is set but it doesn't exist on available groups list" in {
           val user4MetadataManager = new RorApiManager(basicAuthClient("user4", "pass"), esVersionUsed)
 
-          val result = user4MetadataManager.fetchMetadata("group7")
+          val result = user4MetadataManager.fetchMetadata(preferredGroup = Some("group7"))
 
-          assertEquals(401, result.responseCode)
+          result.responseCode should be(401)
         }
         "block with no available groups collected is matched and current group is set" in {
           val user3MetadataManager = new RorApiManager(basicAuthClient("user3", "pass"), esVersionUsed)
 
-          val result = user3MetadataManager.fetchMetadata("group7")
+          val result = user3MetadataManager.fetchMetadata(preferredGroup = Some("group7"))
 
-          assertEquals(401, result.responseCode)
+          result.responseCode should be(401)
         }
       }
     }

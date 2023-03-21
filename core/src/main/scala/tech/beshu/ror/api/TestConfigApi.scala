@@ -17,7 +17,6 @@
 package tech.beshu.ror.api
 
 import java.time.{Clock, Instant}
-
 import cats.data.EitherT
 import cats.implicits._
 import eu.timepit.refined.api.Refined
@@ -25,6 +24,7 @@ import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
 import monix.eval.Task
 import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning
 import tech.beshu.ror.accesscontrol.domain.LoggedUser
 import tech.beshu.ror.api.TestConfigApi.TestConfigRequest.Type
 import tech.beshu.ror.api.TestConfigApi.TestConfigResponse._
@@ -102,14 +102,7 @@ class TestConfigApi(rorInstance: RorInstance)
             ttl = apiFormat(configuredTtl),
             validTo = validTo,
             settings = rawConfig,
-            warnings = config.impersonationWarningsReader.read().map { warning =>
-              TestConfigResponse.ProvideTestConfig.Warning(
-                blockName = warning.block.value,
-                ruleName = warning.ruleName.value,
-                message = warning.message.value,
-                hint = warning.hint
-              )
-            }
+            warnings = config.impersonationWarningsReader.read().map(toWarningDto)
           )
         case TestConfig.Invalidated(recentConfig, ttl) =>
           TestConfigResponse.ProvideTestConfig.TestSettingsInvalidated("ROR Test settings are invalidated", recentConfig, apiFormat(ttl))
@@ -145,7 +138,8 @@ class TestConfigApi(rorInstance: RorInstance)
             .map { newTestConfig =>
               TestConfigResponse.UpdateTestConfig.SuccessResponse(
                 message = "updated settings",
-                validTo = newTestConfig.validTo
+                validTo = newTestConfig.validTo,
+                warnings = newTestConfig.config.impersonationWarningsReader.read().map(toWarningDto)
               )
             }
             .leftMap {
@@ -159,6 +153,15 @@ class TestConfigApi(rorInstance: RorInstance)
                 TestConfigResponse.UpdateTestConfig.FailedResponse(s"Cannot reload new settings: ${failure.message}")
             }
         }
+    )
+  }
+
+  private def toWarningDto(warning: ImpersonationWarning): TestConfigResponse.Warning = {
+    TestConfigResponse.Warning(
+      blockName = warning.block.value,
+      ruleName = warning.ruleName.value,
+      message = warning.message.value,
+      hint = warning.hint
     )
   }
 }
@@ -181,13 +184,13 @@ object TestConfigApi {
   sealed trait TestConfigResponse
   object TestConfigResponse {
 
+    final case class Warning(blockName: String,
+                             ruleName: String,
+                             message: String,
+                             hint: String)
+
     sealed trait ProvideTestConfig extends TestConfigResponse
     object ProvideTestConfig {
-      final case class Warning(blockName: String,
-                               ruleName: String,
-                               message: String,
-                               hint: String)
-
       final case class CurrentTestSettings(ttl: FiniteDuration,
                                            validTo: Instant,
                                            settings: RawRorConfig,
@@ -201,7 +204,7 @@ object TestConfigApi {
 
     sealed trait UpdateTestConfig extends TestConfigResponse
     object UpdateTestConfig {
-      final case class SuccessResponse(message: String, validTo: Instant) extends UpdateTestConfig
+      final case class SuccessResponse(message: String, validTo: Instant, warnings: List[Warning]) extends UpdateTestConfig
       final case class FailedResponse(message: String) extends UpdateTestConfig
     }
 

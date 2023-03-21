@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: ROR Internal API
   description: The API is designed for ROR KBN plugin. It should be treated as internal. It means that backward compatibility won't be a first-class thing for us.
-  version: 2.0.0
+  version: 2.1.0
 
 paths:
   /_readonlyrest/metadata/current_user:
@@ -113,6 +113,8 @@ paths:
               examples:
                 TestSettingsUpdatedResponseExample:
                   $ref: "#/components/examples/TestSettingsUpdatedResponseExample"
+                TestSettingsUpdatedButWithWarningsResponseExample:
+                  $ref: "#/components/examples/TestSettingsUpdatedButWithWarningsResponseExample"
                 TestSettingsUpdateFailedResponseExample:
                   $ref: "#/components/examples/TestSettingsUpdateFailedResponseExample"
         403:
@@ -399,6 +401,7 @@ components:
           description: defines the minimum set of actions necessary for browsers to use Kibana.
           enum:
             - admin
+            - api_only
             - ro
             - ro_strict
             - rw
@@ -411,19 +414,43 @@ components:
           description: the user's Kibana template index name
         x-ror-kibana-hidden-apps:
           type: array
-          description: it tells which Kibana apps should be hidden by ROR Kibana
+          description: it defines which Kibana apps should be hidden by ROR Kibana (it supports regexes)
           items:
             $ref: '#/components/schemas/KibanaHiddenAppLike'
+        x-ror-kibana-allowed-api-paths:
+          type: array
+          description: it defines which Kibana API paths should be allowed by ROR Kibana (it supports regexes)
+          items:
+            $ref: '#/components/schemas/KibanaAllowedApiPath'
         x-ror-origin:
           type: string
           description: the value taken from JWT's x-ror-origin claim
-        x-ror-kibana_metadata:
+        x-ror-kibana-metadata:
           type: object
           description: json with metadata ([key, value] pairs) from the matched block
 
     Group:
       type: string
       description: It's a group that the user belongs to. It is used in tenancy selector in ROR Kibana
+
+    KibanaAllowedApiPath:
+      type: object
+      required:
+        - http_method
+        - path_regex
+      properties:
+        http_method:
+          type: string
+          enum:
+            - ANY
+            - GET
+            - PUT
+            - POST
+            - DELETE
+          description: HTTP method can be set to specific one (GET, PUT, POST, DELETE) or be ANY
+        path_regex:
+          type: string
+          description: It's a Java 8 regex (https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html) for Kibana API path (it can include query string and fragments too)
 
     KibanaHiddenAppLike:
       oneOf:
@@ -566,6 +593,7 @@ components:
         - status
         - message
         - valid_to
+        - warnings
       properties:
         status:
           type: string
@@ -579,6 +607,10 @@ components:
           format: date-time
           description: "It says how long the Test Settings will be valid. After that date, the Settings will be invalidated"
           example: "2022-01-12T07:20:50.52Z"
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/TestSettingsImpersonationWarnings'
 
     UpdateTestSettingsFailedResponse:
       type: object
@@ -724,6 +756,8 @@ components:
     AuthMockUpdateFailedResponse:
       type: object
       required:
+        - status
+        - message
       properties:
         status:
           type: string
@@ -968,7 +1002,14 @@ components:
           - users
         x-ror-kibana_index: .kibana_7.17_admin
         x-ror-kibana_access: admin
-        x-ror-kibana_metadata:
+        x-ror-kibana-allowed-api-paths:
+          - http_method: ANY
+            path_regex: "^/api/index_management/indices$"
+          - http_method: ANY
+            path_regex: "^\/api\/spaces\/.*$"
+          - http_method: GET
+            path_regex: "^/api/saved_objects/.*$"
+        x-ror-kibana-metadata:
           key1: string
           key2: 1
           key3: true
@@ -1089,11 +1130,24 @@ components:
         ttl: 30 m
 
     TestSettingsUpdatedResponseExample:
-      summary: ROR Test settings was updated and configured with success
+      summary: ROR Test settings was updated and configured with success (no warnings)
       value:
         status: OK
         message: updated settings
         valid_to: "2022-01-12T07:20:50.52Z"
+        warnings: []
+
+    TestSettingsUpdatedButWithWarningsResponseExample:
+      summary: ROR Test settings was updated and configured with success (with warnings)
+      value:
+        status: OK
+        message: updated settings
+        valid_to: "2022-01-12T07:20:50.52Z"
+        warnings:
+          - block_name: other
+            rule_name: auth_key_sha1
+            message: "The rule contains fully hashed username and password. It doesn't support impersonation in this configuration"
+            hint: "You can use second version of the rule and use not hashed username. Like that: `auth_key_sha1: USER_NAME:hash(PASSWORD)"
 
     TestSettingsUpdateFailedResponseExample:
       summary: ROR Test settings update failed

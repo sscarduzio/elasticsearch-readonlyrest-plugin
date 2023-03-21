@@ -16,11 +16,12 @@
  */
 package tech.beshu.ror.integration.suites.fields.engine
 
-import tech.beshu.ror.utils.containers.EsClusterProvider
+import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.elasticsearch.SearchManager
 
-trait FieldRuleEsEngineSuite extends FieldRuleEngineSuite {
-  this: EsClusterProvider =>
+class FieldRuleEsEngineSuite
+  extends FieldRuleEngineSuite
+    with SingletonPluginTestSupport {
 
   override implicit val rorConfigFileName = "/field_level_security_engine/readonlyrest_fls_engine_es.yml"
 

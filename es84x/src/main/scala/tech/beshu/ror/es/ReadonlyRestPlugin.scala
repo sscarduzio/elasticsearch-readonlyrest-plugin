@@ -40,7 +40,7 @@ import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.plugins._
 import org.elasticsearch.repositories.{RepositoriesService, VerifyNodeRepositoryAction}
-import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
+import org.elasticsearch.rest.{RestController, RestHandler}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.tracing.Tracer
@@ -53,7 +53,6 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.boot.{EsInitListener, SecurityProviderConfiguratorForFips}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
-import tech.beshu.ror.configuration.{FipsConfiguration, RorSsl}
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
@@ -66,9 +65,11 @@ import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 import tech.beshu.ror.es.actions.rrtestconfig.rest.RestRRTestConfigAction
 import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, TransportRRTestConfigAction}
+import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, TransportRorWrappedCatAction}
+import tech.beshu.ror.es.actions.wrappers._upgrade.{RorWrappedUpgradeActionType, TransportRorWrappedUpgradeAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
-import tech.beshu.ror.es.utils.{EsPatchVerifier, ThreadRepo}
+import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsPatchVerifier}
 import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SetOnce
@@ -106,11 +107,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds
-  private val sslConfig = RorSsl
-    .load(environment.configFile)
-    .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
-    .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
-  private val fipsConfig = FipsConfiguration
+  private val rorEsConfig = ReadonlyRestEsConfig
     .load(environment.configFile)
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
@@ -119,7 +116,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   private var ilaf: IndexLevelActionFilter = _
 
-  SecurityProviderConfiguratorForFips.configureIfRequired(fipsConfig)
+  SecurityProviderConfiguratorForFips.configureIfRequired(rorEsConfig.fipsConfig)
 
   override def createComponents(client: Client,
                                 clusterService: ClusterService,
@@ -149,7 +146,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
             }
         },
         () => Some(repositoriesServiceSupplier.get()),
-        esInitListener
+        esInitListener,
+        rorEsConfig
       )
     }
     List.empty[AnyRef].asJava
@@ -182,11 +180,12 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                  dispatcher: HttpServerTransport.Dispatcher,
                                  clusterSettings: ClusterSettings,
                                  tracer: Tracer): util.Map[String, Supplier[HttpServerTransport]] = {
-    sslConfig
+    rorEsConfig
+      .sslConfig
       .externalSsl
       .map(ssl =>
         "ssl_netty4" -> new Supplier[HttpServerTransport] {
-          override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, threadPool, xContentRegistry, dispatcher, ssl, clusterSettings, getSharedGroupFactory(settings), tracer, fipsConfig.isSslFipsCompliant)
+          override def get(): HttpServerTransport = new SSLNetty4HttpServerTransport(settings, networkService, threadPool, xContentRegistry, dispatcher, ssl, clusterSettings, getSharedGroupFactory(settings), tracer, rorEsConfig.fipsConfig.isSslFipsCompliant)
         }
       )
       .toMap
@@ -199,11 +198,12 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                              circuitBreakerService: CircuitBreakerService,
                              namedWriteableRegistry: NamedWriteableRegistry,
                              networkService: NetworkService): util.Map[String, Supplier[Transport]] = {
-    sslConfig
+    rorEsConfig
+      .sslConfig
       .interNodeSsl
       .map(ssl =>
         "ror_ssl_internode" -> new Supplier[Transport] {
-          override def get(): Transport = new SSLNetty4InternodeServerTransport(settings, threadPool, pageCacheRecycler, circuitBreakerService, namedWriteableRegistry, networkService, ssl, getSharedGroupFactory(settings), fipsConfig.isSslFipsCompliant)
+          override def get(): Transport = new SSLNetty4InternodeServerTransport(settings, threadPool, pageCacheRecycler, circuitBreakerService, namedWriteableRegistry, networkService, ssl, getSharedGroupFactory(settings), rorEsConfig.fipsConfig.isSslFipsCompliant)
         }
       )
       .toMap
@@ -227,6 +227,9 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       new ActionHandler(RRConfigActionType.instance, classOf[TransportRRConfigAction]),
       new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
       new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
+      // wrappers
+      new ActionHandler(RorWrappedCatActionType.instance, classOf[TransportRorWrappedCatAction]),
+      new ActionHandler(RorWrappedUpgradeActionType.instance, classOf[TransportRorWrappedUpgradeAction]),
     ).asJava
   }
 
@@ -238,7 +241,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                indexNameExpressionResolver: IndexNameExpressionResolver,
                                nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
     import tech.beshu.ror.es.utils.RestControllerOps._
-    restController.decorateRestHandlersWith(new ChannelInterceptingRestHandlerDecorator(_))
+    restController.decorateRestHandlersWith(ChannelInterceptingRestHandlerDecorator.create)
     List[RestHandler](
       new RestRRAdminAction(),
       new RestRRAuthMockAction(),
@@ -257,16 +260,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     super.onNodeStarted()
     doPrivileged {
       esInitListener.onEsReady()
-    }
-  }
-
-  private class ChannelInterceptingRestHandlerDecorator(underlying: RestHandler)
-    extends RestHandler {
-
-    override def handleRequest(request: RestRequest, channel: RestChannel, client: NodeClient): Unit = {
-      val rorRestChannel = new RorRestChannel(channel)
-      ThreadRepo.setRestChannel(rorRestChannel)
-      underlying.handleRequest(request, rorRestChannel, client)
     }
   }
 }

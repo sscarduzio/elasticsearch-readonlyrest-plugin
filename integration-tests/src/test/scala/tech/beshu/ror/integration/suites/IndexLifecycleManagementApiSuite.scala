@@ -25,7 +25,7 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.IndexLifecycleManagementApiSuite.{ExamplePolicies, PolicyGenerator}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
@@ -37,15 +37,15 @@ import tech.beshu.ror.utils.misc.Version
 
 import scala.util.{Failure, Success, Try}
 
-trait IndexLifecycleManagementApiSuite
+class IndexLifecycleManagementApiSuite
   extends AnyWordSpec
     with BaseEsClusterIntegrationTest
+    with PluginTestSupport
     with SingleClientSupport
     with ESVersionSupportForAnyWordSpecLike
     with BeforeAndAfterEach
     with Matchers
     with Eventually {
-  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/index_lifecycle_management_api/readonlyrest.yml"
 

@@ -16,12 +16,9 @@
  */
 package tech.beshu.ror.accesscontrol.factory
 
-import java.time.Clock
-
 import cats.data.{NonEmptyList, State, Validated}
 import cats.implicits._
 import cats.kernel.Monoid
-import eu.timepit.refined.api.Refined
 import io.circe._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -29,17 +26,17 @@ import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol._
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.acl.AccessControlList.AccessControlListStaticContext
-import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.blocks.Block.{RuleDefinition, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.base.{BaseAuthenticationRule, Rule}
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.ImpersonationSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
+import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
+import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, LocalUsers, RorConfigurationIndex, User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.UsernameCaseMapping
@@ -55,15 +52,15 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils._
-import tech.beshu.ror.boot.ReadonlyRest.RorMode
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.{LocalUsersSupport, localUsersMonoid}
-import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
 import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
 import tech.beshu.ror.providers.{EnvVarsProvider, UuidProvider}
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.yaml.YamlOps
+
+import java.time.Clock
 
 final case class Core(accessControl: AccessControl,
                       rorConfig: RorConfig)
@@ -76,7 +73,7 @@ trait CoreFactory {
                      mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]]
 }
 
-class RawRorConfigBasedCoreFactory(rorMode: RorMode)
+class RawRorConfigBasedCoreFactory()
                                   (implicit clock: Clock,
                                    uuidProvider: UuidProvider,
                                    envVarProvider: EnvVarsProvider)
@@ -137,10 +134,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
           .from(Decoder.const(Core(DisabledAccessControl, RorConfig.disabled)))
       } else {
         for {
-          globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(
-            rorMode,
-            rorConfigurationIndex
-          ))
+          globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(rorConfigurationIndex))
           core <- coreDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings, mocksProvider)
         } yield core
       }

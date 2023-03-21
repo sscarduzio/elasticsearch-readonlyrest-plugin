@@ -23,18 +23,16 @@ import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
-import tech.beshu.ror.boot.ReadonlyRest.RorMode
 
 object GlobalStaticSettingsDecoder {
 
-  def instance(rorMode: RorMode,
-               rorConfigurationIndex: RorConfigurationIndex): Decoder[GlobalSettings] = {
+  def instance(rorConfigurationIndex: RorConfigurationIndex): Decoder[GlobalSettings] = {
     Decoder
       .instance { c =>
         for {
           basicAuthPrompt <- c.downField("prompt_for_basic_auth").as[Option[Boolean]]
           forbiddenMessage <- c.downField("response_if_req_forbidden").as[Option[String]]
-          flsEngine <- c.downField("fls_engine").as[GlobalSettings.FlsEngine](flsEngineDecoder(rorMode))
+          flsEngine <- c.downField("fls_engine").as[GlobalSettings.FlsEngine](flsEngineDecoder)
           caseMapping <- c.downField("username_case_sensitivity").as[GlobalSettings.UsernameCaseMapping]
         } yield new GlobalSettings(
           basicAuthPrompt.getOrElse(true),
@@ -46,16 +44,11 @@ object GlobalStaticSettingsDecoder {
       }
   }
 
-  private def flsEngineDecoder(rorMode: RorMode): Decoder[GlobalSettings.FlsEngine] = {
+  private def flsEngineDecoder: Decoder[GlobalSettings.FlsEngine] = {
     Decoder.decodeOption[String]
       .toSyncDecoder
       .emapE[GlobalSettings.FlsEngine] { flsEngineStr =>
-        rorMode match {
-          case RorMode.Plugin =>
-            createFlsEngineForPlugin(flsEngineStr)
-          case RorMode.Proxy =>
-            createFlsEngineForProxy(flsEngineStr)
-        }
+        createFlsEngineForPlugin(flsEngineStr)
       }
       .decoder
   }
@@ -78,18 +71,6 @@ object GlobalStaticSettingsDecoder {
       flsEngineFromString(definedFlsEngine)
         .left
         .map(unknown => CoreCreationError.GeneralReadonlyrestSettingsError(Message(s"Unknown fls engine: '${unknown.value}'. Supported: 'es_with_lucene', 'es'.")))
-  }
-
-  private def createFlsEngineForProxy(flsEngineFromConfig: Option[String]) = flsEngineFromConfig match {
-    case None =>
-      Right(GlobalSettings.FlsEngine.ES)
-    case Some(definedFlsEngine) =>
-      flsEngineFromString(definedFlsEngine) match {
-        case Right(FlsEngine.ES) =>
-          Right(FlsEngine.ES)
-        case _ =>
-          Left(CoreCreationError.GeneralReadonlyrestSettingsError(Message(s"Fls engine: '$definedFlsEngine' is not allowed for ROR proxy")))
-      }
   }
 
   private def flsEngineFromString(str: String): Either[UnknownFlsEngine, FlsEngine] = str match {

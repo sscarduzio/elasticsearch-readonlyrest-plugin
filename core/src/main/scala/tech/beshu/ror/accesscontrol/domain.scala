@@ -37,6 +37,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
+import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.accesscontrol.matchers.{IndicesNamesMatcher, MatcherWithWildcardsScalaAdapter, TemplateNamePatternMatcher, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -49,7 +50,7 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
-import java.util.{Base64, Locale, UUID}
+import java.util.{Base64, Locale, UUID, regex}
 import scala.language.postfixOps
 import scala.util.{Failure, Random, Success, Try}
 
@@ -221,23 +222,20 @@ object domain {
   object Header {
     final case class Name(value: NonEmptyString)
     object Name {
+      val authorization = Name("Authorization")
       val xApiKeyHeaderName = Header.Name("X-Api-Key")
       val xForwardedFor = Name("X-Forwarded-For")
       val xForwardedUser = Name("X-Forwarded-User")
-      val xUserOrigin = Name(Constants.HEADER_USER_ORIGIN)
-      val kibanaHiddenApps = Name(Constants.HEADER_KIBANA_HIDDEN_APPS)
-      val kibanaRequestPath = Name(Constants.HEADER_KIBANA_REQUEST_PATH)
       val cookie = Name("Cookie")
       val setCookie = Name("Set-Cookie")
-      val transientFields = Name(Constants.FIELDS_TRANSIENT)
-      val currentGroup = Name(Constants.HEADER_GROUP_CURRENT)
-      val availableGroups = Name(Constants.HEADER_GROUPS_AVAILABLE)
+      val transientFields = Name("_fields")
       val userAgent = Name("User-Agent")
-      val authorization = Name("Authorization")
-      val rorUser = Name(Constants.HEADER_USER_ROR)
-      val kibanaAccess = Name(Constants.HEADER_KIBANA_ACCESS)
-      val impersonateAs = Name(Constants.HEADER_IMPERSONATING)
-      val correlationId = Name(Constants.HEADER_CORRELATION_ID)
+
+      val xUserOrigin = Name("x-ror-origin")
+      val kibanaRequestPath = Name("x-ror-kibana-request-path")
+      val currentGroup = Name("x-ror-current-group")
+      val impersonateAs = Name("x-ror-impersonating")
+      val correlationId = Name("x-ror-correlation-id")
 
       implicit val eqName: Eq[Name] = Eq.by(_.value.value.toLowerCase(Locale.US))
     }
@@ -492,6 +490,8 @@ object domain {
   sealed trait IndexName
   object IndexName {
 
+    type Kibana = ClusterIndexName.Local
+
     val wildcard: IndexName.Wildcard = IndexName.Wildcard("*")
 
     final case class Full(name: NonEmptyString)
@@ -542,8 +542,8 @@ object domain {
     object Local {
 
       val wildcard: ClusterIndexName.Local = Local(IndexName.wildcard)
-      val devNullKibana: ClusterIndexName.Local = Local(IndexName.Full(".kibana-devnull"))
-      val kibana: ClusterIndexName.Local = Local(IndexName.Full(".kibana"))
+      val devNullKibana: IndexName.Kibana = Local(IndexName.Full(".kibana-devnull"))
+      val kibanaDefault: IndexName.Kibana = Local(IndexName.Full(".kibana"))
 
       def fromString(value: String): Option[ClusterIndexName.Local] = {
         IndexName
@@ -1139,6 +1139,24 @@ object domain {
     implicit val eqKibanaApps: Eq[KibanaApp] = Eq.fromUniversalEquals
   }
 
+  final case class KibanaAllowedApiPath(httpMethod: AllowedHttpMethod, pathRegex: Regex)
+  object KibanaAllowedApiPath {
+
+    sealed trait AllowedHttpMethod
+    object AllowedHttpMethod {
+      case object Any extends AllowedHttpMethod
+      final case class Specific(httpMethod: HttpMethod) extends AllowedHttpMethod
+
+      sealed trait HttpMethod
+      object HttpMethod {
+        case object Get extends HttpMethod
+        case object Post extends HttpMethod
+        case object Put extends HttpMethod
+        case object Delete extends HttpMethod
+      }
+    }
+  }
+
   final case class UserOrigin(value: NonEmptyString)
 
   final case class Type(value: String) extends AnyVal
@@ -1150,6 +1168,7 @@ object domain {
     case object RO extends KibanaAccess
     case object RW extends KibanaAccess
     case object ROStrict extends KibanaAccess
+    case object ApiOnly extends KibanaAccess
     case object Admin extends KibanaAccess
     case object Unrestricted extends KibanaAccess
 
@@ -1349,6 +1368,25 @@ object domain {
         case (NotUsingFields, other) => other
         case (UsingFields(firstFields), UsingFields(secondFields)) => UsingFields(firstFields ::: secondFields)
       })
+    }
+
+  }
+
+  final case class Regex private(value: String) {
+    val pattern: regex.Pattern = regex.Pattern.compile(value)
+  }
+  object Regex {
+    private val specialChars = """<([{\^-=$!|]})?*+.>"""
+
+    def compile(value: String): Try[Regex] = Try(new Regex(value))
+    def buildFromLiteral(value: String): Regex = {
+      val escapedValue = value
+        .map {
+          case c if specialChars.contains(c) => s"""\\$c"""
+          case c => c
+        }
+        .mkString
+      new Regex(s"^$escapedValue$$")
     }
   }
 }

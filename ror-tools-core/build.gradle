@@ -18,34 +18,20 @@ buildscript {
     ext {
         esVersion = project.properties['esVersion'] ?: "unknown"
     }
-    repositories {
-        mavenLocal()
-        mavenCentral()
-        maven { url "https://plugins.gradle.org/m2/" }
-    }
+}
 
-    dependencies {
-        classpath group: 'org.owasp',                                    name: 'dependency-check-gradle',  version: '7.4.1'
-        classpath group: 'com.star-zero.gradle',                         name: 'githook',                  version: '1.2.1'
-        classpath group: 'gradle.plugin.com.github.maiflai',             name: 'gradle-scalatest',         version: '0.24'
-        classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins',  name: 'license-gradle-plugin',    version: '0.15.0'
-        classpath group: 'com.github.jengelman.gradle.plugins',          name: 'shadow',                   version: '4.0.4'
-    }
+plugins {
+    id "readonlyrest.base-common-conventions"
+
+    id "com.github.johnrengelman.shadow" version "7.1.2"
+    id "com.github.maiflai.scalatest"    version "0.32"
+    id "java-library"
 }
 
 repositories {
-    mavenCentral()
     maven { url 'https://repo.gradle.org/gradle/libs-releases' }
     maven { url 'https://jitpack.io' }
 }
-
-apply plugin: 'com.github.johnrengelman.shadow'
-apply plugin: 'com.github.maiflai.scalatest'
-apply plugin: "com.github.hierynomus.license"
-apply plugin: "com.star-zero.gradle.githook"
-apply plugin: 'scala'
-apply plugin: 'maven'
-apply plugin: 'org.owasp.dependencycheck'
 
 dependencyCheck {
     /*
@@ -57,13 +43,8 @@ dependencyCheck {
        Critical 9.0-10.0
      */
     failBuildOnCVSS = 3
-    scanConfigurations = ['runtime']
+    scanConfigurations = ['runtimeClasspath']
     suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
-}
-
-compileScala {
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
 }
 
 test {
@@ -72,40 +53,12 @@ test {
         exceptionFormat = 'full'
         events "standardOut", "started", "passed", "skipped", "failed"
     }
-    reports {
-        junitXml.enabled = true
-        html.enabled = false
-    }
-}
-
-configurations {
-    shadowCompile
-    compile.extendsFrom(shadowCompile)
 }
 
 dependencies {
-    shadowCompile group: 'org.ow2.asm',                   name: 'asm',                              version: '9.3'
-    shadowCompile group: 'io.kevinlee',                   name: 'just-semver_2.12',                 version: '0.5.0'
-    shadowCompile group: 'com.lihaoyi',                   name: 'os-lib_2.12',                      version: '0.8.1'
-    shadowCompile group: 'org.scala-lang',                name: 'scala-library',                    version: '2.12.8'
-}
-
-license {
-    header rootProject.file('ReadonlyRESTLicenseHeader.txt')
-    skipExistingHeaders true
-    useDefaultMappings = false
-    mapping {
-        java = 'SLASHSTAR_STYLE'
-        scala = 'SLASHSTAR_STYLE'
-    }
-}
-
-githook {
-    hooks {
-        "pre-commit" {
-            shell = "./gradlew license --rerun-tasks"
-        }
-    }
+    api group: 'org.ow2.asm',                   name: 'asm',                              version: '9.3'
+    api group: 'io.kevinlee',                   name: 'just-semver_2.12',                 version: '0.5.0'
+    api group: 'com.lihaoyi',                   name: 'os-lib_2.12',                      version: '0.8.1'
 }
 
 compileScala {
@@ -114,25 +67,21 @@ compileScala {
     options.compilerArgs << "-Ywarn-macros:after"
 }
 
-tasks.withType(ScalaCompile) {
-    scalaCompileOptions.additionalParameters = ["-Ypartial-unification", "-Ywarn-macros:after", "-feature", "-Xfatal-warnings"]
-}
-
 shadowJar {
-    configurations = [project.configurations.shadowCompile]
+    configurations = [project.configurations.runtimeClasspath]
 }
 
 // Configure Auto Relocation
 import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
 
-task relocateShadowJar(type: ConfigureShadowRelocation) {
+tasks.register('relocateShadowJar', ConfigureShadowRelocation) {
     target = tasks.shadowJar
     prefix = "tech.beshu.ror.tools"
 }
 
 tasks.shadowJar.dependsOn tasks.relocateShadowJar
 
-tasks.withType(AbstractArchiveTask) {
+tasks.withType(AbstractArchiveTask).configureEach {
     preserveFileTimestamps = false
     reproducibleFileOrder = true
 }

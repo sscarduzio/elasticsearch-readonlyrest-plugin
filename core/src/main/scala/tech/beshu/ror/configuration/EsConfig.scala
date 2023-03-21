@@ -17,15 +17,14 @@
 package tech.beshu.ror.configuration
 
 
-import java.nio.file.Path
 import better.files.File
-import cats.data.EitherT
+import cats.data.{EitherT, NonEmptyList}
 import io.circe.Decoder
 import monix.eval.Task
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.{FileNotFound, MalformedContent}
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
-import tech.beshu.ror.utils.yaml.JsonFile
+import tech.beshu.ror.utils.yaml.{JsonFile, YamlKeyDecoder}
 
 import java.nio.file.Path
 
@@ -72,8 +71,6 @@ object EsConfig {
 
   final case class RorEsLevelSettings(forceLoadRorFromFile: Boolean)
 
-  final case class RorIndexSettings(name: String)
-
   sealed trait LoadEsConfigError
   object LoadEsConfigError {
     final case class FileNotFound(file: File) extends LoadEsConfigError
@@ -82,16 +79,11 @@ object EsConfig {
 
   private object decoders {
     implicit val rorEsLevelSettingsDecoder: Decoder[RorEsLevelSettings] = {
-      Decoder.instance { c =>
-        val oneLine = c.downField("readonlyrest.force_load_from_file").as[Option[Boolean]]
-        val twoLines =  c.downField("readonlyrest").downField("force_load_from_file").as[Option[Boolean]]
-        val forceLoadFromFile = (oneLine.toOption.flatten, twoLines.toOption.flatten) match {
-          case (Some(result), _) => result
-          case (_, Some(result)) => result
-          case (_, _) => false
-        }
-        Right(RorEsLevelSettings(forceLoadFromFile))
-      }
+      YamlKeyDecoder[Boolean](
+        segments = NonEmptyList.of("readonlyrest", "force_load_from_file"),
+        default = false
+      )
+        .map(RorEsLevelSettings.apply)
     }
   }
 

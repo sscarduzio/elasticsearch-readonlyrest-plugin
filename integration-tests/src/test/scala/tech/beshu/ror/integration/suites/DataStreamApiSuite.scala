@@ -21,8 +21,7 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.freespec.AnyFreeSpec
 import tech.beshu.ror.integration.suites.DataStreamApiSuite.{DataStreamNameGenerator, IndexTemplateNameGenerator}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyFreeSpecLike
-import tech.beshu.ror.utils.containers.EsClusterProvider
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.misc.Version
@@ -30,11 +29,12 @@ import tech.beshu.ror.utils.misc.Version
 import java.time.Instant
 import scala.util.Random
 
-trait DataStreamApiSuite extends AnyFreeSpec
-  with BaseSingleNodeEsClusterTest
-  with ESVersionSupportForAnyFreeSpecLike
-  with BeforeAndAfterEach {
-  this: EsClusterProvider =>
+class DataStreamApiSuite
+  extends AnyFreeSpec
+    with BaseSingleNodeEsClusterTest
+    with SingletonPluginTestSupport
+    with ESVersionSupportForAnyFreeSpecLike
+    with BeforeAndAfterEach {
 
   override implicit val rorConfigFileName: String = "/data_stream_api/readonlyrest.yml"
 

@@ -20,21 +20,20 @@ import org.apache.commons.codec.binary.Base64
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonLdapContainers}
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonLdapContainers, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
-import tech.beshu.ror.utils.containers.providers.ResolvedRorConfigFileProvider
-import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer, EsClusterProvider, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait ImpersonationSuite
+class ImpersonationSuite
   extends AnyFreeSpec
     with BaseSingleNodeEsClusterTest
+    with SingletonPluginTestSupport
     with ESVersionSupportForAnyFreeSpecLike
     with BeforeAndAfterEach
     with BeforeAndAfterAll {
-  this: EsClusterProvider with ResolvedRorConfigFileProvider =>
 
   override implicit val rorConfigFileName = "/impersonation/readonlyrest.yml"
 
