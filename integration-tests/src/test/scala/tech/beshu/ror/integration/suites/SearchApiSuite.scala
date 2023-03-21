@@ -20,22 +20,22 @@ import org.scalatest.concurrent.{Eventually, IntegrationPatience}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterProvider, EsContainerCreator}
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 import java.time.Instant
 
-trait SearchApiSuite
+class SearchApiSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with Eventually
     with IntegrationPatience
     with Matchers {
-  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/search_api/readonlyrest.yml"
 
@@ -51,33 +51,33 @@ trait SearchApiSuite
 
   "_search" should {
     "be allowed" when {
-      "data stream is being searched by full name" excludeES(allEs7xBelowEs77x) in {
+      "data stream is being searched by full name" excludeES (allEs7xBelowEs77x) in {
         val result = user1SearchManager.search("logs-0001")
 
-        result.responseCode should be (200)
-        result.searchHits.map(_("_index").str).sorted.distinct should be (List("logs-0001"))
-        result.searchHits.map(_("_id").str).sorted should be (List("1", "2"))
+        result.responseCode should be(200)
+        result.searchHits.map(_("_index").str).sorted.distinct should be(List("logs-0001"))
+        result.searchHits.map(_("_id").str).sorted should be(List("1", "2"))
       }
-      "data stream is being searched by name with wildcard" excludeES(allEs7xBelowEs77x) in {
+      "data stream is being searched by name with wildcard" excludeES (allEs7xBelowEs77x) in {
         val result = user1SearchManager.search("logs-*2")
 
-        result.responseCode should be (200)
-        result.searchHits.map(_("_index").str).sorted.distinct should be (List("logs-0002"))
-        result.searchHits.map(_("_id").str).sorted should be (List("1"))
+        result.responseCode should be(200)
+        result.searchHits.map(_("_index").str).sorted.distinct should be(List("logs-0002"))
+        result.searchHits.map(_("_id").str).sorted should be(List("1"))
       }
-      "data stream is being searched by full alias name" excludeES(allEs7xBelowEs77x) in {
+      "data stream is being searched by full alias name" excludeES (allEs7xBelowEs77x) in {
         val result = user1SearchManager.search("all-logs")
 
-        result.responseCode should be (200)
-        result.searchHits.map(_("_index").str).sorted.distinct should be (List("logs-0001", "logs-0002"))
-        result.searchHits.map(_("_id").str).sorted should be (List("1", "1", "2"))
+        result.responseCode should be(200)
+        result.searchHits.map(_("_index").str).sorted.distinct should be(List("logs-0001", "logs-0002"))
+        result.searchHits.map(_("_id").str).sorted should be(List("1", "1", "2"))
       }
-      "data stream is being searched by alias name with wildcard" excludeES(allEs7xBelowEs77x) in {
+      "data stream is being searched by alias name with wildcard" excludeES (allEs7xBelowEs77x) in {
         val result = user1SearchManager.search("all-*")
 
-        result.responseCode should be (200)
-        result.searchHits.map(_("_index").str).sorted.distinct should be (List("logs-0001", "logs-0002"))
-        result.searchHits.map(_("_id").str).sorted should be (List("1", "1", "2"))
+        result.responseCode should be(200)
+        result.searchHits.map(_("_index").str).sorted.distinct should be(List("logs-0001", "logs-0002"))
+        result.searchHits.map(_("_id").str).sorted should be(List("1", "1", "2"))
       }
     }
   }

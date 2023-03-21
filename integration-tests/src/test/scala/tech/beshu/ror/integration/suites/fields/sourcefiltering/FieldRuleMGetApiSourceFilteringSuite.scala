@@ -17,16 +17,15 @@
 package tech.beshu.ror.integration.suites.fields.sourcefiltering
 
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
-import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.EsClusterProvider
+import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.elasticsearch.DocumentManager.MGetResult
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait FieldRuleMGetApiSourceFilteringSuite
-  extends FieldRuleSourceFilteringSuite {
-  this: EsClusterProvider with ESVersionSupport =>
+class FieldRuleMGetApiSourceFilteringSuite
+  extends FieldRuleSourceFilteringSuite
+    with SingletonPluginTestSupport {
 
   override protected type CALL_RESULT = MGetResult
 

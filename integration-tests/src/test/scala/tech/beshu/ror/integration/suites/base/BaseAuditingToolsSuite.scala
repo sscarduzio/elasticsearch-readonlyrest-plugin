@@ -168,7 +168,7 @@ trait BaseAuditingToolsSuite
             val auditEntries = adminAuditIndexManager.getEntries.jsons
             auditEntries.size shouldBe 2
 
-            auditEntries.map(_ ("correlation_id").str).toSet shouldBe Set(loggingId1, loggingId2)
+            auditEntries.map(_("correlation_id").str).toSet shouldBe Set(loggingId1, loggingId2)
           }
         }
       }

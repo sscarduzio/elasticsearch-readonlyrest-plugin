@@ -14,13 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.proxy
+package tech.beshu.ror.integration.suites
 
-import tech.beshu.ror.integration.suites.CatApiSuite
-import tech.beshu.ror.utils.containers.EsClusterContainer
+import tech.beshu.ror.integration.suites.base.XpackClusterWithRorNodesAndInternodeSslSuite
+import tech.beshu.ror.integration.utils.PluginTestSupport
 
-// todo: _cat API will be disabled for proxy
+class XpackClusterWithRorNodesAndInternodeSslPemSuite
+  extends XpackClusterWithRorNodesAndInternodeSslSuite
+    with PluginTestSupport {
 
-//class CatApiProxyTests extends CatApiSuite with BasicClusterProxyTestSupport {
-//  override lazy val rorContainer: EsClusterContainer = container
-//}
+  override def rorConfigPath: String = "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_pem.yml"
+}

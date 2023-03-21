@@ -18,12 +18,14 @@ package tech.beshu.ror.integration.suites
 
 import eu.timepit.refined.auto._
 import tech.beshu.ror.integration.suites.base.BaseAdminApiSuite
+import tech.beshu.ror.integration.utils.PluginTestSupport
+import tech.beshu.ror.utils.containers.EsClusterSettings
 import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
-import tech.beshu.ror.utils.containers.{EsClusterProvider, EsClusterSettings}
 
-trait AdminApiWithDefaultRorIndexSuite extends BaseAdminApiSuite {
-  this: EsClusterProvider =>
+class AdminApiWithDefaultRorIndexSuite
+  extends BaseAdminApiSuite
+    with PluginTestSupport {
 
   override implicit val rorConfigFileName = "/admin_api/readonlyrest.yml"
   override protected val readonlyrestIndexName: String = ".readonlyrest"

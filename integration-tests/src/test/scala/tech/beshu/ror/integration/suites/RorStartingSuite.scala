@@ -33,7 +33,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-trait RorStartingSuite extends AnyWordSpec {
+class RorStartingSuite extends AnyWordSpec {
 
   import RorStartingSuite._
 
@@ -164,7 +164,6 @@ private object RorStartingSuite {
       val clusterName = s"ROR_${uniqueClusterId.getAndIncrement()}"
       val nodeName = s"${clusterName}_1"
       create(
-        mode = Mode.Plugin,
         nodeSettings = EsNodeSettings(
           nodeName = nodeName,
           clusterName = clusterName,

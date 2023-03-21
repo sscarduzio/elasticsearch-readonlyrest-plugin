@@ -18,11 +18,8 @@ package tech.beshu.ror.utils.containers
 
 import better.files.File
 import cats.data.NonEmptyList
-import org.apache.http.message.BasicHeader
 import tech.beshu.ror.utils.containers.EsContainer.Credentials
-import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, Token}
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.proxy.RorProxyInstance
 
 object providers {
 
@@ -84,27 +81,6 @@ object providers {
           override lazy val adminClient: RestClient = target.adminClient
           override private[providers] def client(credentials: Credentials) = target.client(credentials)
         }
-      }
-    }
-  }
-
-  trait CallingProxy extends SingleClient {
-    def proxy: RorProxyInstance
-
-    override def clients: NonEmptyList[ClientProvider] =
-      NonEmptyList.one(createProxyClient(proxy.port))
-
-    private def createProxyClient(port: Int): ClientProvider = new ClientProvider {
-      override lazy val adminClient: RestClient = {
-        import EsContainerWithRorSecurity.rorAdminCredentials
-        basicAuthClient(rorAdminCredentials._1, rorAdminCredentials._2)
-      }
-
-      override private[providers] def client(credentials: Credentials) = credentials match {
-        case BasicAuth(user, password) => new RestClient(false, "localhost", port, Some(user, password))
-        case Token(token) => new RestClient(false, "localhost", port, Option.empty, new BasicHeader("Authorization", token))
-        case Header(name, value) => new RestClient(false, "localhost", port, Option.empty, new BasicHeader(name, value))
-        case Credentials.None => new RestClient(false, "localhost", port, Option.empty)
       }
     }
   }

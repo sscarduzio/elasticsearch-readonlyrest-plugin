@@ -97,9 +97,8 @@ trait FieldRuleEngineSuite
 
         result.responseCode shouldBe 200
         result.searchHits.size shouldBe 5
-        val aggregateName =
-          if(executedOn(rorProxy)) "sterms#my_aggregate" // this is weird and probably we need to fix it. Currently, there is no time for this
-          else "my_aggregate"
+
+        val aggregateName = "my_aggregate"
         result.aggregations shouldBe Map(
           aggregateName -> ujson.read(
             """{

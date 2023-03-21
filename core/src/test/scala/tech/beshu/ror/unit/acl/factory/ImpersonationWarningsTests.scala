@@ -32,7 +32,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.boot.ReadonlyRest.RorMode
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.providers._
@@ -391,7 +390,6 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
-    implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
-    new RawRorConfigBasedCoreFactory(RorMode.Plugin)
+    new RawRorConfigBasedCoreFactory()
   }
 }

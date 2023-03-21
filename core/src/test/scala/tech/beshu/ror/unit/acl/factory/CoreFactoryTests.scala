@@ -34,7 +34,6 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{BlocksLevelCreationError, DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.boot.ReadonlyRest.RorMode
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers._
@@ -46,8 +45,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
-    implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
-    new RawRorConfigBasedCoreFactory(RorMode.Plugin)
+    new RawRorConfigBasedCoreFactory()
   }
 
   "A RorAclFactory" should {

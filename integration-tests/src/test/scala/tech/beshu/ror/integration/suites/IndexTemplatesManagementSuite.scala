@@ -19,18 +19,17 @@ package tech.beshu.ror.integration.suites
 import cats.data.NonEmptyList
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsClusterProvider
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager.Template
 import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplate
 import tech.beshu.ror.utils.elasticsearch.{BaseTemplateManager, ComponentTemplateManager, IndexTemplateManager, LegacyTemplateManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait IndexTemplatesManagementSuite
+class IndexTemplatesManagementSuite
   extends AnyWordSpec
     with BaseTemplatesSuite
+    with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike {
-  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/templates/readonlyrest.yml"
 
@@ -401,7 +400,7 @@ trait IndexTemplatesManagementSuite
             user1Template.responseCode should be(200)
             user1Template.templates should be(List(Template("new_template", Set("custom_dev1_index_*"), Set.empty)))
           }
-          "template applies to generic index pattern (ES < 6.0.0)" excludeES(allEs6x, allEs7x, allEs8x, rorProxy) in {
+          "template applies to generic index pattern (ES < 6.0.0)" excludeES(allEs6x, allEs7x, allEs8x) in {
             val result = dev1TemplateManager.putTemplate(
               templateName = "new_template",
               indexPatterns = NonEmptyList.one("custom_dev1_index_*"),
@@ -1220,7 +1219,7 @@ trait IndexTemplatesManagementSuite
 
     "A simulate template API" should {
       "be allowed for a user" which {
-        "has an access to the given existing template" excludeES(allEs6x, allEs7xBelowEs79x, rorProxy) in {
+        "has an access to the given existing template" excludeES(allEs6x, allEs7xBelowEs79x) in {
           adminIndexTemplateManager
             .putTemplateAndWaitForIndexing(
               templateName = "temp1",
@@ -1242,7 +1241,7 @@ trait IndexTemplatesManagementSuite
           result.templateAliases should be(Set("dev1_index"))
           result.overlappingTemplates should be(List.empty)
         }
-        "has an access to given non-existing template" excludeES(allEs6x, allEs7xBelowEs79x, rorProxy) in {
+        "has an access to given non-existing template" excludeES(allEs6x, allEs7xBelowEs79x) in {
           adminIndexTemplateManager
             .putTemplateAndWaitForIndexing(
               templateName = "temp2",
@@ -1264,7 +1263,7 @@ trait IndexTemplatesManagementSuite
         }
       }
       "not to be allowed for a user" which {
-        "has no access to the given existing template" excludeES(allEs6x, allEs7xBelowEs79x, rorProxy) in {
+        "has no access to the given existing template" excludeES(allEs6x, allEs7xBelowEs79x) in {
           adminIndexTemplateManager
             .putTemplateAndWaitForIndexing(
               templateName = "temp1",
@@ -1276,7 +1275,7 @@ trait IndexTemplatesManagementSuite
 
           result.responseCode should be(400)
         }
-        "has no access to the given non-existing template" excludeES(allEs6x, allEs7xBelowEs79x, rorProxy) in {
+        "has no access to the given non-existing template" excludeES(allEs6x, allEs7xBelowEs79x) in {
           adminIndexTemplateManager
             .putTemplateAndWaitForIndexing(
               templateName = "temp1",
