@@ -496,6 +496,33 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
           }
         )
       }
+      "'metadata' property is defined" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    auth_key: user:pass
+              |    kibana:
+              |      access: "ro"
+              |      metadata:
+              |        one: "two"
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            rule.settings.access should be(KibanaAccess.RO)
+            rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+            rule.settings.kibanaTemplateIndex should be(None)
+            rule.settings.appsToHide should be(Set.empty)
+            rule.settings.allowedApiPaths should be(Set.empty)
+            rule.settings.metadata should be(Map.empty)
+            rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
+          }
+        )
+      }
     }
     "not be able to be loaded from config" when {
       "some of the required properties are not set" in {
