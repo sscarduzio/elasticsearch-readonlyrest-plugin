@@ -49,6 +49,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
   import tech.beshu.ror.utils.TestsUtils.loggingContext
 
+  private val auditLogFile = File("/tmp/ror/audit_logs/test_audit.log")
+
   "Auditing tool used with DefaultAuditLogSerializer" when {
     "es index sink is used" should {
       "not submit any audit entry" when {
@@ -136,31 +138,28 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     }
     "log sink is used" should {
       "saved audit log to file defined in log4j config" in {
-        File.usingTemporaryFile("test_ror_audit_log", ".log") { logFile =>
-          val logFilePath = logFile.path.toAbsolutePath.toString
-          System.setProperty("ROR_AUDIT_LOG_FILE_PATH", logFilePath)
-
-          val auditingTool = AuditingTool.create(
-            settings = Settings(
-              NonEmptyList.of(
-                AuditSinkConfig.LogBasedSink(
-                  new DefaultAuditLogSerializer,
-                  RorAuditLoggerName.default
-                )
+        val auditingTool = AuditingTool.create(
+          settings = Settings(
+            NonEmptyList.of(
+              AuditSinkConfig.LogBasedSink(
+                new DefaultAuditLogSerializer,
+                RorAuditLoggerName.default
               )
-            ),
-            auditSinkServiceCreator = _ => mock[AuditSinkService]
-          )
+            )
+          ),
+          auditSinkServiceCreator = _ => mock[AuditSinkService]
+        )
 
-          val requestContextId = RequestContext.Id(UUID.randomUUID().toString)
-          val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = requestContextId)
-          val responseContext = Errored(requestContext, new Exception("error"))
+        val requestContextId = RequestContext.Id(UUID.randomUUID().toString)
+        val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = requestContextId)
+        val responseContext = Errored(requestContext, new Exception("error"))
 
-          auditingTool.audit(responseContext).runSyncUnsafe()
-          val logFileContent = logFile.contentAsString
+        auditLogFile.overwrite("")
 
-          logFileContent should include(requestContextId.value)
-        }
+        auditingTool.audit(responseContext).runSyncUnsafe()
+        val logFileContent = auditLogFile.contentAsString
+
+        logFileContent should include(requestContextId.value)
       }
     }
 
