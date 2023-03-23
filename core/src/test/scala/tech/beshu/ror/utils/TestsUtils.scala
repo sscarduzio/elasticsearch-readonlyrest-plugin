@@ -22,7 +22,7 @@ import java.util.Base64
 import better.files.File
 import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.ParsingFailure
+import io.circe.{Json, ParsingFailure}
 import io.jsonwebtoken.JwtBuilder
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.RequestId
@@ -346,4 +346,7 @@ object TestsUtils {
     File(getResourcePath(resource)).contentAsString
   }
 
+  def jsonFrom(string: String): Json = {
+    io.circe.parser.parse(string).toTry.get
+  }
 }

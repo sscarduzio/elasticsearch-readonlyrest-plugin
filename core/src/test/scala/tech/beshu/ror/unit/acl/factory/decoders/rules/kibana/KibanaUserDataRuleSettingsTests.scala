@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, KibanaAllow
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
-import tech.beshu.ror.utils.TestsUtils.clusterIndexName
+import tech.beshu.ror.utils.TestsUtils._
 
 class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaUserDataRule] with OptionValues {
 
@@ -509,8 +509,12 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               |    kibana:
               |      access: "ro"
               |      metadata:
-              |        one: "two"
-              |
+              |        a: 1
+              |        b: true
+              |        c: "text"
+              |        d: [ "a","b" ]
+              |        e:
+              |         f: 1
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RO)
@@ -518,7 +522,17 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
             rule.settings.kibanaTemplateIndex should be(None)
             rule.settings.appsToHide should be(Set.empty)
             rule.settings.allowedApiPaths should be(Set.empty)
-            rule.settings.metadata should be(Map.empty)
+            rule.settings.metadata should be(Some(jsonFrom(
+              s"""{
+                 |  "a": 1,
+                 |  "b": true,
+                 |  "c": "text",
+                 |  "d": [ "a","b" ],
+                 |  "e": {
+                 |    "f": 1
+                 |  }
+                 |}""".stripMargin
+            )))
             rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
           }
         )
