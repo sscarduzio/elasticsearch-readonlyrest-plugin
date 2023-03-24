@@ -22,14 +22,15 @@ import io.circe.{Decoder, DecodingFailure, HCursor}
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSinkConfig
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate, RorAuditLoggerName}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common.{lemonLabsUriDecoder, nonEmptyStringDecoder}
-import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderOps, DecodingFailureOps}
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.audit.AuditLogSerializer
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
@@ -48,8 +49,8 @@ object AuditingSettingsDecoder extends Logging {
 
   private val auditSettingsDecoder: Decoder[Option[AuditingTool.Settings]] = Decoder.instance { c =>
     for {
-      isEnabled <- c.downField("audit").downField("enabled").as[Option[Boolean]]
-      result <- if (isEnabled.getOrElse(false)) {
+      isAuditEnabled <- c.downField("audit").downField("enabled").as[Option[Boolean]]
+      result <- if (isAuditEnabled.getOrElse(false)) {
         decodeAuditSettings(c).map(Some.apply)
       } else {
         Right(None)
@@ -60,7 +61,7 @@ object AuditingSettingsDecoder extends Logging {
   private def decodeAuditSettings = {
     SyncDecoderCreator
       .instance {
-        _.downField("audit").downField("outputs").as[Option[List[AuditSinkConfig]]]
+        _.downField("audit").downField("outputs").as[Option[List[AuditSink]]]
       }
       .emapE {
         case Some(outputs) =>
@@ -74,7 +75,7 @@ object AuditingSettingsDecoder extends Logging {
       .decoder
   }
 
-  private implicit val auditSinkConfigDecoder: Decoder[AuditSinkConfig] = {
+  private implicit val auditSinkConfigDecoder: Decoder[AuditSink] = {
 
     implicit val loggerNameDecoder: Decoder[RorAuditLoggerName] = {
       SyncDecoderCreator
@@ -84,22 +85,22 @@ object AuditingSettingsDecoder extends Logging {
         .decoder
     }
 
-    implicit val logBasedSinkConfigDecoder: Decoder[AuditSinkConfig.LogBasedSink] = Decoder.instance { c =>
+    implicit val logBasedSinkConfigDecoder: Decoder[Config.LogBasedSink] = Decoder.instance { c =>
       for {
         logSerializer <- c.downField("serializer").as[Option[AuditLogSerializer]]
         loggerName <- c.downField("logger_name").as[Option[RorAuditLoggerName]]
-      } yield AuditSinkConfig.LogBasedSink(
+      } yield Config.LogBasedSink(
         logSerializer = logSerializer.getOrElse(new DefaultAuditLogSerializer),
         loggerName = loggerName.getOrElse(RorAuditLoggerName.default)
       )
     }
 
-    implicit val indexBasedAuditSinkDecoder: Decoder[AuditSinkConfig.EsIndexBasedSink] = Decoder.instance { c =>
+    implicit val indexBasedAuditSinkDecoder: Decoder[Config.EsIndexBasedSink] = Decoder.instance { c =>
       for {
         auditIndexTemplate <- c.downField("index_template").as[Option[RorAuditIndexTemplate]]
         customAuditSerializer <- c.downField("serializer").as[Option[AuditLogSerializer]]
         remoteAuditCluster <- c.downField("cluster").as[Option[AuditCluster.RemoteAuditCluster]]
-      } yield AuditSinkConfig.EsIndexBasedSink(
+      } yield Config.EsIndexBasedSink(
         customAuditSerializer.getOrElse(new DefaultAuditLogSerializer),
         auditIndexTemplate.getOrElse(RorAuditIndexTemplate.default),
         remoteAuditCluster.getOrElse(AuditCluster.LocalAuditCluster)
@@ -107,12 +108,12 @@ object AuditingSettingsDecoder extends Logging {
     }
 
     Decoder
-      .instance[AuditSinkConfig] { c =>
+      .instance[AuditSink] { c =>
         for {
           sinkType <- c.downField("type").as[String]
           sinkConfig <- sinkType match {
-            case "index" => c.as[AuditSinkConfig.EsIndexBasedSink]
-            case "log" => c.as[AuditSinkConfig.LogBasedSink]
+            case "index" => c.as[Config.EsIndexBasedSink]
+            case "log" => c.as[Config.LogBasedSink]
             case other =>
               toDecodingFailure(
                 AuditingSettingsCreationError(Message(
@@ -120,7 +121,14 @@ object AuditingSettingsDecoder extends Logging {
                 ))
               ).asLeft
           }
-        } yield sinkConfig
+          isSinkEnabled <- c.downField("enabled").as[Option[Boolean]]
+        } yield {
+          if (isSinkEnabled.getOrElse(true)) {
+            AuditSink.Enabled(sinkConfig)
+          } else {
+            AuditSink.Disabled
+          }
+        }
       }
   }
 
@@ -182,11 +190,13 @@ object AuditingSettingsDecoder extends Logging {
           customAuditSerializer <- decodeOptionalSetting[AuditLogSerializer](c)("serializer", fallbackKey = "audit_serializer")
           remoteAuditCluster <- decodeOptionalSetting[AuditCluster.RemoteAuditCluster](c)("cluster", fallbackKey = "audit_cluster")
         } yield AuditingTool.Settings(
-          auditSinksConfig = NonEmptyList.one(
-            AuditSinkConfig.EsIndexBasedSink(
-              logSerializer = customAuditSerializer.getOrElse(new DefaultAuditLogSerializer),
-              rorAuditIndexTemplate = auditIndexTemplate.getOrElse(RorAuditIndexTemplate.default),
-              auditCluster = remoteAuditCluster.getOrElse(AuditCluster.LocalAuditCluster)
+          auditSinks = NonEmptyList.one(
+            AuditSink.Enabled(
+              Config.EsIndexBasedSink(
+                logSerializer = customAuditSerializer.getOrElse(new DefaultAuditLogSerializer),
+                rorAuditIndexTemplate = auditIndexTemplate.getOrElse(RorAuditIndexTemplate.default),
+                auditCluster = remoteAuditCluster.getOrElse(AuditCluster.LocalAuditCluster)
+              )
             )
           )
         )

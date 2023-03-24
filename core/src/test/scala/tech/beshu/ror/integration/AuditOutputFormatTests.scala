@@ -20,7 +20,8 @@ import cats.data.NonEmptyList
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSinkConfig
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
 import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
@@ -136,17 +137,18 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
     implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
     val settings = AuditingTool.Settings(
       NonEmptyList.of(
-        AuditSinkConfig.EsIndexBasedSink(
+        AuditSink.Enabled(Config.EsIndexBasedSink(
           new DefaultAuditLogSerializer,
           RorAuditIndexTemplate.default,
           AuditCluster.LocalAuditCluster
-        )
+        ))
       )
     )
-    new AccessControlLoggingDecorator(acl, Some(AuditingTool.create(
+    val auditingTool = AuditingTool.create(
       settings = settings,
       auditSinkServiceCreator = _ => auditSinkService
-    )))
+    ).get
+    new AccessControlLoggingDecorator(acl, Some(auditingTool))
   }
 
   private def captureProcessingMillis(jsonString: String) = {

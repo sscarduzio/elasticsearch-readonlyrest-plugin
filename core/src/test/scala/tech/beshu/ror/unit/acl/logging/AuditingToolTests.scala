@@ -27,7 +27,8 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSinkConfig
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.{Policy, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
@@ -51,126 +52,136 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
   private val auditLogFile = File("/tmp/ror/audit_logs/test_audit.log")
 
-  "Auditing tool used with DefaultAuditLogSerializer" when {
-    "es index sink is used" should {
-      "not submit any audit entry" when {
-        "request was allowed and verbosity level was ERROR" in {
-          val auditingTool = AuditingTool.create(
-            settings = auditSettings(new DefaultAuditLogSerializer),
-            auditSinkServiceCreator = _ => mock[AuditSinkService]
-          )
-          auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Error)).runSyncUnsafe()
+  "Auditing tool" when {
+    "used with DefaultAuditLogSerializer" when {
+      "es index sink is used" should {
+        "not submit any audit entry" when {
+          "request was allowed and verbosity level was ERROR" in {
+            val auditingTool = AuditingTool.create(
+              settings = auditSettings(new DefaultAuditLogSerializer),
+              auditSinkServiceCreator = _ => mock[AuditSinkService]
+            ).get
+            auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Error)).runSyncUnsafe()
+          }
+          "custom serializer throws exception" in {
+            val auditingTool = AuditingTool.create(
+              settings = auditSettings(throwingAuditLogSerializer),
+              auditSinkServiceCreator = _ => mock[AuditSinkService]
+            ).get
+            an[IllegalArgumentException] should be thrownBy {
+              auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
+            }
+          }
         }
-        "custom serializer throws exception" in {
-          val auditingTool = AuditingTool.create(
-            settings = auditSettings(throwingAuditLogSerializer),
-            auditSinkServiceCreator = _ => mock[AuditSinkService]
-          )
-          an[IllegalArgumentException] should be thrownBy {
+        "submit audit entry" when {
+          "request was allowed and verbosity level was INFO" in {
+            val auditSink = mock[AuditSinkService]
+            (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
+
+            val auditingTool = AuditingTool.create(
+              settings = auditSettings(new DefaultAuditLogSerializer),
+              auditSinkServiceCreator = _ => auditSink
+            ).get
             auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
+          }
+          "request was matched by forbidden rule" in {
+            val auditSink = mock[AuditSinkService]
+            (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
+
+            val auditingTool = AuditingTool.create(
+              settings = auditSettings(new DefaultAuditLogSerializer),
+              auditSinkServiceCreator = _ => auditSink
+            ).get
+
+            val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
+            val responseContext = ForbiddenBy(
+              requestContext,
+              new Block(
+                Block.Name("mock-block"),
+                Block.Policy.Forbid,
+                Block.Verbosity.Info,
+                NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
+              ),
+              GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty),
+              Vector.empty
+            )
+
+            auditingTool.audit(responseContext).runSyncUnsafe()
+          }
+          "request was forbidden" in {
+            val auditSink = mock[AuditSinkService]
+            (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
+
+            val auditingTool = AuditingTool.create(
+              settings = auditSettings(new DefaultAuditLogSerializer),
+              auditSinkServiceCreator = _ => auditSink
+            ).get
+
+            val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
+            val responseContext = Forbidden(requestContext, Vector.empty)
+
+            auditingTool.audit(responseContext).runSyncUnsafe()
+          }
+          "request was finished with error" in {
+            val auditSink = mock[AuditSinkService]
+            (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
+
+            val auditingTool = AuditingTool.create(
+              settings = auditSettings(new DefaultAuditLogSerializer),
+              auditSinkServiceCreator = _ => auditSink
+            ).get
+
+            val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
+            val responseContext = Errored(requestContext, new Exception("error"))
+
+            auditingTool.audit(responseContext).runSyncUnsafe()
           }
         }
       }
-      "submit audit entry" when {
-        "request was allowed and verbosity level was INFO" in {
-          val auditSink = mock[AuditSinkService]
-          (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
-
+      "log sink is used" should {
+        "saved audit log to file defined in log4j config" in {
           val auditingTool = AuditingTool.create(
-            settings = auditSettings(new DefaultAuditLogSerializer),
-            auditSinkServiceCreator = _ => auditSink
-          )
-          auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
-        }
-        "request was matched by forbidden rule" in {
-          val auditSink = mock[AuditSinkService]
-          (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
-
-          val auditingTool = AuditingTool.create(
-            settings = auditSettings(new DefaultAuditLogSerializer),
-            auditSinkServiceCreator = _ => auditSink
-          )
-
-          val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
-          val responseContext = ForbiddenBy(
-            requestContext,
-            new Block(
-              Block.Name("mock-block"),
-              Block.Policy.Forbid,
-              Block.Verbosity.Info,
-              NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
+            settings = Settings(
+              NonEmptyList.of(
+                AuditSink.Enabled(Config.LogBasedSink(
+                  new DefaultAuditLogSerializer,
+                  RorAuditLoggerName.default
+                ))
+              )
             ),
-            GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty),
-            Vector.empty
-          )
+            auditSinkServiceCreator = _ => mock[AuditSinkService]
+          ).get
 
-          auditingTool.audit(responseContext).runSyncUnsafe()
-        }
-        "request was forbidden" in {
-          val auditSink = mock[AuditSinkService]
-          (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
-
-          val auditingTool = AuditingTool.create(
-            settings = auditSettings(new DefaultAuditLogSerializer),
-            auditSinkServiceCreator = _ => auditSink
-          )
-
-          val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
-          val responseContext = Forbidden(requestContext, Vector.empty)
-
-          auditingTool.audit(responseContext).runSyncUnsafe()
-        }
-        "request was finished with error" in {
-          val auditSink = mock[AuditSinkService]
-          (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
-
-          val auditingTool = AuditingTool.create(
-            settings = auditSettings(new DefaultAuditLogSerializer),
-            auditSinkServiceCreator = _ => auditSink
-          )
-
-          val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
+          val requestContextId = RequestContext.Id(UUID.randomUUID().toString)
+          val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = requestContextId)
           val responseContext = Errored(requestContext, new Exception("error"))
 
+          auditLogFile.overwrite("")
+
           auditingTool.audit(responseContext).runSyncUnsafe()
+          val logFileContent = auditLogFile.contentAsString
+
+          logFileContent should include(requestContextId.value)
         }
       }
     }
-    "log sink is used" should {
-      "saved audit log to file defined in log4j config" in {
-        val auditingTool = AuditingTool.create(
-          settings = Settings(
-            NonEmptyList.of(
-              AuditSinkConfig.LogBasedSink(
-                new DefaultAuditLogSerializer,
-                RorAuditLoggerName.default
-              )
-            )
-          ),
-          auditSinkServiceCreator = _ => mock[AuditSinkService]
+    "no enabled outputs in settings" should {
+      "be disabled" in {
+        val creationResult = AuditingTool.create(
+          Settings(NonEmptyList.of(AuditSink.Disabled, AuditSink.Disabled, AuditSink.Disabled)),
+          _ => mock[AuditSinkService]
         )
-
-        val requestContextId = RequestContext.Id(UUID.randomUUID().toString)
-        val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = requestContextId)
-        val responseContext = Errored(requestContext, new Exception("error"))
-
-        auditLogFile.overwrite("")
-
-        auditingTool.audit(responseContext).runSyncUnsafe()
-        val logFileContent = auditLogFile.contentAsString
-
-        logFileContent should include(requestContextId.value)
+        creationResult should be(None)
       }
     }
-
   }
 
   private def auditSettings(serializer: AuditLogSerializer) = Settings(NonEmptyList.of(
-    AuditSinkConfig.EsIndexBasedSink(
+    AuditSink.Enabled(Config.EsIndexBasedSink(
       serializer,
       RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
       AuditCluster.LocalAuditCluster
-    )
+    ))
   ))
 
   private lazy val someday = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))

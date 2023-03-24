@@ -235,7 +235,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def createAuditingTool(core: Core)
                                 (implicit loggingContext: LoggingContext): Option[AuditingTool] = {
     core.rorConfig.auditingSettings
-      .map(settings => AuditingTool.create(settings, auditSinkCreator))
+      .flatMap(settings => AuditingTool.create(settings, auditSinkCreator))
   }
 
   private def inspectFlsEngine(engine: Engine): Unit = {

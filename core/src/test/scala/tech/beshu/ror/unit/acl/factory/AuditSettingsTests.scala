@@ -24,7 +24,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSinkConfig
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.{Config, Enabled}
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{LocalAuditCluster, RemoteAuditCluster}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName, RorAuditLoggerName, RorConfigurationIndex}
@@ -109,10 +110,58 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |
               """.stripMargin)
 
-            asserLogBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+            assertLogBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
               config,
               expectedLoggerName = "readonlyrest_audit"
             )
+          }
+          "the output's enabled flag is set" when {
+            "set to true" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: log
+                  |      enabled: true
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+                """.stripMargin)
+
+              assertLogBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+                config,
+                expectedLoggerName = "readonlyrest_audit"
+              )
+            }
+            "set to false" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: log
+                  |      enabled: false
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+                """.stripMargin)
+
+              assertSettings(
+                config,
+                expectedConfigs = NonEmptyList.of(AuditSink.Disabled)
+              )
+            }
           }
           "custom logger name is set" in {
             val config = rorConfigFromUnsafe(
@@ -132,7 +181,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |
               """.stripMargin)
 
-            asserLogBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+            assertLogBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
               config,
               expectedLoggerName = "custom_logger"
             )
@@ -155,7 +204,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |
               """.stripMargin)
 
-            asserLogBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
+            assertLogBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
               config,
               expectedLoggerName = "readonlyrest_audit"
             )
@@ -178,7 +227,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |
               """.stripMargin)
 
-            asserLogBasedAuditSinkSettingsPresent[DeprecatedAuditLogSerializerAdapter[_]](
+            assertLogBasedAuditSinkSettingsPresent[DeprecatedAuditLogSerializerAdapter[_]](
               config,
               expectedLoggerName = "readonlyrest_audit"
             )
@@ -202,7 +251,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |
               """.stripMargin)
 
-            asserLogBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
+            assertLogBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
               config,
               expectedLoggerName = "custom_logger"
             )
@@ -226,11 +275,60 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |
               """.stripMargin)
 
-            asserIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+            assertIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
               config,
               expectedIndexName = "readonlyrest_audit-2018-12-31",
               expectedAuditCluster = LocalAuditCluster
             )
+          }
+          "the output's enabled flag is set" when {
+            "set to true" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      enabled: true
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+                """.stripMargin)
+
+              assertIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+                config,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = LocalAuditCluster
+              )
+            }
+            "set to false" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      enabled: false
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+                """.stripMargin)
+
+              assertSettings(
+                config,
+                expectedConfigs = NonEmptyList.of(AuditSink.Disabled)
+              )
+            }
           }
           "custom audit index name is set" in {
             val config = rorConfigFromUnsafe(
@@ -250,7 +348,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |
               """.stripMargin)
 
-            asserIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+            assertIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
               config,
               expectedIndexName = "custom_template_20181231",
               expectedAuditCluster = LocalAuditCluster
@@ -274,7 +372,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |
               """.stripMargin)
 
-            asserIndexBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
+            assertIndexBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
               config,
               expectedIndexName = "readonlyrest_audit-2018-12-31",
               expectedAuditCluster = LocalAuditCluster
@@ -298,7 +396,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |
               """.stripMargin)
 
-            asserIndexBasedAuditSinkSettingsPresent[DeprecatedAuditLogSerializerAdapter[_]](
+            assertIndexBasedAuditSinkSettingsPresent[DeprecatedAuditLogSerializerAdapter[_]](
               config,
               expectedIndexName = "readonlyrest_audit-2018-12-31",
               expectedAuditCluster = LocalAuditCluster
@@ -322,7 +420,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |
               """.stripMargin)
 
-            asserIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+            assertIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
               config,
               expectedIndexName = "readonlyrest_audit-2018-12-31",
               expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
@@ -348,7 +446,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |
               """.stripMargin)
 
-            asserIndexBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
+            assertIndexBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
               config,
               expectedIndexName = "custom_template_20181231",
               expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
@@ -384,151 +482,37 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             )
             .runSyncUnsafe()
           inside(core) { case Right(Core(_, RorConfig(_, _, _, Some(auditingSettings)))) =>
-            auditingSettings.auditSinksConfig.size should be(2)
+            auditingSettings.auditSinks.size should be(2)
 
-            val sink1 = auditingSettings.auditSinksConfig.head
-            sink1 shouldBe a[AuditSinkConfig.EsIndexBasedSink]
-            val sink1Config = sink1.asInstanceOf[AuditSinkConfig.EsIndexBasedSink]
+            val sink1 = auditingSettings.auditSinks.head
+            sink1 shouldBe a[AuditSink.Enabled]
+            val enabledSink1 = sink1.asInstanceOf[AuditSink.Enabled].config
+            enabledSink1 shouldBe a[Config.EsIndexBasedSink]
+            val sink1Config = enabledSink1.asInstanceOf[Config.EsIndexBasedSink]
             sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
             sink1Config.logSerializer shouldBe a[DefaultAuditLogSerializer]
             sink1Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
 
-            val sink2 = auditingSettings.auditSinksConfig.toList(1)
-            sink2 shouldBe a[AuditSinkConfig.LogBasedSink]
-            val sink2Config = sink2.asInstanceOf[AuditSinkConfig.LogBasedSink]
+            val sink2 = auditingSettings.auditSinks.toList(1)
+            sink2 shouldBe a[AuditSink.Enabled]
+            val enabledSink2 = sink2.asInstanceOf[AuditSink.Enabled].config
+            enabledSink2 shouldBe a[Config.LogBasedSink]
+            val sink2Config = enabledSink2.asInstanceOf[Config.LogBasedSink]
             sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
             sink2Config.logSerializer shouldBe a[QueryAuditLogSerializer]
           }
         }
-      }
-      "not be able to be loaded from config" when {
-        "'log' output type" when {
-          "not supported custom serializer is set" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit:
-                |    enabled: true
-                |    outputs:
-                |    - type: log
-                |      serializer: "tech.beshu.ror.accesscontrol.blocks.RuleOrdering"
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
-              """.stripMargin)
-
-            assertInvalidSettings(
-              config,
-              expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
-            )
-          }
-          "logger name is empty" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit:
-                |    enabled: true
-                |    outputs:
-                |    - type: log
-                |      logger_name: ""
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
-              """.stripMargin)
-
-            assertInvalidSettings(
-              config,
-              expectedErrorMessage = "The audit 'logger_name' cannot be empty"
-            )
-          }
-        }
-        "'index' output type" when {
-          "not supported custom serializer is set" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit:
-                |    enabled: true
-                |    outputs:
-                |    - type: index
-                |      serializer: "tech.beshu.ror.accesscontrol.blocks.RuleOrdering"
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
-              """.stripMargin)
-
-            assertInvalidSettings(
-              config,
-              expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
-            )
-          }
-          "custom audit index name pattern is invalid" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit:
-                |    enabled: true
-                |    outputs:
-                |    - type: index
-                |      index_template: "invalid pattern"
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
-              """.stripMargin)
-
-            assertInvalidSettings(
-              config,
-              expectedErrorMessage = "Illegal pattern specified for audit_index_template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
-            )
-          }
-          "remote cluster is empty list" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit:
-                |    enabled: true
-                |    outputs:
-                |    - type: index
-                |      cluster: []
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
-              """.stripMargin)
-
-            assertInvalidSettings(
-              config,
-              expectedErrorMessage = "Non empty list of valid URI is required"
-            )
-          }
-        }
-        "unknown output type is set" in {
+        "one of outputs is disabled" in {
           val config = rorConfigFromUnsafe(
             """
               |readonlyrest:
               |  audit:
               |    enabled: true
               |    outputs:
-              |    - type: custom_type
+              |    - type: index
+              |      enabled: false
+              |    - type: log
+              |      serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
               |
               |  access_control_rules:
               |
@@ -538,511 +522,673 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               |
             """.stripMargin)
 
-          assertInvalidSettings(
-            config,
-            expectedErrorMessage = "Unsupported 'type' of audit output: custom_type. Supported types: [index, log]"
-          )
+          val core = factory
+            .createCoreFrom(
+              config,
+              RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+              MockHttpClientsFactory,
+              MockLdapConnectionPoolProvider,
+              NoOpMocksProvider
+            )
+            .runSyncUnsafe()
+          inside(core) { case Right(Core(_, RorConfig(_, _, _, Some(auditingSettings)))) =>
+            auditingSettings.auditSinks.size should be(2)
+
+            val sink1 = auditingSettings.auditSinks.head
+            sink1 should be(AuditSink.Disabled)
+
+            val sink2 = auditingSettings.auditSinks.toList(1)
+            sink2 shouldBe a[AuditSink.Enabled]
+            val enabledSink2 = sink2.asInstanceOf[AuditSink.Enabled].config
+            enabledSink2 shouldBe a[Config.LogBasedSink]
+            val sink2Config = enabledSink2.asInstanceOf[Config.LogBasedSink]
+            sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
+            sink2Config.logSerializer shouldBe a[QueryAuditLogSerializer]
+          }
         }
-        "no `outputs` defined" in {
-          val config = rorConfigFromUnsafe(
-            """
-              |readonlyrest:
-              |  audit:
-              |    enabled: true
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block
-              |    type: allow
-              |    auth_key: admin:container
-              |
+        "not be able to be loaded from config" when {
+          "'log' output type" when {
+            "not supported custom serializer is set" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: log
+                  |      serializer: "tech.beshu.ror.accesscontrol.blocks.RuleOrdering"
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+              """.stripMargin)
+
+              assertInvalidSettings(
+                config,
+                expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
+              )
+            }
+            "logger name is empty" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: log
+                  |      logger_name: ""
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+              """.stripMargin)
+
+              assertInvalidSettings(
+                config,
+                expectedErrorMessage = "The audit 'logger_name' cannot be empty"
+              )
+            }
+          }
+          "'index' output type" when {
+            "not supported custom serializer is set" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      serializer: "tech.beshu.ror.accesscontrol.blocks.RuleOrdering"
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+              """.stripMargin)
+
+              assertInvalidSettings(
+                config,
+                expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
+              )
+            }
+            "custom audit index name pattern is invalid" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      index_template: "invalid pattern"
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+              """.stripMargin)
+
+              assertInvalidSettings(
+                config,
+                expectedErrorMessage = "Illegal pattern specified for audit_index_template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
+              )
+            }
+            "remote cluster is empty list" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      cluster: []
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+              """.stripMargin)
+
+              assertInvalidSettings(
+                config,
+                expectedErrorMessage = "Non empty list of valid URI is required"
+              )
+            }
+          }
+          "unknown output type is set" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: custom_type
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
             """.stripMargin)
 
-          assertInvalidSettings(
-            config,
-            expectedErrorMessage = "The audit is enabled, but no 'outputs' are defined"
-          )
-        }
-        "'outputs' array is empty" in {
-          val config = rorConfigFromUnsafe(
-            """
-              |readonlyrest:
-              |  audit:
-              |    enabled: true
-              |    outputs: []
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block
-              |    type: allow
-              |    auth_key: admin:container
-              |
+            assertInvalidSettings(
+              config,
+              expectedErrorMessage = "Unsupported 'type' of audit output: custom_type. Supported types: [index, log]"
+            )
+          }
+          "no `outputs` defined" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
             """.stripMargin)
 
-          assertInvalidSettings(
-            config,
-            expectedErrorMessage = "The audit 'outputs' array cannot be empty"
-          )
+            assertInvalidSettings(
+              config,
+              expectedErrorMessage = "The audit is enabled, but no 'outputs' are defined"
+            )
+          }
+          "'outputs' array is empty" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs: []
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+            """.stripMargin)
+
+            assertInvalidSettings(
+              config,
+              expectedErrorMessage = "The audit 'outputs' array cannot be empty"
+            )
+          }
         }
       }
-    }
-    "deprecated format is used" should {
-      "ignore deprecated fields when both formats are used at once" in {
-        val config = rorConfigFromUnsafe(
-          """
-            |readonlyrest:
-            |  audit:
-            |    enabled: true
-            |    outputs:
-            |    - type: index
-            |    # deprecated fields
-            |    collector: false
-            |    serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
-            |
-            |  access_control_rules:
-            |
-            |  - name: test_block
-            |    type: allow
-            |    auth_key: admin:container
-            |
+      "deprecated format is used" should {
+        "ignore deprecated fields when both formats are used at once" in {
+          val config = rorConfigFromUnsafe(
+            """
+              |readonlyrest:
+              |  audit:
+              |    enabled: true
+              |    outputs:
+              |    - type: index
+              |    # deprecated fields
+              |    collector: false
+              |    serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block
+              |    type: allow
+              |    auth_key: admin:container
+              |
           """.stripMargin)
 
-        asserIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
-          config,
-          expectedIndexName = "readonlyrest_audit-2018-12-31",
-          expectedAuditCluster = LocalAuditCluster
-        )
-      }
-      "be optional" when {
-        "audit collector is disabled" when {
-          "'audit' section is defined" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit:
-                |    collector: false
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
+          assertIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+            config,
+            expectedIndexName = "readonlyrest_audit-2018-12-31",
+            expectedAuditCluster = LocalAuditCluster
+          )
+        }
+        "be optional" when {
+          "audit collector is disabled" when {
+            "'audit' section is defined" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    collector: false
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
               """.stripMargin)
 
-            assertSettingsNoPresent(config)
-          }
-          "'audit' section is not defined" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit_collector: false
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
+              assertSettingsNoPresent(config)
+            }
+            "'audit' section is not defined" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit_collector: false
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
             """.stripMargin)
 
-            assertSettingsNoPresent(config)
+              assertSettingsNoPresent(config)
+            }
           }
         }
-      }
-      "be able to be loaded from config" when {
-        "'audit' section is defined" when {
-          "audit collector is enabled" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit:
-                |    collector: true
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
+        "be able to be loaded from config" when {
+          "'audit' section is defined" when {
+            "audit collector is enabled" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    collector: true
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
               """.stripMargin)
 
-            asserIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
-              config,
-              expectedIndexName = "readonlyrest_audit-2018-12-31",
-              expectedAuditCluster = LocalAuditCluster
-            )
+              assertIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+                config,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = LocalAuditCluster
+              )
+            }
+            "custom audit index name is set" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    collector: true
+                  |    index_template: "'custom_template_'yyyyMMdd"
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+              """.stripMargin)
+
+              assertIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+                config,
+                expectedIndexName = "custom_template_20181231",
+                expectedAuditCluster = LocalAuditCluster
+              )
+            }
+            "custom serializer is set" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    collector: true
+                  |    serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+              """.stripMargin)
+
+              assertIndexBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
+                config,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = LocalAuditCluster
+              )
+            }
+            "deprecated custom serializer is set" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    collector: true
+                  |    serializer: "tech.beshu.ror.requestcontext.QueryAuditLogSerializer"
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+              """.stripMargin)
+
+              assertIndexBasedAuditSinkSettingsPresent[DeprecatedAuditLogSerializerAdapter[_]](
+                config,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = LocalAuditCluster
+              )
+            }
+            "custom audit cluster is set" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    collector: true
+                  |    cluster: ["1.1.1.1"]
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+              """.stripMargin)
+
+              assertIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+                config,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
+              )
+            }
+            "all audit settings are custom" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    collector: true
+                  |    index_template: "'custom_template_'yyyyMMdd"
+                  |    serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
+                  |    cluster: ["1.1.1.1"]
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+              """.stripMargin)
+
+              assertIndexBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
+                config,
+                expectedIndexName = "custom_template_20181231",
+                expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
+              )
+            }
           }
-          "custom audit index name is set" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit:
-                |    collector: true
-                |    index_template: "'custom_template_'yyyyMMdd"
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
+          "'audit' section is not defined" when {
+            "audit collector is enabled" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit_collector: true
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
               """.stripMargin)
 
-            asserIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
-              config,
-              expectedIndexName = "custom_template_20181231",
-              expectedAuditCluster = LocalAuditCluster
-            )
-          }
-          "custom serializer is set" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit:
-                |    collector: true
-                |    serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
+              assertIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+                config,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = LocalAuditCluster
+              )
+            }
+            "custom audit index name is set" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit_collector: true
+                  |  audit_index_template: "'custom_template_'yyyyMMdd"
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
               """.stripMargin)
 
-            asserIndexBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
-              config,
-              expectedIndexName = "readonlyrest_audit-2018-12-31",
-              expectedAuditCluster = LocalAuditCluster
-            )
-          }
-          "deprecated custom serializer is set" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit:
-                |    collector: true
-                |    serializer: "tech.beshu.ror.requestcontext.QueryAuditLogSerializer"
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
+              assertIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+                config,
+                expectedIndexName = "custom_template_20181231",
+                expectedAuditCluster = LocalAuditCluster
+              )
+            }
+            "custom serializer is set" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit_collector: true
+                  |  audit_serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
               """.stripMargin)
 
-            asserIndexBasedAuditSinkSettingsPresent[DeprecatedAuditLogSerializerAdapter[_]](
-              config,
-              expectedIndexName = "readonlyrest_audit-2018-12-31",
-              expectedAuditCluster = LocalAuditCluster
-            )
-          }
-          "custom audit cluster is set" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit:
-                |    collector: true
-                |    cluster: ["1.1.1.1"]
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
+              assertIndexBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
+                config,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = LocalAuditCluster
+              )
+            }
+            "deprecated custom serializer is set" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit_collector: true
+                  |  audit_serializer: "tech.beshu.ror.requestcontext.QueryAuditLogSerializer"
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
               """.stripMargin)
 
-            asserIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
-              config,
-              expectedIndexName = "readonlyrest_audit-2018-12-31",
-              expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
-            )
-          }
-          "all audit settings are custom" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit:
-                |    collector: true
-                |    index_template: "'custom_template_'yyyyMMdd"
-                |    serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
-                |    cluster: ["1.1.1.1"]
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
+              assertIndexBasedAuditSinkSettingsPresent[DeprecatedAuditLogSerializerAdapter[_]](
+                config,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = LocalAuditCluster
+              )
+            }
+            "custom audit cluster is set" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit_collector: true
+                  |  audit_cluster: ["user:test@1.1.1.1"]
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
               """.stripMargin)
 
-            asserIndexBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
-              config,
-              expectedIndexName = "custom_template_20181231",
-              expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
-            )
-          }
-        }
-        "'audit' section is not defined" when {
-          "audit collector is enabled" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit_collector: true
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
+              assertIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+                config,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("user:test@1.1.1.1")))
+              )
+            }
+            "all audit settings are custom" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit_collector: true
+                  |  audit_index_template: "'custom_template_'yyyyMMdd"
+                  |  audit_serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
+                  |  audit_cluster: ["1.1.1.1"]
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
               """.stripMargin)
 
-            asserIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
-              config,
-              expectedIndexName = "readonlyrest_audit-2018-12-31",
-              expectedAuditCluster = LocalAuditCluster
-            )
-          }
-          "custom audit index name is set" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit_collector: true
-                |  audit_index_template: "'custom_template_'yyyyMMdd"
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
-              """.stripMargin)
+              assertIndexBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
+                config,
+                expectedIndexName = "custom_template_20181231",
+                expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
+              )
+            }
 
-            asserIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
-              config,
-              expectedIndexName = "custom_template_20181231",
-              expectedAuditCluster = LocalAuditCluster
-            )
-          }
-          "custom serializer is set" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit_collector: true
-                |  audit_serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
-              """.stripMargin)
-
-            asserIndexBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
-              config,
-              expectedIndexName = "readonlyrest_audit-2018-12-31",
-              expectedAuditCluster = LocalAuditCluster
-            )
-          }
-          "deprecated custom serializer is set" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit_collector: true
-                |  audit_serializer: "tech.beshu.ror.requestcontext.QueryAuditLogSerializer"
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
-              """.stripMargin)
-
-            asserIndexBasedAuditSinkSettingsPresent[DeprecatedAuditLogSerializerAdapter[_]](
-              config,
-              expectedIndexName = "readonlyrest_audit-2018-12-31",
-              expectedAuditCluster = LocalAuditCluster
-            )
-          }
-          "custom audit cluster is set" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit_collector: true
-                |  audit_cluster: ["user:test@1.1.1.1"]
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
-              """.stripMargin)
-
-            asserIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
-              config,
-              expectedIndexName = "readonlyrest_audit-2018-12-31",
-              expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("user:test@1.1.1.1")))
-            )
-          }
-          "all audit settings are custom" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit_collector: true
-                |  audit_index_template: "'custom_template_'yyyyMMdd"
-                |  audit_serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
-                |  audit_cluster: ["1.1.1.1"]
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
-              """.stripMargin)
-
-            asserIndexBasedAuditSinkSettingsPresent[QueryAuditLogSerializer](
-              config,
-              expectedIndexName = "custom_template_20181231",
-              expectedAuditCluster = RemoteAuditCluster(NonEmptyList.one(Uri.parse("1.1.1.1")))
-            )
-          }
-
-        }
-      }
-      "not be able to be loaded from config" when {
-        "'audit' section is defined" when {
-          "not supported custom serializer is set" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit:
-                |    collector: true
-                |    serializer: "tech.beshu.ror.accesscontrol.blocks.RuleOrdering"
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
-              """.stripMargin)
-
-            assertInvalidSettings(
-              config,
-              expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
-            )
-          }
-          "custom audit index name pattern is invalid" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit:
-                |    collector: true
-                |    index_template: "invalid pattern"
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
-              """.stripMargin)
-
-            assertInvalidSettings(
-              config,
-              expectedErrorMessage = "Illegal pattern specified for audit_index_template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
-            )
-          }
-          "remote cluster is empty list" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit:
-                |    collector: true
-                |    cluster: []
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
-              """.stripMargin)
-
-            assertInvalidSettings(
-              config,
-              expectedErrorMessage = "Non empty list of valid URI is required"
-            )
           }
         }
-        "'audit' section is not defined" when {
-          "not supported custom serializer is set" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit_collector: true
-                |  audit_serializer: "tech.beshu.ror.accesscontrol.blocks.RuleOrdering"
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
+        "not be able to be loaded from config" when {
+          "'audit' section is defined" when {
+            "not supported custom serializer is set" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    collector: true
+                  |    serializer: "tech.beshu.ror.accesscontrol.blocks.RuleOrdering"
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
               """.stripMargin)
 
-            assertInvalidSettings(
-              config,
-              expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
-            )
+              assertInvalidSettings(
+                config,
+                expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
+              )
+            }
+            "custom audit index name pattern is invalid" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    collector: true
+                  |    index_template: "invalid pattern"
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+              """.stripMargin)
+
+              assertInvalidSettings(
+                config,
+                expectedErrorMessage = "Illegal pattern specified for audit_index_template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
+              )
+            }
+            "remote cluster is empty list" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    collector: true
+                  |    cluster: []
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+              """.stripMargin)
+
+              assertInvalidSettings(
+                config,
+                expectedErrorMessage = "Non empty list of valid URI is required"
+              )
+            }
           }
-          "custom audit index name pattern is invalid" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit_collector: true
-                |  audit_index_template: "invalid pattern"
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
+          "'audit' section is not defined" when {
+            "not supported custom serializer is set" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit_collector: true
+                  |  audit_serializer: "tech.beshu.ror.accesscontrol.blocks.RuleOrdering"
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
               """.stripMargin)
 
-            assertInvalidSettings(
-              config,
-              expectedErrorMessage = "Illegal pattern specified for audit_index_template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
-            )
-          }
-          "remote cluster is empty list" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit_collector: true
-                |  audit_cluster: []
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
+              assertInvalidSettings(
+                config,
+                expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
+              )
+            }
+            "custom audit index name pattern is invalid" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit_collector: true
+                  |  audit_index_template: "invalid pattern"
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
               """.stripMargin)
 
-            assertInvalidSettings(
-              config,
-              expectedErrorMessage = "Non empty list of valid URI is required"
-            )
+              assertInvalidSettings(
+                config,
+                expectedErrorMessage = "Illegal pattern specified for audit_index_template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
+              )
+            }
+            "remote cluster is empty list" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit_collector: true
+                  |  audit_cluster: []
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+              """.stripMargin)
+
+              assertInvalidSettings(
+                config,
+                expectedErrorMessage = "Non empty list of valid URI is required"
+              )
+            }
           }
         }
       }
@@ -1062,9 +1208,25 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     inside(core) { case Right(Core(_, RorConfig(_, _, _, None))) => }
   }
 
-  private def asserIndexBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorConfig,
-                                                                                     expectedIndexName: NonEmptyString,
-                                                                                     expectedAuditCluster: AuditCluster) = {
+  private def assertSettings(config: RawRorConfig, expectedConfigs: NonEmptyList[AuditSink]): Unit = {
+    val core = factory
+      .createCoreFrom(
+        config,
+        RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+        MockHttpClientsFactory,
+        MockLdapConnectionPoolProvider,
+        NoOpMocksProvider
+      )
+      .runSyncUnsafe()
+    inside(core) { case Right(Core(_, RorConfig(_, _, _, Some(settings)))) =>
+      settings.auditSinks should be(expectedConfigs)
+    }
+  }
+
+
+  private def assertIndexBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorConfig,
+                                                                                      expectedIndexName: NonEmptyString,
+                                                                                      expectedAuditCluster: AuditCluster) = {
     val core = factory
       .createCoreFrom(
         config,
@@ -1075,18 +1237,23 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       )
       .runSyncUnsafe()
     inside(core) { case Right(Core(_, RorConfig(_, _, _, Some(auditingSettings)))) =>
-      auditingSettings.auditSinksConfig.size should be(1)
-      val headSink = auditingSettings.auditSinksConfig.head
-      headSink shouldBe a[AuditSinkConfig.EsIndexBasedSink]
-      val sinkConfig = headSink.asInstanceOf[AuditSinkConfig.EsIndexBasedSink]
+      auditingSettings.auditSinks.size should be(1)
+
+      val headSink = auditingSettings.auditSinks.head
+      headSink shouldBe a[AuditSink.Enabled]
+
+      val headSinkConfig = headSink.asInstanceOf[AuditSink.Enabled].config
+      headSinkConfig shouldBe a[Config.EsIndexBasedSink]
+
+      val sinkConfig = headSinkConfig.asInstanceOf[Config.EsIndexBasedSink]
       sinkConfig.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName(expectedIndexName))
       sinkConfig.logSerializer shouldBe a[EXPECTED_SERIALIZER]
       sinkConfig.auditCluster shouldBe expectedAuditCluster
     }
   }
 
-  private def asserLogBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorConfig,
-                                                                                   expectedLoggerName: NonEmptyString) = {
+  private def assertLogBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](config: RawRorConfig,
+                                                                                    expectedLoggerName: NonEmptyString) = {
     val core = factory
       .createCoreFrom(
         config,
@@ -1097,10 +1264,15 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       )
       .runSyncUnsafe()
     inside(core) { case Right(Core(_, RorConfig(_, _, _, Some(auditingSettings)))) =>
-      auditingSettings.auditSinksConfig.size should be(1)
-      val headSink = auditingSettings.auditSinksConfig.head
-      headSink shouldBe a[AuditSinkConfig.LogBasedSink]
-      val sinkConfig = headSink.asInstanceOf[AuditSinkConfig.LogBasedSink]
+      auditingSettings.auditSinks.size should be(1)
+
+      val headSink = auditingSettings.auditSinks.head
+      headSink shouldBe a[AuditSink.Enabled]
+
+      val headSinkConfig = headSink.asInstanceOf[AuditSink.Enabled].config
+      headSinkConfig shouldBe a[Config.LogBasedSink]
+
+      val sinkConfig = headSinkConfig.asInstanceOf[Config.LogBasedSink]
       sinkConfig.loggerName should be(RorAuditLoggerName(expectedLoggerName))
       sinkConfig.logSerializer shouldBe a[EXPECTED_SERIALIZER]
     }
