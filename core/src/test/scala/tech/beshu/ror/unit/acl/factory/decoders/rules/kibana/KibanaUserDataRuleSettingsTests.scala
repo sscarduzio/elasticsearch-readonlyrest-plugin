@@ -17,6 +17,7 @@
 package tech.beshu.ror.unit.acl.factory.decoders.rules.kibana
 
 import eu.timepit.refined.auto._
+import io.circe.Json
 import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
@@ -52,6 +53,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
             rule.settings.kibanaTemplateIndex should be(None)
             rule.settings.appsToHide should be(Set.empty)
             rule.settings.allowedApiPaths should be(Set.empty)
+            rule.settings.metadata should be (None)
             rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
           }
         )
@@ -81,6 +83,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
             rule.settings.allowedApiPaths should be(
               Set(KibanaAllowedApiPath(AllowedHttpMethod.Any, Regex.compile("""^/api/spaces/.*$""").get))
             )
+            rule.settings.metadata should be (None)
             rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
           }
         )
@@ -105,6 +108,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
+              rule.settings.metadata should be (None)
               rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
             }
           )
@@ -128,6 +132,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
+              rule.settings.metadata should be (None)
               rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
             }
           )
@@ -151,6 +156,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
+              rule.settings.metadata should be (None)
               rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
             }
           )
@@ -174,6 +180,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
+              rule.settings.metadata should be (None)
               rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
             }
           )
@@ -196,6 +203,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
+              rule.settings.metadata should be (None)
               rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
             }
           )
@@ -219,6 +227,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
+              rule.settings.metadata should be (None)
               rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
             }
           )
@@ -245,6 +254,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set(KibanaApp("app1")))
               rule.settings.allowedApiPaths should be(Set.empty)
+              rule.settings.metadata should be (None)
               rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
             }
           )
@@ -269,6 +279,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set(KibanaApp("app1"), KibanaApp("app2")))
               rule.settings.allowedApiPaths should be(Set.empty)
+              rule.settings.metadata should be (None)
               rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
             }
           )
@@ -293,6 +304,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
+              rule.settings.metadata should be (None)
               rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
             }
           )
@@ -321,6 +333,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.allowedApiPaths should be(
                 Set(KibanaAllowedApiPath(AllowedHttpMethod.Any, Regex.compile("""^/api/spaces/.*$""").get))
               )
+              rule.settings.metadata should be (None)
               rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
             }
           )
@@ -350,6 +363,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
                   Regex.compile("""^/api/spaces\?test\=12\.2$""").get
                 ))
               )
+              rule.settings.metadata should be (None)
               rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -381,6 +395,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
                   Regex.compile("""^/api/spaces\?test\=12\.2$""").get
                 ))
               )
+              rule.settings.metadata should be (None)
               rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -417,6 +432,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
                   Regex.compile("""^/api/spaces\?test\=12\.2$""").get
                 )
               ))
+              rule.settings.metadata should be (None)
               rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -441,6 +457,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
+              rule.settings.metadata should be (None)
               rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -467,6 +484,7 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
             rule.settings.kibanaTemplateIndex should be(None)
             rule.settings.appsToHide should be(Set.empty)
             rule.settings.allowedApiPaths should be(Set.empty)
+            rule.settings.metadata should be (None)
             rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
           }
         )
@@ -492,50 +510,82 @@ class KibanaUserDataRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
             rule.settings.kibanaTemplateIndex.value shouldBe a [ToBeResolved[_]]
             rule.settings.appsToHide should be(Set.empty)
             rule.settings.allowedApiPaths should be(Set.empty)
+            rule.settings.metadata should be (None)
             rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
           }
         )
       }
-      "'metadata' property is defined" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    auth_key: user:pass
-              |    kibana:
-              |      access: "ro"
-              |      metadata:
-              |        a: 1
-              |        b: true
-              |        c: "text"
-              |        d: [ "a","b" ]
-              |        e:
-              |         f: 1
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.access should be(KibanaAccess.RO)
-            rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
-            rule.settings.kibanaTemplateIndex should be(None)
-            rule.settings.appsToHide should be(Set.empty)
-            rule.settings.allowedApiPaths should be(Set.empty)
-            rule.settings.metadata should be(Some(jsonFrom(
-              s"""{
-                 |  "a": 1,
-                 |  "b": true,
-                 |  "c": "text",
-                 |  "d": [ "a","b" ],
-                 |  "e": {
-                 |    "f": 1
-                 |  }
-                 |}""".stripMargin
-            )))
-            rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
-          }
-        )
+      "'metadata' property is defined" when {
+        "its value is a JSON with all possible JSON types" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    auth_key: user:pass
+                |    kibana:
+                |      access: "ro"
+                |      metadata:
+                |        a: 1
+                |        b: true
+                |        c: "text"
+                |        d: [ "a","b" ]
+                |        e:
+                |         f: 1
+                |        g: ~
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.access should be(KibanaAccess.RO)
+              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaTemplateIndex should be(None)
+              rule.settings.appsToHide should be(Set.empty)
+              rule.settings.allowedApiPaths should be(Set.empty)
+              rule.settings.metadata should be(Some(jsonFrom(
+                s"""{
+                   |  "a": 1,
+                   |  "b": true,
+                   |  "c": "text",
+                   |  "d": [ "a","b" ],
+                   |  "e": {
+                   |    "f": 1
+                   |  },
+                   |  "g": null
+                   |}""".stripMargin
+              )))
+              rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
+            }
+          )
+        }
+        "its value is NULL" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    auth_key: user:pass
+                |    kibana:
+                |      access: "ro"
+                |      metadata: ~
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.access should be(KibanaAccess.RO)
+              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaTemplateIndex should be(None)
+              rule.settings.appsToHide should be(Set.empty)
+              rule.settings.allowedApiPaths should be(Set.empty)
+              rule.settings.metadata should be(Some(
+                Json.Null
+              ))
+              rule.settings.rorIndex should be(RorConfigurationIndex( IndexName.Full(".readonlyrest")))
+            }
+          )
+        }
       }
     }
     "not be able to be loaded from config" when {

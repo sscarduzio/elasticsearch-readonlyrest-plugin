@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.kibana
 
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.{Decoder, Json}
+import io.circe.Decoder
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
