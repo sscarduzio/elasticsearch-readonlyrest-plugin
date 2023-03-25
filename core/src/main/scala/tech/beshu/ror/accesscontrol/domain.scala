@@ -836,6 +836,11 @@ object domain {
     }
   }
 
+  final case class RorAuditLoggerName(value: NonEmptyString)
+  object RorAuditLoggerName {
+    val default: RorAuditLoggerName = RorAuditLoggerName("readonlyrest_audit")
+  }
+
   sealed trait RepositoryName
   object RepositoryName {
     final case class Full private(value: NonEmptyString) extends RepositoryName
