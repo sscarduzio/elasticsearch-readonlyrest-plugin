@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
+import io.circe.Json
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -66,6 +67,10 @@ class KibanaUserDataRule(override val settings: Settings)
       applyToUserMetadata(resolveAllowedApiPaths)(
         _.withAllowedKibanaApiPaths(_)
       )
+    } andThen {
+      applyToUserMetadata(resolvedKibanaMetadata)(
+        _.withKibanaMetadata(_)
+      )
     }
   }
 
@@ -85,6 +90,9 @@ class KibanaUserDataRule(override val settings: Settings)
 
   private lazy val resolveAllowedApiPaths =
     UniqueNonEmptyList.fromTraversable(settings.allowedApiPaths)
+
+  private lazy val resolvedKibanaMetadata =
+    settings.metadata
 
   private def applyToUserMetadata[T](opt: Option[T])
                                     (userMetadataUpdateFunction: (UserMetadata, T) => UserMetadata): UserMetadata => UserMetadata = {
@@ -106,6 +114,7 @@ object KibanaUserDataRule {
                             kibanaTemplateIndex: Option[RuntimeSingleResolvableVariable[IndexName.Kibana]],
                             appsToHide: Set[KibanaApp],
                             allowedApiPaths: Set[KibanaAllowedApiPath],
+                            metadata: Option[Json],
                             override val rorIndex: RorConfigurationIndex)
     extends BaseKibanaRule.Settings(access, rorIndex)
 }

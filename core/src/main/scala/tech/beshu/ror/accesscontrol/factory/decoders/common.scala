@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders
 
-import java.net.URI
-import java.util.concurrent.TimeUnit
 import cats.Show
 import cats.data.NonEmptySet
 import cats.implicits._
@@ -27,7 +25,7 @@ import eu.timepit.refined.api.{Refined, Validate}
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.Decoder
+import io.circe.{Decoder, Json}
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
@@ -49,6 +47,8 @@ import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
+import java.net.URI
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 

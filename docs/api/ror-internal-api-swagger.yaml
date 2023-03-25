@@ -424,7 +424,7 @@ components:
             $ref: '#/components/schemas/KibanaAllowedApiPath'
         x-ror-origin:
           type: string
-          description: the value taken from JWT's x-ror-origin claim
+          description: the value taken from JWT's x-ror-origin claim when 'ror_kbn_auth' rule is matched
         x-ror-kibana-metadata:
           type: object
           description: json with metadata ([key, value] pairs) from the matched block

@@ -52,13 +52,16 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex)
           kibanaTemplateIndex <- c.downField("kibana_template_index").as[Option[RuntimeSingleResolvableVariable[IndexName.Kibana]]]
           appsToHide <- c.downField("hide_apps").as[Option[Set[KibanaApp]]]
           allowedApiPaths <- c.downField("allowed_api_paths").as[Option[Set[KibanaAllowedApiPath]]]
+          metadataJson = c.downField("metadata").focus
         } yield new KibanaUserDataRule(KibanaUserDataRule.Settings(
           access = access,
-          kibanaIndex = kibanaIndex
-            .getOrElse(RuntimeSingleResolvableVariable.AlreadyResolved(ClusterIndexName.Local.kibanaDefault)),
+          kibanaIndex = kibanaIndex.getOrElse(
+            RuntimeSingleResolvableVariable.AlreadyResolved(ClusterIndexName.Local.kibanaDefault
+            )),
           kibanaTemplateIndex = kibanaTemplateIndex,
           appsToHide = appsToHide.getOrElse(Set.empty),
           allowedApiPaths = allowedApiPaths.getOrElse(Set.empty),
+          metadata = metadataJson,
           rorIndex = configurationIndex
         ))
       }
