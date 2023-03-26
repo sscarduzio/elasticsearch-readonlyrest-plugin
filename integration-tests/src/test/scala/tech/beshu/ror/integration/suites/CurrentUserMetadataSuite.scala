@@ -97,7 +97,16 @@ class CurrentUserMetadataSuite
                |      "http_method":"GET",
                |      "path_regex":"^/api/spaces\\\\?test\\\\=12\\\\.2$$"
                |    }
-               |  ]
+               |  ],
+               |  "x-ror-kibana-metadata": {
+               |    "a": 1,
+               |    "b": true,
+               |    "c": "text",
+               |    "d": [ "a","b" ],
+               |    "e": {
+               |      "f": 1
+               |    }
+               |  }
                |}""".stripMargin))
         }
         "block with no available groups collected is matched" in {

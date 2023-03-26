@@ -42,7 +42,7 @@ class KibanaUserDataRuleTests
 
   s"A '${RuleName[KibanaUserDataRule].name.value}' rule" when {
     "kibana index template is configured" should {
-      "pass the index template to the User Metadata object in the rule matches" in {
+      "pass the index template to the User Metadata object if the rule matches" in {
         val kibanaTemplateIndex = localIndexName("kibana_template_index")
         val rule = createRuleFrom(KibanaUserDataRule.Settings(
           access = KibanaAccess.Unrestricted,
@@ -50,6 +50,7 @@ class KibanaUserDataRuleTests
           kibanaTemplateIndex = Some(AlreadyResolved(kibanaTemplateIndex)),
           appsToHide = Set.empty,
           allowedApiPaths = Set.empty,
+          metadata = None,
           rorIndex = RorConfigurationIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
@@ -63,7 +64,7 @@ class KibanaUserDataRuleTests
       }
     }
     "kibana apps are configured" should {
-      "pass the apps to the User Metadata object in the rule matches" in {
+      "pass the apps to the User Metadata object if the rule matches" in {
         val apps = UniqueNonEmptyList.of(KibanaApp("app1"), KibanaApp("app2"))
         val rule = createRuleFrom(KibanaUserDataRule.Settings(
           access = KibanaAccess.Unrestricted,
@@ -71,6 +72,7 @@ class KibanaUserDataRuleTests
           kibanaTemplateIndex = None,
           appsToHide = apps.toSet,
           allowedApiPaths = Set.empty,
+          metadata = None,
           rorIndex = RorConfigurationIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
@@ -84,7 +86,7 @@ class KibanaUserDataRuleTests
       }
     }
     "kibana allowed API paths are configured" should {
-      "pass the allowed API paths to the User Metadata object in the rule matches" in {
+      "pass the allowed API paths to the User Metadata object if the rule matches" in {
         val paths: UniqueNonEmptyList[KibanaAllowedApiPath] = UniqueNonEmptyList.of(
           KibanaAllowedApiPath(
             AllowedHttpMethod.Any,
@@ -105,6 +107,7 @@ class KibanaUserDataRuleTests
           kibanaTemplateIndex = None,
           appsToHide = Set.empty,
           allowedApiPaths = paths.toSet,
+          metadata = None,
           rorIndex = RorConfigurationIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
@@ -114,6 +117,39 @@ class KibanaUserDataRuleTests
             .withKibanaAccess(KibanaAccess.Unrestricted)
             .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
             .withAllowedKibanaApiPaths(paths)
+        }
+      }
+    }
+    "kibana metadata is configured" should {
+      "pass the metadata to the User Metadata object if the rule matches" in {
+        val metadataJson = io.circe.parser
+          .parse(
+            """{
+              |  "a" : 1,
+              |  "b" : true,
+              |  "c" : "text",
+              |  "d" : ["a","b"],
+              |  "e" : {
+              |    "f": 1
+              |   }
+              |}""".stripMargin)
+          .right.get
+        val rule = createRuleFrom(KibanaUserDataRule.Settings(
+          access = KibanaAccess.Unrestricted,
+          kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
+          kibanaTemplateIndex = None,
+          appsToHide = Set.empty,
+          allowedApiPaths = Set.empty,
+          metadata = Some(metadataJson),
+          rorIndex = RorConfigurationIndex(rorIndex)
+        ))
+        val blockContext = checkRule(rule)
+        blockContext.userMetadata should be {
+          UserMetadata
+            .empty
+            .withKibanaAccess(KibanaAccess.Unrestricted)
+            .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
+            .withKibanaMetadata(metadataJson)
         }
       }
     }
@@ -149,6 +185,7 @@ class KibanaUserDataRuleTests
       kibanaTemplateIndex = None,
       appsToHide = Set.empty,
       allowedApiPaths = Set.empty,
+      metadata = None,
       rorIndex = RorConfigurationIndex(rorIndex)
     )
 

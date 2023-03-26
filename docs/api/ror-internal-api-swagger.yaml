@@ -424,7 +424,10 @@ components:
             $ref: '#/components/schemas/KibanaAllowedApiPath'
         x-ror-origin:
           type: string
-          description: the value taken from JWT's x-ror-origin claim
+          description: the value taken from JWT's x-ror-origin claim when 'ror_kbn_auth' rule is matched
+        x-ror-kibana-metadata:
+          type: object
+          description: json with metadata ([key, value] pairs) from the matched block
 
     Group:
       type: string
@@ -1006,6 +1009,14 @@ components:
             path_regex: "^\/api\/spaces\/.*$"
           - http_method: GET
             path_regex: "^/api/saved_objects/.*$"
+        x-ror-kibana-metadata:
+          key1: string
+          key2: 1
+          key3: true
+          key4: ["ab", "cd"]
+          key5:
+            a: 1
+            b: 2
 
     NoAclBlockWasMatchedForbiddenResponseExample:
       summary: No ACL block was matched

@@ -34,6 +34,13 @@ readonlyrest:
           - "^/api/spaces/.*$"
           - http_method: GET
             path: "/api/spaces?test=12.2"
+        metadata:
+          a: 1
+          b: true
+          c: "text"
+          d: [ "a","b" ]
+          e:
+            f: 1
 
     - name: "User 3"
       auth_key: "user3:pass"
