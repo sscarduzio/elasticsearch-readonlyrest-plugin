@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.metadata
 
 import cats.implicits._
+import io.circe.Json
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Json.JsonRepresentation
 import tech.beshu.ror.accesscontrol.domain._

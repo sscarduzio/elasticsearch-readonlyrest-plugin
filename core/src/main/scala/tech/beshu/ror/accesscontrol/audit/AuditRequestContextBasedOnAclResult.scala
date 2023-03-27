@@ -14,9 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.logging
-
-import java.time.Instant
+package tech.beshu.ror.accesscontrol.audit
 
 import cats.Show
 import org.json.JSONObject
@@ -31,14 +29,15 @@ import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs.{historyShow, obfuscatedHeaderShow}
 import tech.beshu.ror.audit.{AuditRequestContext, Headers}
 
+import java.time.Instant
 import scala.language.implicitConversions
 
-class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                                             userMetadata: Option[UserMetadata],
-                                                             historyEntries: Vector[History[B]],
-                                                             loggingContext: LoggingContext,
-                                                             override val generalAuditEvents: JSONObject,
-                                                             override val involvesIndices: Boolean)
+private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: RequestContext.Aux[B],
+                                                                            userMetadata: Option[UserMetadata],
+                                                                            historyEntries: Vector[History[B]],
+                                                                            loggingContext: LoggingContext,
+                                                                            override val generalAuditEvents: JSONObject,
+                                                                            override val involvesIndices: Boolean)
   extends AuditRequestContext {
 
   implicit val showHeader: Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)

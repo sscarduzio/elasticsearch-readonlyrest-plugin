@@ -14,50 +14,44 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.logging
+package tech.beshu.ror.accesscontrol.audit
 
+import cats.data.NonEmptyList
 import cats.implicits._
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.{Disabled, Enabled}
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate}
-import tech.beshu.ror.accesscontrol.logging.AuditingTool.Settings
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate, RorAuditLoggerName}
+import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.es.AuditSinkService
 
-import java.time.{Clock, Instant}
+import java.time.Clock
 
-class AuditingTool(settings: Settings,
-                   auditSink: AuditSinkService)
-                  (implicit clock: Clock,
-                   loggingContext: LoggingContext) {
+class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
+                          (implicit loggingContext: LoggingContext) {
 
   def audit[B <: BlockContext](response: ResponseContext[B]): Task[Unit] = {
-    safeRunSerializer(response)
-      .map {
-        case Some(entry) =>
-          auditSink.submit(
-            settings.rorAuditIndexTemplate.indexName(Instant.now(clock)).name.value,
-            response.requestContext.id.value,
-            entry.toString
-          )
-        case None =>
-      }
+    val auditResponseContext = toAuditResponse(response)
+    auditSinks
+      .parTraverse(_.submit(auditResponseContext))
+      .map((_: NonEmptyList[Unit]) => ())
   }
 
-  def close(): Unit = {
-    auditSink.close()
+  def close(): Task[Unit] = {
+    auditSinks
+      .parTraverse(_.close())
+      .map((_: NonEmptyList[Unit]) => ())
   }
 
-  private def safeRunSerializer[B <: BlockContext](response: ResponseContext[B]) = {
-    Task(settings.logSerializer.onResponse(toAuditResponse(response)))
-  }
-
-  private def toAuditResponse[B <: BlockContext](responseContext: ResponseContext[B]) = {
+  private def toAuditResponse[B <: BlockContext](responseContext: ResponseContext[B]): AuditResponseContext = {
     responseContext match {
       case allowedBy: ResponseContext.AllowedBy[B] =>
         AuditResponseContext.Allowed(
@@ -143,10 +137,63 @@ class AuditingTool(settings: Settings,
 
 }
 
-object AuditingTool {
+object AuditingTool extends Logging {
 
-  final case class Settings(rorAuditIndexTemplate: RorAuditIndexTemplate,
-                            logSerializer: AuditLogSerializer,
-                            auditCluster: AuditCluster)
+  final case class Settings(auditSinks: NonEmptyList[Settings.AuditSink])
+  object Settings {
+
+    sealed trait AuditSink
+    object AuditSink {
+      final case class Enabled(config: AuditSink.Config) extends AuditSink
+      case object Disabled extends AuditSink
+
+      sealed trait Config
+      object Config {
+        final case class EsIndexBasedSink(logSerializer: AuditLogSerializer,
+                                          rorAuditIndexTemplate: RorAuditIndexTemplate,
+                                          auditCluster: AuditCluster) extends Config
+
+        final case class LogBasedSink(logSerializer: AuditLogSerializer,
+                                      loggerName: RorAuditLoggerName) extends Config
+      }
+    }
+  }
+
+  def create(settings: Settings,
+             auditSinkServiceCreator: AuditCluster => AuditSinkService)
+            (implicit clock: Clock,
+             loggingContext: LoggingContext): Option[AuditingTool] = {
+    createAuditSinks(settings, auditSinkServiceCreator) match {
+      case Some(auditSinks) =>
+        val enabledSinks = auditSinks.map {
+          case _: EsIndexBasedAuditSink => "index"
+          case _: LogBasedAuditSink => "log"
+        }
+          .mkString_(",")
+
+        logger.info(s"The audit is enabled with the given outputs: [$enabledSinks]")
+        Some(new AuditingTool(auditSinks))
+      case None =>
+        logger.info("The audit is disabled because no output is enabled")
+        None
+    }
+  }
+
+  private def createAuditSinks(settings: Settings,
+                               auditSinkServiceCreator: AuditCluster => AuditSinkService)
+                              (implicit clock: Clock): Option[NonEmptyList[BaseAuditSink]] = {
+    settings
+      .auditSinks
+      .toList
+      .flatMap {
+        case Enabled(AuditSink.Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, auditCluster)) =>
+          EsIndexBasedAuditSink(logSerializer, rorAuditIndexTemplate, auditSinkServiceCreator(auditCluster)).some
+        case Enabled(AuditSink.Config.LogBasedSink(serializer, loggerName)) =>
+          new LogBasedAuditSink(serializer, loggerName).some
+        case Disabled =>
+          None
+      }
+      .toNel
+  }
 
 }

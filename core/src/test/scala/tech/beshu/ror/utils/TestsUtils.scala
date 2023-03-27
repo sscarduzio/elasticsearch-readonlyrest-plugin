@@ -26,6 +26,7 @@ import io.circe.{Json, ParsingFailure}
 import io.jsonwebtoken.JwtBuilder
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.RequestId
+import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
@@ -46,7 +47,6 @@ import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.misc.JwtUtils.Jwt
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}

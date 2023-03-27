@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMetho
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.{CorrelationId, KibanaAccess}
 
+import java.util
 import scala.collection.JavaConverters._
 
 sealed trait MetadataValue
@@ -86,6 +87,28 @@ object MetadataValue {
           "path_regex" -> p.pathRegex.pattern.pattern()
         )))
       ))
+      .toMap
+  }
+
+  private def kibanaMetadata(userMetadata: UserMetadata) = {
+    implicit val objDecoder: Decoder[Any] =
+      Decoder
+        .decodeJson
+        .map { json =>
+          def toMap(j: Json): Any = j.fold(
+            jsonNull = (),
+            jsonBoolean = identity,
+            jsonNumber = _.toDouble,
+            jsonString = identity,
+            jsonArray = _.map(toMap).asJava,
+            jsonObject = _.toMap.mapValues(toMap).asJava
+          )
+          toMap(json)
+        }
+
+    userMetadata
+      .kibanaMetadata
+      .map(metadata => ("x-ror-kibana-metadata", MetadataObject(objDecoder.decodeJson(metadata).right.get)))
       .toMap
   }
 

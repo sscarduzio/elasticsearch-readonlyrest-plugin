@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.logging
+package tech.beshu.ror.accesscontrol.audit
 
 import tech.beshu.ror.accesscontrol.domain.Header
 
