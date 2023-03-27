@@ -29,7 +29,7 @@ import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.domain.Action._
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.{Local, Remote}
@@ -1387,6 +1387,27 @@ object domain {
         }
         .mkString
       new Regex(s"^$escapedValue$$")
+    }
+  }
+
+  object Json {
+
+    type JsonRepresentation = JsonTree[JsonValue]
+    type ResolvableJsonRepresentation = JsonTree[RuntimeSingleResolvableVariable[JsonValue]]
+
+    sealed trait JsonTree[+T]
+    object JsonTree {
+      final case class Object[T](fields: Map[String, JsonTree[T]]) extends JsonTree[T]
+      final case class Array[T](elements: List[JsonTree[T]]) extends JsonTree[T]
+      final case class Value[T](value: T) extends JsonTree[T]
+    }
+
+    sealed trait JsonValue
+    object JsonValue {
+      final case class StringValue(value: String) extends JsonValue
+      final case class NumValue(value: Double) extends JsonValue
+      final case class BooleanValue(value: Boolean) extends JsonValue
+      case object NullValue extends JsonValue
     }
   }
 }

@@ -27,6 +27,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.IndexName.Kibana
+import tech.beshu.ror.accesscontrol.domain.Json.JsonValue.{BooleanValue, NumValue, StringValue}
+import tech.beshu.ror.accesscontrol.domain.Json.{JsonRepresentation, JsonTree}
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, KibanaAccess, KibanaAllowedApiPath, KibanaApp, Regex, RorConfigurationIndex}
@@ -36,6 +38,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
 
 class KibanaUserDataRuleTests
   extends BaseKibanaAccessBasedTests[KibanaUserDataRule, KibanaUserDataRule.Settings] {
@@ -122,25 +125,30 @@ class KibanaUserDataRuleTests
     }
     "kibana metadata is configured" should {
       "pass the metadata to the User Metadata object if the rule matches" in {
-        val metadataJson = io.circe.parser
-          .parse(
-            """{
-              |  "a" : 1,
-              |  "b" : true,
-              |  "c" : "text",
-              |  "d" : ["a","b"],
-              |  "e" : {
-              |    "f": 1
-              |   }
-              |}""".stripMargin)
-          .right.get
+        val metadataJsonRepresentation: JsonRepresentation = {
+          JsonTree.Object(Map(
+            "a" -> JsonTree.Value(NumValue(1)),
+            "b" -> JsonTree.Value(BooleanValue(true)),
+            "b" -> JsonTree.Value(StringValue("test")),
+            "d" -> JsonTree.Array(
+              JsonTree.Value(StringValue("a")) :: JsonTree.Value(StringValue("b")) :: Nil
+            ),
+            "e" -> JsonTree.Object(Map(
+              "f" -> JsonTree.Value(NumValue(1))
+            ))
+          ))
+        }
+        val resolvableMetadataJsonRepresentation = metadataJsonRepresentation.toResolvable match {
+          case Right(value) => value
+          case Left(error) => throw new IllegalStateException(s"Cannot resolve metadata: $error")
+        }
         val rule = createRuleFrom(KibanaUserDataRule.Settings(
           access = KibanaAccess.Unrestricted,
           kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
           kibanaTemplateIndex = None,
           appsToHide = Set.empty,
           allowedApiPaths = Set.empty,
-          metadata = Some(metadataJson),
+          metadata = Option(resolvableMetadataJsonRepresentation),
           rorIndex = RorConfigurationIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
@@ -149,7 +157,7 @@ class KibanaUserDataRuleTests
             .empty
             .withKibanaAccess(KibanaAccess.Unrestricted)
             .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
-            .withKibanaMetadata(metadataJson)
+            .withKibanaMetadata(metadataJsonRepresentation)
         }
       }
     }

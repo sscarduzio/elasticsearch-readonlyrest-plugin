@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
-import io.circe.Json
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -25,6 +24,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, Ru
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
 import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, KibanaAllowedApiPath, KibanaApp, RorConfigurationIndex}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -68,7 +69,7 @@ class KibanaUserDataRule(override val settings: Settings)
         _.withAllowedKibanaApiPaths(_)
       )
     } andThen {
-      applyToUserMetadata(resolvedKibanaMetadata)(
+      applyToUserMetadata(resolvedKibanaMetadata(using))(
         _.withKibanaMetadata(_)
       )
     }
@@ -91,8 +92,10 @@ class KibanaUserDataRule(override val settings: Settings)
   private lazy val resolveAllowedApiPaths =
     UniqueNonEmptyList.fromTraversable(settings.allowedApiPaths)
 
-  private lazy val resolvedKibanaMetadata =
-    settings.metadata
+  private def resolvedKibanaMetadata(using: BlockContext) =
+    settings
+      .metadata
+      .flatMap(_.resolve(using).toOption)
 
   private def applyToUserMetadata[T](opt: Option[T])
                                     (userMetadataUpdateFunction: (UserMetadata, T) => UserMetadata): UserMetadata => UserMetadata = {
@@ -114,7 +117,7 @@ object KibanaUserDataRule {
                             kibanaTemplateIndex: Option[RuntimeSingleResolvableVariable[IndexName.Kibana]],
                             appsToHide: Set[KibanaApp],
                             allowedApiPaths: Set[KibanaAllowedApiPath],
-                            metadata: Option[Json],
+                            metadata: Option[ResolvableJsonRepresentation],
                             override val rorIndex: RorConfigurationIndex)
     extends BaseKibanaRule.Settings(access, rorIndex)
 }

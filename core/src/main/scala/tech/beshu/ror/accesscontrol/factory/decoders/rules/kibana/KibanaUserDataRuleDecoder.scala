@@ -23,6 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath._
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, KibanaAccess, KibanaAllowedApiPath, KibanaApp, Regex, RorConfigurationIndex}
@@ -52,7 +53,7 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex)
           kibanaTemplateIndex <- c.downField("kibana_template_index").as[Option[RuntimeSingleResolvableVariable[IndexName.Kibana]]]
           appsToHide <- c.downField("hide_apps").as[Option[Set[KibanaApp]]]
           allowedApiPaths <- c.downField("allowed_api_paths").as[Option[Set[KibanaAllowedApiPath]]]
-          metadataJson = c.downField("metadata").focus
+          metadataResolvableJsonRepresentation <- c.downField("metadata").as[Option[ResolvableJsonRepresentation]]
         } yield new KibanaUserDataRule(KibanaUserDataRule.Settings(
           access = access,
           kibanaIndex = kibanaIndex.getOrElse(
@@ -61,7 +62,7 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex)
           kibanaTemplateIndex = kibanaTemplateIndex,
           appsToHide = appsToHide.getOrElse(Set.empty),
           allowedApiPaths = allowedApiPaths.getOrElse(Set.empty),
-          metadata = metadataJson,
+          metadata = metadataResolvableJsonRepresentation,
           rorIndex = configurationIndex
         ))
       }
