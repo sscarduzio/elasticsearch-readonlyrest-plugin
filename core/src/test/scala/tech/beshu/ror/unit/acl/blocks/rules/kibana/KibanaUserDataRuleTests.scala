@@ -27,11 +27,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.IndexName.Kibana
-import tech.beshu.ror.accesscontrol.domain.Json.JsonValue.{BooleanValue, NumValue, StringValue}
+import tech.beshu.ror.accesscontrol.domain.Json.JsonValue.{BooleanValue, NullValue, NumValue, StringValue}
 import tech.beshu.ror.accesscontrol.domain.Json.{JsonRepresentation, JsonTree}
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, KibanaAccess, KibanaAllowedApiPath, KibanaApp, Regex, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, KibanaAccess, KibanaAllowedApiPath, KibanaApp, LoggedUser, Regex, RorConfigurationIndex, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -39,6 +39,9 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+
+import scala.util.{Failure, Success, Try}
 
 class KibanaUserDataRuleTests
   extends BaseKibanaAccessBasedTests[KibanaUserDataRule, KibanaUserDataRule.Settings] {
@@ -60,6 +63,8 @@ class KibanaUserDataRuleTests
         blockContext.userMetadata should be {
           UserMetadata
             .empty
+            .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1")))
+            .withCurrentGroup(GroupName("mygroup"))
             .withKibanaAccess(KibanaAccess.Unrestricted)
             .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
             .withKibanaTemplateIndex(kibanaTemplateIndex)
@@ -82,6 +87,8 @@ class KibanaUserDataRuleTests
         blockContext.userMetadata should be {
           UserMetadata
             .empty
+            .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1")))
+            .withCurrentGroup(GroupName("mygroup"))
             .withKibanaAccess(KibanaAccess.Unrestricted)
             .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
             .withHiddenKibanaApps(apps)
@@ -117,6 +124,8 @@ class KibanaUserDataRuleTests
         blockContext.userMetadata should be {
           UserMetadata
             .empty
+            .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1")))
+            .withCurrentGroup(GroupName("mygroup"))
             .withKibanaAccess(KibanaAccess.Unrestricted)
             .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
             .withAllowedKibanaApiPaths(paths)
@@ -129,13 +138,15 @@ class KibanaUserDataRuleTests
           JsonTree.Object(Map(
             "a" -> JsonTree.Value(NumValue(1)),
             "b" -> JsonTree.Value(BooleanValue(true)),
-            "b" -> JsonTree.Value(StringValue("test")),
+            "c" -> JsonTree.Value(StringValue("test")),
             "d" -> JsonTree.Array(
               JsonTree.Value(StringValue("a")) :: JsonTree.Value(StringValue("b")) :: Nil
             ),
             "e" -> JsonTree.Object(Map(
               "f" -> JsonTree.Value(NumValue(1))
-            ))
+            )),
+            "g" -> JsonTree.Value(NullValue),
+            "h" -> JsonTree.Value(StringValue("@{acl:current_group}_@{acl:user}"))
           ))
         }
         val resolvableMetadataJsonRepresentation = metadataJsonRepresentation.toResolvable match {
@@ -155,30 +166,52 @@ class KibanaUserDataRuleTests
         blockContext.userMetadata should be {
           UserMetadata
             .empty
+            .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1")))
+            .withCurrentGroup(GroupName("mygroup"))
             .withKibanaAccess(KibanaAccess.Unrestricted)
             .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
-            .withKibanaMetadata(metadataJsonRepresentation)
+            .withKibanaMetadata(
+              JsonTree.Object(Map(
+                "a" -> JsonTree.Value(NumValue(1)),
+                "b" -> JsonTree.Value(BooleanValue(true)),
+                "c" -> JsonTree.Value(StringValue("test")),
+                "d" -> JsonTree.Array(
+                  JsonTree.Value(StringValue("a")) :: JsonTree.Value(StringValue("b")) :: Nil
+                ),
+                "e" -> JsonTree.Object(Map(
+                  "f" -> JsonTree.Value(NumValue(1))
+                )),
+                "g" -> JsonTree.Value(NullValue),
+                "h" -> JsonTree.Value(StringValue("mygroup_user1"))
+              ))
+            )
         }
       }
     }
   }
 
   private def checkRule(rule: KibanaUserDataRule): BlockContext = {
-    val requestContext = MockRequestContext.indices
+    val requestContext = MockRequestContext.indices.copy(
+      headers = Set(currentGroupHeader("mygroup"))
+    )
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,
-      userMetadata = UserMetadata.from(requestContext),
+      userMetadata = UserMetadata
+        .from(requestContext)
+        .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1"))),
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       filteredIndices = Set.empty,
       allAllowedIndices = Set.empty
     )
-    val result = rule.check(blockContext).runSyncUnsafe(1 second)
+    val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
     result match {
-      case RuleResult.Fulfilled(blockContext) =>
+      case Success(RuleResult.Fulfilled(blockContext)) =>
         blockContext
-      case r@RuleResult.Rejected(_) =>
-        fail(s"Expected rule was not matched. Result: $r")
+      case Success(r@RuleResult.Rejected(_)) =>
+        fail(s"Rule was not matched. Result: $r")
+      case Failure(exception) =>
+        fail(s"Rule was not matched. Exception thrown", exception)
     }
   }
 
