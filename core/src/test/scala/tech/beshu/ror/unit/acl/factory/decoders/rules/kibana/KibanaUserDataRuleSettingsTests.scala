@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.factory.decoders.rules.kibana
 
 import eu.timepit.refined.auto._
-import io.circe.Json
 import org.scalatest.{EitherValues, OptionValues}
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
@@ -586,7 +585,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
-              rule.settings.metadata should be(Some(JsonTree.Value(NullValue)))
+              rule.settings.metadata should be(Some(JsonTree.Value(AlreadyResolved(NullValue))))
               rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
             }
           )
