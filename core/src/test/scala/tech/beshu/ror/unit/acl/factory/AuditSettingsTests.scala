@@ -92,6 +92,52 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
     "audit is enabled" should {
       "be able to be loaded from config" when {
+        "simple format is used" in {
+          val config = rorConfigFromUnsafe(
+            """
+              |readonlyrest:
+              |  audit:
+              |    enabled: true
+              |    outputs: [index, log]
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block
+              |    type: allow
+              |    auth_key: admin:container
+              |
+            """.stripMargin)
+
+          val core = factory
+            .createCoreFrom(
+              config,
+              RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+              MockHttpClientsFactory,
+              MockLdapConnectionPoolProvider,
+              NoOpMocksProvider
+            )
+            .runSyncUnsafe()
+          inside(core) { case Right(Core(_, RorConfig(_, _, _, Some(auditingSettings)))) =>
+            auditingSettings.auditSinks.size should be(2)
+
+            val sink1 = auditingSettings.auditSinks.head
+            sink1 shouldBe a[AuditSink.Enabled]
+            val enabledSink1 = sink1.asInstanceOf[AuditSink.Enabled].config
+            enabledSink1 shouldBe a[Config.EsIndexBasedSink]
+            val sink1Config = enabledSink1.asInstanceOf[Config.EsIndexBasedSink]
+            sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
+            sink1Config.logSerializer shouldBe a[DefaultAuditLogSerializer]
+            sink1Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
+
+            val sink2 = auditingSettings.auditSinks.toList(1)
+            sink2 shouldBe a[AuditSink.Enabled]
+            val enabledSink2 = sink2.asInstanceOf[AuditSink.Enabled].config
+            enabledSink2 shouldBe a[Config.LogBasedSink]
+            val sink2Config = enabledSink2.asInstanceOf[Config.LogBasedSink]
+            sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
+            sink2Config.logSerializer shouldBe a[DefaultAuditLogSerializer]
+          }
+        }
         "'log' output type defined" when {
           "only type is set" in {
             val config = rorConfigFromUnsafe(
@@ -682,6 +728,27 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |    auth_key: admin:container
                 |
             """.stripMargin)
+
+            assertInvalidSettings(
+              config,
+              expectedErrorMessage = "Unsupported 'type' of audit output: custom_type. Supported types: [index, log]"
+            )
+          }
+          "unknown output type is set when using simple format" in {
+            val config = rorConfigFromUnsafe(
+              """
+                |readonlyrest:
+                |  audit:
+                |    enabled: true
+                |    outputs: [ custom_type ]
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    type: allow
+                |    auth_key: admin:container
+                |
+              """.stripMargin)
 
             assertInvalidSettings(
               config,

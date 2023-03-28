@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate,
 import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.es.AuditSinkService
 
@@ -152,9 +153,22 @@ object AuditingTool extends Logging {
         final case class EsIndexBasedSink(logSerializer: AuditLogSerializer,
                                           rorAuditIndexTemplate: RorAuditIndexTemplate,
                                           auditCluster: AuditCluster) extends Config
+        object EsIndexBasedSink {
+          val default: EsIndexBasedSink = EsIndexBasedSink(
+            logSerializer = new DefaultAuditLogSerializer,
+            rorAuditIndexTemplate = RorAuditIndexTemplate.default,
+            auditCluster = AuditCluster.LocalAuditCluster
+          )
+        }
 
         final case class LogBasedSink(logSerializer: AuditLogSerializer,
                                       loggerName: RorAuditLoggerName) extends Config
+        object LogBasedSink {
+          val default: LogBasedSink = LogBasedSink(
+            logSerializer = new DefaultAuditLogSerializer,
+            loggerName = RorAuditLoggerName.default
+          )
+        }
       }
     }
   }
