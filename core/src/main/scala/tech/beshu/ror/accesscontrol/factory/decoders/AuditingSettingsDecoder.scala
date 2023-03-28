@@ -24,6 +24,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.Settings.AuditSink.Config.{EsIndexBasedSink, LogBasedSink}
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditIndexTemplate, RorAuditLoggerName}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
@@ -34,7 +35,6 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.audit.AuditLogSerializer
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
-import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 
 import scala.util.{Failure, Success, Try}
 
@@ -59,6 +59,18 @@ object AuditingSettingsDecoder extends Logging {
   }
 
   private def decodeAuditSettings = {
+    decodeAuditSettingsWith(auditSinkConfigSimpleDecoder)
+      .handleErrorWith { error =>
+        if (error.aclCreationError.isDefined) {
+          // the schema was valid, but the config not
+          Decoder.failed(error)
+        } else {
+          decodeAuditSettingsWith(auditSinkConfigExtendedDecoder)
+        }
+      }
+  }
+
+  private def decodeAuditSettingsWith(implicit sinkDecoder: Decoder[AuditSink]) = {
     SyncDecoderCreator
       .instance {
         _.downField("audit").downField("outputs").as[Option[List[AuditSink]]]
@@ -66,7 +78,7 @@ object AuditingSettingsDecoder extends Logging {
       .emapE {
         case Some(outputs) =>
           NonEmptyList
-            .fromList(outputs)
+            .fromList(outputs.distinct)
             .map(AuditingTool.Settings.apply)
             .toRight(AuditingSettingsCreationError(Message(s"The audit 'outputs' array cannot be empty")))
         case None =>
@@ -75,7 +87,24 @@ object AuditingSettingsDecoder extends Logging {
       .decoder
   }
 
-  private implicit val auditSinkConfigDecoder: Decoder[AuditSink] = {
+  private val auditSinkConfigSimpleDecoder: Decoder[AuditSink] = {
+    SyncDecoderCreator
+      .from(Decoder.decodeString)
+      .emapE[AuditSink] {
+        case "index" =>
+          AuditSink.Enabled(Config.EsIndexBasedSink.default).asRight
+        case "log" =>
+          AuditSink.Enabled(Config.LogBasedSink.default).asRight
+        case other =>
+          unsupportedOutputTypeError(
+            unsupportedType = other,
+            supportedTypes = List("index", "log")
+          ).asLeft
+      }
+      .decoder
+  }
+
+  private val auditSinkConfigExtendedDecoder: Decoder[AuditSink] = {
 
     implicit val loggerNameDecoder: Decoder[RorAuditLoggerName] = {
       SyncDecoderCreator
@@ -85,25 +114,25 @@ object AuditingSettingsDecoder extends Logging {
         .decoder
     }
 
-    implicit val logBasedSinkConfigDecoder: Decoder[Config.LogBasedSink] = Decoder.instance { c =>
+    implicit val logBasedSinkConfigDecoder: Decoder[LogBasedSink] = Decoder.instance { c =>
       for {
         logSerializer <- c.downField("serializer").as[Option[AuditLogSerializer]]
         loggerName <- c.downField("logger_name").as[Option[RorAuditLoggerName]]
-      } yield Config.LogBasedSink(
-        logSerializer = logSerializer.getOrElse(new DefaultAuditLogSerializer),
-        loggerName = loggerName.getOrElse(RorAuditLoggerName.default)
+      } yield LogBasedSink(
+        logSerializer = logSerializer.getOrElse(LogBasedSink.default.logSerializer),
+        loggerName = loggerName.getOrElse(LogBasedSink.default.loggerName)
       )
     }
 
-    implicit val indexBasedAuditSinkDecoder: Decoder[Config.EsIndexBasedSink] = Decoder.instance { c =>
+    implicit val indexBasedAuditSinkDecoder: Decoder[EsIndexBasedSink] = Decoder.instance { c =>
       for {
         auditIndexTemplate <- c.downField("index_template").as[Option[RorAuditIndexTemplate]]
         customAuditSerializer <- c.downField("serializer").as[Option[AuditLogSerializer]]
         remoteAuditCluster <- c.downField("cluster").as[Option[AuditCluster.RemoteAuditCluster]]
-      } yield Config.EsIndexBasedSink(
-        customAuditSerializer.getOrElse(new DefaultAuditLogSerializer),
-        auditIndexTemplate.getOrElse(RorAuditIndexTemplate.default),
-        remoteAuditCluster.getOrElse(AuditCluster.LocalAuditCluster)
+      } yield EsIndexBasedSink(
+        customAuditSerializer.getOrElse(EsIndexBasedSink.default.logSerializer),
+        auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),
+        remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster)
       )
     }
 
@@ -112,14 +141,12 @@ object AuditingSettingsDecoder extends Logging {
         for {
           sinkType <- c.downField("type").as[String]
           sinkConfig <- sinkType match {
-            case "index" => c.as[Config.EsIndexBasedSink]
-            case "log" => c.as[Config.LogBasedSink]
-            case other =>
-              toDecodingFailure(
-                AuditingSettingsCreationError(Message(
-                  s"Unsupported 'type' of audit output: $other. Supported types: [index, log]"
-                ))
-              ).asLeft
+            case "index" => c.as[EsIndexBasedSink]
+            case "log" => c.as[LogBasedSink]
+            case other => toDecodingFailure(unsupportedOutputTypeError(
+              unsupportedType = other,
+              supportedTypes = List("index", "log")
+            )).asLeft
           }
           isSinkEnabled <- c.downField("enabled").as[Option[Boolean]]
         } yield {
@@ -182,6 +209,13 @@ object AuditingSettingsDecoder extends Logging {
       .overrideDefaultErrorWith(error)
   }
 
+  private def unsupportedOutputTypeError(unsupportedType: String,
+                                         supportedTypes: List[String]) = {
+    AuditingSettingsCreationError(Message(
+      s"Unsupported 'type' of audit output: $unsupportedType. Supported types: [${supportedTypes.mkString(", ")}]"
+    ))
+  }
+
   private object DeprecatedAuditSeettingsDecoder {
     lazy val instance: Decoder[Option[AuditingTool.Settings]] = Decoder.instance { c =>
       whenEnabled(c) {
@@ -192,10 +226,10 @@ object AuditingSettingsDecoder extends Logging {
         } yield AuditingTool.Settings(
           auditSinks = NonEmptyList.one(
             AuditSink.Enabled(
-              Config.EsIndexBasedSink(
-                logSerializer = customAuditSerializer.getOrElse(new DefaultAuditLogSerializer),
-                rorAuditIndexTemplate = auditIndexTemplate.getOrElse(RorAuditIndexTemplate.default),
-                auditCluster = remoteAuditCluster.getOrElse(AuditCluster.LocalAuditCluster)
+              EsIndexBasedSink(
+                logSerializer = customAuditSerializer.getOrElse(EsIndexBasedSink.default.logSerializer),
+                rorAuditIndexTemplate = auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),
+                auditCluster = remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster)
               )
             )
           )
