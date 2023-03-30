@@ -534,6 +534,9 @@ class KibanaUserDataRuleSettingsTests
               )),
               "g" -> JsonTree.Value(NullValue)
             ))
+
+          val resolvableMetadataJsonRepresentation = metadataJsonRepresentation.toResolvable
+            .getOrElse(throw new IllegalStateException("Example metadata JSON should be resolvable"))
           assertDecodingSuccess(
             yaml =
               """
@@ -560,7 +563,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
-              rule.settings.metadata should be(metadataJsonRepresentation.toResolvable.toOption)
+              rule.settings.metadata should be(Some(resolvableMetadataJsonRepresentation))
               rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
             }
           )

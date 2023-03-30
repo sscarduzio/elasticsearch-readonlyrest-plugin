@@ -50,14 +50,14 @@ object ResolvableJsonRepresentationOps {
             .sequence
             .map(JsonTree.Array(_))
         case JsonTree.Value(StringValue(value)) =>
-          NonEmptyString.from(value) match {
-            case Right(nonEmptyString) =>
+          NonEmptyString.unapply(value) match {
+            case Some(nonEmptyString) =>
               RuntimeResolvableVariableCreator
                 .createSingleResolvableVariableFrom(nonEmptyString)
                 .map(resolvableString =>
                   JsonTree.Value(resolvableString.map(StringValue))
                 )
-            case Left(_) =>
+            case None =>
               Right(JsonTree.Value(AlreadyResolved.create(StringValue(value))))
           }
         case JsonTree.Value(NumValue(value)) =>
