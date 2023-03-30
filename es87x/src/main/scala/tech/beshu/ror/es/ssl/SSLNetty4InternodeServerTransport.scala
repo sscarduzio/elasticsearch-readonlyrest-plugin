@@ -19,7 +19,7 @@ package tech.beshu.ror.es.ssl
 import io.netty.channel._
 import io.netty.handler.ssl._
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.Version
+import org.elasticsearch.TransportVersion
 import org.elasticsearch.cluster.node.DiscoveryNode
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
@@ -27,6 +27,7 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.util.PageCacheRecycler
 import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.threadpool.ThreadPool
+import org.elasticsearch.transport.ConnectionProfile
 import org.elasticsearch.transport.netty4.{Netty4Transport, SharedGroupFactory}
 import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration
 import tech.beshu.ror.utils.SSLCertHelper
@@ -43,18 +44,22 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
                                         ssl: InternodeSslConfiguration,
                                         sharedGroupFactory: SharedGroupFactory,
                                         fipsCompliant: Boolean)
-  extends Netty4Transport(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService, sharedGroupFactory)
+  extends Netty4Transport(settings, TransportVersion.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService, sharedGroupFactory)
     with Logging {
 
   private val clientSslCtx = SSLCertHelper.prepareClientSSLContext(ssl, fipsCompliant, ssl.certificateVerificationEnabled)
   private val serverSslContext = SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, clientAuthenticationEnabled = false)
 
-  override def getClientChannelInitializer(node: DiscoveryNode): ChannelHandler = new ClientChannelInitializer {
+  override def getClientChannelInitializer(node: DiscoveryNode,
+                                           connectionProfile: ConnectionProfile): ChannelHandler = new ClientChannelInitializer {
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
 
       ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter {
-        override def connect(ctx: ChannelHandlerContext, remoteAddress: SocketAddress, localAddress: SocketAddress, promise: ChannelPromise): Unit = {
+        override def connect(ctx: ChannelHandlerContext,
+                             remoteAddress: SocketAddress,
+                             localAddress: SocketAddress,
+                             promise: ChannelPromise): Unit = {
           val sslEngine = SSLCertHelper.prepareSSLEngine(
             sslContext = clientSslCtx,
             channelHandlerContext = ctx,

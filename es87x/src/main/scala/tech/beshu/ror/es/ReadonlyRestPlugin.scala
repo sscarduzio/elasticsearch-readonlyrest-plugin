@@ -25,7 +25,7 @@ import org.elasticsearch.client.internal.Client
 import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes
-import org.elasticsearch.cluster.routing.allocation.decider.AllocationDeciders
+import org.elasticsearch.cluster.routing.allocation.AllocationService
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
@@ -136,7 +136,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                 indexNameExpressionResolver: IndexNameExpressionResolver,
                                 repositoriesServiceSupplier: Supplier[RepositoriesService],
                                 tracer: Tracer,
-                                allocationDeciders: AllocationDeciders): util.Collection[AnyRef] = {
+                                allocationService: AllocationService): util.Collection[AnyRef] = {
     doPrivileged {
       ilaf = new IndexLevelActionFilter(
         client.settings().get("node.name"),

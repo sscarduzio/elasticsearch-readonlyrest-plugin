@@ -18,7 +18,7 @@ package tech.beshu.ror.es.utils
 
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
-import org.elasticsearch.Version
+import org.elasticsearch.TransportVersion
 import org.elasticsearch.common.bytes.BytesReference
 import org.elasticsearch.common.io.stream.BytesStreamOutput
 import tech.beshu.ror.accesscontrol.domain.Header
@@ -40,19 +40,19 @@ object XPackSecurityAuthenticationHeader {
 
   private def getAuthenticationHeaderValue(nodeName: String, userName: String): NonEmptyString = {
     val output = new BytesStreamOutput()
-    val currentVersion = Version.CURRENT
-    output.setVersion(currentVersion)
-    Version.writeVersion(currentVersion, output)
+    val currentVersion = TransportVersion.CURRENT
+    output.setTransportVersion(currentVersion)
+    TransportVersion.writeVersion(currentVersion, output)
     output.writeBoolean(true)
     output.writeString(userName)
     output.writeString(nodeName)
     output.writeString("__attach")
     output.writeString("__attach")
-    if(output.getVersion.onOrAfter(Version.V_8_2_0)) {
+    if(output.getTransportVersion.onOrAfter(TransportVersion.V_8_2_0)) {
       output.writeBoolean(false)
     }
     output.writeBoolean(false)
-    if (output.getVersion.onOrAfter(Version.V_7_0_0)) {
+    if (output.getTransportVersion.onOrAfter(TransportVersion.V_7_0_0)) {
       output.writeVInt(4) // Internal
       output.writeGenericMap(Map.empty[String, Object].asJava)
     }

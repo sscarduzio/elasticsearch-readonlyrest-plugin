@@ -61,6 +61,19 @@ private class DocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fields
 
   override def getFieldInfos: FieldInfos = remainingFieldsInfo
 
+  override def termVectors(): TermVectors = {
+    val originalTermVectors = in.termVectors()
+    new TermVectors {
+      override def get(doc: Int): Fields = new Fields {
+        private val originalFields = originalTermVectors.get(doc)
+
+        override def iterator(): JavaIterator[String] = Iterators.filter(originalFields.iterator, (s: String) => policy.canKeep(s))
+        override def terms(field: String): Terms = if (policy.canKeep(field)) originalFields.terms(field) else null
+        override def size(): Int = remainingFieldsInfo.size
+      }
+    }
+  }
+
   override def getTermVectors(docID: Int): Fields = {
     val original = in.getTermVectors(docID)
     new Fields {
