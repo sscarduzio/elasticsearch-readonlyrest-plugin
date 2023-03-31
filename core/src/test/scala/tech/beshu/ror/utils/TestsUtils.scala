@@ -16,13 +16,10 @@
  */
 package tech.beshu.ror.utils
 
-import java.nio.file.Path
-import java.time.Duration
-import java.util.Base64
 import better.files.File
 import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.{Json, ParsingFailure}
+import io.circe.ParsingFailure
 import io.jsonwebtoken.JwtBuilder
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.RequestId
@@ -37,10 +34,10 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthentic
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, definitions}
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
@@ -51,6 +48,9 @@ import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.misc.JwtUtils.Jwt
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
+import java.nio.file.Path
+import java.time.Duration
+import java.util.Base64
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
 
@@ -344,9 +344,5 @@ object TestsUtils {
 
   def getResourceContent(resource: String): String = {
     File(getResourcePath(resource)).contentAsString
-  }
-
-  def jsonFrom(string: String): Json = {
-    io.circe.parser.parse(string).toTry.get
   }
 }

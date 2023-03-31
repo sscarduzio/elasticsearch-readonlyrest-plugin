@@ -41,8 +41,8 @@ object RuntimeResolvableVariable {
 
   sealed trait Unresolvable extends Throwable
   object Unresolvable {
-    final case class CannotExtractValue(msg: String) extends Unresolvable
-    final case class CannotInstantiateResolvedValue(msg: String) extends Unresolvable
+    final case class CannotExtractValue(override val getMessage: String) extends Unresolvable
+    final case class CannotInstantiateResolvedValue(override val getMessage: String) extends Unresolvable
   }
 
   trait Convertible[T] {

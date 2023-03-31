@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableRequestBlockC
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.Json.{JsonTree, JsonValue}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
@@ -64,6 +65,17 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |   - name: "CONTAINER ADMIN"
        |     type: allow
        |     auth_key: admin:container
+       |
+       |   - name: "Kibana metadata resolving test"
+       |     type: allow
+       |     users: ["user9"]
+       |     jwt_auth:
+       |       name: "jwt3"
+       |     kibana:
+       |       access: ro
+       |       metadata:
+       |         a: "jwt_value_@{jwt:tech.beshu.mainGroupsString}"
+       |         b: "@{jwt:user_id_list}"
        |
        |   - name: "Group name from header variable"
        |     type: allow
@@ -167,7 +179,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 2
+          result.history should have size 3
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
@@ -186,7 +198,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 2
+          result.history should have size 3
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
@@ -205,7 +217,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 4
+          result.history should have size 5
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from env variable (old syntax)"))
             assertBlockContext(
@@ -224,7 +236,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 3
+          result.history should have size 4
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from env variable"))
             assertBlockContext(
@@ -248,7 +260,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 6
+          result.history should have size 7
           inside(result.result) { case RegularRequestResult.Allow(blockContext: GeneralIndexRequestBlockContext, block) =>
             block.name should be(Block.Name("Group name from jwt variable (array)"))
             blockContext.userMetadata should be(
@@ -275,7 +287,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 7
+          result.history should have size 8
           inside(result.result) { case RegularRequestResult.Allow(blockContext: GeneralIndexRequestBlockContext, block) =>
             block.name should be(Block.Name("Group name from jwt variable"))
             blockContext.userMetadata should be(
@@ -302,7 +314,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 5
+          result.history should have size 6
           inside(result.result) { case RegularRequestResult.Allow(blockContext: FilterableRequestBlockContext, block) =>
             block.name should be(Block.Name("Variables usage in filter"))
             blockContext.userMetadata should be(
@@ -329,7 +341,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 8
+          result.history should have size 9
           inside(result.result) { case RegularRequestResult.Allow(blockContext: FilterableRequestBlockContext, block) =>
             block.name should be(Block.Name("LDAP groups explode"))
             blockContext.userMetadata should be(
@@ -341,7 +353,41 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             )
             blockContext.filteredIndices should be(Set(clusterIndexName("test-g1"), clusterIndexName("test-g3")))
             blockContext.responseHeaders should be(Set.empty)
-            blockContext.filter should be (Some(Filter("""{"bool": { "must": { "terms": { "group_id": ["g1","g3"] }}}}""")))
+            blockContext.filter should be(Some(Filter("""{"bool": { "must": { "terms": { "group_id": ["g1","g3"] }}}}""")))
+          }
+        }
+        "kibana.metadata has variables used" in {
+          val jwt = Jwt(secret, claims = List(
+            "userId" := "user9",
+            "user_id_list" := List("alice", "bob"),
+            "tech" :-> "beshu" :-> "mainGroupsString" := "j0,j3"
+          ))
+
+          val request = MockRequestContext.metadata.copy(
+            headers = Set(bearerHeader(jwt))
+          )
+
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+
+          result.history should have size 2
+          inside(result.result) {
+            case RegularRequestResult.Allow(blockContext, block) =>
+              block.name should be(Block.Name("Kibana metadata resolving test"))
+              blockContext.userMetadata should be(
+                UserMetadata
+                  .from(request)
+                  .withLoggedUser(DirectlyLoggedUser(User.Id("user9")))
+                  .withKibanaAccess(KibanaAccess.RO)
+                  .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
+                  .withKibanaMetadata(
+                    JsonTree.Object(Map(
+                      "a" -> JsonTree.Value(JsonValue.StringValue("jwt_value_j0,j3")),
+                      "b" -> JsonTree.Value(JsonValue.StringValue("\"alice\",\"bob\""))
+                    ))
+                  )
+                  .withJwtToken(JwtTokenPayload(jwt.defaultClaims()))
+              )
+              blockContext.responseHeaders should be(Set.empty)
           }
         }
       }

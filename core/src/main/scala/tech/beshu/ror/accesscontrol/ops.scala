@@ -41,6 +41,7 @@ import tech.beshu.ror.accesscontrol.blocks._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana._
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
 import tech.beshu.ror.accesscontrol.domain.Address.Ip
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
@@ -394,6 +395,11 @@ object show {
       case AuthorizationValueError.EmptyAuthorizationValue => "Empty authorization value"
       case AuthorizationValueError.InvalidHeaderFormat(value) => s"Unexpected header format in ror_metadata: [$value]"
       case AuthorizationValueError.RorMetadataInvalidFormat(value, message) => s"Invalid format of ror_metadata: [$value], reason: [$message]"
+    }
+
+    implicit val unresolvableErrorShow: Show[Unresolvable] = Show.show {
+      case Unresolvable.CannotExtractValue(msg) => s"Cannot extract variable value. $msg"
+      case Unresolvable.CannotInstantiateResolvedValue(msg) => s"Extracted value type doesn't fit. $msg"
     }
 
     implicit def accessShow[T: Show]: Show[AccessRequirement[T]] = Show.show {
