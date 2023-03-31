@@ -121,7 +121,7 @@ object ResolvableJsonRepresentationOps {
       JsonTree.Array(value.toList.map(_.foldWith(this)))
 
     override def onObject(value: JsonObject): JsonRepresentation =
-      JsonTree.Object(value.toMap.mapValues(_.foldWith(this)))
+      JsonTree.Object(value.toMap.view.mapValues(_.foldWith(this)).toMap)
   }
 
   private implicit val stringConvertible: Convertible[String] = new Convertible[String] {
