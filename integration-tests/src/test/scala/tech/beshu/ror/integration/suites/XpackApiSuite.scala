@@ -364,7 +364,7 @@ class XpackApiSuite
             job("index_pattern").str should startWith("test4")
           }
         }
-        "user has access to one index of requested index patten" excludeES (allEs6xBelowEs63x) in {
+        "user has access to one index of requested index pattern" excludeES (allEs6xBelowEs63x) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           val jobName3 = NextRollupJobName.get

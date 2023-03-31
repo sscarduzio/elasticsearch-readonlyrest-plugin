@@ -53,7 +53,7 @@ final class YamlFileBasedConfigLoader(file: File)
 
   private def prettyCause(error: DecodingFailure) = {
     error.message match {
-      case message if message.startsWith("Attempt to decode") => "yaml is malformed"
+      case message if message.startsWith("DecodingFailure at") => "yaml is malformed"
       case other => other
     }
   }
