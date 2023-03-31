@@ -64,6 +64,7 @@ sealed trait ESVersionSupport {
   val allEs7xBelowEs714x = "^es7(0?[0-9]|1[0-3])x$".r
   val allEs7xBelowEs711x = "^es7(0?[0-9]|10)x$".r
   val allEs8x = "^es8\\d+x$".r
+  val allEs8xBelowEs87x = "^es8[0-6]x$".r
   val rorProxy = "^proxy$".r
 
   protected def stringTaggedAs(string: String, firstTestTag: Tag, otherTestTags: Tag*): T
