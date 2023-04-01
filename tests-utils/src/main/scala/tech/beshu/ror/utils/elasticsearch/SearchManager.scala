@@ -182,7 +182,7 @@ class SearchManager(client: RestClient,
 
 object SearchManager {
 
-  implicit class SearchResultOps(val hits: Iterable[Value]) extends AnyVal {
+  implicit class SearchResultOps(val hits: Traversable[Value]) extends AnyVal {
     def removeRorSettings(): Vector[Value] = hits.filter(hit => hit("_index").str != ".readonlyrest").toVector
   }
 
