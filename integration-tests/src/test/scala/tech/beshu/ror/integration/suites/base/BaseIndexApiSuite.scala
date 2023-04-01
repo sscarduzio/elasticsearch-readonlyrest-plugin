@@ -444,7 +444,7 @@ trait BaseIndexApiSuite
         }
       }
       "return 404" when {
-        "user has no access to the requested index" excludeES (allEs6x, allEs7x, allEs8xBelowEs87x) in {
+        "user has no access to the requested index" excludeES (rorProxy, allEs6x, allEs7x, allEs8xBelowEs87x) in {
           val result = dev7IndexManager.resolve("index2")
 
           result.responseCode should be (404)
