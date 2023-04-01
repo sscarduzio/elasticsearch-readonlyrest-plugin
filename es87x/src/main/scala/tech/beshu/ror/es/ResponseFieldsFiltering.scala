@@ -20,16 +20,18 @@ import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
 import org.elasticsearch.rest.RestResponse
-import org.elasticsearch.xcontent.{NamedXContentRegistry, XContentBuilder, XContentParserConfiguration, XContentType}
+import org.elasticsearch.transport.BytesRefRecycler
+import org.elasticsearch.transport.netty4.Netty4WriteThrottlingHandler
 import org.elasticsearch.xcontent.cbor.CborXContent
 import org.elasticsearch.xcontent.json.JsonXContent
 import org.elasticsearch.xcontent.smile.SmileXContent
 import org.elasticsearch.xcontent.yaml.YamlXContent
+import org.elasticsearch.xcontent.{NamedXContentRegistry, XContentBuilder, XContentParserConfiguration, XContentType}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, ResponseFieldsRestrictions}
 
 import scala.collection.JavaConverters._
 
-trait ResponseFieldsFiltering {
+    trait ResponseFieldsFiltering {
   this: Logging =>
 
   private val responseFieldsRestrictions: Atomic[Option[ResponseFieldsRestrictions]] = Atomic(None: Option[ResponseFieldsRestrictions])
@@ -61,12 +63,26 @@ trait ResponseFieldsFiltering {
       else if (response.contentType().contains(XContentType.SMILE.mediaTypeWithoutParameters())) SmileXContent.smileXContent
       else throw new IllegalStateException("Unknown response content type")
 
+    val contentStreamInput = (Option(response.content()), Option(response.chunkedContent())) match {
+      case (Some(content), None) =>
+        content.streamInput()
+      case (None, Some(chunkedContent)) =>
+        chunkedContent
+          .encodeChunk(Netty4WriteThrottlingHandler.MAX_BYTES_PER_WRITE, BytesRefRecycler.NON_RECYCLING_INSTANCE)
+          .streamInput()
+      case (Some(_), Some(_)) =>
+        throw new IllegalStateException("Content and ChunkedContent should not be Some at the same time")
+      case (None, None) =>
+        throw new IllegalStateException("Content and ChunkedContent should not be None at the same time")
+    }
+
     val parser = xContent.createParser(
       XContentParserConfiguration.EMPTY
         .withDeprecationHandler(LoggingDeprecationHandler.INSTANCE)
         .withRegistry(NamedXContentRegistry.EMPTY),
-      response.content().streamInput()
+      contentStreamInput
     )
+
     val contentBuilder = XContentBuilder.builder(xContent.`type`(), includes.asJava, excludes.asJava)
     contentBuilder.copyCurrentStructure(parser)
     contentBuilder.flush()
