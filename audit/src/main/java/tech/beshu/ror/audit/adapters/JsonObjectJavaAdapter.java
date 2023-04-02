@@ -18,7 +18,6 @@ package tech.beshu.ror.audit.adapters;
 
 import org.json.JSONObject;
 
-@Deprecated
 class JsonObjectJavaAdapter {
 
     static JSONObject create(Object obj) {
