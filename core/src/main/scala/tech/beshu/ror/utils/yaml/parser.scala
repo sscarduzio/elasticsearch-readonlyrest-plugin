@@ -57,7 +57,7 @@ object parser {
       None
   }
 
-  private[this] class FlatteningConstructor extends SafeConstructor {
+  private[this] class FlatteningConstructor extends SafeConstructor(new LoaderOptions()) {
     def flatten(node: MappingNode): MappingNode = {
       flattenMapping(node)
       node
