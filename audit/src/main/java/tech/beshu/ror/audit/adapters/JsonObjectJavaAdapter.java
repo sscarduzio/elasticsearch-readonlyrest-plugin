@@ -14,17 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.audit.adapters;
 
-plugins {
-    id "groovy-gradle-plugin"
-}
+import org.json.JSONObject;
 
-repositories {
-    gradlePluginPortal()
-}
+class JsonObjectJavaAdapter {
 
-dependencies {
-    implementation "com.star-zero.gradle:githook:1.2.1"
-    implementation "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.16.1"
-    implementation "org.owasp:dependency-check-gradle:8.2.1"
+    static JSONObject create(Object obj) {
+        return new JSONObject(obj);
+    }
 }

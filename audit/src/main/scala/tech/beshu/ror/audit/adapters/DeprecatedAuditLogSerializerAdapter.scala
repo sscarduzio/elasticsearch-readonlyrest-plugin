@@ -16,16 +16,16 @@
  */
 package tech.beshu.ror.audit.adapters
 
-import java.{lang, util}
-import java.util.{Date, Optional}
-
 import org.json.JSONObject
+import tech.beshu.ror.audit.adapters.JsonObjectJavaAdapter
 import tech.beshu.ror.audit.AuditResponseContext.{Allowed, Verbosity}
 import tech.beshu.ror.audit.instances.SerializeUser
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.commons.ResponseContext.FinalState
 import tech.beshu.ror.commons.shims.request.RequestContextShim
 
+import java.util.{Date, Optional}
+import java.{lang, util}
 import scala.collection.JavaConverters._
 
 class DeprecatedAuditLogSerializerAdapter[T](underlying: tech.beshu.ror.requestcontext.AuditLogSerializer[T])
@@ -49,7 +49,7 @@ class DeprecatedAuditLogSerializerAdapter[T](underlying: tech.beshu.ror.requestc
         case entry: java.util.Map[_, _] =>
           new JSONObject(entry)
         case entry =>
-          new JSONObject(entry)
+          JsonObjectJavaAdapter.create(entry)
       }
   }
 
