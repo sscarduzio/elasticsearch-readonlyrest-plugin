@@ -72,26 +72,89 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       }
     }
     "audit is disabled" should {
-      "be disabled" in {
-        val config = rorConfigFromUnsafe(
-          """
-            |readonlyrest:
-            |  audit:
-            |    enabled: false
-            |
-            |  access_control_rules:
-            |
-            |  - name: test_block
-            |    type: allow
-            |    auth_key: admin:container
-            |
-          """.stripMargin)
+      "be disabled" when {
+        "one line audit format" in {
+          val config = rorConfigFromUnsafe(
+            """
+              |readonlyrest:
+              |  audit.enabled: false
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block
+              |    type: allow
+              |    auth_key: admin:container
+              |
+            """.stripMargin)
 
-        assertSettingsNoPresent(config)
+          assertSettingsNoPresent(config)
+        }
+        "multi line audit format" in {
+          val config = rorConfigFromUnsafe(
+            """
+              |readonlyrest:
+              |  audit:
+              |    enabled: false
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block
+              |    type: allow
+              |    auth_key: admin:container
+              |
+           """.stripMargin)
+
+          assertSettingsNoPresent(config)
+        }
       }
     }
     "audit is enabled" should {
       "be able to be loaded from config" when {
+        "no outputs defined" should {
+          "fallback to default index based audit sink" when {
+            "one line audit format" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit.enabled: true
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+                """.stripMargin)
+
+              assertIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+                config,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = LocalAuditCluster
+              )
+            }
+            "multi line audit format" in {
+              val config = rorConfigFromUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |
+                """.stripMargin)
+
+              assertIndexBasedAuditSinkSettingsPresent[DefaultAuditLogSerializer](
+                config,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = LocalAuditCluster
+              )
+            }
+          }
+        }
         "simple format is used" in {
           val config = rorConfigFromUnsafe(
             """
@@ -753,26 +816,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             assertInvalidSettings(
               config,
               expectedErrorMessage = "Unsupported 'type' of audit output: custom_type. Supported types: [index, log]"
-            )
-          }
-          "no `outputs` defined" in {
-            val config = rorConfigFromUnsafe(
-              """
-                |readonlyrest:
-                |  audit:
-                |    enabled: true
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    type: allow
-                |    auth_key: admin:container
-                |
-            """.stripMargin)
-
-            assertInvalidSettings(
-              config,
-              expectedErrorMessage = "The audit is enabled, but no 'outputs' are defined"
             )
           }
           "'outputs' array is empty" in {
