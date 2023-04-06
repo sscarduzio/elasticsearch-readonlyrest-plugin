@@ -27,14 +27,14 @@ readonlyrest:
       groups: ["Admins"]
       kibana:
         access: admin
-        kibana_index: ".kibana"
+        index: ".kibana"
 
     - name: "Template Tenancy"
       verbosity: error
       groups: ["Template"]
       kibana:
         access: admin
-        kibana_index: ".kibana_template"
+        index: ".kibana_template"
 
     - name: "011-data"
       external_authentication: "ExternalAuthService"
@@ -45,7 +45,7 @@ readonlyrest:
       filter: '{"bool": { "must": { "match": { "firmid": "011" }}}}'
       kibana:
         access: rw
-        kibana_index: ".kibana_@{user}"
+        index: ".kibana_@{user}"
         hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
 
     - name: "011"
@@ -55,7 +55,7 @@ readonlyrest:
         groups: ["011"]
       kibana:
         access: rw
-        kibana_index: ".kibana_@{user}"
+        index: ".kibana_@{user}"
         hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
 
     - name: "013-data"
@@ -67,7 +67,7 @@ readonlyrest:
       filter: '{"bool": { "must": { "match": { "firmid": "013" }}}}'
       kibana:
         access: rw
-        kibana_index: ".kibana_@{user}"
+        index: ".kibana_@{user}"
         hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
 
     - name: "013"
@@ -77,7 +77,7 @@ readonlyrest:
         groups: ["013"]
       kibana:
         access: rw
-        kibana_index: ".kibana_@{user}"
+        index: ".kibana_@{user}"
         hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
 
   external_authentication_service_configs:

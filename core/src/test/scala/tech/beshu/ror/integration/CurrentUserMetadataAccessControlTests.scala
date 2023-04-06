@@ -91,7 +91,7 @@ class CurrentUserMetadataAccessControlTests
       |    uri_re: ^/_readonlyrest/metadata/current_user/?$$
       |    kibana:
       |      access: ro
-      |      kibana_index: "user2_kibana_index"
+      |      index: "user2_kibana_index"
       |      hide_apps: ["user2_app1", "user2_app2"]
       |      allowed_api_paths:
       |        - "^/api/spaces/.*$$"
@@ -102,21 +102,21 @@ class CurrentUserMetadataAccessControlTests
       |    auth_key: "user3:pass"
       |    kibana:
       |      access: unrestricted
-      |      kibana_index: "user3_kibana_index"
+      |      index: "user3_kibana_index"
       |      hide_apps: ["user3_app1", "user3_app2"]
       |
       |  - name: "User 4 - index1"
       |    users: ["user4"]
       |    kibana:
       |      access: unrestricted
-      |      kibana_index: "user4_group5_kibana_index"
+      |      index: "user4_group5_kibana_index"
       |    groups: [group5]
       |
       |  - name: "User 4 - index2"
       |    users: ["user4"]
       |    kibana:
       |      access: unrestricted
-      |      kibana_index: "user4_group6_kibana_index"
+      |      index: "user4_group6_kibana_index"
       |    groups: [group6, group5]
       |
       |  - name: "SERVICE1 user5 (1)"

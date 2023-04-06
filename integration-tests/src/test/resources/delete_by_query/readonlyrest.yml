@@ -16,13 +16,12 @@ readonlyrest:
       indices: ["*"]
       kibana:
         access: unrestricted
-        kibana_index: ".kibana"
+        index: ".kibana"
       auth_key: blue:dev
 
     - name: "::RED-TEAM::"
       auth_key: red:dev
       kibana:
         access: rw
-        kibana_index: ".kibana"
+        index: ".kibana"
       indices: ["*"]
-

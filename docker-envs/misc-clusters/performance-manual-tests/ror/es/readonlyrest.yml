@@ -48,7 +48,7 @@ readonlyrest:
       users: ["*"]
       kibana:
         access: admin
-        kibana_index: ".kibana_@{user}"
+        index: ".kibana_@{user}"
         hide_apps: ["readonlyrest_kbn"]
       ldap_authentication: "ldap"
       verbosity: error

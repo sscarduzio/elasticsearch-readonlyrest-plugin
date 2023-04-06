@@ -73,8 +73,8 @@ class KibanaUserDataRuleSettingsTests
               |  - name: test_block1
               |    kibana:
               |      access: "rw"
-              |      kibana_index: ".kibana_custom"
-              |      kibana_template_index: ".kibana_template"
+              |      index: ".kibana_custom"
+              |      template_index: ".kibana_template"
               |      hide_apps: ["app1", "app2"]
               |      allowed_api_paths: ["^/api/spaces/.*$"]
               |
@@ -467,7 +467,7 @@ class KibanaUserDataRuleSettingsTests
           )
         }
       }
-      "'kibana_index' property is defined with variable" in {
+      "'kibana.index' property is defined with variable" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -479,7 +479,7 @@ class KibanaUserDataRuleSettingsTests
               |    auth_key: user:pass
               |    kibana:
               |      access: "ro"
-              |      kibana_index: "@{user}_kibana_index"
+              |      index: "@{user}_kibana_index"
               |
               |""".stripMargin,
           assertion = rule => {
@@ -505,7 +505,7 @@ class KibanaUserDataRuleSettingsTests
               |    auth_key: user:pass
               |    kibana:
               |      access: "ro"
-              |      kibana_template_index: "@{user}_kibana_template_index"
+              |      template_index: "@{user}_kibana_template_index"
               |
               |""".stripMargin,
           assertion = rule => {
@@ -606,8 +606,8 @@ class KibanaUserDataRuleSettingsTests
               |
               |  - name: test_block1
               |    kibana:
-              |      kibana_index: ".kibana_custom"
-              |      kibana_template_index: ".kibana_template"
+              |      index: ".kibana_custom"
+              |      template_index: ".kibana_template"
               |      hide_apps: ["app1", "app2"]
               |
               |""".stripMargin,
@@ -615,8 +615,8 @@ class KibanaUserDataRuleSettingsTests
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
               """kibana:
-                |  kibana_index: ".kibana_custom"
-                |  kibana_template_index: ".kibana_template"
+                |  index: ".kibana_custom"
+                |  template_index: ".kibana_template"
                 |  hide_apps:
                 |  - "app1"
                 |  - "app2"

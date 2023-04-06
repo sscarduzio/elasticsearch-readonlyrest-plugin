@@ -408,7 +408,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
               |    kibana_access: ro
               |    kibana:
               |      access: ro
-              |      kibana_index: .kibana_custom
+              |      index: .kibana_custom
               |
               |""".stripMargin)
           val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
@@ -427,7 +427,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
               |    kibana_index: .kibana_custom
               |    kibana:
               |      access: ro
-              |      kibana_index: .kibana_custom
+              |      index: .kibana_custom
               |
               |""".stripMargin)
           val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
@@ -446,7 +446,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
               |    kibana_hide_apps: ["app1"]
               |    kibana:
               |      access: ro
-              |      kibana_index: .kibana_custom
+              |      index: .kibana_custom
               |
               |""".stripMargin)
           val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
@@ -465,7 +465,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
               |    kibana_template_index: ".kibana_template_index"
               |    kibana:
               |      access: ro
-              |      kibana_index: .kibana_custom
+              |      index: .kibana_custom
               |
               |""".stripMargin)
           val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
