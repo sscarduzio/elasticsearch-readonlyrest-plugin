@@ -48,8 +48,8 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex)
       .instance { c =>
         for {
           access <- c.downField("access").as[KibanaAccess]
-          kibanaIndex <- c.downField("kibana_index").as[Option[RuntimeSingleResolvableVariable[IndexName.Kibana]]]
-          kibanaTemplateIndex <- c.downField("kibana_template_index").as[Option[RuntimeSingleResolvableVariable[IndexName.Kibana]]]
+          kibanaIndex <- c.downField("index").as[Option[RuntimeSingleResolvableVariable[IndexName.Kibana]]]
+          kibanaTemplateIndex <- c.downField("template_index").as[Option[RuntimeSingleResolvableVariable[IndexName.Kibana]]]
           appsToHide <- c.downField("hide_apps").as[Option[Set[KibanaApp]]]
           allowedApiPaths <- c.downField("allowed_api_paths").as[Option[Set[KibanaAllowedApiPath]]]
           metadataJson = c.downField("metadata").focus
