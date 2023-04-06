@@ -40,6 +40,9 @@ object RuntimeSingleResolvableVariable {
 
     override def map[S](f: T => S): RuntimeSingleResolvableVariable[S] = AlreadyResolved(f(value))
   }
+  object AlreadyResolved {
+    def create[T](value: T): RuntimeSingleResolvableVariable[T] = new AlreadyResolved[T](value)
+  }
 
   final case class ToBeResolved[T: Convertible](values: NonEmptyList[SingleExtractable])
     extends RuntimeSingleResolvableVariable[T] {

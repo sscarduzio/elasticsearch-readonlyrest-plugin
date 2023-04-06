@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.metadata
 import cats.implicits._
 import io.circe.Json
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.Json.JsonRepresentation
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -31,7 +32,7 @@ final case class UserMetadata private(loggedUser: Option[LoggedUser],
                                       hiddenKibanaApps: Set[KibanaApp],
                                       allowedKibanaApiPaths: Set[KibanaAllowedApiPath],
                                       kibanaAccess: Option[KibanaAccess],
-                                      kibanaMetadata: Option[Json],
+                                      kibanaMetadata: Option[JsonRepresentation],
                                       userOrigin: Option[UserOrigin],
                                       jwtToken: Option[JwtTokenPayload]) {
 
@@ -57,7 +58,7 @@ final case class UserMetadata private(loggedUser: Option[LoggedUser],
   def withAllowedKibanaApiPaths(paths: UniqueNonEmptyList[KibanaAllowedApiPath]): UserMetadata =
     this.copy(allowedKibanaApiPaths = this.allowedKibanaApiPaths ++ paths)
   def withKibanaAccess(access: KibanaAccess): UserMetadata = this.copy(kibanaAccess = Some(access))
-  def withKibanaMetadata(json: Json): UserMetadata = this.copy(kibanaMetadata = Some(json))
+  def withKibanaMetadata(json: JsonRepresentation): UserMetadata = this.copy(kibanaMetadata = Some(json))
   def withUserOrigin(origin: UserOrigin): UserMetadata = this.copy(userOrigin = Some(origin))
   def withJwtToken(token: JwtTokenPayload): UserMetadata = this.copy(jwtToken = Some(token))
   def clearCurrentGroup: UserMetadata = this.copy(currentGroup = None)

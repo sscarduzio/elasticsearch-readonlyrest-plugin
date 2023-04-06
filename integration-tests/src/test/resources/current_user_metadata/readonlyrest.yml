@@ -41,6 +41,7 @@ readonlyrest:
           d: [ "a","b" ]
           e:
             f: 1
+          g: ~
 
     - name: "User 3"
       auth_key: "user3:pass"

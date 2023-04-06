@@ -19,12 +19,11 @@ package tech.beshu.ror.accesscontrol.blocks.metadata
 import cats.Show
 import cats.data.NonEmptyList
 import cats.implicits._
-import io.circe.{Decoder, Json}
+import tech.beshu.ror.accesscontrol.domain.Json._
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.{CorrelationId, KibanaAccess}
 
-import java.util
 import scala.collection.JavaConverters._
 
 sealed trait MetadataValue
@@ -91,25 +90,26 @@ object MetadataValue {
   }
 
   private def kibanaMetadata(userMetadata: UserMetadata) = {
-    implicit val objDecoder: Decoder[Any] =
-      Decoder
-        .decodeJson
-        .map { json =>
-          def toMap(j: Json): Any = j.fold(
-            jsonNull = (),
-            jsonBoolean = identity,
-            jsonNumber = _.toDouble,
-            jsonString = identity,
-            jsonArray = _.map(toMap).asJava,
-            jsonObject = _.toMap.mapValues(toMap).asJava
-          )
-          toMap(json)
-        }
-
     userMetadata
       .kibanaMetadata
-      .map(metadata => ("x-ror-kibana-metadata", MetadataObject(objDecoder.decodeJson(metadata).right.get)))
+      .map(metadata => ("x-ror-kibana-metadata", MetadataObject(jsonRepresentationToJavaObj(metadata))))
       .toMap
+  }
+
+  private def jsonRepresentationToJavaObj(json: JsonRepresentation): Any = {
+    json match {
+      case JsonTree.Object(fields) =>
+        fields.mapValues(jsonRepresentationToJavaObj).asJava
+      case JsonTree.Array(elements) =>
+        elements.map(jsonRepresentationToJavaObj).asJava
+      case JsonTree.Value(value) =>
+        value match {
+          case JsonValue.StringValue(value) => value
+          case JsonValue.NumValue(value) => value
+          case JsonValue.BooleanValue(value) => value
+          case JsonValue.NullValue => null
+        }
+    }
   }
 
   private def availableGroups(userMetadata: UserMetadata) = {
@@ -151,7 +151,7 @@ object MetadataValue {
         case HttpMethod.Get => "GET"
         case HttpMethod.Post => "POST"
         case HttpMethod.Put => "PUT"
-        case HttpMethod.Delete => "DELTE"
+        case HttpMethod.Delete => "DELETE"
       }
   }
 }

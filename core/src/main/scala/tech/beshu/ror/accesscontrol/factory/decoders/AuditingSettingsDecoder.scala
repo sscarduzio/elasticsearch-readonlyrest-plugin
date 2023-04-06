@@ -35,6 +35,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.audit.AuditLogSerializer
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
+import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 import scala.util.{Failure, Success, Try}
 
@@ -49,8 +50,11 @@ object AuditingSettingsDecoder extends Logging {
 
   private val auditSettingsDecoder: Decoder[Option[AuditingTool.Settings]] = Decoder.instance { c =>
     for {
-      isAuditEnabled <- c.downField("audit").downField("enabled").as[Option[Boolean]]
-      result <- if (isAuditEnabled.getOrElse(false)) {
+      isAuditEnabled <- YamlKeyDecoder[Boolean](
+        segments = NonEmptyList.of("audit", "enabled"),
+        default = false
+      ).apply(c)
+      result <- if (isAuditEnabled) {
         decodeAuditSettings(c).map(Some.apply)
       } else {
         Right(None)
@@ -82,7 +86,9 @@ object AuditingSettingsDecoder extends Logging {
             .map(AuditingTool.Settings.apply)
             .toRight(AuditingSettingsCreationError(Message(s"The audit 'outputs' array cannot be empty")))
         case None =>
-          AuditingSettingsCreationError(Message("The audit is enabled, but no 'outputs' are defined")).asLeft
+          AuditingTool.Settings(
+            NonEmptyList.of(AuditSink.Enabled(EsIndexBasedSink.default))
+          ).asRight
       }
       .decoder
   }

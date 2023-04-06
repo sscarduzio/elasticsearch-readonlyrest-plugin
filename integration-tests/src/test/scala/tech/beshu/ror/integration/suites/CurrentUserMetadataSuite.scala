@@ -105,7 +105,8 @@ class CurrentUserMetadataSuite
                |    "d": [ "a","b" ],
                |    "e": {
                |      "f": 1
-               |    }
+               |    },
+               |    "g": null
                |  }
                |}""".stripMargin))
         }
