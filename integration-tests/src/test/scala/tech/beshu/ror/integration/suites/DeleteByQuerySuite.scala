@@ -19,16 +19,15 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsClusterProvider
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, ElasticsearchTweetsInitializer}
 
-trait DeleteByQuerySuite
+class DeleteByQuerySuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with Matchers {
-  this: EsClusterProvider =>
 
   private val matchAllQuery = ujson.read("""{"query" : {"match_all" : {}}}""".stripMargin)
 

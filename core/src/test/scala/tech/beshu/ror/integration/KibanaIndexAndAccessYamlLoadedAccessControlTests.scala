@@ -159,10 +159,12 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             loggedUser = Some(DirectlyLoggedUser(User.Id("admin"))),
             currentGroup = Some(GroupName("Administrators")),
             availableGroups = UniqueList.of(GroupName("Administrators"), GroupName("Infosec")),
-            kibanaIndex = Some(clusterIndexName(".kibana_admins")),
+            kibanaIndex = Some(localIndexName(".kibana_admins")),
             kibanaTemplateIndex = None,
             hiddenKibanaApps = Set(KibanaApp("Enterprise Search|Overview"), KibanaApp("Observability")),
+            allowedKibanaApiPaths = Set.empty,
             kibanaAccess = Some(KibanaAccess.Admin),
+            kibanaMetadata = None,
             userOrigin = None,
             jwtToken = None
           ))
@@ -180,7 +182,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           filteredIndices = Set(clusterIndexName(".kibana_admins"))
         )
 
-        val result = acl.handleRegularRequest(loginRequest).runSyncUnsafe()
+        val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
         result.history should have size 4
         inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>

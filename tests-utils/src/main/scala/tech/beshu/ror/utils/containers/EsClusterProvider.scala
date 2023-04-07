@@ -20,9 +20,7 @@ import cats.data.NonEmptyList
 import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 
-sealed trait EsClusterProvider extends EsContainerCreator {
-
-  protected def mode: Mode
+trait EsClusterProvider extends EsContainerCreator {
 
   def createLocalClusterContainer(esClusterSettings: EsClusterSettings): EsClusterContainer = {
     val nodesSettings = NonEmptyList.fromListUnsafe {
@@ -65,14 +63,6 @@ sealed trait EsClusterProvider extends EsContainerCreator {
   private def nodeCreator(nodeSettings: EsNodeSettings,
                           allNodeNames: NonEmptyList[String],
                           nodeDataInitializer: ElasticsearchNodeDataInitializer): StartedClusterDependencies => EsContainer = { deps =>
-    this.create(mode, nodeSettings, allNodeNames, nodeDataInitializer, deps)
+    this.create(nodeSettings, allNodeNames, nodeDataInitializer, deps)
   }
-}
-
-trait ProxyEsClusterProvider extends EsClusterProvider {
-  override val mode = Mode.Proxy
-}
-
-trait PluginEsClusterProvider extends EsClusterProvider {
-  override val mode = Mode.Plugin
 }

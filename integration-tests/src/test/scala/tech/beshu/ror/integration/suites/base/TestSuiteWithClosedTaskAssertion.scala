@@ -38,7 +38,7 @@ trait TestSuiteWithClosedTaskAssertion extends TestSuite with CustomScalaTestMat
       case Succeeded =>
         val tasks = adminCatManager.tasks().results
         Try {
-          tasks.map(_ ("action").str).toSet should notContainElementsFrom(Set(
+          tasks.map(_("action").str).toSet should notContainElementsFrom(Set(
             """^cluster:ror/.*$""".r
           ))
         } match {

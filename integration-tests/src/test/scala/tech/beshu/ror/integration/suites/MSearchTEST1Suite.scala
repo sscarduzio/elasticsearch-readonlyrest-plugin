@@ -19,18 +19,18 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterProvider}
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 //TODO change test names. Current names are copies from old java integration tests
-trait MSearchTEST1Suite
+class MSearchTEST1Suite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with Matchers {
-  this: EsClusterProvider =>
 
   val msearchBodyNotExists = Seq(
     """{"index":["perfmon_index_does_not_exist"],"ignore_unavailable":true,"preference":1506497937939}""",

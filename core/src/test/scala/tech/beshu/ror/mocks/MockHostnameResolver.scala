@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import com.comcast.ip4s.{Cidr, Hostname}
 import monix.eval.Task
 import org.scalamock.scalatest.MockFactory
-import tech.beshu.ror.accesscontrol.blocks.rules.base.HostnameResolver
+import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostnameResolver
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.domain.Address.Ip
 import tech.beshu.ror.mocks.MockHostnameResolver.Behaviour.ResolveResult.{ResolvedIps, Unresolvable}

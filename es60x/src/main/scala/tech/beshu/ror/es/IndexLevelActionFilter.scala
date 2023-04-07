@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.es
 
+import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
+import monix.execution.schedulers.CanBlock
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
@@ -29,13 +31,14 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
-import tech.beshu.ror.boot.ReadonlyRest.{AuditSinkCreator, RorMode}
+import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot._
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.es.handler.AclAwareRequestFilter
+import tech.beshu.ror.configuration.RorBootConfiguration
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
-import tech.beshu.ror.es.handler.response.ForbiddenResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse, createTestSettingsNotConfiguredResponse}
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
+import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, HighLevelClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
@@ -44,6 +47,7 @@ import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
 import java.time.Clock
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
 @Singleton
@@ -69,8 +73,17 @@ class IndexLevelActionFilter(settings: Settings,
   private implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
   private implicit val generator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator
 
+  private val rorNotAvailableRequestHandler: RorNotAvailableRequestHandler =
+    RorBootConfiguration
+      .load(env.configFile())
+      .map(_.fold(
+        error => throw new IllegalStateException(s"Failed to load ROR boot config. Error: ${error.message}"),
+        identity
+      ))
+      .map(new RorNotAvailableRequestHandler(_))
+      .runSyncUnsafe(10 seconds)(Scheduler.global, CanBlock.permit)
+
   private val ror = ReadonlyRest.create(
-    RorMode.Plugin,
     new EsIndexJsonContentService(client),
     auditSinkCreator,
     env.configFile
@@ -158,19 +171,16 @@ class IndexLevelActionFilter(settings: Settings,
   private def proceedByRorEngine(esContext: EsContext): Unit = {
     rorInstanceState.get() match {
       case RorInstanceStartingState.Starting =>
-        logger.warn(s"[${esContext.requestContextId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
-        esContext.listener.onFailure(createRorNotReadyYetResponse())
+        handleRorNotReadyYet(esContext)
       case RorInstanceStartingState.Started(instance) =>
         instance.engines match {
           case Some(engines) =>
             handleRequest(engines, esContext)
           case None =>
-            logger.warn(s"[${esContext.requestContextId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
-            esContext.listener.onFailure(createRorNotReadyYetResponse())
+            handleRorNotReadyYet(esContext)
         }
       case RorInstanceStartingState.NotStarted(_) =>
-        logger.error(s"[${esContext.requestContextId}] Cannot handle the ${esContext.channel.request().path()} request because ReadonlyREST failed to start")
-        esContext.listener.onFailure(createRorStartingFailureResponse())
+        handleRorFailedToStart(esContext)
     }
   }
 
@@ -187,6 +197,16 @@ class IndexLevelActionFilter(settings: Settings,
     case Right(_) =>
     case Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured) =>
       esContext.listener.onFailure(createTestSettingsNotConfiguredResponse())
+  }
+
+  private def handleRorNotReadyYet(esContext: EsContext): Unit = {
+    logger.warn(s"[${esContext.requestContextId}] Cannot handle the request ${esContext.channel.request().path()} because ReadonlyREST hasn't started yet")
+    rorNotAvailableRequestHandler.handleRorNotReadyYet(esContext)
+  }
+
+  private def handleRorFailedToStart(esContext: EsContext): Unit = {
+    logger.error(s"[${esContext.requestContextId}] Cannot handle the ${esContext.channel.request().path()} request because ReadonlyREST failed to start")
+    rorNotAvailableRequestHandler.handleRorFailedToStart(esContext)
   }
 
   private def startRorInstance() = {

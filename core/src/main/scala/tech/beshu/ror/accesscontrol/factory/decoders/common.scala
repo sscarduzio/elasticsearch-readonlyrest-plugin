@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders
 
-import java.net.URI
-import java.util.concurrent.TimeUnit
 import cats.Show
 import cats.data.NonEmptySet
 import cats.implicits._
@@ -30,13 +28,16 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{Address, GroupLike, GroupsLogic, Header, PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.domain.{Address, ClusterIndexName, GroupLike, GroupsLogic, Header, IndexName, KibanaAccess, KibanaApp, PermittedGroups, User}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
 import tech.beshu.ror.accesscontrol.refined._
@@ -48,6 +49,8 @@ import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
+import java.net.URI
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
@@ -201,6 +204,14 @@ object common extends Logging {
     }
   }
 
+  implicit val indexNameConvertible: Convertible[IndexName.Kibana] = new Convertible[IndexName.Kibana] {
+    override def convert: String => Either[Convertible.ConvertError, IndexName.Kibana] = str => {
+      ClusterIndexName.Local
+        .fromString(str.replace(" ", "_"))
+        .toRight(Convertible.ConvertError("Index name cannot be empty"))
+    }
+  }
+
   implicit def valueLevelRuntimeSingleResolvableVariableDecoder[T : Convertible]: Decoder[RuntimeSingleResolvableVariable[T]] = {
     DecoderHelpers
       .singleVariableDecoder[T]
@@ -288,11 +299,43 @@ object common extends Logging {
       }
       .decoder
 
+  implicit val kibanaAccessDecoder: Decoder[KibanaAccess] =
+    DecoderHelpers
+      .decodeStringLike
+      .map(_.toLowerCase)
+      .toSyncDecoder
+      .emapE[KibanaAccess] {
+        case "ro" => Right(KibanaAccess.RO)
+        case "ro_strict" => Right(KibanaAccess.ROStrict)
+        case "rw" => Right(KibanaAccess.RW)
+        case "api_only" =>  Right(KibanaAccess.ApiOnly)
+        case "admin" => Right(KibanaAccess.Admin)
+        case "unrestricted" => Right(KibanaAccess.Unrestricted)
+        case unknown => Left(CoreCreationError.ValueLevelCreationError(Message(
+          s"Unknown kibana access '$unknown'. Available options: 'ro', 'ro_strict', 'rw', 'api_only', 'admin', 'unrestricted'"
+        )))
+      }
+      .decoder
+
+  implicit val kibanaApp: Decoder[KibanaApp] = nonEmptyStringDecoder.map(KibanaApp.apply)
+
   implicit val groupsLogicAndDecoder: Decoder[GroupsLogic.And] =
     permittedGroupsDecoder.map(GroupsLogic.And.apply)
 
   implicit val groupsLogicOrDecoder: Decoder[GroupsLogic.Or] =
     permittedGroupsDecoder.map(GroupsLogic.Or.apply)
+
+  implicit val resolvableJsonRepresentationDecoder: Decoder[ResolvableJsonRepresentation] =
+    Decoder
+      .decodeJson
+      .toSyncDecoder
+      .emapE { json =>
+        json
+          .toJsonRepresentation
+          .toResolvable
+          .left.map { error => ValueLevelCreationError(Message(error.show)) }
+      }
+      .decoder
 
   private lazy val finiteDurationStringDecoder: Decoder[FiniteDuration] =
     DecoderHelpers

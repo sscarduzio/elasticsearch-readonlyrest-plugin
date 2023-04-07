@@ -29,6 +29,8 @@ import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause.OperationNotAll
 import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
+import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, HttpClientsFactory}
@@ -87,25 +89,34 @@ class CurrentUserMetadataAccessControlTests
       |    users: ["user2"]
       |    groups: [group2, group3]
       |    uri_re: ^/_readonlyrest/metadata/current_user/?$$
-      |    kibana_index: "user2_kibana_index"
-      |    kibana_hide_apps: ["user2_app1", "user2_app2"]
-      |    kibana_access: ro
+      |    kibana:
+      |      access: ro
+      |      index: "user2_kibana_index"
+      |      hide_apps: ["user2_app1", "user2_app2"]
+      |      allowed_api_paths:
+      |        - "^/api/spaces/.*$$"
+      |        - http_method: GET
+      |          path: "/api/spaces?test=12.2"
       |
       |  - name: "User 3"
       |    auth_key: "user3:pass"
-      |    kibana_index: "user3_kibana_index"
-      |    kibana_hide_apps: ["user3_app1", "user3_app2"]
+      |    kibana:
+      |      access: unrestricted
+      |      index: "user3_kibana_index"
+      |      hide_apps: ["user3_app1", "user3_app2"]
       |
       |  - name: "User 4 - index1"
       |    users: ["user4"]
-      |    actions: ["default-action"]
-      |    kibana_index: "user4_group5_kibana_index"
+      |    kibana:
+      |      access: unrestricted
+      |      index: "user4_group5_kibana_index"
       |    groups: [group5]
       |
       |  - name: "User 4 - index2"
       |    users: ["user4"]
-      |    actions: ["default-action"]
-      |    kibana_index: "user4_group6_kibana_index"
+      |    kibana:
+      |      access: unrestricted
+      |      index: "user4_group6_kibana_index"
       |    groups: [group6, group5]
       |
       |  - name: "SERVICE1 user5 (1)"
@@ -216,6 +227,7 @@ class CurrentUserMetadataAccessControlTests
             userMetadata.availableGroups.toSet should be (Set(GroupName("group3"), GroupName("group1")))
             userMetadata.kibanaIndex should be (None)
             userMetadata.hiddenKibanaApps should be (Set.empty)
+            userMetadata.allowedKibanaApiPaths should be (Set.empty)
             userMetadata.kibanaAccess should be (None)
             userMetadata.userOrigin should be (None)
           }
@@ -231,7 +243,8 @@ class CurrentUserMetadataAccessControlTests
             userMetadata.availableGroups.toSet should be (Set(GroupName("group5"), GroupName("group6")))
             userMetadata.kibanaIndex should be (Some(clusterIndexName("user4_group6_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set.empty)
-            userMetadata.kibanaAccess should be (None)
+            userMetadata.allowedKibanaApiPaths should be (Set.empty)
+            userMetadata.kibanaAccess should be (Some(KibanaAccess.Unrestricted))
             userMetadata.userOrigin should be (None)
           }
 
@@ -245,7 +258,8 @@ class CurrentUserMetadataAccessControlTests
             userMetadata.availableGroups.toSet should be (Set(GroupName("group5"), GroupName("group6")))
             userMetadata.kibanaIndex should be (Some(clusterIndexName("user4_group5_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set.empty)
-            userMetadata.kibanaAccess should be (None)
+            userMetadata.allowedKibanaApiPaths should be (Set.empty)
+            userMetadata.kibanaAccess should be (Some(KibanaAccess.Unrestricted))
             userMetadata.userOrigin should be (None)
           }
         }
@@ -258,6 +272,10 @@ class CurrentUserMetadataAccessControlTests
             userMetadata.availableGroups.toSet should be (Set(GroupName("group2")))
             userMetadata.kibanaIndex should be (Some(clusterIndexName("user2_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user2_app1"), KibanaApp("user2_app2")))
+            userMetadata.allowedKibanaApiPaths should be (Set(
+              KibanaAllowedApiPath(AllowedHttpMethod.Any, Regex("^/api/spaces/.*$")),
+              KibanaAllowedApiPath(AllowedHttpMethod.Specific(HttpMethod.Get), Regex("""^/api/spaces\?test\=12\.2$"""))
+            ))
             userMetadata.kibanaAccess should be (Some(KibanaAccess.RO))
             userMetadata.userOrigin should be (None)
           }
@@ -271,7 +289,8 @@ class CurrentUserMetadataAccessControlTests
             userMetadata.availableGroups.toSet should be (UniqueList.empty)
             userMetadata.kibanaIndex should be (Some(clusterIndexName("user3_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user3_app1"), KibanaApp("user3_app2")))
-            userMetadata.kibanaAccess should be (None)
+            userMetadata.allowedKibanaApiPaths should be (Set.empty)
+            userMetadata.kibanaAccess should be (Some(KibanaAccess.Unrestricted))
             userMetadata.userOrigin should be (None)
           }
         }

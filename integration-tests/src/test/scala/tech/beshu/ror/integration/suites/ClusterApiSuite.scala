@@ -19,20 +19,20 @@ package tech.beshu.ror.integration.suites
 import eu.timepit.refined.auto._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterProvider, EsClusterSettings}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 
-trait ClusterApiSuite
+class ClusterApiSuite
   extends AnyWordSpec
     with BaseEsClusterIntegrationTest
+    with PluginTestSupport
     with SingleClientSupport
     with ESVersionSupportForAnyWordSpecLike {
-  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/cluster_api/readonlyrest.yml"
   override lazy val targetEs = container.nodes.head

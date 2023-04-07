@@ -16,9 +16,10 @@ readonlyrest:
 
   - name: R2
     groups: ["a_testgroup"]
-    kibana_index: ".kibana_@{user}"
-    kibana_hide_apps: ["timelion"]
-    kibana_access: admin
+    kibana:
+      access: admin
+      index: ".kibana_@{user}"
+      hide_apps: ["timelion"]
 
   - name: R3
     groups: ["group_extra"]
@@ -27,9 +28,10 @@ readonlyrest:
 
   - name: R4
     groups: ["foogroup"]
-    kibana_index: ".kibana_foogroup"
-    kibana_hide_apps: ["foo:app"]
-    kibana_access: admin
+    kibana:
+      access: admin
+      index: ".kibana_foogroup"
+      hide_apps: ["foo:app"]
 
   users:
   - username: user

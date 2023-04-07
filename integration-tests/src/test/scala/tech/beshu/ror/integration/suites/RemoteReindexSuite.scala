@@ -21,21 +21,21 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait RemoteReindexSuite
+class RemoteReindexSuite
   extends AnyWordSpec
-  with BaseManyEsClustersIntegrationTest
-  with MultipleClientsSupport
-  with BeforeAndAfterEach
-  with ESVersionSupportForAnyWordSpecLike
-  with Matchers {
-  this: EsClusterProvider =>
+    with BaseManyEsClustersIntegrationTest
+    with PluginTestSupport
+    with MultipleClientsSupport
+    with BeforeAndAfterEach
+    with ESVersionSupportForAnyWordSpecLike
+    with Matchers {
 
   override implicit val rorConfigFileName = "/reindex_multi_containers/readonlyrest_dest_es.yml"
   private val sourceEsRorConfigFileName = "/reindex_multi_containers/readonlyrest_source_es.yml"

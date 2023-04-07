@@ -25,6 +25,10 @@ buildscript {
     }
 }
 
+plugins {
+    id "java"
+}
+
 repositories {
     mavenCentral()
     mavenLocal()
@@ -39,8 +43,6 @@ repositories {
 group = 'org.elasticsearch.plugin'
 version = pluginVersion + '_es' + esVersion
 
-apply plugin: 'java'
-
 configurations {
     runtime
     netty
@@ -53,51 +55,55 @@ dependencies {
     netty   group: 'org.elasticsearch.plugin',          name: 'transport-netty4',                   version: esVersion
 }
 
-task buildRor(type: GradleBuild) {
-    startParameter.projectProperties = ['esVersion':esVersion]
+tasks.register('buildRor', GradleBuild) {
+    startParameter.projectProperties = ['esVersion': esVersion]
     tasks = [':' + esModule + ':ror']
 }
 
-task downloadEsBinaries(type: GradleBuild) {
-    startParameter.projectProperties = ['esVersion':esVersion]
+tasks.register('downloadEsBinaries', GradleBuild) {
+    startParameter.projectProperties = ['esVersion': esVersion]
     tasks = [':ror-tools:downloadEsBinaries']
 }
 
-task copyRorJars(type: Copy, dependsOn: [buildRor]) {
-    def zipFile = file("../" + esModule + "/build/distributions/readonlyrest-" + pluginVersion + "_es"+ esVersion + ".zip")
+tasks.register('copyRorJars', Copy) {
+    dependsOn buildRor
+    def zipFile = file("../" + esModule + "/build/distributions/readonlyrest-" + pluginVersion + "_es" + esVersion + ".zip")
 
     from zipTree(zipFile)
     into "$buildDir/plugins/readonlyrest"
 }
 
-task copyTransportNetty4Module(type: Copy, dependsOn: [downloadEsBinaries]) {
+tasks.register('copyTransportNetty4Module', Copy) {
+    dependsOn downloadEsBinaries
     def moduleDir = file("../ror-tools/build/es-" + esVersion + "/elasticsearch-" + esVersion + "/modules/transport-netty4")
 
     from moduleDir
     into "$buildDir/modules/transport-netty4"
 }
 
-task copyAnsiConsoleTools(type: Copy, dependsOn: [downloadEsBinaries]) {
+tasks.register('copyAnsiConsoleTools', Copy) {
+    dependsOn downloadEsBinaries
     def toolsDir = file("../ror-tools/build/es-" + esVersion + "/elasticsearch-" + esVersion + "/lib/tools/ansi-console")
 
     from toolsDir
     into "$buildDir/lib/tools/ansi-console"
 }
 
-task copyNettyJar(type: Copy) {
+tasks.register('copyNettyJar', Copy) {
     from configurations.netty
     into "$buildDir/plugins/readonlyrest"
 }
 
-task copyConfigFiles(type: Copy) {
-    from('.'){
+tasks.register('copyConfigFiles', Copy) {
+    from('.') {
         include 'config/**', 'lib/**', 'config/**', 'modules/**', 'plugins/**'
     }
     from "sec-all.policy"
     into "$buildDir"
 }
 
-task runEs(type: JavaExec, dependsOn: [clean, copyConfigFiles, copyRorJars, copyNettyJar, copyTransportNetty4Module, copyAnsiConsoleTools]) {
+tasks.register('runEs', JavaExec) {
+    dependsOn(clean, copyConfigFiles, copyRorJars, copyNettyJar, copyTransportNetty4Module, copyAnsiConsoleTools)
     workingDir = buildDir
     classpath = configurations.runtime
     systemProperties = ["java.awt.headless"                     : "true",
@@ -116,7 +122,7 @@ task runEs(type: JavaExec, dependsOn: [clean, copyConfigFiles, copyRorJars, copy
                         "java.security.manager"                 : "allow",
                         "java.security.policy"                  : "$buildDir/sec-all.policy",
     ]
-    main = "org.elasticsearch.bootstrap.Elasticsearch"
+    mainClass.set("org.elasticsearch.bootstrap.Elasticsearch")
 }
 
 clean {

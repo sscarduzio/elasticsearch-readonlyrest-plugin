@@ -30,8 +30,7 @@ import tech.beshu.ror.utils.ReflectUtils._
 
 import scala.util.{Failure, Success, Try}
 
-class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandler,
-                                                      sThreadPool: ThreadPool)
+class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandler)
   extends RestHandler {
 
   private val wrapped = doPrivileged {
@@ -41,8 +40,6 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
   override def handleRequest(request: RestRequest, channel: RestChannel, client: NodeClient): Unit = {
     val rorRestChannel = new RorRestChannel(channel)
     ThreadRepo.setRestChannel(rorRestChannel)
-    sThreadPool.
-
     wrapped.handleRequest(request, rorRestChannel, client)
   }
 

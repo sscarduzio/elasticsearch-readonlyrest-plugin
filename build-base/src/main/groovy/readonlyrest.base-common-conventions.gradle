@@ -1,0 +1,58 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+
+plugins {
+    id "com.github.hierynomus.license"
+    id "com.star-zero.gradle.githook"
+    id "org.owasp.dependencycheck"
+    id "maven-publish"
+    id "scala"
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+dependencies {
+    implementation group: 'org.scala-lang',     name: 'scala-library',      version: '2.12.17'
+}
+
+test {
+    reports {
+        junitXml.getRequired().set(true)
+        html.getRequired().set(false)
+    }
+}
+
+githook {
+    hooks {
+        "pre-commit" {
+            shell = "./gradlew license --rerun-tasks"
+        }
+    }
+}
+
+license {
+    header rootProject.file('ReadonlyRESTLicenseHeader.txt')
+    skipExistingHeaders true
+    useDefaultMappings = false
+    mapping {
+        java = 'SLASHSTAR_STYLE'
+        scala = 'SLASHSTAR_STYLE'
+    }
+}

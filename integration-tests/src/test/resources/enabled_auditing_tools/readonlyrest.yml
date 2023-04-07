@@ -8,8 +8,10 @@ readonlyrest:
   prompt_for_basic_auth: false
 
   audit:
-    collector: true
-    index_template: "'audit_index'"
+    enabled: true
+    outputs:
+      - type: index
+        index_template: "'audit_index'"
 
   access_control_rules:
 
@@ -33,7 +35,8 @@ readonlyrest:
       methods: POST
       auth_key: username:dev
       indices: ["other"]
-      kibana_access: "ro"
+      kibana:
+        access: "ro"
 
     - name: "Rule 4"
       auth_key: restricted:dev

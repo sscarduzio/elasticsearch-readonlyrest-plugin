@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -36,13 +35,11 @@ class CurrentUserMetadataEsRequestContext(actionRequest: RRUserMetadataRequest,
 
   override lazy val isReadOnlyRequest: Boolean = true
 
-  override lazy val correlationId: CorrelationId = CorrelationId.random
-
   override val initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
-    this,
-    UserMetadata.from(this),
-    Set.empty,
-    List.empty
+    requestContext = this,
+    userMetadata = UserMetadata.from(this),
+    responseHeaders = Set.empty,
+    responseTransformations = List.empty
   )
 
   override protected def modifyRequest(blockContext: CurrentUserMetadataRequestBlockContext): ModificationResult = Modified

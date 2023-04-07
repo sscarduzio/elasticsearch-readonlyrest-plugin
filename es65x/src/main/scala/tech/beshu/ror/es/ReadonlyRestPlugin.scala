@@ -52,7 +52,6 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.boot.{EsInitListener, SecurityProviderConfiguratorForFips}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
-import tech.beshu.ror.configuration.{FipsConfiguration, RorSsl}
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
@@ -105,11 +104,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds
-  private val sslConfig = RorSsl
-    .load(environment.configFile)
-    .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
-    .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
-  private val fipsConfig = FipsConfiguration
+  private val rorEsConfig = ReadonlyRestEsConfig
     .load(environment.configFile)
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
@@ -117,7 +112,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   private var ilaf: IndexLevelActionFilter = _
 
-  SecurityProviderConfiguratorForFips.configureIfRequired(fipsConfig)
+  SecurityProviderConfiguratorForFips.configureIfRequired(rorEsConfig.fipsConfig)
 
   override def createComponents(client: Client,
                                 clusterService: ClusterService,
@@ -137,7 +132,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         environment,
         TransportServiceInterceptor.remoteClusterServiceSupplier,
         SnapshotsServiceInterceptor.snapshotsServiceSupplier,
-        esInitListener
+        esInitListener,
+        rorEsConfig
       )
     }
     List.empty[AnyRef].asJava
@@ -174,12 +170,13 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                  xContentRegistry: NamedXContentRegistry,
                                  networkService: NetworkService,
                                  dispatcher: HttpServerTransport.Dispatcher): util.Map[String, Supplier[HttpServerTransport]] = {
-    sslConfig
+    rorEsConfig
+      .sslConfig
       .externalSsl
       .map(ssl =>
         "ssl_netty4" -> new Supplier[HttpServerTransport] {
           override def get(): HttpServerTransport = doPrivileged{
-            new SSLNetty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, ssl, fipsConfig.isSslFipsCompliant)
+            new SSLNetty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, ssl, rorEsConfig.fipsConfig.isSslFipsCompliant)
           }
         }
       )
@@ -194,12 +191,13 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                              circuitBreakerService: CircuitBreakerService,
                              namedWriteableRegistry: NamedWriteableRegistry,
                              networkService: NetworkService): util.Map[String, Supplier[Transport]] = {
-    sslConfig
+    rorEsConfig
+      .sslConfig
       .interNodeSsl
       .map(ssl =>
         "ror_ssl_internode" -> new Supplier[Transport] {
           override def get(): Transport = doPrivileged {
-            new SSLNetty4InternodeServerTransport(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService, ssl, fipsConfig.isSslFipsCompliant)
+            new SSLNetty4InternodeServerTransport(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService, ssl, rorEsConfig.fipsConfig.isSslFipsCompliant)
           }
         }
       )

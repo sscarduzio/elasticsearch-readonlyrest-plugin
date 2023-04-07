@@ -22,20 +22,20 @@ import cats.{Eq, Show}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
+import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block._
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.base.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.BlockValidator
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.BlocksLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._

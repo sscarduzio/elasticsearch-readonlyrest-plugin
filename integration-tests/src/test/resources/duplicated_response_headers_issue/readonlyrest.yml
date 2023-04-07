@@ -23,16 +23,18 @@ readonlyrest:
       verbosity: error
 
     - name: "Admin Tenancy"
-      groups: ["Admins"]
-      kibana_access: admin
-      kibana_index: ".kibana"
       verbosity: error
+      groups: ["Admins"]
+      kibana:
+        access: admin
+        index: ".kibana"
 
     - name: "Template Tenancy"
-      groups: ["Template"]
-      kibana_access: admin
-      kibana_index: ".kibana_template"
       verbosity: error
+      groups: ["Template"]
+      kibana:
+        access: admin
+        index: ".kibana_template"
 
     - name: "011-data"
       external_authentication: "ExternalAuthService"
@@ -41,17 +43,20 @@ readonlyrest:
         groups: ["011"]
       indices: ["negotiation-*", "trade-*", "transation-*"]
       filter: '{"bool": { "must": { "match": { "firmid": "011" }}}}'
-      kibana_access: rw
-      kibana_index: ".kibana_@{user}"
-      kibana_hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
+      kibana:
+        access: rw
+        index: ".kibana_@{user}"
+        hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
+
     - name: "011"
       external_authentication: "ExternalAuthService"
       groups_provider_authorization:
         user_groups_provider: "ExternalGroupService"
         groups: ["011"]
-      kibana_access: rw
-      kibana_index: ".kibana_@{user}"
-      kibana_hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
+      kibana:
+        access: rw
+        index: ".kibana_@{user}"
+        hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
 
     - name: "013-data"
       external_authentication: "ExternalAuthService"
@@ -60,19 +65,20 @@ readonlyrest:
         groups: ["013"]
       indices: ["negotiation-*", "trade-*", "transation-*"]
       filter: '{"bool": { "must": { "match": { "firmid": "013" }}}}'
-      kibana_access: rw
-      kibana_index: ".kibana_@{user}"
-      kibana_hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
+      kibana:
+        access: rw
+        index: ".kibana_@{user}"
+        hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
 
     - name: "013"
       external_authentication: "ExternalAuthService"
       groups_provider_authorization:
         user_groups_provider: "ExternalGroupService"
         groups: ["013"]
-      kibana_access: rw
-      kibana_index: ".kibana_@{user}"
-      kibana_hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
-      #verbosity: error
+      kibana:
+        access: rw
+        index: ".kibana_@{user}"
+        hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
 
   external_authentication_service_configs:
     - name: "ExternalAuthService"

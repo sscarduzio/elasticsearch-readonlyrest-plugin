@@ -39,27 +39,18 @@ object RorProperties extends Logging {
   object defaults {
     val refreshInterval: FiniteDuration Refined Positive = (5 second).toRefinedPositiveUnsafe
     val loadingDelay: FiniteDuration Refined Positive = (5 second).toRefinedPositiveUnsafe
-    val esHost: String = "localhost"
-    val esPort: Int = 9200
-    val proxyPort: Int = 5000
   }
 
   object keys {
     val rorConfig: NonEmptyString = "com.readonlyrest.settings.file.path"
     val refreshInterval: NonEmptyString = "com.readonlyrest.settings.refresh.interval"
     val loadingDelay: NonEmptyString = "com.readonlyrest.settings.loading.delay"
-    val esHost: NonEmptyString = "com.readonlyrest.proxy.es.host"
-    val esPort: NonEmptyString = "com.readonlyrest.proxy.es.port"
-    val proxyPort: NonEmptyString = "com.readonlyrest.proxy.port"
   }
 
   def rorConfigCustomFile(implicit propertiesProvider: PropertiesProvider): Option[File] =
     propertiesProvider
       .getProperty(PropName(keys.rorConfig))
       .map(File(_))
-
-  def rorProxyConfigFile(implicit propertiesProvider: PropertiesProvider): File =
-    getProperty(keys.rorConfig, location => Try(File(location)))
 
   def rorIndexSettingReloadInterval(implicit propertiesProvider: PropertiesProvider): RefreshInterval =
     getProperty(
@@ -75,15 +66,6 @@ object RorProperties extends Logging {
       LoadingDelay(defaults.refreshInterval)
     )
 
-  def rorProxyEsHost(implicit provider: PropertiesProvider): String =
-    getProperty(keys.esHost, str => Success(str), defaults.esHost)
-
-  def rorProxyEsPort(implicit provider: PropertiesProvider): Int =
-    getProperty(keys.esPort, str => Try(Integer.valueOf(str)), defaults.esPort)
-
-  def rorProxyPort(implicit provider: PropertiesProvider): Int =
-    getProperty(keys.proxyPort, str => Try(Integer.valueOf(str)), defaults.proxyPort)
-
   private def getProperty[T: Show](name: NonEmptyString, fromString: String => Try[T], default: T)
                                   (implicit provider: PropertiesProvider) = {
     getPropertyOf(
@@ -93,15 +75,6 @@ object RorProperties extends Logging {
         logger.info(s"No '$name' property found. Using default: ${default.show}")
         default
       }
-    )
-  }
-
-  private def getProperty[T](name: NonEmptyString, fromString: String => Try[T])
-                            (implicit provider: PropertiesProvider) = {
-    getPropertyOf(
-      name,
-      fromString,
-      throw new IllegalArgumentException(s"No required '$name' property found.")
     )
   }
 

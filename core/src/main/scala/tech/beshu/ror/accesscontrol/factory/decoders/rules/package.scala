@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders
 
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.base.impersonation.{Impersonation, ImpersonationSettings}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 
 package object rules {

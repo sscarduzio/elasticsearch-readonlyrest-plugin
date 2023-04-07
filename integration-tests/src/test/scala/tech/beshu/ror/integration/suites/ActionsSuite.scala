@@ -19,16 +19,15 @@ package tech.beshu.ror.integration.suites
 import org.junit.Assert.assertEquals
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.EsClusterProvider
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait ActionsSuite
+class ActionsSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike {
-  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/actions/readonlyrest.yml"
 

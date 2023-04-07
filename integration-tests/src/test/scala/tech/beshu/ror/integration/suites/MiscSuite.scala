@@ -18,17 +18,17 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterProvider}
+import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
+import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait MiscSuite
+class MiscSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
+    with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike {
-  this: EsClusterProvider =>
 
   override implicit val rorConfigFileName = "/misc/readonlyrest.yml"
 
@@ -58,9 +58,8 @@ trait MiscSuite
     }
   }
   "Warning response header" should {
-    "be exposed in ror response" excludeES(allEs6x, allEs8x, rorProxy) in {
+    "be exposed in ror response" excludeES(allEs6x, allEs8x) in {
       // headers are used only for deprecation. Deprecated features change among versions es8xx modules should use other method to test deprecation warnings
-      // proxy cares warning printing it in logs, and it's not passed to ror.
       val indexResponse = adminIndexManager.createIndex(
         index = "typed_index",
         params = Map(
@@ -90,7 +89,7 @@ trait MiscSuite
     "be protected" in {
       val unknownUserCatManager = new CatManager(basicAuthClient("unknown", "unknown"), esVersion = esVersionUsed)
       val response = unknownUserCatManager.main()
-      response.responseCode should be (401)
+      response.responseCode should be(401)
     }
   }
 }

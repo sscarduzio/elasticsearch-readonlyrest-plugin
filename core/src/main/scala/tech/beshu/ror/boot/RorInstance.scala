@@ -123,11 +123,8 @@ class RorInstance private(boot: ReadonlyRest,
 
   def forceReloadTestConfigEngine(config: RawRorConfig,
                                   ttl: FiniteDuration Refined Positive)
-                                 (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, TestConfigUpdated]] = {
+                                 (implicit requestId: RequestId): Task[Either[IndexConfigReloadWithUpdateError, TestConfig.Present]] = {
     anTestConfigEngine.forceReloadTestConfigEngine(config, ttl)
-      .map {
-        _.map(config => TestConfigUpdated(config.expiration.validTo))
-      }
   }
 
   def invalidateTestConfigEngine()
@@ -274,8 +271,6 @@ object RorInstance {
     final case class Invalidated(recent: RawRorConfig,
                                  configuredTtl: FiniteDuration Refined Positive) extends TestConfig
   }
-
-  final case class TestConfigUpdated(validTo: Instant) extends AnyVal
 
   def createWithPeriodicIndexCheck(boot: ReadonlyRest,
                                    mainEngine: ReadonlyRest.MainEngine,

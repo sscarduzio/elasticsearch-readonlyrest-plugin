@@ -18,74 +18,121 @@ package tech.beshu.ror.accesscontrol.blocks.metadata
 
 import cats.Show
 import cats.data.NonEmptyList
-import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.domain.{CorrelationId, KibanaAccess}
 import cats.implicits._
+import tech.beshu.ror.accesscontrol.domain.Json._
+import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
+import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
+import tech.beshu.ror.accesscontrol.domain.{CorrelationId, KibanaAccess}
+
+import scala.collection.JavaConverters._
 
 sealed trait MetadataValue
 
 object MetadataValue {
 
+  final case class MetadataObject(value: Any) extends MetadataValue
   final case class MetadataString(value: String) extends MetadataValue
   final case class MetadataList(value: NonEmptyList[String]) extends MetadataValue
+  final case class MetadataListOfMaps(value: NonEmptyList[Map[String, String]]) extends MetadataValue
+
   def read(userMetadata: UserMetadata,
            correlationId: CorrelationId): Map[String, MetadataValue] = {
     loggingId(correlationId) ++
       loggedUser(userMetadata) ++
+      availableGroups(userMetadata) ++
       currentGroup(userMetadata) ++
+      kibanaAccess(userMetadata) ++
       foundKibanaIndex(userMetadata) ++
       foundKibanaTemplateIndex(userMetadata) ++
-      availableGroups(userMetadata) ++
       hiddenKibanaApps(userMetadata) ++
-      kibanaAccess(userMetadata) ++
+      kibanaApiAllowedPaths(userMetadata) ++
+      kibanaMetadata(userMetadata) ++
       userOrigin(userMetadata)
   }
 
   def toAny(metadataValue: MetadataValue): Any = metadataValue match {
+    case MetadataObject(value) => value
     case MetadataString(value) => value: String
     case MetadataList(nel) => nel.toList.toArray: Array[String]
+    case MetadataListOfMaps(listOfMaps) => listOfMaps.map(_.asJava).toList.toArray[java.util.Map[String, String]]
   }
 
   private def loggingId(correlationId: CorrelationId) = {
-    Map(Constants.HEADER_CORRELATION_ID -> MetadataString(correlationId.value.value))
+    Map("x-ror-correlation-id" -> MetadataString(correlationId.value.value))
   }
 
   private def userOrigin(userMetadata: UserMetadata) = {
-    userMetadata.userOrigin.map(uo => (Constants.HEADER_USER_ORIGIN, MetadataString(uo.value.value))).toMap
+    userMetadata.userOrigin.map(uo => ("x-ror-origin", MetadataString(uo.value.value))).toMap
   }
 
   private def kibanaAccess(userMetadata: UserMetadata) = {
-    userMetadata.kibanaAccess.map(ka => (Constants.HEADER_KIBANA_ACCESS, MetadataString(ka.show))).toMap
+    userMetadata.kibanaAccess.map(ka => ("x-ror-kibana_access", MetadataString(ka.show))).toMap
   }
 
   private def hiddenKibanaApps(userMetadata: UserMetadata) = {
     NonEmptyList
       .fromList(userMetadata.hiddenKibanaApps.toList)
-      .map(apps => (Constants.HEADER_KIBANA_HIDDEN_APPS, MetadataList(apps.map(_.value.value))))
+      .map(apps => ("x-ror-kibana-hidden-apps", MetadataList(apps.map(_.value.value))))
       .toMap
+  }
+
+  private def kibanaApiAllowedPaths(userMetadata: UserMetadata) = {
+    NonEmptyList
+      .fromList(userMetadata.allowedKibanaApiPaths.toList)
+      .map(paths => (
+        "x-ror-kibana-allowed-api-paths",
+        MetadataListOfMaps(paths.map(p => Map(
+          "http_method" -> p.httpMethod.show,
+          "path_regex" -> p.pathRegex.pattern.pattern()
+        )))
+      ))
+      .toMap
+  }
+
+  private def kibanaMetadata(userMetadata: UserMetadata) = {
+    userMetadata
+      .kibanaMetadata
+      .map(metadata => ("x-ror-kibana-metadata", MetadataObject(jsonRepresentationToJavaObj(metadata))))
+      .toMap
+  }
+
+  private def jsonRepresentationToJavaObj(json: JsonRepresentation): Any = {
+    json match {
+      case JsonTree.Object(fields) =>
+        fields.mapValues(jsonRepresentationToJavaObj).asJava
+      case JsonTree.Array(elements) =>
+        elements.map(jsonRepresentationToJavaObj).asJava
+      case JsonTree.Value(value) =>
+        value match {
+          case JsonValue.StringValue(value) => value
+          case JsonValue.NumValue(value) => value
+          case JsonValue.BooleanValue(value) => value
+          case JsonValue.NullValue => null
+        }
+    }
   }
 
   private def availableGroups(userMetadata: UserMetadata) = {
     NonEmptyList
       .fromList(userMetadata.availableGroups.toList)
-      .map(groups => (Constants.HEADER_GROUPS_AVAILABLE, MetadataList(groups.map(_.value.value))))
+      .map(groups => ("x-ror-available-groups", MetadataList(groups.map(_.value.value))))
       .toMap
   }
 
   private def foundKibanaIndex(userMetadata: UserMetadata) = {
-    userMetadata.kibanaIndex.map(i => (Constants.HEADER_KIBANA_INDEX, MetadataString(i.stringify))).toMap
+    userMetadata.kibanaIndex.map(i => ("x-ror-kibana_index", MetadataString(i.stringify))).toMap
   }
 
   private def foundKibanaTemplateIndex(userMetadata: UserMetadata) = {
-    userMetadata.kibanaTemplateIndex.map(i => (Constants.HEADER_KIBANA_TEMPLATE_INDEX, MetadataString(i.stringify))).toMap
+    userMetadata.kibanaTemplateIndex.map(i => ("x-ror-kibana_template_index", MetadataString(i.stringify))).toMap
   }
 
   private def currentGroup(userMetadata: UserMetadata) = {
-    userMetadata.currentGroup.map(g => (Constants.HEADER_GROUP_CURRENT, MetadataString(g.value.value))).toMap
+    userMetadata.currentGroup.map(g => ("x-ror-current-group", MetadataString(g.value.value))).toMap
   }
 
   private def loggedUser(userMetadata: UserMetadata) = {
-    userMetadata.loggedUser.map(u => (Constants.HEADER_USER_ROR, MetadataString(u.id.value.value))).toMap
+    userMetadata.loggedUser.map(u => ("x-ror-username", MetadataString(u.id.value.value))).toMap
   }
 
   private implicit val kibanaAccessShow: Show[KibanaAccess] = Show {
@@ -93,6 +140,18 @@ object MetadataValue {
     case KibanaAccess.ROStrict => "ro_strict"
     case KibanaAccess.RW => "rw"
     case KibanaAccess.Admin => "admin"
+    case KibanaAccess.ApiOnly => "api_only"
     case KibanaAccess.Unrestricted => "unrestricted"
+  }
+
+  private implicit val kibanaApiAllowedHttpMethodShow: Show[AllowedHttpMethod] = Show {
+    case AllowedHttpMethod.Any => "ANY"
+    case AllowedHttpMethod.Specific(httpMethod) =>
+      httpMethod match {
+        case HttpMethod.Get => "GET"
+        case HttpMethod.Post => "POST"
+        case HttpMethod.Put => "PUT"
+        case HttpMethod.Delete => "DELETE"
+      }
   }
 }

@@ -15,41 +15,19 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
+plugins {
+    id "readonlyrest.base-common-conventions"
+
+    id "de.marcphilipp.nexus-publish"           version "0.4.0"
+    id "io.codearte.nexus-staging"              version "0.22.0"
+    id "com.github.prokod.gradle-crossbuild"    version "0.14.1"
+    id "java"
+    id "java-library"
+    id "signing"
+}
+
 group = 'org.elasticsearch.plugin'
 version = pluginVersion
-
-buildscript {
-    repositories {
-        mavenCentral()
-        maven { url "https://plugins.gradle.org/m2/" }
-    }
-
-    dependencies {
-        classpath group: 'org.owasp',                                   name: 'dependency-check-gradle',        version: '7.4.1'
-        classpath group: 'com.github.prokod',                           name: 'gradle-crossbuild-scala',        version: '0.12.0'
-        classpath group: 'io.codearte.gradle.nexus',                    name: 'gradle-nexus-staging-plugin',    version: '0.21.1'
-        classpath group: 'com.star-zero.gradle',                        name: 'githook',                        version: '1.2.1'
-        classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins', name: 'license-gradle-plugin',          version: '0.15.0'
-        classpath group: 'de.marcphilipp.gradle',                       name: 'nexus-publish-plugin',           version: '0.4.0'
-    }
-}
-
-repositories {
-    mavenCentral()
-    mavenLocal()
-}
-
-apply plugin: "com.github.hierynomus.license"
-apply plugin: "com.github.prokod.gradle-crossbuild"
-apply plugin: "com.star-zero.gradle.githook"
-apply plugin: "de.marcphilipp.nexus-publish"
-apply plugin: "io.codearte.nexus-staging"
-apply plugin: "java"
-apply plugin: "maven"
-apply plugin: "maven-publish"
-apply plugin: "org.owasp.dependencycheck"
-apply plugin: "scala"
-apply plugin: "signing"
 
 dependencyCheck {
     /*
@@ -61,7 +39,7 @@ dependencyCheck {
        Critical 9.0-10.0
      */
     failBuildOnCVSS = 3
-    scanConfigurations = ['runtime']
+    scanConfigurations = ['runtimeClasspath']
     suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
 }
 
@@ -90,11 +68,11 @@ crossBuild {
 }
 
 dependencies {
-    compile                 group: 'org.json',           name: 'json',                version: '20180813'
-    crossBuildV211Compile   group: 'org.scala-lang',     name: 'scala-library',       version: '2.11.12'
-    compileOnly             group: 'org.scala-lang',     name: 'scala-library',       version: '2.12.17'
-    crossBuildV212Compile   group: 'org.scala-lang',     name: 'scala-library',       version: '2.12.17'
-    crossBuildV213Compile   group: 'org.scala-lang',     name: 'scala-library',       version: '2.13.10'
+    implementation                 group: 'org.json',           name: 'json',                version: '20230227'
+    crossBuildV211Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.11.12'
+    compileOnly                    group: 'org.scala-lang',     name: 'scala-library',       version: '2.12.17'
+    crossBuildV212Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.12.17'
+    crossBuildV213Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.13.10'
 }
 
 test {
@@ -102,28 +80,6 @@ test {
         showStandardStreams = true
         exceptionFormat = 'full'
         events "standardOut", "started", "passed", "skipped", "failed"
-    }
-    reports {
-        junitXml.enabled = true
-        html.enabled = false
-    }
-}
-
-license {
-    header rootProject.file('ReadonlyRESTLicenseHeader.txt')
-    skipExistingHeaders true
-    useDefaultMappings = false
-    mapping {
-        java = 'SLASHSTAR_STYLE'
-        scala = 'SLASHSTAR_STYLE'
-    }
-}
-
-githook {
-    hooks {
-        "pre-commit" {
-            shell = "./gradlew license --rerun-tasks"
-        }
     }
 }
 
@@ -162,14 +118,14 @@ gradle.taskGraph.whenReady { taskGraph ->
     }
 }
 
-task sourcesJar(type: Jar) {
+tasks.register('sourcesJar', Jar) {
     from sourceSets.main.allJava
-    classifier = 'sources'
+    archiveClassifier.set('sources')
 }
 
-task javadocJar(type: Jar) {
+tasks.register('javadocJar', Jar) {
     from javadoc
-    classifier = 'javadoc'
+    archiveClassifier.set('javadoc')
 }
 
 group = 'tech.beshu.ror'

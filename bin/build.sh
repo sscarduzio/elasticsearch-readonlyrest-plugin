@@ -35,129 +35,129 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "core_tests" ]]; then
     ./gradlew --stacktrace core:test
 fi
 
-if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_proxy" ]]; then
-    echo ">>> proxy => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=proxy' '-Pmode=proxy' || ( find . |grep hs_err |xargs cat && exit 1 )
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es87x" ]]; then
+    echo ">>> es87x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es87x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es85x" ]]; then
     echo ">>> es85x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es85x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es85x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es84x" ]]; then
     echo ">>> es84x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es84x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es84x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es83x" ]]; then
     echo ">>> es83x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es83x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es83x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es82x" ]]; then
     echo ">>> es82x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es82x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es82x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es81x" ]]; then
     echo ">>> es81x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es81x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es81x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es80x" ]]; then
     echo ">>> es80x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es80x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es80x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es716x" ]]; then
     echo ">>> es716x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es716x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es716x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es714x" ]]; then
     echo ">>> es714x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es714x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es714x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es711x" ]]; then
     echo ">>> es711x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es711x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es711x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es710x" ]]; then
     echo ">>> es710x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es710x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es710x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es79x" ]]; then
     echo ">>> es79x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es79x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es79x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es78x" ]]; then
     echo ">>> es78x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es78x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es78x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es77x" ]]; then
     echo ">>> es77x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es77x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es77x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es74x" ]]; then
     echo ">>> es74x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es74x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es74x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es73x" ]]; then
     echo ">>> es73x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es73x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es73x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es72x" ]]; then
     echo ">>> es72x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es72x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es72x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es70x" ]]; then
     echo ">>> es70x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es70x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es70x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es67x" ]]; then
     echo ">>> es67x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es67x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es67x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es66x" ]]; then
     echo ">>> es66x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es66x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es66x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es65x" ]]; then
     echo ">>> es65x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es65x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es65x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es63x" ]]; then
     echo ">>> es63x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es63x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es63x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es62x" ]]; then
     echo ">>> es62x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es62x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es62x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es61x" ]]; then
     echo ">>> es61x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es61x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es61x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es60x" ]]; then
     echo ">>> es60x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es60x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es60x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; then
@@ -169,7 +169,11 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es8xx" ]]; then
 
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
+    #es87
+    ./gradlew --stacktrace es87x:ror '-PesVersion=8.7.0'
+
     #es85
+    ./gradlew --stacktrace es85x:ror '-PesVersion=8.6.2'
     ./gradlew --stacktrace es85x:ror '-PesVersion=8.6.1'
     ./gradlew --stacktrace es85x:ror '-PesVersion=8.6.0'
     ./gradlew --stacktrace es85x:ror '-PesVersion=8.5.3'

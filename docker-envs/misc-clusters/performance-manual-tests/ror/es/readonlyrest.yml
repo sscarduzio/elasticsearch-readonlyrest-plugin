@@ -38,16 +38,18 @@ readonlyrest:
       verbosity: error
 
     - name: "for kibana admin"
-      kibana_access: admin
+      kibana:
+        access: admin
       users: ["admin1"]
       ldap_authentication: "ldap"
       verbosity: error
 
     - name: "for kibana read-only users"
-      kibana_access: admin
       users: ["*"]
-      kibana_index: ".kibana_@{user}"
-      kibana_hide_apps: ["readonlyrest_kbn"]
+      kibana:
+        access: admin
+        index: ".kibana_@{user}"
+        hide_apps: ["readonlyrest_kbn"]
       ldap_authentication: "ldap"
       verbosity: error
 

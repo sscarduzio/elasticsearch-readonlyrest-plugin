@@ -42,36 +42,6 @@
         <sha1>ce88877609b732ab2544f90001ca70e815bbc49c</sha1>
         <cpe>cpe:/a:async_project:async</cpe>
     </suppress>
-    <!-- The following CVE's are false positive and should be updated to fixed for version 1.33,
-         description: https://bitbucket.org/snakeyaml/snakeyaml/issues/531/stackoverflow-oss-fuzz-47081 -->
-    <suppress>
-        <notes><![CDATA[
-   file name: snakeyaml-1.33.jar
-   ]]></notes>
-        <sha1>2cd0a87ff7df953f810c344bdf2fe3340b954c69</sha1>
-        <cve>CVE-2022-38752</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
-   file name: jackson-databind-2.13.4.2.jar (https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-42003)
-   ]]></notes>
-        <sha1>325c06bdfeb628cfb80ebaaf1a26cc1eb558a585</sha1>
-        <cve>CVE-2022-42003</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
-   file name: ror-shadowed-libs-all.jar (shaded: org.yaml:snakeyaml:1.33) - safe constructor used
-   ]]></notes>
-        <sha1>1d2ec974631aa42efee89c0157ddc39c3ad65286</sha1>
-        <cve>CVE-2022-1471</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
-   file name: ror-shadowed-libs-all.jar (shaded: org.yaml:snakeyaml:1.33) - safe constructor used
-   ]]></notes>
-        <sha1>2cd0a87ff7df953f810c344bdf2fe3340b954c69</sha1>
-        <cve>CVE-2022-1471</cve>
-    </suppress>
     <suppress>
         <notes><![CDATA[
    file name: async-http-client-netty-utils-2.10.5.jar
@@ -81,16 +51,37 @@
     </suppress>
     <suppress>
         <notes><![CDATA[
-   file name: snakeyaml-1.33.jar
+   file name: json-20230227.jar - fixed in given version (https://nvd.nist.gov/vuln/detail/CVE-2022-45688)
    ]]></notes>
-        <sha1>2cd0a87ff7df953f810c344bdf2fe3340b954c69</sha1>
-        <cve>CVE-2022-3064</cve>
+        <sha1>7a0d4aca76513d8ce81f9b044ce8126b84809ad8</sha1>
+        <cve>CVE-2022-45688</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[
-   file name: snakeyaml-1.33.jar
+   file name: guava-31.1-jre.jar - fixed in given version (https://nvd.nist.gov/vuln/detail/cve-2020-8908)
    ]]></notes>
-        <sha1>2cd0a87ff7df953f810c344bdf2fe3340b954c69</sha1>
-        <cve>CVE-2021-4235</cve>
+        <sha1>60458f877d055d0c9114d9e1a2efb737b4bc282c</sha1>
+        <cve>CVE-2020-8908</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: bc-noncert-1.0.2.4.jar
+   ]]></notes>
+        <sha1>ab0203590a39ad2fe4c225ddfad70e6a552c8445</sha1>
+        <cpe>cpe:/a:bouncycastle:fips_java_api</cpe>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: bc-noncert-1.0.2.4.jar
+   ]]></notes>
+        <sha1>ab0203590a39ad2fe4c225ddfad70e6a552c8445</sha1>
+        <cpe>cpe:/a:bouncycastle:legion-of-the-bouncy-castle</cpe>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: bc-noncert-1.0.2.4.jar
+   ]]></notes>
+        <sha1>ab0203590a39ad2fe4c225ddfad70e6a552c8445</sha1>
+        <cpe>cpe:/a:bouncycastle:legion-of-the-bouncy-castle-fips-java-api</cpe>
     </suppress>
 </suppressions>

@@ -26,7 +26,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.boot.ReadonlyRest.RorMode
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers._
@@ -44,7 +43,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    new RawRorConfigBasedCoreFactory(RorMode.Plugin)
+    new RawRorConfigBasedCoreFactory()
   }
   protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = MockLdapConnectionPoolProvider
   protected val httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory

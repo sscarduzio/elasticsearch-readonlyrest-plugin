@@ -34,7 +34,6 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{BlocksLevelCreationError, DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.boot.ReadonlyRest.RorMode
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers._
@@ -46,8 +45,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
-    implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
-    new RawRorConfigBasedCoreFactory(RorMode.Plugin)
+    new RawRorConfigBasedCoreFactory()
   }
 
   "A RorAclFactory" should {
@@ -356,11 +354,14 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |  access_control_rules:
             |
             |  - name: test_block
-            |    kibana_access: admin
+            |    kibana:
+            |      access: admin
             |    actions: ["cluster:*"]
             |""".stripMargin)
         val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
-        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block contains Kibana Access Rule and Actions Rule. These two cannot be used together in one block.")))))
+        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(
+          "The 'test_block' block contains 'kibana' rule (or deprecated 'kibana_access' rule) and 'actions' rule. These two cannot be used together in one block."
+        )))))
       }
       "block uses user variable without defining authentication rule beforehand" in {
         val config = rorConfigFromUnsafe(
@@ -394,6 +395,84 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |""".stripMargin)
         val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block doesn't meet requirements for defined variables. JWT variables are not allowed to be used in Groups rule")))))
+      }
+      "old style kibana rules cannot be mixed with new style kibana rule" when {
+        "kibana_access and kibana rules are mixed" in {
+          val config = rorConfigFromUnsafe(
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block
+              |    kibana_access: ro
+              |    kibana:
+              |      access: ro
+              |      index: .kibana_custom
+              |
+              |""".stripMargin)
+          val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
+          acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(
+            """The 'test_block' block contains 'kibana' rule and 'kibana_access' rule. The second one is deprecated. The first one offers all the second one is able to provide."""
+          )))))
+        }
+        "kibana_index and kibana rules are mixed" in {
+          val config = rorConfigFromUnsafe(
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block
+              |    kibana_index: .kibana_custom
+              |    kibana:
+              |      access: ro
+              |      index: .kibana_custom
+              |
+              |""".stripMargin)
+          val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
+          acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(
+            """The 'test_block' block contains 'kibana' rule and 'kibana_index' rule. The second one is deprecated. The first one offers all the second one is able to provide."""
+          )))))
+        }
+        "kibana_hide_apps and kibana rules are mixed" in {
+          val config = rorConfigFromUnsafe(
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block
+              |    kibana_hide_apps: ["app1"]
+              |    kibana:
+              |      access: ro
+              |      index: .kibana_custom
+              |
+              |""".stripMargin)
+          val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
+          acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(
+            """The 'test_block' block contains 'kibana' rule and 'kibana_hide_apps' rule. The second one is deprecated. The first one offers all the second one is able to provide."""
+          )))))
+        }
+        "kibana_template_index and kibana rules are mixed" in {
+          val config = rorConfigFromUnsafe(
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block
+              |    kibana_template_index: ".kibana_template_index"
+              |    kibana:
+              |      access: ro
+              |      index: .kibana_custom
+              |
+              |""".stripMargin)
+          val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
+          acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(
+            """The 'test_block' block contains 'kibana' rule and 'kibana_template_index' rule. The second one is deprecated. The first one offers all the second one is able to provide."""
+          )))))
+        }
       }
     }
     "return rule level error" when {

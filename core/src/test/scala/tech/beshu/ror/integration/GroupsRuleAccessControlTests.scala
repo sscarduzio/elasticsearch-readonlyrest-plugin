@@ -18,10 +18,12 @@ package tech.beshu.ror.integration
 
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
+import org.scalactic.anyvals.NonEmptySet
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, IndexNotFound}
+import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause
+import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, ForbiddenByMismatched}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -68,7 +70,8 @@ class GroupsRuleAccessControlTests
       |    jwt_auth: "jwt1"
       |
       |  - name: "::ELKADMIN::"
-      |    kibana_access: unrestricted
+      |    kibana:
+      |      access: unrestricted
       |    groups: ["admin"]
       |
       |  users:
@@ -166,7 +169,7 @@ class GroupsRuleAccessControlTests
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 5
-          inside(result.result) { case IndexNotFound() =>
+          inside(result.result) { case ForbiddenByMismatched(_) =>
           }
         }
       }

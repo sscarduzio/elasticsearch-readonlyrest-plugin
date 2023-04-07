@@ -23,13 +23,13 @@ import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.providers._
 import tech.beshu.ror.utils.misc.Resources.getResourcePath
 
-trait PluginTestSupport extends PluginEsClusterProvider with CallingEsDirectly {
+trait PluginTestSupport extends EsClusterProvider with CallingEsDirectly {
   this: MultipleEsTargets =>
 }
 
 trait SingletonPluginTestSupport
   extends PluginTestSupport
-    with PluginEsClusterProvider
+    with EsClusterProvider
     with BeforeAndAfterAll
     with ResolvedRorConfigFileProvider {
   this: Suite with BaseSingleNodeEsClusterTest =>
@@ -66,6 +66,6 @@ trait SingletonPluginTestSupport
 
   private def resolvedConfig(startedDependencies: StartedClusterDependencies) = {
     val configFile = File.apply(getResourcePath(rorConfigFileName))
-    RorConfigAdjuster.adjustUsingDependencies(configFile, startedDependencies, Mode.Plugin)
+    RorConfigAdjuster.adjustUsingDependencies(configFile, startedDependencies)
   }
 }
