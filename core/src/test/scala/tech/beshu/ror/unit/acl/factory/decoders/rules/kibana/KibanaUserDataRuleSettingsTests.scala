@@ -385,7 +385,7 @@ class KibanaUserDataRuleSettingsTests
                 |      access: "ro"
                 |      allowed_api_paths:
                 |        - http_method: GET
-                |          path: "/api/spaces?test=12.2"
+                |          http_path: "/api/spaces?test=12.2"
                 |
                 |""".stripMargin,
             assertion = rule => {
@@ -418,7 +418,7 @@ class KibanaUserDataRuleSettingsTests
                 |      allowed_api_paths:
                 |        - "^/api/spaces/.*$"
                 |        - http_method: GET
-                |          path: "/api/spaces?test=12.2"
+                |          http_path: "/api/spaces?test=12.2"
                 |
                 |""".stripMargin,
             assertion = rule => {

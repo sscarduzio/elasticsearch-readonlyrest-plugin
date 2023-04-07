@@ -96,7 +96,7 @@ class CurrentUserMetadataAccessControlTests
       |      allowed_api_paths:
       |        - "^/api/spaces/.*$$"
       |        - http_method: GET
-      |          path: "/api/spaces?test=12.2"
+      |          http_path: "/api/spaces?test=12.2"
       |
       |  - name: "User 3"
       |    auth_key: "user3:pass"

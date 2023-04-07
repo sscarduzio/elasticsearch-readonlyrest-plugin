@@ -33,7 +33,7 @@ readonlyrest:
         allowed_api_paths:
           - "^/api/spaces/.*$"
           - http_method: GET
-            path: "/api/spaces?test=12.2"
+            http_path: "/api/spaces?test=12.2"
         metadata:
           a: 1
           b: true
