@@ -3,18 +3,14 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 8.6.1
-  image: coutopl/es_8.6.1_ror_1.47.0-eck-poc
+  version: 8.6.2
+  image: coutopl/es_8.6.2_ror_1.47.0-eck-poc
   auth:
     roles:
     - secretName: amin-role-secret
   nodeSets:
   - name: default
-    count: 1
-    config:
-      xpack.security.authc.anonymous.username: anonymous
-      xpack.security.authc.anonymous.roles: superuser, admins
-      xpack.security.authc.anonymous.authz_exception: false
+    count: 2
     podTemplate:
       spec:
         containers:
@@ -24,8 +20,6 @@ spec:
               memory: 1Gi
               cpu: 1024m
           env:
-#          - name: xpack.security.enabled
-#            value: "false"
           - name: INTERNAL_USR_PASS
             valueFrom:
               secretKeyRef:
@@ -36,11 +30,13 @@ spec:
               secretKeyRef:
                 name: quickstart-es-internal-users
                 key: elastic-internal-probe
-#          - name: KIBANA_USER_PASS
-#            valueFrom:
-#              secretKeyRef:
-#                name: quickstart-kibana-user
-#                key: default-quickstart-kibana-user
+          - name: KIBANA_SERVICE_ACCOUNT_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: quickstart-kibana-user
+                key: token
+          - name: ES_JAVA_OPTS
+            value: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8888
           volumeMounts:
           - name: config
             mountPath: /usr/share/elasticsearch/config/readonlyrest.yml

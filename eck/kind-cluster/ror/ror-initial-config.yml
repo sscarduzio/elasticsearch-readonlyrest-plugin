@@ -12,6 +12,7 @@ data:
          proxy_auth:
            proxy_auth_config: "proxy1"
            users: ["Bearer *"]
+           #users: ["Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}"]
         
        - name: "PROBE"
          #verbosity: error
@@ -24,7 +25,6 @@ data:
        - name: "CONTAINER ADMIN - file"
          type: allow
          auth_key: "admin:container"
-         kibana_access: admin
      
        - name: "User 1"
          type: allow

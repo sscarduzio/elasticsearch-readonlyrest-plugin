@@ -3,9 +3,8 @@ kind: Kibana
 metadata:
   name: quickstart
 spec:
-  version: 8.6.1
-  image: coutopl/kbn_8.6.1_ror_1.47.0-eck-poc
-#  image: docker.elastic.co/kibana/kibana:8.6.1
+  version: 8.6.2
+  image: coutopl/kbn_8.6.2_ror_1.47.0-eck-poc
   count: 1
   elasticsearchRef:
     name: quickstart
@@ -17,11 +16,3 @@ spec:
           requests:
             memory: 1Gi
             cpu: 0.5
-        volumeMounts:
-        - name: config
-          mountPath: /usr/share/kibana/config/kibana.yml
-          subPath: kibana.yml
-      volumes:
-      - name: config
-        configMap:
-          name: kibana-config

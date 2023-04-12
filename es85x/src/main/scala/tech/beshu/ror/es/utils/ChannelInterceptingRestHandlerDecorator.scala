@@ -20,11 +20,11 @@ import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.rest.action.admin.indices.RestUpgradeActionDeprecated
 import org.elasticsearch.rest.action.cat.RestCatAction
 import org.elasticsearch.rest.{RestChannel, RestHandler, RestRequest}
-import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.actions.wrappers._cat.rest.RorWrappedRestCatAction
 import tech.beshu.ror.es.actions.wrappers._upgrade.rest.RorWrappedRestUpgradeAction
+import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.ReflectUtils._
 
@@ -40,6 +40,7 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
   override def handleRequest(request: RestRequest, channel: RestChannel, client: NodeClient): Unit = {
     val rorRestChannel = new RorRestChannel(channel)
     ThreadRepo.setRestChannel(rorRestChannel)
+    addXpackSecurityAuthenticationHeaderForInCaseOfSecurityRequest(request, client)
     wrapped.handleRequest(request, rorRestChannel, client)
   }
 
@@ -64,6 +65,15 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
             Some(action)
         }
       case _ => None
+    }
+  }
+
+  private def addXpackSecurityAuthenticationHeaderForInCaseOfSecurityRequest(request: RestRequest,
+                                                                             client: NodeClient): Unit = {
+    if (request.path().contains("/_security") || request.path().contains("/_xpack/security")) {
+      client
+        .threadPool().getThreadContext
+        .addRorUserAuthenticationHeader(client.getLocalNodeId)
     }
   }
 

@@ -5,9 +5,14 @@ metadata:
 spec:
   type: NodePort
   ports:
-  - port: 9200
-    targetPort: 9200
-    nodePort: 30010
+    - port: 9200
+      name: esport
+      targetPort: 9200
+      nodePort: 30010
+    - port: 8888
+      name: debugport
+      targetPort: 8888
+      nodePort: 30012
   selector:
     common.k8s.elastic.co/type: elasticsearch
     elasticsearch.k8s.elastic.co/cluster-name: quickstart
