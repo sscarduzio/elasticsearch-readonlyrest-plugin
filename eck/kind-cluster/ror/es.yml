@@ -18,7 +18,7 @@ spec:
           resources:
             limits:
               memory: 2048Mi
-              cpu: 1
+              cpu: 2
           env:
           - name: INTERNAL_USR_PASS
             valueFrom:

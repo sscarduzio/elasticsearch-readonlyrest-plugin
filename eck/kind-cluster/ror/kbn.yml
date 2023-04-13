@@ -15,4 +15,4 @@ spec:
         resources:
           requests:
             memory: 2048Mi
-            cpu: 1
+            cpu: 2
