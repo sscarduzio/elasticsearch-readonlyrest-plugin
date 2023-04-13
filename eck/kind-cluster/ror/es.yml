@@ -17,8 +17,8 @@ spec:
         - name: elasticsearch
           resources:
             limits:
-              memory: 1Gi
-              cpu: 1024m
+              memory: 512Mi
+              cpu: 1
           env:
           - name: INTERNAL_USR_PASS
             valueFrom:

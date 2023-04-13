@@ -76,11 +76,6 @@ object SecurityActionFilterDeactivator extends BytecodeJarModifier {
       underlying.visitMaxs(1, 1)
       underlying.visitEnd()
     }
-
-//    override def visitMethodInsn(opcode: Int, owner: String, name: String, descriptor: String, isInterface: Boolean): Unit = {
-//      println(s"visitMethodInsn: $opcode, $owner, $name, $descriptor, $isInterface")
-//      super.visitMethodInsn(opcode, owner, name, descriptor, isInterface)
-//    }
   }
 
   // todo: remove

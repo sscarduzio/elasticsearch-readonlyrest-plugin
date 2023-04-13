@@ -30,6 +30,7 @@ data:
          type: allow
          auth_key: "user1:test"
          indices: [".kibana*", "kibana*"]
+         kibana_access: ro
        
        proxy_auth_configs:
         - name: "proxy1"
