@@ -57,11 +57,6 @@ final class YamlFileBasedConfigLoader(file: File)
       case other => other
     }
   }
-
-  private implicit val showResolvingError: Show[NonEmptyList[ResolvingError]] =
-    Show.show { nel =>
-      nel.map(_.msg).mkString_("\n\t* ")
-    }
 }
 
 final case class MalformedSettings(message: String)
