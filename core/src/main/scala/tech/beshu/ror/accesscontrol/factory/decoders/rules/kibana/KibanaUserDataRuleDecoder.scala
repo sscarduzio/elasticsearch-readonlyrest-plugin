@@ -82,8 +82,8 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex)
     val extendedKibanaAllowedApiDecoder: Decoder[KibanaAllowedApiPath] = Decoder.instance { c =>
       for {
         httpMethod <- c.downField("http_method").as[HttpMethod]
-        path <- c.downField("path").as[Regex]
-      } yield KibanaAllowedApiPath(AllowedHttpMethod.Specific(httpMethod), path)
+        httpPath <- c.downField("http_path").as[Regex]
+      } yield KibanaAllowedApiPath(AllowedHttpMethod.Specific(httpMethod), httpPath)
     }
 
     extendedKibanaAllowedApiDecoder.or(simpleKibanaAllowedApiPathDecoder)
