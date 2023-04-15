@@ -11,8 +11,8 @@ data:
        - name: "Bearer token" 
          proxy_auth:
            proxy_auth_config: "proxy1"
-           users: ["Bearer *"]
-           #users: ["Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}"]
+           #users: ["Bearer *"]
+           users: ["Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}"]
         
        - name: "PROBE"
          #verbosity: error
