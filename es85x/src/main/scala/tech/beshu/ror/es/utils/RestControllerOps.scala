@@ -99,6 +99,8 @@ class RestControllerOps(val restController: RestController) {
       case Success(underlyingHandler) =>
         println(s"Removing rest handler wrapper (${toProcessing.getClass.getSimpleName}) from ${underlyingHandler.getClass.getSimpleName}")
         underlyingHandler
+      case Failure(_: NoSuchElementException) =>
+        toProcessing
       case Failure(ex) =>
         println(s"Leaving handler ${toProcessing.getClass.getSimpleName} as it is\n${ex.printStackTrace()}")
         toProcessing
