@@ -150,10 +150,6 @@ private class DocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fields
           case Some(name) => currentBuilder.startArray(name)
           case None => currentBuilder.startArray()
         }
-        def addBoolField(key: Option[String], value: Boolean) = key match {
-          case Some(aKey) => builder.field(aKey, value)
-          case None => builder.value(value)
-        }
         json match {
           case Obj(map) =>
             map
@@ -185,11 +181,10 @@ private class DocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fields
               case None => builder.value(value)
             }
           case Bool(value) =>
-            addBoolField(key, value)
-          case True =>
-            addBoolField(key, value = true)
-          case False =>
-            addBoolField(key, value = false)
+            key match {
+              case Some(aKey) => builder.field(aKey, value)
+              case None => builder.value(value)
+            }
           case Null =>
             key match {
               case Some(aKey) => builder.nullField(aKey)

@@ -64,5 +64,5 @@ dependencies {
     api group: 'eu.rekawek.toxiproxy',           name: 'toxiproxy-java',                    version: "2.1.4"
     api group: 'com.unboundid',                  name: 'unboundid-ldapsdk',                 version: '6.0.6'
     api group: 'com.mashape.unirest',            name: 'unirest-java',                      version: '1.4.9'
-    api group: 'com.lihaoyi',                    name: 'upickle_2.13',                      version: '3.0.0'
+    api group: 'com.lihaoyi',                    name: 'upickle_2.13',                      version: '3.1.0'
 }

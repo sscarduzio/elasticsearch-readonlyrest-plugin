@@ -39,7 +39,7 @@ object ResolvableJsonRepresentationOps {
     private def mapTree(tree: JsonRepresentation): Either[CreationError, ResolvableJsonRepresentation] = {
       tree match {
         case JsonTree.Object(fields) =>
-          val (keys, mappedValuesResults) = fields.mapValues(mapTree).toList.unzip
+          val (keys, mappedValuesResults) = fields.view.mapValues(mapTree).toList.unzip
           mappedValuesResults
             .sequence
             .map { mappedValues => keys.zip(mappedValues).toMap }
@@ -81,7 +81,7 @@ object ResolvableJsonRepresentationOps {
     private def resolveTree(tree: ResolvableJsonRepresentation): BlockContext => Either[Unresolvable, JsonRepresentation] = { blockContext =>
       tree match {
         case JsonTree.Object(fields) =>
-          val (keys, mappedValuesResults) = fields.mapValues(resolveTree(_)(blockContext)).toList.unzip
+          val (keys, mappedValuesResults) = fields.view.mapValues(resolveTree(_)(blockContext)).toList.unzip
           mappedValuesResults
             .sequence
             .map { mappedValues => keys.zip(mappedValues).toMap }

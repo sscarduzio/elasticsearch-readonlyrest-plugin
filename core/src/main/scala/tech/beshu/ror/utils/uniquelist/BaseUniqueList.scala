@@ -47,7 +47,7 @@ private[uniquelist] abstract class BaseUniqueList[T, F <: BaseUniqueList[T, F]](
 
   override def keysIteratorFrom(start: T): Iterator[T] = iteratorFrom(start)
 
-  override def diff(that: collection.Set[T]): SortedSet[T] = SortedSet(that.toList:_*).diff(this)
+  override def diff(that: collection.Set[T]): F = create(vector.diff(that.toVector))
 
   override def contains(elem: T): Boolean = vector.contains(elem)
 

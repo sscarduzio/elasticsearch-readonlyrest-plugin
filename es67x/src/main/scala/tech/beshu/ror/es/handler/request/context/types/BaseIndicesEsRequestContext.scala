@@ -70,8 +70,8 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
 
   override protected def modifyRequest(blockContext: GeneralIndexRequestBlockContext): ModificationResult = {
     (for {
-      filteredIndices <- NonEmptyList.fromList(blockContext.filteredIndices.toList)
-      allAllowedIndices <- NonEmptyList.fromList(blockContext.allAllowedIndices.toList)
+      filteredIndices <- toSortedNonEmptyList(blockContext.filteredIndices)
+      allAllowedIndices <- toSortedNonEmptyList(blockContext.allAllowedIndices)
     } yield (filteredIndices, allAllowedIndices)) match {
       case Some((filteredIndices, allAllowedIndices)) =>
         update(actionRequest, filteredIndices, allAllowedIndices)
@@ -87,4 +87,10 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
                        filteredIndices: NonEmptyList[ClusterIndexName],
                        allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult
 
+  private def toSortedNonEmptyList[A: Ordering](values: Iterable[A]) = {
+    NonEmptyList.fromList(values.toList.sorted)
+  }
+
+  private implicit val indexNameOrdering: Ordering[ClusterIndexName] =
+    Ordering.by[ClusterIndexName, String](_.stringify)(implicitly[Ordering[String]].reverse)
 }

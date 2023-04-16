@@ -99,7 +99,7 @@ object MetadataValue {
   private def jsonRepresentationToJavaObj(json: JsonRepresentation): Any = {
     json match {
       case JsonTree.Object(fields) =>
-        fields.mapValues(jsonRepresentationToJavaObj).asJava
+        fields.view.mapValues(jsonRepresentationToJavaObj).toMap.asJava
       case JsonTree.Array(elements) =>
         elements.map(jsonRepresentationToJavaObj).asJava
       case JsonTree.Value(value) =>
