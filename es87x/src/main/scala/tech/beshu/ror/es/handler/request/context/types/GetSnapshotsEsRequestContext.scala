@@ -77,14 +77,14 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   }
 
   private def snapshotsFrom(blockContext: SnapshotRequestBlockContext) = {
-    UniqueNonEmptyList.fromTraversable(blockContext.snapshots) match {
+    UniqueNonEmptyList.fromIterable(blockContext.snapshots) match {
       case Some(list) => Right(list)
       case None => Left(())
     }
   }
 
   private def repositoriesFrom(blockContext: SnapshotRequestBlockContext) = {
-    UniqueNonEmptyList.fromTraversable(blockContext.repositories) match {
+    UniqueNonEmptyList.fromIterable(blockContext.repositories) match {
       case Some(list) => Right(list)
       case None => Left(())
     }

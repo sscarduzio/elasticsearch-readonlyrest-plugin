@@ -166,7 +166,7 @@ private[types] object GetComposableIndexTemplateEsRequestContext extends Logging
         .fromString(name)
         .toRight("Template name should be non-empty")
       patterns <- UniqueNonEmptyList
-        .fromTraversable(composableIndexTemplate.indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
+        .fromIterable(composableIndexTemplate.indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
       aliases = Option(composableIndexTemplate.template())
         .map(_.aliases().asSafeMap.keys.flatMap(ClusterIndexName.fromString).toSet)

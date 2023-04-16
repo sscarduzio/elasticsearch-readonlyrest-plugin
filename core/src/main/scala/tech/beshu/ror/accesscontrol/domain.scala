@@ -160,7 +160,7 @@ object domain {
   final case class ResolvablePermittedGroups(permittedGroups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupLike]]) {
     def resolveGroups[B <: BlockContext](blockContext: B): Option[PermittedGroups] = {
       UniqueNonEmptyList
-        .fromTraversable(resolveAll(permittedGroups.toNonEmptyList, blockContext))
+        .fromIterable(resolveAll(permittedGroups.toNonEmptyList, blockContext))
         .map(PermittedGroups.apply)
     }
   }
@@ -202,14 +202,14 @@ object domain {
             result
         }
       if (isThereNotPermittedGroup) None
-      else UniqueNonEmptyList.fromTraversable(matchedUserGroups)
+      else UniqueNonEmptyList.fromIterable(matchedUserGroups)
     }
   }
 
   implicit class GroupsLogicOrExecutor(val groupsLogic: GroupsLogic.Or) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[GroupName]): Option[UniqueNonEmptyList[GroupName]] = {
       val someMatchedUserGroups = groupsLogic.permittedGroups.filterOnlyPermitted(userGroups)
-      UniqueNonEmptyList.fromTraversable(someMatchedUserGroups)
+      UniqueNonEmptyList.fromIterable(someMatchedUserGroups)
     }
   }
 

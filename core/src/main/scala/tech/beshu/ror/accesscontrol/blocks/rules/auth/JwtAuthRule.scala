@@ -205,7 +205,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
       case (Some(NotFound), Groups.NotDefined) =>
         Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
       case (Some(Found(groups)), Groups.Defined(groupsLogic)) =>
-        UniqueNonEmptyList.fromTraversable(groups) match {
+        UniqueNonEmptyList.fromIterable(groups) match {
           case Some(nonEmptyGroups) =>
             groupsLogic.availableGroupsFrom(nonEmptyGroups) match {
               case Some(matchedGroups) =>
@@ -224,7 +224,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
 
   private def checkIfCanContinueWithGroups[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                     groups: UniqueList[GroupName]) = {
-    UniqueNonEmptyList.fromTraversable(groups) match {
+    UniqueNonEmptyList.fromIterable(groups) match {
       case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(PermittedGroups(nonEmptyGroups)) =>
         Right(blockContext)
       case Some(_) | None =>

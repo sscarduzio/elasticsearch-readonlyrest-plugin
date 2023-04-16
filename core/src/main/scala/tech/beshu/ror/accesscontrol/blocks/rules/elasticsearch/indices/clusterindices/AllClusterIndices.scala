@@ -38,7 +38,7 @@ trait AllClusterIndices extends BaseIndicesProcessor {
     val (allAllowedRemoteIndices, allAllowedLocalIndices) = splitIntoRemoteAndLocalIndices(allAllowedIndices)
     val (requestedRemoteIndices, requestedLocalIndices) = splitIntoRemoteAndLocalIndices(requestedIndices)
 
-    (UniqueNonEmptyList.fromTraversable(requestedLocalIndices), UniqueNonEmptyList.fromTraversable(requestedRemoteIndices)) match {
+    (UniqueNonEmptyList.fromIterable(requestedLocalIndices), UniqueNonEmptyList.fromIterable(requestedRemoteIndices)) match {
       case (Some(nonEmptyRequestedLocalIndices), Some(nonEmptyRequestedRemoteIndices)) =>
         import AllClusterIndices._
         for {

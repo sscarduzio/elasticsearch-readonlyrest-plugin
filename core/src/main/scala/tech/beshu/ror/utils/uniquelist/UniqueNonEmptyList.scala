@@ -38,9 +38,9 @@ object UniqueNonEmptyList {
   def of[T](t: T, ts: T*): UniqueNonEmptyList[T] = unsafeFromIterable(t :: ts.toList)
 
   def unsafeFromIterable[T](iterable: Iterable[T]): UniqueNonEmptyList[T] =
-    fromTraversable(iterable).getOrElse(throw new IllegalArgumentException("Cannot create UniqueNonEmptyList from empty list"))
+    fromIterable(iterable).getOrElse(throw new IllegalArgumentException("Cannot create UniqueNonEmptyList from empty list"))
 
-  def fromTraversable[T](iterable: Iterable[T]): Option[UniqueNonEmptyList[T]] =
+  def fromIterable[T](iterable: Iterable[T]): Option[UniqueNonEmptyList[T]] =
     if(iterable.isEmpty) None
     else Some(new UniqueNonEmptyList[T](iterable.toVector.distinct))
 
