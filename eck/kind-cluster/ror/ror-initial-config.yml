@@ -8,12 +8,9 @@ data:
          #verbosity: error
          auth_key: kibana:kibana
 
-       - name: "Bearer token" 
-         proxy_auth:
-           proxy_auth_config: "proxy1"
-           #users: ["Bearer *"]
-           users: ["Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}"]
-        
+       - name: "Bearer token"
+         headers: ["Authorization:Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}"]
+     
        - name: "PROBE"
          #verbosity: error
          auth_key: "elastic-internal-probe:${INTERNAL_PROBE_PASS}"
@@ -31,11 +28,6 @@ data:
          auth_key: "user1:test"
          indices: [".kibana*", "kibana*"]
          kibana_access: ro
-       
-       proxy_auth_configs:
-        - name: "proxy1"
-          user_id_header: "Authorization"          
-
 
 kind: ConfigMap
 metadata:
