@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CannotExtractFields, NotUsingFields, UsingFields}
 import tech.beshu.ror.es.handler.request.queries.QueryType.{Compound, Leaf}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 trait QueryWithModifiableFields[QUERY <: QueryBuilder] {
 

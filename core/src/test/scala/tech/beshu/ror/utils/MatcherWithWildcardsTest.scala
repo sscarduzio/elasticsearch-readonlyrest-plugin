@@ -24,7 +24,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import tech.beshu.ror.utils.MatcherWithWildcardsTest._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class MatcherWithWildcardsTest
   extends AnyWordSpec

@@ -31,7 +31,7 @@ import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService._
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 @Singleton
 class EsIndexJsonContentService(client: NodeClient,

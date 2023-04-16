@@ -18,7 +18,7 @@ package tech.beshu.ror.es.handler.request.queries
 
 import org.elasticsearch.index.query._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 sealed trait QueryType[QUERY <: QueryBuilder]
 

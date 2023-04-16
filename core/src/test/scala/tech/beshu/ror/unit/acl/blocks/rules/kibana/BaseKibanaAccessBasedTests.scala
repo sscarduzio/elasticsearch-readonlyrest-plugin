@@ -35,7 +35,7 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 
 import scala.concurrent.duration._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 
 abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]

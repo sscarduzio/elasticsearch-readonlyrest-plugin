@@ -28,7 +28,7 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
                                      esContext: EsContext,

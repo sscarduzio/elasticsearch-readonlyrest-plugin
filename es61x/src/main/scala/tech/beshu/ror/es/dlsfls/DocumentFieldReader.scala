@@ -32,7 +32,7 @@ import tech.beshu.ror.es.dlsfls.DocumentFieldDirectoryReader.DocumentFieldDirect
 import tech.beshu.ror.fls.FieldsPolicy
 import ujson._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 private class DocumentFieldReader(reader: LeafReader, fieldsRestrictions: FieldsRestrictions)

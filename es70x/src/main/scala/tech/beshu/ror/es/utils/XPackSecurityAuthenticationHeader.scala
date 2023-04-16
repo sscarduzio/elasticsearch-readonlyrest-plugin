@@ -24,7 +24,7 @@ import org.elasticsearch.common.io.stream.BytesStreamOutput
 import tech.beshu.ror.accesscontrol.domain.Header
 
 import java.util.Base64
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object XPackSecurityAuthenticationHeader {
 

@@ -31,7 +31,7 @@ import squants.information.{Bytes, Information}
 import tech.beshu.ror.Constants
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, RRAuditEventRequest}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 @Inject

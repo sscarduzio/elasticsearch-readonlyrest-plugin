@@ -32,7 +32,7 @@ import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
 
 import java.util.function.Consumer
 import scala.concurrent.duration._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 
 abstract class EsContainer(val esVersion: String,

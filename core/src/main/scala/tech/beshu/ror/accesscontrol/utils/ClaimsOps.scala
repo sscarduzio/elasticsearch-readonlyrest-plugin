@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult._
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.{ClaimSearchResult, CustomClaimValue}
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 import scala.util.Try
 

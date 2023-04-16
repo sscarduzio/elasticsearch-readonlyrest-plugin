@@ -28,7 +28,7 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionType, RRAuthMockRequest, RRAuthMockResponse}
 import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 @Inject
 class RestRRAuthMockAction()

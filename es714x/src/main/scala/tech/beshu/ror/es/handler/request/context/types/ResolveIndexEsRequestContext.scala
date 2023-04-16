@@ -32,7 +32,7 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
                                    esContext: EsContext,

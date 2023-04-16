@@ -27,7 +27,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
                                        esContext: EsContext,

@@ -37,7 +37,7 @@ import tech.beshu.ror.accesscontrol.utils.CacheableAction
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
 

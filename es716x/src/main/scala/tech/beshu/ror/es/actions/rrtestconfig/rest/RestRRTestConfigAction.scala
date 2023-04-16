@@ -27,7 +27,7 @@ import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, RRTestCon
 import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
 import java.util
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 @Inject
 class RestRRTestConfigAction()

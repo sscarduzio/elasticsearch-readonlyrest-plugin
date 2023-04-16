@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class FieldsRuleDecoder(flsEngine: FlsEngine)
   extends RuleBaseDecoderWithoutAssociatedFields[FieldsRule] {

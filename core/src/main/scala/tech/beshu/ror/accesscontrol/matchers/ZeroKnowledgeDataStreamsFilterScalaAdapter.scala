@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.matchers
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeDataStreamsFilterScalaAdapter.CheckResult
 import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class ZeroKnowledgeDataStreamsFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter)  {
   def check(dataStreams: Set[DataStreamName], matcher: Matcher[DataStreamName]): CheckResult = {

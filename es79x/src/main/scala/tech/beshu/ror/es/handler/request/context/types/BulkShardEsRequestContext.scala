@@ -30,7 +30,7 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CannotModify, Modified}
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 class BulkShardEsRequestContext(actionRequest: BulkShardRequest,

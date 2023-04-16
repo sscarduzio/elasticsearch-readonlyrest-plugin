@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DocumentId, DocumentWithIndex}
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.utils.ReflecUtils
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object DocumentApiOps {
 

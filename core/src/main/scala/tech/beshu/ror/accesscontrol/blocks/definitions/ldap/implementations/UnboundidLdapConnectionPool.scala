@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Ldap
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 
 class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool,
