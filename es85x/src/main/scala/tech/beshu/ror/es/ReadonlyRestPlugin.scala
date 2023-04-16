@@ -81,7 +81,7 @@ import java.util
 import java.util.function.Supplier
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
-import scala.language.postfixOps
+import scala.language.{existentials, postfixOps}
 
 @Inject
 class ReadonlyRestPlugin(s: Settings, p: Path)
@@ -262,9 +262,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   override def onNodeStarted(): Unit = {
     super.onNodeStarted()
-    import tech.beshu.ror.es.utils.IndexModuleOps._
     indexModuleAtomic.get().foreach { indexModule =>
-      println("Setting RoleIndexSearcherWrapper")
+      import tech.beshu.ror.es.utils.IndexModuleOps._
       indexModule.overwrite(RoleIndexSearcherWrapper.instance)
     }
     doPrivileged {

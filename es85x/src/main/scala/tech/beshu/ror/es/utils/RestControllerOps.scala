@@ -20,6 +20,7 @@ import org.elasticsearch.common.path.PathTrie
 import org.elasticsearch.core.RestApiVersion
 import org.elasticsearch.rest.{RestController, RestHandler, RestRequest}
 import org.joor.Reflect.on
+import org.joor.ReflectException
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.ScalaOps._
 
@@ -99,7 +100,7 @@ class RestControllerOps(val restController: RestController) {
       case Success(underlyingHandler) =>
         println(s"Removing rest handler wrapper (${toProcessing.getClass.getSimpleName}) from ${underlyingHandler.getClass.getSimpleName}")
         underlyingHandler
-      case Failure(_: NoSuchElementException) =>
+      case Failure(ex: ReflectException) =>
         toProcessing
       case Failure(ex) =>
         println(s"Leaving handler ${toProcessing.getClass.getSimpleName} as it is\n${ex.printStackTrace()}")
