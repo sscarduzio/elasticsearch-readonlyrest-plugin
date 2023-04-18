@@ -64,7 +64,9 @@ dependencies {
 compileScala {
     sourceCompatibility = 1.8
     targetCompatibility = 1.8
-    options.compilerArgs << "-Ywarn-macros:after"
+    options.compilerArgs.add("-Ywarn-macros:after")
+    options.compilerArgs.add("-Xfatal-warnings")
+    options.compilerArgs.add("-deprecation:false")
 }
 
 shadowJar {

@@ -84,7 +84,9 @@ test {
 }
 
 compileScala {
-    options.compilerArgs << "-Ywarn-macros:after"
+    options.compilerArgs.add("-Ywarn-macros:after")
+    options.compilerArgs.add("-Xfatal-warnings")
+    options.compilerArgs.add("-deprecation:false")
 }
 
 def ror_pom = { ->

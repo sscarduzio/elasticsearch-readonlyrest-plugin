@@ -64,7 +64,7 @@ dependencyCheck {
 }
 
 tasks.withType(ScalaCompile).configureEach {
-    scalaCompileOptions.additionalParameters = ["-Ywarn-macros:after", "-feature"]
+    scalaCompileOptions.additionalParameters = ["-Ywarn-macros:after", "-feature", "-Xfatal-warnings", "-deprecation:false"]
 }
 
 tasks.withType(Zip).configureEach { task ->

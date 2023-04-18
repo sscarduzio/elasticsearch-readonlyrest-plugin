@@ -29,8 +29,7 @@ tasks.withType(ScalaCompile).configureEach {
             }
 
     // Add whatever flags you typically add
-    parameters += ["-Ywarn-macros:after", "-feature"]
-
+    parameters += ["-Ywarn-macros:after", "-feature", "-Xfatal-warnings", "-deprecation:false"]
     // Finally set the additionalParameters
     scalaCompileOptions.additionalParameters = parameters
 }
