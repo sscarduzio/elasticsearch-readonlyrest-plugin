@@ -94,6 +94,7 @@ stages:
       - job:
         condition: or(eq(variables.isDevelop, true), eq(variables.isMaster, true))
         container: maven:3.8.1-openjdk-17-slim
+        timeoutInMinutes: 180
         steps:
           - checkout: self
             fetchDepth: 1
@@ -135,6 +136,7 @@ stages:
       - job:
         condition: and(ne(variables.isDevelop, true), ne(variables.isMaster, true))
         container: maven:3.8.1-openjdk-17-slim
+        timeoutInMinutes: 180
         steps:
           - checkout: self
             fetchDepth: 1
