@@ -17,7 +17,6 @@
 package tech.beshu.ror.es
 
 import monix.execution.Scheduler
-import monix.execution.atomic.Atomic
 import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.support.ActionFilter
@@ -164,10 +163,12 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     List(Constants.FIELDS_TRANSIENT).asJava
   }
 
-  private val indexModuleAtomic: Atomic[Option[IndexModule]] = Atomic(Option.empty[IndexModule])
+//  private val indexModuleAtomic: Atomic[Option[IndexModule]] = Atomic(Option.empty[IndexModule])
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
-    indexModuleAtomic.set(Some(indexModule))
+//    indexModuleAtomic.set(Some(indexModule))
+    import tech.beshu.ror.es.utils.IndexModuleOps._
+    indexModule.overwrite(RoleIndexSearcherWrapper.instance)
   }
 
   override def getSettings: util.List[Setting[_]] = {
@@ -262,11 +263,11 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   override def onNodeStarted(): Unit = {
     super.onNodeStarted()
-    indexModuleAtomic.get().foreach { indexModule =>
-      import tech.beshu.ror.es.utils.IndexModuleOps._
-      indexModule.overwrite(RoleIndexSearcherWrapper.instance)
-    }
     doPrivileged {
+//      indexModuleAtomic.get().foreach { indexModule =>
+//        import tech.beshu.ror.es.utils.IndexModuleOps._
+//        indexModule.overwrite(RoleIndexSearcherWrapper.instance)
+//      }
       esInitListener.onEsReady()
     }
   }
