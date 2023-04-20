@@ -16,10 +16,11 @@
  */
 package tech.beshu.ror.configuration.loader.external.dto
 
-import io.circe.generic.extras.ConfiguredJsonCodec
+import io.circe.Codec
+import io.circe.generic.extras.{Configuration, ConfiguredJsonCodec}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
+import tech.beshu.ror.configuration.loader.distributed.internode.dto.NodeConfigRequestDTO
 
-@ConfiguredJsonCodec
 sealed trait LoadedConfigDTO {
   def raw: String
 }
@@ -33,5 +34,8 @@ object LoadedConfigDTO {
   final case class FILE_CONFIG(raw: String) extends LoadedConfigDTO
   final case class FORCED_FILE_CONFIG(raw: String) extends LoadedConfigDTO
   final case class INDEX_CONFIG(indexName: String, raw: String) extends LoadedConfigDTO
+
+  implicit val codec: Codec[LoadedConfigDTO] = io.circe.generic.extras.semiauto.deriveConfiguredCodec
+
 }
 

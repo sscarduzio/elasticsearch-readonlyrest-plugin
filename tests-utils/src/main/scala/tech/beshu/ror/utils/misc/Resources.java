@@ -18,7 +18,7 @@ package tech.beshu.ror.utils.misc;
 
 import better.files.File;
 import better.files.package$;
-import scala.collection.Seq$;
+import scala.collection.immutable.Seq$;
 
 import java.nio.file.Path;
 

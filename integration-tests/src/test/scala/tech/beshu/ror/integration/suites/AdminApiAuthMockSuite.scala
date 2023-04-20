@@ -797,7 +797,7 @@ class AdminApiAuthMockSuite
               s"""
                  |{
                  |  "status": "FAILED",
-                 |  "message": "JSON body malformed: [Could not parse at : [Unknown auth mock service type: EXT_AUTHORIZATION]]"
+                 |  "message": "JSON body malformed: [Could not parse at : [DecodingFailure at : Unknown auth mock service type: EXT_AUTHORIZATION]]"
                  |}
                  |""".stripMargin
             ))
@@ -812,7 +812,7 @@ class AdminApiAuthMockSuite
               s"""
                  |{
                  |  "status": "FAILED",
-                 |  "message": "JSON body malformed: [Could not parse at .services: [Attempt to decode value on failed cursor: DownField(services)]]"
+                 |  "message": "JSON body malformed: [Could not parse at .services: [DecodingFailure at .services: Missing required field]]"
                  |}
                  |""".stripMargin
             ))
@@ -842,16 +842,18 @@ class AdminApiAuthMockSuite
              """.stripMargin
           )
 
+          val expectedResponse = ujson.read(
+            s"""
+               |{
+               |  "status": "FAILED",
+               |  "message": "JSON body malformed: [Could not parse at .services: [DecodingFailure at .services: Got value '{\\\"services\\\":[{\\\"type\\\":\\\"LDAP\\\",\\\"name\\\":\\\"ldap1\\\",\\\"mock\\\":{\\\"users\\\":[{\\\"n\\\":\\\"ldap_user_1\\\",\\\"g\\\":[\\\"group1\\\",\\\"group3\\\"]}]}}]}' with wrong type, expecting array]]"
+               |}
+               |""".stripMargin
+          )
+
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(malformedPayload))
-            (response.responseCode, response.responseJson) should be(400, ujson.read(
-              s"""
-                 |{
-                 |  "status": "FAILED",
-                 |  "message": "JSON body malformed: [Could not parse at .services: [C[A]: DownField(services)]]"
-                 |}
-                 |""".stripMargin
-            ))
+            (response.responseCode, response.responseJson) should be(400, expectedResponse)
           }
         }
       }

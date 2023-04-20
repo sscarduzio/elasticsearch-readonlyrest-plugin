@@ -64,7 +64,7 @@ class IndexLevelActionFilter(settings: Settings,
            clusterService: ClusterService,
            client: NodeClient,
            threadPool: ThreadPool,
-           env: Environment) {
+           env: Environment) = {
     this(settings, clusterService, client, threadPool, env, ())
   }
 

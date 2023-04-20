@@ -184,5 +184,5 @@ class YamlParserTests extends AnyWordSpec with Inside with MockFactory {
       }
     }
   }
-  private def parseYaml(yamlContent:String): Json = yaml.parser.parse(yamlContent).right.get
+  private def parseYaml(yamlContent:String): Json = yaml.parser.parse(yamlContent).toOption.get
 }

@@ -109,8 +109,10 @@ object SimulateIndexTemplateRequestEsRequestContext {
     val filteredAliases = basedOn
       .aliases().asSafeMap
       .flatMap { case (key, value) => ClusterIndexName.fromString(key).map((_, value)) }
+      .view
       .filterKeys(_.isAllowedBy(allowedIndices.toSet))
       .map { case (key, value) => (key.stringify, value) }
+      .toMap
       .asJava
     new EsMetadataTemplate(
       basedOn.settings(),

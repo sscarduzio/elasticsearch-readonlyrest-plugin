@@ -30,7 +30,7 @@ class SnapshotsServiceInterceptor(settings: Settings,
   extends AbstractLifecycleComponent(settings) {
 
   @Inject
-  def this(settings: Settings, snapshotsService: SnapshotsService) {
+  def this(settings: Settings, snapshotsService: SnapshotsService) = {
     this(settings, snapshotsService, ())
   }
 

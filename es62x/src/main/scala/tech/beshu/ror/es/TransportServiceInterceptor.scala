@@ -30,7 +30,7 @@ class TransportServiceInterceptor(settings: Settings,
   extends AbstractLifecycleComponent(settings) {
 
   @Inject
-  def this(settings: Settings, transportService: TransportService) {
+  def this(settings: Settings, transportService: TransportService) = {
     this(settings, transportService, ())
   }
   Option(transportService.getRemoteClusterService).foreach { r =>

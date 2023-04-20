@@ -94,10 +94,10 @@ class KibanaUserDataRule(override val settings: Settings)
       }
 
   private lazy val resolveAppsToHide =
-    UniqueNonEmptyList.fromTraversable(settings.appsToHide)
+    UniqueNonEmptyList.fromIterable(settings.appsToHide)
 
   private lazy val resolveAllowedApiPaths =
-    UniqueNonEmptyList.fromTraversable(settings.allowedApiPaths)
+    UniqueNonEmptyList.fromIterable(settings.allowedApiPaths)
 
   private def resolvedKibanaMetadata(using: BlockContext) =
     settings

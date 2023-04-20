@@ -59,10 +59,10 @@ class ClaimsOps(val claims: Claims) extends Logging {
     Try(claimName.name.read[Any](claims))
       .map {
         case value: String =>
-          Found(UniqueList.fromTraversable((value :: Nil).flatMap(toGroup)))
+          Found(UniqueList.fromIterable((value :: Nil).flatMap(toGroup)))
         case collection: java.util.Collection[_] =>
           Found {
-            UniqueList.fromTraversable {
+            UniqueList.fromIterable {
               collection.asScala
                 .collect {
                   case value: String => value

@@ -199,7 +199,6 @@ class ReadonlyRest(coreFactory: CoreFactory,
       .createCoreFrom(config, rorIndexNameConfiguration, httpClientsFactory, ldapConnectionPoolProvider, authServicesMocksProvider)
       .map { result =>
         result
-          .right
           .map { core =>
             val engine = createEngine(httpClientsFactory, ldapConnectionPoolProvider, core)
             inspectFlsEngine(engine)

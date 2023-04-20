@@ -210,9 +210,9 @@ class HeadersAndRuleTests extends AnyWordSpec with MockFactory {
   private def assertRule(configuredHeaders: NonEmptySet[AccessRequirement[Header]], requestHeaders: Set[Header], isMatched: Boolean) = {
     val rule = new HeadersAndRule(HeadersAndRule.Settings(configuredHeaders))
     val requestContext = mock[RequestContext]
-    (requestContext.headers _).expects().returning(requestHeaders)
-    (requestContext.id _).expects().returning(RequestContext.Id("1")).anyNumberOfTimes()
-    (requestContext.uriPath _).expects().returning(UriPath("/_cat/indices"))
+    (() => requestContext.headers).expects().returning(requestHeaders)
+    (() => requestContext.id).expects().returning(RequestContext.Id("1")).anyNumberOfTimes()
+    (() => requestContext.uriPath).expects().returning(UriPath("/_cat/indices"))
     val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)

@@ -92,7 +92,8 @@ private class RRMetadataResponse(userMetadata: UserMetadata,
   extends ActionResponse with ToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
-    val sourceMap: Map[String, _] = MetadataValue.read(userMetadata, correlationId).mapValues(MetadataValue.toAny)
+    val sourceMap: Map[String, _] =
+      MetadataValue.read(userMetadata, correlationId).view.mapValues(MetadataValue.toAny).toMap
     builder.map(sourceMap.asJava)
     builder
   }

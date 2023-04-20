@@ -193,7 +193,7 @@ object ruleDecoders {
   private def checkUsersEligibility(rule: AuthenticationRule, userIdPatterns: UserIdPatterns) = {
     rule.eligibleUsers match {
       case EligibleUsersSupport.Available(users) =>
-        implicit val _ = rule.caseMappingEquality
+        implicit val _userIdCaseMappingEquality = rule.caseMappingEquality
         val matcher = new GenericPatternMatcher(userIdPatterns.patterns.toList)
         if (users.exists(matcher.`match`)) {
           Right(())

@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.matchers
 import tech.beshu.ror.accesscontrol.domain.Pattern
 import tech.beshu.ror.utils.CaseMappingEquality
 
-class GenericPatternMatcher[T : CaseMappingEquality](patterns: Traversable[Pattern[T]]) {
+class GenericPatternMatcher[T : CaseMappingEquality](patterns: Iterable[Pattern[T]]) {
   
   private val underlyingMatcher: Matcher[String] = {
     implicit val extractedStringCaseMappingEquality: CaseMappingEquality[String] = CaseMappingEquality.instance(

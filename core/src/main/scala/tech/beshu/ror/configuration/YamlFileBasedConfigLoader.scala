@@ -44,7 +44,6 @@ final class YamlFileBasedConfigLoader(file: File)
         .parser
         .parse(reader)
         .left.map(e => MalformedSettings(s"Cannot parse file ${file.pathAsString} content. Cause: ${e.message}"))
-        .right
         .flatMap { json =>
           JsonConfigStaticVariableResolver.resolve(json)
             .left.map(e => MalformedSettings(s"Unable to resolve environment variables for file ${file.pathAsString}. $e."))
@@ -54,15 +53,10 @@ final class YamlFileBasedConfigLoader(file: File)
 
   private def prettyCause(error: DecodingFailure) = {
     error.message match {
-      case message if message.startsWith("Attempt to decode") => "yaml is malformed"
+      case message if message.startsWith("DecodingFailure at") => "yaml is malformed"
       case other => other
     }
   }
-
-  private implicit val showResolvingError: Show[NonEmptyList[ResolvingError]] =
-    Show.show { nel =>
-      nel.map(_.msg).mkString_("\n\t* ")
-    }
 }
 
 final case class MalformedSettings(message: String)

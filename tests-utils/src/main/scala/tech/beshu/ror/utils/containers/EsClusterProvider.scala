@@ -20,6 +20,8 @@ import cats.data.NonEmptyList
 import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 
+import scala.collection.parallel.CollectionConverters._
+
 trait EsClusterProvider extends EsContainerCreator {
 
   def createLocalClusterContainer(esClusterSettings: EsClusterSettings): EsClusterContainer = {

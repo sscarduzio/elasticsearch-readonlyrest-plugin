@@ -44,7 +44,7 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: FiniteDuration Refined Positi
     .executor(global)
     .expireAfterWrite(ttl.value)
     .removalListener(onRemoveHook)
-    .build[K1, V]
+    .build[K1, V]()
 
   def call(key: K,
            requestTimeout: FiniteDuration Refined Positive): Task[V] = {

@@ -101,7 +101,7 @@ class RorIndexTest extends AnyWordSpec
           mockCoreFactory(coreFactory, rorConfig)
           mockMainRorConfigInIndexSaving(indexJsonContentService, defaultRorIndexName)
 
-          val rorInstance = result.right.value
+          val rorInstance = result.value
           val forceReloadingResult =
             rorInstance
               .forceReloadAndSave(rorConfig)(newRequestId())
@@ -131,13 +131,13 @@ class RorIndexTest extends AnyWordSpec
           mockCoreFactory(coreFactory, rorConfig)
           mockTestRorConfigInIndexSaving(indexJsonContentService, defaultRorIndexName)
 
-          val rorInstance = result.right.value
+          val rorInstance = result.value
           val forceReloadingResult =
             rorInstance
               .forceReloadTestConfigEngine(rorConfig, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
               .runSyncUnsafe()
 
-          forceReloadingResult.right.value shouldBe a[TestConfig.Present]
+          forceReloadingResult.value shouldBe a[TestConfig.Present]
         }
       }
       "custom index is defined in config" should {
@@ -179,7 +179,7 @@ class RorIndexTest extends AnyWordSpec
           mockCoreFactory(coreFactory, rorConfig)
           mockMainRorConfigInIndexSaving(indexJsonContentService, customRorIndexName)
 
-          val rorInstance = result.right.value
+          val rorInstance = result.value
           val forceReloadingResult =
             rorInstance
               .forceReloadAndSave(rorConfig)(newRequestId())
@@ -207,13 +207,13 @@ class RorIndexTest extends AnyWordSpec
           mockCoreFactory(coreFactory, rorConfig)
           mockTestRorConfigInIndexSaving(indexJsonContentService, customRorIndexName)
 
-          val rorInstance = result.right.value
+          val rorInstance = result.value
           val forceReloadingResult =
             rorInstance
               .forceReloadTestConfigEngine(rorConfig, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
               .runSyncUnsafe()
 
-          forceReloadingResult.right.value shouldBe a[TestConfig.Present]
+          forceReloadingResult.value shouldBe a[TestConfig.Present]
         }
       }
     }
@@ -299,11 +299,11 @@ class RorIndexTest extends AnyWordSpec
 
   private def mockAccessControl = {
     val mockedAccessControl = mock[AccessControl]
-    (mockedAccessControl.staticContext _)
+    (() => mockedAccessControl.staticContext)
       .expects()
       .anyNumberOfTimes()
       .returns(mockAccessControlStaticContext)
-    (mockedAccessControl.description _)
+    (() => mockedAccessControl.description)
       .expects()
       .anyNumberOfTimes()
       .returns("ENABLED")
@@ -312,12 +312,12 @@ class RorIndexTest extends AnyWordSpec
 
   private def mockAccessControlStaticContext = {
     val mockedContext = mock[AccessControlStaticContext]
-    (mockedContext.obfuscatedHeaders _)
+    (() => mockedContext.obfuscatedHeaders)
       .expects()
       .anyNumberOfTimes()
       .returns(Set.empty)
 
-    (mockedContext.usedFlsEngineInFieldsRule _)
+    (() => mockedContext.usedFlsEngineInFieldsRule)
       .expects()
       .anyNumberOfTimes()
       .returns(None)

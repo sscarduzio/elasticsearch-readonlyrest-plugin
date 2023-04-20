@@ -120,7 +120,7 @@ object UsersDefinitionsDecoder {
     Decoder[List[GroupMappings.Advanced.Mapping]]
       .toSyncDecoder
       .emapE { list =>
-        UniqueNonEmptyList.fromTraversable(list) match {
+        UniqueNonEmptyList.fromIterable(list) match {
           case Some(mappings) => Right(GroupMappings.Advanced(mappings))
           case None => Left(ValueLevelCreationError(Message("Non empty list of groups or groups mappings are required")))
         }

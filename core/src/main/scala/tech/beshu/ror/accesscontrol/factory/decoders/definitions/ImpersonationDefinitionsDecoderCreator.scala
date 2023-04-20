@@ -53,7 +53,7 @@ class ImpersonationDefinitionsDecoderCreator(caseMappingEquality: UserIdCaseMapp
 
   private def impersonationDefDecoder: Decoder[ImpersonatorDef] = {
     implicit val orderUserId: Order[User.Id] = caseMappingEquality.toOrder
-    implicit val _ = Option.empty[Definitions[ImpersonatorDef]]
+    implicit val _impersonatorDef = Option.empty[Definitions[ImpersonatorDef]]
     SyncDecoderCreator
       .instance { c =>
         val impersonatorKey = "impersonator"

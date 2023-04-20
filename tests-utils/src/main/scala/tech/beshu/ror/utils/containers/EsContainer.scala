@@ -31,8 +31,8 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
 
 import java.util.function.Consumer
-import scala.collection.JavaConverters._
 import scala.concurrent.duration._
+import scala.collection.JavaConverters._
 import scala.language.postfixOps
 
 abstract class EsContainer(val esVersion: String,
@@ -43,11 +43,11 @@ abstract class EsContainer(val esVersion: String,
     with ClientProvider
     with StrictLogging {
 
-  override implicit val container = new org.testcontainers.containers.GenericContainer(image)
+  override implicit val container: GenericContainer[_] = new org.testcontainers.containers.GenericContainer(image)
 
   def sslEnabled: Boolean
 
-  def ip: String = container.getContainerIpAddress
+  def ip: String = container.getHost
 
   def port: Integer = container.getMappedPort(9200)
 

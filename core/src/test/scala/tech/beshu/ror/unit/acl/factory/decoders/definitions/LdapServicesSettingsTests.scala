@@ -39,7 +39,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
     with BeforeAndAfterAll
     with ForAllTestContainer {
 
-  def this(){
+  def this() = {
     this(new UnboundidLdapConnectionPoolProvider)
   }
 

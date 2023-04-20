@@ -104,7 +104,6 @@ class UsersRuleTests extends AnyWordSpec with MockFactory {
   private def userIdValueFrom(value: String): RuntimeMultiResolvableVariable[User.Id] = {
     RuntimeResolvableVariableCreator
       .createMultiResolvableVariableFrom(NonEmptyString.unsafeFrom(value))(AlwaysRightConvertible.from(User.Id.apply))
-      .right
       .getOrElse(throw new IllegalStateException(s"Cannot create User Id Value from $value"))
   }
 }

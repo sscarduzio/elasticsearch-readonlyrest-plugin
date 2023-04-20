@@ -28,7 +28,7 @@ class SnapshotsServiceInterceptor(snapshotsService: SnapshotsService,
   extends AbstractLifecycleComponent() {
 
   @Inject
-  def this(snapshotsService: SnapshotsService) {
+  def this(snapshotsService: SnapshotsService) = {
     this(snapshotsService, ())
   }
 

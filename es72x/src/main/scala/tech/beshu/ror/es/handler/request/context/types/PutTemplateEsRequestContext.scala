@@ -43,7 +43,7 @@ class PutTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
         .fromString(request.name())
         .toRight("Template name should be non-empty")
       patterns <- UniqueNonEmptyList
-        .fromTraversable(request.patterns().asSafeList.flatMap(IndexPattern.fromString))
+        .fromIterable(request.patterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
       aliases = request.aliases().asSafeSet.flatMap(a => ClusterIndexName.fromString(a.name()))
     } yield AddingLegacyTemplate(name, patterns, aliases)

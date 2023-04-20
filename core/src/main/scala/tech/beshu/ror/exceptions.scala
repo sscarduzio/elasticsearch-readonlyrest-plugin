@@ -23,7 +23,7 @@ object exceptions {
   class StartingFailureException(message: String, throwable: Throwable)
     extends RuntimeException(message, throwable) {
 
-    def this(message: String) {
+    def this(message: String) = {
       this(message, null)
     }
   }

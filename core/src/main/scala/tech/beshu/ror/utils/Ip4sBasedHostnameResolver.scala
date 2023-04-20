@@ -18,7 +18,6 @@ package tech.beshu.ror.utils
 
 import cats.data.NonEmptyList
 import com.comcast.ip4s.Cidr
-import com.comcast.ip4s.interop.cats.HostnameResolver
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostnameResolver
 import tech.beshu.ror.accesscontrol.domain.Address.{Ip, Name}
@@ -27,6 +26,6 @@ class Ip4sBasedHostnameResolver extends HostnameResolver {
 
   // fixme: (improvements) blocking resolving (shift to another EC)
   def resolve(hostname: Name): Task[Option[NonEmptyList[Ip]]] = {
-    HostnameResolver.resolveAll[Task](hostname.value).map(_.map(_.map(ip => Ip(Cidr(ip, 32)))))
+    hostname.value.resolveAll[Task].map(_.map(_.map(ip => Ip(Cidr(ip, 32)))))
   }
 }

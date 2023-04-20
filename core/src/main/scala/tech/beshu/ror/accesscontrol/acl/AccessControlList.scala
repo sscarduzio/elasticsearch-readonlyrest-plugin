@@ -85,7 +85,7 @@ class AccessControlList(val blocks: NonEmptyList[Block],
 
   override def handleMetadataRequest(context: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]] = {
     Task
-      .gather(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
+      .parSequence(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
       .map(_.flatten)
       .map { blockResults =>
         val history = blockResults.map(_._2).toVector
@@ -122,7 +122,7 @@ class AccessControlList(val blocks: NonEmptyList[Block],
   }
 
   private def allAvailableGroupsFrom(matchedResults: NonEmptyList[Matched[CurrentUserMetadataRequestBlockContext]]) = {
-    UniqueList.fromTraversable(
+    UniqueList.fromIterable(
       matchedResults.toList.flatMap {
         case Matched(_, bc) => bc.userMetadata.availableGroups
       }

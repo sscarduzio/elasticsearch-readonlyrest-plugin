@@ -39,7 +39,7 @@ class TransportRRTestConfigAction(settings: Settings,
            threadPool: ThreadPool,
            transportService: TransportService,
            indexNameExpressionResolver: IndexNameExpressionResolver,
-           actionFilters: ActionFilters) {
+           actionFilters: ActionFilters) = {
     this(settings, threadPool, transportService, actionFilters, indexNameExpressionResolver, ())
   }
 

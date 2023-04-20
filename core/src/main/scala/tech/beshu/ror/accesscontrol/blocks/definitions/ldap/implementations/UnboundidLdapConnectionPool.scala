@@ -25,9 +25,9 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.BindRequestUser
 
 import java.util.concurrent.atomic.AtomicReference
-import scala.collection.JavaConverters._
 import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
+import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
 class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool,
@@ -75,7 +75,7 @@ object UnboundidLdapConnectionPool {
   private class UnboundidSearchResultListener extends com.unboundid.ldap.sdk.AsyncSearchResultListener {
     private val searchResultEntries = new AtomicReference(List.empty[SearchResultEntry])
 
-    private val promise = Promise[Either[SearchResult, List[SearchResultEntry]]]
+    private val promise = Promise[Either[SearchResult, List[SearchResultEntry]]]()
 
     override def searchResultReceived(requestID: AsyncRequestID, searchResult: SearchResult): Unit = {
       if (ResultCode.SUCCESS == searchResult.getResultCode) {

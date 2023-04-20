@@ -40,7 +40,7 @@ class EsIndexJsonContentService(client: NodeClient,
     with Logging {
 
   @Inject
-  def this(client: NodeClient) {
+  def this(client: NodeClient) = {
     this(client, ())
   }
 

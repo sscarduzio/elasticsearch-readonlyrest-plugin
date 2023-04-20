@@ -31,6 +31,7 @@ import tech.beshu.ror.es.AuditSinkService
 
 import java.security.cert.X509Certificate
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
+import scala.collection.parallel.CollectionConverters._
 
 class RestClientAuditSinkService private(clients: NonEmptyList[RestClient])
                                         (implicit scheduler: Scheduler)

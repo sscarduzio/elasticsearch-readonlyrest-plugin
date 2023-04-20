@@ -17,9 +17,9 @@
 package tech.beshu.ror.configuration.loader.external.dto
 
 import cats.implicits._
-import io.circe.generic.extras.ConfiguredJsonCodec
+import io.circe.generic.extras.{Configuration, ConfiguredJsonCodec}
 import tech.beshu.ror.configuration.loader.distributed.Summary
-import tech.beshu.ror.configuration.loader.distributed.Summary.{NodeForcedFileConfig, NodeReturnedDifferentConfig, NodeReturnedConfigError}
+import tech.beshu.ror.configuration.loader.distributed.Summary.{NodeForcedFileConfig, NodeReturnedConfigError, NodeReturnedDifferentConfig}
 
 @ConfiguredJsonCodec
 sealed trait NodesResponseWaringDTO
@@ -69,6 +69,8 @@ object NodesResponseWaringDTO {
         nodeId = o.nodeId.value,
       )
   }
+
+  implicit val configuration: Configuration = Configuration.default.withDiscriminator("type")
 }
 
 

@@ -109,7 +109,7 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
     groupsFromPath match {
       case Success(groups) =>
         logger.debug(s"Groups returned by groups provider '${id.show}': ${groups.map(_.show).mkString(",")}")
-        UniqueList.fromTraversable(groups)
+        UniqueList.fromIterable(groups)
       case Failure(ex) =>
         logger.debug(s"Group based authorization response exception - provider '${id.show}'", ex)
         UniqueList.empty

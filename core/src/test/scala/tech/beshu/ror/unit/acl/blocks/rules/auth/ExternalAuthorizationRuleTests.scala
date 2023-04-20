@@ -501,7 +501,7 @@ class ExternalAuthorizationRuleTests
 
       override def grantsFor(userId: User.Id): Task[UniqueList[GroupName]] = Task.delay {
         groups.get(userId) match {
-          case Some(g) => UniqueList.fromTraversable(g)
+          case Some(g) => UniqueList.fromIterable(g)
           case None => UniqueList.empty
         }
       }

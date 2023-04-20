@@ -35,7 +35,7 @@ final class RemoteClusterAwareClient(settings: Settings,
       .getRemoteClusterService
       .ensureConnected(
         clusterAlias,
-        ActionListener.wrap { case _ =>
+        ActionListener.wrap { () =>
           service
             .sendRequest(
               service.getRemoteClusterService.getConnection(clusterAlias),

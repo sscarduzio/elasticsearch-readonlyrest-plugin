@@ -26,6 +26,7 @@ object RestRequestOps {
     def allHeaders(): Set[Header] = Header.fromRawHeaders(
       request
         .getHeaders.asScala
+        .view
         .mapValues(_.asScala.toList)
         .toMap
     )

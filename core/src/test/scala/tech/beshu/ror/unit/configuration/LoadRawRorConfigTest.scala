@@ -18,6 +18,7 @@ package tech.beshu.ror.unit.configuration
 
 import cats.{Id, ~>}
 import io.circe.Json
+import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
@@ -28,7 +29,7 @@ import tech.beshu.ror.configuration.{ConfigLoading, RawRorConfig}
 
 import scala.language.existentials
 
-class LoadRawRorConfigTest extends AnyWordSpec {
+class LoadRawRorConfigTest extends AnyWordSpec with EitherValues{
   import LoadRawRorConfigTest._
   "Free monad loader program" should {
     "load forced file" in {
@@ -74,7 +75,7 @@ class LoadRawRorConfigTest extends AnyWordSpec {
       val compiler = IdCompiler.instance(steps)
       val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, rorConfigurationIndex, indexLoadingAttempts = 5)
       val result = program.foldMap(compiler)
-      result.right.get shouldBe FileConfig(rawRorConfig)
+      result.toOption.get shouldBe FileConfig(rawRorConfig)
     }
     "unknown index structure fail loading from index immediately" in {
       val steps = List(
@@ -93,7 +94,7 @@ class LoadRawRorConfigTest extends AnyWordSpec {
       val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, rorConfigurationIndex, indexLoadingAttempts = 5)
       val result = program.foldMap(compiler)
       result shouldBe a[Left[LoadedRorConfig.IndexParsingError, _]]
-      result.left.get.asInstanceOf[LoadedRorConfig.IndexParsingError].message shouldBe "error"
+      result.left.value.asInstanceOf[LoadedRorConfig.IndexParsingError].message shouldBe "error"
     }
   }
 }

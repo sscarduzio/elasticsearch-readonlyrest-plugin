@@ -108,6 +108,6 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
         ))
       )
       .runSyncUnsafe()
-      .right.getOrElse(throw new IllegalStateException("LDAP connection problem"))
+      .getOrElse(throw new IllegalStateException("LDAP connection problem"))
   }
 }

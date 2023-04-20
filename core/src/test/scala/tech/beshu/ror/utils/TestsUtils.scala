@@ -325,7 +325,7 @@ object TestsUtils {
   }
 
   def rorConfigFromUnsafe(yamlContent: String): RawRorConfig = {
-    RawRorConfig(yaml.parser.parse(yamlContent).right.get, yamlContent)
+    RawRorConfig(yaml.parser.parse(yamlContent).toOption.get, yamlContent)
   }
 
   def rorConfigFrom(yamlContent: String): Either[ParsingFailure, RawRorConfig] = {

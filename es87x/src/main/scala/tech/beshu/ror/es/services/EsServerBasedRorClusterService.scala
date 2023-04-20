@@ -239,7 +239,7 @@ class EsServerBasedRorClusterService(nodeName: String,
         .flatMap(ClusterName.Full.fromString)
 
     Task
-      .gatherUnordered(
+      .parSequenceUnordered(
         remoteClusterFullNames.map(resolveAllRemoteDataStreams(_, remoteClusterService))
       )
       .map(_.flatten.toSet)
@@ -295,7 +295,7 @@ class EsServerBasedRorClusterService(nodeName: String,
         .flatMap(ClusterName.Full.fromString)
 
     Task
-      .gatherUnordered(
+      .parSequenceUnordered(
         remoteClusterFullNames.map(resolveAllRemoteIndices(_, remoteClusterService))
       )
       .map(_.flatten.toSet)
@@ -411,7 +411,7 @@ class EsServerBasedRorClusterService(nodeName: String,
         val templateMetaData = templates.get(templateNameString)
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          indexPatterns <- UniqueNonEmptyList.fromTraversable(
+          indexPatterns <- UniqueNonEmptyList.fromIterable(
             templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString)
           )
           aliases = templateMetaData.aliases().asSafeValues.flatMap(a => ClusterIndexName.fromString(a.alias()))
@@ -428,7 +428,7 @@ class EsServerBasedRorClusterService(nodeName: String,
         val templateMetaData = templates.get(templateNameString)
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          indexPatterns <- UniqueNonEmptyList.fromTraversable(
+          indexPatterns <- UniqueNonEmptyList.fromIterable(
             templateMetaData.indexPatterns().asScala.flatMap(IndexPattern.fromString)
           )
           aliases = templateMetaData.template().asSafeSet

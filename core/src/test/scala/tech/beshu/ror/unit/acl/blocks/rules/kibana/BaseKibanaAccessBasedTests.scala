@@ -34,8 +34,8 @@ import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 
-import scala.collection.JavaConverters._
 import scala.concurrent.duration._
+import scala.collection.JavaConverters._
 import scala.language.postfixOps
 
 abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
@@ -43,7 +43,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
 
   s"A '${RuleName[RULE].name.value}' rule" when {
     "All and any actions are passed when Unrestricted access" in {
-      val anyActions = Set("xyz") ++ asScalaSet(ADMIN_ACTIONS) ++ asScalaSet(RW_ACTIONS) ++ asScalaSet(RO_ACTIONS) ++ asScalaSet(CLUSTER_ACTIONS)
+      val anyActions: Set[String] = Set("xyz") ++ List(ADMIN_ACTIONS, RW_ACTIONS, RO_ACTIONS, CLUSTER_ACTIONS).flatMap(_.asScala)
       anyActions.map(Action.apply).foreach { action =>
         assertMatchRule(settingsOf(Unrestricted), action)()
       }

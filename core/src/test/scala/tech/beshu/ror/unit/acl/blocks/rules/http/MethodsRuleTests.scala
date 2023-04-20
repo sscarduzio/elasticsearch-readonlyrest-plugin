@@ -65,7 +65,7 @@ class MethodsRuleTests extends AnyWordSpec with MockFactory {
   private def assertRule(configuredMethods: NonEmptySet[Method], requestMethod: Method, isMatched: Boolean) = {
     val rule = new MethodsRule(MethodsRule.Settings(configuredMethods))
     val requestContext = mock[RequestContext]
-    (requestContext.method _).expects().returning(requestMethod)
+    (() => requestContext.method).expects().returning(requestMethod)
     val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)

@@ -33,12 +33,12 @@ object ReflectionBasedDataStreamsEsRequestContext {
 
   def unapply(arg: ReflectionBasedActionRequest): Option[BaseDataStreamsEsRequestContext[ActionRequest]] = {
     esContextCreators
-      .toStream
+      .to(LazyList)
       .flatMap(_.unapply(arg))
       .headOption
   }
 
-  val supportedActionRequests: Set[ClassCanonicalName] = esContextCreators.map(_.actionRequestClass).toSet
+  val supportedActionRequests: Set[ClassCanonicalName] = esContextCreators.unsorted.map(_.actionRequestClass).toSet
 
   private lazy val esContextCreators: UniqueNonEmptyList[ReflectionBasedDataStreamsEsContextCreator] = UniqueNonEmptyList.of(
     CreateDataStreamEsRequestContext,

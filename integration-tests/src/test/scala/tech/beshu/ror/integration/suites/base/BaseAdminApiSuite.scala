@@ -239,7 +239,7 @@ trait BaseAdminApiSuite
             """
               |{
               |  "status": "ko",
-              |  "message": "JSON body malformed: [Could not parse at .settings: [Attempt to decode value on failed cursor: DownField(settings)]]"
+              |  "message": "JSON body malformed: [Could not parse at .settings: [DecodingFailure at .settings: Missing required field]]"
               |}
               |""".stripMargin
           ))
@@ -762,7 +762,7 @@ trait BaseAdminApiSuite
               """
                 |{
                 |  "status": "FAILED",
-                |  "message": "JSON body malformed: [Could not parse at .ttl: [Attempt to decode value on failed cursor: DownField(ttl)]]"
+                |  "message": "JSON body malformed: [Could not parse at .ttl: [DecodingFailure at .ttl: Missing required field]]"
                 |}
                 |""".stripMargin
             ))
@@ -778,7 +778,7 @@ trait BaseAdminApiSuite
               """
                 |{
                 |  "status": "FAILED",
-                |  "message": "JSON body malformed: [Could not parse at .settings: [Attempt to decode value on failed cursor: DownField(settings)]]"
+                |  "message": "JSON body malformed: [Could not parse at .settings: [DecodingFailure at .settings: Missing required field]]"
                 |}
                 |""".stripMargin
             ))
@@ -796,7 +796,7 @@ trait BaseAdminApiSuite
               """
                 |{
                 |  "status": "FAILED",
-                |  "message": "JSON body malformed: [Could not parse at .ttl: [Cannot parse '30 units' as duration.: DownField(ttl)]]"
+                |  "message": "JSON body malformed: [Could not parse at .ttl: [DecodingFailure at .ttl: Cannot parse '30 units' as duration.]]"
                 |}
                 |""".stripMargin
             ))
@@ -996,9 +996,9 @@ trait BaseAdminApiSuite
             forceReloadTestSettings(config)
 
             Thread.sleep(settingsReloadInterval.toMillis) // wait for engines reload
-            rorClients.foreach {
-              assertInIndexConfigPresent(_, config = config)
-              assertTestSettingsPresent(_, testConfig = config, expectedTtl = "30 minutes")
+            rorClients.foreach { client =>
+              assertInIndexConfigPresent(client, config = config)
+              assertTestSettingsPresent(client, testConfig = config, expectedTtl = "30 minutes")
             }
           }
         }

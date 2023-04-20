@@ -48,7 +48,7 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
                                 filteredIndices: NonEmptyList[ClusterIndexName],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     val modifiedCommands = request
-      .getCommands.commands().asScala
+      .getCommands.commands().asScala.toList
       .map(modifiedCommand(_, filteredIndices))
     request.commands(new AllocationCommands(modifiedCommands: _*))
     Modified
