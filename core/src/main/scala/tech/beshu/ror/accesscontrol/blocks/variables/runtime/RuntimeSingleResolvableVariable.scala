@@ -24,8 +24,6 @@ import cats.syntax.traverse._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.{Convertible, Unresolvable}
 
-import scala.language.{higherKinds, implicitConversions}
-
 sealed trait RuntimeSingleResolvableVariable[T] extends RuntimeResolvableVariable[T] {
   def map[S](f: T => S): RuntimeSingleResolvableVariable[S]
 }

@@ -27,6 +27,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.EsStartupChecker.Mode
 import tech.beshu.ror.utils.misc.ScalaUtils._
 
+import scala.annotation.nowarn
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
@@ -49,11 +50,12 @@ class EsStartupChecker private(name: String,
     }
   }
 
-  private def retry[A](checkClusterHealthAction: => Boolean)
-                      (implicit startupThreshold: FiniteDuration) = {
+  private def retry(checkClusterHealthAction: => Boolean)
+                   (implicit startupThreshold: FiniteDuration) = {
     val policy: RetryPolicy[Id] = limitRetriesByCumulativeDelay(startupThreshold, constantDelay(2 seconds))
     val predicate = (_: Boolean) == true
 
+    @nowarn("cat=unused")
     def onFailure(failedValue: Boolean, details: RetryDetails): Unit = {
       logger.debug(s"[$name] ES not ready yet. Retrying ...")
     }
@@ -93,8 +95,10 @@ object EsStartupChecker {
     new EsStartupChecker(name, client, Mode.Accessible)
 
   private sealed trait Mode
+
   private object Mode {
     case object GreenCluster extends Mode
+
     case object Accessible extends Mode
   }
 }

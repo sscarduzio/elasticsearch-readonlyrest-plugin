@@ -32,7 +32,7 @@ import scala.language.implicitConversions
 
 class IndexModuleOps(indexModule: IndexModule) {
 
-  def overwrite(readerWrapper: ReaderWrapper): Unit = {
+  def overwrite(): Unit = {
     doPrivileged {
       on(indexModule).set("indexReaderWrapper", new LuceneSetOnce[ReaderWrapper]())
     }

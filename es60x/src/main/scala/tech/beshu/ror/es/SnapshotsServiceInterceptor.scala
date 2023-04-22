@@ -18,15 +18,16 @@ package tech.beshu.ror.es
 
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Supplier
-
 import org.elasticsearch.common.component.AbstractLifecycleComponent
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.snapshots.SnapshotsService
 
+import scala.annotation.nowarn
+
 class SnapshotsServiceInterceptor(settings: Settings,
                                   snapshotsService: SnapshotsService,
-                                  ignore: Unit) // hack!
+                                  @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends AbstractLifecycleComponent(settings) {
 
   @Inject

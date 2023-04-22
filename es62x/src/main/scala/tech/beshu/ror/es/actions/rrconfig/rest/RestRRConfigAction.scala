@@ -31,7 +31,6 @@ import tech.beshu.ror.configuration.loader.distributed.{NodeConfigRequest, Timeo
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, RRConfigsRequest}
 
 import scala.jdk.CollectionConverters._
-import scala.language.postfixOps
 
 @Inject
 class RestRRConfigAction(settings: Settings,

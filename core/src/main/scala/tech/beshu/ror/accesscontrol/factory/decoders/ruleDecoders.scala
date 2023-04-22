@@ -129,7 +129,6 @@ object ruleDecoders {
           authProxyDefinitions,
           jwtDefinitions,
           ldapServiceDefinitions,
-          rorKbnDefinitions,
           impersonatorsDefinitions,
           mocksProvider,
           caseMappingEquality
@@ -143,7 +142,6 @@ object ruleDecoders {
                                   authProxyDefinitions: Definitions[ProxyAuth],
                                   jwtDefinitions: Definitions[JwtDef],
                                   ldapServiceDefinitions: Definitions[LdapService],
-                                  rorKbnDefinitions: Definitions[RorKbnDef],
                                   impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                                   mocksProvider: MocksProvider,
                                   caseMappingEquality: UserIdCaseMappingEquality): Option[RuleDecoder[AuthenticationRule]] = {

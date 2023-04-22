@@ -24,6 +24,7 @@ import tech.beshu.ror.utils.elasticsearch.SearchManager.{AsyncSearchResult, Fiel
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import ujson.Value
 
+import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 
@@ -107,7 +108,7 @@ class SearchManager(client: RestClient,
     request
   }
 
-  private def createSearchRequest(indexNames: List[String] = Nil,
+  private def createSearchRequest(@nowarn("cat=unused") indexNames: List[String] = Nil,
                                   customSize: Option[Int] = None,
                                   scroll: Option[FiniteDuration] = None) = {
     new HttpPost(client.from(

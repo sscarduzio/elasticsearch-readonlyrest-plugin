@@ -433,7 +433,7 @@ class RorKbnAuthRuleTests
     assertRule(configuredRorKbnDef, configuredGroups, tokenHeader, preferredGroup, blockContextAssertion = None)
 
   private def assertRule(configuredRorKbnDef: RorKbnDef,
-                         configuredGroups: Groups = Groups.NotDefined,
+                         configuredGroups: Groups,
                          tokenHeader: Header,
                          preferredGroup: Option[GroupName],
                          blockContextAssertion: Option[BlockContext => Unit]) = {

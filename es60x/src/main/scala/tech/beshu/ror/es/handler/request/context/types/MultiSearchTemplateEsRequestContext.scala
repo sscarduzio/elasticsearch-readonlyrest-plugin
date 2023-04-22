@@ -32,10 +32,9 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -47,7 +46,6 @@ import tech.beshu.ror.utils.ScalaOps._
 
 class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
                                                   esContext: EsContext,
-                                                  aclContext: AccessControlStaticContext,
                                                   clusterService: RorClusterService,
                                                   nodeClient: NodeClient,
                                                   override implicit val threadPool: ThreadPool)
@@ -74,10 +72,10 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
       requests
         .zip(modifiedPacksOfIndices)
         .foreach { case (request, pack) =>
-          updateRequest(request, pack, blockContext.filter, blockContext.fieldLevelSecurity)
+          updateRequest(request, pack)
         }
       ModificationResult.UpdateResponse(
-        callSearchOnceAgain(modifiedPacksOfIndices, blockContext.filter, blockContext.fieldLevelSecurity)
+        callSearchOnceAgain(blockContext.filter, blockContext.fieldLevelSecurity)
       )
     } else {
       logger.error(s"[${id.show}] Cannot alter MultiSearchRequest request, because origin request contained different number of" +
@@ -94,8 +92,7 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
  * final modifier, we are forced to do it in the other way - by calling search again when we get the response. This
  * solution is obviously less efficient, but at least it works.
  */
-  private def callSearchOnceAgain(indices: List[Indices],
-                                  filter: Option[domain.Filter],
+  private def callSearchOnceAgain(filter: Option[domain.Filter],
                                   fieldLevelSecurity: Option[domain.FieldLevelSecurity]): ActionResponse => Task[ActionResponse] = {
     multiSearchTemplateResponse => {
       val updatedSearchRequests = multiSearchTemplateRequest
@@ -158,9 +155,7 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
   }
 
   private def updateRequest(request: ReflectionBasedSearchTemplateRequest,
-                            indexPack: Indices,
-                            filter: Option[Filter],
-                            fieldLevelSecurity: Option[FieldLevelSecurity]): Unit = {
+                            indexPack: Indices): Unit = {
     val nonEmptyIndicesList = indexPack match {
       case Indices.Found(indices) =>
         NonEmptyList
@@ -203,7 +198,6 @@ object MultiSearchTemplateEsRequestContext {
       Some(new MultiSearchTemplateEsRequestContext(
         arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
         arg.esContext,
-        arg.aclContext,
         arg.clusterService,
         arg.nodeClient,
         arg.threadPool
@@ -215,8 +209,7 @@ object MultiSearchTemplateEsRequestContext {
 }
 
 private class ReflectionBasedMultiSearchTemplateRequest(val actionRequest: ActionRequest)
-                                                       (implicit val requestContext: RequestContext.Id,
-                                                        threadPool: ThreadPool) {
+                                                       (implicit val requestContext: RequestContext.Id) {
 
   import org.joor.Reflect.on
 

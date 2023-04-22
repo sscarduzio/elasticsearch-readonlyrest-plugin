@@ -17,7 +17,6 @@
 package tech.beshu.ror.audit.adapters
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.adapters.JsonObjectJavaAdapter
 import tech.beshu.ror.audit.AuditResponseContext.{Allowed, Verbosity}
 import tech.beshu.ror.audit.instances.SerializeUser
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
@@ -26,9 +25,10 @@ import tech.beshu.ror.commons.shims.request.RequestContextShim
 
 import java.util.{Date, Optional}
 import java.{lang, util}
+import scala.annotation.nowarn
 import scala.collection.JavaConverters._
 
-class DeprecatedAuditLogSerializerAdapter[T](underlying: tech.beshu.ror.requestcontext.AuditLogSerializer[T])
+class DeprecatedAuditLogSerializerAdapter[T](@nowarn("cat=deprecation") underlying: tech.beshu.ror.requestcontext.AuditLogSerializer[T])
   extends AuditLogSerializer {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
@@ -53,6 +53,7 @@ class DeprecatedAuditLogSerializerAdapter[T](underlying: tech.beshu.ror.requestc
       }
   }
 
+  @nowarn("cat=deprecation")
   private def toDeprecatedResponseContext(responseContext: AuditResponseContext) = {
     responseContext match {
       case AuditResponseContext.Allowed(requestContext, verbosity, reason) =>
@@ -103,6 +104,7 @@ class DeprecatedAuditLogSerializerAdapter[T](underlying: tech.beshu.ror.requestc
     }
   }
 
+  @nowarn("cat=deprecation")
   private def toDeprecatedRequestContext(requestContext: AuditRequestContext) = {
     new RequestContextShim {
       override val getId: String = requestContext.id

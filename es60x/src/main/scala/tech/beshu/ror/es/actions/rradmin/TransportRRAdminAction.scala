@@ -24,14 +24,14 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 
-import scala.language.postfixOps
+import scala.annotation.nowarn
 
 class TransportRRAdminAction(settings: Settings,
                              threadPool: ThreadPool,
                              transportService: TransportService,
                              actionFilters: ActionFilters,
                              indexNameExpressionResolver: IndexNameExpressionResolver,
-                             ignore: Unit) // hack!
+                             @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
     settings, RRAdminActionType.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RRAdminRequest
   ) {

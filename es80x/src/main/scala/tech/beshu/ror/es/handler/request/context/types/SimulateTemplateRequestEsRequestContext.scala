@@ -52,7 +52,6 @@ class SimulateNewTemplateRequestEsRequestContext(actionRequest: SimulateTemplate
                                                  esContext: EsContext,
                                                  clusterService: RorClusterService,
                                                  override val threadPool: ThreadPool)
-                                                (implicit generator: UniqueIdentifierGenerator)
   extends SimulateTemplateRequestEsRequestContext[AddingIndexTemplateAndGetAllowedOnes](
     actionRequest, esContext, clusterService, threadPool
   ) {

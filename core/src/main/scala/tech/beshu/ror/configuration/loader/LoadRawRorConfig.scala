@@ -22,8 +22,6 @@ import tech.beshu.ror.configuration.ConfigLoading._
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.FileConfig
 import tech.beshu.ror.configuration.{EsConfig, RawRorConfig}
 
-import scala.language.implicitConversions
-
 object LoadRawRorConfig {
 
   type LoadResult = ErrorOr[LoadedRorConfig[RawRorConfig]]
@@ -63,7 +61,7 @@ object LoadRawRorConfig {
         rawRorConfig <- result match {
           case Left(LoadedRorConfig.IndexNotExist) =>
             Free.defer(attemptLoadingConfigFromIndex(index, attempts - 1, fallback))
-          case Left(error@LoadedRorConfig.IndexUnknownStructure) =>
+          case Left(LoadedRorConfig.IndexUnknownStructure) =>
             Free.pure[LoadConfigAction, LoadResult](Left(LoadedRorConfig.IndexUnknownStructure))
           case Left(error@LoadedRorConfig.IndexParsingError(_)) =>
             Free.pure[LoadConfigAction, LoadResult](Left(error))

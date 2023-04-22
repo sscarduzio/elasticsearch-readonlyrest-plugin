@@ -40,8 +40,8 @@ class UriRegexRule(val settings: Settings)
     }
   }
 
-  private def variableMatchingRequestedUri[B <: BlockContext : BlockContextUpdater](blockContext: B)
-                                                                                   (patternVariable: RuntimeMultiResolvableVariable[Pattern]): Boolean =
+  private def variableMatchingRequestedUri[B <: BlockContext](blockContext: B)
+                                                             (patternVariable: RuntimeMultiResolvableVariable[Pattern]): Boolean =
     patternVariable
       .resolve(blockContext)
       .exists(matchingResolvedPattern(blockContext.requestContext))

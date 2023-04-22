@@ -27,7 +27,6 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
-import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{GettingIndexTemplates, GettingLegacyAndIndexTemplates, GettingLegacyTemplates}
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, TemplatePath}
 import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern, UriPath}
@@ -44,8 +43,7 @@ object TemplateClusterStateEsRequestContext {
            esContext: EsContext,
            clusterService: RorClusterService,
            settings: Settings,
-           threadPool: ThreadPool)
-          (implicit generator: UniqueIdentifierGenerator): Option[TemplateClusterStateEsRequestContext] = {
+           threadPool: ThreadPool): Option[TemplateClusterStateEsRequestContext] = {
     UriPath.from(esContext.channel.request().uri()) match {
       case Some(TemplatePath(_) | CatTemplatePath(_)) =>
         Some(new TemplateClusterStateEsRequestContext(actionRequest, esContext, clusterService, settings, threadPool))
@@ -60,7 +58,6 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
                                                    clusterService: RorClusterService,
                                                    settings: Settings,
                                                    override val threadPool: ThreadPool)
-                                                  (implicit generator: UniqueIdentifierGenerator)
   extends BaseTemplatesEsRequestContext[ClusterStateRequest, GettingLegacyAndIndexTemplates](
     actionRequest, esContext, clusterService, threadPool
   ) {

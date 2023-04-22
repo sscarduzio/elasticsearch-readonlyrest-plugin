@@ -34,6 +34,7 @@ import org.apache.http.util.EntityUtils
 import org.apache.http.{Header, HttpResponse}
 
 import java.net.URI
+import scala.annotation.nowarn
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
@@ -103,7 +104,8 @@ class RestClient(ssl: Boolean,
   }
 
   private def createBasicAuthHeader(user: String, password: String) = {
-    val authenticate = BasicScheme.authenticate(new UsernamePasswordCredentials(user, password), "UTF-8", false)
+    @nowarn("cat=deprecation") val authenticate =
+      BasicScheme.authenticate(new UsernamePasswordCredentials(user, password), "UTF-8", false)
     new BasicHeader("Authorization", authenticate.getValue)
   }
 

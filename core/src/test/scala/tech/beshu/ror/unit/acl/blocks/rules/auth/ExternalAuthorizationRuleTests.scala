@@ -39,7 +39,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impers
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{GroupLike, GroupsLogic, LoggedUser, PermittedGroups, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
@@ -52,8 +51,6 @@ import scala.util.{Failure, Success, Try}
 
 class ExternalAuthorizationRuleTests
   extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion {
-
-  private implicit val defaultCaseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
 
   "An ExternalAuthorizationRule" should {
     "match" when {

@@ -21,8 +21,6 @@ import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
 import tech.beshu.ror.configuration.loader.{LoadedRorConfig, Path}
 
-import scala.language.higherKinds
-
 object ConfigLoading {
   type ErrorOr[A] = LoadedRorConfig.Error Either A
   type IndexErrorOr[A] = LoadedRorConfig.LoadingIndexError Either A

@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
-import cats.Order
 import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
@@ -38,7 +37,6 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ExternalAuthori
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.OptionalImpersonatorDefinitionOps
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
-import tech.beshu.ror.utils.CaseMappingEquality._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.concurrent.duration.FiniteDuration
@@ -50,14 +48,13 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
   extends RuleBaseDecoderWithoutAssociatedFields[ExternalAuthorizationRule] {
 
   override protected def decoder: Decoder[RuleDefinition[ExternalAuthorizationRule]] = {
-    settingsDecoder(caseMappingEquality)
+    settingsDecoder
       .map(settings => RuleDefinition.create(
         new ExternalAuthorizationRule(settings, impersonatorsDef.toImpersonation(mocksProvider), caseMappingEquality)
       ))
   }
 
-  private def settingsDecoder(caseMappingEquality: UserIdCaseMappingEquality): Decoder[ExternalAuthorizationRule.Settings] = {
-    implicit val orderUserId: Order[User.Id] = caseMappingEquality.toOrder
+  private def settingsDecoder: Decoder[ExternalAuthorizationRule.Settings] = {
     Decoder
       .instance { c =>
         for {

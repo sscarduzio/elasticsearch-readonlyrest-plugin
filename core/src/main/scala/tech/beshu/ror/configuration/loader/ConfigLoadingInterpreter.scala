@@ -34,8 +34,6 @@ import tech.beshu.ror.configuration.loader.LoadedRorConfig._
 import tech.beshu.ror.configuration.{ConfigLoading, EsConfig}
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 
-import scala.language.postfixOps
-
 object ConfigLoadingInterpreter extends Logging {
 
   def create(indexConfigManager: IndexConfigManager,

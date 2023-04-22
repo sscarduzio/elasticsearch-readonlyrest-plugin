@@ -242,8 +242,7 @@ private[indices] trait LegacyTemplatesIndices
   }
 
   private def filterTemplatesNotAllowedPatternsAndAliases(templates: Set[Template])
-                                                         (implicit blockContext: TemplateRequestBlockContext,
-                                                          allowedIndices: AllowedIndices): Set[Template] = {
+                                                         (implicit allowedIndices: AllowedIndices): Set[Template] = {
     templates.flatMap {
       case Template.LegacyTemplate(name, patterns, aliases) =>
         val onlyAllowedPatterns = patterns.filter(p => p.isAllowedByAny(allowedIndices.resolved))

@@ -23,9 +23,11 @@ import tech.beshu.ror.utils.elasticsearch.CatManager.{CatNodesResponse, CatRespo
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Arr, Value}
 
+import scala.annotation.nowarn
+
 class CatManager(client: RestClient,
                  override val additionalHeaders: Map[String, String] = Map.empty,
-                 esVersion: String)
+                 @nowarn("cat=unused") esVersion: String)
   extends BaseManager(client) {
 
   def main(): JsonResponse = call(new HttpGet(client.from("/")), new JsonResponse(_))

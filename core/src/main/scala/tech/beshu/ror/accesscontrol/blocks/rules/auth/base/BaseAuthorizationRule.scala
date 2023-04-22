@@ -33,7 +33,9 @@ import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{LoggedUser, PermittedGroups, User}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-private [auth] trait BaseAuthorizationRule
+import scala.annotation.nowarn
+
+private[auth] trait BaseAuthorizationRule
   extends AuthorizationRule
     with SimpleAuthorizationImpersonationSupport {
 
@@ -45,7 +47,7 @@ private [auth] trait BaseAuthorizationRule
 
   protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[GroupName]]
 
-  protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = Right(())
+  protected def loggedUserPreconditionCheck(@nowarn("cat=unused") user: LoggedUser): Either[Unit, Unit] = Right(())
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     authorize(blockContext)

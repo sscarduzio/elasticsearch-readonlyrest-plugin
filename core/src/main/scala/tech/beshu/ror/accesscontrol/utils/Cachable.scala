@@ -26,6 +26,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.utils.TaskOps._
 
 import java.util.concurrent.ConcurrentHashMap
+import scala.annotation.nowarn
 import scala.concurrent.ExecutionContext._
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Success
@@ -75,7 +76,9 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: FiniteDuration Refined Positi
     } yield result
   }
 
-  private def onRemoveHook(mappedKay: K1, value: V, cause: RemovalCause): Unit = {
+  private def onRemoveHook(mappedKay: K1,
+                           @nowarn("cat=unused") value: V,
+                           @nowarn("cat=unused") cause: RemovalCause): Unit = {
     keySemaphoresMap.remove(mappedKay)
   }
 

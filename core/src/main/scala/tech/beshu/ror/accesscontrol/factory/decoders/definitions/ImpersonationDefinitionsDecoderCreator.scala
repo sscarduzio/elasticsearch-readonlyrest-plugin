@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.implicits._
-import cats.{Id, Order}
+import cats.Id
 import io.circe.{Decoder, DecodingFailure}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions._
@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{User, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.UserIdPatterns
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
@@ -41,7 +41,6 @@ class ImpersonationDefinitionsDecoderCreator(caseMappingEquality: UserIdCaseMapp
                                              authProxyDefinitions: Definitions[ProxyAuth],
                                              jwtDefinitions: Definitions[JwtDef],
                                              ldapDefinitions: Definitions[LdapService],
-                                             rorKbnDefinitions: Definitions[RorKbnDef],
                                              mocksProvider: MocksProvider) {
 
   def create: ADecoder[Id, Definitions[ImpersonatorDef]] = {
@@ -52,8 +51,6 @@ class ImpersonationDefinitionsDecoderCreator(caseMappingEquality: UserIdCaseMapp
   implicit val impersonationDefNameDecoder: Decoder[Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
 
   private def impersonationDefDecoder: Decoder[ImpersonatorDef] = {
-    implicit val orderUserId: Order[User.Id] = caseMappingEquality.toOrder
-    implicit val _impersonatorDef = Option.empty[Definitions[ImpersonatorDef]]
     SyncDecoderCreator
       .instance { c =>
         val impersonatorKey = "impersonator"
@@ -96,7 +93,6 @@ class ImpersonationDefinitionsDecoderCreator(caseMappingEquality: UserIdCaseMapp
             authProxyDefinitions,
             jwtDefinitions,
             ldapDefinitions,
-            rorKbnDefinitions,
             impersonatorsDefinitions = None,
             mocksProvider,
             caseMappingEquality

@@ -164,11 +164,13 @@ tasks.withType(ScalaCompile).configureEach {
 
     // Add whatever flags you typically add
     parameters += [
+            "-unchecked",
             "-Ywarn-macros:after",
             "-feature",
             "-Ymacro-annotations",
             "-Xfatal-warnings",
-            "-deprecation:false",
+            "-Ywarn-unused",
+            "-Wunused:nowarn"
     ]
 
 

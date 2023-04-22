@@ -47,7 +47,7 @@ abstract class BaseDataStreamsEsRequestContext[R <: ActionRequest](actionRequest
     backingIndices = {
       val backingIndices = backingIndicesFrom(actionRequest)
       backingIndices match {
-        case BackingIndices.IndicesInvolved(filteredIndices, allAllowedIndices) =>
+        case BackingIndices.IndicesInvolved(filteredIndices, allAllowedIndices@_) =>
           logger.debug(s"[${id.show}] Discovered indices: ${filteredIndices.map(_.show).mkString(",")}")
         case BackingIndices.IndicesNotInvolved =>
       }

@@ -22,9 +22,11 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.transport.TransportService
 
+import scala.annotation.nowarn
+
 class TransportRRAuthMockAction(transportService: TransportService,
                                 actionFilters: ActionFilters,
-                                constructorDiscriminator: Unit) // hack!
+                                @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends HandledTransportAction[RRAuthMockRequest, RRAuthMockResponse](
     RRAuthMockActionType.name, transportService, actionFilters, () => new RRAuthMockRequest
   ) {

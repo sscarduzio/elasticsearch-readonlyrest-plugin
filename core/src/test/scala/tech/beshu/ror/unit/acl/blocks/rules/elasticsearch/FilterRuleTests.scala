@@ -33,7 +33,6 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableV
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Filter, User}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 
 class FilterRuleTests extends AnyWordSpec with MockFactory {
 
@@ -132,7 +131,6 @@ class FilterRuleTests extends AnyWordSpec with MockFactory {
   }
 
   private def filterValueFrom(value: String): RuntimeSingleResolvableVariable[Filter] = {
-    implicit val provider: EnvVarsProvider = OsEnvVarsProvider
     RuntimeResolvableVariableCreator
       .createSingleResolvableVariableFrom[Filter](NonEmptyString.unsafeFrom(value))(AlwaysRightConvertible.from(Filter.apply))
       .getOrElse(throw new IllegalStateException(s"Cannot create Filter Value from $value"))

@@ -23,7 +23,6 @@ import tech.beshu.ror.utils.elasticsearch.RorApiManager
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 import java.util.UUID
-import scala.language.postfixOps
 
 class CurrentUserMetadataSuite
   extends AnyWordSpec

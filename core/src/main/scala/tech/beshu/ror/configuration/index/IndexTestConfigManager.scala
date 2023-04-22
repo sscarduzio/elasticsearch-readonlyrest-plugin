@@ -149,7 +149,7 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
 
   private def getMocks(config: String): EitherT[Task, Error, AuthServicesMocks] = {
     io.circe.parser.decode[AuthServicesMocks](config)
-      .leftMap(x => parserError)
+      .leftMap(_ => parserError)
       .toEitherT[Task]
   }
 

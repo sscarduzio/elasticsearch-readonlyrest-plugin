@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaHideAppsRule
 import tech.beshu.ror.accesscontrol.domain.KibanaApp
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 

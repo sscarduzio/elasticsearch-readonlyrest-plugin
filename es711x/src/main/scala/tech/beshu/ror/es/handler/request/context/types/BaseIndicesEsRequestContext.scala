@@ -87,10 +87,11 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
                        filteredIndices: NonEmptyList[ClusterIndexName],
                        allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult
 
-  private def toSortedNonEmptyList[A : Ordering](values: Iterable[A]) = {
+  private def toSortedNonEmptyList[A: Ordering](values: Iterable[A]) = {
     NonEmptyList.fromList(values.toList.sorted)
   }
 
   private implicit val indexNameOrdering: Ordering[ClusterIndexName] =
     Ordering.by[ClusterIndexName, String](_.stringify)(implicitly[Ordering[String]].reverse)
+
 }

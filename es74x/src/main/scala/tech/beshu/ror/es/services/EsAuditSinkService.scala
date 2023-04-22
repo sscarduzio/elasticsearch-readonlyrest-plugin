@@ -26,11 +26,14 @@ import org.elasticsearch.common.xcontent.XContentType
 import tech.beshu.ror.Constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_SINK_MAX_RETRIES, AUDIT_SINK_MAX_SECONDS}
 import tech.beshu.ror.es.AuditSinkService
 
+import scala.annotation.nowarn
+
 @Inject
 class EsAuditSinkService(client: Client)
   extends AuditSinkService
     with Logging {
 
+  @nowarn("cat=deprecation")
   private val bulkProcessor =
     BulkProcessor
       .builder(client, new AuditSinkBulkProcessorListener)

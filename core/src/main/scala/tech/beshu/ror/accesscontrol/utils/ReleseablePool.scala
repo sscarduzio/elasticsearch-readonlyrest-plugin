@@ -20,8 +20,6 @@ import cats.Monad
 import cats.implicits._
 import monix.execution.atomic.Atomic
 
-import scala.language.higherKinds
-
 final class ReleseablePool[M[_] : Monad, A, B](acquire: B => M[A])(release: A => M[Unit]) {
 
   import ReleseablePool._

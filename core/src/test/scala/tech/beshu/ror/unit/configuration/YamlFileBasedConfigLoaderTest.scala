@@ -23,9 +23,7 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.providers.EnvVarsProvider
-import tech.beshu.ror.configuration.{MalformedSettings, YamlFileBasedConfigLoader}
-
-import scala.language.postfixOps
+import tech.beshu.ror.configuration.YamlFileBasedConfigLoader
 
 class YamlFileBasedConfigLoaderTest extends AnyWordSpec with Inside {
   private implicit val envVarsProvider: EnvVarsProvider = name =>

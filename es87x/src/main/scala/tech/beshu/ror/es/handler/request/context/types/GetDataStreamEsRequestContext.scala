@@ -52,7 +52,7 @@ class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
     ModificationResult.UpdateResponse {
       case r: GetDataStreamAction.Response =>
         blockContext.backingIndices match {
-          case BackingIndices.IndicesInvolved(filteredIndices, allAllowedIndices) =>
+          case BackingIndices.IndicesInvolved(filteredIndices@_, allAllowedIndices) =>
             Task.now(updateGetDataStreamResponse(r, allAllowedIndices))
           case BackingIndices.IndicesNotInvolved =>
             Task.now(r)

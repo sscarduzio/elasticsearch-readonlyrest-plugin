@@ -84,7 +84,6 @@ class EsServerBasedRorClusterService(nodeName: String,
   override def allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]] =
     Task.now(Set.empty) // data streams not supported
 
-
   override def allTemplates: Set[Template] = legacyTemplates()
 
   override def allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = {

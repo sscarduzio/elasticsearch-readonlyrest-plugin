@@ -145,7 +145,7 @@ trait BaseAuditingToolsSuite
           }
         }
         "two metadata requests were sent, one with correlationId" in {
-          def fetchMetadata(correlationId: Option[String] = None) = {
+          def fetchMetadata(correlationId: Option[String]) = {
             val userMetadataManager = new RorApiManager(
               client = basicAuthClient("username", "dev"),
               esVersion = esVersionUsed

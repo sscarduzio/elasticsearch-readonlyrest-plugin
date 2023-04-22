@@ -306,7 +306,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
   private def assertNotMatchRule(settings: SETTINGS,
                                  action: Action,
                                  customKibanaIndex: Option[IndexName.Kibana] = None,
-                                 requestedIndices: Set[ClusterIndexName] = Set.empty,
+                                 requestedIndices: Set[ClusterIndexName],
                                  uriPath: Option[UriPath] = None) =
     assertRule(settings, action, customKibanaIndex, requestedIndices, uriPath, blockContextAssertion = None)
 
@@ -314,7 +314,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
                          action: Action,
                          customKibanaIndex: Option[IndexName.Kibana],
                          requestedIndices: Set[ClusterIndexName],
-                         uriPath: Option[UriPath] = None,
+                         uriPath: Option[UriPath],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = createRuleFrom(settings)
     val requestContext = MockRequestContext.indices.copy(

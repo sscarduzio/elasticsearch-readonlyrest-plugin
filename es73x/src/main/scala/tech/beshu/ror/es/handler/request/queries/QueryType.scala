@@ -18,6 +18,7 @@ package tech.beshu.ror.es.handler.request.queries
 
 import org.elasticsearch.index.query._
 
+import scala.annotation.nowarn
 import scala.jdk.CollectionConverters._
 
 sealed trait QueryType[QUERY <: QueryBuilder]
@@ -66,6 +67,7 @@ object QueryType {
 
     implicit val constantScoreQueryType: Compound[ConstantScoreQueryBuilder] = Compound.oneInnerQuery(_.innerQuery())
 
+    @nowarn("cat=deprecation")
     implicit object CommonTermsQueryType extends Leaf[CommonTermsQueryBuilder]
     implicit object ExistsQueryType extends Leaf[ExistsQueryBuilder]
     implicit object FuzzyQueryType extends Leaf[FuzzyQueryBuilder]

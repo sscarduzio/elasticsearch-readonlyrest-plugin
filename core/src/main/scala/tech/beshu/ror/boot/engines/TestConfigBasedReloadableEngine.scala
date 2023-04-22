@@ -38,6 +38,7 @@ import tech.beshu.ror.configuration.{RawRorConfig, TestRorConfig}
 import tech.beshu.ror.utils.ScalaOps.value
 
 import java.time.Clock
+import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
 
 private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
@@ -51,7 +52,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
   ) {
 
   def currentTestConfig()
-                       (implicit requestId: RequestId): Task[TestConfig] = {
+                       (implicit @nowarn("cat=unused") requestId: RequestId): Task[TestConfig] = {
     Task.delay {
       currentEngineState match {
         case EngineState.NotStartedYet(None, _) | EngineState.Stopped =>
@@ -107,7 +108,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
           logger.error(s"[${requestId.show}] Cannot reload ROR test settings - failure: $message")
         case Left(ReloadError(RawConfigReloadError.RorInstanceStopped)) =>
           logger.warn(s"[${requestId.show}] ROR is being stopped! Loading tests settings skipped!")
-        case Left(IndexConfigSavingError(underlying)) =>
+        case Left(IndexConfigSavingError(_)) =>
           logger.error(s"[${requestId.show}] Saving ROR test settings in index failed")
       })
     } yield reloadResult
@@ -180,8 +181,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
     }
   }
 
-  private def updateMocksProvider[A](mocks: AuthServicesMocks)
-                                    (implicit requestId: RequestId): EitherT[Task, A, Unit] = {
+  private def updateMocksProvider[A](mocks: AuthServicesMocks): EitherT[Task, A, Unit] = {
     EitherT.right(Task.delay(boot.authServicesMocksProvider.update(mocks)))
   }
 

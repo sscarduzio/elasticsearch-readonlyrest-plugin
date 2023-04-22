@@ -31,8 +31,6 @@ import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMa
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.ImmutableOpenMapOps
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.language.postfixOps
-
 class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
                                esContext: EsContext,
                                aclContext: AccessControlStaticContext,

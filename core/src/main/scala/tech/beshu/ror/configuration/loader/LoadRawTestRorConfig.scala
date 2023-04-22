@@ -20,7 +20,6 @@ import cats.free.Free
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.TestConfigLoading._
 import tech.beshu.ror.configuration.TestRorConfig
-import scala.language.implicitConversions
 
 object LoadRawTestRorConfig {
   def load(configurationIndex: RorConfigurationIndex,

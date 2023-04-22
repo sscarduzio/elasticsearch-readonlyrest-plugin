@@ -16,24 +16,25 @@
  */
 package tech.beshu.ror.configuration
 
-import java.io.{File => JFile}
-import java.nio.file.{Path, Paths}
 import better.files._
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
-import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration, KeystoreFile, TruststoreFile}
+import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration}
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.SSLCertHelper
+
+import java.io.{File => JFile}
+import java.nio.file.{Path, Paths}
 
 final case class RorSsl(externalSsl: Option[ExternalSslConfiguration],
                         interNodeSsl: Option[InternodeSslConfiguration])
 
 object RorSsl extends Logging {
 
-  val noSsl = RorSsl(None, None)
+  private val noSsl = RorSsl(None, None)
 
   def load(esConfigFolderPath: Path)
           (implicit envVarsProvider:EnvVarsProvider,
@@ -281,12 +282,6 @@ private object SslDecoders extends Logging {
   }
 
   private def sslCommonPropertiesDecoder(basePath: Path, c: HCursor) = {
-    val jFileDecoder: Decoder[JFile] = fileDecoder(basePath)
-    implicit val keystoreFileDecoder = jFileDecoder.map(KeystoreFile)
-    implicit val truststoreFileDecoder = jFileDecoder.map(TruststoreFile)
-    implicit val serverCertificateFileDecoder = jFileDecoder.map(ServerCertificateFile)
-    implicit val serverCertificateKeyFileDecoder = jFileDecoder.map(ServerCertificateKeyFile)
-    implicit val clientTrustedCertificateFileDecoder = jFileDecoder.map(ClientTrustedCertificateFile)
     for {
       ciphers <- c.downField(consts.allowedCiphers).as[Option[Set[Cipher]]]
       protocols <- c.downField(consts.allowedProtocols).as[Option[Set[Protocol]]]

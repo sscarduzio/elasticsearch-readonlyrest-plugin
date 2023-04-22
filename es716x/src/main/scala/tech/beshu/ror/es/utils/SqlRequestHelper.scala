@@ -238,7 +238,6 @@ final class SimpleStatement(val underlyingObject: AnyRef)
 }
 
 final class Command(val underlyingObject: Any)
-                   (implicit classLoader: ClassLoader)
   extends Statement {
 
   lazy val indices: SqlIndices = {

@@ -36,8 +36,6 @@ import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 
-import scala.language.postfixOps
-
 class ConfigApi(rorInstance: RorInstance,
                 indexConfigManager: IndexConfigManager,
                 fileConfigLoader: FileConfigLoader,
@@ -88,8 +86,7 @@ class ConfigApi(rorInstance: RorInstance,
     result.value.map(_.merge)
   }
 
-  private def provideRorFileConfig()
-                                  (implicit requestId: RequestId): Task[ConfigResponse] = {
+  private def provideRorFileConfig(): Task[ConfigResponse] = {
     fileConfigLoader
       .load()
       .map {
@@ -98,8 +95,7 @@ class ConfigApi(rorInstance: RorInstance,
       }
   }
 
-  private def provideRorIndexConfig()
-                                   (implicit requestId: RequestId): Task[ConfigResponse] = {
+  private def provideRorIndexConfig(): Task[ConfigResponse] = {
     indexConfigManager
       .load(rorConfigurationIndex)
       .map {

@@ -23,6 +23,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CannotExtractFields, NotUsingFields, UsingFields}
 import tech.beshu.ror.es.handler.request.queries.QueryType.{Compound, Leaf}
 
+import scala.annotation.nowarn
 import scala.jdk.CollectionConverters._
 
 trait QueryWithModifiableFields[QUERY <: QueryBuilder] {
@@ -44,6 +45,7 @@ object QueryWithModifiableFields {
     }
   }
 
+  @nowarn("cat=unused")
   abstract class ModifiableLeafQuery[QUERY <: QueryBuilder : Leaf : QueryFieldsUsage] extends QueryWithModifiableFields[QUERY] {
 
     protected def replace(query: QUERY,
@@ -273,6 +275,7 @@ object QueryWithModifiableFields {
       ModifiableLeafQuery[QUERY].handleNotAllowedFieldsIn(leafQuery, notAllowedFields)
     }
 
+    @nowarn("cat=unused")
     private def handleCompoundQuery[QUERY <: QueryBuilder : Compound : QueryWithModifiableFields](compoundQuery: QUERY,
                                                                                                   notAllowedFields: NonEmptyList[SpecificField]) = {
       QueryWithModifiableFields[QUERY].handleNotAllowedFieldsIn(compoundQuery, notAllowedFields)

@@ -39,7 +39,6 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResul
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.collection.immutable.SortedSet
-import scala.language.{existentials, higherKinds}
 
 object CirceOps {
 
@@ -111,7 +110,7 @@ object CirceOps {
         .or(DecoderHelpers.decodeUniqueNonEmptyList[NonEmptyString])
         .map(a => UniqueNonEmptyList.unsafeFromIterable(a.toList.map(fromString)))
 
-    def decodeStringLikeOrSet[T: Order : Decoder]: Decoder[Set[T]] = {
+    def decodeStringLikeOrSet[T : Decoder]: Decoder[Set[T]] = {
       decodeStringLike.map(Set(_)).or(Decoder.decodeSet[String]).emap { set =>
         val (errorsSet, valuesSet) = set.foldLeft((Set.empty[String], Set.empty[T])) {
           case ((errors, values), elem) =>
@@ -287,7 +286,7 @@ object CirceOps {
 
     def downFieldsWithKey(field: String, fields: String*): (ACursor, String) = {
       fields.toList.foldLeft((value.downField(field), field)) {
-        case ((_: FailedCursor, prevField), nextField) => (value.downField(nextField), nextField)
+        case ((_: FailedCursor, prevField@_), nextField) => (value.downField(nextField), nextField)
         case ((found: HCursor, foundFiled), _) => (found, foundFiled)
         case ((other, otherField), _) => (other, otherField)
       }

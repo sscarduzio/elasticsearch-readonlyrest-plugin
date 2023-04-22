@@ -25,7 +25,6 @@ import tech.beshu.ror.utils.misc.{EsStartupChecker, Version}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
-import scala.language.postfixOps
 import scala.util.Try
 
 class ElasticsearchNodeWaitingStrategy(esVersion: String,

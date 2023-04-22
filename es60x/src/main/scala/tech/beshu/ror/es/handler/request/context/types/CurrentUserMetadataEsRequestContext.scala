@@ -20,14 +20,15 @@ package tech.beshu.ror.es.handler.request.context.types
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 
-class CurrentUserMetadataEsRequestContext(actionRequest: RRUserMetadataRequest,
+import scala.annotation.nowarn
+
+class CurrentUserMetadataEsRequestContext(@nowarn("cat=unused") actionRequest: RRUserMetadataRequest,
                                           esContext: EsContext,
                                           clusterService: RorClusterService,
                                           override val threadPool: ThreadPool)

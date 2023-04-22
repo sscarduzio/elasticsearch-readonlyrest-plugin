@@ -18,8 +18,7 @@ package tech.beshu.ror.configuration
 
 import better.files.File
 import cats.data.NonEmptyList
-import io.circe.Decoder.Result
-import io.circe.{ACursor, Decoder, HCursor}
+import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.RorBootConfiguration.{RorFailedToStartResponse, RorNotStartedResponse}

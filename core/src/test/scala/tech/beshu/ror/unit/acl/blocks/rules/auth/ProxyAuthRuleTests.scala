@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
-import cats.Order
 import cats.data.NonEmptyList
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
@@ -34,7 +33,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ProxyAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{Credentials, Header, PlainTextSecret, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
@@ -46,8 +44,6 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
 class ProxyAuthRuleTests extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion {
-
-  private implicit val defaultUserIdOrder: Order[Id] = UserIdEq.caseSensitive.toOrder
 
   "A ProxyAuthRule" should {
     "match" when {

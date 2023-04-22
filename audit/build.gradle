@@ -84,9 +84,15 @@ test {
 }
 
 compileScala {
-    options.compilerArgs.add("-Ywarn-macros:after")
-    options.compilerArgs.add("-Xfatal-warnings")
-    options.compilerArgs.add("-deprecation:false")
+    options.compilerArgs.addAll(
+            "-unchecked",
+            "-Ywarn-macros:after",
+            "-feature",
+            "-Ymacro-annotations",
+            "-Xfatal-warnings",
+            "-Ywarn-unused",
+            "-Wunused:nowarn"
+    )
 }
 
 def ror_pom = { ->

@@ -43,7 +43,6 @@ import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers._
 
 import scala.concurrent.duration.FiniteDuration
-import scala.language.{implicitConversions, postfixOps}
 
 class ReadonlyRest(coreFactory: CoreFactory,
                    auditSinkCreator: AuditSinkCreator,

@@ -69,11 +69,9 @@ import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter._
 import tech.beshu.ror.es.handler.request.RestRequestOps._
 import tech.beshu.ror.es.handler.request.context.types._
-import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
 import java.time.Instant
-import scala.language.postfixOps
 import scala.reflect.ClassTag
 
 class AclAwareRequestFilter(clusterService: RorClusterService,
@@ -177,7 +175,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: MultiTermVectorsRequest =>
         regularRequestHandler.handle(new MultiTermVectorsEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: BulkRequest =>
-        regularRequestHandler.handle(new BulkEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new BulkEsRequestContext(request, esContext, clusterService, threadPool))
       case request: DeleteRequest =>
         regularRequestHandler.handle(new DeleteDocumentEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: GetSettingsRequest =>

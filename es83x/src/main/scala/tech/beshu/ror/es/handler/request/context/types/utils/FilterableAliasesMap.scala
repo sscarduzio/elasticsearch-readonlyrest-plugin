@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.{CaseMappingEquality, StringCaseMapping}
 
 import scala.jdk.CollectionConverters._
-import scala.language.{implicitConversions, postfixOps}
+import scala.language.implicitConversions
 
 class FilterableAliasesMap(val value: AliasesMap) extends AnyVal {
 

@@ -22,9 +22,11 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.transport.TransportService
 
+import scala.annotation.nowarn
+
 class TransportRRAuditEventAction(transportService: TransportService,
                                   actionFilters: ActionFilters,
-                                  constructorDiscriminator: Unit)
+                                  @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends HandledTransportAction[RRAuditEventRequest, RRAuditEventResponse](
     RRAuditEventActionType.name, transportService, actionFilters, RRAuditEventActionType.exceptionReader
   ) {

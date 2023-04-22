@@ -93,4 +93,5 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
 
   private implicit val indexNameOrdering: Ordering[ClusterIndexName] =
     Ordering.by[ClusterIndexName, String](_.stringify)(implicitly[Ordering[String]].reverse)
+
 }

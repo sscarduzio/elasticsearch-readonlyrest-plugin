@@ -40,8 +40,6 @@ import scala.jdk.CollectionConverters._
 
 import java.util.{List => JList}
 
-import scala.language.postfixOps
-
 class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
                                  esContext: EsContext,
                                  aclContext: AccessControlStaticContext,

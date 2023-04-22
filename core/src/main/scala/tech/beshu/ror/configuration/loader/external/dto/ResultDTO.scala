@@ -20,7 +20,6 @@ import cats.implicits._
 import io.circe.Codec
 import tech.beshu.ror.configuration.loader.distributed.Summary
 import tech.beshu.ror.configuration.loader.distributed.Summary.{Error, Result}
-import tech.beshu.ror.configuration.loader.distributed.internode.dto.NodeConfigRequestDTO
 
 final case class ResultDTO(config: Option[LoadedConfigDTO],
                            warnings: List[NodesResponseWaringDTO],

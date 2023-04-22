@@ -22,7 +22,7 @@ import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplat
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateNamePattern
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{DeletingLegacyTemplates, GettingLegacyTemplates}
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.DeletingLegacyTemplates
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
