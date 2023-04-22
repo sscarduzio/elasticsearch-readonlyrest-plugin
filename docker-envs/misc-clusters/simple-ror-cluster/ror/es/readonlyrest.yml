@@ -1,11 +1,11 @@
 readonlyrest:
-  ssl:
-    enable: true
-    keystore_file: "elastic-certificates.p12"
-    keystore_pass: test
-    truststore_file: "elastic-certificates.p12"
-    truststore_pass: test
-    key_pass: test
+#  ssl:
+#    enable: true
+#    keystore_file: "elastic-certificates.p12"
+#    keystore_pass: test
+#    truststore_file: "elastic-certificates.p12"
+#    truststore_pass: test
+#    key_pass: test
 
   ssl_internode:
     enable: true
@@ -28,8 +28,7 @@ readonlyrest:
     - name: "::ADMIN::"
       auth_key: user:pass
       # KIBANA ADMIN ACCESS NEEDED TO EDIT SECURITY SETTINGS IN ROR KIBANA APP!
-      kibana:
-        access: admin
+      kibana_access: admin
 
     - name: "User 1"
       type: allow

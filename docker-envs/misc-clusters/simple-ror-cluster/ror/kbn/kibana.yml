@@ -6,8 +6,8 @@ monitoring.ui.container.elasticsearch.enabled: true
 elasticsearch.username: admin
 elasticsearch.password: container
 
-elasticsearch.ssl.keystore.path: "/usr/share/kibana/config/elastic-certificates.p12"
-elasticsearch.ssl.keystore.password: "test"
-elasticsearch.ssl.truststore.path: "/usr/share/kibana/config/elastic-certificates.p12"
-elasticsearch.ssl.truststore.password: "test"
-elasticsearch.ssl.verificationMode: none
+#elasticsearch.ssl.keystore.path: "/usr/share/kibana/config/elastic-certificates.p12"
+#elasticsearch.ssl.keystore.password: "test"
+#elasticsearch.ssl.truststore.path: "/usr/share/kibana/config/elastic-certificates.p12"
+#elasticsearch.ssl.truststore.password: "test"
+#elasticsearch.ssl.verificationMode: none
