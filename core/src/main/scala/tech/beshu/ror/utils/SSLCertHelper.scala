@@ -35,7 +35,7 @@ import java.io.{File, FileInputStream, FileReader, IOException}
 import java.security.cert.{CertificateFactory, X509Certificate}
 import java.security.{KeyStore, PrivateKey}
 import javax.net.ssl.{KeyManagerFactory, SNIServerName, SSLEngine, TrustManagerFactory}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.{existentials, implicitConversions}
 import scala.util.Try
 

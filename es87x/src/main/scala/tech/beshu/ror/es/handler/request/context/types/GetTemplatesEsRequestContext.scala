@@ -37,7 +37,7 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
                                    esContext: EsContext,

@@ -37,7 +37,7 @@ import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.Cause.fromMismatchedCause
 import tech.beshu.ror.utils.LoggerOps._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 class CurrentUserMetadataRequestHandler(engine: Engine,

@@ -38,7 +38,7 @@ import tech.beshu.ror.es.handler.response.DocumentApiOps.MultiGetApi._
 import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
                                esContext: EsContext,

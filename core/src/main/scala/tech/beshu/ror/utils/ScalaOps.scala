@@ -28,7 +28,7 @@ import monix.execution.Scheduler
 
 import java.util
 import java.util.Base64
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}

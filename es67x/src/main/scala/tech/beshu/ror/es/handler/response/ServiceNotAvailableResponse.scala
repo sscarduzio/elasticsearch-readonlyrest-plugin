@@ -22,7 +22,7 @@ import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.rest.RestStatus
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class ServiceNotAvailableResponse private(cause: ServiceNotAvailableResponse.Cause)
   extends ElasticsearchException(GlobalSettings.defaultForbiddenRequestMessage) {

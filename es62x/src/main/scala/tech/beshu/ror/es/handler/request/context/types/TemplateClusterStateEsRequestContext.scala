@@ -36,7 +36,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object TemplateClusterStateEsRequestContext {
 

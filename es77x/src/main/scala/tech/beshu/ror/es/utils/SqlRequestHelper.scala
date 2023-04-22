@@ -31,7 +31,7 @@ import java.lang.reflect.Modifier
 import java.time.ZoneId
 import java.util.regex.Pattern
 import java.util.{List => JList}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 sealed trait ExtractedIndices {

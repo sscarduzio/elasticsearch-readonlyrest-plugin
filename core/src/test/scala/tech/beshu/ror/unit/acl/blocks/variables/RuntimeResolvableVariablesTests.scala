@@ -36,7 +36,7 @@ import tech.beshu.ror.mocks.{MockRequestContext, MockUserMetadataRequestContext}
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
 

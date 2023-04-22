@@ -33,7 +33,7 @@ import tech.beshu.ror.utils.DurationOps._
 
 import java.util.concurrent.CopyOnWriteArrayList
 import scala.concurrent.duration._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 
 trait HttpClientsFactory {

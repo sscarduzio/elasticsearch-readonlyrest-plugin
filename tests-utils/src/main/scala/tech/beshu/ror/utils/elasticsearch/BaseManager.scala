@@ -31,7 +31,7 @@ import ujson.Value
 import java.time.Duration
 import java.util
 import java.util.function.BiPredicate
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 abstract class BaseManager(client: RestClient) {

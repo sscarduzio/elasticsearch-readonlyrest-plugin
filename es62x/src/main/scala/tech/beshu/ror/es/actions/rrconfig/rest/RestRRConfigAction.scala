@@ -30,7 +30,7 @@ import tech.beshu.ror.configuration.loader.distributed.NodesResponse.NodeId
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfigRequest, Timeout}
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, RRConfigsRequest}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 
 @Inject

@@ -22,7 +22,7 @@ import tech.beshu.ror.org.yaml.snakeyaml.{LoaderOptions, Yaml}
 import tech.beshu.ror.org.yaml.snakeyaml.constructor.SafeConstructor
 import tech.beshu.ror.org.yaml.snakeyaml.nodes._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object parser {
   /**

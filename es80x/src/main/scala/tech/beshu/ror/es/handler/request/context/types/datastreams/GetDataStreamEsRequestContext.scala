@@ -32,7 +32,7 @@ import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequest
 import tech.beshu.ror.utils.ReflecUtils.{invokeMethod, setField}
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRequest,

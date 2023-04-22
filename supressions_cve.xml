@@ -2,17 +2,17 @@
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.1.xsd">
     <suppress>
         <notes><![CDATA[
-   file name: circe-refined_2.12-0.13.0.jar - coincidence of names
+   file name: circe-refined_2.13-0.14.4.jar
    ]]></notes>
-        <sha1>e48e7de23bba2007ceb0d6bce80e55139d98d9c2</sha1>
-        <cpe>cpe:/a:refined-github_project:refined-github</cpe>
+        <sha1>9bd0726f11ecb8f9a0b9c23365c47d7693634d0d</sha1>
+        <cve>CVE-2021-34364</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[
-   file name: refined_2.12-0.9.12.jar - coincidence of names
+   file name: refined_2.13-0.9.29.jar
    ]]></notes>
-        <sha1>6ff2aa22c46cb271116c136e51bc624a3dcdddcb</sha1>
-        <cpe>cpe:/a:refined-github_project:refined-github</cpe>
+        <sha1>d20a5338bf57204710769cb13aeb20a4568c9222</sha1>
+        <cve>CVE-2021-34364</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[

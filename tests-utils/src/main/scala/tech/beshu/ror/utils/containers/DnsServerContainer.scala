@@ -20,7 +20,7 @@ import com.dimafeng.testcontainers.GenericContainer
 import com.github.dockerjava.api.model.{ExposedPort, InternetProtocol}
 import org.testcontainers.images.builder.ImageFromDockerfile
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.{implicitConversions, postfixOps}
 
 class DnsServerContainer(srvServicePort: Int)

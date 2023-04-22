@@ -23,7 +23,7 @@ import io.jsonwebtoken.security.Keys
 import io.jsonwebtoken.{Jwts, SignatureAlgorithm}
 import tech.beshu.ror.utils.misc.JwtUtils.Jwt.Secret
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 
 object JwtUtils {

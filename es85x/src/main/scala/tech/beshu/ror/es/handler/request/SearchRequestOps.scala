@@ -37,7 +37,7 @@ import tech.beshu.ror.es.handler.request.queries.QueryWithModifiableFields.{Ops 
 import tech.beshu.ror.es.handler.response.FLSContextHeaderHandler
 
 import java.util.UUID
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object SearchRequestOps extends Logging {
 

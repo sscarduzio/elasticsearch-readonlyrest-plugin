@@ -35,7 +35,7 @@ import org.apache.http.{Header, HttpResponse}
 
 import java.net.URI
 import scala.concurrent.duration._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 import scala.util.Try
 

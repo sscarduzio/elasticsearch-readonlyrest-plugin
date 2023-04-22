@@ -75,7 +75,7 @@ import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import java.nio.file.Path
 import java.util
 import java.util.function.{Supplier, UnaryOperator}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
