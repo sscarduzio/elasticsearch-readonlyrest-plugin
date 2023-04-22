@@ -170,7 +170,7 @@ tasks.withType(ScalaCompile).configureEach {
             "-Ymacro-annotations",
             "-Xfatal-warnings",
             "-Ywarn-unused",
-            "-Wunused:nowarn"
+            "-Wunused:-nowarn"
     ]
 
 

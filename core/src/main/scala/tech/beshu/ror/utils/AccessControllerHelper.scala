@@ -21,7 +21,7 @@ import scala.annotation.nowarn
 
 object AccessControllerHelper {
 
-  @nowarn("cat=deprecation")
+  @nowarn("cat=deprecation") // deprecated since java 17
   def doPrivileged[T](action: => T): T = {
     AccessController.doPrivileged(new PrivilegedAction[T] {
       override def run(): T = action
