@@ -36,7 +36,7 @@ class EsAuditSinkService(client: Client)
   @nowarn("cat=deprecation")
   private val bulkProcessor =
     BulkProcessor
-      .builder(client, new AuditSinkBulkProcessorListener)
+      .builder(client, new AuditSinkBulkProcessorListener) // deprecated since es 7.5.0
       .setBulkActions(AUDIT_SINK_MAX_ITEMS)
       .setBulkSize(new ByteSizeValue(AUDIT_SINK_MAX_KB.toInt, ByteSizeUnit.KB))
       .setFlushInterval(TimeValue.timeValueSeconds(AUDIT_SINK_MAX_SECONDS.toInt))
