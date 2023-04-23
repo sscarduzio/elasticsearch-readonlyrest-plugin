@@ -24,7 +24,6 @@ import org.apache.lucene.util.{SetOnce => LuceneSetOnce}
 import org.elasticsearch.core.CheckedFunction
 import org.elasticsearch.index.{IndexModule, IndexService}
 import org.joor.Reflect.on
-import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.utils.IndexModuleOps.ReaderWrapper
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
@@ -32,11 +31,11 @@ import scala.language.implicitConversions
 
 class IndexModuleOps(indexModule: IndexModule) {
 
-  def overwrite(): Unit = {
+  def overwrite(readerWrapper: ReaderWrapper): Unit = {
     doPrivileged {
       on(indexModule).set("indexReaderWrapper", new LuceneSetOnce[ReaderWrapper]())
     }
-    indexModule.setReaderWrapper(RoleIndexSearcherWrapper.instance)
+    indexModule.setReaderWrapper(readerWrapper)
   }
 }
 

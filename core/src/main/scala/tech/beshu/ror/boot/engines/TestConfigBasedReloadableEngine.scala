@@ -108,7 +108,7 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
           logger.error(s"[${requestId.show}] Cannot reload ROR test settings - failure: $message")
         case Left(ReloadError(RawConfigReloadError.RorInstanceStopped)) =>
           logger.warn(s"[${requestId.show}] ROR is being stopped! Loading tests settings skipped!")
-        case Left(IndexConfigSavingError(_)) =>
+        case Left(IndexConfigSavingError(SavingIndexConfigError.CannotSaveConfig)) =>
           logger.error(s"[${requestId.show}] Saving ROR test settings in index failed")
       })
     } yield reloadResult

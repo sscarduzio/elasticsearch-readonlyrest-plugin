@@ -296,7 +296,7 @@ class RawRorConfigBasedCoreFactory()
         ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder(ldapConnectionPoolProvider)
         rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance())
         impersonationDefinitionsDecoderCreator = new ImpersonationDefinitionsDecoderCreator(
-          caseMappingEquality, authenticationServices, authProxies, jwtDefs, ldapServices, mocksProvider
+          caseMappingEquality, authenticationServices, authProxies, ldapServices, mocksProvider
         )
         impersonationDefs <- AsyncDecoderCreator.from(impersonationDefinitionsDecoderCreator.create)
         userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(

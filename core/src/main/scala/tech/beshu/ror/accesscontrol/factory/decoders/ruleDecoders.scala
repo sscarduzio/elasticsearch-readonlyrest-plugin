@@ -116,6 +116,8 @@ object ruleDecoders {
     val optionalRuleDecoder = name match {
       case ExternalAuthorizationRule.Name.name =>
         Some(new ExternalAuthorizationRuleDecoder(authorizationServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+      case JwtAuthRule.Name.name =>
+        Some(new JwtAuthRuleDecoder(jwtDefinitions, caseMappingEquality))
       case LdapAuthorizationRule.Name.name =>
         Some(new LdapAuthorizationRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
       case LdapAuthRule.Name.name =>
@@ -127,7 +129,6 @@ object ruleDecoders {
           name,
           authenticationServiceDefinitions,
           authProxyDefinitions,
-          jwtDefinitions,
           ldapServiceDefinitions,
           impersonatorsDefinitions,
           mocksProvider,
@@ -140,7 +141,6 @@ object ruleDecoders {
   def authenticationRuleDecoderBy(name: Rule.Name,
                                   authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
                                   authProxyDefinitions: Definitions[ProxyAuth],
-                                  jwtDefinitions: Definitions[JwtDef],
                                   ldapServiceDefinitions: Definitions[LdapService],
                                   impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                                   mocksProvider: MocksProvider,
@@ -160,8 +160,6 @@ object ruleDecoders {
         Some(new AuthKeyUnixRuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
       case ExternalAuthenticationRule.Name.name =>
         Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
-      case JwtAuthRule.Name.name =>
-        Some(new JwtAuthRuleDecoder(jwtDefinitions, caseMappingEquality))
       case LdapAuthenticationRule.Name.name =>
         Some(new LdapAuthenticationRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
       case ProxyAuthRule.Name.name =>

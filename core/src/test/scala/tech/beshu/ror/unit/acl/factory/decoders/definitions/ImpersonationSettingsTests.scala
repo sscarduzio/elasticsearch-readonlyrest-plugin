@@ -20,7 +20,7 @@ import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, JwtDef, ProxyAuth}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ProxyAuth}
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{AuthKeyRule, AuthKeySha1Rule}
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
@@ -36,7 +36,6 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
     UserIdEq.caseSensitive,
     Definitions[ExternalAuthenticationService](Nil),
     Definitions[ProxyAuth](Nil),
-    Definitions[JwtDef](Nil),
     Definitions[LdapService](Nil),
     NoOpMocksProvider
   ).create

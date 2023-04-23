@@ -39,7 +39,6 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 class ImpersonationDefinitionsDecoderCreator(caseMappingEquality: UserIdCaseMappingEquality,
                                              authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
                                              authProxyDefinitions: Definitions[ProxyAuth],
-                                             jwtDefinitions: Definitions[JwtDef],
                                              ldapDefinitions: Definitions[LdapService],
                                              mocksProvider: MocksProvider) {
 
@@ -91,7 +90,6 @@ class ImpersonationDefinitionsDecoderCreator(caseMappingEquality: UserIdCaseMapp
             Rule.Name(key),
             authenticationServiceDefinitions,
             authProxyDefinitions,
-            jwtDefinitions,
             ldapDefinitions,
             impersonatorsDefinitions = None,
             mocksProvider,

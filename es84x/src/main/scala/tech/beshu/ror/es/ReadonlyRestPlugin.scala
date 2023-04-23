@@ -67,6 +67,7 @@ import tech.beshu.ror.es.actions.rrtestconfig.rest.RestRRTestConfigAction
 import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, TransportRRTestConfigAction}
 import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, TransportRorWrappedCatAction}
 import tech.beshu.ror.es.actions.wrappers._upgrade.{RorWrappedUpgradeActionType, TransportRorWrappedUpgradeAction}
+import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsPatchVerifier}
 import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
@@ -162,7 +163,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
     import tech.beshu.ror.es.utils.IndexModuleOps._
-    indexModule.overwrite()
+    indexModule.overwrite(RoleIndexSearcherWrapper.instance)
   }
 
   override def getSettings: util.List[Setting[_]] = {

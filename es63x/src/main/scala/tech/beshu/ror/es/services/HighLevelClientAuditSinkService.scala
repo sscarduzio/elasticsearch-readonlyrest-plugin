@@ -49,7 +49,7 @@ class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLeve
       val request = new IndexRequest(indexName, "ror_audit_evt", documentId).source(jsonRecord, XContentType.JSON)
       val listener = new GenericResponseListener[IndexResponse]
 
-      client.indexAsync(request, listener)
+      client.indexAsync(request, listener) // deprecated since es 6.4.0
 
       listener.result
         .runAsync {
