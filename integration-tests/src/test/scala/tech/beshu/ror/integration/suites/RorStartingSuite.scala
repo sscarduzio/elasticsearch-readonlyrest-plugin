@@ -22,6 +22,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicInt
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
@@ -33,7 +34,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-class RorStartingSuite extends AnyWordSpec {
+class RorStartingSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLike {
 
   import RorStartingSuite._
 
@@ -46,7 +47,7 @@ class RorStartingSuite extends AnyWordSpec {
   "ES" when {
     "ROR does not started yet" should {
       "return not started response with http code 403" when {
-        "403 configured" in {
+        "403 configured" excludeES(allEs6x, allEs7x, allEs8xBelowEs87x) in {
           val esContainer = new TestEsContainerManager(
             rorConfigFile = validRorConfigFile,
             additionalEsYamlEntries = Map(notStartedResponseCodeKey -> "403")
@@ -55,7 +56,7 @@ class RorStartingSuite extends AnyWordSpec {
           notStartedYetTestScenario(esContainer = esContainer, expectedResponseCode = 403)
             .runSyncUnsafe(5 minutes)
         }
-        "no option configured" in {
+        "no option configured" excludeES(allEs6x, allEs7x, allEs8xBelowEs87x) in {
           val esContainer = new TestEsContainerManager(
             rorConfigFile = validRorConfigFile,
             additionalEsYamlEntries = Map.empty
@@ -66,7 +67,7 @@ class RorStartingSuite extends AnyWordSpec {
         }
       }
       "return not started response with http code 503" when {
-        "503 configured" in {
+        "503 configured" excludeES(allEs6x, allEs7x, allEs8xBelowEs87x) in {
           val esContainer = new TestEsContainerManager(
             rorConfigFile = validRorConfigFile,
             additionalEsYamlEntries = Map(notStartedResponseCodeKey -> "503")
