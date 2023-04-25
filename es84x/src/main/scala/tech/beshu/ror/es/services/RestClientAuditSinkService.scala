@@ -18,7 +18,6 @@ package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
 import io.lemonlabs.uri.Uri
-import monix.execution.Scheduler
 import org.apache.http.HttpHost
 import org.apache.http.auth.{AuthScope, Credentials, UsernamePasswordCredentials}
 import org.apache.http.conn.ssl.NoopHostnameVerifier
@@ -34,7 +33,6 @@ import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 import scala.collection.parallel.CollectionConverters._
 
 class RestClientAuditSinkService private(clients: NonEmptyList[RestClient])
-                                        (implicit scheduler: Scheduler)
   extends AuditSinkService
     with Logging {
 
@@ -77,8 +75,7 @@ class RestClientAuditSinkService private(clients: NonEmptyList[RestClient])
 
 object RestClientAuditSinkService {
 
-  def create(remoteCluster: AuditCluster.RemoteAuditCluster)
-            (implicit scheduler: Scheduler): RestClientAuditSinkService = {
+  def create(remoteCluster: AuditCluster.RemoteAuditCluster): RestClientAuditSinkService = {
     val clients = remoteCluster.uris.map(createRestClient)
     new RestClientAuditSinkService(clients)
   }

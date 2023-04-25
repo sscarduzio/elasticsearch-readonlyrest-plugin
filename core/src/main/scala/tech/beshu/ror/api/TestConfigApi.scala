@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.api
 
-import java.time.{Clock, Instant}
 import cats.data.EitherT
 import cats.implicits._
 import eu.timepit.refined.api.Refined
@@ -36,12 +35,11 @@ import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 import tech.beshu.ror.utils.DurationOps._
 
+import java.time.Instant
 import scala.concurrent.duration._
-import scala.language.postfixOps
 import scala.util.Try
 
-class TestConfigApi(rorInstance: RorInstance)
-                   (implicit clock: Clock) {
+class TestConfigApi(rorInstance: RorInstance){
 
   import tech.beshu.ror.api.TestConfigApi.Utils._
   import tech.beshu.ror.api.TestConfigApi.Utils.decoders._

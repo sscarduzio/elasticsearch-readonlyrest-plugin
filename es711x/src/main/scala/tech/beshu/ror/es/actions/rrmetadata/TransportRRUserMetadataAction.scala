@@ -22,9 +22,11 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.transport.TransportService
 
+import scala.annotation.nowarn
+
 class TransportRRUserMetadataAction(transportService: TransportService,
                                     actionFilters: ActionFilters,
-                                    constructorDiscriminator: Unit)
+                                    @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends HandledTransportAction[RRUserMetadataRequest, RRUserMetadataResponse](
     RRUserMetadataActionType.name, transportService, actionFilters, RRUserMetadataActionType.exceptionReader
   ) {

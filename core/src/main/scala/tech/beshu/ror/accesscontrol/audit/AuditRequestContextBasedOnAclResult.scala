@@ -30,7 +30,6 @@ import tech.beshu.ror.accesscontrol.show.logs.{historyShow, obfuscatedHeaderShow
 import tech.beshu.ror.audit.{AuditRequestContext, Headers}
 
 import java.time.Instant
-import scala.language.implicitConversions
 
 private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: RequestContext.Aux[B],
                                                                             userMetadata: Option[UserMetadata],

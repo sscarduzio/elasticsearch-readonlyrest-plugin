@@ -180,8 +180,7 @@ private[indices] trait ComponentTemplateIndices
   }
 
   private def filterTemplatesNotAllowedAliases(templates: Set[Template])
-                                              (implicit blockContext: TemplateRequestBlockContext,
-                                               allowedIndices: AllowedIndices): Set[Template] = {
+                                              (implicit allowedIndices: AllowedIndices): Set[Template] = {
     templates.flatMap {
       case Template.ComponentTemplate(name, aliases) =>
         Set[Template](Template.ComponentTemplate(name, aliases.filter(isAliasAllowed)))

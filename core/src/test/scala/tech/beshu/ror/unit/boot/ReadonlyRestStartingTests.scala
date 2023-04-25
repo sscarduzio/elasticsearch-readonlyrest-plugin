@@ -202,7 +202,8 @@ class ReadonlyRestStartingTests
           val result = readonlyRest.start().runSyncUnsafe()
 
           val instance = result.value
-          val acl = eventually {
+
+          eventually {
             instance.engines.value.mainEngine.core.accessControl
           }
 

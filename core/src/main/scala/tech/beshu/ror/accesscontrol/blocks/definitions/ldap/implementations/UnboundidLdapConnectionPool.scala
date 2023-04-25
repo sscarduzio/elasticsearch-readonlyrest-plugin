@@ -28,7 +28,6 @@ import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
-import scala.language.implicitConversions
 
 class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool,
                                   bindRequestUser: BindRequestUser)

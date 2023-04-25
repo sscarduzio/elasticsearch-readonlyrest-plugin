@@ -25,8 +25,6 @@ import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 import java.util.UUID
 
-import scala.language.postfixOps
-
 //TODO change test names. Current names are copies from old java integration tests
 class LocalGroupsSuite
   extends AnyWordSpec

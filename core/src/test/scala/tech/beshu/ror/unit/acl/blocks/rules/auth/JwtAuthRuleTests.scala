@@ -608,7 +608,7 @@ class JwtAuthRuleTests
     assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroup, blockContextAssertion = None)
 
   private def assertRule(configuredJwtDef: JwtDef,
-                         configuredGroups: Groups = Groups.NotDefined,
+                         configuredGroups: Groups,
                          tokenHeader: Header,
                          preferredGroup: Option[GroupName],
                          blockContextAssertion: Option[BlockContext => Unit]) = {

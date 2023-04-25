@@ -1125,7 +1125,7 @@ trait BaseAdminApiSuite
 
   private def updateRorTestConfig(rorApiManager: RorApiManager,
                                   testConfig: String,
-                                  configTtl: FiniteDuration = 30 minutes,
+                                  configTtl: FiniteDuration,
                                   expectedWarningsJson: Value = ujson.read("[]")) = {
     val response = rorApiManager.updateRorTestConfig(testConfig, configTtl)
     (response.responseCode, response.responseJson("status").str) should be(200, "OK")

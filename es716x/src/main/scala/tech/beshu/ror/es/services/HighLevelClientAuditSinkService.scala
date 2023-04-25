@@ -17,9 +17,9 @@
 package tech.beshu.ror.es.services
 
 import java.security.cert.X509Certificate
-
 import cats.data.NonEmptyList
 import io.lemonlabs.uri.Uri
+
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 import monix.execution.Scheduler
 import org.apache.http.HttpHost
@@ -35,9 +35,10 @@ import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.es.utils.GenericResponseListener
 
+import scala.annotation.nowarn
 import scala.collection.parallel.CollectionConverters._
 
-class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLevelClient])
+class HighLevelClientAuditSinkService private(@nowarn("cat=deprecation") clients: NonEmptyList[RestHighLevelClient])
                                              (implicit scheduler: Scheduler)
   extends AuditSinkService
     with Logging {
@@ -74,6 +75,7 @@ object HighLevelClientAuditSinkService {
     new HighLevelClientAuditSinkService(highLevelClients)
   }
 
+  @nowarn("cat=deprecation")
   private def createEsHighLevelClient(uri: Uri) = {
     val host = new HttpHost(
       uri.toUrl.hostOption.map(_.value).getOrElse("localhost"),

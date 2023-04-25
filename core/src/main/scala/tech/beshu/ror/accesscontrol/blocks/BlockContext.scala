@@ -185,7 +185,7 @@ object BlockContext {
 
     implicit val indicesFromDataStreamRequestBlockContext = new HasIndices[DataStreamRequestBlockContext] {
       override def indices(blockContext: DataStreamRequestBlockContext): Set[ClusterIndexName] = blockContext.backingIndices match {
-        case BackingIndices.IndicesInvolved(filteredIndices, allAllowedIndices) => filteredIndices
+        case BackingIndices.IndicesInvolved(filteredIndices, _) => filteredIndices
         case BackingIndices.IndicesNotInvolved => Set.empty
       }
     }
@@ -362,7 +362,7 @@ object BlockContext {
         case _: RepositoryRequestBlockContext => Set.empty
         case bc: SnapshotRequestBlockContext => bc.filteredIndices
         case bc: DataStreamRequestBlockContext => bc.backingIndices match {
-          case BackingIndices.IndicesInvolved(filteredIndices, allAllowedIndices) => filteredIndices
+          case BackingIndices.IndicesInvolved(filteredIndices, _) => filteredIndices
           case BackingIndices.IndicesNotInvolved => Set.empty
         }
         case bc: TemplateRequestBlockContext =>

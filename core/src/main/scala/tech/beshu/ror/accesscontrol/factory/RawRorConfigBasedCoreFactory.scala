@@ -38,7 +38,6 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, LocalUsers, RorConfigurationIndex, User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.UsernameCaseMapping
@@ -53,7 +52,7 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils._
-import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.{LocalUsersSupport, localUsersMonoid}
+import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.localUsersMonoid
 import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
 import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
 import tech.beshu.ror.providers.{EnvVarsProvider, UuidProvider}
@@ -297,7 +296,7 @@ class RawRorConfigBasedCoreFactory()
         ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder(ldapConnectionPoolProvider)
         rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance())
         impersonationDefinitionsDecoderCreator = new ImpersonationDefinitionsDecoderCreator(
-          caseMappingEquality, authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs, mocksProvider
+          caseMappingEquality, authenticationServices, authProxies, ldapServices, mocksProvider
         )
         impersonationDefs <- AsyncDecoderCreator.from(impersonationDefinitionsDecoderCreator.create)
         userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(

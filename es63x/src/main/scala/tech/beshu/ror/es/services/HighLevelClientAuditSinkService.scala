@@ -35,6 +35,7 @@ import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.es.utils.GenericResponseListener
 
+import scala.annotation.nowarn
 import scala.collection.parallel.CollectionConverters._
 
 class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLevelClient])
@@ -42,12 +43,13 @@ class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLeve
   extends AuditSinkService
     with Logging {
 
+  @nowarn("cat=deprecation")
   override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
     clients.toList.par.foreach { client =>
       val request = new IndexRequest(indexName, "ror_audit_evt", documentId).source(jsonRecord, XContentType.JSON)
       val listener = new GenericResponseListener[IndexResponse]
 
-      client.indexAsync(request, listener)
+      client.indexAsync(request, listener) // deprecated since es 6.4.0
 
       listener.result
         .runAsync {

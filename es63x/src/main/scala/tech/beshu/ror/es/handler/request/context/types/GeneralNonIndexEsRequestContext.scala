@@ -25,7 +25,9 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
-class GeneralNonIndexEsRequestContext(actionRequest: ActionRequest,
+import scala.annotation.nowarn
+
+class GeneralNonIndexEsRequestContext(@nowarn("cat=unused") actionRequest: ActionRequest,
                                       esContext: EsContext,
                                       clusterService: RorClusterService,
                                       override val threadPool: ThreadPool)

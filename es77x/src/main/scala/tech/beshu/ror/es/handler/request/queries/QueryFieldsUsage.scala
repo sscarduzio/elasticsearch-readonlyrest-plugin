@@ -26,6 +26,8 @@ import tech.beshu.ror.es.handler.request.queries.QueryType.instances._
 import tech.beshu.ror.es.handler.request.queries.QueryType.{Compound, Leaf}
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
 
+import scala.annotation.nowarn
+
 trait QueryFieldsUsage[QUERY <: QueryBuilder] {
   def fieldsIn(query: QUERY): RequestFieldsUsage
 }
@@ -45,6 +47,7 @@ object QueryFieldsUsage extends Logging {
   object instances {
     implicit val idsQueryFields: QueryFieldsUsage[IdsQueryBuilder] = QueryFieldsUsage.notUsing
 
+    @nowarn("cat=deprecation")
     implicit val commonTermsQueryFields: QueryFieldsUsage[CommonTermsQueryBuilder] = QueryFieldsUsage.one(_.fieldName())
     implicit val matchBoolPrefixQueryFields: QueryFieldsUsage[MatchBoolPrefixQueryBuilder] = QueryFieldsUsage.one(_.fieldName())
     implicit val matchQueryFields: QueryFieldsUsage[MatchQueryBuilder] = QueryFieldsUsage.one(_.fieldName())
@@ -67,6 +70,7 @@ object QueryFieldsUsage extends Logging {
       }
     }
 
+    @nowarn("cat=deprecation")
     implicit val rootQueryFields: QueryFieldsUsage[QueryBuilder] = {
       //compound
       case builder: BoolQueryBuilder => resolveFieldsUsageForCompoundQuery(builder)
@@ -93,6 +97,7 @@ object QueryFieldsUsage extends Logging {
         CannotExtractFields
     }
 
+    @nowarn("cat=unused")
     private def resolveFieldsUsageForLeafQuery[QUERY <: QueryBuilder : QueryFieldsUsage : Leaf](leafQuery: QUERY) = {
       leafQuery.fieldsUsage
     }

@@ -37,6 +37,7 @@ import tech.beshu.ror.audit.AuditLogSerializer
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
+import scala.annotation.nowarn
 import scala.util.{Failure, Success, Try}
 
 object AuditingSettingsDecoder extends Logging {
@@ -181,6 +182,7 @@ object AuditingSettingsDecoder extends Logging {
       }
       .decoder
 
+  @nowarn("cat=deprecation")
   private implicit val customAuditLogSerializer: Decoder[AuditLogSerializer] =
     SyncDecoderCreator
       .from(Decoder.decodeString)

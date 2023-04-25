@@ -32,6 +32,7 @@ import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.services.EsIndexJsonContentService
 import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
 
+import scala.annotation.nowarn
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -44,7 +45,7 @@ class TransportRRConfigAction(actionName: String,
                               indexContentProvider: IndexJsonContentService,
                               nodeExecutor: String,
                               nodeResponseClass: Class[RRConfig],
-                              constructorDiscriminator: Unit)
+                              @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends TransportNodesAction[RRConfigsRequest, RRConfigsResponse, RRConfigRequest, RRConfig](
     actionName,
     threadPool,

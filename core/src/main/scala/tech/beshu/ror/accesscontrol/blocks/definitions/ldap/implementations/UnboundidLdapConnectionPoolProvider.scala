@@ -30,7 +30,6 @@ import tech.beshu.ror.accesscontrol.utils.ReleseablePool
 import tech.beshu.ror.boot.RorSchedulers.ldapUnboundIdBlockingScheduler
 import tech.beshu.ror.utils.ScalaOps.retry
 
-import scala.language.postfixOps
 import scala.util.control.NonFatal
 
 class UnboundidLdapConnectionPoolProvider {

@@ -26,7 +26,6 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.yaml.YamlOps
 
 import scala.annotation.tailrec
-import scala.language.higherKinds
 
 sealed abstract class ADecoder[F[_] : Functor, A] {
 

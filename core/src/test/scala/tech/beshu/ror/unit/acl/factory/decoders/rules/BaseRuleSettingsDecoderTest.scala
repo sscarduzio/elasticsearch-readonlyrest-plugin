@@ -31,7 +31,6 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.providers._
-import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils._
 
 import java.time.Clock
@@ -49,8 +48,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
 
   protected implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
-  protected def factory(propertiesProvider: TestsPropertiesProvider = TestsPropertiesProvider.default): RawRorConfigBasedCoreFactory = {
-    implicit val _ = propertiesProvider
+  protected def factory: RawRorConfigBasedCoreFactory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     new RawRorConfigBasedCoreFactory()
@@ -58,7 +56,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
 
   def assertDecodingSuccess(yaml: String,
                             assertion: T => Unit,
-                            aFactory: RawRorConfigBasedCoreFactory = factory(),
+                            aFactory: RawRorConfigBasedCoreFactory = factory,
                             httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory,
                             mocksProvider: MocksProvider = NoOpMocksProvider): Unit = {
     inside(
@@ -81,7 +79,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
 
   def assertDecodingFailure(yaml: String,
                             assertion: NonEmptyList[CoreCreationError] => Unit,
-                            aFactory: RawRorConfigBasedCoreFactory = factory(),
+                            aFactory: RawRorConfigBasedCoreFactory = factory,
                             httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory,
                             mocksProvider: MocksProvider = NoOpMocksProvider): Unit = {
     inside(

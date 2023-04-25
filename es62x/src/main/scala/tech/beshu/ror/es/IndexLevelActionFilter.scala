@@ -45,7 +45,6 @@ import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
 import java.time.Clock
 import java.util.function.Supplier
-import scala.language.postfixOps
 
 class IndexLevelActionFilter(nodeName: String,
                              clusterService: ClusterService,

@@ -22,8 +22,6 @@ import tech.beshu.ror.utils.containers.EsContainerWithXpackSecurity.xpackAdminCr
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch, XpackSecurityPlugin}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-import scala.language.postfixOps
-
 class EsContainerWithXpackSecurity private(esVersion: String,
                                            esConfig: Elasticsearch.Config,
                                            startedClusterDependencies: StartedClusterDependencies,

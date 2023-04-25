@@ -95,8 +95,7 @@ private [rules]trait SimpleAuthenticationImpersonationSupport extends Authentica
   }
 
   private def findImpersonatorWithProperRights[B <: BlockContext](theImpersonatedUserId: User.Id,
-                                                                  requestContext: RequestContext)
-                                                                 (implicit eq: Eq[User.Id]) = {
+                                                                  requestContext: RequestContext) = {
     EitherT.fromOption[Task](
       requestContext
         .basicAuth

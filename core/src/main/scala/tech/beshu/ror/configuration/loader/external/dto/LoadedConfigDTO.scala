@@ -17,9 +17,7 @@
 package tech.beshu.ror.configuration.loader.external.dto
 
 import io.circe.Codec
-import io.circe.generic.extras.{Configuration, ConfiguredJsonCodec}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
-import tech.beshu.ror.configuration.loader.distributed.internode.dto.NodeConfigRequestDTO
 
 sealed trait LoadedConfigDTO {
   def raw: String

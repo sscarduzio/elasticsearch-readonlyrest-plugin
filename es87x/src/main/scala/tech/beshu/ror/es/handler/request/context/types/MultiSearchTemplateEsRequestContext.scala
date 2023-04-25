@@ -21,7 +21,6 @@ import cats.implicits._
 import org.elasticsearch.action.search.MultiSearchResponse
 import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndicesRequest}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -41,7 +40,6 @@ import tech.beshu.ror.utils.ScalaOps._
 
 class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
                                                   esContext: EsContext,
-                                                  aclContext: AccessControlStaticContext,
                                                   clusterService: RorClusterService,
                                                   override implicit val threadPool: ThreadPool)
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
@@ -155,7 +153,6 @@ object MultiSearchTemplateEsRequestContext {
       Some(new MultiSearchTemplateEsRequestContext(
         arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
         arg.esContext,
-        arg.aclContext,
         arg.clusterService,
         arg.threadPool
       ))

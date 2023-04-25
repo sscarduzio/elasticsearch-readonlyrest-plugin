@@ -28,8 +28,6 @@ import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.ClusterManager
 
-import scala.language.existentials
-
 class EsClusterContainer private[containers](val esClusterSettings: EsClusterSettings,
                                              val nodeCreators: NonEmptyList[StartedClusterDependencies => EsContainer],
                                              dependencies: List[DependencyDef])

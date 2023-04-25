@@ -30,8 +30,6 @@ import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-import scala.language.postfixOps
-
 class GroupsOrRuleTests extends BaseGroupsRuleTests {
 
   override def createRule(settings: GroupsRuleSettings, caseSensitivity: UserIdCaseMappingEquality): BaseGroupsRule = {

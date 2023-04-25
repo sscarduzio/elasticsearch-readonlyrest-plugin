@@ -76,6 +76,12 @@ tasks.register('resolvePluginDescriptorTemplate', Copy) {
     ])
 }
 
+tasks.withType(ScalaCompile).configureEach {
+    scalaCompileOptions.additionalParameters = [
+            "-Wunused:-nowarn" // depending on es version, some methods are deprecated or not
+    ]
+}
+
 tasks.register('ror', Zip) {
     dependsOn(cleanOldData, jarHellCheck, toJar, resolvePluginDescriptorTemplate)
     outputs.upToDateWhen { false }

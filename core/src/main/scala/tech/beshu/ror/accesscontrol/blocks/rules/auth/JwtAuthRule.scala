@@ -24,9 +24,9 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
@@ -222,8 +222,8 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
     }
   }
 
-  private def checkIfCanContinueWithGroups[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                                    groups: UniqueList[GroupName]) = {
+  private def checkIfCanContinueWithGroups[B <: BlockContext](blockContext: B,
+                                                              groups: UniqueList[GroupName]) = {
     UniqueNonEmptyList.fromIterable(groups) match {
       case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(PermittedGroups(nonEmptyGroups)) =>
         Right(blockContext)
@@ -242,8 +242,10 @@ object JwtAuthRule {
   final case class Settings(jwt: JwtDef, permittedGroups: Groups)
 
   sealed trait Groups
+
   object Groups {
     case object NotDefined extends Groups
+
     final case class Defined(groupsLogic: GroupsLogic) extends Groups
   }
 }

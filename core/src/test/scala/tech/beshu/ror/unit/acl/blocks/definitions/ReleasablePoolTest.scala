@@ -26,9 +26,10 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.utils.ReleseablePool
 import tech.beshu.ror.unit.acl.blocks.definitions.ReleasablePoolTest.Counter
 
+import scala.annotation.nowarn
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.language.{higherKinds, postfixOps}
+import scala.language.postfixOps
 
 private final class ReleasablePoolTaskTest extends ReleasablePoolTest[Task] {
   implicit val scheduler: TestScheduler= TestScheduler()
@@ -107,6 +108,7 @@ private sealed abstract class ReleasablePoolTest[M[_] : Monad] extends AnyWordSp
 
   private def createReleseablePool(counter: Counter): ReleseablePool[M, counter.ReleasableResource, Unit] = {
 
+    @nowarn("cat=unused")
     def acquireR(counter: Counter)(unit: Unit): M[counter.ReleasableResource] = acquire(counter)
 
     def releaseR(resource: counter.ReleasableResource): M[Unit] = release(counter)(resource)

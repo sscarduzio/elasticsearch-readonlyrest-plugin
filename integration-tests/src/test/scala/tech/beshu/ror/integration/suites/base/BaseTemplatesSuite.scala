@@ -44,7 +44,7 @@ trait BaseTemplatesSuite
   private var originComponentTemplateNames: List[String] = List.empty
 
   protected def createIndexWithExampleDoc(documentManager: DocumentManager, index: String): Unit = {
-    adminDocumentManager.createFirstDoc(index, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createFirstDoc(index, ujson.read("""{"hello":"world"}""")).force()
   }
 
   override protected def beforeAll(): Unit = {

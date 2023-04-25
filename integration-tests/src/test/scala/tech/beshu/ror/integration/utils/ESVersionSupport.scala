@@ -22,7 +22,6 @@ import org.scalatest.{Tag, TestSuite}
 import org.scalatest.wordspec.AnyWordSpecLike
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
-import scala.language.implicitConversions
 import scala.util.matching.Regex
 
 trait ESVersionSupportForAnyWordSpecLike extends ESVersionSupport {

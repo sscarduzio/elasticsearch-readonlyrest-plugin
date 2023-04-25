@@ -21,7 +21,6 @@ import com.github.dockerjava.api.model.{ExposedPort, InternetProtocol}
 import org.testcontainers.images.builder.ImageFromDockerfile
 
 import scala.jdk.CollectionConverters._
-import scala.language.{implicitConversions, postfixOps}
 
 class DnsServerContainer(srvServicePort: Int)
   extends GenericContainer(

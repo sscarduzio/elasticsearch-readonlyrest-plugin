@@ -25,7 +25,6 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity}
-import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.es.RorClusterService
@@ -67,7 +66,7 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
         filterFieldsFromResponse(fieldLevelSecurity)(new ReflectionBasedSearchTemplateResponse(resp))
       }
     else
-      ModificationResult.UpdateResponse(callSearchOnceAgain(indices, filter, fieldLevelSecurity))
+      ModificationResult.UpdateResponse(callSearchOnceAgain(filter, fieldLevelSecurity))
   }
 
   /*
@@ -78,8 +77,7 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
    * final modifier, we are forced to do it in the other way - by calling search again when we get the response. This
    * solution is obviously less efficient, but at least it works.
    */
-  private def callSearchOnceAgain(indices: NonEmptyList[ClusterIndexName],
-                                  filter: Option[domain.Filter],
+  private def callSearchOnceAgain(filter: Option[domain.Filter],
                                   fieldLevelSecurity: Option[domain.FieldLevelSecurity]): ActionResponse => Task[ActionResponse] = {
     searchTemplateResponse => {
       val updatedSearchRequest = searchRequest
@@ -137,9 +135,7 @@ object SearchTemplateEsRequestContext {
   }
 }
 
-final class ReflectionBasedSearchTemplateRequest(underlying: ActionRequest)
-                                                (implicit threadPool: ThreadPool,
-                                                 requestId: RequestContext.Id) {
+final class ReflectionBasedSearchTemplateRequest(underlying: ActionRequest) {
 
   import org.joor.Reflect.on
 

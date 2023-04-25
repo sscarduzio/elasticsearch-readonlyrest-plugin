@@ -78,11 +78,13 @@ import tech.beshu.ror.utils.SetOnce
 import java.nio.file.Path
 import java.util
 import java.util.function.Supplier
+import scala.annotation.nowarn
 import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
 @Inject
+@nowarn("cat=deprecation")
 class ReadonlyRestPlugin(s: Settings, p: Path)
   extends Plugin
     with ScriptPlugin

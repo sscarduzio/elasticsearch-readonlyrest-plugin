@@ -212,7 +212,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
             Right(EngineUpdateType.UpdateConfig)
           case EngineState.Working(EngineWithConfig(_, currentConfig, _), _) if currentConfig != newConfig =>
             Right(EngineUpdateType.UpdateConfig)
-          case EngineState.Working(EngineWithConfig(engine, currentConfig, engineExpirationConfig), _) =>
+          case EngineState.Working(EngineWithConfig(engine, _, engineExpirationConfig), _) =>
             checkIfExpirationConfigHasChanged(engine, newConfigExpiration, engineExpirationConfig)
           case EngineState.Stopped =>
             Left(RawConfigReloadError.RorInstanceStopped)

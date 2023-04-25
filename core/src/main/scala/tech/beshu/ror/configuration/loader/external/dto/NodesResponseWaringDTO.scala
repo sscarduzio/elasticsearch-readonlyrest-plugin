@@ -19,7 +19,7 @@ package tech.beshu.ror.configuration.loader.external.dto
 import cats.implicits._
 import io.circe.generic.extras.{Configuration, ConfiguredJsonCodec}
 import tech.beshu.ror.configuration.loader.distributed.Summary
-import tech.beshu.ror.configuration.loader.distributed.Summary.{NodeForcedFileConfig, NodeReturnedConfigError, NodeReturnedDifferentConfig}
+import tech.beshu.ror.configuration.loader.distributed.Summary.{NodeForcedFileConfig, NodeReturnedDifferentConfig}
 
 @ConfiguredJsonCodec
 sealed trait NodesResponseWaringDTO

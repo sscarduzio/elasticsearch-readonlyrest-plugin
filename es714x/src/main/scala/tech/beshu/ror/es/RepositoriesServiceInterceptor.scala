@@ -23,8 +23,10 @@ import org.elasticsearch.common.component.AbstractLifecycleComponent
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.repositories.RepositoriesService
 
+import scala.annotation.nowarn
+
 class RepositoriesServiceInterceptor(repositoriesService: RepositoriesService,
-                                     ignore: Unit) // hack!
+                                     @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends AbstractLifecycleComponent() {
 
   @Inject

@@ -42,7 +42,7 @@ import tech.beshu.ror.utils.TestsUtils._
 import java.time.Clock
 import java.util.UUID
 import scala.concurrent.duration._
-import scala.language.{implicitConversions, postfixOps}
+import scala.language.postfixOps
 
 class RorIndexTest extends AnyWordSpec
   with Inside with OptionValues with EitherValues

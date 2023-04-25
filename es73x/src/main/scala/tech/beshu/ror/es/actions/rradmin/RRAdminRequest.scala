@@ -30,7 +30,6 @@ class RRAdminRequest(adminApiRequest: ConfigApi.ConfigRequest,
   val getAdminRequest: ConfigApi.ConfigRequest = adminApiRequest
   lazy val requestContextId: RequestId = RequestId(s"${esRestRequest.hashCode()}-${this.hashCode()}")
 
-
   def this() = {
     this(null, null)
   }

@@ -37,8 +37,6 @@ import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.RorConfig
 import tech.beshu.ror.utils.CirceOps.CirceErrorOps
 
-import scala.language.postfixOps
-
 class AuthMockApi(rorInstance: RorInstance)
   extends Logging {
 

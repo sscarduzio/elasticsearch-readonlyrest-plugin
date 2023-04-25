@@ -120,9 +120,9 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .emapE {
-        case (name, _, None, None) =>
+        case (_, _, None, None) =>
           Left(RulesLevelCreationError(Message(errorMsgNoGroupsList(LdapAuthorizationRule.Name))))
-        case (name, _, Some(_), Some(_)) =>
+        case (_, _, Some(_), Some(_)) =>
           Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(LdapAuthorizationRule.Name))))
         case (name, ttl, Some(groupsOr), None) =>
           createLdapAuthorizationRule(name, ttl, groupsOr, ldapDefinitions)

@@ -35,8 +35,6 @@ import org.elasticsearch.cluster.metadata.{IndexMetadata, Metadata, Repositories
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
-import org.elasticsearch.search.SearchService
-import org.elasticsearch.search.internal.ReaderContext
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName

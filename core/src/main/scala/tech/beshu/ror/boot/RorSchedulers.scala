@@ -47,7 +47,7 @@ object RorSchedulers {
   val ldapUnboundIdBlockingScheduler: Scheduler = Scheduler.cached("unboundid-executor", 10, 100)
 
   private def getInt(name: String, default: String) = (try System.getProperty(name, default) catch {
-    case e: SecurityException => default
+    case _: SecurityException => default
   }) match {
     case s if s.charAt(0) == 'x' => (Runtime.getRuntime.availableProcessors * s.substring(1).toDouble).ceil.toInt
     case other => other.toInt

@@ -25,7 +25,9 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
-class CurrentUserMetadataEsRequestContext(actionRequest: RRUserMetadataRequest,
+import scala.annotation.nowarn
+
+class CurrentUserMetadataEsRequestContext(@nowarn("cat=unused") actionRequest: RRUserMetadataRequest,
                                           esContext: EsContext,
                                           clusterService: RorClusterService,
                                           override val threadPool: ThreadPool)

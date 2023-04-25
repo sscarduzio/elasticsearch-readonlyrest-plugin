@@ -73,11 +73,11 @@ class Elasticsearch(esVersion: String,
       )
       .copyFile(
         destination = configDir / "log4j2.properties",
-        file = log4jFileNameBaseOn(config)
+        file = log4jFileFromResources
       )
       .user("root")
       .run(s"chown -R elasticsearch:elasticsearch ${configDir.toString()}")
-      .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(config, withEsJavaOptsBuilderFromPlugins)))
+      .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()
       .user("elasticsearch")
   }
@@ -147,21 +147,20 @@ class Elasticsearch(esVersion: String,
       )
   }
 
-  private def log4jFileNameBaseOn(config: Config) = {
+  private def log4jFileFromResources = {
     fromResourceBy(
       name = if (Version.greaterOrEqualThan(esVersion, 7, 10, 0)) "log4j2_es_7.10_and_newer.properties"
       else "log4j2_es_before_7.10.properties"
     )
   }
 
-  private def javaOptsBasedOn(config: Config,
-                              withEsJavaOptsBuilder: EsJavaOptsBuilder => EsJavaOptsBuilder) = {
-    withEsJavaOptsBuilder(baseJavaOptsBuilder(config))
+  private def javaOptsBasedOn(withEsJavaOptsBuilder: EsJavaOptsBuilder => EsJavaOptsBuilder) = {
+    withEsJavaOptsBuilder(baseJavaOptsBuilder)
       .options
       .mkString(" ")
   }
 
-  private def baseJavaOptsBuilder(config: Config) = {
+  private def baseJavaOptsBuilder = {
     EsJavaOptsBuilder
       .empty
       .add("-Xms1g")
