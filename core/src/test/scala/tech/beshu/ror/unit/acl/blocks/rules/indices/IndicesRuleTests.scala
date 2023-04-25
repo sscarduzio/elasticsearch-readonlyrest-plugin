@@ -2792,7 +2792,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
   private def assertMatchRuleForIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                                              requestIndices: Set[ClusterIndexName],
                                              modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext = identity,
-                                             found: Set[ClusterIndexName] = Set.empty) =
+                                             found: Set[ClusterIndexName]) =
     assertRuleForIndexRequest(configured, requestIndices, isMatched = true, modifyRequestContext, found)
 
   private def assertNotMatchRuleForIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
@@ -2904,10 +2904,10 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
   private def assertMatchRuleForTemplateRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                                                 requestContext: MockTemplateRequestContext,
                                                 templateOperationAfterProcessing: TemplateOperation,
-                                                allAllowedIndices: Set[ClusterIndexName] = Set.empty,
+                                                allAllowedIndices: Set[ClusterIndexName],
                                                 additionalAssertions: TemplateRequestBlockContext => Assertion = noTransformation): Assertion = {
     val rule = createIndicesRule(configured)
-    val ruleResult = rule.check(requestContext.initialBlockContext).runSyncStep.right.get
+    val ruleResult = rule.check(requestContext.initialBlockContext).runSyncStep.toOption.get
     ruleResult should matchPattern {
       case Fulfilled(blockContext@TemplateRequestBlockContext(rc, metadata, headers, Nil, operation, _, allowedIndices))
         if rc == requestContext
@@ -2923,7 +2923,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                                                    requestContext: MockTemplateRequestContext,
                                                    specialCause: Option[Cause] = None): Assertion = {
     val rule = createIndicesRule(configured)
-    val ruleResult = rule.check(requestContext.initialBlockContext).runSyncStep.right.get
+    val ruleResult = rule.check(requestContext.initialBlockContext).runSyncStep.toOption.get
     ruleResult shouldBe Rejected(specialCause)
   }
 
@@ -2937,7 +2937,6 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
   private def indexNameVar(value: NonEmptyString): RuntimeMultiResolvableVariable[ClusterIndexName] = {
     RuntimeResolvableVariableCreator
       .createMultiResolvableVariableFrom(value)(AlwaysRightConvertible.from(clusterIndexName))
-      .right
       .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))
   }
 

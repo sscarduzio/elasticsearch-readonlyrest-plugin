@@ -52,7 +52,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
   "A SessionMaxIdleRule" should {
     "match" when {
       "user is logged" when {
-        implicit val _ = fixedClock
+        implicit val _clock: Clock = fixedClock
         "ror cookie is not set" in {
           assertRule(
             sessionMaxIdle = positive(10 minutes),
@@ -85,14 +85,14 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
     }
     "not match" when {
       "user is not logged" in {
-        implicit val _ = fixedClock
+        implicit val _clock: Clock = fixedClock
         val rule = new SessionMaxIdleRule(Settings(positive(1 minute)))
         val requestContext = mock[RequestContext]
         val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
         rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
       }
       "ror cookie is expired" in {
-        implicit val _ = Clock.fixed(someday.toInstant.plus(15 minutes), someday.getZone)
+        implicit val _clock: Clock = Clock.fixed(someday.toInstant.plus(15 minutes), someday.getZone)
         assertRule(
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.forUser1,
@@ -102,7 +102,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
         )
       }
       "ror cookie of different user" in {
-        implicit val _ = fixedClock
+        implicit val _clock: Clock = fixedClock
         assertRule(
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.forUser1,
@@ -112,7 +112,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
         )
       }
       "ror cookie signature is wrong" in {
-        implicit val _ = fixedClock
+        implicit val _clock: Clock = fixedClock
         assertRule(
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.wrongSignature,
@@ -122,7 +122,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
         )
       }
       "ror cookie is malformed" in {
-        implicit val _ = fixedClock
+        implicit val _clock: Clock = fixedClock
         assertRule(
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.malformed,
@@ -147,7 +147,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
       case Some(cookieHeader) => Set(headerFrom("Cookie" -> cookieHeader.value))
       case None => Set.empty[Header]
     }
-    (requestContext.headers _).expects().returning(headers)
+    (() => requestContext.headers).expects().returning(headers)
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext,
       loggedUser match {

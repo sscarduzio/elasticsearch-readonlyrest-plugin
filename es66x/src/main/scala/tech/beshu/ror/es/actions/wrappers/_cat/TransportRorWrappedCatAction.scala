@@ -24,12 +24,14 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 
+import scala.annotation.nowarn
+
 class TransportRorWrappedCatAction(settings: Settings,
                                    threadPool: ThreadPool,
                                    transportService: TransportService,
                                    actionFilters: ActionFilters,
                                    indexNameExpressionResolver: IndexNameExpressionResolver,
-                                   constructorDiscriminator: Unit)
+                                   @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends HandledTransportAction[RorWrappedCatRequest, RorWrappedCatResponse](
     settings, RorWrappedCatActionType.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RorWrappedCatRequest(() => ())
   ) {
@@ -39,7 +41,7 @@ class TransportRorWrappedCatAction(settings: Settings,
            threadPool: ThreadPool,
            transportService: TransportService,
            indexNameExpressionResolver: IndexNameExpressionResolver,
-           actionFilters: ActionFilters) {
+           actionFilters: ActionFilters) = {
     this(settings, threadPool, transportService, actionFilters, indexNameExpressionResolver, ())
   }
 

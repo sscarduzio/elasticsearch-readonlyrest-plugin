@@ -28,7 +28,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
                                      esContext: EsContext,
@@ -48,7 +48,7 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
                                 filteredIndices: NonEmptyList[ClusterIndexName],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
     val modifiedCommands = request
-      .getCommands.commands().asScala
+      .getCommands.commands().asScala.toSeq
       .map(modifiedCommand(_, filteredIndices))
     request.commands(new AllocationCommands(modifiedCommands: _*))
     Modified

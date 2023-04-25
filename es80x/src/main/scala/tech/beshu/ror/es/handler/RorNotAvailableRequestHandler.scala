@@ -27,7 +27,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RorNotAvailableRequestHandler.RorNotAvailableResponse
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 final class RorNotAvailableRequestHandler(config: RorBootConfiguration) {
 

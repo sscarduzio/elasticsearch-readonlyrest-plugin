@@ -109,7 +109,7 @@ object RorProperties extends Logging {
         None
       case Success(interval) if interval > 0 =>
         Some(FiniteDuration(interval.toLong, TimeUnit.SECONDS).toRefinedPositiveUnsafe)
-      case Failure(_) =>
+      case Success(_) | Failure(_) =>
         throw new IllegalArgumentException(s"Cannot convert '$value' to finite positive duration")
     }
   }

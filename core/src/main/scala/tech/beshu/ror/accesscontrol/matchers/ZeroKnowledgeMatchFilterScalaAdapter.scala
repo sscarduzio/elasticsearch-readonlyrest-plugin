@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol.matchers
 
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult
 import tech.beshu.ror.utils.ZeroKnowledgeMatchFilter
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class ZeroKnowledgeMatchFilterScalaAdapter {
 

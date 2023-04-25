@@ -30,13 +30,13 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockCont
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingLegacyTemplates
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, TemplatePath}
 import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern, UriPath}
-import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.collection.JavaConverters._
+import scala.annotation.nowarn
+import scala.jdk.CollectionConverters._
 
 object TemplateClusterStateEsRequestContext {
 
@@ -44,8 +44,7 @@ object TemplateClusterStateEsRequestContext {
            esContext: EsContext,
            clusterService: RorClusterService,
            settings: Settings,
-           threadPool: ThreadPool)
-          (implicit generator: UniqueIdentifierGenerator): Option[TemplateClusterStateEsRequestContext] = {
+           threadPool: ThreadPool): Option[TemplateClusterStateEsRequestContext] = {
     UriPath.from(esContext.channel.request().uri()) match {
       case Some(TemplatePath(_) | CatTemplatePath(_)) =>
         Some(new TemplateClusterStateEsRequestContext(actionRequest, esContext, clusterService, settings, threadPool))
@@ -60,7 +59,6 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
                                                    clusterService: RorClusterService,
                                                    settings: Settings,
                                                    override val threadPool: ThreadPool)
-                                                  (implicit generator: UniqueIdentifierGenerator)
   extends BaseTemplatesEsRequestContext[ClusterStateRequest, GettingLegacyTemplates](
     actionRequest, esContext, clusterService, threadPool
   ) {
@@ -130,10 +128,13 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
         .metaData(newMetadataWithFilteredTemplates)
         .build()
 
+    @nowarn("cat=deprecation")
+    val totalCompressedSize = response.getTotalCompressedSize
+
     new ClusterStateResponse(
       response.getClusterName,
       modifiedClusterState,
-      response.getTotalCompressedSize.getBytes,
+      totalCompressedSize.getBytes,
       response.isWaitForTimedOut
     )
   }

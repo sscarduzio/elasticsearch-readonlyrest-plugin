@@ -26,7 +26,7 @@ import tech.beshu.ror.api.AuthMockApi.AuthMockResponse.{Failure, ProvideAuthMock
 import tech.beshu.ror.api.AuthMockApi.AuthMockService.{ExternalAuthenticationService, ExternalAuthorizationService, LdapAuthorizationService, MockMode}
 import tech.beshu.ror.api.AuthMockApi.{AuthMockResponse, AuthMockService}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class RRAuthMockResponse(response: AuthMockApi.AuthMockResponse)
   extends ActionResponse with StatusToXContentObject {

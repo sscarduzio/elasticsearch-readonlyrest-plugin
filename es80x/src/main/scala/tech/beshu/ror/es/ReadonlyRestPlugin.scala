@@ -76,7 +76,7 @@ import tech.beshu.ror.utils.SetOnce
 import java.nio.file.Path
 import java.util
 import java.util.function.Supplier
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 

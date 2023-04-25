@@ -179,7 +179,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
   private def auditSettings(serializer: AuditLogSerializer) = Settings(NonEmptyList.of(
     AuditSink.Enabled(Config.EsIndexBasedSink(
       serializer,
-      RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
+      RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
       AuditCluster.LocalAuditCluster
     ))
   ))

@@ -28,20 +28,20 @@ import monix.execution.Scheduler
 
 import java.util
 import java.util.Base64
-import scala.collection.JavaConverters._
-import scala.collection.SortedSet
+import scala.jdk.CollectionConverters._
+import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
-import scala.language.{higherKinds, implicitConversions, postfixOps}
+import scala.language.{implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 import scala.util.Try
 
 object ScalaOps {
 
-  implicit class TraversableOnceOps[T](val traversable: TraversableOnce[T]) extends AnyVal {
+  implicit class IterableeOnceOps[T](val iterable: IterableOnce[T]) extends AnyVal {
 
     def mkStringOrEmptyString(start: String, sep: String, end: String): String = {
-      if(traversable.isEmpty) ""
-      else traversable.mkString(start, sep, end)
+      if(iterable.iterator.isEmpty) ""
+      else iterable.iterator.mkString(start, sep, end)
     }
   }
 
@@ -133,8 +133,7 @@ object ScalaOps {
   implicit class ListOfEitherOps[A, B](val either: List[Either[A, B]]) extends AnyVal {
 
     def partitionEither: (List[A], List[B]) = {
-      val (lefts, rights) = either.partition(_.isLeft)
-      (lefts.map(_.left.get), rights.map(_.right.get))
+      either.partitionMap(identity)
     }
   }
 

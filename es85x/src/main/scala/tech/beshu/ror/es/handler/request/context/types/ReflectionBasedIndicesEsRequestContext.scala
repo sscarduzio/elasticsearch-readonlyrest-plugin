@@ -31,7 +31,7 @@ import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionRequest,
                                                      indices: Set[ClusterIndexName],

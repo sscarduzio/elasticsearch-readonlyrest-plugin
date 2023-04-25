@@ -37,7 +37,7 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableIndexTemplateAction.Request,
                                                  esContext: EsContext,
@@ -165,7 +165,7 @@ private[types] object GetComposableIndexTemplateEsRequestContext extends Logging
         .fromString(name)
         .toRight("Template name should be non-empty")
       patterns <- UniqueNonEmptyList
-        .fromTraversable(composableIndexTemplate.indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
+        .fromIterable(composableIndexTemplate.indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
       aliases = Option(composableIndexTemplate.template())
         .map(_.aliases().asSafeMap.keys.flatMap(ClusterIndexName.fromString).toSet)

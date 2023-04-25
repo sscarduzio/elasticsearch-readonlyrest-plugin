@@ -21,9 +21,9 @@ import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogS
 import tech.beshu.ror.commons
 import tech.beshu.ror.requestcontext.AuditLogSerializer
 
-import scala.language.higherKinds
+import scala.annotation.nowarn
 
-//@silent("deprecated")
+@nowarn("cat=deprecation")
 final class DeprecatedAuditLoggingDecorator[T](underlying: AuditLogSerializer[T])
   extends AuditLogSerializer[T]
     with Logging {

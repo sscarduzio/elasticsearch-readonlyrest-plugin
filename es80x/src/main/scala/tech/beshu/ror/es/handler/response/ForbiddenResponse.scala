@@ -23,7 +23,7 @@ import org.elasticsearch.rest.RestStatus
 import tech.beshu.ror.accesscontrol.AccessControl.{AccessControlStaticContext, ForbiddenCause}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class ForbiddenResponse private(aclStaticContext: Option[AccessControlStaticContext],
                                 causes: List[ForbiddenResponse.Cause])

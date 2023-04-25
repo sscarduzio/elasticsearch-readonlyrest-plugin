@@ -28,7 +28,7 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
                                      esContext: EsContext,
@@ -94,7 +94,7 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
   }
 
   private def indicesFrom(blockContext: SnapshotRequestBlockContext) = {
-    UniqueNonEmptyList.fromTraversable(blockContext.filteredIndices) match {
+    UniqueNonEmptyList.fromIterable(blockContext.filteredIndices) match {
       case Some(value) => Right(value)
       case None => Left(())
     }

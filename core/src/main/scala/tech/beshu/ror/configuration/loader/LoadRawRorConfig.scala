@@ -22,12 +22,13 @@ import tech.beshu.ror.configuration.ConfigLoading._
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.FileConfig
 import tech.beshu.ror.configuration.{EsConfig, RawRorConfig}
 
-import scala.language.implicitConversions
-
 object LoadRawRorConfig {
+
+  type LoadResult = ErrorOr[LoadedRorConfig[RawRorConfig]]
+
   def load(esConfigPath: Path,
            esConfig: EsConfig,
-           configurationIndex: RorConfigurationIndex): LoadRorConfig[ErrorOr[LoadedRorConfig[RawRorConfig]]] = {
+           configurationIndex: RorConfigurationIndex): LoadRorConfig[LoadResult] = {
     LoadRawRorConfig.load(
       isLoadingFromFileForced = esConfig.rorEsLevelSettings.forceLoadRorFromFile,
       esConfigPath = esConfigPath,
@@ -39,7 +40,7 @@ object LoadRawRorConfig {
   def load(isLoadingFromFileForced: Boolean,
            esConfigPath: Path,
            configIndex: RorConfigurationIndex,
-           indexLoadingAttempts: Int): LoadRorConfig[ErrorOr[LoadedRorConfig[RawRorConfig]]] = {
+           indexLoadingAttempts: Int): LoadRorConfig[LoadResult] = {
     for {
       loadedFileOrIndex <- if (isLoadingFromFileForced) {
         forceLoadRorConfigFromFile(esConfigPath)
@@ -51,7 +52,7 @@ object LoadRawRorConfig {
 
   def attemptLoadingConfigFromIndex(index: RorConfigurationIndex,
                                     attempts: Int,
-                                    fallback: LoadRorConfig[ErrorOr[FileConfig[RawRorConfig]]]): LoadRorConfig[ErrorOr[LoadedRorConfig[RawRorConfig]]] = {
+                                    fallback: LoadRorConfig[ErrorOr[FileConfig[RawRorConfig]]]): LoadRorConfig[LoadResult] = {
     if (attempts <= 0) {
       fallback.map(identity)
     } else {
@@ -60,12 +61,12 @@ object LoadRawRorConfig {
         rawRorConfig <- result match {
           case Left(LoadedRorConfig.IndexNotExist) =>
             Free.defer(attemptLoadingConfigFromIndex(index, attempts - 1, fallback))
-          case Left(error@LoadedRorConfig.IndexUnknownStructure) =>
-            Free.pure[LoadConfigAction, ErrorOr[LoadedRorConfig[RawRorConfig]]](Left(error))
+          case Left(LoadedRorConfig.IndexUnknownStructure) =>
+            Free.pure[LoadConfigAction, LoadResult](Left(LoadedRorConfig.IndexUnknownStructure))
           case Left(error@LoadedRorConfig.IndexParsingError(_)) =>
-            Free.pure[LoadConfigAction, ErrorOr[LoadedRorConfig[RawRorConfig]]](Left(error))
+            Free.pure[LoadConfigAction, LoadResult](Left(error))
           case Right(value) =>
-            Free.pure[LoadConfigAction, ErrorOr[LoadedRorConfig[RawRorConfig]]](Right(value))
+            Free.pure[LoadConfigAction, LoadResult](Right(value))
         }
       } yield rawRorConfig
     }

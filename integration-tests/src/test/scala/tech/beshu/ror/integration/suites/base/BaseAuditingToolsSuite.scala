@@ -145,7 +145,7 @@ trait BaseAuditingToolsSuite
           }
         }
         "two metadata requests were sent, one with correlationId" in {
-          def fetchMetadata(correlationId: Option[String] = None) = {
+          def fetchMetadata(correlationId: Option[String]) = {
             val userMetadataManager = new RorApiManager(
               client = basicAuthClient("username", "dev"),
               esVersion = esVersionUsed
@@ -273,7 +273,7 @@ trait BaseAuditingToolsSuite
       "request JSON is too large (>5KB)" in {
         val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-        val response = rorApiManager.sendAuditEvent(ujson.read(s"""{ "event": "${Stream.continually("!").take(5000).mkString}" }"""))
+        val response = rorApiManager.sendAuditEvent(ujson.read(s"""{ "event": "${LazyList.continually("!").take(5000).mkString}" }"""))
         response.responseCode shouldBe 413
         response.responseJson should be(ujson.read(
           """

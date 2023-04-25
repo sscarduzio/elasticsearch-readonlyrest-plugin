@@ -73,7 +73,7 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
               .map(_
                 .resolve(CurrentUserMetadataRequestBlockContext(mock[RequestContext], UserMetadata.empty, Set.empty, List.empty))
                 .map(_.head.pattern)
-                .right.get
+                .toOption.get
               )
             patternsAsStrings shouldBe NonEmptySet.of("^/secret-idx/.*", "^/secret/.*")
           }

@@ -134,21 +134,21 @@ object domain {
   }
 
   final case class PermittedGroups(groups: UniqueNonEmptyList[_ <: GroupLike]) {
-    private[PermittedGroups] lazy val matcher = MatcherWithWildcardsScalaAdapter.create(groups.toSet)
+    private[PermittedGroups] lazy val matcher = MatcherWithWildcardsScalaAdapter.create[GroupLike](groups)
   }
   object PermittedGroups {
 
     implicit class PermittedGroupsMatcher(val permittedGroups: PermittedGroups) extends AnyVal {
 
-      def filterOnlyPermitted(groupsToCheck: Traversable[GroupName]): UniqueList[GroupName] = {
+      def filterOnlyPermitted(groupsToCheck: Iterable[GroupName]): UniqueList[GroupName] = {
         val (permitted, _) = permittedGroups
           .groups.toList.widen[GroupLike]
-          .foldLeft((Traversable.empty[GroupName], groupsToCheck)) {
+          .foldLeft((Iterable.empty[GroupName], groupsToCheck)) {
             case ((alreadyPermittedGroups, groupsToCheckLeft), permittedGroupLike: GroupLike) =>
               val (matched, notMatched) = groupsToCheckLeft.partition(permittedGroupLike.matches)
               (alreadyPermittedGroups ++ matched, notMatched)
           }
-        UniqueList.fromTraversable(permitted)
+        UniqueList.fromIterable(permitted)
       }
 
       def matches(groupName: GroupName): Boolean = {
@@ -160,7 +160,7 @@ object domain {
   final case class ResolvablePermittedGroups(permittedGroups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupLike]]) {
     def resolveGroups[B <: BlockContext](blockContext: B): Option[PermittedGroups] = {
       UniqueNonEmptyList
-        .fromTraversable(resolveAll(permittedGroups.toNonEmptyList, blockContext))
+        .fromIterable(resolveAll(permittedGroups.toNonEmptyList, blockContext))
         .map(PermittedGroups.apply)
     }
   }
@@ -202,14 +202,14 @@ object domain {
             result
         }
       if (isThereNotPermittedGroup) None
-      else UniqueNonEmptyList.fromTraversable(matchedUserGroups)
+      else UniqueNonEmptyList.fromIterable(matchedUserGroups)
     }
   }
 
   implicit class GroupsLogicOrExecutor(val groupsLogic: GroupsLogic.Or) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[GroupName]): Option[UniqueNonEmptyList[GroupName]] = {
       val someMatchedUserGroups = groupsLogic.permittedGroups.filterOnlyPermitted(userGroups)
-      UniqueNonEmptyList.fromTraversable(someMatchedUserGroups)
+      UniqueNonEmptyList.fromIterable(someMatchedUserGroups)
     }
   }
 
@@ -685,7 +685,7 @@ object domain {
     }
 
     implicit class IsAllowedBy(val indexName: ClusterIndexName) extends AnyVal {
-      def isAllowedBy(allowedIndices: Traversable[ClusterIndexName]): Boolean = {
+      def isAllowedBy(allowedIndices: Iterable[ClusterIndexName]): Boolean = {
         indexName match {
           case Placeholder(placeholder) =>
             val potentialAliases = allowedIndices.map(i => placeholder.index(i.nonEmptyStringify))
@@ -722,7 +722,7 @@ object domain {
       matcher.`match`(index) || index.matches(value)
     }
 
-    def isAllowedByAny(anyIndexFrom: Traversable[ClusterIndexName]): Boolean = {
+    def isAllowedByAny(anyIndexFrom: Iterable[ClusterIndexName]): Boolean = {
       anyIndexFrom.exists(this.isAllowedBy)
     }
 
@@ -754,7 +754,7 @@ object domain {
   }
   object AliasPlaceholder {
     private val placeholder = "{index}"
-    private val escapedPlaceholder = placeholder.replaceAllLiterally("{", "\\{").replaceAllLiterally("}", "\\}")
+    private val escapedPlaceholder = placeholder.replace("{", "\\{").replace("}", "\\}")
 
     def from(alias: ClusterIndexName): Option[AliasPlaceholder] = alias match {
       case Local(IndexName.Full(name)) if name.contains(placeholder) => Some(AliasPlaceholder(alias))
@@ -822,7 +822,7 @@ object domain {
     }
   }
   object RorAuditIndexTemplate {
-    val default: RorAuditIndexTemplate = from(Constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).right.get
+    val default: RorAuditIndexTemplate = from(Constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).toOption.get
 
     def apply(pattern: String): Either[CreationError, RorAuditIndexTemplate] = from(pattern)
 
@@ -1112,7 +1112,7 @@ object domain {
             in
               .toList.map(_.value.value.substring(0, minLength).toCharArray)
               .transpose
-              .foldLeft((false, StringBuilder.newBuilder)) {
+              .foldLeft((false, new StringBuilder())) {
                 case ((false, builder), letters) if allTheSame(letters) =>
                   (false, builder.append(letters.head))
                 case ((false, builder), _) =>

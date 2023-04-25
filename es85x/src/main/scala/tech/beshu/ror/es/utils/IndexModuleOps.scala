@@ -58,5 +58,5 @@ object IndexModuleOps {
   type ReaderWrapper = JFunction[IndexService, CheckedFunction[DirectoryReader, DirectoryReader, IOException]]
 
   implicit def toOps(indexModule: IndexModule): IndexModuleOps = new IndexModuleOps(indexModule)
-  
+
 }

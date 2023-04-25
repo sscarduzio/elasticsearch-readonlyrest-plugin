@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMetho
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.{CorrelationId, KibanaAccess}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 sealed trait MetadataValue
 
@@ -99,7 +99,7 @@ object MetadataValue {
   private def jsonRepresentationToJavaObj(json: JsonRepresentation): Any = {
     json match {
       case JsonTree.Object(fields) =>
-        fields.mapValues(jsonRepresentationToJavaObj).asJava
+        fields.view.mapValues(jsonRepresentationToJavaObj).toMap.asJava
       case JsonTree.Array(elements) =>
         elements.map(jsonRepresentationToJavaObj).asJava
       case JsonTree.Value(value) =>

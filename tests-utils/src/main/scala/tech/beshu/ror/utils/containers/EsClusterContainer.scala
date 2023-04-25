@@ -28,8 +28,6 @@ import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.ClusterManager
 
-import scala.language.existentials
-
 class EsClusterContainer private[containers](val esClusterSettings: EsClusterSettings,
                                              val nodeCreators: NonEmptyList[StartedClusterDependencies => EsContainer],
                                              dependencies: List[DependencyDef])
@@ -63,7 +61,7 @@ class EsClusterContainer private[containers](val esClusterSettings: EsClusterSet
 
   private def startContainersAsynchronously(containers: Iterable[SingleContainer[_]]): Unit = {
     Task
-      .gatherUnordered {
+      .parSequenceUnordered {
         containers.map(c => Task(c.start()))
       }
       .runSyncUnsafe()
@@ -97,7 +95,7 @@ class EsRemoteClustersContainer private[containers](val localCluster: EsClusterC
                                         remoteClustersConfig: Map[String, EsClusterContainer]): Unit = {
     val clusterManager = new ClusterManager(container.nodes.head.adminClient, esVersion = container.nodes.head.esVersion)
     val result = clusterManager.configureRemoteClusters(
-      remoteClustersConfig.mapValues(_.nodes.map(c => s"${c.esConfig.nodeName}:9300"))
+      remoteClustersConfig.view.mapValues(_.nodes.map(c => s"${c.esConfig.nodeName}:9300")).toMap
     )
 
     result.responseCode match {

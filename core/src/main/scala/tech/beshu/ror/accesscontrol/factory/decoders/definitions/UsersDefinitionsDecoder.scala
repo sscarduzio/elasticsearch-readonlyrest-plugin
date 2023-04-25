@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
-import java.time.Clock
 import cats.Id
 import cats.data.NonEmptySet
 import cats.implicits._
@@ -42,10 +41,7 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.failed
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
-import tech.beshu.ror.providers.UuidProvider
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-
-import scala.language.implicitConversions
 
 object UsersDefinitionsDecoder {
 
@@ -57,9 +53,7 @@ object UsersDefinitionsDecoder {
                ldapServiceDefinitions: Definitions[LdapService],
                impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                mocksProvider: MocksProvider,
-               caseMappingEquality: UserIdCaseMappingEquality)
-              (implicit clock: Clock,
-               uuidProvider: UuidProvider): ADecoder[Id, Definitions[UserDef]] = {
+               caseMappingEquality: UserIdCaseMappingEquality): ADecoder[Id, Definitions[UserDef]] = {
     implicit val userDefDecoder: SyncDecoder[UserDef] =
       SyncDecoderCreator
         .instance { c =>
@@ -120,7 +114,7 @@ object UsersDefinitionsDecoder {
     Decoder[List[GroupMappings.Advanced.Mapping]]
       .toSyncDecoder
       .emapE { list =>
-        UniqueNonEmptyList.fromTraversable(list) match {
+        UniqueNonEmptyList.fromIterable(list) match {
           case Some(mappings) => Right(GroupMappings.Advanced(mappings))
           case None => Left(ValueLevelCreationError(Message("Non empty list of groups or groups mappings are required")))
         }
@@ -140,9 +134,7 @@ object UsersDefinitionsDecoder {
                                   ldapServiceDefinitions: Definitions[LdapService],
                                   impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                                   mocksProvider: MocksProvider,
-                                  caseMappingEquality: UserIdCaseMappingEquality)
-                                 (implicit clock: Clock,
-                                  uuidProvider: UuidProvider) = Decoder.instance { c =>
+                                  caseMappingEquality: UserIdCaseMappingEquality): Decoder[List[Rule]] = Decoder.instance { c =>
     type RuleDecoders = List[RuleDecoder[Rule]]
     val ruleNames = c.keys.toList.flatten.map(Rule.Name.apply)
     val ruleDecoders = ruleNames.foldLeft(Either.right[Message, RuleDecoders](List.empty)) {

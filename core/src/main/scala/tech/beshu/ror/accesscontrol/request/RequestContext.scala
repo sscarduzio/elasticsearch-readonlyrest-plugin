@@ -193,7 +193,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
   def basicAuth: Option[BasicAuth] = {
     requestContext
       .headers
-      .toStream
+      .to(LazyList)
       .map(BasicAuth.fromHeader)
       .find(_.isDefined)
       .flatten

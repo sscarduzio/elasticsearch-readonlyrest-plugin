@@ -32,7 +32,7 @@ import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices.{SqlNotTableRelated, 
 import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 sealed trait ExtractedIndices {
@@ -238,7 +238,6 @@ final class SimpleStatement(val underlyingObject: AnyRef)
 }
 
 final class Command(val underlyingObject: Any)
-                   (implicit classLoader: ClassLoader)
   extends Statement {
 
   lazy val indices: SqlIndices = {

@@ -57,14 +57,22 @@ test {
 
 dependencies {
     api group: 'org.ow2.asm',                   name: 'asm',                              version: '9.3'
-    api group: 'io.kevinlee',                   name: 'just-semver_2.12',                 version: '0.5.0'
-    api group: 'com.lihaoyi',                   name: 'os-lib_2.12',                      version: '0.8.1'
+    api group: 'io.kevinlee',                   name: 'just-semver_2.13',                 version: '0.5.0'
+    api group: 'com.lihaoyi',                   name: 'os-lib_2.13',                      version: '0.8.1'
 }
 
 compileScala {
     sourceCompatibility = 1.8
     targetCompatibility = 1.8
-    options.compilerArgs << "-Ywarn-macros:after"
+    options.compilerArgs.addAll(
+            "-unchecked",
+            "-Ywarn-macros:after",
+            "-feature",
+            "-Ymacro-annotations",
+            "-Xfatal-warnings",
+            "-Ywarn-unused",
+            "-Wunused:nowarn"
+    )
 }
 
 shadowJar {

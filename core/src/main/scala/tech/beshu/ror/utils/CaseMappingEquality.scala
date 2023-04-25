@@ -19,8 +19,6 @@ package tech.beshu.ror.utils
 import cats._
 import cats.implicits._
 
-import scala.language.implicitConversions
-
 trait CaseMappingEquality[A] extends Show[A] {
   def mapCases: String => String
 }

@@ -31,16 +31,17 @@ import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService._
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.collection.JavaConverters._
+import scala.annotation.nowarn
+import scala.jdk.CollectionConverters._
 
 @Singleton
 class EsIndexJsonContentService(client: NodeClient,
-                                ignore: Unit) // hack!
+                                @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends IndexJsonContentService
     with Logging {
 
   @Inject
-  def this(client: NodeClient) {
+  def this(client: NodeClient) = {
     this(client, ())
   }
 

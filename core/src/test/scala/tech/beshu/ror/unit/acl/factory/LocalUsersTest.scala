@@ -33,8 +33,6 @@ import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils._
 
-import scala.language.implicitConversions
-
 class LocalUsersTest extends AnyWordSpec with Inside {
 
   "ROR config local users" should {

@@ -64,7 +64,15 @@ dependencyCheck {
 }
 
 tasks.withType(ScalaCompile).configureEach {
-    scalaCompileOptions.additionalParameters = ["-Ypartial-unification", "-Ywarn-macros:after", "-feature"]
+    scalaCompileOptions.additionalParameters = [
+            "-unchecked",
+            "-Ywarn-macros:after",
+            "-feature",
+            "-Ymacro-annotations",
+            "-Xfatal-warnings",
+            "-Ywarn-unused",
+            "-Wunused:nowarn"
+    ]
 }
 
 tasks.withType(Zip).configureEach { task ->
@@ -94,5 +102,6 @@ tasks.register('generateVersionsFile') {
 
 tasks.register('toJar', Jar) {
     dependsOn generateVersionsFile
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from sourceSets.main.getOutput()
 }

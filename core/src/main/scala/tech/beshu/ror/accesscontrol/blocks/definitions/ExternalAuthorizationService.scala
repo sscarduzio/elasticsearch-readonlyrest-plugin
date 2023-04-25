@@ -37,7 +37,7 @@ import tech.beshu.ror.accesscontrol.utils.CacheableAction
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
 
@@ -109,7 +109,7 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
     groupsFromPath match {
       case Success(groups) =>
         logger.debug(s"Groups returned by groups provider '${id.show}': ${groups.map(_.show).mkString(",")}")
-        UniqueList.fromTraversable(groups)
+        UniqueList.fromIterable(groups)
       case Failure(ex) =>
         logger.debug(s"Group based authorization response exception - provider '${id.show}'", ex)
         UniqueList.empty

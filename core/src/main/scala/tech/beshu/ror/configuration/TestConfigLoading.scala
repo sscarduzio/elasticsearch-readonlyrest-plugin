@@ -20,8 +20,6 @@ import cats.free.Free
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.loader.LoadedTestRorConfig
 
-import scala.language.higherKinds
-
 object TestConfigLoading {
   type IndexErrorOr[A] = LoadedTestRorConfig.LoadingIndexError Either A
   type LoadTestRorConfig[A] = Free[LoadTestConfigAction, A]

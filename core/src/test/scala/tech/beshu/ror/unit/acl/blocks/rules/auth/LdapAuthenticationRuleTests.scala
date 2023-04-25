@@ -72,7 +72,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
             val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
 
             val service = mock[LdapAuthenticationService]
-            (service.id _).expects().returning(LdapService.Name("ldap1"))
+            (() => service.id).expects().returning(LdapService.Name("ldap1"))
 
             val rule = new LdapAuthenticationRule(
               LdapAuthenticationRule.Settings(service),
@@ -197,7 +197,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
             )
             val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
             val service = mock[LdapAuthenticationService]
-            (service.id _).expects().returning(LdapService.Name("ldap1"))
+            (() => service.id).expects().returning(LdapService.Name("ldap1"))
 
             val rule = new LdapAuthenticationRule(
               LdapAuthenticationRule.Settings(service),
@@ -222,7 +222,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
             )
             val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
             val service = mock[LdapAuthenticationService]
-            (service.id _).expects().returning(LdapService.Name("ldap1"))
+            (() => service.id).expects().returning(LdapService.Name("ldap1"))
 
             val rule = new LdapAuthenticationRule(
               LdapAuthenticationRule.Settings(service),

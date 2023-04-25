@@ -34,8 +34,9 @@ import org.apache.http.util.EntityUtils
 import org.apache.http.{Header, HttpResponse}
 
 import java.net.URI
-import scala.collection.JavaConverters._
+import scala.annotation.nowarn
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 import scala.util.Try
 
@@ -72,7 +73,7 @@ class RestClient(ssl: Boolean,
       .runSyncUnsafe()
   }
 
-  private def createUnderlyingClient(headers: Traversable[Header]) = {
+  private def createUnderlyingClient(headers: Iterable[Header]) = {
     val timeout = readTimeout()
     val builder =
       if (ssl) withSsl(HttpClients.custom())
@@ -103,7 +104,8 @@ class RestClient(ssl: Boolean,
   }
 
   private def createBasicAuthHeader(user: String, password: String) = {
-    val authenticate = BasicScheme.authenticate(new UsernamePasswordCredentials(user, password), "UTF-8", false)
+    @nowarn("cat=deprecation") val authenticate =
+      BasicScheme.authenticate(new UsernamePasswordCredentials(user, password), "UTF-8", false)
     new BasicHeader("Authorization", authenticate.getValue)
   }
 

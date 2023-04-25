@@ -21,17 +21,17 @@ import java.util.function.Supplier
 
 import org.elasticsearch.common.component.AbstractLifecycleComponent
 import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.transport.{RemoteClusterService, TransportService}
 
-class TransportServiceInterceptor(settings: Settings,
-                                  transportService: TransportService,
-                                  ignore: Unit) // hack!
-  extends AbstractLifecycleComponent(settings) {
+import scala.annotation.nowarn
+
+class TransportServiceInterceptor(transportService: TransportService,
+                                  @nowarn("cat=unused") constructorDiscriminator: Unit)
+  extends AbstractLifecycleComponent() {
 
   @Inject
-  def this(settings: Settings, transportService: TransportService) {
-    this(settings, transportService, ())
+  def this(transportService: TransportService) = {
+    this(transportService, ())
   }
   Option(transportService.getRemoteClusterService).foreach { r =>
     TransportServiceInterceptor.remoteClusterServiceSupplier.update(r)

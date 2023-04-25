@@ -28,7 +28,6 @@ class JsonFile(file: File) {
         .parser
         .parse(reader)
         .left.map(_.message)
-        .right
         .flatMap { json =>
           decoder
             .decodeJson(json)

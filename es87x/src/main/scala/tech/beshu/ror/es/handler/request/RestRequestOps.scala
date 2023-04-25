@@ -19,13 +19,14 @@ package tech.beshu.ror.es.handler.request
 import org.elasticsearch.rest.RestRequest
 import tech.beshu.ror.accesscontrol.domain.Header
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object RestRequestOps {
   implicit class HeadersOps(val request: RestRequest) extends AnyVal {
     def allHeaders(): Set[Header] = Header.fromRawHeaders(
       request
         .getHeaders.asScala
+        .view
         .mapValues(_.asScala.toList)
         .toMap
     )

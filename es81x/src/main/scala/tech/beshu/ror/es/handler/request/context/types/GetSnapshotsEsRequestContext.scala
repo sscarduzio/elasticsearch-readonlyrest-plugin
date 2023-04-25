@@ -32,7 +32,7 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
                                    esContext: EsContext,
@@ -77,14 +77,14 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   }
 
   private def snapshotsFrom(blockContext: SnapshotRequestBlockContext) = {
-    UniqueNonEmptyList.fromTraversable(blockContext.snapshots) match {
+    UniqueNonEmptyList.fromIterable(blockContext.snapshots) match {
       case Some(list) => Right(list)
       case None => Left(())
     }
   }
 
   private def repositoriesFrom(blockContext: SnapshotRequestBlockContext) = {
-    UniqueNonEmptyList.fromTraversable(blockContext.repositories) match {
+    UniqueNonEmptyList.fromIterable(blockContext.repositories) match {
       case Some(list) => Right(list)
       case None => Left(())
     }

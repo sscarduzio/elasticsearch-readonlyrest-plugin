@@ -21,6 +21,8 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext._
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain._
 
+import scala.annotation.nowarn
+
 sealed trait BlockContextUpdater[B <: BlockContext] {
 
   def emptyBlockContext(blockContext: B): B
@@ -309,6 +311,7 @@ object BlockContextUpdater {
   }
 }
 
+@nowarn("msg=evidence parameter")
 abstract class BlockContextWithIndicesUpdater[B <: BlockContext : HasIndices] {
 
   def withIndices(blockContext: B, filteredIndices: Set[ClusterIndexName], allAllowedIndices: Set[ClusterIndexName]): B
@@ -357,6 +360,7 @@ object BlockContextWithIndicesUpdater {
   }
 }
 
+@nowarn("msg=evidence parameter")
 abstract class BlockContextWithIndexPacksUpdater[B <: BlockContext : HasIndexPacks] {
 
   def withIndexPacks(blockContext: B, indexPacks: List[Indices]): B
@@ -382,6 +386,7 @@ object BlockContextWithIndexPacksUpdater {
   }
 }
 
+@nowarn("msg=evidence parameter")
 abstract class BlockContextWithFilterUpdater[B <: BlockContext : HasFilter] {
 
   def withFilter(blockContext: B, filter: Filter): B
@@ -407,6 +412,7 @@ object BlockContextWithFilterUpdater {
   }
 }
 
+@nowarn("msg=evidence parameter")
 abstract class BlockContextWithFLSUpdater[B <: BlockContext : HasFieldLevelSecurity] {
 
   def withFieldLevelSecurity(blockContext: B, fieldLevelSecurity: FieldLevelSecurity): B

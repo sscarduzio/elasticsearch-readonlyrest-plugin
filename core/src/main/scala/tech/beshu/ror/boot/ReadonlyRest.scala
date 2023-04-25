@@ -43,7 +43,6 @@ import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers._
 
 import scala.concurrent.duration.FiniteDuration
-import scala.language.{implicitConversions, postfixOps}
 
 class ReadonlyRest(coreFactory: CoreFactory,
                    auditSinkCreator: AuditSinkCreator,
@@ -199,7 +198,6 @@ class ReadonlyRest(coreFactory: CoreFactory,
       .createCoreFrom(config, rorIndexNameConfiguration, httpClientsFactory, ldapConnectionPoolProvider, authServicesMocksProvider)
       .map { result =>
         result
-          .right
           .map { core =>
             val engine = createEngine(httpClientsFactory, ldapConnectionPoolProvider, core)
             inspectFlsEngine(engine)

@@ -22,7 +22,7 @@ import tech.beshu.ror.org.yaml.snakeyaml.{LoaderOptions, Yaml}
 import tech.beshu.ror.org.yaml.snakeyaml.constructor.SafeConstructor
 import tech.beshu.ror.org.yaml.snakeyaml.nodes._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object parser {
   /**
@@ -38,9 +38,9 @@ object parser {
 
   def parse(yaml: String): Either[ParsingFailure, Json] = parse(new StringReader(yaml))
 
-  def parseDocuments(yaml: Reader): Stream[Either[ParsingFailure, Json]] = parseStream(yaml).map(yamlToJson)
+  def parseDocuments(yaml: Reader): LazyList[Either[ParsingFailure, Json]] = parseStream(yaml).map(yamlToJson)
 
-  def parseDocuments(yaml: String): Stream[Either[ParsingFailure, Json]] = parseDocuments(new StringReader(yaml))
+  def parseDocuments(yaml: String): LazyList[Either[ParsingFailure, Json]] = parseDocuments(new StringReader(yaml))
 
   private[this] def parseSingle(reader: Reader) = Either.catchNonFatal(
     new Yaml(new SafeConstructor(new LoaderOptions()))
@@ -48,7 +48,7 @@ object parser {
   )
 
   private[this] def parseStream(reader: Reader) =
-    new Yaml(new SafeConstructor(new LoaderOptions())).composeAll(reader).asScala.toStream
+    new Yaml(new SafeConstructor(new LoaderOptions())).composeAll(reader).asScala.to(LazyList)
 
   private[this] object CustomTag {
     def unapply(tag: Tag): Option[String] = if (!tag.startsWith(Tag.PREFIX))
@@ -120,17 +120,20 @@ object parser {
   }
 
   private def findDuplicatedKey(acc: Either[ParsingFailure, Set[String]],
-                                tuple: NodeTuple) = {
+                                tuple: NodeTuple): Either[ParsingFailure, Set[String]] = {
     acc.flatMap { keys =>
-      val key = convertKeyNode(tuple.getKeyNode).right.get
-      if (keys contains key)
-        ParsingFailure(s"Duplicated key: '$key'", DuplicatedKeyException(key)).asLeft
-      else
-        (keys + key).asRight
+      convertKeyNode(tuple.getKeyNode)
+        .flatMap { key =>
+          if (keys.contains(key)) {
+            ParsingFailure(s"Duplicated key: '$key'", DuplicatedKeyException(key)).asLeft
+          } else {
+            (keys + key).asRight
+          }
+        }
     }
   }
 
-  private def convertKeyNode(node: Node) = node match {
+  private def convertKeyNode(node: Node): Either[ParsingFailure, String] = node match {
     case scalar: ScalarNode => Right(scalar.getValue)
     case _ =>
       val message = "Only string keys can be represented in JSON"

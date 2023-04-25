@@ -36,7 +36,7 @@ import tech.beshu.ror.mocks.{MockRequestContext, MockUserMetadataRequestContext}
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
 
@@ -304,13 +304,13 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
     }
   }
 
-  private def forceCreateSingleVariable(text: String) = createSingleVariable(text).right.get
+  private def forceCreateSingleVariable(text: String) = createSingleVariable(text).toOption.get
 
   private def createSingleVariable(text: String) = {
     createSingleResolvableVariableFrom(NonEmptyString.unsafeFrom(text))(AlwaysRightConvertible.stringAlwaysRightConvertible)
   }
 
-  private def forceCreateMultiVariable(text: String) = createMultiVariable(text).right.get
+  private def forceCreateMultiVariable(text: String) = createMultiVariable(text).toOption.get
 
   private def createMultiVariable(text: String) = {
     createMultiResolvableVariableFrom(NonEmptyString.unsafeFrom(text))(AlwaysRightConvertible.stringAlwaysRightConvertible)

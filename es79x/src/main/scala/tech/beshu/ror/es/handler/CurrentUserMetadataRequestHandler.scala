@@ -19,7 +19,6 @@ package tech.beshu.ror.es.handler
 import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
-import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
@@ -37,12 +36,11 @@ import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.Cause.fromMismatchedCause
 import tech.beshu.ror.utils.LoggerOps._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 class CurrentUserMetadataRequestHandler(engine: Engine,
                                         esContext: EsContext)
-                                       (implicit scheduler: Scheduler)
   extends Logging {
 
   def handle(request: RequestContext.Aux[CurrentUserMetadataRequestBlockContext] with EsRequest[CurrentUserMetadataRequestBlockContext]): Task[Unit] = {
@@ -92,7 +90,7 @@ private class RRMetadataResponse(userMetadata: UserMetadata,
   extends ActionResponse with ToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
-    val sourceMap: Map[String, _] = MetadataValue.read(userMetadata, correlationId).mapValues(MetadataValue.toAny)
+    val sourceMap: Map[String, _] = MetadataValue.read(userMetadata, correlationId).view.mapValues(MetadataValue.toAny).toMap
     builder.map(sourceMap.asJava)
     builder
   }

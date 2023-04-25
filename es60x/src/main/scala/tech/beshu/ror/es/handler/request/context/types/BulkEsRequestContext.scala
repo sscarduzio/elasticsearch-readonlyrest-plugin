@@ -23,7 +23,6 @@ import org.elasticsearch.action.bulk.BulkRequest
 import org.elasticsearch.action.support.replication.ReplicatedWriteRequest
 import org.elasticsearch.action.support.single.instance.InstanceShardOperationRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -35,11 +34,10 @@ import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class BulkEsRequestContext(actionRequest: BulkRequest,
                            esContext: EsContext,
-                           aclContext: AccessControlStaticContext,
                            clusterService: RorClusterService,
                            override val threadPool: ThreadPool)
   extends BaseEsRequestContext[MultiIndexRequestBlockContext](esContext, clusterService)

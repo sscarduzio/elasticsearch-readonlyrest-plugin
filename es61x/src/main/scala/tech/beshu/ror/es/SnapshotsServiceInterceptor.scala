@@ -24,13 +24,15 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.snapshots.SnapshotsService
 
+import scala.annotation.nowarn
+
 class SnapshotsServiceInterceptor(settings: Settings,
                                   snapshotsService: SnapshotsService,
-                                  ignore: Unit) // hack!
+                                  @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends AbstractLifecycleComponent(settings) {
 
   @Inject
-  def this(settings: Settings, snapshotsService: SnapshotsService) {
+  def this(settings: Settings, snapshotsService: SnapshotsService) = {
     this(settings, snapshotsService, ())
   }
 

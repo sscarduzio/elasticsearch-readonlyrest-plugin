@@ -63,12 +63,12 @@ class EsAuditSinkService(client: Client)
       if (response.hasFailures) {
         logger.error("Some failures flushing the BulkProcessor: ")
         response
-          .getItems.toStream
+          .getItems.to(LazyList)
           .filter(_.isFailed)
           .map(_.getFailureMessage)
           .groupBy(identity)
           .foreach { case (message, stream) =>
-            logger.error(stream.size + "x: " + message)
+            logger.error(s"${stream.size}x: $message")
           }
       }
     }

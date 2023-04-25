@@ -26,7 +26,6 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.yaml.YamlOps
 
 import scala.annotation.tailrec
-import scala.language.higherKinds
 
 sealed abstract class ADecoder[F[_] : Functor, A] {
 
@@ -184,7 +183,7 @@ object AsyncDecoderCreator extends ADecoderCreator[Task, AsyncDecoder] {
             }
           }
       } else {
-        if (c.value.isArray) Task.now(Right(List.newBuilder[A].result))
+        if (c.value.isArray) Task.now(Right(List.newBuilder[A].result()))
         else Task.now(Left(DecodingFailure("C[A]", c.history)))
       }
     }

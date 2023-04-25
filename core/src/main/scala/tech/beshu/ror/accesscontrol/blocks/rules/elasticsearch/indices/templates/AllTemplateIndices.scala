@@ -48,7 +48,7 @@ private[indices] trait AllTemplateIndices
       s"""[${blockContext.requestContext.id.show}] Checking - indices and aliases in Template related request.
          | Allowed indices by the rule: [${allowedIndices.show}]:""".oneLiner
     )
-    implicit val _ = blockContext
+    implicit val _blockContext = blockContext
     val result = blockContext.templateOperation match {
       case GettingLegacyAndIndexTemplates(gettingLegacyTemplates, gettingIndexTemplates) =>
         gettingLegacyAndIndexTemplates(gettingLegacyTemplates, gettingIndexTemplates)
@@ -111,12 +111,12 @@ private[indices] trait AllTemplateIndices
     val matcher = MatcherWithWildcardsScalaAdapter.create(allowedNamePatterns)
     val templateByName: Map[TemplateNamePattern, Set[T]] = requestedTemplates.groupBy(t => TemplateNamePattern(t.name.value))
     val filteredTemplateNames = matcher.filter(templateByName.keys.toSet)
-    templateByName.filterKeys(filteredTemplateNames.contains).values.toSet.flatten
+    templateByName.view.filterKeys(filteredTemplateNames.contains).values.toSet.flatten
   }
 
   private[indices] class AllowedIndices(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                                         val blockContext: TemplateRequestBlockContext) {
-    val resolved: Set[ClusterIndexName] = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
+    val resolved: Set[ClusterIndexName] = resolveAll(allowedIndices.toNonEmptyList, blockContext).toSet
   }
   private[indices] object AllowedIndices {
     implicit def show: Show[AllowedIndices] = Show.show(_.resolved.map(_.show).mkStringOrEmptyString("", ",", ""))

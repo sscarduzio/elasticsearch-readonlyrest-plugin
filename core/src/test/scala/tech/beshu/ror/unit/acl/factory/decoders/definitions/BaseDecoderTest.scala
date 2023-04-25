@@ -16,32 +16,29 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
+import cats.Comonad
 import cats.implicits._
-import cats.{Comonad, Functor}
 import io.circe.DecodingFailure
-import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.Inside
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.utils.ADecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.utils.yaml
 
-import scala.language.higherKinds
-
-abstract class BaseDecoderTest[F[_] : Functor, A, B](decoder: ADecoder[F, A])
-                                                    (implicit C: Comonad[F])
+abstract class BaseDecoderTest[F[_] : Comonad, A, B](decoder: ADecoder[F, A])
   extends AnyWordSpec with Inside {
 
   def assertDecodingSuccess(yaml: String,
                             assertion: A => Unit): Unit = {
     assertion {
-      C.extract(forceDecode(yaml))
+      Comonad[F].extract(forceDecode(yaml))
     }
   }
 
   def assertDecodingFailure(yaml: String,
                             assertion: CoreCreationError => Unit): Unit = {
-    inside(C.extract(decode(yaml))) { case Left(decodingFailure) =>
+    inside(Comonad[F].extract(decode(yaml))) { case Left(decodingFailure) =>
       decodingFailure.aclCreationError match {
         case Some(error) => assertion(error)
         case None => throw new IllegalStateException("Cannot find AclCreationError in decoding failure")

@@ -27,18 +27,18 @@ import tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object ReflectionBasedDataStreamsEsRequestContext {
 
   def unapply(arg: ReflectionBasedActionRequest): Option[BaseDataStreamsEsRequestContext[ActionRequest]] = {
     esContextCreators
-      .toStream
+      .to(LazyList)
       .flatMap(_.unapply(arg))
       .headOption
   }
 
-  val supportedActionRequests: Set[ClassCanonicalName] = esContextCreators.map(_.actionRequestClass).toSet
+  val supportedActionRequests: Set[ClassCanonicalName] = esContextCreators.unsorted.map(_.actionRequestClass).toSet
 
   private lazy val esContextCreators: UniqueNonEmptyList[ReflectionBasedDataStreamsEsContextCreator] = UniqueNonEmptyList.of(
     CreateDataStreamEsRequestContext,

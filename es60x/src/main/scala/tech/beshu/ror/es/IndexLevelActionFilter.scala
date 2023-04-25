@@ -47,6 +47,7 @@ import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
 import java.time.Clock
+import scala.annotation.nowarn
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -56,7 +57,7 @@ class IndexLevelActionFilter(settings: Settings,
                              client: NodeClient,
                              threadPool: ThreadPool,
                              env: Environment,
-                             ignore: Unit)
+                             @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends AbstractComponent(settings) with ActionFilter {
 
   @Inject
@@ -64,7 +65,7 @@ class IndexLevelActionFilter(settings: Settings,
            clusterService: ClusterService,
            client: NodeClient,
            threadPool: ThreadPool,
-           env: Environment) {
+           env: Environment) = {
     this(settings, clusterService, client, threadPool, env, ())
   }
 

@@ -48,7 +48,7 @@ import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.function.Supplier
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 class EsServerBasedRorClusterService(settings: Settings,
@@ -159,7 +159,7 @@ class EsServerBasedRorClusterService(settings: Settings,
 
   private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService) = {
     Task
-      .gatherUnordered(
+      .parSequenceUnordered(
         getRegisteredRemoteClusterNames(remoteClusterService).map(resolveAllRemoteIndices(_, remoteClusterService))
       )
       .map(_.flatten.toSet)
@@ -272,7 +272,7 @@ class EsServerBasedRorClusterService(settings: Settings,
         val templateMetaData = templates.get(templateNameString)
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          indexPatterns <- UniqueNonEmptyList.fromTraversable(
+          indexPatterns <- UniqueNonEmptyList.fromIterable(
             templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString)
           )
           aliases = templateMetaData.aliases().asSafeValues.flatMap(a => ClusterIndexName.fromString(a.alias()))

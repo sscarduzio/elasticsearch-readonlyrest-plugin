@@ -19,8 +19,6 @@ package tech.beshu.ror.utils
 import cats.implicits._
 import tech.beshu.ror.accesscontrol.domain.User
 
-import scala.language.implicitConversions
-
 object UserIdEq {
   val caseSensitive: User.Id.UserIdCaseMappingEquality = eqUserWith(StringCaseMapping.caseSensitiveEquality)
   val caseInsensitive: User.Id.UserIdCaseMappingEquality = eqUserWith(StringCaseMapping.caseInsensitiveEquality)

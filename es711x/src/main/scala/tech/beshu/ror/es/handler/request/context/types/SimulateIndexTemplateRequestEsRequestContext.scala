@@ -33,7 +33,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexTemplateRequest,
                                                    esContext: EsContext,
@@ -109,8 +109,10 @@ object SimulateIndexTemplateRequestEsRequestContext {
     val filteredAliases = basedOn
       .aliases().asSafeMap
       .flatMap { case (key, value) => ClusterIndexName.fromString(key).map((_, value)) }
+      .view
       .filterKeys(_.isAllowedBy(allowedIndices.toSet))
       .map { case (key, value) => (key.stringify, value) }
+      .toMap
       .asJava
     new EsMetadataTemplate(
       basedOn.settings(),

@@ -16,11 +16,12 @@
  */
 package tech.beshu.ror.utils
 
-import java.security.{AccessControlContext, AccessController, AllPermission, Permissions, PrivilegedAction, SecurityPermission}
+import java.security.{AccessController, PrivilegedAction}
+import scala.annotation.nowarn
 
 object AccessControllerHelper {
 
-//  @silent("deprecated")
+  @nowarn("cat=deprecation") // deprecated since java 17
   def doPrivileged[T](action: => T): T = {
     AccessController.doPrivileged(new PrivilegedAction[T] {
       override def run(): T = action

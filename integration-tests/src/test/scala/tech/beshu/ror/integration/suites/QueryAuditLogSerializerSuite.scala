@@ -27,6 +27,8 @@ import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweet
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import ujson.Str
 
+import scala.language.postfixOps
+
 class QueryAuditLogSerializerSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
@@ -74,7 +76,7 @@ class QueryAuditLogSerializerSuite
         result.responseJson("x-ror-username").str should be("user1-proxy-id")
         result.responseJson("x-ror-current-group").str should be("group1")
         result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group1")))
-        result.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex()
+        result.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex
 
         val auditEntries = auditIndexManager.getEntries.jsons
         auditEntries.size shouldBe 1

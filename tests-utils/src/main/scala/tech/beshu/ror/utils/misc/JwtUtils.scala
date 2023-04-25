@@ -19,21 +19,22 @@ package tech.beshu.ror.utils.misc
 
 import cats.data.NonEmptyList
 import io.jsonwebtoken.impl.DefaultClaims
+import io.jsonwebtoken.security.Keys
 import io.jsonwebtoken.{Jwts, SignatureAlgorithm}
 import tech.beshu.ror.utils.misc.JwtUtils.Jwt.Secret
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 
 object JwtUtils {
 
-  final case class Jwt(secret: Secret, claims: Traversable[Claim]) {
+  final case class Jwt(secret: Secret, claims: Iterable[Claim]) {
 
     def stringify(): String = {
       val builder = secret match {
         case Secret.NotPresent => Jwts.builder
         case Secret.Key(value) => Jwts.builder.signWith(value)
-        case Secret.KeyWithAlg(alg, key) => Jwts.builder.signWith(alg, key.getBytes())
+        case Secret.KeyWithAlg(alg, key) => Jwts.builder.signWith(Keys.hmacShaKeyFor(key.getBytes()), alg)
       }
       builder
         .setSubject("test")
@@ -74,11 +75,11 @@ object JwtUtils {
       final case class KeyWithAlg(alg: SignatureAlgorithm, key: String) extends Secret
     }
 
-    def apply(secret: java.security.Key, claims: Traversable[Claim]): Jwt =
+    def apply(secret: java.security.Key, claims: Iterable[Claim]): Jwt =
       new Jwt(Secret.Key(secret), claims)
-    def apply(algorithm: SignatureAlgorithm, key: String, claims: Traversable[Claim]): Jwt =
+    def apply(algorithm: SignatureAlgorithm, key: String, claims: Iterable[Claim]): Jwt =
       new Jwt(Secret.KeyWithAlg(algorithm, key), claims)
-    def apply(claims: Traversable[Claim]): Jwt =
+    def apply(claims: Iterable[Claim]): Jwt =
       new Jwt(Secret.NotPresent, claims)
   }
 

@@ -23,7 +23,7 @@ import cats.implicits._
 import monix.eval.Task
 
 import scala.concurrent.duration._
-import scala.language.{higherKinds, implicitConversions, postfixOps}
+import scala.language.{implicitConversions, postfixOps}
 import scala.util.{Success, Try}
 
 object ScalaUtils {
@@ -58,7 +58,7 @@ object ScalaUtils {
   implicit def finiteDurationToJavaDuration(interval: FiniteDuration): Duration = Duration.ofMillis(interval.toMillis)
 
   def retry(times: Int)(action: Unit): Unit = {
-    Stream
+    LazyList
       .fill(times)(())
       .foldLeft(Success(()): Try[Unit]) {
         case (Success(_), _) => Try(action)
@@ -94,7 +94,7 @@ object ScalaUtils {
       maxRetries = retriesCount,
       firstDelay = 1 seconds,
       backOffScaler = 1
-    ) runSyncUnsafe()
+    ).runSyncUnsafe()
   }
 
 }

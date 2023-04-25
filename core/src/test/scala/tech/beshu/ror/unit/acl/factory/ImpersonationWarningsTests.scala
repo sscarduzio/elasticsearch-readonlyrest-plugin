@@ -38,8 +38,6 @@ import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils._
 
-import scala.language.implicitConversions
-
 class ImpersonationWarningsTests extends AnyWordSpec with Inside {
   "ROR config impersonation warnings" should {
     "return no warnings" when {
@@ -374,7 +372,7 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
 
   private def createCore(config: RawRorConfig,
                          clientsFactory: HttpClientsFactory = MockHttpClientsFactory,
-                         mocksProvider: MocksProvider = NoOpMocksProvider) = {
+                         mocksProvider: MocksProvider) = {
     factory
       .createCoreFrom(
         config,

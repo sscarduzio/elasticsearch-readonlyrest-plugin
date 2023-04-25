@@ -18,7 +18,7 @@ package tech.beshu.ror.utils
 
 object JavaConverters {
   def flattenPair[A,B](headers: java.util.Map[A, java.util.List[B]]): List[(A, B)] = {
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
     headers.asScala
       .toList.flatMap { case (k, v) => v.asScala.toList.map(v => (k, v)) }
   }

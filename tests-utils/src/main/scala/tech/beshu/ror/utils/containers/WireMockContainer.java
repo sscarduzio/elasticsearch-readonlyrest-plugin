@@ -35,10 +35,10 @@ import java.util.stream.Collectors;
 
 public class WireMockContainer extends GenericContainer<WireMockContainer> {
 
-  private static Logger logger = LogManager.getLogger(WireMockContainer.class);
+  private static final Logger logger = LogManager.getLogger(WireMockContainer.class);
 
   public static int WIRE_MOCK_PORT = 8080;
-  private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(240);
+  private static final Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(240);
 
   private WireMockContainer(ImageFromDockerfile imageFromDockerfile) {
     super(imageFromDockerfile);
@@ -69,7 +69,7 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
   }
 
   public String getWireMockHost() {
-    return this.getContainerIpAddress();
+    return this.getHost();
   }
 
   public Integer getWireMockPort() {

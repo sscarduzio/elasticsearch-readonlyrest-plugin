@@ -18,8 +18,6 @@ package tech.beshu.ror.configuration.loader
 
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 
-import scala.language.implicitConversions
-
 sealed trait LoadedRorConfig[A]
 object LoadedRorConfig {
   final case class FileConfig[A](value: A) extends LoadedRorConfig[A]

@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.utils
 
-import cats.{Eq, Show}
 import tech.beshu.ror.accesscontrol.domain.User
 import eu.timepit.refined.auto._
 import cats.implicits._

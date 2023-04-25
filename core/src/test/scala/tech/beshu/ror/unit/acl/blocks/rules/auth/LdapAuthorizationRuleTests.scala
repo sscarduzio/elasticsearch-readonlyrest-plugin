@@ -400,7 +400,7 @@ class LdapAuthorizationRuleTests
 
       override def groupsOf(id: User.Id): Task[UniqueList[GroupName]] = Task.delay {
         groups.get(id) match {
-          case Some(g) => UniqueList.fromTraversable(g)
+          case Some(g) => UniqueList.fromIterable(g)
           case None => UniqueList.empty
         }
       }

@@ -72,8 +72,8 @@ class ApiKeysRuleTests extends AnyWordSpec with MockFactory {
                          isMatched: Boolean) = {
     val rule = new ApiKeysRule(ApiKeysRule.Settings(configuredApiKeys))
     val requestContext = mock[RequestContext]
-    (requestContext.headers _).expects().returning(requestHeaders)
-    (requestContext.uriPath _).expects().returning(UriPath("/_cat/indices"))
+    (() => requestContext.headers).expects().returning(requestHeaders)
+    (() => requestContext.uriPath).expects().returning(UriPath("/_cat/indices"))
     val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)

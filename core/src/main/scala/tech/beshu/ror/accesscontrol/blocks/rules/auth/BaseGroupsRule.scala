@@ -268,7 +268,7 @@ abstract class BaseGroupsRule(val settings: Settings,
                                              externalGroup: UniqueList[GroupName]) = {
     groupMappings match {
       case GroupMappings.Simple(localGroups) => Some(localGroups)
-      case GroupMappings.Advanced(mappings) => UniqueNonEmptyList.fromTraversable {
+      case GroupMappings.Advanced(mappings) => UniqueNonEmptyList.fromIterable {
         externalGroup
           .flatMap { externalGroup =>
             mappings

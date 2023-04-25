@@ -18,7 +18,6 @@ package tech.beshu.ror.es.dlsfls
 
 import java.io.ByteArrayOutputStream
 import java.util.{Iterator => JavaIterator}
-
 import com.google.common.collect.Iterators
 import org.apache.logging.log4j.scala.Logging
 import org.apache.lucene.codecs.StoredFieldsReader
@@ -37,7 +36,7 @@ import tech.beshu.ror.es.dlsfls.DocumentFieldReader.UnderlyingReaderShouldBeSequ
 import tech.beshu.ror.fls.FieldsPolicy
 import ujson._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 private class DocumentFieldReader(reader: LeafReader, fieldsRestrictions: FieldsRestrictions)

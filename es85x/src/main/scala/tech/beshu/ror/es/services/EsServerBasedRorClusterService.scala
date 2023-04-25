@@ -35,8 +35,6 @@ import org.elasticsearch.cluster.metadata.{IndexMetadata, Metadata, Repositories
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.repositories.{RepositoriesService, RepositoryData}
-import org.elasticsearch.search.SearchService
-import org.elasticsearch.search.internal.ReaderContext
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
@@ -51,7 +49,7 @@ import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 class EsServerBasedRorClusterService(nodeName: String,
@@ -239,7 +237,7 @@ class EsServerBasedRorClusterService(nodeName: String,
         .flatMap(ClusterName.Full.fromString)
 
     Task
-      .gatherUnordered(
+      .parSequenceUnordered(
         remoteClusterFullNames.map(resolveAllRemoteDataStreams(_, remoteClusterService))
       )
       .map(_.flatten.toSet)
@@ -295,7 +293,7 @@ class EsServerBasedRorClusterService(nodeName: String,
         .flatMap(ClusterName.Full.fromString)
 
     Task
-      .gatherUnordered(
+      .parSequenceUnordered(
         remoteClusterFullNames.map(resolveAllRemoteIndices(_, remoteClusterService))
       )
       .map(_.flatten.toSet)
@@ -411,7 +409,7 @@ class EsServerBasedRorClusterService(nodeName: String,
         val templateMetaData = templates.get(templateNameString)
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          indexPatterns <- UniqueNonEmptyList.fromTraversable(
+          indexPatterns <- UniqueNonEmptyList.fromIterable(
             templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString)
           )
           aliases = templateMetaData.aliases().asSafeValues.flatMap(a => ClusterIndexName.fromString(a.alias()))
@@ -428,7 +426,7 @@ class EsServerBasedRorClusterService(nodeName: String,
         val templateMetaData = templates.get(templateNameString)
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          indexPatterns <- UniqueNonEmptyList.fromTraversable(
+          indexPatterns <- UniqueNonEmptyList.fromIterable(
             templateMetaData.indexPatterns().asScala.flatMap(IndexPattern.fromString)
           )
           aliases = templateMetaData.template().asSafeSet

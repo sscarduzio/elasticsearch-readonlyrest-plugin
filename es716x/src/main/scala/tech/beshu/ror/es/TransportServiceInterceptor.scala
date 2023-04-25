@@ -18,17 +18,18 @@ package tech.beshu.ror.es
 
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Supplier
-
 import org.elasticsearch.common.component.AbstractLifecycleComponent
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.transport.{RemoteClusterService, TransportService}
 
+import scala.annotation.nowarn
+
 class TransportServiceInterceptor(transportService: TransportService,
-                                  ignore: Unit) // hack!
+                                  @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends AbstractLifecycleComponent() {
 
   @Inject
-  def this(transportService: TransportService) {
+  def this(transportService: TransportService) = {
     this(transportService, ())
   }
   Option(transportService.getRemoteClusterService).foreach { r =>

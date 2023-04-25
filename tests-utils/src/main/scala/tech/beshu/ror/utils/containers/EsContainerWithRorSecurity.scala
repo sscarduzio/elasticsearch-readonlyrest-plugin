@@ -21,8 +21,6 @@ import org.testcontainers.images.builder.ImageFromDockerfile
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch, ReadonlyRestPlugin}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-import scala.language.postfixOps
-
 class EsContainerWithRorSecurity private(esVersion: String,
                                          esConfig: Elasticsearch.Config,
                                          startedClusterDependencies: StartedClusterDependencies,

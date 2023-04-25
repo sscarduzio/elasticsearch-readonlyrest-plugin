@@ -116,6 +116,8 @@ object ruleDecoders {
     val optionalRuleDecoder = name match {
       case ExternalAuthorizationRule.Name.name =>
         Some(new ExternalAuthorizationRuleDecoder(authorizationServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+      case JwtAuthRule.Name.name =>
+        Some(new JwtAuthRuleDecoder(jwtDefinitions, caseMappingEquality))
       case LdapAuthorizationRule.Name.name =>
         Some(new LdapAuthorizationRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
       case LdapAuthRule.Name.name =>
@@ -127,9 +129,7 @@ object ruleDecoders {
           name,
           authenticationServiceDefinitions,
           authProxyDefinitions,
-          jwtDefinitions,
           ldapServiceDefinitions,
-          rorKbnDefinitions,
           impersonatorsDefinitions,
           mocksProvider,
           caseMappingEquality
@@ -141,9 +141,7 @@ object ruleDecoders {
   def authenticationRuleDecoderBy(name: Rule.Name,
                                   authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
                                   authProxyDefinitions: Definitions[ProxyAuth],
-                                  jwtDefinitions: Definitions[JwtDef],
                                   ldapServiceDefinitions: Definitions[LdapService],
-                                  rorKbnDefinitions: Definitions[RorKbnDef],
                                   impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                                   mocksProvider: MocksProvider,
                                   caseMappingEquality: UserIdCaseMappingEquality): Option[RuleDecoder[AuthenticationRule]] = {
@@ -162,8 +160,6 @@ object ruleDecoders {
         Some(new AuthKeyUnixRuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
       case ExternalAuthenticationRule.Name.name =>
         Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
-      case JwtAuthRule.Name.name =>
-        Some(new JwtAuthRuleDecoder(jwtDefinitions, caseMappingEquality))
       case LdapAuthenticationRule.Name.name =>
         Some(new LdapAuthenticationRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
       case ProxyAuthRule.Name.name =>
@@ -193,7 +189,7 @@ object ruleDecoders {
   private def checkUsersEligibility(rule: AuthenticationRule, userIdPatterns: UserIdPatterns) = {
     rule.eligibleUsers match {
       case EligibleUsersSupport.Available(users) =>
-        implicit val _ = rule.caseMappingEquality
+        implicit val _userIdCaseMappingEquality = rule.caseMappingEquality
         val matcher = new GenericPatternMatcher(userIdPatterns.patterns.toList)
         if (users.exists(matcher.`match`)) {
           Right(())

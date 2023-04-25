@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions
 
-import java.nio.charset.Charset
 import cats.implicits._
 import cats.{Eq, Show}
 import com.google.common.hash.Hashing
@@ -32,6 +31,7 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.accesscontrol.utils.CacheableActionWithKeyMapping
 
+import java.nio.charset.Charset
 import scala.concurrent.duration.FiniteDuration
 
 trait ExternalAuthenticationService extends Item {

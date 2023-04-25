@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.blocks.rules.tranport
 
 import cats.data.{NonEmptyList, NonEmptySet, OptionT}
 import cats.implicits._
-import com.comcast.ip4s.interop.cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext

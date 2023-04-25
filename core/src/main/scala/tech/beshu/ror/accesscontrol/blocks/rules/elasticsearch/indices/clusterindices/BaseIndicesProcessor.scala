@@ -146,14 +146,14 @@ trait BaseIndicesProcessor {
       }
   }
 
-  private def filterAssumingThatIndicesAreRequestedAndAliasesAreConfigured[T <: ClusterIndexName : CaseMappingEquality]() = {
+  private def filterAssumingThatIndicesAreRequestedAndAliasesAreConfigured[T <: ClusterIndexName]() = {
     // eg. alias A1 of index I1 can be defined with filtering, so result of /I1/_search will be different than
     // result of /A1/_search. It means that if indices are requested and aliases are configured, the result of
     // this kind of method will always be an empty set.
     Task.now(Set.empty[T])
   }
 
-  private def filterAssumingThatIndicesAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : CaseMappingEquality]() = {
+  private def filterAssumingThatIndicesAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName]() = {
     // this case already handled by 'allIndices' - it already contains backing indices of data streams
     Task.now(Set.empty[T])
   }
@@ -210,7 +210,7 @@ trait BaseIndicesProcessor {
     }
   }
 
-  private def filterAssumingThatDataStreamsAreRequestedAndAliasesAreConfigured[T <: ClusterIndexName : CaseMappingEquality](): Task[Set[T]] = {
+  private def filterAssumingThatDataStreamsAreRequestedAndAliasesAreConfigured[T <: ClusterIndexName](): Task[Set[T]] = {
     // eg. alias A1 of data stream DS1 can be defined with filtering, so result of /DS1/_search will be different than
     // result of /A1/_search. It means that if data streams are requested and aliases are configured, the result of
     // this kind of method will always be an empty set.

@@ -35,8 +35,8 @@ import java.io.{File, FileInputStream, FileReader, IOException}
 import java.security.cert.{CertificateFactory, X509Certificate}
 import java.security.{KeyStore, PrivateKey}
 import javax.net.ssl.{KeyManagerFactory, SNIServerName, SSLEngine, TrustManagerFactory}
-import scala.collection.JavaConverters._
-import scala.language.{existentials, implicitConversions}
+import scala.jdk.CollectionConverters._
+import scala.language.implicitConversions
 import scala.util.Try
 
 object SSLCertHelper extends Logging {
@@ -61,7 +61,7 @@ object SSLCertHelper extends Logging {
         case Some(truststoreBasedConfiguration: TruststoreBasedConfiguration) =>
           SslContextBuilder.forClient.trustManager(getTrustManagerFactory(truststoreBasedConfiguration, fipsCompliant))
         case Some(fileBasedConfiguration: ClientCertificateConfiguration.FileBasedConfiguration) =>
-          SslContextBuilder.forClient.trustManager(getTrustedCertificatesFromPemFile(fileBasedConfiguration).toIterable.asJava)
+          SslContextBuilder.forClient.trustManager(getTrustedCertificatesFromPemFile(fileBasedConfiguration).toList.asJava)
         case None =>
           throw new Exception("Client Authentication could not be enabled because trust certificates has not been configured")
       }
@@ -86,7 +86,7 @@ object SSLCertHelper extends Logging {
           getPrivateKeyAndCertificateChainFromKeystore(keystoreBasedConfiguration)
       }).map { case (privateKey, certificateChain) =>
         logger.info(s"Initializing ROR SSL using default SSL provider ${SslContext.defaultServerProvider().name()}")
-        builder.keyManager(privateKey, certificateChain.toIterable.asJava)
+        builder.keyManager(privateKey, certificateChain.toList.asJava)
       }
     }
     result.unsafeRunSync().build()
@@ -109,7 +109,7 @@ object SSLCertHelper extends Logging {
               case Some(truststoreBasedConfiguration: TruststoreBasedConfiguration) =>
                 sslCtxBuilder.trustManager(getTrustManagerFactory(truststoreBasedConfiguration, fipsCompliant))
               case Some(fileBasedConfiguration: ClientCertificateConfiguration.FileBasedConfiguration) =>
-                sslCtxBuilder.trustManager(getTrustedCertificatesFromPemFile(fileBasedConfiguration).toIterable.asJava)
+                sslCtxBuilder.trustManager(getTrustedCertificatesFromPemFile(fileBasedConfiguration).toList.asJava)
               case None =>
                 throw new Exception("Client Authentication could not be enabled because trust certificates has not been configured")
             }
@@ -326,7 +326,7 @@ object SSLCertHelper extends Logging {
           getPrivateKeyAndCertificateChainFromKeystore(keystoreBasedConfiguration)
       }).map { case (privateKey, certificateChain) =>
         logger.info(s"Initializing ROR SSL using default SSL provider ${SslContext.defaultServerProvider().name()}")
-        SslContextBuilder.forServer(privateKey, certificateChain.toIterable.asJava)
+        SslContextBuilder.forServer(privateKey, certificateChain.toList.asJava)
       }
     }
   }

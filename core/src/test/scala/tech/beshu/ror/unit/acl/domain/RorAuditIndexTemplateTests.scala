@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.TestsUtils._
 
 class RorAuditIndexTemplateTests extends AnyWordSpec with Inside {
 
-  private val template = RorAuditIndexTemplate.from("'.ror_'yyyy_MM").right.get
+  private val template = RorAuditIndexTemplate.from("'.ror_'yyyy_MM").toOption.get
 
   "A RorAuditIndexTemplate" should {
     "provide a way to create an index from it" when {
@@ -63,7 +63,7 @@ class RorAuditIndexTemplateTests extends AnyWordSpec with Inside {
         template.conforms(indexName("*")) should be(true)
       }
       "name is exactly the same as template (no date pattern used)" in {
-        val noDatePatternTemplate = RorAuditIndexTemplate.from("'.ror'").right.get
+        val noDatePatternTemplate = RorAuditIndexTemplate.from("'.ror'").toOption.get
         noDatePatternTemplate.conforms(indexName(".ror")) should be(true)
       }
     }

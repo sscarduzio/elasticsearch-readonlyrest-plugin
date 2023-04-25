@@ -38,8 +38,6 @@ import tech.beshu.ror.utils.ScalaOps._
 
 import java.util.{List => JList}
 
-import scala.language.postfixOps
-
 class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
                                  esContext: EsContext,
                                  aclContext: AccessControlStaticContext,

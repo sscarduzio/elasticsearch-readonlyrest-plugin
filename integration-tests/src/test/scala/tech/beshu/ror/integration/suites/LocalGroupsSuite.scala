@@ -34,7 +34,7 @@ class LocalGroupsSuite
     with Matchers
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/local_groups/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/local_groups/readonlyrest.yml"
 
   "good credentials but with non matching preferred group are sent" in {
     val clusterManager = new ClusterManager(

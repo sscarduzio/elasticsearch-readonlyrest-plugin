@@ -34,7 +34,7 @@ import tech.beshu.ror.es.handler.request.RestRequestOps._
 import tech.beshu.ror.utils.RCUtils
 
 import java.time.Instant
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
                                                        clusterService: RorClusterService)

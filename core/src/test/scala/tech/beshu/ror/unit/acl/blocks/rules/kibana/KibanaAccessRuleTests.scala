@@ -22,8 +22,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule._
 import tech.beshu.ror.accesscontrol.domain.IndexName.Kibana
 import tech.beshu.ror.accesscontrol.domain._
 
-import scala.language.postfixOps
-
 class KibanaAccessRuleTests
   extends BaseKibanaAccessBasedTests[KibanaAccessRule, KibanaAccessRule.Settings] {
 

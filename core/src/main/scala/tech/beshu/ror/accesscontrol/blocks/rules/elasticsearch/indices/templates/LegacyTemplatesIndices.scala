@@ -112,7 +112,7 @@ private[indices] trait LegacyTemplatesIndices
           case Result.Allowed(t) =>
             Right(t :: acc)
           case Result.NotFound(t) =>
-            implicit val _ = identifierGenerator
+            implicit val _generator = identifierGenerator
             val nonExistentTemplateNamePattern = TemplateNamePattern.generateNonExistentBasedOn(t)
             Right(nonExistentTemplateNamePattern :: acc)
           case Result.Forbidden(_) =>
@@ -242,8 +242,7 @@ private[indices] trait LegacyTemplatesIndices
   }
 
   private def filterTemplatesNotAllowedPatternsAndAliases(templates: Set[Template])
-                                                         (implicit blockContext: TemplateRequestBlockContext,
-                                                          allowedIndices: AllowedIndices): Set[Template] = {
+                                                         (implicit allowedIndices: AllowedIndices): Set[Template] = {
     templates.flatMap {
       case Template.LegacyTemplate(name, patterns, aliases) =>
         val onlyAllowedPatterns = patterns.filter(p => p.isAllowedByAny(allowedIndices.resolved))

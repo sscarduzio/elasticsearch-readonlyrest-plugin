@@ -20,7 +20,7 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRemoteIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class ZeroKnowledgeRemoteIndexFilterScalaAdapter {
 

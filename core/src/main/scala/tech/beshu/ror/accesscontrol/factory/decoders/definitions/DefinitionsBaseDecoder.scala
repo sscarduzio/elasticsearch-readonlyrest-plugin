@@ -26,8 +26,6 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.language.higherKinds
-
 object DefinitionsBaseDecoder {
 
   def instance[F[_] : Applicative, A <: Item](definitionsSectionName: String)
@@ -52,7 +50,7 @@ object DefinitionsBaseDecoder {
   }
 
   private def showId(item: Item): String = {
-    implicit val _ = item.show
+    implicit val _itemshow = item.show
     item.id.show
   }
 }

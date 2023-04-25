@@ -33,6 +33,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.http._
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule, KibanaUserDataRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.{HostsRule, LocalHostsRule}
 
+import scala.annotation.nowarn
+
 final case class ImpersonationWarning(block: Block.Name,
                                       ruleName: Rule.Name,
                                       message: NonEmptyString,
@@ -146,7 +148,9 @@ object ImpersonationWarning {
       Some(impersonationNotSupportedWarning(rule, blockName))
     }
 
-    private def fromHashedCredentials[R <: BasicAuthenticationRule[HashedCredentials]](rule: R, blockName: Block.Name, requestId: RequestId): Option[ImpersonationWarning] = {
+    private def fromHashedCredentials[R <: BasicAuthenticationRule[HashedCredentials]](rule: R,
+                                                                                       blockName: Block.Name,
+                                                                                       @nowarn("cat=unused") requestId: RequestId): Option[ImpersonationWarning] = {
       rule.settings.credentials match {
         case _: HashedCredentials.HashedUserAndPassword =>
           Some(ImpersonationWarning(

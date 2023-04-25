@@ -147,7 +147,6 @@ class UriRegexRuleTests extends AnyWordSpec with MockFactory {
         }
         RuntimeResolvableVariableCreator
           .createMultiResolvableVariableFrom[Pattern](NonEmptyString.unsafeFrom(value))
-          .right
           .getOrElse(throw new IllegalStateException(s"Cannot create Pattern Value from $value"))
       }
   }

@@ -31,8 +31,6 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.loader.LoadedTestRorConfig._
 
-import scala.language.postfixOps
-
 object TestConfigLoadingInterpreter extends Logging {
 
   def create(indexConfigManager: IndexTestConfigManager,

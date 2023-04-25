@@ -31,7 +31,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
                                     esContext: EsContext,
@@ -52,7 +52,7 @@ class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
     ModificationResult.UpdateResponse {
       case r: GetDataStreamAction.Response =>
         blockContext.backingIndices match {
-          case BackingIndices.IndicesInvolved(filteredIndices, allAllowedIndices) =>
+          case BackingIndices.IndicesInvolved(_, allAllowedIndices) =>
             Task.now(updateGetDataStreamResponse(r, allAllowedIndices))
           case BackingIndices.IndicesNotInvolved =>
             Task.now(r)

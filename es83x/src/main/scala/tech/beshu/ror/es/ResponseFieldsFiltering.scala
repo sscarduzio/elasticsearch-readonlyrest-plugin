@@ -27,7 +27,7 @@ import org.elasticsearch.xcontent.smile.SmileXContent
 import org.elasticsearch.xcontent.yaml.YamlXContent
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, ResponseFieldsRestrictions}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 trait ResponseFieldsFiltering {
   this: Logging =>

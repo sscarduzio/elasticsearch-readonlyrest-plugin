@@ -18,11 +18,11 @@ package tech.beshu.ror.audit.instances
 
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-
 import org.json.JSONObject
 import tech.beshu.ror.audit.AuditResponseContext._
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 
+import scala.annotation.nowarn
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
 
@@ -48,6 +48,7 @@ class DefaultAuditLogSerializer extends AuditLogSerializer {
       Some(createEntry(matched = false, "ERRORED", "error", responseContext.duration, requestContext, Some(cause)))
   }
 
+  @nowarn("cat=deprecation")
   private def createEntry(matched: Boolean,
                           finalState: String,
                           reason: String,

@@ -17,12 +17,8 @@
 package tech.beshu.ror.configuration
 
 import better.files.File
-import cats.Show
-import cats.data.NonEmptyList
-import cats.implicits._
 import io.circe.{Decoder, DecodingFailure, Json}
 import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver
-import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver.ResolvingError
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.yaml
 
@@ -44,7 +40,6 @@ final class YamlFileBasedConfigLoader(file: File)
         .parser
         .parse(reader)
         .left.map(e => MalformedSettings(s"Cannot parse file ${file.pathAsString} content. Cause: ${e.message}"))
-        .right
         .flatMap { json =>
           JsonConfigStaticVariableResolver.resolve(json)
             .left.map(e => MalformedSettings(s"Unable to resolve environment variables for file ${file.pathAsString}. $e."))
@@ -54,15 +49,10 @@ final class YamlFileBasedConfigLoader(file: File)
 
   private def prettyCause(error: DecodingFailure) = {
     error.message match {
-      case message if message.startsWith("Attempt to decode") => "yaml is malformed"
+      case message if message.startsWith("DecodingFailure at") => "yaml is malformed"
       case other => other
     }
   }
-
-  private implicit val showResolvingError: Show[NonEmptyList[ResolvingError]] =
-    Show.show { nel =>
-      nel.map(_.msg).mkString_("\n\t* ")
-    }
 }
 
 final case class MalformedSettings(message: String)

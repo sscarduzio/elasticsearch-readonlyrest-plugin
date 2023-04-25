@@ -36,11 +36,11 @@ final case class UserDef private(id: UserDef#Id,
   override type Id = UUID // artificial ID (won't be used)
   override implicit val show: Show[UUID] = Show.show(_.toString)
 
-  def localGroups: UniqueNonEmptyList[GroupName] = UniqueNonEmptyList.unsafeFromTraversable {
+  def localGroups: UniqueNonEmptyList[GroupName] = UniqueNonEmptyList.unsafeFromIterable {
     mode match {
       case Mode.WithoutGroupsMapping(_, localGroups) => localGroups
       case Mode.WithGroupsMapping(_, GroupMappings.Simple(localGroups)) => localGroups
-      case Mode.WithGroupsMapping(_, GroupMappings.Advanced(mappings)) => mappings.map(_.local)
+      case Mode.WithGroupsMapping(_, GroupMappings.Advanced(mappings)) => mappings.unsorted.map(_.local)
     }
   }
 }

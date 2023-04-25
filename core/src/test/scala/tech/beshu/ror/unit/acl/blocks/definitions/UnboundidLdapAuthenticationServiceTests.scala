@@ -123,7 +123,7 @@ class UnboundidLdapAuthenticationServiceTests
             _ <- repeat(10, 500 millis) {
               Task(assertMorganCanAuthenticate(service))
             }
-          } yield ()) runSyncUnsafe()
+          } yield ()).runSyncUnsafe()
         }
       }
     }
@@ -203,7 +203,7 @@ class UnboundidLdapAuthenticationServiceTests
         UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), "uid")
       )
       .runSyncUnsafe()
-      .right.getOrElse(throw new IllegalStateException("LDAP connection problem"))
+      .getOrElse(throw new IllegalStateException("LDAP connection problem"))
   }
 
   private def createCircuitBreakerDecoratedSimpleAuthenticationService() = {
@@ -241,7 +241,7 @@ class UnboundidLdapAuthenticationServiceTests
         UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), "uid")
       )
       .runSyncUnsafe()
-      .right.getOrElse(throw new IllegalStateException("LDAP connection problem"))
+      .getOrElse(throw new IllegalStateException("LDAP connection problem"))
   }
 
 }

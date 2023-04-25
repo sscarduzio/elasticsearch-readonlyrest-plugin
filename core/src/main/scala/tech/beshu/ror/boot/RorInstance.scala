@@ -40,7 +40,6 @@ import tech.beshu.ror.providers.{JavaUuidProvider, PropertiesProvider}
 import java.time.{Clock, Instant}
 
 import scala.concurrent.duration.FiniteDuration
-import scala.language.postfixOps
 
 class RorInstance private(boot: ReadonlyRest,
                           mode: RorInstance.Mode,

@@ -36,11 +36,9 @@ import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMa
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.utils.ScalaOps._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 import java.util.{List => JList}
-
-import scala.language.postfixOps
 
 class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
                                  esContext: EsContext,

@@ -26,14 +26,17 @@ import org.elasticsearch.common.xcontent.XContentType
 import tech.beshu.ror.Constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_SINK_MAX_RETRIES, AUDIT_SINK_MAX_SECONDS}
 import tech.beshu.ror.es.AuditSinkService
 
+import scala.annotation.nowarn
+
 @Inject
 class EsAuditSinkService(client: Client)
   extends AuditSinkService
     with Logging {
 
+  @nowarn("msg=deprecated")
   private val bulkProcessor =
     BulkProcessor
-      .builder(client, new AuditSinkBulkProcessorListener)
+        .builder(client, new AuditSinkBulkProcessorListener) // deprecated since es 6.8.5
       .setBulkActions(AUDIT_SINK_MAX_ITEMS)
       .setBulkSize(new ByteSizeValue(AUDIT_SINK_MAX_KB.toInt, ByteSizeUnit.KB))
       .setFlushInterval(TimeValue.timeValueSeconds(AUDIT_SINK_MAX_SECONDS.toInt))
@@ -61,12 +64,12 @@ class EsAuditSinkService(client: Client)
       if (response.hasFailures) {
         logger.error("Some failures flushing the BulkProcessor: ")
         response
-          .getItems.toStream
+          .getItems.to(LazyList)
           .filter(_.isFailed)
           .map(_.getFailureMessage)
           .groupBy(identity)
           .foreach { case (message, stream) =>
-            logger.error(stream.size + "x: " + message)
+            logger.error(s"${stream.size}x: $message")
           }
       }
     }

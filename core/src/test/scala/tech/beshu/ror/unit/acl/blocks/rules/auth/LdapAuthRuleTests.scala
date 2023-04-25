@@ -482,19 +482,19 @@ class LdapAuthRuleTests
 
   private def mockLdapAuthenticationService(ldapId: LdapService#Id) = {
     val service = mock[LdapAuthenticationService]
-    (service.id _).expects().returning(ldapId)
+    (() => service.id).expects().returning(ldapId)
     service
   }
 
   private def mockLdapAuthorizationService(user: User.Id, result: Task[UniqueList[GroupName]]) = {
     val service = mock[LdapAuthorizationService]
-    (service.groupsOf _).expects(user).returning(result)
+    ((id: User.Id) => service.groupsOf(id)).expects(user).returning(result)
     service
   }
 
   private def mockLdapAuthorizationService(ldapId: LdapService#Id) = {
     val service = mock[LdapAuthorizationService]
-    (service.id _).expects().returning(ldapId)
+    (() => service.id).expects().returning(ldapId)
     service
   }
 

@@ -22,9 +22,11 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.transport.TransportService
 
+import scala.annotation.nowarn
+
 class TransportRorWrappedCatAction(transportService: TransportService,
                                    actionFilters: ActionFilters,
-                                   constructorDiscriminator: Unit)
+                                   @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends HandledTransportAction[RorWrappedCatRequest, RorWrappedCatResponse](
     RorWrappedCatActionType.name, transportService, actionFilters, RorWrappedCatActionType.exceptionReader
   ) {

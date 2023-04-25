@@ -22,18 +22,18 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.transport.TransportService
 
-import scala.language.postfixOps
+import scala.annotation.nowarn
 
 class TransportRRAdminAction(transportService: TransportService,
                              actionFilters: ActionFilters,
-                             ignore: Unit) // hack!
+                             @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
     RRAdminActionType.name, transportService, actionFilters, () => new RRAdminRequest
   ) {
 
   @Inject
   def this(transportService: TransportService,
-           actionFilters: ActionFilters) {
+           actionFilters: ActionFilters) = {
     this(transportService, actionFilters, ())
   }
 

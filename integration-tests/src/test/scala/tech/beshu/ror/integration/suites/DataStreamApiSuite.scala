@@ -44,7 +44,6 @@ class DataStreamApiSuite
   private lazy val user3Client = clients.head.basicAuthClient("user3", "pass")
   private lazy val user4Client = clients.head.basicAuthClient("user4", "pass")
   private lazy val user5Client = clients.head.basicAuthClient("user5", "pass")
-  private lazy val user6Client = clients.head.basicAuthClient("user6", "pass")
   private lazy val adminDocumentManager = new DocumentManager(client, esVersionUsed)
   private lazy val adminDataStreamManager = new DataStreamManager(client)
   private lazy val adminIndexManager = new IndexManager(client, esVersionUsed)

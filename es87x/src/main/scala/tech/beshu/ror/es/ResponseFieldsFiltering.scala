@@ -29,7 +29,7 @@ import org.elasticsearch.xcontent.yaml.YamlXContent
 import org.elasticsearch.xcontent.{NamedXContentRegistry, XContentBuilder, XContentParserConfiguration, XContentType}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, ResponseFieldsRestrictions}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 trait ResponseFieldsFiltering {
   this: Logging =>

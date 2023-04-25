@@ -32,7 +32,7 @@ private[uniquelist] abstract class BaseUniqueList[T, F <: BaseUniqueList[T, F]](
     }
   }
 
-  override def iterator: Iterator[T] = vector.toIterator
+  override def iterator: Iterator[T] = vector.iterator
 
   override def rangeImpl(from: Option[T], until: Option[T]): F = {
     (from, until) match {
@@ -43,7 +43,11 @@ private[uniquelist] abstract class BaseUniqueList[T, F <: BaseUniqueList[T, F]](
     }
   }
 
-  override def keysIteratorFrom(start: T): Iterator[T] = vector.toIterator.span(_ != start)._2
+  override def iteratorFrom(start: T): Iterator[T] = vector.iterator.span(_ != start)._2
+
+  override def keysIteratorFrom(start: T): Iterator[T] = iteratorFrom(start)
+
+  override def diff(that: collection.Set[T]): F = create(vector.diff(that.toVector))
 
   override def contains(elem: T): Boolean = vector.contains(elem)
 
@@ -54,7 +58,7 @@ private[uniquelist] abstract class BaseUniqueList[T, F <: BaseUniqueList[T, F]](
   override def size: Int = vector.size
 
   override def equals(that: Any): Boolean = that match {
-    case ul: BaseUniqueList[T, _] => this.toList.equals(ul.toList)
+    case ul: BaseUniqueList[T @unchecked, _] => this.toList.equals(ul.toList)
     case _ => false
   }
 }

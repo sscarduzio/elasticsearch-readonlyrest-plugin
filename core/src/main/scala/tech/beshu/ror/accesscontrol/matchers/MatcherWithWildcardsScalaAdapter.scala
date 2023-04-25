@@ -20,7 +20,7 @@ import cats.Show
 import cats.implicits._
 import tech.beshu.ror.utils.{CaseMappingEquality, MatcherWithWildcards, StringMatcherWithWildcards}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 trait Matcher[A] {
   type Conversion[B] = Function1[B, A]

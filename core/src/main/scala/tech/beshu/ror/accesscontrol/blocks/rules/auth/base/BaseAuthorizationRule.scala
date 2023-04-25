@@ -33,7 +33,9 @@ import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{LoggedUser, PermittedGroups, User}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-private [auth] trait BaseAuthorizationRule
+import scala.annotation.nowarn
+
+private[auth] trait BaseAuthorizationRule
   extends AuthorizationRule
     with SimpleAuthorizationImpersonationSupport {
 
@@ -45,7 +47,7 @@ private [auth] trait BaseAuthorizationRule
 
   protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[GroupName]]
 
-  protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = Right(())
+  protected def loggedUserPreconditionCheck(@nowarn("cat=unused") user: LoggedUser): Either[Unit, Unit] = Right(())
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     authorize(blockContext)
@@ -101,7 +103,7 @@ private [auth] trait BaseAuthorizationRule
                                                                            userGroupsProvider: (B, LoggedUser) => Task[UniqueList[GroupName]]): Task[RuleResult[B]] = {
     if (blockContext.isCurrentGroupEligible(groupsPermittedByRule)) {
       userGroupsProvider(blockContext, user)
-        .map(uniqueList => UniqueNonEmptyList.fromTraversable(uniqueList.toSet))
+        .map(uniqueList => UniqueNonEmptyList.fromIterable(uniqueList.toSet))
         .map {
           case Some(fetchedUserGroups) =>
             calculateAllowedGroupsForUser(fetchedUserGroups) match {

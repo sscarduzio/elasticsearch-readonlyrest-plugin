@@ -35,7 +35,6 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.TaskOps._
 
-import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 class AccessControlLoggingDecorator(val underlying: AccessControl,

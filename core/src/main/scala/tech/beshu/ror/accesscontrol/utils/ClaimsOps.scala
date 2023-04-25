@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult._
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.{ClaimSearchResult, CustomClaimValue}
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 import scala.util.Try
 
@@ -59,10 +59,10 @@ class ClaimsOps(val claims: Claims) extends Logging {
     Try(claimName.name.read[Any](claims))
       .map {
         case value: String =>
-          Found(UniqueList.fromTraversable((value :: Nil).flatMap(toGroup)))
+          Found(UniqueList.fromIterable((value :: Nil).flatMap(toGroup)))
         case collection: java.util.Collection[_] =>
           Found {
-            UniqueList.fromTraversable {
+            UniqueList.fromIterable {
               collection.asScala
                 .collect {
                   case value: String => value

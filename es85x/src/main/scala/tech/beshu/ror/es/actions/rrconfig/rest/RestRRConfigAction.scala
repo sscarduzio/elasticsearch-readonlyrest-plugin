@@ -32,8 +32,7 @@ import tech.beshu.ror.configuration.loader.distributed.NodesResponse.NodeId
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfigRequest, Timeout}
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, RRConfigsRequest}
 
-import scala.collection.JavaConverters._
-import scala.language.postfixOps
+import scala.jdk.CollectionConverters._
 
 @Inject
 class RestRRConfigAction(nodesInCluster: Supplier[DiscoveryNodes])

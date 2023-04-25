@@ -32,9 +32,9 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.{Config, HttpClie
 import tech.beshu.ror.utils.DurationOps._
 
 import java.util.concurrent.CopyOnWriteArrayList
-import scala.collection.JavaConverters._
 import scala.concurrent.duration._
-import scala.language.{higherKinds, postfixOps}
+import scala.jdk.CollectionConverters._
+import scala.language.postfixOps
 
 trait HttpClientsFactory {
 
