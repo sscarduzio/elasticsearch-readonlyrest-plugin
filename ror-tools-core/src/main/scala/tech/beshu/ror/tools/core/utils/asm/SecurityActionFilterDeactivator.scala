@@ -53,14 +53,17 @@ object SecurityActionFilterDeactivator extends BytecodeJarModifier {
                              exceptions: Array[String]): MethodVisitor = {
       name match {
         case "getActionFilters" =>
-          new EsMethodVisitor(super.visitMethod(access, name, descriptor, signature, exceptions))
+          new GetActionFiltersMethodReturingEmptyList(super.visitMethod(access, name, descriptor, signature, exceptions))
+        case "onIndexModule" =>
+          // removing the onIndexModule method
+          null
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
   }
 
-  private class EsMethodVisitor(underlying: MethodVisitor)
+  private class GetActionFiltersMethodReturingEmptyList(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
