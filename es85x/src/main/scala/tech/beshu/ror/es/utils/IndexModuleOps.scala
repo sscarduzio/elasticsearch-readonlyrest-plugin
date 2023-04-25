@@ -26,7 +26,6 @@ import tech.beshu.ror.es.utils.IndexModuleOps.ReaderWrapper
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import java.io.IOException
-import java.util
 import java.util.function.{Function => JFunction}
 import scala.annotation.tailrec
 import scala.language.implicitConversions
@@ -59,6 +58,5 @@ object IndexModuleOps {
   type ReaderWrapper = JFunction[IndexService, CheckedFunction[DirectoryReader, DirectoryReader, IOException]]
 
   implicit def toOps(indexModule: IndexModule): IndexModuleOps = new IndexModuleOps(indexModule)
-
-  protected def plugins: util.List[Any] = util.Collections.reverse(this.plugins)
+  
 }
