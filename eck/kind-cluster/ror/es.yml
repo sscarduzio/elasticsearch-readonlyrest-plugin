@@ -5,9 +5,6 @@ metadata:
 spec:
   version: 8.6.2
   image: coutopl/es_8.6.2_ror_1.47.0-eck-poc
-  auth:
-    roles:
-    - secretName: amin-role-secret
   nodeSets:
   - name: default
     count: 2

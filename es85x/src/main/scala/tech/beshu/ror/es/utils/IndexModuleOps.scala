@@ -35,12 +35,12 @@ class IndexModuleOps(indexModule: IndexModule) {
 
   def overwrite(readerWrapper: ReaderWrapper): Unit = {
     doPrivileged {
-      doOverwrite(readerWrapper, triesLeft = 10)
+      doOverwrite(readerWrapper)
     }
   }
 
   @tailrec
-  private def doOverwrite(readerWrapper: ReaderWrapper, triesLeft: Int): Unit = {
+  private def doOverwrite(readerWrapper: ReaderWrapper, triesLeft: Int = 1): Unit = {
     Try {
       indexModule.setReaderWrapper(readerWrapper)
     } match {

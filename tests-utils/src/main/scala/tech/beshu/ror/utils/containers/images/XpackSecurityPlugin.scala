@@ -37,31 +37,6 @@ class XpackSecurityPlugin(esVersion: String,
                           config: Config)
   extends Elasticsearch.Plugin {
 
-  //  #----------------------- BEGIN SECURITY AUTO CONFIGURATION -----------------------
-  //  #
-  //  # The following settings, TLS certificates, and keys have been automatically
-  //  # generated to configure Elasticsearch security features on 28-04-2023 19:29:25
-  //  #
-  //  # --------------------------------------------------------------------------------
-  //
-  //  # Enable security features
-  //  xpack.security.enabled: true
-  //
-  //  xpack.security.enrollment.enabled: true
-  //
-  //  # Enable encryption for HTTP API client connections, such as Kibana, Logstash, and Agents
-  //    xpack.security.http.ssl:
-  //    enabled: true
-  //  keystore.path: certs/http.p12
-  //
-  //    # Enable encryption and mutual authentication between cluster nodes
-  //    xpack.security.transport.ssl:
-  //  enabled: true
-  //  verification_mode: certificate
-  //  keystore.path: certs/transport.p12
-  //  truststore.path: certs/transport.p12
-  //  #----------------------- END SECURITY AUTO CONFIGURATION -------------------------
-
   override def updateEsImage(image: DockerImageDescription): DockerImageDescription = {
     image
       .copyFile(configDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
