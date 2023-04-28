@@ -165,10 +165,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     List(Constants.FIELDS_TRANSIENT).asJava
   }
 
-//  private val indexModuleAtomic: Atomic[Option[IndexModule]] = Atomic(Option.empty[IndexModule])
-
   override def onIndexModule(indexModule: IndexModule): Unit = {
-//    indexModuleAtomic.set(Some(indexModule))
     import tech.beshu.ror.es.utils.IndexModuleOps._
     indexModule.overwrite(RoleIndexSearcherWrapper.instance)
   }
@@ -266,10 +263,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   override def onNodeStarted(): Unit = {
     super.onNodeStarted()
     doPrivileged {
-//      indexModuleAtomic.get().foreach { indexModule =>
-//        import tech.beshu.ror.es.utils.IndexModuleOps._
-//        indexModule.overwrite(RoleIndexSearcherWrapper.instance)
-//      }
       esInitListener.onEsReady()
     }
   }

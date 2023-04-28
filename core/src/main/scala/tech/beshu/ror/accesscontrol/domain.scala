@@ -355,7 +355,6 @@ object domain {
     def fromHeader(header: Header): Option[BasicAuth] = {
       header.name match {
         case name if name === Header.Name.authorization => parse(header.value)
-        case name if name === Header.Name.authorization => parse(header.value)
         case _ => None
       }
     }
