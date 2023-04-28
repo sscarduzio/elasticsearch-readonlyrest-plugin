@@ -80,13 +80,4 @@ object SecurityActionFilterDeactivator extends BytecodeJarModifier {
       underlying.visitEnd()
     }
   }
-
-  // todo: remove
-  def main(args: Array[String]): Unit = {
-    val jar = os.root / "tmp" / "x-pack-security-8.6.1.jar"
-    val copiedJar = os.root / "tmp" / "x-pack-security-8.6.1-bak.jar"
-    os.remove(copiedJar)
-    os.copy(jar, copiedJar)
-    SecurityActionFilterDeactivator.deactivateXpackSecurityFilter(copiedJar toIO)
-  }
 }

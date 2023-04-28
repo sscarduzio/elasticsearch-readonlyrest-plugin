@@ -37,16 +37,31 @@ class XpackSecurityPlugin(esVersion: String,
                           config: Config)
   extends Elasticsearch.Plugin {
 
-  // todo: added
-//  .run("echo 'xpack.security.enabled: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-//    .run("echo 'xpack.security.http.ssl.enabled: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-//    .run("echo 'xpack.security.http.ssl.keystore.path: http.p12' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-//    .run("echo 'xpack.security.authc.anonymous.username: anonymous' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-//    .run("echo 'xpack.security.authc.anonymous.roles: transport_client, _system, superuser, admins' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-//    .run("echo 'xpack.security.authc.anonymous.authz_exception: false' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+  //  #----------------------- BEGIN SECURITY AUTO CONFIGURATION -----------------------
+  //  #
+  //  # The following settings, TLS certificates, and keys have been automatically
+  //  # generated to configure Elasticsearch security features on 28-04-2023 19:29:25
+  //  #
+  //  # --------------------------------------------------------------------------------
+  //
+  //  # Enable security features
+  //  xpack.security.enabled: true
+  //
+  //  xpack.security.enrollment.enabled: true
+  //
+  //  # Enable encryption for HTTP API client connections, such as Kibana, Logstash, and Agents
+  //    xpack.security.http.ssl:
+  //    enabled: true
+  //  keystore.path: certs/http.p12
+  //
+  //    # Enable encryption and mutual authentication between cluster nodes
+  //    xpack.security.transport.ssl:
+  //  enabled: true
+  //  verification_mode: certificate
+  //  keystore.path: certs/transport.p12
+  //  truststore.path: certs/transport.p12
+  //  #----------------------- END SECURITY AUTO CONFIGURATION -------------------------
 
-//  .withFileFromFile(s"$configDir/$rolesFileName", ContainerUtils.getResourceFile("/" + rolesFileName))
-  
   override def updateEsImage(image: DockerImageDescription): DockerImageDescription = {
     image
       .copyFile(configDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))

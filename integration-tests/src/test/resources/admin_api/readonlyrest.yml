@@ -8,6 +8,6 @@ readonlyrest:
   # comments should survive
   access_control_rules:
     - name: "CONTAINER ADMIN"
-#      verbosity: "error"
+      verbosity: "error"
       type: "allow"
       auth_key: "admin:container"

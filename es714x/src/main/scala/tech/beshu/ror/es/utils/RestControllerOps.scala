@@ -62,7 +62,6 @@ class RestControllerOps(val restController: RestController) {
       val methodHandlers = on(value).get[java.util.Map[RestRequest.Method, RestHandler]]("methodHandlers").asScala.toMap
       val newMethodHandlers = methodHandlers
         .map { case (method, handler) =>
-          println(s"WRAPPED HANDLER CLASS: ${handler.getClass.getName}") // todo: remove
           (method, restHandlerDecorator(handler))
         }
         .asJava
