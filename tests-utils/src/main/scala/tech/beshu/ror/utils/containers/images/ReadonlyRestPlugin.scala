@@ -76,9 +76,9 @@ class ReadonlyRestPlugin(esVersion: String,
     builder
       .addWhen(!isEnabled(config.attributes.rorConfigReloading), "readonlyrest.force_load_from_file: true")
       .addWhen(config.attributes.customSettingsIndex.isDefined, s"readonlyrest.settings_index: ${config.attributes.customSettingsIndex.get}")
-//      .addWhen(config.attributes.restSslEnabled, "http.type: ssl_netty4")
-//      .addWhen(config.attributes.internodeSslEnabled, "transport.type: ror_ssl_internode")
-//      .add("xpack.security.enabled: false")
+      .addWhen(config.attributes.restSslEnabled, "http.type: ssl_netty4")
+      .addWhen(config.attributes.internodeSslEnabled, "transport.type: ror_ssl_internode")
+      .add("xpack.security.enabled: false")
   }
 
   override def updateEsJavaOptsBuilder(builder: EsJavaOptsBuilder): EsJavaOptsBuilder = {
