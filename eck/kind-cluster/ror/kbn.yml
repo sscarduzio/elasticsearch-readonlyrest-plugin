@@ -4,7 +4,7 @@ metadata:
   name: quickstart
 spec:
   version: 8.7.0
-  image: coutopl/kbn_8.7.0_ror_1.48.0-eck-poc
+  image: coutopl/kbn_8.7.0_ror_1.49.0-eck-poc
   count: 1
   elasticsearchRef:
     name: quickstart
