@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.utils
 
 import org.elasticsearch.common.path.PathTrie
-import org.elasticsearch.core.RestApiVersion
 import org.elasticsearch.rest.{RestController, RestHandler, RestRequest}
 import org.joor.Reflect.on
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
@@ -63,15 +62,10 @@ class RestControllerOps(val restController: RestController) {
 
   private object MethodHandlersWrapper {
     def updateWithWrapper(value: Any, restHandlerDecorator: RestHandler => RestHandler): Any = {
-      val methodHandlers = on(value).get[java.util.Map[RestRequest.Method, java.util.Map[RestApiVersion, RestHandler]]]("methodHandlers").asScala.toMap
+      val methodHandlers = on(value).get[java.util.Map[RestRequest.Method, RestHandler]]("methodHandlers").asScala.toMap
       val newMethodHandlers = methodHandlers
-        .map { case (key, handlersMap) =>
-          val newHandlersMap = handlersMap
-            .asSafeMap
-            .map { case (apiVersion, handler) =>
-              (apiVersion, restHandlerDecorator(handler))
-            }
-            .asJava
+        .map { case (key, handler) =>
+          val newHandlersMap = restHandlerDecorator(handler)
           (key, newHandlersMap)
         }
         .asJava

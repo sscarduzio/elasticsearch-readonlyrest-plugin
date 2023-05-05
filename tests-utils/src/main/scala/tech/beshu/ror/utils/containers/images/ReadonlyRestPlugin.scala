@@ -68,6 +68,12 @@ class ReadonlyRestPlugin(esVersion: String,
       .copyFile(configDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
       .copyFile(configDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
       .updateFipsDependencies(config)
+      // todo:
+      .run(s"${esDir.toString()}/bin/elasticsearch-keystore create")
+      .run(s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.transport.ssl.keystore.secure_password")
+      .run(s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.transport.ssl.truststore.secure_password")
+      .run(s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.http.ssl.keystore.secure_password")
+      .run(s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.http.ssl.truststore.secure_password")
       .user("root")
       .installRorPlugin(config)
   }
@@ -76,9 +82,19 @@ class ReadonlyRestPlugin(esVersion: String,
     builder
       .addWhen(!isEnabled(config.attributes.rorConfigReloading), "readonlyrest.force_load_from_file: true")
       .addWhen(config.attributes.customSettingsIndex.isDefined, s"readonlyrest.settings_index: ${config.attributes.customSettingsIndex.get}")
-      .addWhen(config.attributes.restSslEnabled, "http.type: ssl_netty4")
-      .addWhen(config.attributes.internodeSslEnabled, "transport.type: ror_ssl_internode")
-      .add("xpack.security.enabled: false")
+//      .addWhen(config.attributes.restSslEnabled, "http.type: ssl_netty4")
+//      .addWhen(config.attributes.internodeSslEnabled, "transport.type: ror_ssl_internode")
+      .add("xpack.security.enabled: true") // todo:
+      .add("xpack.security.http.ssl.enabled: true")
+      .add("xpack.security.http.ssl.verification_mode: none")
+      .add("xpack.security.http.ssl.client_authentication: none")
+      .add("xpack.security.http.ssl.keystore.path: elastic-certificates.p12")
+      .add("xpack.security.http.ssl.truststore.path: elastic-certificates.p12")
+      .add("xpack.security.transport.ssl.enabled: true")
+      .add("xpack.security.transport.ssl.verification_mode: none")
+      .add("xpack.security.transport.ssl.client_authentication: none")
+      .add("xpack.security.transport.ssl.keystore.path: elastic-certificates.p12")
+      .add("xpack.security.transport.ssl.truststore.path: elastic-certificates.p12")
   }
 
   override def updateEsJavaOptsBuilder(builder: EsJavaOptsBuilder): EsJavaOptsBuilder = {

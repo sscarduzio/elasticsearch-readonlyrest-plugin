@@ -39,7 +39,7 @@ object EsPatch {
     new EsPatchLoggingDecorator(
       readEsVersion(esDirectory) match {
         case esVersion if esVersion < es800 => new EsNotRequirePatch(esVersion)
-        case esVersion if esVersion < es830 => new Es80xPatch(esDirectory)
+        case esVersion if esVersion < es830 => new Es80xPatch(esDirectory, esVersion)
         case esVersion => new Es83xPatch(esDirectory, esVersion)
       }
     )

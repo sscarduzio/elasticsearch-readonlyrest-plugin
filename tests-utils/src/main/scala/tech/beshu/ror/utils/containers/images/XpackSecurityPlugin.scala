@@ -25,9 +25,11 @@ object XpackSecurityPlugin {
 
   final case class Config(attributes: Attributes)
   object Config {
-    final case class Attributes(internodeSslEnabled: Boolean)
+    final case class Attributes(restSslEnabled: Boolean,
+                                internodeSslEnabled: Boolean)
     object Attributes {
       val default: Attributes = Attributes(
+        restSslEnabled = false,
         internodeSslEnabled = false
       )
     }
@@ -49,10 +51,27 @@ class XpackSecurityPlugin(esVersion: String,
     builder
       .add("xpack.security.enabled: true")
       .add("xpack.ml.enabled: false")
+      .configureRestSsl(config.attributes)
       .configureTransportSsl(config.attributes)
   }
 
   override def updateEsJavaOptsBuilder(builder: EsJavaOptsBuilder): EsJavaOptsBuilder = builder
+
+  private implicit class ConfigureRestSsl(val builder: EsConfigBuilder) {
+
+    def configureRestSsl(attributes: Attributes): EsConfigBuilder = {
+      if(attributes.internodeSslEnabled) {
+        builder
+          .add("xpack.security.http.ssl.enabled: true")
+          .add("xpack.security.http.ssl.verification_mode: none")
+          .add("xpack.security.http.ssl.client_authentication: none")
+          .add("xpack.security.http.ssl.keystore.path: elastic-certificates.p12")
+          .add("xpack.security.http.ssl.truststore.path: elastic-certificates.p12")
+      } else {
+        builder
+      }
+    }
+  }
 
   private implicit class ConfigureTransportSsl(val builder: EsConfigBuilder) {
 
@@ -77,6 +96,8 @@ class XpackSecurityPlugin(esVersion: String,
         .run(s"${esDir.toString()}/bin/elasticsearch-keystore create")
         .run(s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.transport.ssl.keystore.secure_password")
         .run(s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.transport.ssl.truststore.secure_password")
+        .run(s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.http.ssl.keystore.secure_password")
+        .run(s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.http.ssl.truststore.secure_password")
         .runWhen(Version.greaterOrEqualThan(esVersion, 6, 6, 0),
           s"printf 'elastic\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add bootstrap.password"
         )

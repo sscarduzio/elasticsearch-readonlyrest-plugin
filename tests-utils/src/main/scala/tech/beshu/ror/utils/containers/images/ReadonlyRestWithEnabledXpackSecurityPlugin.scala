@@ -137,6 +137,11 @@ class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
   private def createXpackSecurityConfig() = {
     XpackSecurityPlugin.Config(
       XpackSecurityPlugin.Config.Attributes(
+        restSslEnabled = config.attributes.restSsl match {
+          case Enabled.Yes(RestSsl.Ror) => true
+          case Enabled.Yes(RestSsl.RorFips) => false
+          case Enabled.No => false
+        },
         internodeSslEnabled = config.attributes.internodeSsl match {
           case Enabled.Yes(InternodeSsl.Es) => true
           case Enabled.Yes(InternodeSsl.Ror) => false
