@@ -29,7 +29,7 @@ object XpackSecurityPlugin {
                                 internodeSslEnabled: Boolean)
     object Attributes {
       val default: Attributes = Attributes(
-        restSslEnabled = false,
+        restSslEnabled = true,
         internodeSslEnabled = false
       )
     }

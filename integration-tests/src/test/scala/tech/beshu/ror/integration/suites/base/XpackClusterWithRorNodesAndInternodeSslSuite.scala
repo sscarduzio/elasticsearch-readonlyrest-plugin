@@ -76,6 +76,7 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
           ),
           NodeType(
             securityType = XPackSecurity(XpackSecurityPlugin.Config.Attributes.default.copy(
+              restSslEnabled = true,
               internodeSslEnabled = true
             )),
             numberOfInstances = 2

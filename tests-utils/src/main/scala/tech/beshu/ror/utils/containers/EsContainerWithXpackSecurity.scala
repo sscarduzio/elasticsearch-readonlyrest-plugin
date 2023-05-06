@@ -25,12 +25,11 @@ import tech.beshu.ror.utils.httpclient.RestClient
 class EsContainerWithXpackSecurity private(esVersion: String,
                                            esConfig: Elasticsearch.Config,
                                            startedClusterDependencies: StartedClusterDependencies,
-                                           image: ImageFromDockerfile)
+                                           image: ImageFromDockerfile,
+                                           override val sslEnabled: Boolean)
   extends EsContainer(esVersion, esConfig, startedClusterDependencies, image) {
 
   logger.info(s"[${esConfig.nodeName}] Creating ES with X-Pack plugin installed container ...")
-
-  override val sslEnabled: Boolean = false
 
   override lazy val adminClient: RestClient = basicAuthClient(xpackAdminCredentials._1, xpackAdminCredentials._2)
 }
@@ -49,7 +48,8 @@ object EsContainerWithXpackSecurity extends StrictLogging {
       esVersion,
       esConfig,
       startedClusterDependencies,
-      esImageWithXpackFromDockerfile(esVersion, esConfig, xpackSecurityConfig)
+      esImageWithXpackFromDockerfile(esVersion, esConfig, xpackSecurityConfig),
+      xpackSecurityConfig.attributes.restSslEnabled
     )
     EsContainer.init(rorContainer, initializer, logger)
   }
