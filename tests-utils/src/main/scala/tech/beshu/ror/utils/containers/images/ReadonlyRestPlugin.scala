@@ -123,7 +123,7 @@ class ReadonlyRestPlugin(esVersion: String,
     def installRorPlugin(config: Config): DockerImageDescription = {
       image
         .run(s"${esDir.toString()}/bin/elasticsearch-plugin install --batch file:///tmp/${config.rorPlugin.name}")
-        .runWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0),
+        .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
           command = s"${esDir.toString()}/jdk/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch"
         )
     }

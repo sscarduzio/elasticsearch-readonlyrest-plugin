@@ -24,7 +24,6 @@ import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.actions.wrappers._cat.rest.RorWrappedRestCatAction
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.ReflectUtils._
 
 import scala.util.{Failure, Success, Try}
 
@@ -43,12 +42,7 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
   }
 
   private def wrapSomeActions(ofHandler: RestHandler) = {
-    ofHandler.transform[RestHandler]("restHandler", wrapIfNeeded) match {
-      case Failure(_) =>
-        wrapIfNeeded(ofHandler).getOrElse(ofHandler)
-      case Success(newRestHandler) =>
-        newRestHandler
-    }
+    wrapIfNeeded(ofHandler).getOrElse(ofHandler)
   }
 
   private def wrapIfNeeded(restHandler: RestHandler) = {
