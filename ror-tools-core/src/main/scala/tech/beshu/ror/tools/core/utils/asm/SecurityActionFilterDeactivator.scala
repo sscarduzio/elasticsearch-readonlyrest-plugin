@@ -19,11 +19,13 @@ package tech.beshu.ror.tools.core.utils.asm
 import org.objectweb.asm._
 
 import java.io.{File, InputStream}
+import java.nio.file.Files
 import scala.language.postfixOps
 
 object SecurityActionFilterDeactivator extends BytecodeJarModifier {
 
   def deactivateXpackSecurityFilter(jar: File): Unit = {
+    val originalFileOwner = Files.getOwner(jar.toPath)
     val modifiedSecurityClass = loadAndProcessFileFromJar(
       jar = jar,
       classFileName = "org/elasticsearch/xpack/security/Security",
@@ -34,6 +36,7 @@ object SecurityActionFilterDeactivator extends BytecodeJarModifier {
       destinationPathSting = "/org/elasticsearch/xpack/security/Security.class",
       newContent = modifiedSecurityClass
     )
+    Files.setOwner(jar.toPath, originalFileOwner)
   }
 
   private def doDeactivateXpackSecurityFilter(moduleInputStream: InputStream) = {
