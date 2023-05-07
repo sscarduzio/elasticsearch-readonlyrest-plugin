@@ -28,6 +28,8 @@ compileScala {
 
 dependencies {
     implementation  project(path: ':core')
+    implementation  project(path: ':ror-tools', configuration: 'shadow')
+    implementation  project(path: ':ror-tools-core')
     implementation  ('org.elasticsearch:elasticsearch:' + esVersion) {
         // because of https://github.com/elastic/elasticsearch/issues/68889 (for ES 7.11.0)
         exclude     group: 'org.elasticsearch', module: 'elasticsearch-plugin-classloader'

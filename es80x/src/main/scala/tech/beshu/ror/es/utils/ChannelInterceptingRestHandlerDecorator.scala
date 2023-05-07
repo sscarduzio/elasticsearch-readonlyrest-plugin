@@ -44,25 +44,29 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
   }
 
   private def wrapSomeActions(ofHandler: RestHandler) = {
-    wrapIfNeeded(ofHandler).getOrElse(ofHandler)
-  }
-
-  private def wrapIfNeeded(restHandler: RestHandler) = {
-    restHandler match {
-      case action: RestCatAction => Some(new RorWrappedRestCatAction(action))
-      case action: RestUpgradeActionDeprecated => Some(new RorWrappedRestUpgradeAction(action))
-      case action if action.getClass.getName.contains("SecurityRestFilter") =>
-        Try(on(action).get[RestHandler]("restHandler")) match {
-          case Success(underlyingHandler) =>
-            Some(underlyingHandler)
-          case Failure(_) =>
-            Some(action)
-        }
-      case _ => None
+    unwrapWithSecurityRestFilterIfNeeded(ofHandler) match {
+      case action: RestCatAction => new RorWrappedRestCatAction(action)
+      case action: RestUpgradeActionDeprecated => new RorWrappedRestUpgradeAction(action)
+      case action => action
     }
   }
 
-  private def addRorUserAuthenticationHeaderForInCaseOfSecurityRequest(request: RestRequest, client: NodeClient): Unit = {
+  private def unwrapWithSecurityRestFilterIfNeeded(restHandler: RestHandler) = {
+    restHandler match {
+      case action if action.getClass.getName.contains("SecurityRestFilter") =>
+        Try(on(action).get[RestHandler]("restHandler")) match {
+          case Success(underlyingHandler) =>
+            underlyingHandler
+          case Failure(_) =>
+            action
+        }
+      case _ =>
+        restHandler
+    }
+  }
+
+  private def addRorUserAuthenticationHeaderForInCaseOfSecurityRequest(request: RestRequest,
+                                                                       client: NodeClient): Unit = {
     if (request.path().contains("/_security") || request.path().contains("/_xpack/security")) {
       client
         .threadPool().getThreadContext

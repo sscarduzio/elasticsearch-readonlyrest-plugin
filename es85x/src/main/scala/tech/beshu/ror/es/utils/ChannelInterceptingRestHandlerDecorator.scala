@@ -44,27 +44,24 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
   }
 
   private def wrapSomeActions(ofHandler: RestHandler) = {
-    wrapIfNeeded(ofHandler).getOrElse(ofHandler)
-//    ofHandler.transform[RestHandler]("restHandler", wrapIfNeeded) match {
-//      case Failure(_) =>
-//        wrapIfNeeded(ofHandler).getOrElse(ofHandler)
-//      case Success(newRestHandler) =>
-//        newRestHandler
-//    }
+    unwrapWithSecurityRestFilterIfNeeded(ofHandler) match {
+      case action: RestCatAction => new RorWrappedRestCatAction(action)
+      case action: RestUpgradeActionDeprecated => new RorWrappedRestUpgradeAction(action)
+      case action => action
+    }
   }
 
-  private def wrapIfNeeded(restHandler: RestHandler) = {
+  private def unwrapWithSecurityRestFilterIfNeeded(restHandler: RestHandler) = {
     restHandler match {
-      case action: RestCatAction => Some(new RorWrappedRestCatAction(action))
-      case action: RestUpgradeActionDeprecated => Some(new RorWrappedRestUpgradeAction(action))
       case action if action.getClass.getName.contains("SecurityRestFilter") =>
         Try(on(action).get[RestHandler]("restHandler")) match {
           case Success(underlyingHandler) =>
-            Some(underlyingHandler)
+            underlyingHandler
           case Failure(_) =>
-            Some(action)
+            action
         }
-      case _ => None
+      case _ =>
+        restHandler
     }
   }
 
