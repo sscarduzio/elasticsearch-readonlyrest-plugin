@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.es.RorClusterService
@@ -207,7 +208,8 @@ object MultiSearchTemplateEsRequestContext {
   }
 }
 
-private class ReflectionBasedMultiSearchTemplateRequest(val actionRequest: ActionRequest) {
+private class ReflectionBasedMultiSearchTemplateRequest(val actionRequest: ActionRequest)
+                                                       (implicit val requestContext: RequestContext.Id) {
 
   import org.joor.Reflect.on
 

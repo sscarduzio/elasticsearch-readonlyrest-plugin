@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.dlsfls
 
 import java.util.{Iterator => JavaIterator}
-
 import com.google.common.collect.Iterators
 import org.apache.logging.log4j.scala.Logging
 import org.apache.lucene.index.StoredFieldVisitor.Status

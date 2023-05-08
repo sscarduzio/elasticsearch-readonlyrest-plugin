@@ -24,8 +24,8 @@ import tech.beshu.ror.tools.core.utils.asm.SecurityActionFilterDeactivator.deact
 import scala.language.postfixOps
 import scala.util.Try
 
-private[patches] class Es7xPatch(esDirectory: EsDirectory,
-                                 esVersion: SemVer)
+private[patches] class Es63xPatch(esDirectory: EsDirectory,
+                                  esVersion: SemVer)
   extends EsPatch {
 
   private val modulesPath = esDirectory.path / "modules"

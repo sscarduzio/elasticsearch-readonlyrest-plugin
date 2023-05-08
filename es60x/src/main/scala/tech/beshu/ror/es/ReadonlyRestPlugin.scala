@@ -21,7 +21,6 @@ import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
-import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes
 import org.elasticsearch.common.component.LifecycleComponent
@@ -30,7 +29,7 @@ import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings._
 import org.elasticsearch.common.util.BigArrays
-import org.elasticsearch.common.util.concurrent.{EsExecutors, ThreadContext}
+import org.elasticsearch.common.util.concurrent.EsExecutors
 import org.elasticsearch.common.xcontent.NamedXContentRegistry
 import org.elasticsearch.env.Environment
 import org.elasticsearch.http.HttpServerTransport
@@ -39,8 +38,7 @@ import org.elasticsearch.index.mapper.MapperService
 import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.plugins._
-import org.elasticsearch.rest.action.cat.RestCatAction
-import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
+import org.elasticsearch.rest.{RestController, RestHandler}
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.Transport
 import org.elasticsearch.transport.netty4.Netty4Utils
@@ -59,17 +57,16 @@ import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 import tech.beshu.ror.es.actions.rrtestconfig.rest.RestRRTestConfigAction
 import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, TransportRRTestConfigAction}
-import tech.beshu.ror.es.actions.wrappers._cat.rest.RorWrappedRestCatAction
 import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, TransportRorWrappedCatAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
-import tech.beshu.ror.es.utils.ThreadRepo
+import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsPatchVerifier}
 import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import java.nio.file.Path
 import java.util
-import java.util.function.{Supplier, UnaryOperator}
+import java.util.function.Supplier
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
@@ -84,6 +81,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     with ClusterPlugin {
 
   LogPluginBuildInfoMessage()
+  EsPatchVerifier.verify(s)
 
   Constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toList.asJava)
   // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor
@@ -115,7 +113,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
-    indexModule.setSearcherWrapper(new RoleIndexSearcherWrapper(_))
+    import tech.beshu.ror.es.utils.IndexModuleOps._
+    indexModule.overwrite(new RoleIndexSearcherWrapper(_))
   }
 
   override def getSettings: util.List[Setting[_]] = {
@@ -134,7 +133,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       .externalSsl
       .map(ssl =>
         "ssl_netty4" -> new Supplier[HttpServerTransport] {
-          override def get(): HttpServerTransport = doPrivileged{
+          override def get(): HttpServerTransport = doPrivileged {
             new SSLNetty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, ssl, false)
           }
         }
@@ -153,7 +152,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       .interNodeSsl
       .map(ssl =>
         "ror_ssl_internode" -> new Supplier[Transport] {
-          override def get(): Transport = doPrivileged{
+          override def get(): Transport = doPrivileged {
             new SSLNetty4InternodeServerTransport(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService, ssl, false)
           }
         }
@@ -182,6 +181,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                settingsFilter: SettingsFilter,
                                indexNameExpressionResolver: IndexNameExpressionResolver,
                                nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
+    import tech.beshu.ror.es.utils.RestControllerOps._
+    restController.decorateRestHandlersWith(ChannelInterceptingRestHandlerDecorator.create(_, settings))
     List[RestHandler](
       new RestRRAdminAction(settings, restController),
       new RestRRAuthMockAction(settings, restController),
@@ -190,19 +191,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       new RestRRUserMetadataAction(settings, restController),
       new RestRRAuditEventAction(settings, restController)
     ).asJava
-  }
-
-  override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
-    restHandler: RestHandler =>
-      (request: RestRequest, channel: RestChannel, client: NodeClient) => {
-        val handlerToUse = restHandler match {
-          case action: RestCatAction => new RorWrappedRestCatAction(Settings.EMPTY, action)
-          case _ => restHandler
-        }
-        val rorRestChannel = new RorRestChannel(channel)
-        ThreadRepo.setRestChannel(rorRestChannel)
-        handlerToUse.handleRequest(request, rorRestChannel, client)
-      }
   }
 
   override def onNodeStarted(): Unit = {

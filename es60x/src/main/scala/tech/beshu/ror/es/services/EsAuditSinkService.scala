@@ -67,8 +67,8 @@ class EsAuditSinkService(client: Client)
           .filter(_.isFailed)
           .map(_.getFailureMessage)
           .groupBy(identity)
-          .foreach { case (message, lazyList) =>
-            logger.error(s"${lazyList.size}x: $message")
+          .foreach { case (message, stream) =>
+            logger.error(s"${stream.size}x: $message")
           }
       }
     }
