@@ -27,6 +27,7 @@ import org.scalatest.wordspec.AnyWordSpecLike
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.CurrentUserMetadataRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth.{SeparateRules, SingleRule}
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.{WithGroupsMapping, WithoutGroupsMapping}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -184,6 +185,75 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
             preferredGroup = None
           )
         }
+        "user cannot be authorized by authentication with authorization rule (simple groups mapping matching fails)" in {
+          assertNotMatchRule(
+            settings = GroupsRulesSettings(
+              permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
+                createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
+              )),
+              usersDefinitions = NonEmptyList.of(UserDef(
+                usernames = userIdPatterns("user1"),
+                mode = WithGroupsMapping(
+                  SeparateRules(
+                    authenticationRule.matching(User.Id("user1")),
+                    authorizationRule.matching(NonEmptyList.of(GroupName("remote_group1")))
+                  ),
+                  noGroupMappingFrom("group_user1")
+                )
+              ))
+            ),
+            loggedUser = None,
+            preferredGroup = None
+          )
+        }
+        "user cannot be authorized by authentication with authorization rule (advanced groups mapping matching fails)" in {
+          assertNotMatchRule(
+            settings = GroupsRulesSettings(
+              permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
+                createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
+              )),
+              usersDefinitions = NonEmptyList.of(UserDef(
+                usernames = userIdPatterns("user1"),
+                mode = WithGroupsMapping(
+                  SeparateRules(
+                    authenticationRule.matching(User.Id("user1")),
+                    authorizationRule.matching(NonEmptyList.of(GroupName("remote_group2")))
+                  ),
+                  groupMapping(
+                    Mapping(GroupName("group_user1"), nonEmptySetOf(GroupLike.from("remote_group_1"))),
+                    Mapping(GroupName("group_user2"), nonEmptySetOf(GroupLike.from("remote_group_2")))
+                  )
+                )
+              ))
+            ),
+            loggedUser = None,
+            preferredGroup = None
+          )
+        }
+        "user cannot be authorized by authentication with authorization rule (advanced groups mapping with wildcard matching fails)" in {
+          assertNotMatchRule(
+            settings = GroupsRulesSettings(
+              permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
+                createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
+              )),
+              usersDefinitions = NonEmptyList.of(UserDef(
+                usernames = userIdPatterns("user1"),
+                mode = WithGroupsMapping(
+                  SeparateRules(
+                    authenticationRule.matching(User.Id("user1")),
+                    authorizationRule.matching(NonEmptyList.of(GroupName("remote_group2")))
+                  ),
+                  groupMapping(
+                    Mapping(GroupName("group_user1"), nonEmptySetOf(GroupLike.from("*1"))),
+                    Mapping(GroupName("group_user2"), nonEmptySetOf(GroupLike.from("*2")))
+                  )
+                )
+              ))
+            ),
+            loggedUser = None,
+            preferredGroup = None
+          )
+        }
       }
     }
     "match" when {
@@ -322,7 +392,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
       }
       "groups mapping is configured" when {
         "one authentication with authorization rule is used" when {
-          "user can be matched and user can be authorized in external system and locally" in {
+          "user can be matched and user can be authorized in external system and locally (simple groups mapping)" in {
             assertMatchRule(
               settings = GroupsRulesSettings(
                 permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("g1").nel))),
@@ -336,6 +406,62 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                     mode = WithGroupsMapping(
                       SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(GroupName("remote_group")))),
                       noGroupMappingFrom("g1")
+                    )
+                  )
+                )
+              ),
+              loggedUser = None,
+              preferredGroup = None
+            )(
+              blockContextAssertion = defaultOutputBlockContextAssertion(
+                user = User.Id("user1"),
+                group = GroupName("g1"),
+                availableGroups = UniqueList.of(GroupName("g1"))
+              )
+            )
+          }
+          "user can be matched and user can be authorized in external system and locally (advanced groups mapping)" in {
+            assertMatchRule(
+              settings = GroupsRulesSettings(
+                permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("g1").nel))),
+                usersDefinitions = NonEmptyList.of(
+                  UserDef(
+                    usernames = userIdPatterns("user2"),
+                    mode = WithoutGroupsMapping(authenticationRule.rejecting, groups("g1", "g2"))
+                  ),
+                  UserDef(
+                    usernames = userIdPatterns("user1"),
+                    mode = WithGroupsMapping(
+                      SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(GroupName("remote_group")))),
+                      groupMapping(Mapping(GroupName("g1"), nonEmptySetOf(GroupLike.from("remote_group"))))
+                    )
+                  )
+                )
+              ),
+              loggedUser = None,
+              preferredGroup = None
+            )(
+              blockContextAssertion = defaultOutputBlockContextAssertion(
+                user = User.Id("user1"),
+                group = GroupName("g1"),
+                availableGroups = UniqueList.of(GroupName("g1"))
+              )
+            )
+          }
+          "user can be matched and user can be authorized in external system and locally (advanced groups mapping with wildcard)" in {
+            assertMatchRule(
+              settings = GroupsRulesSettings(
+                permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("g1").nel))),
+                usersDefinitions = NonEmptyList.of(
+                  UserDef(
+                    usernames = userIdPatterns("user2"),
+                    mode = WithoutGroupsMapping(authenticationRule.rejecting, groups("g1", "g2"))
+                  ),
+                  UserDef(
+                    usernames = userIdPatterns("user1"),
+                    mode = WithGroupsMapping(
+                      SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(GroupName("remote_group_1")))),
+                      groupMapping(Mapping(GroupName("g1"), nonEmptySetOf(GroupLike.from("*1"))))
                     )
                   )
                 )

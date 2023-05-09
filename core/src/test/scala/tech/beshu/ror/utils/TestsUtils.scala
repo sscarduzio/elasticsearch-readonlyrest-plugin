@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService, ImpersonatorDef}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
@@ -303,7 +304,7 @@ object TestsUtils {
     }
   }
 
-  def nonEmptySetOf(group: GroupName, groups: GroupName*): NonEmptySet[GroupName] = {
+  def nonEmptySetOf(group: GroupLike, groups: GroupLike*): NonEmptySet[GroupLike] = {
     import tech.beshu.ror.accesscontrol.orders._
     NonEmptySet.of(group, groups: _*)
   }
@@ -314,6 +315,9 @@ object TestsUtils {
 
   def noGroupMappingFrom(value: String): GroupMappings =
     GroupMappings.Simple(UniqueNonEmptyList.of(GroupName(NonEmptyString.unsafeFrom(value))))
+
+  def groupMapping(mapping: Mapping, mappings: Mapping*): GroupMappings =
+    GroupMappings.Advanced(UniqueNonEmptyList.of(mapping, mappings: _*))
 
   def apiKeyFrom(value: String): ApiKey = NonEmptyString.from(value) match {
     case Right(v) => ApiKey(v)

@@ -410,7 +410,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
                 groupMappings should be(GroupMappings.Advanced(UniqueNonEmptyList.of(
                   Mapping(GroupName("group1"), nonEmptySetOf(GroupName("ldap_group3"))),
-                  Mapping(GroupName("group2"), nonEmptySetOf(GroupName("ldap_group4")))
+                  Mapping(GroupName("group2"), nonEmptySetOf(GroupName("ldap_group4"))),
                 )))
 
                 rule1 shouldBe an[AuthKeyRule]

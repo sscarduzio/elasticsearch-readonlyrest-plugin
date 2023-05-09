@@ -31,13 +31,14 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationR
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.UserIdPatterns
+import tech.beshu.ror.accesscontrol.domain.{GroupLike, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.{usersDefinitionsAllowedRulesDecoderBy, withUserIdParamsCheck}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules._
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.failed
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
@@ -96,7 +97,7 @@ object UsersDefinitionsDecoder {
           case Some(key :: Nil) =>
             for {
               localGroup <- Decoder[GroupName].tryDecode(HCursor.fromJson(Json.fromString(key)))
-              externalGroups <- c.downField(key).as[NonEmptySet[GroupName]]
+              externalGroups <- c.downField(key).as[NonEmptySet[GroupLike]]
             } yield {
               GroupMappings.Advanced.Mapping(localGroup, externalGroups)
             }

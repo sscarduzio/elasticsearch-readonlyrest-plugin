@@ -272,7 +272,7 @@ abstract class BaseGroupsRule(val settings: Settings,
         externalGroup
           .flatMap { externalGroup =>
             mappings
-              .filter(m => m.externalGroups.contains(externalGroup))
+              .filter(m => m.externalGroupPattersMatcher.`match`(externalGroup))
               .map(_.local)
           }
       }
