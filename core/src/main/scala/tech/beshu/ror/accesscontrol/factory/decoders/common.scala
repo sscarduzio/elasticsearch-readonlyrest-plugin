@@ -136,11 +136,11 @@ object common extends Logging {
   implicit val idPatternDecoder: Decoder[UserIdPattern] =
     DecoderHelpers.decodeStringLikeNonEmpty.map(UserIdPattern.apply)
 
-  implicit val groupsNonEmptySetDecoder: Decoder[NonEmptySet[GroupName]] = {
+  implicit val groupsNonEmptySetDecoder: Decoder[NonEmptySet[GroupLike]] = {
     import tech.beshu.ror.accesscontrol.orders._
     SyncDecoderCreator
-      .from(DecoderHelpers.decodeStringLikeOrNonEmptySet[GroupName])
-      .withError(ValueLevelCreationError(Message("Non empty list of group names is required")))
+      .from(DecoderHelpers.decodeStringLikeOrNonEmptySet[GroupLike])
+      .withError(ValueLevelCreationError(Message("Non empty list of group names or patterns is required")))
       .decoder
   }
 

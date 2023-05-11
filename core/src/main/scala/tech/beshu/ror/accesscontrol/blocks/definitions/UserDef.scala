@@ -79,7 +79,7 @@ object UserDef {
     final case class Advanced(mappings: UniqueNonEmptyList[Mapping]) extends GroupMappings
     object Advanced {
       final case class Mapping(local: GroupName, externalGroupPatters: NonEmptySet[GroupLike]) {
-        val externalGroupPattersMatcher: Matcher[GroupLike] =
+        lazy val externalGroupPattersMatcher: Matcher[GroupLike] =
           MatcherWithWildcardsScalaAdapter.create(externalGroupPatters.toSortedSet)
       }
     }
