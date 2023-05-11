@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
-import cats.data.NonEmptySet
 import cats.implicits._
 import io.circe.{ACursor, Decoder, HCursor, Json}
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
@@ -96,7 +95,7 @@ object UsersDefinitionsDecoder {
           case Some(key :: Nil) =>
             for {
               localGroup <- Decoder[GroupName].tryDecode(HCursor.fromJson(Json.fromString(key)))
-              externalGroups <- c.downField(key).as[NonEmptySet[GroupLike]]
+              externalGroups <- c.downField(key).as[UniqueNonEmptyList[GroupLike]]
             } yield {
               GroupMappings.Advanced.Mapping(localGroup, externalGroups)
             }

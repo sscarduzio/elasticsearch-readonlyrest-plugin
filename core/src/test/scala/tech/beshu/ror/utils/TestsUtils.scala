@@ -17,7 +17,7 @@
 package tech.beshu.ror.utils
 
 import better.files.File
-import cats.data.{NonEmptyList, NonEmptySet}
+import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.ParsingFailure
 import io.jsonwebtoken.JwtBuilder
@@ -302,11 +302,6 @@ object TestsUtils {
       case Some(nameNes) => Header.Name(nameNes)
       case None => throw new IllegalArgumentException(s"Cannot convert $name to Header.Name")
     }
-  }
-
-  def nonEmptySetOf(group: GroupLike, groups: GroupLike*): NonEmptySet[GroupLike] = {
-    import tech.beshu.ror.accesscontrol.orders._
-    NonEmptySet.of(group, groups: _*)
   }
 
   implicit class CurrentGroupToHeader(val group: GroupName) extends AnyVal {

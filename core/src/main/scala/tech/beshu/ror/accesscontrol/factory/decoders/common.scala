@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.factory.decoders
 
 import cats.Show
-import cats.data.NonEmptySet
 import cats.implicits._
 import com.comcast.ip4s.{IpAddress, Port, SocketAddress}
 import com.softwaremill._
@@ -135,14 +134,6 @@ object common extends Logging {
 
   implicit val idPatternDecoder: Decoder[UserIdPattern] =
     DecoderHelpers.decodeStringLikeNonEmpty.map(UserIdPattern.apply)
-
-  implicit val groupsNonEmptySetDecoder: Decoder[NonEmptySet[GroupLike]] = {
-    import tech.beshu.ror.accesscontrol.orders._
-    SyncDecoderCreator
-      .from(DecoderHelpers.decodeStringLikeOrNonEmptySet[GroupLike])
-      .withError(ValueLevelCreationError(Message("Non empty list of group names or patterns is required")))
-      .decoder
-  }
 
   implicit val groupNamesUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[GroupName]] =
     SyncDecoderCreator

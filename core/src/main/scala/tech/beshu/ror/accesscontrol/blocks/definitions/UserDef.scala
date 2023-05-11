@@ -16,9 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions
 
-import java.util.UUID
 import cats.Show
-import cats.data.NonEmptySet
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, Mode}
@@ -28,6 +26,8 @@ import tech.beshu.ror.accesscontrol.domain.{GroupLike, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.accesscontrol.matchers.{Matcher, MatcherWithWildcardsScalaAdapter}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+
+import java.util.UUID
 
 final case class UserDef private(id: UserDef#Id,
                                  usernames: UserIdPatterns,
@@ -78,9 +78,9 @@ object UserDef {
     final case class Simple(localGroups: UniqueNonEmptyList[GroupName]) extends GroupMappings
     final case class Advanced(mappings: UniqueNonEmptyList[Mapping]) extends GroupMappings
     object Advanced {
-      final case class Mapping(local: GroupName, externalGroupPatters: NonEmptySet[GroupLike]) {
-        lazy val externalGroupPattersMatcher: Matcher[GroupLike] =
-          MatcherWithWildcardsScalaAdapter.create(externalGroupPatters.toSortedSet)
+      final case class Mapping(local: GroupName, externalGroupPatters: UniqueNonEmptyList[GroupLike]) {
+        val externalGroupPattersMatcher: Matcher[GroupLike] =
+          MatcherWithWildcardsScalaAdapter.create(externalGroupPatters)
       }
     }
   }
