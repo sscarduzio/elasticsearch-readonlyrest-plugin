@@ -376,7 +376,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |  - username: cartman
                  |    groups:
                  |     - group1: ["ldap_group3"]
-                 |     - group2: "ldap_group4"
+                 |     - group2: ["ldap_group4"]
                  |    auth_key: "cartman:pass"
                  |    groups_provider_authorization:
                  |      user_groups_provider: GroupsService1
@@ -409,8 +409,8 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
               inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SeparateRules(rule1, rule2), groupMappings)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
                 groupMappings should be(GroupMappings.Advanced(UniqueNonEmptyList.of(
-                  Mapping(GroupName("group1"), nonEmptySetOf(GroupName("ldap_group3"))),
-                  Mapping(GroupName("group2"), nonEmptySetOf(GroupName("ldap_group4")))
+                  Mapping(GroupName("group1"), UniqueNonEmptyList.of(GroupName("ldap_group3"))),
+                  Mapping(GroupName("group2"), UniqueNonEmptyList.of(GroupName("ldap_group4")))
                 )))
 
                 rule1 shouldBe an[AuthKeyRule]
