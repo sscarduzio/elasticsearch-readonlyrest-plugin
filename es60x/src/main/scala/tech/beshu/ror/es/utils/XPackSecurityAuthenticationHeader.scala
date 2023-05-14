@@ -58,7 +58,6 @@ object XPackSecurityAuthenticationHeader {
       output.writeOptionalString(null)
       output.writeOptionalString(null)
       output.writeBoolean(true)
-      output.writeBoolean(false)
     }
     output.writeString(nodeName)
     output.writeString("__attach")
