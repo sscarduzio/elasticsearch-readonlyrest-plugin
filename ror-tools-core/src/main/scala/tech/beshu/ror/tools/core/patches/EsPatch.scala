@@ -17,7 +17,7 @@
 package tech.beshu.ror.tools.core.patches
 
 import tech.beshu.ror.tools.core.utils.EsDirectory
-import tech.beshu.ror.tools.core.utils.EsUtil.{es600, es620, es630, es700, es800, es830, readEsVersion}
+import tech.beshu.ror.tools.core.utils.EsUtil.{es630, es700, es800, es830, readEsVersion}
 
 trait EsPatch {
 
@@ -42,8 +42,6 @@ object EsPatch {
         case esVersion if esVersion >= es800 => new Es80xPatch(esDirectory, esVersion)
         case esVersion if esVersion >= es700 => new Es70xPatch(esDirectory, esVersion)
         case esVersion if esVersion >= es630 => new Es63xPatch(esDirectory, esVersion)
-        case esVersion if esVersion >= es620 => new Es62xPatch(esDirectory, esVersion)
-        case esVersion if esVersion >= es600 => new Es60xPatch(esDirectory, esVersion)
         case esVersion => new EsNotRequirePatch(esVersion)
       }
     )

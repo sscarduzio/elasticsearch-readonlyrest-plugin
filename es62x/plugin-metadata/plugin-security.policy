@@ -1,10 +1,9 @@
 grant {
-  permission java.io.FilePermission "/usr/share/elasticsearch", "read";
-  permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
   permission java.lang.RuntimePermission "accessDeclaredMembers";
   permission java.lang.RuntimePermission "getClassLoader";
   permission java.lang.RuntimePermission "accessClassInPackage.sun.misc";
   permission java.lang.RuntimePermission "setContextClassLoader";
+  permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
   permission java.util.PropertyPermission "*", "read,write";
   permission java.net.SocketPermission "*", "accept, resolve, connect";
 };

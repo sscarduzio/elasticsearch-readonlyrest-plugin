@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.actions.rrconfig
 
 import java.util
+
 import cats.implicits._
 import org.elasticsearch.action.FailedNodeException
 import org.elasticsearch.action.support.ActionFilters

@@ -40,7 +40,6 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, HighLevelClientAuditSinkService}
-import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
@@ -151,10 +150,8 @@ class IndexLevelActionFilter(settings: Settings,
                       chain: EsChain): Unit = {
     ThreadRepo.getRorRestChannel match {
       case None =>
-        threadPool.getThreadContext.addXpackSecurityAuthenticationHeader(nodeName)
         chain.continue(task, action, request, listener)
       case Some(_) if action.isInternal =>
-        threadPool.getThreadContext.addSystemAuthenticationHeader(nodeName)
         chain.continue(task, action, request, listener)
       case Some(channel) =>
         proceedByRorEngine(

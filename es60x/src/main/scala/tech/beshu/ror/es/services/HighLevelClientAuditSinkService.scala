@@ -17,9 +17,9 @@
 package tech.beshu.ror.es.services
 
 import java.security.cert.X509Certificate
+
 import cats.data.NonEmptyList
 import io.lemonlabs.uri.Uri
-
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 import monix.execution.Scheduler
 import org.apache.http.HttpHost
