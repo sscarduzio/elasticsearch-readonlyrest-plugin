@@ -69,7 +69,7 @@ object JsonConfigStaticVariableResolver {
     def isJsonPrimitive(json: Json) = !(json.isObject || json.isArray)
 
     def preserveNumericStringsAsStrings(newValue: Json) =
-      if (original.isString && newValue.isNumber) original else newValue
+      if (newValue.asNumber.map(_.toString()) == original.asString) original else newValue
 
     io.circe.parser.parse(resolvedStr) match {
       case Right(newJsonValue) if isJsonPrimitive(newJsonValue) =>
