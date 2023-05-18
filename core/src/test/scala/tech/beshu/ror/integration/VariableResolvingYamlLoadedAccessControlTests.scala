@@ -153,8 +153,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |
        |  ldaps:
        |    - name: ldap1
-       |      host: "${SingletonLdapContainers.ldap1.ldapHost}"
-       |      port: ${SingletonLdapContainers.ldap1.ldapPort}
+       |      host: $${LDAP_HOST}
+       |      port: $${LDAP_PORT}
        |      ssl_enabled: false                                        # default true
        |      ssl_trust_all_certs: true                                 # default false
        |      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
@@ -167,6 +167,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |      connection_timeout_in_sec: 10                             # default 1
        |      request_timeout_in_sec: 10                                # default 1
        |      cache_ttl_in_sec: 60                                      # default 0 - cache disabled
+       |
     """.stripMargin
 
   "An ACL" when {
@@ -399,6 +400,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
     case EnvVarName(n) if n.value == "sys_group_2" => Some("s2")
     case EnvVarName(n) if n.value == "READONLYREST_ENABLE" => Some("true")
     case EnvVarName(n) if n.value == "USER1_PASS" => Some("user1:passwd")
+    case EnvVarName(n) if n.value == "LDAP_HOST" => Some(SingletonLdapContainers.ldap1.ldapHost)
+    case EnvVarName(n) if n.value == "LDAP_PORT" => Some(s"${SingletonLdapContainers.ldap1.ldapPort}")
     case _ => None
   }
 }

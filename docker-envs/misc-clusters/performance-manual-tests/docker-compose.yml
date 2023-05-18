@@ -35,6 +35,8 @@ services:
       -Djava.rmi.server.hostname=127.0.0.1"
 #      -Dcom.unboundid.ldap.sdk.debug.enabled=true"
       - ES_VERSION=$ES_VERSION
+      - LDAP_HOST=lagsimulator
+      - LDAP_PORT=13890
     networks:
       - es-network
     ulimits:

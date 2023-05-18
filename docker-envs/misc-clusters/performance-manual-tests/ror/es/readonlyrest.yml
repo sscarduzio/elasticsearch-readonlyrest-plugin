@@ -56,8 +56,8 @@ readonlyrest:
   ldaps:
     - name: ldap
 
-      host: "ldap"
-      port: 3890
+      host: "${LDAP_HOST}"
+      port: 13890
       ssl_enabled: false
       ssl_trust_all_certs: true
 
