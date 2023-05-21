@@ -421,7 +421,7 @@ object domain {
     }
   }
 
-  final case class Action(value: String) extends AnyVal {
+  final case class Action private(value: String) extends AnyVal {
     def hasPrefix(prefix: String): Boolean = value.startsWith(prefix)
 
     def isSnapshot: Boolean = value.contains("/snapshot/")
@@ -438,6 +438,8 @@ object domain {
     def isRorAction: Boolean = List(
       rorUserMetadataAction,
       rorConfigAction,
+      rorTestConfigAction,
+      rorAuthMockAction,
       rorAuditEventAction,
       rorOldConfigAction
     ).contains(this)
@@ -461,27 +463,46 @@ object domain {
       Action.isInternal(value)
   }
   object Action {
-    val searchAction = Action("indices:data/read/search")
-    val mSearchAction = Action("indices:data/read/msearch")
-    val restoreSnapshotAction = Action("cluster:admin/snapshot/restore")
-    val fieldCapsAction = Action("indices:data/read/field_caps")
-    val asyncSearchAction = Action("indices:data/read/async_search/submit")
-    val rollupSearchAction = Action("indices:data/read/xpack/rollup/search")
-    val searchTemplateAction = Action("indices:data/read/search/template")
-    val putTemplateAction = Action("indices:admin/template/put")
-    val putIndexTemplateAction = Action("indices:admin/index_template/put")
-    val getSettingsAction = Action("indices:monitor/settings/get")
-    val monitorStateAction = Action("cluster:monitor/state")
     // ROR actions
-    val rorUserMetadataAction = Action("cluster:ror/user_metadata/get")
-    val rorConfigAction = Action("cluster:ror/config/manage")
-    val rorTestConfigAction = Action("cluster:ror/testconfig/manage")
-    val rorAuthMockAction = Action("cluster:ror/authmock/manage")
-    val rorAuditEventAction = Action("cluster:ror/audit_event/put")
-    val rorOldConfigAction = Action("cluster:ror/config/refreshsettings")
+    val rorUserMetadataAction: Action = rorAction("user_metadata/get")
+    val rorConfigAction: Action = rorAction("config/manage")
+    val rorTestConfigAction: Action = rorAction("testconfig/manage")
+    val rorAuthMockAction: Action = rorAction("authmock/manage")
+    val rorAuditEventAction: Action = rorAction("audit_event/put")
+    val rorOldConfigAction: Action = rorAction("config/refreshsettings")
+
+    private val searchAction: Action = new Action("indices:data/read/search")
+    private val mSearchAction: Action = new Action("indices:data/read/msearch")
+    private val fieldCapsAction: Action = new Action("indices:data/read/field_caps")
+    private val asyncSearchAction: Action = new Action("indices:data/read/async_search/submit")
+    private val rollupSearchAction: Action = new Action("indices:data/read/xpack/rollup/search")
+    private val searchTemplateAction: Action = new Action("indices:data/read/search/template")
+    private val putTemplateAction: Action = new Action("indices:admin/template/put")
+    private val putIndexTemplateAction: Action = new Action("indices:admin/index_template/put")
+    private val getSettingsAction: Action = new Action("indices:monitor/settings/get")
+    private val monitorStateAction: Action = new Action("cluster:monitor/state")
+
+    private val rorActionByOutdatedName: Map[String, Action] = Map(
+      "cluster:ror/user_metadata/get" -> rorUserMetadataAction,
+      "cluster:ror/config/manage" -> rorConfigAction,
+      "cluster:ror/testconfig/manage" -> rorTestConfigAction,
+      "cluster:ror/authmock/manage" -> rorAuthMockAction,
+      "cluster:ror/audit_event/put" -> rorAuditEventAction,
+      "cluster:ror/config/refreshsettings" -> rorOldConfigAction
+    )
+
+    def apply(value: String): Action = {
+      rorActionByOutdatedName
+        .getOrElse(value, new Action(value))
+    }
 
     def isInternal(actionString: String): Boolean = actionString.startsWith("internal:")
     def isMonitorState(actionString: String): Boolean = monitorStateAction.value == actionString
+
+    private def rorAction(actionName: String) = {
+      // 'cluster:internal' is treated as a valid action prefix
+      new Action(s"cluster:internal_ror/$actionName")
+    }
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
     implicit val caseMappingEqualityAction: CaseMappingEquality[Action] = CaseMappingEquality.instance(_.value, identity)
