@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.actions.rrconfig
 
 import java.util
-
 import cats.implicits._
 import org.elasticsearch.action.FailedNodeException
 import org.elasticsearch.action.support.ActionFilters
@@ -100,18 +99,16 @@ class TransportRRConfigAction(actionName: String,
   override def newNodeResponse(in: StreamInput): RRConfig =
     new RRConfig(in)
 
+  override def nodeOperation(request: RRConfigRequest): RRConfig = {
+    val nodeRequest = request.getNodeConfigRequest
+    val nodeResponse = loadConfig().runSyncUnsafe(toFiniteDuration(nodeRequest.timeout))
+    new RRConfig(clusterService.localNode(), NodeConfig(nodeResponse))
+  }
+
   private def loadConfig() =
     RawRorConfigLoadingAction
       .load(env.configFile(), indexContentProvider)
       .map(_.map(_.map(_.raw)))
-
-  override def nodeOperation(request: RRConfigRequest): RRConfig = {
-    val nodeRequest = request.getNodeConfigRequest
-    val nodeResponse =
-      loadConfig()
-        .runSyncUnsafe(toFiniteDuration(nodeRequest.timeout))
-    new RRConfig(clusterService.localNode(), NodeConfig(nodeResponse))
-  }
 
   private def toFiniteDuration(timeout: Timeout): FiniteDuration = timeout.nanos nanos
 

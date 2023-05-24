@@ -26,6 +26,8 @@ object EsUtil {
 
   val es800: SemVer = SemVer.unsafeParse("8.0.0")
   val es830: SemVer = SemVer.unsafeParse("8.3.0")
+  val es700: SemVer = SemVer.unsafeParse("7.0.0")
+  val es630: SemVer = SemVer.unsafeParse("6.3.0")
 
   def readEsVersion(esDirectory: EsDirectory): SemVer = {
     os
@@ -53,9 +55,11 @@ object EsUtil {
       case foundFile :: Nil =>
         Some(foundFile)
       case many =>
-        throw new IllegalStateException(s"More than one file matching regex ${transportNetty4JarNameRegex.pattern.pattern()} in $path; Found: ${many.mkString(", ")}")
+        throw new IllegalStateException(
+          s"More than one file matching regex ${transportNetty4JarNameRegex.pattern.pattern()} in $path; Found: ${many.mkString(", ")}"
+        )
     }
   }
 
-  def readonlyrestPluginPath(esPath: os.Path) = esPath / "plugins" / "readonlyrest"
+  def readonlyrestPluginPath(esPath: os.Path): Path = esPath / "plugins" / "readonlyrest"
 }

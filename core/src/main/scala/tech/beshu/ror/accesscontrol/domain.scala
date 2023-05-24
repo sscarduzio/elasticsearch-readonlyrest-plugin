@@ -430,6 +430,8 @@ object domain {
 
     def isTemplate: Boolean = value.contains("/template/")
 
+    def isXpackSecurityAction: Boolean = value.startsWith("cluster:admin/xpack/security/")
+
     def isPutTemplate: Boolean = List(
       putTemplateAction,
       putIndexTemplateAction

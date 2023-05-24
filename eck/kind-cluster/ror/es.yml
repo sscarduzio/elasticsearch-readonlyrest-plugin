@@ -1,0 +1,55 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: 8.7.0
+  image: coutopl/es_8.7.0_ror_1.49.0-eck-poc
+  nodeSets:
+  - name: default
+    count: 2
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 2048Mi
+              cpu: 1
+          env:
+          - name: INTERNAL_USR_PASS
+            valueFrom:
+              secretKeyRef:
+                name: quickstart-es-internal-users
+                key: elastic-internal
+          - name: INTERNAL_PROBE_PASS
+            valueFrom:
+              secretKeyRef:
+                name: quickstart-es-internal-users
+                key: elastic-internal-probe
+          - name: KIBANA_SERVICE_ACCOUNT_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: quickstart-kibana-user
+                key: token
+          - name: ES_JAVA_OPTS
+            value: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8888
+          volumeMounts:
+          - name: config
+            mountPath: /usr/share/elasticsearch/config/readonlyrest.yml
+            subPath: readonlyrest.yml
+          - name: config2
+            mountPath: /usr/share/elasticsearch/config/log4j2.properties
+            subPath: log4j2.properties
+        initContainers:
+        - name: sysctl
+          securityContext:
+            privileged: true
+          command: [ 'sh', '-c', 'sysctl -w vm.max_map_count=262144' ]
+        volumes:
+        - name: config
+          configMap:
+            name: ror-config
+        - name: config2
+          configMap:
+            name: log4j2-config
