@@ -54,7 +54,11 @@ object XPackSecurityAuthenticationHeader {
     output.writeBoolean(false)
     if (output.getTransportVersion.onOrAfter(TransportVersion.V_7_0_0)) {
       output.writeVInt(4) // Internal
-      output.writeGenericMap(Map.empty[String, Object].asJava)
+      if(output.getTransportVersion.onOrAfter(TransportVersion.V_8_8_0)) {
+        output.writeVInt(0)
+      } else {
+        output.writeGenericMap(Map.empty[String, Object].asJava)
+      }
     }
     NonEmptyString.unsafeFrom {
       Base64.getEncoder.encodeToString(BytesReference.toBytes(output.bytes()))
