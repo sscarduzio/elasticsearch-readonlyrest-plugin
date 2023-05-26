@@ -35,7 +35,7 @@ import tech.beshu.ror.mocks.MockRequestContext.defaultAction
 object MockRequestContext {
 
   val defaultAction: Action = Action("default-action")
-  val adminAction: Action = Action("cluster:ror/user_metadata/get")
+  val adminAction: Action = Action("cluster:internal_ror/user_metadata/get")
 
   def indices(implicit clock: Clock = Clock.systemUTC()): MockGeneralIndexRequestContext =
     MockGeneralIndexRequestContext(timestamp = clock.instant(), filteredIndices = Set.empty, allAllowedIndices = Set.empty)
