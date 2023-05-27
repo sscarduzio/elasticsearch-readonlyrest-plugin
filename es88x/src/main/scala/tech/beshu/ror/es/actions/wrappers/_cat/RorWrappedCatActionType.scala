@@ -14,43 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es.actions.wrappers._cat
 
-pluginManagement {
-    includeBuild('build-base')
+import org.elasticsearch.action.ActionType
+import org.elasticsearch.common.io.stream.Writeable
+
+class RorWrappedCatActionType extends ActionType[RorWrappedCatResponse](
+  RorWrappedCatActionType.name, RorWrappedCatActionType.exceptionReader
+)
+object RorWrappedCatActionType {
+  val name = "cat_action"
+  val instance = new RorWrappedCatActionType()
+
+  final case object ArtificialCatActionCannotBeTransported extends Exception
+
+  private [_cat] def exceptionReader[A]: Writeable.Reader[A] = _ => throw ArtificialCatActionCannotBeTransported
 }
-
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'core'
-include 'es60x'
-include 'es61x'
-include 'es62x'
-include 'es63x'
-include 'es65x'
-include 'es66x'
-include 'es67x'
-include 'es70x'
-include 'es72x'
-include 'es73x'
-include 'es74x'
-include 'es77x'
-include 'es78x'
-include 'es79x'
-include 'es710x'
-include 'es711x'
-include 'es714x'
-include 'es716x'
-include 'es80x'
-include 'es81x'
-include 'es82x'
-include 'es83x'
-include 'es84x'
-include 'es85x'
-include 'es87x'
-include 'es88x'
-include 'ror-tools-core'
-include 'ror-tools'
-include 'tests-utils'
-include 'integration-tests'
-include 'eshome'
