@@ -30,7 +30,6 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
-import tech.beshu.ror.accesscontrol.domain.Action._
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.{Local, Remote}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
@@ -421,87 +420,88 @@ object domain {
     }
   }
 
-  final case class Action private(value: String) extends AnyVal {
-    def hasPrefix(prefix: String): Boolean = value.startsWith(prefix)
-
-    def isSnapshot: Boolean = value.contains("/snapshot/")
-
-    def isRepository: Boolean = value.contains("/repository/")
-
-    def isTemplate: Boolean = value.contains("/template/")
-
-    def isPutTemplate: Boolean = List(
-      putTemplateAction,
-      putIndexTemplateAction
-    ).contains(this)
-
-    def isRorAction: Boolean = List(
-      rorUserMetadataAction,
-      rorConfigAction,
-      rorTestConfigAction,
-      rorAuthMockAction,
-      rorAuditEventAction,
-      rorOldConfigAction
-    ).contains(this)
-
-    def isSearchAction: Boolean = List(
-      searchAction,
-      mSearchAction,
-      fieldCapsAction,
-      asyncSearchAction,
-      rollupSearchAction,
-      searchTemplateAction
-    ).contains(this)
-
-    def isFieldCapsAction: Boolean =
-      fieldCapsAction == this
-
-    def isGetSettingsAction: Boolean =
-      getSettingsAction == this
-
-    def isInternal: Boolean =
-      Action.isInternal(value)
+  sealed trait Action {
+    def value: String
   }
   object Action {
-    // ROR actions
-    val rorUserMetadataAction: Action = rorAction("user_metadata/get")
-    val rorConfigAction: Action = rorAction("config/manage")
-    val rorTestConfigAction: Action = rorAction("testconfig/manage")
-    val rorAuthMockAction: Action = rorAction("authmock/manage")
-    val rorAuditEventAction: Action = rorAction("audit_event/put")
-    val rorOldConfigAction: Action = rorAction("config/refreshsettings")
+    final case class EsAction(override val value: String) extends Action
+    private object EsAction {
+      val fieldCapsAction: Action = EsAction("indices:data/read/field_caps")
+      val getSettingsAction: Action = EsAction("indices:monitor/settings/get")
+      val monitorStateAction: Action = EsAction("cluster:monitor/state")
+    }
 
-    private val searchAction: Action = new Action("indices:data/read/search")
-    private val mSearchAction: Action = new Action("indices:data/read/msearch")
-    private val fieldCapsAction: Action = new Action("indices:data/read/field_caps")
-    private val asyncSearchAction: Action = new Action("indices:data/read/async_search/submit")
-    private val rollupSearchAction: Action = new Action("indices:data/read/xpack/rollup/search")
-    private val searchTemplateAction: Action = new Action("indices:data/read/search/template")
-    private val putTemplateAction: Action = new Action("indices:admin/template/put")
-    private val putIndexTemplateAction: Action = new Action("indices:admin/index_template/put")
-    private val getSettingsAction: Action = new Action("indices:monitor/settings/get")
-    private val monitorStateAction: Action = new Action("cluster:monitor/state")
+    abstract sealed class RorAction(override val value: String) extends Action
+    object RorAction {
+      case object RorUserMetadataAction extends RorAction("cluster:internal_ror/user_metadata/get")
+      case object RorConfigAction extends RorAction("cluster:internal_ror/config/manage")
+      case object RorTestConfigAction extends RorAction("cluster:internal_ror/testconfig/manage")
+      case object RorAuthMockAction extends RorAction("cluster:internal_ror/authmock/manage")
+      case object RorAuditEventAction extends RorAction("cluster:internal_ror/audit_event/put")
+      case object RorOldConfigAction extends RorAction("cluster:internal_ror/config/refreshsettings")
 
-    private val rorActionByOutdatedName: Map[String, Action] = Map(
-      "cluster:ror/user_metadata/get" -> rorUserMetadataAction,
-      "cluster:ror/config/manage" -> rorConfigAction,
-      "cluster:ror/testconfig/manage" -> rorTestConfigAction,
-      "cluster:ror/authmock/manage" -> rorAuthMockAction,
-      "cluster:ror/audit_event/put" -> rorAuditEventAction,
-      "cluster:ror/config/refreshsettings" -> rorOldConfigAction
-    )
+      def fromString(value: String): Option[Action] = {
+        rorActionFrom(value)
+          .orElse(rorActionByOutdatedName.get(value))
+          .orElse(patternMatchingOutdatedRorActionName(value))
+      }
+
+      private def rorActionFrom(value: String): Option[RorAction] = value match {
+        case RorUserMetadataAction.`value` => RorUserMetadataAction.some
+        case RorConfigAction.`value` => RorConfigAction.some
+        case RorTestConfigAction.`value` => RorTestConfigAction.some
+        case RorAuthMockAction.`value` => RorAuthMockAction.some
+        case RorAuditEventAction.`value` => RorAuditEventAction.some
+        case RorOldConfigAction.`value` => RorOldConfigAction.some
+        case _ => None
+      }
+
+      private val rorActionByOutdatedName: Map[String, RorAction] = Map(
+        "cluster:ror/user_metadata/get" -> RorUserMetadataAction,
+        "cluster:ror/config/manage" -> RorConfigAction,
+        "cluster:ror/testconfig/manage" -> RorTestConfigAction,
+        "cluster:ror/authmock/manage" -> RorAuthMockAction,
+        "cluster:ror/audit_event/put" -> RorAuditEventAction,
+        "cluster:ror/config/refreshsettings" -> RorOldConfigAction
+      )
+
+      private def patternMatchingOutdatedRorActionName(possiblePattern: String): Option[EsAction] = {
+        Option(possiblePattern)
+          .filter(_.contains("*"))
+          .filter(_.startsWith("cluster:r"))
+          .filter { pattern =>
+            val prefix = pattern.takeWhile(_ == '*')
+            rorActionByOutdatedName.keys.exists(_.startsWith(prefix)) // does any of the old names match pattern
+          }
+          .map { value =>
+            EsAction(value.stripPrefix("cluster:").prependedAll("cluster:internal_"))
+          }
+      }
+    }
 
     def apply(value: String): Action = {
-      rorActionByOutdatedName
-        .getOrElse(value, new Action(value))
+      RorAction.fromString(value)
+        .getOrElse(EsAction(value))
     }
 
     def isInternal(actionString: String): Boolean = actionString.startsWith("internal:")
-    def isMonitorState(actionString: String): Boolean = monitorStateAction.value == actionString
+    def isMonitorState(actionString: String): Boolean = actionString == EsAction.monitorStateAction.value
 
-    private def rorAction(actionName: String) = {
-      // 'cluster:internal' is treated as a valid action prefix
-      new Action(s"cluster:internal_ror/$actionName")
+    implicit class ActionOps(val action: Action) extends AnyVal {
+      def isRorAction: Boolean = action match {
+        case _: EsAction => false
+        case _: RorAction => true
+      }
+
+      def isFieldCapsAction: Boolean = {
+        action == EsAction.fieldCapsAction
+      }
+
+      def isGetSettingsAction: Boolean =
+        action == EsAction.getSettingsAction
+
+      def isInternal: Boolean =
+        Action.isInternal(action.value)
     }
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals

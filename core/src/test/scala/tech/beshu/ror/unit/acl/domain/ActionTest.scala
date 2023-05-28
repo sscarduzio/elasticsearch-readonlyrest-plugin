@@ -45,5 +45,52 @@ class ActionTest extends AnyWordSpec with Matchers {
         rorActionNamesByOutdatedName should be(expectedRorActionNamesByOutdatedName)
       }
     }
+    "pattern matching the outdated ror action name is passed" should {
+      "be replaced with a pattern matching valid ror action names" in {
+        val expectedRorActionPatternsByOutdatedNamePatterns = Map(
+          "cluster:r*" -> "cluster:internal_r*",
+          "cluster:ro*" -> "cluster:internal_ro*",
+          "cluster:ror*" -> "cluster:internal_ror*",
+          "cluster:ror/*" -> "cluster:internal_ror/*",
+          "cluster:ror/user_metadata/*" -> "cluster:internal_ror/user_metadata/*",
+          "cluster:ror/config/*" -> "cluster:internal_ror/config/*",
+        )
+
+        val rorActionPatternsByOutdatedNamePatterns =
+          expectedRorActionPatternsByOutdatedNamePatterns
+            .view
+            .map {
+              case (oldName, _) => (oldName, Action(oldName).value)
+            }
+            .toMap
+
+        rorActionPatternsByOutdatedNamePatterns should be(expectedRorActionPatternsByOutdatedNamePatterns)
+      }
+    }
+    "pattern not matching the outdated ror action name is passed" should {
+      "be loaded without modification" in {
+        val expectedPatterns = Map(
+          "indices:admin*" -> "indices:admin*",
+          "indices:monitor*" -> "indices:monitor*",
+          "indices:data/write*" -> "indices:data/write*",
+          "indices:data/read*" -> "indices:data/read*",
+          "indices:internal*" -> "indices:internal*",
+          "cluster:admin*" -> "cluster:admin*",
+          "cluster:monitor*" -> "cluster:monitor*",
+          "cluster:internal*" -> "cluster:internal*",
+          "internal:*" -> "internal:*"
+        )
+
+        val result =
+          expectedPatterns
+            .view
+            .map {
+              case (pattern, _) => (pattern, Action(pattern).value)
+            }
+            .toMap
+
+        result should be(expectedPatterns)
+      }
+    }
   }
 }

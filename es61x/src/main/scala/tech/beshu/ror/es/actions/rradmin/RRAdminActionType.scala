@@ -18,7 +18,7 @@ package tech.beshu.ror.es.actions.rradmin
 
 import org.elasticsearch.action.{Action, ActionRequestBuilder}
 import org.elasticsearch.client.ElasticsearchClient
-import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
 class RRAdminActionType extends Action[RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder](RRAdminActionType.name) {
   override def newRequestBuilder(client: ElasticsearchClient): RRAdminRequestBuilder =
@@ -27,7 +27,7 @@ class RRAdminActionType extends Action[RRAdminRequest, RRAdminResponse, RRAdminR
   override def newResponse(): RRAdminResponse = new RRAdminResponse
 }
 object RRAdminActionType {
-  val name = domain.Action.rorOldConfigAction.value
+  val name: String = RorAction.RorOldConfigAction.value
   val instance = new RRAdminActionType()
 }
 

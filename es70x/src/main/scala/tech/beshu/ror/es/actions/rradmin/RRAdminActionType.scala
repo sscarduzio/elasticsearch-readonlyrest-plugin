@@ -17,12 +17,12 @@
 package tech.beshu.ror.es.actions.rradmin
 
 import org.elasticsearch.action.Action
-import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
 class RRAdminActionType extends Action[RRAdminResponse](RRAdminActionType.name) {
   override def newResponse(): RRAdminResponse = new RRAdminResponse
 }
 object RRAdminActionType {
-  val name = domain.Action.rorOldConfigAction.value
+  val name: String = RorAction.RorOldConfigAction.value
   val instance = new RRAdminActionType()
 }

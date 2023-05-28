@@ -18,14 +18,14 @@ package tech.beshu.ror.es.actions.rrauditevent
 
 import org.elasticsearch.action.ActionType
 import org.elasticsearch.common.io.stream.Writeable
-import tech.beshu.ror.accesscontrol.domain.Action
+import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
 class RRAuditEventActionType extends ActionType[RRAuditEventResponse](
   RRAuditEventActionType.name, RRAuditEventActionType.exceptionReader
 )
 
 object RRAuditEventActionType {
-  val name = Action.rorAuditEventAction.value
+  val name: String = RorAction.RorAuditEventAction.value
   val instance = new RRAuditEventActionType()
 
   final case object RRAuditEventActionTypeBeTransported extends Exception

@@ -18,12 +18,12 @@ package tech.beshu.ror.es.actions.rrconfig
 
 import org.elasticsearch.action.ActionType
 import org.elasticsearch.common.io.stream.Writeable
-import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
 class RRConfigActionType extends ActionType[RRConfigsResponse](RRConfigActionType.name, RRConfigActionType.reader)
 
 object RRConfigActionType {
-  val name = domain.Action.rorConfigAction.value
+  val name: String = RorAction.RorConfigAction.value
   val instance = new RRConfigActionType
   val reader: Writeable.Reader[RRConfigsResponse] = new RRConfigsResponse(_)
 }
