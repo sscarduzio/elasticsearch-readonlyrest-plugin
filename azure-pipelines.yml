@@ -407,6 +407,7 @@ stages:
               ROR_TASK: package_es6xx
 
   - stage: MVN_COMPILE
+    dependsOn:
       - TEST
     condition: and(succeeded('TEST'), ne(variables.isMaster, true))
     jobs:
