@@ -411,6 +411,23 @@ stages:
             PKG_es6xx:
               ROR_TASK: package_es6xx
 
+  - stage: MVN_COMPILE
+    dependsOn:
+      - TEST
+    condition: and(succeeded('TEST'), ne(variables.isMaster, true))
+    jobs:
+      - job:
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              echo "[MVN_COMPILE] executing ROR_TASK = $ROR_TASK"
+              bin/build.sh
+            env:
+              ROR_TASK: audit_compile
+
   - stage: MVN_PUB
     dependsOn:
       - TEST
