@@ -30,6 +30,11 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "cve_check" ]]; then
     ./gradlew dependencyCheckAnalyze
 fi
 
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "audit_compile" ]]; then
+    echo ">>> Running audit module cross build.."
+    ./gradlew --stacktrace audit:crossBuildAssemble
+fi
+
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "core_tests" ]]; then
     echo ">>> Running unit tests.."
     ./gradlew --stacktrace core:test

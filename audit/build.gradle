@@ -90,8 +90,6 @@ compileScala {
             "-feature",
             "-Ymacro-annotations",
             "-Xfatal-warnings",
-            "-Ywarn-unused",
-            "-Wunused:nowarn"
     )
 }
 

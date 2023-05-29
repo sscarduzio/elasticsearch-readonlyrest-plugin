@@ -60,6 +60,22 @@ stages:
             env:
               ROR_TASK: cve_check
 
+  - stage: COMPILE
+    dependsOn: [ ]
+    condition: ne(variables.isMaster, true)
+    jobs:
+      - job:
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              echo "[COMPILE] executing ROR_TASK = $ROR_TASK"
+              bin/build.sh
+            env:
+              ROR_TASK: audit_compile
+
   - stage: TEST
     jobs:
       - job:
