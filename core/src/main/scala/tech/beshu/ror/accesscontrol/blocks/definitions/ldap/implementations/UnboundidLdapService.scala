@@ -187,7 +187,8 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
       mode.searchGroupBaseDN.value.value,
       SearchScope.SUB,
       searchFilter,
-      mode.groupNameAttribute.value
+      mode.groupNameAttribute.value,
+      "member"
     )
   }
 
