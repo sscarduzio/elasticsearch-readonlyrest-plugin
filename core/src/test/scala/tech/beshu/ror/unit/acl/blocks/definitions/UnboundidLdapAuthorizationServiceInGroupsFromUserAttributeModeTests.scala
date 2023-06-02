@@ -26,8 +26,9 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.GroupsFromUserAttribute
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupNameAttribute, GroupSearchFilter, GroupsFromUserAttribute, GroupsFromUserEntry}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
@@ -101,11 +102,15 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
           ignoreLdapConnectivityProblems = false
         ),
         UserSearchFilterConfig(Dn("ou=Gods,dc=example,dc=com"), "uid"),
-        UserGroupsSearchFilterConfig(GroupsFromUserAttribute(
-          Dn("ou=Regions,dc=example,dc=com"),
-          "cn",
-          "title"
-        ))
+        UserGroupsSearchFilterConfig(
+          GroupsFromUserEntry(
+            Dn("ou=Regions,dc=example,dc=com"),
+            GroupSearchFilter("(objectClass=*)"),
+            GroupNameAttribute("cn"),
+            GroupsFromUserAttribute("title"),
+          ),
+          None // todo:
+        )
       )
       .runSyncUnsafe()
       .getOrElse(throw new IllegalStateException("LDAP connection problem"))

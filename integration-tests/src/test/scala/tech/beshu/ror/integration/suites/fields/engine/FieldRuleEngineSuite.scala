@@ -124,7 +124,14 @@ object FieldRuleEngineSuite {
         |{
         | "allowedField": "allowedFieldValue",
         | "notAllowedField": 1,
-        | "forbiddenField": 1
+        | "forbiddenField": 1,
+        | "sth": {
+        |   "allowedField": true,
+        |   "sth": {
+        |     "allowedField": true,
+        |     "notAllowedField": 1
+        |   }
+        | }
         |}""".stripMargin
 
     documentManager.createDoc("test-index", 1, ujson.read(document)).force()

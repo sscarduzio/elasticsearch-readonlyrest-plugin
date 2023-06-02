@@ -16,20 +16,31 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
+import cats.Order
 import cats.data.NonEmptyList
 import cats.effect.Resource
 import cats.implicits._
 import com.unboundid.ldap.sdk._
 import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.auto._
+import eu.timepit.refined.numeric.Positive
+import io.lemonlabs.uri.UrlWithAuthority
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig._
+import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{HostConnectionError, ServerDiscoveryConnectionError}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, LdapHost}
+import tech.beshu.ror.accesscontrol.domain.PlainTextSecret
 import tech.beshu.ror.accesscontrol.utils.ReleseablePool
 import tech.beshu.ror.boot.RorSchedulers.ldapUnboundIdBlockingScheduler
-import tech.beshu.ror.utils.ScalaOps.retry
+import tech.beshu.ror.utils.ScalaOps._
 
+import scala.concurrent.duration.{FiniteDuration, _}
+import scala.language.postfixOps
+import scala.util.Try
 import scala.util.control.NonFatal
 
 class UnboundidLdapConnectionPoolProvider {
@@ -73,6 +84,69 @@ class UnboundidLdapConnectionPoolProvider {
 }
 
 object UnboundidLdapConnectionPoolProvider extends Logging {
+
+
+  final case class LdapConnectionConfig(connectionMethod: ConnectionMethod,
+                                        poolSize: Int Refined Positive,
+                                        connectionTimeout: FiniteDuration Refined Positive,
+                                        requestTimeout: FiniteDuration Refined Positive,
+                                        trustAllCerts: Boolean,
+                                        bindRequestUser: BindRequestUser,
+                                        ignoreLdapConnectivityProblems: Boolean)
+
+  object LdapConnectionConfig {
+
+    val defaultCircuitBreakerConfig: CircuitBreakerConfig = CircuitBreakerConfig(
+      maxFailures = 10,
+      resetDuration = Refined.unsafeApply(10 seconds)
+    )
+
+    final case class LdapHost private(url: UrlWithAuthority) {
+      def isSecure: Boolean = url.schemeOption.contains(LdapHost.ldapsSchema)
+
+      def host: String = url.host.value
+
+      def port: Int = url.port.getOrElse(LdapHost.defaultPort)
+    }
+    object LdapHost {
+      val ldapsSchema = "ldaps"
+      val ldapSchema = "ldap"
+      val defaultPort = 389
+
+      def from(value: String): Option[LdapHost] = {
+        Try(UrlWithAuthority.parse(value))
+          .orElse(Try(UrlWithAuthority.parse(s"""//$value""")))
+          .toOption
+          .flatMap { url =>
+            if (url.path.nonEmpty) None
+            else if (!url.schemeOption.forall(Set(ldapSchema, ldapsSchema).contains)) None
+            else Some(LdapHost(url))
+          }
+      }
+
+      implicit val order: Order[LdapHost] = Order.by(_.toString())
+    }
+
+    sealed trait ConnectionMethod
+    object ConnectionMethod {
+      final case class SingleServer(host: LdapHost) extends ConnectionMethod
+      final case class SeveralServers(hosts: NonEmptyList[LdapHost], haMethod: HaMethod) extends ConnectionMethod
+      final case class ServerDiscovery(recordName: Option[String], providerUrl: Option[String], ttl: Option[FiniteDuration Refined Positive], useSSL: Boolean) extends ConnectionMethod
+    }
+
+    sealed trait HaMethod
+    object HaMethod {
+      case object RoundRobin extends HaMethod
+      case object Failover extends HaMethod
+    }
+
+    sealed trait BindRequestUser
+    object BindRequestUser {
+      case object Anonymous extends BindRequestUser
+      final case class CustomUser(dn: Dn, password: PlainTextSecret) extends BindRequestUser
+    }
+
+  }
 
   def testBindingForAllHosts(connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, Unit]] = {
     val serverSet = createLdapServerSet(connectionConfig)
@@ -172,10 +246,9 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
 
   sealed trait ConnectionError
   object ConnectionError {
-
     final case class HostConnectionError(hosts: NonEmptyList[LdapHost]) extends ConnectionError
-    final case class ServerDiscoveryConnectionError(recordName: Option[String], providerUrl: Option[String]) extends ConnectionError
-
+    final case class ServerDiscoveryConnectionError(recordName: Option[String],
+                                                    providerUrl: Option[String]) extends ConnectionError
   }
   case object ClosedLdapPool extends Exception
 }

@@ -22,17 +22,19 @@ import com.comcast.ip4s.Port
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
+import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.ConnectionMethod.{SeveralServers, SingleServer}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{HostConnectionError, ServerDiscoveryConnectionError}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.ConnectionMethod.{SeveralServers, SingleServer}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupsFromUserAttribute}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.PlainTextSecret
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
@@ -166,15 +168,15 @@ object LdapServicesDecoder {
     Decoder.instance { c =>
       for {
         searchGroupBaseDn <- c.downField("search_groups_base_DN").as[Dn]
-        groupNameAttribute <- c.downNonEmptyOptionalField("group_name_attribute")
-        uniqueMemberAttribute <- c.downNonEmptyOptionalField("unique_member_attribute")
-        groupSearchFilter <- c.downNonEmptyOptionalField("group_search_filter")
+        groupSearchFilter <- c.downField("group_search_filter").as[Option[GroupSearchFilter]]
+        groupNameAttribute <- c.downField("group_name_attribute").as[Option[GroupNameAttribute]]
+        uniqueMemberAttribute <- c.downField("unique_member_attribute").as[Option[UniqueMemberAttribute]]
         groupAttributeIsDN <- c.downField("group_attribute_is_dn").as[Option[Boolean]]
       } yield DefaultGroupSearch(
         searchGroupBaseDn,
-        groupNameAttribute.getOrElse(NonEmptyString.unsafeFrom("cn")),
-        uniqueMemberAttribute.getOrElse(NonEmptyString.unsafeFrom("uniqueMember")),
-        groupSearchFilter.getOrElse(NonEmptyString.unsafeFrom("(cn=*)")),
+        groupSearchFilter.getOrElse(GroupSearchFilter.default),
+        groupNameAttribute.getOrElse(GroupNameAttribute.default),
+        uniqueMemberAttribute.getOrElse(UniqueMemberAttribute.default),
         groupAttributeIsDN.getOrElse(true)
       )
     }
@@ -183,12 +185,14 @@ object LdapServicesDecoder {
     Decoder.instance { c =>
       for {
         searchGroupBaseDn <- c.downField("search_groups_base_DN").as[Dn]
-        groupNameAttribute <- c.downNonEmptyOptionalField("group_name_attribute")
-        groupsFromUserAttribute <- c.downNonEmptyOptionalField("groups_from_user_attribute")
-      } yield GroupsFromUserAttribute(
+        groupSearchFilter <- c.downField("group_search_filter").as[Option[GroupSearchFilter]]
+        groupNameAttribute <- c.downField("group_name_attribute").as[Option[GroupNameAttribute]]
+        groupsFromUserAttribute <- c.downField("groups_from_user_attribute").as[Option[GroupsFromUserAttribute]]
+      } yield GroupsFromUserEntry(
         searchGroupBaseDn,
-        groupNameAttribute.getOrElse(NonEmptyString.unsafeFrom("cn")),
-        groupsFromUserAttribute.getOrElse(NonEmptyString.unsafeFrom("memberOf"))
+        groupSearchFilter.getOrElse(GroupSearchFilter.default),
+        groupNameAttribute.getOrElse(GroupNameAttribute.default),
+        groupsFromUserAttribute.getOrElse(GroupsFromUserAttribute.default)
       )
     }
 
@@ -196,10 +200,25 @@ object LdapServicesDecoder {
     Decoder.instance { c =>
       for {
         useGroupsFromUser <- c.downField("groups_from_user").as[Option[Boolean]]
-        config <-
+        groupConfig <-
           if (useGroupsFromUser.getOrElse(false)) groupsFromUserAttributeModeDecoder.tryDecode(c)
           else defaultGroupsSearchModeDecoder.tryDecode(c)
-      } yield UserGroupsSearchFilterConfig(config)
+      } yield UserGroupsSearchFilterConfig(
+        groupConfig,
+        groupConfig match {
+          case DefaultGroupSearch(searchGroupBaseDN, groupSearchFilter, groupNameAttribute, uniqueMemberAttribute, _) =>
+            // todo:
+            Some(NestedGroupsConfig(
+              nestedLevels = 3,
+              searchGroupBaseDN,
+              groupSearchFilter,
+              uniqueMemberAttribute,
+              groupNameAttribute
+            ))
+          case GroupsFromUserEntry(_, _, _, _) =>
+            ???
+        }
+      )
     }
 
   private val connectionConfigDecoder: Decoder[LdapConnectionConfig] = {
@@ -233,10 +252,10 @@ object LdapServicesDecoder {
         if (circuitBreaker.failed) {
           Right(defaultCircuitBreakerConfig)
         } else {
-          (for {
+          for {
             maxRetries <- circuitBreaker.downField("max_retries").as[Int Refined Positive]
             resetDuration <- circuitBreaker.downField("reset_duration").as[FiniteDuration Refined Positive]
-          } yield CircuitBreakerConfig(maxRetries, resetDuration))
+          } yield CircuitBreakerConfig(maxRetries, resetDuration)
         }
       }
       .withError(DefinitionsLevelCreationError(Message(s"At least proper values for max_retries and reset_duration are required for circuit breaker configuration")))
@@ -351,6 +370,18 @@ object LdapServicesDecoder {
   }
 
   private implicit lazy val dnDecoder: Decoder[Dn] = DecoderHelpers.decodeStringLikeNonEmpty.map(Dn.apply)
+
+  private implicit lazy val groupSearchFilterDecoder: Decoder[GroupSearchFilter] =
+    DecoderHelpers.decodeStringLikeNonEmpty.map(GroupSearchFilter.apply)
+
+  private implicit lazy val groupNameAttributeDecoder: Decoder[GroupNameAttribute] =
+    DecoderHelpers.decodeStringLikeNonEmpty.map(GroupNameAttribute.apply)
+
+  private implicit lazy val uniqueMemberAttributeDecoder: Decoder[UniqueMemberAttribute] =
+    DecoderHelpers.decodeStringLikeNonEmpty.map(UniqueMemberAttribute.apply)
+
+  private implicit lazy val groupsFromUserAttributeDecoder: Decoder[GroupsFromUserAttribute] =
+    DecoderHelpers.decodeStringLikeNonEmpty.map(GroupsFromUserAttribute.apply)
 
   private lazy val bindRequestUserDecoder: Decoder[BindRequestUser] = {
     Decoder

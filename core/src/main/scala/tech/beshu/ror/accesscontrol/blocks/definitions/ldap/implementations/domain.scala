@@ -14,16 +14,11 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.mocks
+package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
-import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.{UnboundidLdapConnectionPool, UnboundidLdapConnectionPoolProvider}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
+import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 
-object MockLdapConnectionPoolProvider extends UnboundidLdapConnectionPoolProvider {
-
-  override def connect(connectionConfig: LdapConnectionConfig): Task[UnboundidLdapConnectionPool] =
-    throw new IllegalStateException("Cannot use it. It's just a mock")
-
-  override def close(): Task[Unit] = Task.pure(())
+private [implementations] object domain {
+  case class LdapGroup(name: GroupName, dn: Dn)
 }

@@ -99,9 +99,9 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
        |
        |    - name: ldap3
        |      host: 192.168.100.2
-       |      port: 636
-       |      ssl_enabled: true
-       |      ssl_trust_all_certs: true
+       |      port: 389
+       |      ssl_enabled: false
+       |      ssl_trust_all_certs: false
        |      bind_dn: "uid=root,cn=users,dc=couto,dc=pl"
        |      bind_password: "hDIo2B*8IuV7SXaWyDUFu0Ba!E"
        |      search_user_base_DN: "cn=users,dc=couto,dc=pl"
@@ -122,7 +122,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
     "be successful" when {
       "one server is unreachable, but is configured to ignore connectivity problems" when {
         "HA is enabled and one of LDAP hosts is unavailable" in {
-          val request = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("user2:hDIo2B*8IuV7SXaWyDUFu0Ba!E")))
+          val request = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("userSpeaker:hDIo2B*8IuV7SXaWyDUFu0Ba!E")))
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>

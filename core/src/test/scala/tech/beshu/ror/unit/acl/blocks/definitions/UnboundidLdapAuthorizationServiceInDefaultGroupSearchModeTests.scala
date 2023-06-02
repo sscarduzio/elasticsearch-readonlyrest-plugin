@@ -26,8 +26,9 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.DefaultGroupSearch
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupNameAttribute, GroupSearchFilter, UniqueMemberAttribute}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
@@ -101,13 +102,16 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
           ignoreLdapConnectivityProblems = false
         ),
         UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), "uid"),
-        UserGroupsSearchFilterConfig(DefaultGroupSearch(
-          Dn("ou=Groups,dc=example,dc=com"),
-          "cn",
-          "uniqueMember",
-          "(cn=*)",
-          groupAttributeIsDN = true
-        ))
+        UserGroupsSearchFilterConfig(
+          DefaultGroupSearch(
+            Dn("ou=Groups,dc=example,dc=com"),
+            GroupSearchFilter("(cn=*)"),
+            GroupNameAttribute("cn"),
+            UniqueMemberAttribute("uniqueMember"),
+            groupAttributeIsDN = true,
+          ),
+          None // todo:
+        )
       )
       .runSyncUnsafe()
       .getOrElse(throw new IllegalStateException("LDAP connection problem"))
