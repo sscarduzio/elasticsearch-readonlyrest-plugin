@@ -68,7 +68,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           assertNotMatchRule(settingsOf(RO), action, requestedIndices = Set(clusterIndexName(".kibana")))
           assertMatchRule(settingsOf(RW), action, requestedIndices = Set(clusterIndexName(".kibana"))) {
             assertBlockContext(
-              kibanaIndex = Some(clusterIndexName(".kibana")),
+              kibanaIndex = Some(kibanaIndexName(".kibana")),
               kibanaAccess = Some(RW),
               indices = Set(clusterIndexName(".kibana"))
             )
@@ -108,106 +108,106 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
     "RW action is passed with custom kibana index" in {
       RW_ACTIONS.asScala.map(Action.apply)
         .foreach { action =>
-          val customKibanaIndex = localIndexName(".custom_kibana")
+          val customKibanaIndex = kibanaIndexName(".custom_kibana")
           assertNotMatchRule(
             settingsOf(ROStrict, Some(customKibanaIndex)),
             action,
             customKibanaIndex = Some(customKibanaIndex),
-            requestedIndices = Set(customKibanaIndex)
+            requestedIndices = Set(customKibanaIndex.underlying)
           )
           assertNotMatchRule(
             settingsOf(RO, Some(customKibanaIndex)),
             action,
             customKibanaIndex = Some(customKibanaIndex),
-            requestedIndices = Set(customKibanaIndex)
+            requestedIndices = Set(customKibanaIndex.underlying)
           )
           assertMatchRule(
             settingsOf(RW, Some(customKibanaIndex)),
             action,
             customKibanaIndex = Some(customKibanaIndex),
-            requestedIndices = Set(customKibanaIndex)
+            requestedIndices = Set(customKibanaIndex.underlying)
           ) {
             assertBlockContext(
               kibanaAccess = Some(RW),
               kibanaIndex = Some(customKibanaIndex),
-              indices = Set(customKibanaIndex),
+              indices = Set(customKibanaIndex.underlying),
             )
           }
         }
     }
     "non strict operations (1)" in {
       testNonStrictOperations(
-        customKibanaIndex = localIndexName(".custom_kibana"),
+        customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/index"),
         uriPath = UriPath("/.custom_kibana/index-pattern/job")
       )
     }
     "non strict operations (2)" in {
       testNonStrictOperations(
-        customKibanaIndex = localIndexName(".custom_kibana"),
+        customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/delete"),
         uriPath = UriPath("/.custom_kibana/index-pattern/nilb-auh-filebeat-*")
       )
     }
     "non strict operations (3)" in {
       testNonStrictOperations(
-        customKibanaIndex = localIndexName(".custom_kibana"),
+        customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:admin/template/put"),
         uriPath = UriPath("/_template/kibana_index_template%3A.kibana")
       )
     }
     "non strict operations (4)" in {
       testNonStrictOperations(
-        customKibanaIndex = localIndexName(".custom_kibana"),
+        customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/update"),
         uriPath = UriPath("/.custom_kibana/doc/index-pattern%3A895e56e0-d873-11e8-bd16-3dcc5288c87b/_update?")
       )
     }
     "non strict operations (5)" in {
       testNonStrictOperations(
-        customKibanaIndex = localIndexName(".custom_kibana"),
+        customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/index"),
         uriPath = UriPath("/.custom_kibana/doc/telemetry%3Atelemetry?refresh=wait_for")
       )
     }
     "non strict operations (6)" in {
       testNonStrictOperations(
-        customKibanaIndex = localIndexName(".custom_kibana"),
+        customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/update"),
         uriPath = UriPath("/.custom_kibana/doc/url1234/_update?")
       )
     }
     "non strict operations (7)" in {
       testNonStrictOperations(
-        customKibanaIndex = localIndexName(".custom_kibana"),
+        customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/index"),
         uriPath = UriPath("/.custom_kibana/url/1234/")
       )
     }
     "non strict operations (8)" in {
       testNonStrictOperations(
-        customKibanaIndex = localIndexName(".custom_kibana"),
+        customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/index"),
         uriPath = UriPath("/.custom_kibana/config/1234/_create/something")
       )
     }
     "non strict operations (9)" in {
       testNonStrictOperations(
-        customKibanaIndex = localIndexName(".custom_kibana"),
+        customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/update"),
         uriPath = UriPath("/.custom_kibana/_update/index-pattern%3A895e56e0-d873-11e8-bd16-3dcc5288c87b")
       )
     }
     "non strict operations (10)" in {
       testNonStrictOperations(
-        customKibanaIndex = localIndexName(".custom_kibana"),
+        customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/update"),
         uriPath = UriPath("/.custom_kibana/_update/url1234")
       )
     }
     "non strict operations (11)" in {
       testNonStrictOperations(
-        customKibanaIndex = localIndexName(".custom_kibana"),
+        customKibanaIndex = kibanaIndexName(".custom_kibana"),
         action = Action("indices:data/write/index"),
         uriPath = UriPath("/.custom_kibana/_create/url:710d2a92ef849fc282bcb8a216f39046")
       )
@@ -257,47 +257,61 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
         assertMatchRule(settingsOf(KibanaAccess.Admin), Action.rorAuditEventAction, requestedIndices = Set(Local(rorIndex)))()
       }
     }
+    "Kibana related index is used" in {
+      assertMatchRule(
+        settingsOf(RW),
+        Action("indices:data/write/bulk"),
+        requestedIndices = Set(clusterIndexName(".kibana_analytics_8.8.0")),
+        uriPath = Some(UriPath("/_bulk"))
+      ) {
+        assertBlockContext(
+          kibanaIndex = Some(kibanaIndexName(".kibana")),
+          kibanaAccess = Some(RW),
+          indices = Set(clusterIndexName(".kibana_analytics_8.8.0"))
+        )
+      }
+    }
   }
 
-  private def testNonStrictOperations(customKibanaIndex: IndexName.Kibana, action: Action, uriPath: UriPath): Unit = {
+  private def testNonStrictOperations(customKibanaIndex: KibanaIndexName, action: Action, uriPath: UriPath): Unit = {
     assertNotMatchRule(
       settings = settingsOf(ROStrict, Some(customKibanaIndex)),
       action = action,
       customKibanaIndex = Some(customKibanaIndex),
-      requestedIndices = Set(customKibanaIndex),
+      requestedIndices = Set(customKibanaIndex.underlying),
       uriPath = Some(uriPath)
     )
     assertMatchRule(
       settings = settingsOf(RO, Some(customKibanaIndex)),
       action = action,
       customKibanaIndex = Some(customKibanaIndex),
-      requestedIndices = Set(customKibanaIndex),
+      requestedIndices = Set(customKibanaIndex.underlying),
       uriPath = Some(uriPath)
     ) {
       assertBlockContext(
         kibanaIndex = Some(customKibanaIndex),
         kibanaAccess = Some(RO),
-        indices = Set(customKibanaIndex)
+        indices = Set(customKibanaIndex.underlying)
       )
     }
     assertMatchRule(
       settings = settingsOf(RW, Some(customKibanaIndex)),
       action = action,
       customKibanaIndex = Some(customKibanaIndex),
-      requestedIndices = Set(customKibanaIndex),
+      requestedIndices = Set(customKibanaIndex.underlying),
       uriPath = Some(uriPath)
     ) {
       assertBlockContext(
         kibanaIndex = Some(customKibanaIndex),
         kibanaAccess = Some(RW),
-        indices = Set(customKibanaIndex)
+        indices = Set(customKibanaIndex.underlying)
       )
     }
   }
 
   private def assertMatchRule(settings: SETTINGS,
                               action: Action,
-                              customKibanaIndex: Option[IndexName.Kibana] = None,
+                              customKibanaIndex: Option[KibanaIndexName] = None,
                               requestedIndices: Set[ClusterIndexName] = Set.empty,
                               uriPath: Option[UriPath] = None)
                              (blockContextAssertion: BlockContext => Unit = defaultOutputBlockContextAssertion(settings, requestedIndices, customKibanaIndex)) =
@@ -305,14 +319,14 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
 
   private def assertNotMatchRule(settings: SETTINGS,
                                  action: Action,
-                                 customKibanaIndex: Option[IndexName.Kibana] = None,
+                                 customKibanaIndex: Option[KibanaIndexName] = None,
                                  requestedIndices: Set[ClusterIndexName],
                                  uriPath: Option[UriPath] = None) =
     assertRule(settings, action, customKibanaIndex, requestedIndices, uriPath, blockContextAssertion = None)
 
   private def assertRule(settings: SETTINGS,
                          action: Action,
-                         customKibanaIndex: Option[IndexName.Kibana],
+                         customKibanaIndex: Option[KibanaIndexName],
                          requestedIndices: Set[ClusterIndexName],
                          uriPath: Option[UriPath],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
@@ -344,18 +358,18 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
   protected def createRuleFrom(settings: SETTINGS): RULE
 
   protected def settingsOf(access: KibanaAccess,
-                           customKibanaIndex: Option[IndexName.Kibana] = None): SETTINGS
+                           customKibanaIndex: Option[KibanaIndexName] = None): SETTINGS
 
   protected lazy val rorIndex: IndexName.Full = fullIndexName(".readonlyrest")
 
   protected def defaultOutputBlockContextAssertion(settings: SETTINGS,
                                                    indices: Set[ClusterIndexName],
-                                                   customKibanaIndex: Option[IndexName.Kibana]): BlockContext => Unit
+                                                   customKibanaIndex: Option[KibanaIndexName]): BlockContext => Unit
 
-  protected def kibanaIndexFrom(customKibanaIndex: Option[IndexName.Kibana]): Local = {
+  protected def kibanaIndexFrom(customKibanaIndex: Option[KibanaIndexName]): KibanaIndexName = {
     customKibanaIndex match {
       case Some(index) => index
-      case None => Local(fullIndexName(".kibana"))
+      case None => KibanaIndexName(Local(fullIndexName(".kibana")))
     }
   }
 }

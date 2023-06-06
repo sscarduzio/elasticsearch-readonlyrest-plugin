@@ -184,6 +184,7 @@ object show {
       case f@IndexName.Full(_) => f.show
       case IndexName.Wildcard(name) => name.value
     }
+    implicit val kibanaIndexNameShow: Show[KibanaIndexName] = Show.show(_.underlying.show)
     implicit val fullIndexNameShow: Show[IndexName.Full] = Show.show(_.name.value)
     implicit val indexPatternShow: Show[IndexPattern] = Show.show(_.value.show)
     implicit val aliasPlaceholderShow: Show[AliasPlaceholder] = Show.show(_.alias.show)

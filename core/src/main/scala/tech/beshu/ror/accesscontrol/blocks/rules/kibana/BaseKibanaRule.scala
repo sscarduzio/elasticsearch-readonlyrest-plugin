@@ -25,6 +25,7 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.BaseKibanaRule.Settings
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
+import tech.beshu.ror.accesscontrol.domain.KibanaIndexName._
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local.devNullKibana
 import tech.beshu.ror.accesscontrol.domain.IndexName.Wildcard
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
@@ -135,7 +136,12 @@ abstract class BaseKibanaRule(val settings: Settings) extends Logging {
   }
 
   private def isTargetingKibana = ProcessingContext.create { (requestContext, kibanaIndexName) =>
-    val result = isRelatedToSingleIndex(kibanaIndexName)(requestContext, kibanaIndexName)
+    val result = if (requestContext.initialBlockContext.indices.size == 1) {
+      val requestedIndex = requestContext.initialBlockContext.indices.head
+      requestedIndex.isRelatedToKibanaIndex(kibanaIndexName)
+    } else {
+      false
+    }
     logger.debug(s"[${requestContext.id.show}] Is targeting Kibana? $result")
     result
   }
@@ -163,7 +169,7 @@ abstract class BaseKibanaRule(val settings: Settings) extends Logging {
 
   // Allow other actions if devnull is targeted to readers and writers
   private def isDevNullKibanaRelated = {
-    isRelatedToSingleIndex(devNullKibana)
+    isRelatedToSingleIndex(devNullKibana.underlying)
   }
 
   private def isRelatedToSingleIndex(index: ClusterIndexName) = ProcessingContext.create { (requestContext, _) =>
@@ -248,10 +254,10 @@ object BaseKibanaRule {
     val kibanaSampleDataIndexMatcher = IndicesMatcher.create[ClusterIndexName](Set(Local(Wildcard("kibana_sample_data_*"))))
   }
 
-  type ProcessingContext = ReaderT[Id, (RequestContext, IndexName.Kibana), Boolean]
+  type ProcessingContext = ReaderT[Id, (RequestContext, KibanaIndexName), Boolean]
   object ProcessingContext {
-    def create(func: (RequestContext, IndexName.Kibana) => Boolean): ProcessingContext =
-      ReaderT[Id, (RequestContext, IndexName.Kibana), Boolean] { case (r, i) => func(r, i) }
+    def create(func: (RequestContext, KibanaIndexName) => Boolean): ProcessingContext =
+      ReaderT[Id, (RequestContext, KibanaIndexName), Boolean] { case (r, i) => func(r, i) }
   }
 
   implicit class ProcessingContextBooleanOps(val context1: ProcessingContext) extends AnyVal {

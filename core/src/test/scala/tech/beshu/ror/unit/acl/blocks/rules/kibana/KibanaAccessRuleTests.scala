@@ -19,7 +19,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.kibana
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule._
-import tech.beshu.ror.accesscontrol.domain.IndexName.Kibana
 import tech.beshu.ror.accesscontrol.domain._
 
 class KibanaAccessRuleTests
@@ -28,12 +27,12 @@ class KibanaAccessRuleTests
   override protected def createRuleFrom(settings: Settings): KibanaAccessRule = new KibanaAccessRule(settings)
 
   override protected def settingsOf(access: KibanaAccess,
-                                    customKibanaIndex: Option[IndexName.Kibana] = None): Settings =
+                                    customKibanaIndex: Option[KibanaIndexName] = None): Settings =
     Settings(access, RorConfigurationIndex(rorIndex))
 
   override protected def defaultOutputBlockContextAssertion(settings: Settings,
                                                             indices: Set[ClusterIndexName],
-                                                            customKibanaIndex: Option[Kibana]): BlockContext => Unit =
+                                                            customKibanaIndex: Option[KibanaIndexName]): BlockContext => Unit =
     (blockContext: BlockContext) => {
       assertBlockContext(
         kibanaAccess = Some(settings.access),

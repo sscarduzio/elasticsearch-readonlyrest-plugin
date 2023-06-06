@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolv
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{Address, ClusterIndexName, GroupLike, GroupsLogic, Header, IndexName, KibanaAccess, KibanaApp, PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.domain.{Address, ClusterIndexName, GroupLike, GroupsLogic, Header, KibanaAccess, KibanaApp, KibanaIndexName, PermittedGroups, User}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -195,11 +195,12 @@ object common extends Logging {
     }
   }
 
-  implicit val indexNameConvertible: Convertible[IndexName.Kibana] = new Convertible[IndexName.Kibana] {
-    override def convert: String => Either[Convertible.ConvertError, IndexName.Kibana] = str => {
+  implicit val kibanaIndexNameConvertible: Convertible[KibanaIndexName] = new Convertible[KibanaIndexName] {
+    override def convert: String => Either[Convertible.ConvertError, KibanaIndexName] = str => {
       ClusterIndexName.Local
         .fromString(str.replace(" ", "_"))
-        .toRight(Convertible.ConvertError("Index name cannot be empty"))
+        .map(KibanaIndexName.apply)
+        .toRight(Convertible.ConvertError("Kibana index name cannot be empty"))
     }
   }
 

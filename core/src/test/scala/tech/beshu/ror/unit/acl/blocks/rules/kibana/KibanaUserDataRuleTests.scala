@@ -26,12 +26,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.IndexName.Kibana
 import tech.beshu.ror.accesscontrol.domain.Json.JsonValue.{BooleanValue, NullValue, NumValue, StringValue}
 import tech.beshu.ror.accesscontrol.domain.Json.{JsonRepresentation, JsonTree}
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, KibanaAccess, KibanaAllowedApiPath, KibanaApp, LoggedUser, Regex, RorConfigurationIndex, User}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -49,7 +48,7 @@ class KibanaUserDataRuleTests
   s"A '${RuleName[KibanaUserDataRule].name.value}' rule" when {
     "kibana index template is configured" should {
       "pass the index template to the User Metadata object if the rule matches" in {
-        val kibanaTemplateIndex = localIndexName("kibana_template_index")
+        val kibanaTemplateIndex = kibanaIndexName("kibana_template_index")
         val rule = createRuleFrom(KibanaUserDataRule.Settings(
           access = KibanaAccess.Unrestricted,
           kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
@@ -219,7 +218,7 @@ class KibanaUserDataRuleTests
     new KibanaUserDataRule(settings)
 
   override protected def settingsOf(access: domain.KibanaAccess,
-                                    customKibanaIndex: Option[IndexName.Kibana] = None): KibanaUserDataRule.Settings =
+                                    customKibanaIndex: Option[KibanaIndexName] = None): KibanaUserDataRule.Settings =
     KibanaUserDataRule.Settings(
       access = access,
       kibanaIndex = AlreadyResolved(customKibanaIndex.getOrElse(ClusterIndexName.Local.kibanaDefault)),
@@ -232,7 +231,7 @@ class KibanaUserDataRuleTests
 
   override protected def defaultOutputBlockContextAssertion(settings: KibanaUserDataRule.Settings,
                                                             indices: Set[domain.ClusterIndexName],
-                                                            customKibanaIndex: Option[Kibana]): BlockContext => Unit =
+                                                            customKibanaIndex: Option[KibanaIndexName]): BlockContext => Unit =
     (blockContext: BlockContext) => {
       assertBlockContext(
         kibanaAccess = Some(settings.access),
