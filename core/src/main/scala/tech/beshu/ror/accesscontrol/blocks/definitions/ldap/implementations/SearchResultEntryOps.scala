@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 
 import scala.util.Try
 
-object SearchResultEntryOps {
+private [implementations] object SearchResultEntryOps {
 
   implicit class ToLdapGroup(val entry: SearchResultEntry) extends AnyVal {
     def toLdapGroup(groupNameAttribute: GroupNameAttribute): Option[LdapGroup] = {

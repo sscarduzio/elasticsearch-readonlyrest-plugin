@@ -32,7 +32,7 @@ import tech.beshu.ror.utils.LoggerOps._
 
 import scala.concurrent.duration._
 
-abstract class BaseUnboundidLdapService(connectionPool: UnboundidLdapConnectionPool,
+private [implementations] abstract class BaseUnboundidLdapService(connectionPool: UnboundidLdapConnectionPool,
                                         userSearchFiler: UserSearchFilterConfig,
                                         override val serviceTimeout: FiniteDuration Refined Positive)
   extends LdapUserService with Logging {
@@ -70,7 +70,7 @@ abstract class BaseUnboundidLdapService(connectionPool: UnboundidLdapConnectionP
   }
 }
 
-final case class LdapUnexpectedResult(code: ResultCode, cause: String)
+private [implementations] final case class LdapUnexpectedResult(code: ResultCode, cause: String)
   extends Throwable(s"LDAP returned code: ${code.getName} [${code.intValue()}], cause: $cause")
 
 final case class UserSearchFilterConfig(searchUserBaseDN: Dn, uidAttribute: NonEmptyString)
