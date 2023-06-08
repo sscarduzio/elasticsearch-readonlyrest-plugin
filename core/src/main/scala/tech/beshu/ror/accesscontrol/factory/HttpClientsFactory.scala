@@ -109,10 +109,10 @@ private class LoggingSttpBackend[R[_], S](delegate: SttpBackend[R, S])
               responseMonad.error(e)
           }
       ) { response =>
-        if (response.isSuccess) {
-          logger.debug(s"For request: $request got response: $response")
-        } else {
+        if (response.isServerError) {
           logger.warn(s"For request: $request got response: $response")
+        } else {
+          logger.debug(s"For request: $request got response: $response")
         }
         response
       }

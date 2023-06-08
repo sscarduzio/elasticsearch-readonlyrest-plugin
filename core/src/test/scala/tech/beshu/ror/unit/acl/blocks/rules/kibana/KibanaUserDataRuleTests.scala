@@ -231,12 +231,14 @@ class KibanaUserDataRuleTests
 
   override protected def defaultOutputBlockContextAssertion(settings: KibanaUserDataRule.Settings,
                                                             indices: Set[domain.ClusterIndexName],
+                                                            dataStreams: Set[DataStreamName],
                                                             customKibanaIndex: Option[KibanaIndexName]): BlockContext => Unit =
     (blockContext: BlockContext) => {
       assertBlockContext(
         kibanaAccess = Some(settings.access),
         kibanaIndex = Some(kibanaIndexFrom(customKibanaIndex)),
-        indices = indices
+        indices = indices,
+        dataStreams = dataStreams
       )(
         blockContext
       )

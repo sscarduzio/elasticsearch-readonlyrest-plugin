@@ -32,12 +32,14 @@ class KibanaAccessRuleTests
 
   override protected def defaultOutputBlockContextAssertion(settings: Settings,
                                                             indices: Set[ClusterIndexName],
+                                                            dataStreams: Set[DataStreamName],
                                                             customKibanaIndex: Option[KibanaIndexName]): BlockContext => Unit =
     (blockContext: BlockContext) => {
       assertBlockContext(
         kibanaAccess = Some(settings.access),
         kibanaIndex = Some(kibanaIndexFrom(customKibanaIndex)),
-        indices = indices
+        indices = indices,
+        dataStreams = dataStreams
       )(
         blockContext
       )

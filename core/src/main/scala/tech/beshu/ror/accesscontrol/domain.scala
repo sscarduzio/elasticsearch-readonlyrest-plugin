@@ -530,14 +530,17 @@ object domain {
 
     private val kibanaRelatedIndicesSuffixRegexes = Vector(
       """^_\d+\.\d+\.\d+$""".r, // eg. .kibana_8.0.0
-      """^_analytics$""".r, // eg. .kibana_analytics
-      """^_analytics_\d+\.\d+\.\d+$""".r, // eg. .kibana_analytics_8.0.0
-      """^_task_manager$""".r, // eg. .kibana_task_manager
-      """^_task_manager_\d+\.\d+\.\d+$""".r, // eg. .kibana_task_manager_8.8.0
       """^_alerting_cases$""".r, // eg. .kibana_alerting_cases
       """^_alerting_cases_\d+\.\d+\.\d+$""".r, // eg. .kibana_alerting_cases_8.8.0
-      """^_event-log_\d+\.\d+\.\d+$""".r, // eg. .kibana-event-log-8.8.0
+      """^_analytics$""".r, // eg. .kibana_analytics
+      """^_analytics_\d+\.\d+\.\d+$""".r, // eg. .kibana_analytics_8.0.0
+      """^_ingest$""".r, // eg. .kibana_ingest
+      """^_ingest_\d+\.\d+\.\d+$""".r, // eg. .kibana_ingest_8.0.0
+      """^-event-log-\d+\.\d+\.\d+$""".r, // eg. .kibana-event-log-8.8.0
       """^_security_solution$""".r, // eg. .kibana_security_solution
+      """^_security_solution_\d+\.\d+\.\d+$""".r, // eg. .kibana_security_solution_8.8.0
+      """^_task_manager$""".r, // eg. .kibana_task_manager
+      """^_task_manager_\d+\.\d+\.\d+$""".r, // eg. .kibana_task_manager_8.8.0
     )
 
     implicit class IsRelatedToKibanaIndex(val indexName: ClusterIndexName) extends AnyVal {

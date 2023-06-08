@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local.devNullKibana
 import tech.beshu.ror.accesscontrol.domain.IndexName.Wildcard
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.matchers.{IndicesMatcher, MatcherWithWildcardsScalaAdapter}
+import tech.beshu.ror.accesscontrol.matchers.{DataStreamMatcher, IndicesMatcher, MatcherWithWildcardsScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 import java.util.regex.Pattern
@@ -110,7 +110,7 @@ abstract class BaseKibanaRule(val settings: Settings) extends Logging {
   }
 
   private def isKibanaSimpleData = {
-    kibanaCanBeModified && isRelatedToKibanaSampleDataIndex
+    kibanaCanBeModified && (isRelatedToKibanaSampleDataIndex || isRelatedToKibanaSampleDataStream)
   }
 
   private def emptyIndicesMatch = {
@@ -188,6 +188,16 @@ abstract class BaseKibanaRule(val settings: Settings) extends Logging {
     result
   }
 
+  private def isRelatedToKibanaSampleDataStream = ProcessingContext.create { (requestContext, _) =>
+    val result = requestContext.initialBlockContext.dataStreams.toList match {
+      case Nil => false
+      case head :: Nil => Matchers.kibanaSampleDataStreamMatcher.`match`(head)
+      case _ => false
+    }
+    logger.debug(s"[${requestContext.id.show}] Is related to Kibana sample data index? $result")
+    result
+  }
+
   private def isRoAction = ProcessingContext.create { (requestContext, _) =>
     val result = Matchers.roMatcher.`match`(requestContext.action)
     logger.debug(s"[${requestContext.id.show}] Is RO action? $result")
@@ -252,6 +262,7 @@ object BaseKibanaRule {
     val indicesWriteAction = MatcherWithWildcardsScalaAdapter[Action](Set(Action("indices:data/write/*")))
 
     val kibanaSampleDataIndexMatcher = IndicesMatcher.create[ClusterIndexName](Set(Local(Wildcard("kibana_sample_data_*"))))
+    val kibanaSampleDataStreamMatcher = DataStreamMatcher.create[DataStreamName](Set(DataStreamName.Pattern("kibana_sample_data_*")))
   }
 
   type ProcessingContext = ReaderT[Id, (RequestContext, KibanaIndexName), Boolean]
