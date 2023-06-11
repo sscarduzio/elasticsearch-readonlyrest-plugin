@@ -119,6 +119,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            IT_es88x:
+              ROR_TASK: integration_es88x
             IT_es87x:
               ROR_TASK: integration_es87x
             IT_es85x:
@@ -161,8 +163,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            IT_es87x:
-              ROR_TASK: integration_es87x
+            IT_es88x:
+              ROR_TASK: integration_es88x
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
@@ -403,6 +405,23 @@ stages:
               ROR_TASK: package_es7xx
             PKG_es6xx:
               ROR_TASK: package_es6xx
+
+  - stage: MVN_COMPILE
+    dependsOn:
+      - TEST
+    condition: and(succeeded('TEST'), ne(variables.isMaster, true))
+    jobs:
+      - job:
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              echo "[MVN_COMPILE] executing ROR_TASK = $ROR_TASK"
+              bin/build.sh
+            env:
+              ROR_TASK: audit_compile
 
   - stage: MVN_PUB
     dependsOn:

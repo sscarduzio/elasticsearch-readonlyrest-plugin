@@ -45,6 +45,177 @@ paths:
                   $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
                 RorFailedToStartResponseExample:
                   $ref: "#/components/examples/RorFailedToStartResponseExample"
+  /_readonlyrest/admin/config:
+    get:
+      summary: Getting currently applied in-index Main Settings
+      description: The endpoint can be used to fetch currently configured Main Settings. If Main settings are not configured, the endpoint returns proper status "empty" in the body.
+      tags:
+        - Main Settings
+      parameters:
+        - $ref: '#/components/parameters/XRorCorrelationIdHeader'
+      responses:
+        200:
+          description: Contains info about getting configured Main Settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetInIndexMainSettingsResponse'
+              examples:
+                MainSettingsAreConfiguredExample:
+                  $ref: "#/components/examples/MainSettingsAreConfiguredExample"
+                MainSettingsAreNotConfiguredExample:
+                  $ref: "#/components/examples/MainSettingsAreNotConfiguredExample"
+                MainSettingsCannotBeProvidedExample:
+                  $ref: "#/components/examples/MainSettingsCannotBeProvidedExample"
+        403:
+          description: The request was forbidden by ROR's ACL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenRorResponse'
+              examples:
+                NoAclBlockWasMatchedForbiddenResponseExample:
+                  $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
+                ForbidBlockMatchedResponseExample:
+                  $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                TestSettingsNotConfiguredForbiddenResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredForbiddenResponseExample"
+                ImpersonationNotSupportedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
+                ImpersonationNotAllowedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotAllowedResponseExample"
+                RorIsNotStartedYetResponseExample:
+                  $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
+                RorFailedToStartResponseExample:
+                  $ref: "#/components/examples/RorFailedToStartResponseExample"
+    post:
+      summary: Configuring in-index Main Settings
+      description: The endpoint can be used to configure Main Settings.
+      tags:
+        - Main Settings
+      parameters:
+        - $ref: '#/components/parameters/XRorCorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMainSettingsRequest'
+      responses:
+        200:
+          description: Returns a status of updating Main Settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateMainSettingsResponse'
+              examples:
+                UpdateMainSettingsSuccessResponse:
+                  $ref: "#/components/examples/UpdateMainSettingsSuccessResponse"
+                UpdateMainSettingsFailedResponse:
+                  $ref: "#/components/examples/UpdateMainSettingsFailedResponse"
+        403:
+          description: The request was forbidden by ROR's ACL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenRorResponse'
+              examples:
+                NoAclBlockWasMatchedForbiddenResponseExample:
+                  $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
+                ForbidBlockMatchedResponseExample:
+                  $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                TestSettingsNotConfiguredForbiddenResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredForbiddenResponseExample"
+                ImpersonationNotSupportedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
+                ImpersonationNotAllowedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotAllowedResponseExample"
+                RorIsNotStartedYetResponseExample:
+                  $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
+                RorFailedToStartResponseExample:
+                  $ref: "#/components/examples/RorFailedToStartResponseExample"
+  /_readonlyrest/admin/config/file:
+    get:
+      summary: Getting file define Main Settings
+      description: The endpoint can be used to fetch file defined Main Settings. The settings are not the currently used one if in-index settings are defined.
+      tags:
+        - Main Settings
+      parameters:
+        - $ref: '#/components/parameters/XRorCorrelationIdHeader'
+      responses:
+        200:
+          description: Contains info about getting Main Settings defined in file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetFileMainSettingsResponse'
+              examples:
+                GetFileMainSettingsSuccessExample:
+                  $ref: "#/components/examples/GetFileMainSettingsSuccessExample"
+                GetFileMainSettingsFailureExample:
+                  $ref: "#/components/examples/GetFileMainSettingsFailureExample"
+        403:
+          description: The request was forbidden by ROR's ACL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenRorResponse'
+              examples:
+                NoAclBlockWasMatchedForbiddenResponseExample:
+                  $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
+                ForbidBlockMatchedResponseExample:
+                  $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                TestSettingsNotConfiguredForbiddenResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredForbiddenResponseExample"
+                ImpersonationNotSupportedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
+                ImpersonationNotAllowedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotAllowedResponseExample"
+                RorIsNotStartedYetResponseExample:
+                  $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
+                RorFailedToStartResponseExample:
+                  $ref: "#/components/examples/RorFailedToStartResponseExample"
+  /_readonlyrest/admin/refreshconfig:
+    post:
+      summary: Force reloading in-index defined Main Settings
+      description: The endpoint can be used to force reload ROR's in-index Main Settings.
+      tags:
+        - Main Settings
+      parameters:
+        - $ref: '#/components/parameters/XRorCorrelationIdHeader'
+      responses:
+        200:
+          description: Contains info about getting configured Main Settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForceReloadInIndexMainSettingsResponse'
+              examples:
+                ForceReloadInIndexMainSettingsSuccessResponse:
+                  $ref: "#/components/examples/ForceReloadInIndexMainSettingsSuccessResponse"
+                ForceReloadInIndexMainSettingsFailedResponse:
+                  $ref: "#/components/examples/ForceReloadInIndexMainSettingsFailedResponse"
+        403:
+          description: The request was forbidden by ROR's ACL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenRorResponse'
+              examples:
+                NoAclBlockWasMatchedForbiddenResponseExample:
+                  $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
+                ForbidBlockMatchedResponseExample:
+                  $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                TestSettingsNotConfiguredForbiddenResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredForbiddenResponseExample"
+                ImpersonationNotSupportedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
+                ImpersonationNotAllowedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotAllowedResponseExample"
+                RorIsNotStartedYetResponseExample:
+                  $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
+                RorFailedToStartResponseExample:
+                  $ref: "#/components/examples/RorFailedToStartResponseExample"
   /_readonlyrest/admin/config/test:
     get:
       summary: Getting currently applied Test Settings
@@ -464,6 +635,146 @@ components:
     KibanaHiddenAppPattern:
       type: string
       description: It's a Kibana app name regex pattern
+
+    GetInIndexMainSettingsResponse:
+      oneOf:
+        - $ref: '#/components/schemas/CurrentMainSettingsResponse'
+        - $ref: '#/components/schemas/MainSettingsNotConfiguredResponse'
+        - $ref: '#/components/schemas/MainSettingsCannotBeProvidedResponse'
+      discriminator:
+        propertyName: status
+        mapping:
+          ok: '#/components/schemas/CurrentMainSettingsResponse'
+          empty: '#/components/schemas/MainSettingsNotConfiguredResponse'
+          ko: '#/components/schemas/MainSettingsCannotBeProvidedResponse'
+
+    CurrentMainSettingsResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: "Success status"
+          enum:
+            - ok
+        message:
+          type: string
+          description: ROR main settings YAML
+
+    MainSettingsNotConfiguredResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: "No Main Settings status"
+          enum:
+            - empty
+        message:
+          type: string
+          description: Human readable message
+
+    MainSettingsCannotBeProvidedResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: "Failed status"
+          enum:
+            - ko
+        message:
+          type: string
+          description: Human readable message
+
+    UpdateMainSettingsRequest:
+      type: object
+      required:
+        - settings
+      properties:
+        settings:
+          type: string
+          description: "ROR main settings YAML"
+          example: |
+            readonlyrest:\\r\\n    access_control_rules:\\r\\n\\r\\n    - name: | \\""Require HTTP Basic | Auth\\""\\r\\n      type: allow\\r\\n      indices: | [\\""test\\""]\\r\\n\\r\\n    - name: | \\""other\\""\\r\\n      auth_key: \\""admin:test\\""
+
+    UpdateMainSettingsResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: Update Main Settings status
+          enum:
+            - ok
+            - ko
+        message:
+          type: string
+          description: Human readable message
+
+    GetFileMainSettingsResponse:
+      oneOf:
+        - $ref: '#/components/schemas/GetFileMainSettingsSuccessResponse'
+        - $ref: '#/components/schemas/GetFileMainSettingsFailureResponse'
+      discriminator:
+        propertyName: status
+        mapping:
+          ok: '#/components/schemas/GetFileMainSettingsSuccessResponse'
+          ko: '#/components/schemas/GetFileMainSettingsFailureResponse'
+
+    GetFileMainSettingsSuccessResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: "Success status"
+          enum:
+            - ok
+        message:
+          type: string
+          description: ROR main settings YAML
+
+    GetFileMainSettingsFailureResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: "Failed status"
+          enum:
+            - ko
+        message:
+          type: string
+          description: Human readable message
+
+    ForceReloadInIndexMainSettingsResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: Force reload in-index Main Settings status
+          enum:
+            - ok
+            - ko
+        message:
+          type: string
+          description: Human readable message
 
     GetTestSettingsResponse:
       oneOf:
@@ -1089,6 +1400,62 @@ components:
           due_to:
             - READONLYREST_FAILED_TO_START
         status: 403
+
+    MainSettingsAreConfiguredExample:
+      summary: Main settings are configured
+      value:
+        status: ok
+        message: |
+          readonlyrest:\\r\\n    access_control_rules:\\r\\n\\r\\n    - name: | \\""Require HTTP Basic | Auth\\""\\r\\n      type: allow\\r\\n      indices: | [\\""test\\""]\\r\\n\\r\\n    - name: | \\""other\\""\\r\\n      auth_key: \\""admin:test\\""
+
+    MainSettingsAreNotConfiguredExample:
+      summary: Main setting are NOT configured
+      value:
+        status: empty
+        message: "Cannot find settings index"
+
+    MainSettingsCannotBeProvidedExample:
+      summary: Main setting failed to get
+      value:
+        status: ko
+        message: "Settings content is malformed"
+
+    UpdateMainSettingsSuccessResponse:
+      summary: Main settings updated with success
+      value:
+        status: ok
+        message: "updated settings"
+
+    UpdateMainSettingsFailedResponse:
+      summary: Main settings update failed
+      value:
+        status: ko
+        message: "Cannot save new settings"
+
+    GetFileMainSettingsSuccessExample:
+      summary: Successfully fetched file defined Main settings
+      value:
+        status: ok
+        message: |
+          readonlyrest:\\r\\n    access_control_rules:\\r\\n\\r\\n    - name: | \\""Require HTTP Basic | Auth\\""\\r\\n      type: allow\\r\\n      indices: | [\\""test\\""]\\r\\n\\r\\n    - name: | \\""other\\""\\r\\n      auth_key: \\""admin:test\\""
+
+    GetFileMainSettingsFailureExample:
+      summary: Cannot get file defined Main Settings
+      value:
+        status: ko
+        message: "Settings content is malformed"
+
+    ForceReloadInIndexMainSettingsSuccessResponse:
+      summary: Successfully reloaded in-index Main Settings
+      value:
+        status: ok
+        message: "ReadonlyREST settings were reloaded with success!"
+
+    ForceReloadInIndexMainSettingsFailedResponse:
+      summary: Cannot reload in-index Main Settings
+      value:
+        status: ko
+        message: "Current settings are already loaded"
 
     TestSettingsAreConfiguredAndValidResponseExample:
       summary: Test settings are configured and valid (no warnings)
