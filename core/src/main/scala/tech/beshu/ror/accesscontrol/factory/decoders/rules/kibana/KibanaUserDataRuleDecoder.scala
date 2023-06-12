@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolv
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath._
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName, KibanaAccess, KibanaAllowedApiPath, KibanaApp, Regex, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaAccess, KibanaAllowedApiPath, KibanaApp, KibanaIndexName, Regex, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{RulesLevelCreationError, ValueLevelCreationError}
@@ -48,8 +48,8 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex)
       .instance { c =>
         for {
           access <- c.downField("access").as[KibanaAccess]
-          kibanaIndex <- c.downField("index").as[Option[RuntimeSingleResolvableVariable[IndexName.Kibana]]]
-          kibanaTemplateIndex <- c.downField("template_index").as[Option[RuntimeSingleResolvableVariable[IndexName.Kibana]]]
+          kibanaIndex <- c.downField("index").as[Option[RuntimeSingleResolvableVariable[KibanaIndexName]]]
+          kibanaTemplateIndex <- c.downField("template_index").as[Option[RuntimeSingleResolvableVariable[KibanaIndexName]]]
           appsToHide <- c.downField("hide_apps").as[Option[Set[KibanaApp]]]
           allowedApiPaths <- c.downField("allowed_api_paths").as[Option[Set[KibanaAllowedApiPath]]]
           metadataResolvableJsonRepresentation <- c.keys.flatMap(_.find(_ == "metadata")) match {

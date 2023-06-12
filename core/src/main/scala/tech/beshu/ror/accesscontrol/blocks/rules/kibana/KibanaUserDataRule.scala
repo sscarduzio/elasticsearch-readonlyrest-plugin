@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepre
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
-import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, KibanaAllowedApiPath, KibanaApp, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{KibanaAccess, KibanaAllowedApiPath, KibanaApp, KibanaIndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -128,8 +128,8 @@ object KibanaUserDataRule {
   }
 
   final case class Settings(override val access: KibanaAccess,
-                            kibanaIndex: RuntimeSingleResolvableVariable[IndexName.Kibana],
-                            kibanaTemplateIndex: Option[RuntimeSingleResolvableVariable[IndexName.Kibana]],
+                            kibanaIndex: RuntimeSingleResolvableVariable[KibanaIndexName],
+                            kibanaTemplateIndex: Option[RuntimeSingleResolvableVariable[KibanaIndexName]],
                             appsToHide: Set[KibanaApp],
                             allowedApiPaths: Set[KibanaAllowedApiPath],
                             metadata: Option[ResolvableJsonRepresentation],

@@ -53,7 +53,7 @@ class KibanaUserDataRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RO)
-            rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+            rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
             rule.settings.kibanaTemplateIndex should be(None)
             rule.settings.appsToHide should be(Set.empty)
             rule.settings.allowedApiPaths should be(Set.empty)
@@ -81,8 +81,8 @@ class KibanaUserDataRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RW)
-            rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana_custom")))
-            rule.settings.kibanaTemplateIndex should be(Some(AlreadyResolved(clusterIndexName(".kibana_template"))))
+            rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana_custom")))
+            rule.settings.kibanaTemplateIndex should be(Some(AlreadyResolved(kibanaIndexName(".kibana_template"))))
             rule.settings.appsToHide should be(Set(KibanaApp("app1"), KibanaApp("app2")))
             rule.settings.allowedApiPaths should be(
               Set(KibanaAllowedApiPath(AllowedHttpMethod.Any, Regex.compile("""^/api/spaces/.*$""").get))
@@ -108,7 +108,7 @@ class KibanaUserDataRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.access should be(KibanaAccess.RO)
-              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
@@ -132,7 +132,7 @@ class KibanaUserDataRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.access should be(KibanaAccess.RW)
-              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
@@ -156,7 +156,7 @@ class KibanaUserDataRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.access should be(KibanaAccess.Admin)
-              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
@@ -180,7 +180,7 @@ class KibanaUserDataRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.access should be(KibanaAccess.ApiOnly)
-              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
@@ -204,7 +204,7 @@ class KibanaUserDataRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.access should be(KibanaAccess.ROStrict)
-              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.metadata should be(None)
@@ -227,7 +227,7 @@ class KibanaUserDataRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.access should be(KibanaAccess.Unrestricted)
-              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
@@ -254,7 +254,7 @@ class KibanaUserDataRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.access should be(KibanaAccess.RO)
-              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set(KibanaApp("app1")))
               rule.settings.allowedApiPaths should be(Set.empty)
@@ -279,7 +279,7 @@ class KibanaUserDataRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.access should be(KibanaAccess.RO)
-              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set(KibanaApp("app1"), KibanaApp("app2")))
               rule.settings.allowedApiPaths should be(Set.empty)
@@ -304,7 +304,7 @@ class KibanaUserDataRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.access should be(KibanaAccess.RO)
-              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
@@ -331,7 +331,7 @@ class KibanaUserDataRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.access should be(KibanaAccess.RO)
-              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(
@@ -358,7 +358,7 @@ class KibanaUserDataRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.access should be(KibanaAccess.RO)
-              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(
@@ -390,7 +390,7 @@ class KibanaUserDataRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.access should be(KibanaAccess.RO)
-              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(
@@ -423,7 +423,7 @@ class KibanaUserDataRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.access should be(KibanaAccess.RO)
-              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set(
@@ -457,7 +457,7 @@ class KibanaUserDataRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.access should be(KibanaAccess.RO)
-              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
@@ -510,7 +510,7 @@ class KibanaUserDataRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RO)
-            rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+            rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
             rule.settings.kibanaTemplateIndex.value shouldBe a[ToBeResolved[_]]
             rule.settings.appsToHide should be(Set.empty)
             rule.settings.allowedApiPaths should be(Set.empty)
@@ -559,7 +559,7 @@ class KibanaUserDataRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.access should be(KibanaAccess.RO)
-              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
@@ -584,7 +584,7 @@ class KibanaUserDataRuleSettingsTests
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.access should be(KibanaAccess.RO)
-              rule.settings.kibanaIndex should be(AlreadyResolved(clusterIndexName(".kibana")))
+              rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
