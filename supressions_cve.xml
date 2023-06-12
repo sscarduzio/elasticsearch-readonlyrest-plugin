@@ -58,13 +58,6 @@
     </suppress>
     <suppress>
         <notes><![CDATA[
-   file name: guava-31.1-jre.jar - fixed in given version (https://nvd.nist.gov/vuln/detail/cve-2020-8908)
-   ]]></notes>
-        <sha1>60458f877d055d0c9114d9e1a2efb737b4bc282c</sha1>
-        <cve>CVE-2020-8908</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
    file name: bc-noncert-1.0.2.4.jar
    ]]></notes>
         <sha1>ab0203590a39ad2fe4c225ddfad70e6a552c8445</sha1>
