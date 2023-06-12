@@ -87,6 +87,8 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
         case Right(results) =>
           Task {
             results.flatMap(_.toLdapGroups(mode)).toSet
+          } flatMap { mainGroups =>
+            enrichWithNestedGroupsIfNecessary(mainGroups)
           } map { allGroups =>
             UniqueList.fromIterable(allGroups.map(_.name))
           }

@@ -39,18 +39,14 @@ private [implementations] object SearchResultEntryOps {
     }
 
     def toLdapGroups(mode: GroupsFromUserEntry): List[LdapGroup] = {
-      for {
-        groupName <- Option(entry.getAttributeValues(mode.groupsFromUserAttribute.value.value))
-          .toList.flatMap(_.toList)
-          .flatMap(groupNameFromDn(_, mode))
-          .flatMap(NonEmptyString.unapply)
-          .map(GroupName.apply)
-        dn <- Option(entry.getDN).flatMap(NonEmptyString.unapply).map(Dn.apply)
-      } yield LdapGroup(groupName, dn)
+      Option(entry.getAttributeValues(mode.groupsFromUserAttribute.value.value))
+        .toList.flatMap(_.toList)
+        .flatMap(NonEmptyString.unapply)
+        .flatMap(ldapGroupFromDn(_, mode))
     }
 
-    private def groupNameFromDn(dnString: String, mode: GroupsFromUserEntry) = {
-      val dn = new DN(dnString)
+    private def ldapGroupFromDn(dnString: NonEmptyString, mode: GroupsFromUserEntry) = {
+      val dn = new DN(dnString.value)
       if (dn.isDescendantOf(mode.searchGroupBaseDN.value.value, false)) {
         Try {
           dn.getRDN
@@ -58,7 +54,8 @@ private [implementations] object SearchResultEntryOps {
             .filter(_.getBaseName === mode.groupNameAttribute.value.value)
             .map(_.getValue)
             .headOption
-        }.toOption.flatten
+        }.toOption.flatten.flatMap(NonEmptyString.unapply)
+          .map { groupName => LdapGroup(GroupName(groupName), Dn(dnString)) }
       } else {
         None
       }
