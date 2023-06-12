@@ -24,22 +24,22 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.utils.DynamicallyTraversableGraph
+import tech.beshu.ror.utils.GraphNodeAncestorsExplorer
 
-class DynamicallyTraversableGraphTest extends AnyWordSpec with Matchers with MockFactory {
+class GraphNodeAncestorsExplorerTest extends AnyWordSpec with Matchers with MockFactory {
 
   "Parents of 1 are" in {
     val graph = createDynamicallyTraversableGraph(nestedLevels = 2)
-    graph.findAllParentsOf(Set("1")).runSyncUnsafe() should be (Set("2", "3", "4", "6"))
+    graph.findAllAncestorsOf(Set("1")).runSyncUnsafe() should be (Set("2", "3", "4", "6"))
   }
 
   "Parents of 2 are" in {
     val graph = createDynamicallyTraversableGraph(nestedLevels = 1)
-    graph.findAllParentsOf(Set("2")).runSyncUnsafe() should be (Set("4"))
+    graph.findAllAncestorsOf(Set("2")).runSyncUnsafe() should be (Set("4"))
   }
 
   private def createDynamicallyTraversableGraph(nestedLevels: Int Refined Positive) = {
-    new DynamicallyTraversableGraph[String](nestedLevels, doFetchParentNodesOfMock())
+    new GraphNodeAncestorsExplorer[String](nestedLevels, doFetchParentNodesOfMock())
   }
 
   private def doFetchParentNodesOfMock() = {

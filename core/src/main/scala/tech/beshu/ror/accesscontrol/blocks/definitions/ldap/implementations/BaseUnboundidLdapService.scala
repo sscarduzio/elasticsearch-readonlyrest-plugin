@@ -70,7 +70,7 @@ private [implementations] abstract class BaseUnboundidLdapService(connectionPool
   }
 }
 
-private [implementations] final case class LdapUnexpectedResult(code: ResultCode, cause: String)
+private final case class LdapUnexpectedResult(code: ResultCode, cause: String)
   extends Throwable(s"LDAP returned code: ${code.getName} [${code.intValue()}], cause: $cause")
 
 final case class UserSearchFilterConfig(searchUserBaseDN: Dn, uidAttribute: NonEmptyString)

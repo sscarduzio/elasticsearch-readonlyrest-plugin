@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Sear
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupSearchFilter, NestedGroupsConfig, UniqueMemberAttribute}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
 import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.utils.DynamicallyTraversableGraph
+import tech.beshu.ror.utils.GraphNodeAncestorsExplorer
 import tech.beshu.ror.utils.LoggerOps.toLoggerOps
 
 import scala.concurrent.duration.FiniteDuration
@@ -36,13 +36,13 @@ private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: 
                                                                 serviceTimeout: FiniteDuration Refined Positive)
   extends Logging {
 
-  private val ldapGroupsDynamicallyTraversableGraph = new DynamicallyTraversableGraph[LdapGroup](
-    nestedLevels = config.nestedLevels,
+  private val ldapGroupsExplorer = new GraphNodeAncestorsExplorer[LdapGroup](
+    kinshipLevel = config.nestedLevels,
     doFetchParentNodesOf = doFetchGroupsOf
   )
 
   def fetchNestedGroupsOf(mainGroups: Iterable[LdapGroup]): Task[Set[LdapGroup]] = {
-    ldapGroupsDynamicallyTraversableGraph.findAllParentsOf(mainGroups)
+    ldapGroupsExplorer.findAllAncestorsOf(mainGroups)
   }
 
   private def doFetchGroupsOf(group: LdapGroup) = {

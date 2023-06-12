@@ -215,8 +215,15 @@ object LdapServicesDecoder {
               uniqueMemberAttribute,
               groupNameAttribute
             ))
-          case GroupsFromUserEntry(_, _, _, _) =>
-            ???
+          case GroupsFromUserEntry(searchGroupBaseDN, groupSearchFilter, groupNameAttribute, _) =>
+            // todo:
+            Some(NestedGroupsConfig(
+              nestedLevels = 3,
+              searchGroupBaseDN,
+              groupSearchFilter,
+              UniqueMemberAttribute("member"),
+              groupNameAttribute
+            ))
         }
       )
     }

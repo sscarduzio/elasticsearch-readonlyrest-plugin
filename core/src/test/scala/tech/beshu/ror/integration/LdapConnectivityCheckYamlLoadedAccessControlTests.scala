@@ -106,9 +106,10 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
        |      bind_password: "hDIo2B*8IuV7SXaWyDUFu0Ba!E"
        |      search_user_base_DN: "cn=users,dc=couto,dc=pl"
        |      user_id_attribute: "uid"
-       |      groups_from_user: false
+       |      groups_from_user: true
        |      search_groups_base_DN: "cn=groups,dc=couto,dc=pl"
        |      unique_member_attribute: "member"
+       |      groups_from_user_attribute: "memberOf"
        |""".stripMargin
 
   override protected def afterAll(): Unit = {

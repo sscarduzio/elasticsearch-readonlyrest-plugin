@@ -21,20 +21,20 @@ import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import monix.execution.atomic.Atomic
 
-class DynamicallyTraversableGraph[NODE](nestedLevels: Int Refined Positive,
-                                        doFetchParentNodesOf: NODE => Task[Set[NODE]]) {
+class GraphNodeAncestorsExplorer[NODE](kinshipLevel: Int Refined Positive,
+                                       doFetchParentNodesOf: NODE => Task[Set[NODE]]) {
 
-  def findAllParentsOf(nodes: Iterable[NODE]): Task[Set[NODE]] = {
-    findAllParentsOf(nodes, Atomic(Set.empty[NODE]), nestedLevel = nestedLevels.value)
+  def findAllAncestorsOf(nodes: Iterable[NODE]): Task[Set[NODE]] = {
+    findAllAncestorsOf(nodes, Atomic(Set.empty[NODE]), kinshipLevel = kinshipLevel.value)
   }
 
-  private def findAllParentsOf(nodes: Iterable[NODE],
-                               processedNodes: Atomic[Set[NODE]],
-                               nestedLevel: Int): Task[Set[NODE]] = {
-    if (nestedLevel > 0) {
+  private def findAllAncestorsOf(nodes: Iterable[NODE],
+                                 processedNodes: Atomic[Set[NODE]],
+                                 kinshipLevel: Int): Task[Set[NODE]] = {
+    if (kinshipLevel > 0) {
       Task
         .parSequenceUnordered {
-          nodes.toList.map(fetchParentNodesOf(_, processedNodes, nestedLevel))
+          nodes.toList.map(fetchAncestorsOf(_, processedNodes, kinshipLevel))
         }
         .map(_.flatten.toSet)
     } else {
@@ -42,10 +42,10 @@ class DynamicallyTraversableGraph[NODE](nestedLevels: Int Refined Positive,
     }
   }
 
-  private def fetchParentNodesOf(node: NODE,
-                                 processedNodes: Atomic[Set[NODE]],
-                                 nestedLevel: Int): Task[Set[NODE]] = {
-    import DynamicallyTraversableGraph.ProcessingState
+  private def fetchAncestorsOf(node: NODE,
+                               processedNodes: Atomic[Set[NODE]],
+                               kinshipLevel: Int): Task[Set[NODE]] = {
+    import GraphNodeAncestorsExplorer.ProcessingState
     val processingState = processedNodes.transformAndExtract { alreadyProcessedNodes =>
       if (alreadyProcessedNodes.contains(node)) (ProcessingState.AlreadyProcessed, alreadyProcessedNodes)
       else (ProcessingState.ToBeProcessed, alreadyProcessedNodes + node)
@@ -56,13 +56,13 @@ class DynamicallyTraversableGraph[NODE](nestedLevels: Int Refined Positive,
       case ProcessingState.ToBeProcessed =>
         doFetchParentNodesOf(node)
           .flatMap { newGroups =>
-            findAllParentsOf(newGroups, processedNodes, nestedLevel - 1)
+            findAllAncestorsOf(newGroups, processedNodes, kinshipLevel - 1)
               .map(_ ++ newGroups)
           }
     }
   }
 }
-private object DynamicallyTraversableGraph {
+private object GraphNodeAncestorsExplorer {
 
   sealed trait ProcessingState
   object ProcessingState {
