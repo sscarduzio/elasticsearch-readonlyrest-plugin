@@ -22,7 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{MatchingAlwaysRule, RuleN
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaIndexRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.KibanaIndexName
 
 class KibanaIndexRule(val settings: Settings)
   extends MatchingAlwaysRule {
@@ -44,5 +44,5 @@ object KibanaIndexRule {
     override val name = Rule.Name("kibana_index")
   }
 
-  final case class Settings(kibanaIndex: RuntimeSingleResolvableVariable[IndexName.Kibana])
+  final case class Settings(kibanaIndex: RuntimeSingleResolvableVariable[KibanaIndexName])
 }

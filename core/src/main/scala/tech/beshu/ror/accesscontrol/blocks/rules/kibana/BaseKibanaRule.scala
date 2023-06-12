@@ -25,11 +25,12 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.BaseKibanaRule.Settings
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
+import tech.beshu.ror.accesscontrol.domain.KibanaIndexName._
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local.devNullKibana
 import tech.beshu.ror.accesscontrol.domain.IndexName.Wildcard
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.matchers.{IndicesMatcher, MatcherWithWildcardsScalaAdapter}
+import tech.beshu.ror.accesscontrol.matchers.{DataStreamMatcher, IndicesMatcher, MatcherWithWildcardsScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 import java.util.regex.Pattern
@@ -109,7 +110,7 @@ abstract class BaseKibanaRule(val settings: Settings) extends Logging {
   }
 
   private def isKibanaSimpleData = {
-    kibanaCanBeModified && isRelatedToKibanaSampleDataIndex
+    kibanaCanBeModified && (isRelatedToKibanaSampleDataIndex || isRelatedToKibanaSampleDataStream)
   }
 
   private def emptyIndicesMatch = {
@@ -135,7 +136,12 @@ abstract class BaseKibanaRule(val settings: Settings) extends Logging {
   }
 
   private def isTargetingKibana = ProcessingContext.create { (requestContext, kibanaIndexName) =>
-    val result = isRelatedToSingleIndex(kibanaIndexName)(requestContext, kibanaIndexName)
+    val result = if (requestContext.initialBlockContext.indices.size == 1) {
+      val requestedIndex = requestContext.initialBlockContext.indices.head
+      requestedIndex.isRelatedToKibanaIndex(kibanaIndexName)
+    } else {
+      false
+    }
     logger.debug(s"[${requestContext.id.show}] Is targeting Kibana? $result")
     result
   }
@@ -163,7 +169,7 @@ abstract class BaseKibanaRule(val settings: Settings) extends Logging {
 
   // Allow other actions if devnull is targeted to readers and writers
   private def isDevNullKibanaRelated = {
-    isRelatedToSingleIndex(devNullKibana)
+    isRelatedToSingleIndex(devNullKibana.underlying)
   }
 
   private def isRelatedToSingleIndex(index: ClusterIndexName) = ProcessingContext.create { (requestContext, _) =>
@@ -176,6 +182,16 @@ abstract class BaseKibanaRule(val settings: Settings) extends Logging {
     val result = requestContext.initialBlockContext.indices.toList match {
       case Nil => false
       case head :: Nil => Matchers.kibanaSampleDataIndexMatcher.`match`(head)
+      case _ => false
+    }
+    logger.debug(s"[${requestContext.id.show}] Is related to Kibana sample data index? $result")
+    result
+  }
+
+  private def isRelatedToKibanaSampleDataStream = ProcessingContext.create { (requestContext, _) =>
+    val result = requestContext.initialBlockContext.dataStreams.toList match {
+      case Nil => false
+      case head :: Nil => Matchers.kibanaSampleDataStreamMatcher.`match`(head)
       case _ => false
     }
     logger.debug(s"[${requestContext.id.show}] Is related to Kibana sample data index? $result")
@@ -246,12 +262,13 @@ object BaseKibanaRule {
     val indicesWriteAction = MatcherWithWildcardsScalaAdapter[Action](Set(Action("indices:data/write/*")))
 
     val kibanaSampleDataIndexMatcher = IndicesMatcher.create[ClusterIndexName](Set(Local(Wildcard("kibana_sample_data_*"))))
+    val kibanaSampleDataStreamMatcher = DataStreamMatcher.create[DataStreamName](Set(DataStreamName.Pattern("kibana_sample_data_*")))
   }
 
-  type ProcessingContext = ReaderT[Id, (RequestContext, IndexName.Kibana), Boolean]
+  type ProcessingContext = ReaderT[Id, (RequestContext, KibanaIndexName), Boolean]
   object ProcessingContext {
-    def create(func: (RequestContext, IndexName.Kibana) => Boolean): ProcessingContext =
-      ReaderT[Id, (RequestContext, IndexName.Kibana), Boolean] { case (r, i) => func(r, i) }
+    def create(func: (RequestContext, KibanaIndexName) => Boolean): ProcessingContext =
+      ReaderT[Id, (RequestContext, KibanaIndexName), Boolean] { case (r, i) => func(r, i) }
   }
 
   implicit class ProcessingContextBooleanOps(val context1: ProcessingContext) extends AnyVal {
