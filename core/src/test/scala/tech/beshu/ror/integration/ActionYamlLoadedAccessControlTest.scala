@@ -21,6 +21,8 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, ForbiddenByMismatched}
+import tech.beshu.ror.accesscontrol.AccessControl.WithHistory
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.Action
 import tech.beshu.ror.mocks.MockRequestContext
 
@@ -59,31 +61,31 @@ class ActionYamlLoadedAccessControlTest extends AnyWordSpec with BaseYamlLoadedA
         "it is an metadata request and the action is on the configured list with new name" in {
           val request = MockRequestContext.metadata.copy(action = Action.RorAction.RorUserMetadataAction)
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 1
+          lastMatchedBlockName(result) should be(Some("Allowed for user metadata action"))
           inside(result.result) { case Allow(_, _) => }
         }
         "it is a test config request and the action name match pattern on the configured list" in {
           val request = MockRequestContext.indices.copy(action = Action.RorAction.RorTestConfigAction)
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 2
+          lastMatchedBlockName(result) should be(Some("Allowed for test config action"))
           inside(result.result) { case Allow(_, _) => }
         }
         "it is a auth mock request and the action is on the configured list with old name" in {
           val request = MockRequestContext.indices.copy(action = Action.RorAction.RorAuthMockAction)
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 3
+          lastMatchedBlockName(result) should be(Some("Allowed for auth mock action"))
           inside(result.result) { case Allow(_, _) => }
         }
         "it is a config request and the action name match pattern on the configured list with old name" in {
           val request = MockRequestContext.indices.copy(action = Action.RorAction.RorConfigAction)
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 4
+          lastMatchedBlockName(result) should be(Some("Allowed for config action"))
           inside(result.result) { case Allow(_, _) => }
         }
         "it is a audit event request and the action match pattern on the configured list with old name" in {
           val request = MockRequestContext.indices.copy(action = Action.RorAction.RorAuditEventAction)
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 5
+          lastMatchedBlockName(result) should be(Some("Allowed for any action"))
           inside(result.result) { case Allow(_, _) => }
         }
       }
@@ -91,11 +93,15 @@ class ActionYamlLoadedAccessControlTest extends AnyWordSpec with BaseYamlLoadedA
         "the action is not on the configured list" in {
           val request = MockRequestContext.metadata.copy(action = MockRequestContext.defaultAction)
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 5
+          lastMatchedBlockName(result) should be(Some("Allowed for any action"))
           inside(result.result) { case ForbiddenByMismatched(_) => }
         }
       }
     }
+  }
+
+  private def lastMatchedBlockName[RESULT, B <: BlockContext](history: WithHistory[RESULT, B]) = {
+    history.history.map(_.block.value).lastOption
   }
 
 }
