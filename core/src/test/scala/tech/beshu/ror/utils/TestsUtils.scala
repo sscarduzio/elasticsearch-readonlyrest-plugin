@@ -92,6 +92,8 @@ object TestsUtils {
   def currentGroupHeader(value: String): Header =
     header("x-ror-current-group", value)
 
+  def kibanaIndexName(str: NonEmptyString): KibanaIndexName = KibanaIndexName(localIndexName(str))
+
   def clusterIndexName(str: NonEmptyString): ClusterIndexName = ClusterIndexName.unsafeFromString(str.value)
 
   def localIndexName(str: NonEmptyString): ClusterIndexName.Local = ClusterIndexName.Local.fromString(str.value.value).get
@@ -222,8 +224,8 @@ object TestsUtils {
     def assertBlockContext(loggedUser: Option[LoggedUser] = None,
                            currentGroup: Option[GroupName] = None,
                            availableGroups: UniqueList[GroupName] = UniqueList.empty,
-                           kibanaIndex: Option[ClusterIndexName] = None,
-                           kibanaTemplateIndex: Option[ClusterIndexName] = None,
+                           kibanaIndex: Option[KibanaIndexName] = None,
+                           kibanaTemplateIndex: Option[KibanaIndexName] = None,
                            hiddenKibanaApps: Set[KibanaApp] = Set.empty,
                            kibanaAccess: Option[KibanaAccess] = None,
                            userOrigin: Option[UserOrigin] = None,

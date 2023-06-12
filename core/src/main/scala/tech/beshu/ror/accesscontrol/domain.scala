@@ -511,8 +511,6 @@ object domain {
   sealed trait IndexName
   object IndexName {
 
-    type Kibana = ClusterIndexName.Local
-
     val wildcard: IndexName.Wildcard = IndexName.Wildcard("*")
 
     final case class Full(name: NonEmptyString)
@@ -548,6 +546,50 @@ object domain {
       )
   }
 
+  final case class KibanaIndexName(underlying: ClusterIndexName.Local)
+  object KibanaIndexName {
+
+    private val kibanaRelatedIndicesSuffixRegexes = Vector(
+      """^_\d+\.\d+\.\d+$""".r, // eg. .kibana_8.0.0
+      """^_alerting_cases$""".r, // eg. .kibana_alerting_cases
+      """^_alerting_cases_\d+\.\d+\.\d+$""".r, // eg. .kibana_alerting_cases_8.8.0
+      """^_analytics$""".r, // eg. .kibana_analytics
+      """^_analytics_\d+\.\d+\.\d+$""".r, // eg. .kibana_analytics_8.0.0
+      """^_ingest$""".r, // eg. .kibana_ingest
+      """^_ingest_\d+\.\d+\.\d+$""".r, // eg. .kibana_ingest_8.0.0
+      """^-event-log-\d+\.\d+\.\d+$""".r, // eg. .kibana-event-log-8.8.0
+      """^_security_solution$""".r, // eg. .kibana_security_solution
+      """^_security_solution_\d+\.\d+\.\d+$""".r, // eg. .kibana_security_solution_8.8.0
+      """^_task_manager$""".r, // eg. .kibana_task_manager
+      """^_task_manager_\d+\.\d+\.\d+$""".r, // eg. .kibana_task_manager_8.8.0
+    )
+
+    implicit class IsRelatedToKibanaIndex(val indexName: ClusterIndexName) extends AnyVal {
+      def isRelatedToKibanaIndex(kibanaIndex: KibanaIndexName): Boolean = {
+        if (indexName == kibanaIndex.underlying) {
+          true
+        } else if (isPrefixedBy(kibanaIndex)) {
+          val indexNameStringWithoutKibanaIndexNamePrefix = getNameWithoutKibanaIndexNamePrefix(kibanaIndex)
+          kibanaRelatedIndicesSuffixRegexes.exists(_.matches(indexNameStringWithoutKibanaIndexNamePrefix))
+        } else {
+          false
+        }
+      }
+
+      private def isPrefixedBy(kibanaIndex: KibanaIndexName) = {
+        indexName.stringify.startsWith(kibanaIndex.underlying.stringify)
+      }
+
+      private def getNameWithoutKibanaIndexNamePrefix(kibanaIndex: KibanaIndexName) = {
+        indexName.stringify.replace(kibanaIndex.underlying.stringify, "")
+      }
+    }
+
+    implicit class Stringify(val kibanaIndexName: KibanaIndexName) extends AnyVal {
+      def stringify: String = kibanaIndexName.underlying.stringify
+    }
+  }
+
   sealed trait IndexAttribute
   object IndexAttribute {
     case object Opened extends IndexAttribute
@@ -563,8 +605,8 @@ object domain {
     object Local {
 
       val wildcard: ClusterIndexName.Local = Local(IndexName.wildcard)
-      val devNullKibana: IndexName.Kibana = Local(IndexName.Full(".kibana-devnull"))
-      val kibanaDefault: IndexName.Kibana = Local(IndexName.Full(".kibana"))
+      val devNullKibana: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(".kibana-devnull")))
+      val kibanaDefault: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(".kibana")))
 
       def fromString(value: String): Option[ClusterIndexName.Local] = {
         IndexName
