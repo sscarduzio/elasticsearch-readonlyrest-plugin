@@ -343,25 +343,25 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
   }
 
   private def assertMatchRuleUsingIndicesRequest(settings: SETTINGS,
-                              action: Action,
+                                                 action: Action,
                                                  requestedIndices: Set[ClusterIndexName] = Set.empty,
                                                  customKibanaIndex: Option[KibanaIndexName] = None,
-                              uriPath: Option[UriPath] = None)
-                             (blockContextAssertion: BlockContext => Unit = defaultOutputBlockContextAssertion(settings, requestedIndices, Set.empty, customKibanaIndex)) =
+                                                 uriPath: Option[UriPath] = None)
+                                                (blockContextAssertion: BlockContext => Unit = defaultOutputBlockContextAssertion(settings, requestedIndices, Set.empty, customKibanaIndex)) =
     assertRuleUsingIndicesRequest(settings, action, customKibanaIndex, requestedIndices, uriPath, Some(blockContextAssertion))
 
   private def assertMatchRuleUsingDataStreamsRequest(settings: SETTINGS,
-                              action: Action,
-                              requestedDataStreams: Set[DataStreamName],
-                              uriPath: Option[UriPath])
-                             (blockContextAssertion: BlockContext => Unit) =
+                                                     action: Action,
+                                                     requestedDataStreams: Set[DataStreamName],
+                                                     uriPath: Option[UriPath])
+                                                    (blockContextAssertion: BlockContext => Unit) =
     assertRuleUsingDataStreamsRequest(settings, action, None, requestedDataStreams, uriPath, Some(blockContextAssertion))
 
   private def assertNotMatchRuleUsingIndicesRequest(settings: SETTINGS,
-                                 action: Action,
-                                 customKibanaIndex: Option[KibanaIndexName] = None,
-                                 requestedIndices: Set[ClusterIndexName],
-                                 uriPath: Option[UriPath] = None) =
+                                                    action: Action,
+                                                    customKibanaIndex: Option[KibanaIndexName] = None,
+                                                    requestedIndices: Set[ClusterIndexName],
+                                                    uriPath: Option[UriPath] = None) =
     assertRuleUsingIndicesRequest(settings, action, customKibanaIndex, requestedIndices, uriPath, blockContextAssertion = None)
 
   private def assertRuleUsingIndicesRequest(settings: SETTINGS,
@@ -387,11 +387,11 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
   }
 
   private def assertRuleUsingDataStreamsRequest(settings: SETTINGS,
-                                            action: Action,
-                                            customKibanaIndex: Option[KibanaIndexName],
-                                            requestedDataStreams: Set[DataStreamName],
-                                            uriPath: Option[UriPath],
-                                            blockContextAssertion: Option[BlockContext => Unit]) = {
+                                                action: Action,
+                                                customKibanaIndex: Option[KibanaIndexName],
+                                                requestedDataStreams: Set[DataStreamName],
+                                                uriPath: Option[UriPath],
+                                                blockContextAssertion: Option[BlockContext => Unit]) = {
     val requestContext = MockRequestContext.dataStreams.copy(
       action = action,
       dataStreams = requestedDataStreams,
