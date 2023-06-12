@@ -21,7 +21,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaHideAppsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, KibanaApp, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{KibanaAccess, KibanaApp, KibanaIndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
@@ -41,7 +41,7 @@ object KibanaIndexRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaIndexRule] {
 
   override protected def decoder: Decoder[RuleDefinition[KibanaIndexRule]] = {
-    Decoder[RuntimeSingleResolvableVariable[IndexName.Kibana]]
+    Decoder[RuntimeSingleResolvableVariable[KibanaIndexName]]
       .map(index => new KibanaIndexRule(KibanaIndexRule.Settings(index)))
       .map(RuleDefinition.create(_))
   }
@@ -51,7 +51,7 @@ object KibanaTemplateIndexRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaTemplateIndexRule] {
 
   override protected def decoder: Decoder[RuleDefinition[KibanaTemplateIndexRule]] = {
-    Decoder[RuntimeSingleResolvableVariable[IndexName.Kibana]]
+    Decoder[RuntimeSingleResolvableVariable[KibanaIndexName]]
       .map(index => new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(index)))
       .map(RuleDefinition.create(_))
   }
