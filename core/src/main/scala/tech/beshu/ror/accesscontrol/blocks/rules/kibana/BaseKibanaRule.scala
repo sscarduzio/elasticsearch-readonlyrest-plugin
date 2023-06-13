@@ -136,9 +136,8 @@ abstract class BaseKibanaRule(val settings: Settings) extends Logging {
   }
 
   private def isTargetingKibana = ProcessingContext.create { (requestContext, kibanaIndexName) =>
-    val result = if (requestContext.initialBlockContext.indices.size == 1) {
-      val requestedIndex = requestContext.initialBlockContext.indices.head
-      requestedIndex.isRelatedToKibanaIndex(kibanaIndexName)
+    val result = if (requestContext.initialBlockContext.indices.nonEmpty) {
+      requestContext.initialBlockContext.indices.forall(_.isRelatedToKibanaIndex(kibanaIndexName))
     } else {
       false
     }
