@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.actions.rrtestconfig
 
 import org.elasticsearch.action.Action
-import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
 class RRTestConfigActionType extends Action[RRTestConfigResponse](RRTestConfigActionType.name) {
   override def newResponse(): RRTestConfigResponse =
@@ -25,6 +25,6 @@ class RRTestConfigActionType extends Action[RRTestConfigResponse](RRTestConfigAc
 }
 
 object RRTestConfigActionType {
-  val name = domain.Action.rorTestConfigAction.value
+  val name: String = RorAction.RorTestConfigAction.value
   val instance = new RRTestConfigActionType()
 }

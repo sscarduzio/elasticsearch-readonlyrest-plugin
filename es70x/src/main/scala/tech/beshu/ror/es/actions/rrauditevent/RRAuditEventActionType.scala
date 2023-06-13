@@ -16,14 +16,14 @@
  */
 package tech.beshu.ror.es.actions.rrauditevent
 
-import tech.beshu.ror.accesscontrol.domain
 import org.elasticsearch.action.Action
+import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
 class RRAuditEventActionType extends Action[RRAuditEventResponse](RRAuditEventActionType.name) {
   override def newResponse(): RRAuditEventResponse = new RRAuditEventResponse()
 }
 
 object RRAuditEventActionType {
-  val name = domain.Action.rorAuditEventAction.value
+  val name: String = RorAction.RorAuditEventAction.value
   val instance = new RRAuditEventActionType()
 }
