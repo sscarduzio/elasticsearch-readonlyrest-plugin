@@ -252,10 +252,10 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
     }
     "ROR action is used" when {
       "it's current user metadata request action" in {
-        assertMatchRuleUsingIndicesRequest(settingsOf(KibanaAccess.Admin), Action.rorUserMetadataAction, requestedIndices = Set(Local(rorIndex)))()
-        assertMatchRuleUsingIndicesRequest(settingsOf(KibanaAccess.Admin), Action.rorOldConfigAction, requestedIndices = Set(Local(rorIndex)))()
-        assertMatchRuleUsingIndicesRequest(settingsOf(KibanaAccess.Admin), Action.rorConfigAction, requestedIndices = Set(Local(rorIndex)))()
-        assertMatchRuleUsingIndicesRequest(settingsOf(KibanaAccess.Admin), Action.rorAuditEventAction, requestedIndices = Set(Local(rorIndex)))()
+        assertMatchRuleUsingIndicesRequest(settingsOf(KibanaAccess.Admin), Action.RorAction.RorUserMetadataAction, requestedIndices = Set(Local(rorIndex)))()
+        assertMatchRuleUsingIndicesRequest(settingsOf(KibanaAccess.Admin), Action.RorAction.RorOldConfigAction, requestedIndices = Set(Local(rorIndex)))()
+        assertMatchRuleUsingIndicesRequest(settingsOf(KibanaAccess.Admin), Action.RorAction.RorConfigAction, requestedIndices = Set(Local(rorIndex)))()
+        assertMatchRuleUsingIndicesRequest(settingsOf(KibanaAccess.Admin), Action.RorAction.RorAuditEventAction, requestedIndices = Set(Local(rorIndex)))()
       }
     }
     "Kibana related index is used" which {

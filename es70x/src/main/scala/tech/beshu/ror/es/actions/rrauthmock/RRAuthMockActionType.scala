@@ -17,13 +17,13 @@
 package tech.beshu.ror.es.actions.rrauthmock
 
 import org.elasticsearch.action.Action
-import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
 class RRAuthMockActionType extends Action[RRAuthMockResponse](RRAuthMockActionType.name) {
   override def newResponse(): RRAuthMockResponse = new RRAuthMockResponse()
 }
 
 object RRAuthMockActionType {
-  val name: String = domain.Action.rorAuthMockAction.value
+  val name: String = RorAction.RorAuthMockAction.value
   val instance = new RRAuthMockActionType()
 }
