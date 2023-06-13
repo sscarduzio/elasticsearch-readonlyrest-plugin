@@ -22,7 +22,6 @@ import com.comcast.ip4s.Port
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
-import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
@@ -60,15 +59,15 @@ object LdapServicesDecoder {
 
   private implicit def cachableLdapServiceDecoder(implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): AsyncDecoder[LdapService] =
     AsyncDecoderCreator.instance { c =>
-     c.downFields("cache_ttl_in_sec", "cache_ttl")
+      c.downFields("cache_ttl_in_sec", "cache_ttl")
         .as[Option[FiniteDuration Refined Positive]]
         .map {
           case Some(ttl) =>
-          decodeLdapService(c).map(_.map {
-            case service: LdapAuthService => new CacheableLdapServiceDecorator(service, ttl)
-            case service: LdapAuthenticationService => new CacheableLdapAuthenticationServiceDecorator(service, ttl)
-            case service: LdapAuthorizationService => new CacheableLdapAuthorizationServiceDecorator(service, ttl)
-          })
+            decodeLdapService(c).map(_.map {
+              case service: LdapAuthService => new CacheableLdapServiceDecorator(service, ttl)
+              case service: LdapAuthenticationService => new CacheableLdapAuthenticationServiceDecorator(service, ttl)
+              case service: LdapAuthorizationService => new CacheableLdapAuthorizationServiceDecorator(service, ttl)
+            })
           case None =>
             decodeLdapService(c)
         }
@@ -78,8 +77,8 @@ object LdapServicesDecoder {
   private def decodeLdapService(cursor: HCursor)
                                (implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): Task[Either[DecodingFailure, LdapUserService]] = {
     for {
-      authenticationService <- (authenticationServiceDecoder: AsyncDecoder[LdapAuthenticationService])(cursor)
-      authortizationService <- (authorizationServiceDecoder: AsyncDecoder[LdapAuthorizationService])(cursor)
+      authenticationService <- (authenticationServiceDecoder: AsyncDecoder[LdapAuthenticationService]) (cursor)
+      authortizationService <- (authorizationServiceDecoder: AsyncDecoder[LdapAuthorizationService]) (cursor)
       circuitBreakerSettings <- AsyncDecoderCreator.from(circuitBreakerDecoder)(cursor)
     } yield (authenticationService, authortizationService, circuitBreakerSettings) match {
       case (Right(authn), Right(authz), Right(circuitBreakerConfig)) => Right {
@@ -99,60 +98,60 @@ object LdapServicesDecoder {
   private def authenticationServiceDecoder(implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): AsyncDecoder[LdapAuthenticationService] =
     AsyncDecoderCreator
       .instance[LdapAuthenticationService] { c =>
-      val ldapServiceDecodingResult = for {
-        name <- c.downField("name").as[LdapService.Name]
-        connectionConfig <- connectionConfigDecoder(c)
-        userSearchFiler <- userSearchFilerConfigDecoder(c)
-      } yield UnboundidLdapAuthenticationService.create(
-        name,
-        ldapConnectionPoolProvider,
-        connectionConfig,
-        userSearchFiler
-      )
-      ldapServiceDecodingResult match {
-        case Left(error) => Task.now(Left(error))
-        case Right(task) => task.flatMap {
-          case Left(HostConnectionError(hosts)) =>
-            val connectionErrorMessage = Message(s"There was a problem with LDAP connection to: ${hosts.map(_.url.toString()).toList.mkString(",")}")
-            Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
-          case Left(ServerDiscoveryConnectionError(recordName, providerUrl)) =>
-            val connectionErrorMessage = Message(s"There was a problem with LDAP connection in discovery mode. Connection details: recordName=${recordName.getOrElse("default")}, providerUrl=${providerUrl.getOrElse("default")}")
-            Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
-          case Right(service) =>
-            Task.now(Right(service))
+        val ldapServiceDecodingResult = for {
+          name <- c.downField("name").as[LdapService.Name]
+          connectionConfig <- connectionConfigDecoder(c)
+          userSearchFiler <- userSearchFilerConfigDecoder(c)
+        } yield UnboundidLdapAuthenticationService.create(
+          name,
+          ldapConnectionPoolProvider,
+          connectionConfig,
+          userSearchFiler
+        )
+        ldapServiceDecodingResult match {
+          case Left(error) => Task.now(Left(error))
+          case Right(task) => task.flatMap {
+            case Left(HostConnectionError(hosts)) =>
+              val connectionErrorMessage = Message(s"There was a problem with LDAP connection to: ${hosts.map(_.url.toString()).toList.mkString(",")}")
+              Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
+            case Left(ServerDiscoveryConnectionError(recordName, providerUrl)) =>
+              val connectionErrorMessage = Message(s"There was a problem with LDAP connection in discovery mode. Connection details: recordName=${recordName.getOrElse("default")}, providerUrl=${providerUrl.getOrElse("default")}")
+              Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
+            case Right(service) =>
+              Task.now(Right(service))
+          }
         }
-      }
-    }.mapError(DefinitionsLevelCreationError.apply)
+      }.mapError(DefinitionsLevelCreationError.apply)
 
   private def authorizationServiceDecoder(implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): AsyncDecoder[LdapAuthorizationService] =
     AsyncDecoderCreator
       .instance[LdapAuthorizationService] { c =>
-      val ldapServiceDecodingResult = for {
-        name <- c.downField("name").as[LdapService.Name]
-        connectionConfig <- connectionConfigDecoder(c)
-        userSearchFiler <- userSearchFilerConfigDecoder(c)
-        userGroupsSearchFilter <- userGroupsSearchFilterConfigDecoder(c)
-      } yield UnboundidLdapAuthorizationService.create(
-        name,
-        ldapConnectionPoolProvider,
-        connectionConfig,
-        userSearchFiler,
-        userGroupsSearchFilter
-      )
-      ldapServiceDecodingResult match {
-        case Left(error) => Task.now(Left(error))
-        case Right(task) => task.flatMap {
-          case Left(HostConnectionError(hosts)) =>
-            val connectionErrorMessage = Message(s"There was a problem with LDAP connection to: ${hosts.map(_.toString()).toList.mkString(",")}")
-            Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
-          case Left(ServerDiscoveryConnectionError(recordName, providerUrl)) =>
-            val connectionErrorMessage = Message(s"There was a problem with LDAP connection in discovery mode. Connection details: recordName=${recordName.getOrElse("default")}, providerUrl=${providerUrl.getOrElse("default")}")
-            Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
-          case Right(service) =>
-            Task.now(Right(service))
+        val ldapServiceDecodingResult = for {
+          name <- c.downField("name").as[LdapService.Name]
+          connectionConfig <- connectionConfigDecoder(c)
+          userSearchFiler <- userSearchFilerConfigDecoder(c)
+          userGroupsSearchFilter <- userGroupsSearchFilterConfigDecoder(c)
+        } yield UnboundidLdapAuthorizationService.create(
+          name,
+          ldapConnectionPoolProvider,
+          connectionConfig,
+          userSearchFiler,
+          userGroupsSearchFilter
+        )
+        ldapServiceDecodingResult match {
+          case Left(error) => Task.now(Left(error))
+          case Right(task) => task.flatMap {
+            case Left(HostConnectionError(hosts)) =>
+              val connectionErrorMessage = Message(s"There was a problem with LDAP connection to: ${hosts.map(_.toString()).toList.mkString(",")}")
+              Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
+            case Left(ServerDiscoveryConnectionError(recordName, providerUrl)) =>
+              val connectionErrorMessage = Message(s"There was a problem with LDAP connection in discovery mode. Connection details: recordName=${recordName.getOrElse("default")}, providerUrl=${providerUrl.getOrElse("default")}")
+              Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
+            case Right(service) =>
+              Task.now(Right(service))
+          }
         }
-      }
-    }.mapError(DefinitionsLevelCreationError.apply)
+      }.mapError(DefinitionsLevelCreationError.apply)
 
   private val userSearchFilerConfigDecoder: Decoder[UserSearchFilterConfig] = Decoder.instance { c =>
     for {
@@ -203,29 +202,8 @@ object LdapServicesDecoder {
         groupConfig <-
           if (useGroupsFromUser.getOrElse(false)) groupsFromUserAttributeModeDecoder.tryDecode(c)
           else defaultGroupsSearchModeDecoder.tryDecode(c)
-      } yield UserGroupsSearchFilterConfig(
-        groupConfig,
-        groupConfig match {
-          case DefaultGroupSearch(searchGroupBaseDN, groupSearchFilter, groupNameAttribute, uniqueMemberAttribute, _) =>
-            // todo:
-            Some(NestedGroupsConfig(
-              nestedLevels = 3,
-              searchGroupBaseDN,
-              groupSearchFilter,
-              uniqueMemberAttribute,
-              groupNameAttribute
-            ))
-          case GroupsFromUserEntry(searchGroupBaseDN, groupSearchFilter, groupNameAttribute, _) =>
-            // todo:
-            Some(NestedGroupsConfig(
-              nestedLevels = 3,
-              searchGroupBaseDN,
-              groupSearchFilter,
-              UniqueMemberAttribute("member"),
-              groupNameAttribute
-            ))
-        }
-      )
+        nestedGroupsConfig <- nestedGroupsConfigDecoder(groupConfig).tryDecode(c)
+      } yield UserGroupsSearchFilterConfig(groupConfig, nestedGroupsConfig)
     }
 
   private val connectionConfigDecoder: Decoder[LdapConnectionConfig] = {
@@ -307,12 +285,12 @@ object LdapServicesDecoder {
   private implicit val serverDiscoveryDecoder: Decoder[Option[ConnectionMethod.ServerDiscovery]] = {
     val booleanDiscoverySettingDecoder =
       SyncDecoderCreator
-      .from(Decoder.decodeBoolean)
-      .map{
-        case true => Option(ConnectionMethod.ServerDiscovery(None, None, None, useSSL = false))
-        case false => None
-      }
-      .decoder
+        .from(Decoder.decodeBoolean)
+        .map {
+          case true => Option(ConnectionMethod.ServerDiscovery(None, None, None, useSSL = false))
+          case false => None
+        }
+        .decoder
 
     val complexDiscoverySettingDecoder =
       SyncDecoderCreator
@@ -364,7 +342,7 @@ object LdapServicesDecoder {
           } yield {
             val sslEnabled = sslEnabledOpt.getOrElse(true)
             val port = portOpt.getOrElse(Port(389).get)
-            LdapHost.from(s"${if(sslEnabled) "ldaps" else "ldap"}://$host:$port")
+            LdapHost.from(s"${if (sslEnabled) "ldaps" else "ldap"}://$host:$port")
           }
         }
     }
@@ -390,6 +368,40 @@ object LdapServicesDecoder {
   private implicit lazy val groupsFromUserAttributeDecoder: Decoder[GroupsFromUserAttribute] =
     DecoderHelpers.decodeStringLikeNonEmpty.map(GroupsFromUserAttribute.apply)
 
+  private def nestedGroupsConfigDecoder(searchMode: UserGroupsSearchMode) = {
+    searchMode match {
+      case DefaultGroupSearch(searchGroupBaseDN, groupSearchFilter, groupNameAttribute, uniqueMemberAttribute, _) =>
+        Decoder.instance { c =>
+          for {
+            nestedGroupsDepthOpt <- c.downField("nested_groups_depth").as[Option[Int Refined Positive]]
+          } yield {
+            nestedGroupsDepthOpt.map(nestedGroupsDepth => NestedGroupsConfig(
+              nestedLevels = nestedGroupsDepth,
+              searchGroupBaseDN,
+              groupSearchFilter,
+              uniqueMemberAttribute,
+              groupNameAttribute
+            ))
+          }
+        }
+      case GroupsFromUserEntry(searchGroupBaseDN, groupSearchFilter, groupNameAttribute, _) =>
+        Decoder.instance { c =>
+          for {
+            nestedGroupsDepthOpt <- c.downField("nested_groups_depth").as[Option[Int Refined Positive]]
+            uniqueMemberAttribute <- c.downField("unique_member_attribute").as[Option[UniqueMemberAttribute]]
+          } yield {
+            nestedGroupsDepthOpt.map(nestedGroupsDepth => NestedGroupsConfig(
+              nestedLevels = nestedGroupsDepth,
+              searchGroupBaseDN,
+              groupSearchFilter,
+              uniqueMemberAttribute.getOrElse(UniqueMemberAttribute.default),
+              groupNameAttribute
+            ))
+          }
+        }
+    }
+  }
+
   private lazy val bindRequestUserDecoder: Decoder[BindRequestUser] = {
     Decoder
       .instance { c =>
@@ -400,10 +412,10 @@ object LdapServicesDecoder {
       }
       .toSyncDecoder
       .emapE[BindRequestUser] {
-      case (Some(dn), Some(secret)) => Right(BindRequestUser.CustomUser(dn, PlainTextSecret(secret)))
-      case (None, None) => Right(BindRequestUser.Anonymous)
-      case (_, _) => Left(DefinitionsLevelCreationError(Message(s"'bind_dn' & 'bind_password' should be both present or both absent")))
-    }
+        case (Some(dn), Some(secret)) => Right(BindRequestUser.CustomUser(dn, PlainTextSecret(secret)))
+        case (None, None) => Right(BindRequestUser.Anonymous)
+        case (_, _) => Left(DefinitionsLevelCreationError(Message(s"'bind_dn' & 'bind_password' should be both present or both absent")))
+      }
       .decoder
   }
 

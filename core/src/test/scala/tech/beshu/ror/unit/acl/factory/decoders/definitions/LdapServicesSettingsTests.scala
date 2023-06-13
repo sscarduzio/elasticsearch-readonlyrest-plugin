@@ -386,6 +386,41 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
           }
         )
       }
+//      "nested groups are enabled" when {
+//        "used with `groups_from_user: false`" in {
+//          assertDecodingSuccess(
+//            yaml =
+//              s"""
+//                 |  ldaps:
+//                 |  - name: ldap1
+//                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+//                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}           # default 389
+//                 |    ssl_enabled: false                                        # default true
+//                 |    ssl_trust_all_certs: true                                 # default false
+//                 |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+//                 |    bind_password: "password"                                 # skip for anonymous bind
+//                 |    search_user_base_DN: "ou=People,dc=example,dc=com"
+//                 |    user_id_attribute: "uid"                                  # default "uid"
+//                 |
+//                 |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+//                 |    unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+//                 |    nested_groups_depth: 5
+//           """.stripMargin,
+//            assertion = { definitions =>
+//              definitions.items should have size 1
+//              val ldapService = definitions.items.head
+//              ldapService shouldBe a[CacheableLdapServiceDecorator]
+//              val ldapServiceUnderlying = getUnderlyingFieldFromCacheableLdapServiceDecorator(ldapService.asInstanceOf[CacheableLdapServiceDecorator])
+//              ldapServiceUnderlying shouldBe a[CircuitBreakerLdapServiceDecorator]
+//              ldapServiceUnderlying.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
+//              ldapService.id should be(LdapService.Name("ldap1"))
+//            }
+//          )
+//        }
+//        "used with `groups_from_user: true`" in {
+//
+//        }
+//      }
     }
     "not be able to be loaded from config" when {
       "circuit breaker config is malformed" in {
