@@ -22,8 +22,8 @@ import eu.timepit.refined.auto._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.{UnboundidLdapAuthorizationService, UnboundidLdapConnectionPoolProvider, UserGroupsSearchFilterConfig}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{ComposedLdapAuthService, _}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder
@@ -33,6 +33,8 @@ import tech.beshu.ror.utils.containers.LdapWithDnsContainer
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import org.joor.Reflect.on
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupNameAttribute, GroupSearchFilter, NestedGroupsConfig, UniqueMemberAttribute}
 
 class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider)
   extends BaseDecoderTest(LdapServicesDecoder.ldapServicesDefinitionsDecoder(ldapConnectionPoolProvider))
@@ -147,10 +149,6 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
                |    user_id_attribute: "uid"                                  # default "uid"
                |    unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
-               |    connection_pool_size: 10                                  # default 30
-               |    connection_timeout_in_sec: 10                             # default 1
-               |    request_timeout_in_sec: 10                                # default 1
-               |    cache_ttl_in_sec: 60                                      # default 0 - cache disabled
                |
                |  - name: ldap2
                |    host: ${SingletonLdapContainers.ldap1Backup.ldapHost}
@@ -163,20 +161,18 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    user_id_attribute: "uid"                                  # default "uid"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
                |    unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
-               |    connection_pool_size: 10                                  # default 30
-               |    connection_timeout_in_sec: 10                             # default 1
-               |    request_timeout_in_sec: 10                                # default 1
-               |    cache_ttl_in_sec: 60                                      # default 0 - cache disabled
            """.stripMargin,
           assertion = { definitions =>
             definitions.items should have size 2
             val ldap1Service = definitions.items.head
             ldap1Service.id should be(LdapService.Name("ldap1"))
             ldap1Service shouldBe a[LdapAuthService]
+            getLdapAuthorizationGroupsSearchFilterConfig(ldap1Service) should be (None)
 
             val ldap2Service = definitions.items(1)
             ldap2Service.id should be(LdapService.Name("ldap2"))
             ldap2Service shouldBe a[LdapAuthService]
+            getLdapAuthorizationGroupsSearchFilterConfig(ldap2Service) should be (None)
           }
         )
       }
@@ -386,41 +382,79 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
           }
         )
       }
-//      "nested groups are enabled" when {
-//        "used with `groups_from_user: false`" in {
-//          assertDecodingSuccess(
-//            yaml =
-//              s"""
-//                 |  ldaps:
-//                 |  - name: ldap1
-//                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
-//                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}           # default 389
-//                 |    ssl_enabled: false                                        # default true
-//                 |    ssl_trust_all_certs: true                                 # default false
-//                 |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
-//                 |    bind_password: "password"                                 # skip for anonymous bind
-//                 |    search_user_base_DN: "ou=People,dc=example,dc=com"
-//                 |    user_id_attribute: "uid"                                  # default "uid"
-//                 |
-//                 |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-//                 |    unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
-//                 |    nested_groups_depth: 5
-//           """.stripMargin,
-//            assertion = { definitions =>
-//              definitions.items should have size 1
-//              val ldapService = definitions.items.head
-//              ldapService shouldBe a[CacheableLdapServiceDecorator]
-//              val ldapServiceUnderlying = getUnderlyingFieldFromCacheableLdapServiceDecorator(ldapService.asInstanceOf[CacheableLdapServiceDecorator])
-//              ldapServiceUnderlying shouldBe a[CircuitBreakerLdapServiceDecorator]
-//              ldapServiceUnderlying.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
-//              ldapService.id should be(LdapService.Name("ldap1"))
-//            }
-//          )
-//        }
-//        "used with `groups_from_user: true`" in {
-//
-//        }
-//      }
+      "nested groups are enabled" when {
+        "used with `groups_from_user: false`" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 |  ldaps:
+                 |  - name: ldap1
+                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}           # default 389
+                 |    ssl_enabled: false                                        # default true
+                 |    ssl_trust_all_certs: true                                 # default false
+                 |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+                 |    bind_password: "password"                                 # skip for anonymous bind
+                 |    search_user_base_DN: "ou=People,dc=example,dc=com"
+                 |    user_id_attribute: "uid"                                  # default "uid"
+                 |
+                 |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+                 |    nested_groups_depth: 5
+           """.stripMargin,
+            assertion = { definitions =>
+              definitions.items should have size 1
+              val ldapService = definitions.items.head
+              ldapService shouldBe a[CircuitBreakerLdapServiceDecorator]
+              ldapService.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
+              ldapService.id should be(LdapService.Name("ldap1"))
+
+              getLdapAuthorizationGroupsSearchFilterConfig(ldapService) should be (Some(NestedGroupsConfig(
+                nestedLevels = 5,
+                Dn("ou=Groups,dc=example,dc=com"),
+                GroupSearchFilter("(objectClass=*)"),
+                UniqueMemberAttribute("uniqueMember"),
+                GroupNameAttribute("cn")
+              )))
+            }
+          )
+        }
+        "used with `groups_from_user: true`" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 |  ldaps:
+                 |  - name: ldap1
+                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}           # default 389
+                 |    ssl_enabled: false                                        # default true
+                 |    ssl_trust_all_certs: true                                 # default false
+                 |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+                 |    bind_password: "password"                                 # skip for anonymous bind
+                 |    search_user_base_DN: "ou=People,dc=example,dc=com"
+                 |    user_id_attribute: "uid"                                  # default "uid"
+                 |
+                 |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+                 |    groups_from_user: true
+                 |    nested_groups_depth: 5
+           """.stripMargin,
+            assertion = { definitions =>
+              definitions.items should have size 1
+              val ldapService = definitions.items.head
+              ldapService shouldBe a[CircuitBreakerLdapServiceDecorator]
+              ldapService.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
+              ldapService.id should be(LdapService.Name("ldap1"))
+
+              getLdapAuthorizationGroupsSearchFilterConfig(ldapService) should be (Some(NestedGroupsConfig(
+                nestedLevels = 5,
+                Dn("ou=Groups,dc=example,dc=com"),
+                GroupSearchFilter("(objectClass=*)"),
+                UniqueMemberAttribute("uniqueMember"),
+                GroupNameAttribute("cn")
+              )))
+            }
+          )
+        }
+      }
     }
     "not be able to be loaded from config" when {
       "circuit breaker config is malformed" in {
@@ -739,4 +773,10 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
     }
   }
 
+  private def getLdapAuthorizationGroupsSearchFilterConfig(ldapService: LdapService) = {
+    val composedLdapAuthService = on(ldapService).get[ComposedLdapAuthService]("underlying")
+    val ldapAuthorizationService = on(composedLdapAuthService).get[UnboundidLdapAuthorizationService]("ldapAuthorizationService")
+    val groupsSearchFilterConfig = on(ldapAuthorizationService).get[UserGroupsSearchFilterConfig]("groupsSearchFilter")
+    groupsSearchFilterConfig.nestedGroupsConfig
+  }
 }
