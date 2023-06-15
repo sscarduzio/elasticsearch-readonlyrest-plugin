@@ -287,6 +287,20 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           )
         }
       }
+      "are .kibana_8.8.0 and .kibana_analytics_8.8.0 at the same time" in {
+        assertMatchRuleUsingIndicesRequest(
+          settingsOf(RW),
+          Action("indices:data/write/bulk"),
+          requestedIndices = Set(clusterIndexName(".kibana"), clusterIndexName(".kibana_analytics_8.8.0")),
+          uriPath = Some(UriPath("/_bulk"))
+        ) {
+          assertBlockContext(
+            kibanaIndex = Some(kibanaIndexName(".kibana")),
+            kibanaAccess = Some(RW),
+            indices = Set(clusterIndexName(".kibana"), clusterIndexName(".kibana_analytics_8.8.0")),
+          )
+        }
+      }
     }
     "Kibana related data stream is used" which {
       "is kibana_sample_data_logs" in {
