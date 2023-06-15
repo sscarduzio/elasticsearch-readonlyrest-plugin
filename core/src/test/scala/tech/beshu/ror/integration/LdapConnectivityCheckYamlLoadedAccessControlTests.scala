@@ -48,18 +48,13 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
        |
        |  access_control_rules:
        |
-       |    - name: "LDAP3"
-       |      ldap_auth:
-       |        name: "ldap3"
-       |        groups: "developers"
-       |
        |    - name: "LDAP1"
        |      ldap_authentication: "ldap1"
        |
        |    - name: "LDAP2"
        |      ldap_authentication: "ldap2"
        |
-       |    - name: "nonreachable_ldap"
+       |    - name: "LDAP3"
        |      ldap_authentication: "nonreachable_ldap"
        |
        |  ldaps:
@@ -96,20 +91,6 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
        |      bind_password: "password"                                 # skip for anonymous bind
        |      search_user_base_DN: "ou=People,dc=example,dc=com"
        |      user_id_attribute: "uid"                                  # default "uid
-       |
-       |    - name: ldap3
-       |      host: 192.168.100.2
-       |      port: 389
-       |      ssl_enabled: false
-       |      ssl_trust_all_certs: false
-       |      bind_dn: "uid=root,cn=users,dc=couto,dc=pl"
-       |      bind_password: "hDIo2B*8IuV7SXaWyDUFu0Ba!E"
-       |      search_user_base_DN: "cn=users,dc=couto,dc=pl"
-       |      user_id_attribute: "uid"
-       |      groups_from_user: true
-       |      search_groups_base_DN: "cn=groups,dc=couto,dc=pl"
-       |      unique_member_attribute: "member"
-       |      groups_from_user_attribute: "memberOf"
        |""".stripMargin
 
   override protected def afterAll(): Unit = {
@@ -123,7 +104,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
     "be successful" when {
       "one server is unreachable, but is configured to ignore connectivity problems" when {
         "HA is enabled and one of LDAP hosts is unavailable" in {
-          val request = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("userSpeaker:hDIo2B*8IuV7SXaWyDUFu0Ba!E")))
+          val request = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("cartman:user2")))
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
@@ -133,7 +114,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
             }
           }
         }
-        "ROR is configured to ignore connectivity problems, but connection is possible"  ignore { // todo: fix
+        "ROR is configured to ignore connectivity problems, but connection is possible" in {
           val request = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("kyle:user2")))
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 2
@@ -147,7 +128,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
       }
     }
     "not be successful" when {
-      "person from unreachable ldap is authenticated" ignore { // todo: fix
+      "person from unreachable ldap is authenticated" in {
         val request = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("unreachableldapperson:somepass")))
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
         result.history should have size 3

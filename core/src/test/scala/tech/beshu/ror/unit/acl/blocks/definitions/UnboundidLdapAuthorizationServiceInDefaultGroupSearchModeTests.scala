@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupNameAttribute, GroupSearchFilter, UniqueMemberAttribute}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupNameAttribute, GroupSearchFilter, NestedGroupsConfig, UniqueMemberAttribute}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
@@ -59,28 +59,35 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
       "returns non empty set of groups" when {
         "user has groups" in {
           eventually {
-            authorizationService.groupsOf(User.Id("morgan")).runSyncUnsafe() should be {
+            peopleAndGroupsLdapAuthorizationService.groupsOf(User.Id("morgan")).runSyncUnsafe() should be {
               UniqueList.of(GroupName("groupAll"), GroupName("group3"), GroupName("group2"))
             }
+          }
+        }
+      }
+      "resolve nested groups properly" in {
+        eventually {
+          usersAndRolesLdapAuthorizationService.groupsOf(User.Id("userSpeaker")).runSyncUnsafe() should be {
+            UniqueList.of(GroupName("developers"), GroupName("speakers"))
           }
         }
       }
       "returns empty set of groups" when {
         "user has no groups" in {
           eventually {
-            authorizationService.groupsOf(User.Id("devito")).runSyncUnsafe() should be(UniqueList.empty[GroupName])
+            peopleAndGroupsLdapAuthorizationService.groupsOf(User.Id("devito")).runSyncUnsafe() should be(UniqueList.empty[GroupName])
           }
         }
         "there is no user with given name" in {
           eventually {
-            authorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[GroupName])
+            peopleAndGroupsLdapAuthorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[GroupName])
           }
         }
       }
     }
   }
 
-  private def authorizationService = {
+  private def peopleAndGroupsLdapAuthorizationService = {
     UnboundidLdapAuthorizationService
       .create(
         Name("LDAP1"),
@@ -110,7 +117,50 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
             UniqueMemberAttribute("uniqueMember"),
             groupAttributeIsDN = true,
           ),
-          None // todo:
+          nestedGroupsConfig = None
+        )
+      )
+      .runSyncUnsafe()
+      .getOrElse(throw new IllegalStateException("LDAP connection problem"))
+  }
+
+  private def usersAndRolesLdapAuthorizationService = {
+    UnboundidLdapAuthorizationService
+      .create(
+        Name("LDAP1"),
+        ldapConnectionPoolProvider,
+        LdapConnectionConfig(
+          ConnectionMethod.SingleServer(
+            LdapHost
+              .from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}")
+              .get
+          ),
+          poolSize = 1,
+          connectionTimeout = Refined.unsafeApply(5 seconds),
+          requestTimeout = Refined.unsafeApply(5 seconds),
+          trustAllCerts = false,
+          BindRequestUser.CustomUser(
+            Dn("cn=admin,dc=example,dc=com"),
+            PlainTextSecret("password")
+          ),
+          ignoreLdapConnectivityProblems = false
+        ),
+        UserSearchFilterConfig(Dn("ou=Users,dc=example,dc=com"), "uid"),
+        UserGroupsSearchFilterConfig(
+          DefaultGroupSearch(
+            Dn("ou=Roles,dc=example,dc=com"),
+            GroupSearchFilter("(cn=*)"),
+            GroupNameAttribute("cn"),
+            UniqueMemberAttribute("uniqueMember"),
+            groupAttributeIsDN = true,
+          ),
+          Some(NestedGroupsConfig(
+            nestedLevels = 1,
+            Dn("ou=Roles,dc=example,dc=com"),
+            GroupSearchFilter("(cn=*)"),
+            UniqueMemberAttribute("uniqueMember"),
+            GroupNameAttribute("cn"),
+          ))
         )
       )
       .runSyncUnsafe()

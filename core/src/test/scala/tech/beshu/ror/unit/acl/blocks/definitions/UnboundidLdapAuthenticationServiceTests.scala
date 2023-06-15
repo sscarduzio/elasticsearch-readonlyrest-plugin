@@ -92,7 +92,6 @@ class UnboundidLdapAuthenticationServiceTests
           ldap1ContainerWithToxiproxy.enableNetwork()
           authenticationService.assertSuccessfulAuthentication
         }
-
       }
       "returns false" when {
         "user doesn't exist in LDAP" ignore {
@@ -129,7 +128,6 @@ class UnboundidLdapAuthenticationServiceTests
       }
     }
   }
-
   "An CircuitBreaker decorated LdapAuthenticationService" should {
     "close circuit breaker after 2 failed attempts" ignore {
       val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService()
@@ -141,7 +139,6 @@ class UnboundidLdapAuthenticationServiceTests
       ldap1ContainerWithToxiproxy.enableNetwork()
       authenticationService.assertFailedAuthentication[ExecutionRejectedException]
     }
-
     "close circuit breaker after 2 failed attempts, but open it later" ignore {
       val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService()
       authenticationService.assertSuccessfulAuthentication
@@ -156,7 +153,6 @@ class UnboundidLdapAuthenticationServiceTests
       authenticationService.assertSuccessfulAuthentication
       authenticationService.assertSuccessfulAuthentication
     }
-
     "close circuit breaker after 2 failed attempts and keep it closed because of network issues" ignore {
       val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService()
       authenticationService.assertSuccessfulAuthentication
