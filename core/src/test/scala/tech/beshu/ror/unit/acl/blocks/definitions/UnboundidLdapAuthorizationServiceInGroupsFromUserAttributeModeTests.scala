@@ -150,7 +150,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
             Dn("ou=Roles,dc=example,dc=com"),
             GroupSearchFilter("(objectClass=*)"),
             GroupNameAttribute("cn"),
-            GroupsFromUserAttribute("title"),
+            GroupsFromUserAttribute("memberOf"),
           ),
           Some(NestedGroupsConfig(
             nestedLevels = 1,
