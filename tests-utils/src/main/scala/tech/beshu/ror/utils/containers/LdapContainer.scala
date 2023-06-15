@@ -42,7 +42,7 @@ class LdapContainer private[containers] (name: String, ldapInitScript: InitScrip
       "LDAP_ADMIN_PASSWORD" -> defaults.ldap.adminPassword,
       "LDAP_TLS_VERIFY_CLIENT" -> "try"
     ),
-    exposedPorts = Seq(defaults.ldap.port),
+    exposedPorts = Seq(defaults.ldap.port, defaults.ldap.sslPort),
     waitStrategy = Some(new LdapWaitStrategy(name, ldapInitScript))
   ) {
 
