@@ -55,9 +55,9 @@ class GraphNodeAncestorsExplorer[NODE](kinshipLevel: Int Refined Positive,
         Task.now(Set.empty)
       case ProcessingState.ToBeProcessed =>
         doFetchParentNodesOf(node)
-          .flatMap { newGroups =>
-            findAllAncestorsOf(newGroups, processedNodes, kinshipLevel - 1)
-              .map(_ ++ newGroups)
+          .flatMap { parentNodes =>
+            findAllAncestorsOf(parentNodes, processedNodes, kinshipLevel - 1)
+              .map(_ ++ parentNodes)
           }
     }
   }
