@@ -56,14 +56,6 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
     SingletonLdapContainers.ldap1, SingletonLdapContainers.ldap1Backup, ldapWithDnsContainer
   )
 
-  private def getUnderlyingFieldFromCacheableLdapServiceDecorator(cacheableLdapServiceDecorator: CacheableLdapServiceDecorator) = {
-    val reflectUniverse = scala.reflect.runtime.universe
-    val mirror = reflectUniverse.runtimeMirror(getClass.getClassLoader)
-    val ldapServiceInstanceMirror = mirror.reflect(cacheableLdapServiceDecorator)
-    val underlyingField = reflectUniverse.typeOf[CacheableLdapServiceDecorator].decl(reflectUniverse.TermName("underlying")).asTerm.accessed.asTerm
-    ldapServiceInstanceMirror.reflectField(underlyingField).get
-  }
-
   "An LdapService" should {
     "be able to be loaded from config" when {
       "one LDAP service is declared" in {
@@ -771,6 +763,10 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
         )
       }
     }
+  }
+
+  private def getUnderlyingFieldFromCacheableLdapServiceDecorator(cacheableLdapServiceDecorator: CacheableLdapServiceDecorator) = {
+    on(cacheableLdapServiceDecorator).get[LdapService]("underlying")
   }
 
   private def getLdapAuthorizationGroupsSearchFilterConfig(ldapService: LdapService) = {
