@@ -151,7 +151,7 @@ object LdapServicesDecoder {
 
   private def hostConnectionErrorDecodingFailureFrom(error: HostConnectionError) = {
     val connectionErrorMessage = Message(
-      s"There was a problem with LDAP connection to: ${error.hosts.map(_.toString()).toList.mkString(",")}"
+      s"There was a problem with LDAP connection to: ${error.hosts.map(_.url.toString()).toList.mkString(",")}"
     )
     DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))
   }
