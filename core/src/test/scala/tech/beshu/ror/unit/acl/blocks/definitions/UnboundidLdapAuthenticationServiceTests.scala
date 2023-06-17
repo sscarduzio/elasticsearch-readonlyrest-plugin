@@ -29,7 +29,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{Assertion, BeforeAndAfterAll, BeforeAndAfterEach, Inside}
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{CircuitBreakerLdapAuthenticationServiceDecorator, Dn, LdapAuthenticationService}
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
@@ -91,7 +92,6 @@ class UnboundidLdapAuthenticationServiceTests
           ldap1ContainerWithToxiproxy.enableNetwork()
           authenticationService.assertSuccessfulAuthentication
         }
-
       }
       "returns false" when {
         "user doesn't exist in LDAP" ignore {
@@ -128,7 +128,6 @@ class UnboundidLdapAuthenticationServiceTests
       }
     }
   }
-
   "An CircuitBreaker decorated LdapAuthenticationService" should {
     "close circuit breaker after 2 failed attempts" ignore {
       val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService()
@@ -140,7 +139,6 @@ class UnboundidLdapAuthenticationServiceTests
       ldap1ContainerWithToxiproxy.enableNetwork()
       authenticationService.assertFailedAuthentication[ExecutionRejectedException]
     }
-
     "close circuit breaker after 2 failed attempts, but open it later" ignore {
       val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService()
       authenticationService.assertSuccessfulAuthentication
@@ -155,7 +153,6 @@ class UnboundidLdapAuthenticationServiceTests
       authenticationService.assertSuccessfulAuthentication
       authenticationService.assertSuccessfulAuthentication
     }
-
     "close circuit breaker after 2 failed attempts and keep it closed because of network issues" ignore {
       val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService()
       authenticationService.assertSuccessfulAuthentication

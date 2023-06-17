@@ -22,7 +22,7 @@ import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.BindRequestUser
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Promise

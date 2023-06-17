@@ -69,6 +69,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
        |      bind_password: "password"                                 # skip for anonymous bind
        |      search_user_base_DN: "ou=People,dc=example,dc=com"
        |      user_id_attribute: "uid"                                  # default "uid
+       |
        |    - name: ldap2
        |      host: "${SingletonLdapContainers.ldap2.ldapHost}"
        |      port: ${SingletonLdapContainers.ldap2.ldapPort}
@@ -79,6 +80,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
        |      bind_password: "password"                                 # skip for anonymous bind
        |      search_user_base_DN: "ou=People,dc=example,dc=com"
        |      user_id_attribute: "uid"                                  # default "uid
+       |
        |    - name: nonreachable_ldap
        |      host: "localhost"
        |      port: 555

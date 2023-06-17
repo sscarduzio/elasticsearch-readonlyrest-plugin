@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.utils.containers
 
-import java.io.{BufferedReader, InputStreamReader}
-
 import better.files.{Disposable, Dispose, File, Resource}
 import com.dimafeng.testcontainers.GenericContainer
 import com.typesafe.scalalogging.LazyLogging
@@ -26,10 +24,11 @@ import com.unboundid.ldif.LDIFReader
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.Network
-import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
+import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
 import tech.beshu.ror.utils.containers.LdapContainer.{InitScriptSource, defaults}
 import tech.beshu.ror.utils.misc.ScalaUtils._
 
+import java.io.{BufferedReader, InputStreamReader}
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
@@ -42,7 +41,7 @@ class LdapContainer private[containers] (name: String, ldapInitScript: InitScrip
       "LDAP_ADMIN_PASSWORD" -> defaults.ldap.adminPassword,
       "LDAP_TLS_VERIFY_CLIENT" -> "try"
     ),
-    exposedPorts = Seq(defaults.ldap.port),
+    exposedPorts = Seq(defaults.ldap.port, defaults.ldap.sslPort),
     waitStrategy = Some(new LdapWaitStrategy(name, ldapInitScript))
   ) {
 
@@ -122,10 +121,11 @@ object NonStoppableLdapContainer {
 
 private class LdapWaitStrategy(name: String,
                                ldapInitScript: InitScriptSource)
-  extends AbstractWaitStrategy
+  extends HostPortWaitStrategy()
     with LazyLogging {
 
   override def waitUntilReady(): Unit = {
+    super.waitUntilReady()
     logger.info(s"Waiting for LDAP container '$name' ...")
     retryBackoff(ldapInitiate(), 15, 1 second, 1)
       .onErrorHandle { ex =>

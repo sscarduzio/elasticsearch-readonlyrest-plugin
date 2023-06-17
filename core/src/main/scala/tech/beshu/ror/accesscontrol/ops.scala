@@ -38,6 +38,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.Var
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupNameAttribute, GroupSearchFilter, GroupsFromUserAttribute, UniqueMemberAttribute}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana._
@@ -194,6 +195,10 @@ object show {
     implicit val jwtTokenShow: Show[JwtToken] = Show.show(_.value.value)
     implicit val uriPathShow: Show[UriPath] = Show.show(_.value.value)
     implicit val dnShow: Show[Dn] = Show.show(_.value.value)
+    implicit val showGroupSearchFilter: Show[GroupSearchFilter] = Show.show(_.value.value)
+    implicit val showGroupNameAttribute: Show[GroupNameAttribute] = Show.show(_.value.value)
+    implicit val showUniqueMemberAttribute: Show[UniqueMemberAttribute] = Show.show(_.value.value)
+    implicit val showGroupsFromUserAttribute: Show[GroupsFromUserAttribute] = Show.show(_.value.value)
     implicit val envNameShow: Show[EnvVarName] = Show.show(_.value.value)
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
     implicit val templateNameShow: Show[TemplateName] = Show.show(_.value.value)

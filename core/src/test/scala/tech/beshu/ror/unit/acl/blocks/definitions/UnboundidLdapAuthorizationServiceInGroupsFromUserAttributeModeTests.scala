@@ -26,8 +26,9 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.GroupsFromUserAttribute
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupNameAttribute, GroupSearchFilter, GroupsFromUserAttribute, GroupsFromUserEntry, NestedGroupsConfig, UniqueMemberAttribute}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
@@ -58,28 +59,35 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
       "returns non empty set of groups" when {
         "user has groups" in {
           eventually {
-            authorizationService.groupsOf(User.Id("jesus")).runSyncUnsafe() should contain only(
+            godAndRegionsLdapAuthorizationService.groupsOf(User.Id("jesus")).runSyncUnsafe() should contain only(
               GroupName("europe"), GroupName("north america"), GroupName("south america"), GroupName("africa")
             )
+          }
+        }
+      }
+      "resolve nested groups properly" in {
+        eventually {
+          usersAndRolesLdapAuthorizationService.groupsOf(User.Id("userSpeaker")).runSyncUnsafe() should be {
+            UniqueList.of(GroupName("developers"), GroupName("speakers"))
           }
         }
       }
       "returns empty set of groups" when {
         "user has no groups" in {
           eventually {
-            authorizationService.groupsOf(User.Id("spaghetti")).runSyncUnsafe() should be (UniqueList.empty[GroupName])
+            godAndRegionsLdapAuthorizationService.groupsOf(User.Id("spaghetti")).runSyncUnsafe() should be (UniqueList.empty[GroupName])
           }
         }
         "there is no user with given name" in {
           eventually {
-            authorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[GroupName])
+            godAndRegionsLdapAuthorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[GroupName])
           }
         }
       }
     }
   }
 
-  private def authorizationService = {
+  private def godAndRegionsLdapAuthorizationService = {
     UnboundidLdapAuthorizationService
       .create(
         Name("ldap1"),
@@ -101,11 +109,57 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
           ignoreLdapConnectivityProblems = false
         ),
         UserSearchFilterConfig(Dn("ou=Gods,dc=example,dc=com"), "uid"),
-        UserGroupsSearchFilterConfig(GroupsFromUserAttribute(
-          Dn("ou=Regions,dc=example,dc=com"),
-          "cn",
-          "title"
-        ))
+        UserGroupsSearchFilterConfig(
+          GroupsFromUserEntry(
+            Dn("ou=Regions,dc=example,dc=com"),
+            GroupSearchFilter("(objectClass=*)"),
+            GroupNameAttribute("cn"),
+            GroupsFromUserAttribute("title"),
+          ),
+          nestedGroupsConfig = None
+        )
+      )
+      .runSyncUnsafe()
+      .getOrElse(throw new IllegalStateException("LDAP connection problem"))
+  }
+
+  private def usersAndRolesLdapAuthorizationService = {
+    UnboundidLdapAuthorizationService
+      .create(
+        Name("ldap1"),
+        ldapConnectionPoolProvider,
+        LdapConnectionConfig(
+          ConnectionMethod.SingleServer(
+            LdapHost
+              .from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}")
+              .get
+          ),
+          poolSize = 1,
+          connectionTimeout = Refined.unsafeApply(5 seconds),
+          requestTimeout = Refined.unsafeApply(5 seconds),
+          trustAllCerts = false,
+          BindRequestUser.CustomUser(
+            Dn("cn=admin,dc=example,dc=com"),
+            PlainTextSecret("password")
+          ),
+          ignoreLdapConnectivityProblems = false
+        ),
+        UserSearchFilterConfig(Dn("ou=Users,dc=example,dc=com"), "uid"),
+        UserGroupsSearchFilterConfig(
+          GroupsFromUserEntry(
+            Dn("ou=Roles,dc=example,dc=com"),
+            GroupSearchFilter("(objectClass=*)"),
+            GroupNameAttribute("cn"),
+            GroupsFromUserAttribute("memberOf"),
+          ),
+          Some(NestedGroupsConfig(
+            nestedLevels = 1,
+            Dn("ou=Roles,dc=example,dc=com"),
+            GroupSearchFilter("(objectClass=*)"),
+            UniqueMemberAttribute("uniqueMember"),
+            GroupNameAttribute("cn"),
+          ))
+        )
       )
       .runSyncUnsafe()
       .getOrElse(throw new IllegalStateException("LDAP connection problem"))

@@ -5,15 +5,25 @@
 # * group1: cartman, chandler
 # * group2: morgan, bilbo
 # * group3: morgan, cartman, chandler
-# * gAll: morgan, cartman, chandler, bilbo
+# * groupAll: morgan, cartman, chandler, bilbo
 #
-# Regions and gods:
+# regions and gods:
 # * europe: jesus
 # * north america: jesus
 # * south america: jesus
 # * asia: allah
 # * africa: jesus, allah
 # * [no group]: spaghetti
+#
+# roles and users:
+# * developers: userDev
+# * it: userDevOps
+# * speakers: userSpeaker
+#
+# additionally:
+# * speaker is developer
+# * developer is from it
+#
 ################################
 ################################
 ################################
@@ -153,3 +163,67 @@ cn: Spaghetti Monster
 sn: Spaghetti
 uid: spaghetti
 userPassword:: e1NNRDV9czdnM0NVekVCMGQxMm5CM0N3VGFrQmp3K0VGMTE3cFg=
+
+
+dn: ou=Users,dc=example,dc=com
+objectClass: top
+objectClass: organizationalUnit
+ou: Users
+
+dn: cn=UserDevOps,ou=Users,dc=example,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: UserDevOps
+sn: UserDevOps
+uid: userdevops
+userPassword:: e1NNRDV9cTg2ZHlvbGRRRk5pZ04waVprMDgzYnZrVEY3bFdacFk=
+memberOf: cn=it,ou=Roles,dc=example,dc=com
+
+dn: cn=UserDev,ou=Users,dc=example,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: UserDev
+sn: UserDev
+uid: userdev
+userPassword:: e1NNRDV9cTg2ZHlvbGRRRk5pZ04waVprMDgzYnZrVEY3bFdacFk=
+memberOf: cn=developers,ou=Roles,dc=example,dc=com
+
+dn: cn=UserSpeaker,ou=Users,dc=example,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: UserSpeaker
+sn: UserSpeaker
+uid: userspeaker
+userPassword:: e1NNRDV9cTg2ZHlvbGRRRk5pZ04waVprMDgzYnZrVEY3bFdacFk=
+memberOf: cn=speakers,ou=Roles,dc=example,dc=com
+
+dn: ou=Roles,dc=example,dc=com
+objectClass: top
+objectClass: organizationalUnit
+ou: Roles
+
+dn: cn=it,ou=Roles,dc=example,dc=com
+objectClass: top
+objectClass: groupOfUniqueNames
+cn: it
+uniqueMember: cn=UserDevOps,ou=Users,dc=example,dc=com
+uniqueMember: cn=developers,ou=Roles,dc=example,dc=com
+
+dn: cn=developers,ou=Roles,dc=example,dc=com
+objectClass: top
+objectClass: groupOfUniqueNames
+cn: developers
+uniqueMember: cn=UserDev,ou=Users,dc=example,dc=com
+uniqueMember: cn=speakers,ou=Roles,dc=example,dc=com
+
+dn: cn=speakers,ou=Roles,dc=example,dc=com
+objectClass: top
+objectClass: groupOfUniqueNames
+cn: speakers
+uniqueMember: cn=UserSpeaker,ou=Users,dc=example,dc=com
