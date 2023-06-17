@@ -33,8 +33,8 @@ import tech.beshu.ror.utils.LoggerOps._
 import scala.concurrent.duration._
 
 private [implementations] abstract class BaseUnboundidLdapService(connectionPool: UnboundidLdapConnectionPool,
-                                        userSearchFiler: UserSearchFilterConfig,
-                                        override val serviceTimeout: FiniteDuration Refined Positive)
+                                                                  userSearchFiler: UserSearchFilterConfig,
+                                                                  override val serviceTimeout: FiniteDuration Refined Positive)
   extends LdapUserService with Logging {
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {

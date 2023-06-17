@@ -109,9 +109,9 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
       def port: Int = url.port.getOrElse(LdapHost.defaultPort)
     }
     object LdapHost {
-      val ldapsSchema = "ldaps"
-      val ldapSchema = "ldap"
-      val defaultPort = 389
+      private val ldapsSchema = "ldaps"
+      private val ldapSchema = "ldap"
+      private val defaultPort = 389
 
       def from(value: String): Option[LdapHost] = {
         Try(UrlWithAuthority.parse(value))
@@ -129,9 +129,16 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
 
     sealed trait ConnectionMethod
     object ConnectionMethod {
-      final case class SingleServer(host: LdapHost) extends ConnectionMethod
-      final case class SeveralServers(hosts: NonEmptyList[LdapHost], haMethod: HaMethod) extends ConnectionMethod
-      final case class ServerDiscovery(recordName: Option[String], providerUrl: Option[String], ttl: Option[FiniteDuration Refined Positive], useSSL: Boolean) extends ConnectionMethod
+      final case class SingleServer(host: LdapHost)
+        extends ConnectionMethod
+      final case class SeveralServers(hosts: NonEmptyList[LdapHost],
+                                      haMethod: HaMethod)
+        extends ConnectionMethod
+      final case class ServerDiscovery(recordName: Option[String],
+                                       providerUrl: Option[String],
+                                       ttl: Option[FiniteDuration Refined Positive],
+                                       useSSL: Boolean)
+        extends ConnectionMethod
     }
 
     sealed trait HaMethod

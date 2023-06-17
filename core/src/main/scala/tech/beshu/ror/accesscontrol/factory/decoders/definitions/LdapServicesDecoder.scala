@@ -41,7 +41,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.refined._
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecodingFailureOps, _}
 import tech.beshu.ror.accesscontrol.utils._
 
 import scala.concurrent.duration.{FiniteDuration, _}
@@ -110,15 +110,13 @@ object LdapServicesDecoder {
         )
         ldapServiceDecodingResult match {
           case Left(error) => Task.now(Left(error))
-          case Right(task) => task.flatMap {
-            case Left(HostConnectionError(hosts)) =>
-              val connectionErrorMessage = Message(s"There was a problem with LDAP connection to: ${hosts.map(_.url.toString()).toList.mkString(",")}")
-              Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
-            case Left(ServerDiscoveryConnectionError(recordName, providerUrl)) =>
-              val connectionErrorMessage = Message(s"There was a problem with LDAP connection in discovery mode. Connection details: recordName=${recordName.getOrElse("default")}, providerUrl=${providerUrl.getOrElse("default")}")
-              Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
+          case Right(task) => task.map {
+            case Left(error: HostConnectionError) =>
+              Left(hostConnectionErrorDecodingFailureFrom(error))
+            case Left(error: ServerDiscoveryConnectionError) =>
+              Left(serverDiscoveryConnectionDecodingFailureFrom(error))
             case Right(service) =>
-              Task.now(Right(service))
+              Right(service)
           }
         }
       }.mapError(DefinitionsLevelCreationError.apply)
@@ -140,18 +138,31 @@ object LdapServicesDecoder {
         )
         ldapServiceDecodingResult match {
           case Left(error) => Task.now(Left(error))
-          case Right(task) => task.flatMap {
-            case Left(HostConnectionError(hosts)) =>
-              val connectionErrorMessage = Message(s"There was a problem with LDAP connection to: ${hosts.map(_.toString()).toList.mkString(",")}")
-              Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
-            case Left(ServerDiscoveryConnectionError(recordName, providerUrl)) =>
-              val connectionErrorMessage = Message(s"There was a problem with LDAP connection in discovery mode. Connection details: recordName=${recordName.getOrElse("default")}, providerUrl=${providerUrl.getOrElse("default")}")
-              Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
+          case Right(task) => task.map {
+            case Left(error: HostConnectionError) =>
+              Left(hostConnectionErrorDecodingFailureFrom(error))
+            case Left(error: ServerDiscoveryConnectionError) =>
+              Left(serverDiscoveryConnectionDecodingFailureFrom(error))
             case Right(service) =>
-              Task.now(Right(service))
+              Right(service)
           }
         }
       }.mapError(DefinitionsLevelCreationError.apply)
+
+  private def hostConnectionErrorDecodingFailureFrom(error: HostConnectionError) = {
+    val connectionErrorMessage = Message(
+      s"There was a problem with LDAP connection to: ${error.hosts.map(_.toString()).toList.mkString(",")}"
+    )
+    DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))
+  }
+
+  private def serverDiscoveryConnectionDecodingFailureFrom(error: ServerDiscoveryConnectionError) = {
+    val connectionErrorMessage = Message(
+      s"There was a problem with LDAP connection in discovery mode. " +
+      s"Connection details: recordName=${error.recordName.getOrElse("default")}, " +
+        s"providerUrl=${error.providerUrl.getOrElse("default")}")
+    DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))
+  }
 
   private val userSearchFilerConfigDecoder: Decoder[UserSearchFilterConfig] = Decoder.instance { c =>
     for {

@@ -266,7 +266,7 @@ object AclAwareRequestFilter {
     val timestamp: Instant = Instant.now()
 
     def pickEngineToHandle(engines: Engines): Either[Error, Engine] = {
-      val impersonationHeaaderPresent = isImpersonationHeader
+      val impersonationHeaderPresent = isImpersonationHeader
       engines.impersonatorsEngine match {
         case Some(impersonatorsEngine) if impersonationHeaderPresent => Right(impersonatorsEngine)
         case None if impersonationHeaderPresent => Left(Error.ImpersonatorsEngineNotConfigured)

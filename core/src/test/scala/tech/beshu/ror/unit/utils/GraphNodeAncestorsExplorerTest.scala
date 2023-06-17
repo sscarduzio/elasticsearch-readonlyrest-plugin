@@ -43,7 +43,7 @@ class GraphNodeAncestorsExplorerTest extends AnyWordSpec with Matchers with Mock
   }
 
   private def doFetchParentNodesOfMock() = {
-    /**
+    /*
        ┌────┐
        │1   │
        └┬──┬┘
