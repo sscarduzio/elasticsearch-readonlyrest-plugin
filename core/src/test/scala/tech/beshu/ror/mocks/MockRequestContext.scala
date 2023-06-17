@@ -35,7 +35,7 @@ import tech.beshu.ror.mocks.MockRequestContext.defaultAction
 object MockRequestContext {
 
   val defaultAction: Action = Action("default-action")
-  val adminAction: Action = Action("cluster:ror/user_metadata/get")
+  val adminAction: Action = Action("cluster:internal_ror/user_metadata/get")
 
   def indices(implicit clock: Clock = Clock.systemUTC()): MockGeneralIndexRequestContext =
     MockGeneralIndexRequestContext(timestamp = clock.instant(), filteredIndices = Set.empty, allAllowedIndices = Set.empty)
@@ -210,7 +210,7 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant,
                                                 override val taskId: Long = 0L,
                                                 override val id: RequestContext.Id = RequestContext.Id("mock"),
                                                 override val `type`: Type = Type("default-type"),
-                                                override val action: Action = Action.rorUserMetadataAction,
+                                                override val action: Action = Action.RorAction.RorUserMetadataAction,
                                                 override val headers: Set[Header] = Set.empty,
                                                 override val remoteAddress: Option[Address] = Address.from("localhost"),
                                                 override val localAddress: Address = Address.from("localhost").get,

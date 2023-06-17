@@ -17,7 +17,8 @@
 package tech.beshu.ror.mocks
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.{LdapConnectionConfig, UnboundidLdapConnectionPool, UnboundidLdapConnectionPoolProvider}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.{UnboundidLdapConnectionPool, UnboundidLdapConnectionPoolProvider}
 
 object MockLdapConnectionPoolProvider extends UnboundidLdapConnectionPoolProvider {
 

@@ -38,7 +38,7 @@ class KibanaAccessRule(override val settings: Settings)
   }
 
   private def matched[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                               kibanaIndex: IndexName.Kibana): Fulfilled[B] = {
+                                                               kibanaIndex: KibanaIndexName): Fulfilled[B] = {
     RuleResult.Fulfilled[B] {
       blockContext.withUserMetadata { metadata =>
         metadata
@@ -48,7 +48,7 @@ class KibanaAccessRule(override val settings: Settings)
     }
   }
 
-  private def kibanaIndexFrom(blockContext: BlockContext): IndexName.Kibana = {
+  private def kibanaIndexFrom(blockContext: BlockContext): KibanaIndexName = {
     blockContext.userMetadata.kibanaIndex.getOrElse(ClusterIndexName.Local.kibanaDefault)
   }
 }

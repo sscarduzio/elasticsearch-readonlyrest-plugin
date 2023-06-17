@@ -18,7 +18,7 @@ package tech.beshu.ror.es.actions.rrtestconfig
 
 import org.elasticsearch.action.{Action, ActionRequestBuilder}
 import org.elasticsearch.client.ElasticsearchClient
-import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
 class RRTestConfigActionType extends Action[RRTestConfigRequest, RRTestConfigResponse, RRTestConfigActionType.RequestBuilder](
   RRTestConfigActionType.name
@@ -34,7 +34,7 @@ object RRTestConfigActionType {
   class RequestBuilder(client: ElasticsearchClient, actionType: RRTestConfigActionType, request: RRTestConfigRequest)
     extends ActionRequestBuilder[RRTestConfigRequest, RRTestConfigResponse, RequestBuilder](client, actionType, request)
 
-  val name = domain.Action.rorTestConfigAction.value
+  val name: String = RorAction.RorTestConfigAction.value
   val instance = new RRTestConfigActionType()
 }
 

@@ -26,8 +26,8 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 final case class UserMetadata private(loggedUser: Option[LoggedUser],
                                       currentGroup: Option[GroupName],
                                       availableGroups: UniqueList[GroupName],
-                                      kibanaIndex: Option[IndexName.Kibana],
-                                      kibanaTemplateIndex: Option[IndexName.Kibana],
+                                      kibanaIndex: Option[KibanaIndexName],
+                                      kibanaTemplateIndex: Option[KibanaIndexName],
                                       hiddenKibanaApps: Set[KibanaApp],
                                       allowedKibanaApiPaths: Set[KibanaAllowedApiPath],
                                       kibanaAccess: Option[KibanaAccess],
@@ -49,8 +49,8 @@ final case class UserMetadata private(loggedUser: Option[LoggedUser],
     availableGroups = groups,
     currentGroup = this.currentGroup.orElse(groups.headOption)
   )
-  def withKibanaIndex(index: IndexName.Kibana): UserMetadata = this.copy(kibanaIndex = Some(index))
-  def withKibanaTemplateIndex(index: IndexName.Kibana): UserMetadata = this.copy(kibanaTemplateIndex = Some(index))
+  def withKibanaIndex(index: KibanaIndexName): UserMetadata = this.copy(kibanaIndex = Some(index))
+  def withKibanaTemplateIndex(index: KibanaIndexName): UserMetadata = this.copy(kibanaTemplateIndex = Some(index))
   def addHiddenKibanaApp(app: KibanaApp): UserMetadata = this.copy(hiddenKibanaApps = this.hiddenKibanaApps + app)
   def withHiddenKibanaApps(apps: UniqueNonEmptyList[KibanaApp]): UserMetadata =
     this.copy(hiddenKibanaApps = this.hiddenKibanaApps ++ apps)

@@ -18,14 +18,14 @@ package tech.beshu.ror.es.actions.rrtestconfig
 
 import org.elasticsearch.action.ActionType
 import org.elasticsearch.common.io.stream.Writeable
-import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
 class RRTestConfigActionType extends ActionType[RRTestConfigResponse](
   RRTestConfigActionType.name, RRTestConfigActionType.exceptionReader
 )
 
 object RRTestConfigActionType {
-  val name = domain.Action.rorTestConfigAction.value
+  val name: String = RorAction.RorTestConfigAction.value
   val instance = new RRTestConfigActionType()
 
   final case object RRTestConfigActionCannotBeTransported extends Exception

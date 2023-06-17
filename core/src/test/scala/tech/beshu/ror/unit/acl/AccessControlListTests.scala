@@ -112,7 +112,7 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
       .anyNumberOfTimes()
     (() => rc.action)
       .expects()
-      .returning(Action.rorUserMetadataAction)
+      .returning(Action.RorAction.RorUserMetadataAction)
       .anyNumberOfTimes()
     (() => rc.isReadOnlyRequest)
       .expects()
