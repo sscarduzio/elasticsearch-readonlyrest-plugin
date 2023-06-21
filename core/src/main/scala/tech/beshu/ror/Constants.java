@@ -89,6 +89,7 @@ public class Constants {
       "indices:data/write/update*",
       "indices:data/write/bulk*",
       "indices:admin/template/*",
+      "cluster:admin/component_template/*",
       "cluster:admin/settings/*",
       "indices:admin/aliases/*"
   );
@@ -111,15 +112,17 @@ public class Constants {
       "cluster:admin/repository/delete",
       "indices:data/write/update/byquery",
       "indices:admin/data_stream/delete",
+      "cluster:admin/component_template/get",
       "cluster:admin/component_template/delete",
+      "cluster:admin/component_template/put",
       "cluster:monitor/ccr/follow_info",
       "indices:admin/delete",
       "indices:admin/index_template/get",
       "indices:admin/index_template/delete",
       "indices:admin/index_template/put",
+      "indices:admin/index_template/simulate",
       "cluster:admin/slm/put",
       "cluster:admin/slm/execute",
-      "cluster:admin/slm/delete",
-      "indices:admin/index_template/simulate"
+      "cluster:admin/slm/delete"
   );
 }
