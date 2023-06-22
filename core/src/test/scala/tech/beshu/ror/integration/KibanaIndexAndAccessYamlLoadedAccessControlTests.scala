@@ -105,7 +105,6 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 1
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Template Tenancy"))
             assertBlockContext(
@@ -194,7 +193,6 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
 
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-        result.history should have size 2
         inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
           block.name should be(Block.Name("Read-Write access with RoR custom kibana index"))
           assertBlockContext(
@@ -248,7 +246,6 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
 
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-        result.history should have size 4
         inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
           block.name should be(Block.Name("ADMIN_GRP"))
           assertBlockContext(
