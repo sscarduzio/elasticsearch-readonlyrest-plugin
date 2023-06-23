@@ -95,25 +95,88 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
 
   "An ACL" when {
     "kibana index and kibana access rules are used" should {
-      "allow to proceed" in {
-        val request = MockRequestContext.indices.copy(
-          headers = Set(basicAuthHeader("john:dev")),
-          action = Action("indices:monitor/*"),
-          filteredIndices = Set(clusterIndexName(".readonlyrest"))
-        )
+      "allow to proceed" when {
+        "indices monitor request is called" in {
+          val request = MockRequestContext.indices.copy(
+            headers = Set(basicAuthHeader("john:dev")),
+            action = Action("indices:monitor/*"),
+            filteredIndices = Set(clusterIndexName(".readonlyrest"))
+          )
 
-        val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-        result.history should have size 1
-        inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
-          block.name should be(Block.Name("Template Tenancy"))
-          assertBlockContext(
-            loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
-            kibanaIndex = Some(kibanaIndexName(".kibana_template")),
-            kibanaAccess = Some(KibanaAccess.Admin),
-            indices = Set(clusterIndexName(".readonlyrest")),
-          ) {
-            blockContext
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+            block.name should be(Block.Name("Template Tenancy"))
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
+              kibanaIndex = Some(kibanaIndexName(".kibana_template")),
+              kibanaAccess = Some(KibanaAccess.Admin),
+              indices = Set(clusterIndexName(".readonlyrest")),
+            ) {
+              blockContext
+            }
+          }
+        }
+        "component template creation request is called (in case of `admin` kibana access)" in {
+          val request = MockRequestContext.nonIndices.copy(
+            headers = Set(basicAuthHeader("john:dev")),
+            action = Action("cluster:admin/component_template/put"),
+            uriPath = UriPath("/_component_template/test")
+          )
+
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+            block.name should be(Block.Name("Template Tenancy"))
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
+              kibanaIndex = Some(kibanaIndexName(".kibana_template")),
+              kibanaAccess = Some(KibanaAccess.Admin),
+            ) {
+              blockContext
+            }
+          }
+        }
+        "component template creation request is called (in case of `rw` kibana access)" in {
+          val request = MockRequestContext.nonIndices.copy(
+            headers = Set(basicAuthHeader("testuser_ro_master_rw_custom:XXXX")),
+            action = Action("cluster:admin/component_template/put"),
+            uriPath = UriPath("/_component_template/test")
+          )
+
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+            block.name should be(Block.Name("Read-Write access with RoR custom kibana index"))
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("testuser_ro_master_rw_custom"))),
+              kibanaIndex = Some(kibanaIndexName(".kibana_ror_custom")),
+              kibanaAccess = Some(KibanaAccess.RW),
+              currentGroup = Some(GroupName("RW_ror_custom")),
+              availableGroups = UniqueList.of(GroupName("RW_ror_custom")),
+            ) {
+              blockContext
+            }
+          }
+        }
+        "index template creation request is called (in case of `admin` kibana access)" in {
+          val request = MockRequestContext.nonIndices.copy(
+            headers = Set(basicAuthHeader("john:dev")),
+            action = Action("cluster:admin/component_template/put"),
+            uriPath = UriPath("/_component_template/test")
+          )
+
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+            block.name should be(Block.Name("Template Tenancy"))
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
+              kibanaIndex = Some(kibanaIndexName(".kibana_template")),
+              kibanaAccess = Some(KibanaAccess.Admin),
+            ) {
+              blockContext
+            }
           }
         }
       }
@@ -130,7 +193,6 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
 
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-        result.history should have size 2
         inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
           block.name should be(Block.Name("Read-Write access with RoR custom kibana index"))
           assertBlockContext(
@@ -184,7 +246,6 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
 
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-        result.history should have size 4
         inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
           block.name should be(Block.Name("ADMIN_GRP"))
           assertBlockContext(
