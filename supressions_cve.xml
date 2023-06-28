@@ -77,4 +77,25 @@
         <sha1>ab0203590a39ad2fe4c225ddfad70e6a552c8445</sha1>
         <cpe>cpe:/a:bouncycastle:legion-of-the-bouncy-castle-fips-java-api</cpe>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: jackson-databind-2.13.5.jar (https://github.com/FasterXML/jackson-databind/issues/3972) - it's a false positive. Should be revoked in future
+   ]]></notes>
+        <sha1>aa95e46dbc32454f3983221d420e78ef19ddf844</sha1>
+        <cpe>cpe:/a:fasterxml:jackson-databind</cpe>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: jackson-databind-2.13.5.jar (https://github.com/FasterXML/jackson-databind/issues/3972) - it's a false positive. Should be revoked in future
+   ]]></notes>
+        <sha1>aa95e46dbc32454f3983221d420e78ef19ddf844</sha1>
+        <cpe>cpe:/a:fasterxml:jackson-modules-java8</cpe>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: jackson-databind-2.13.5.jar (https://github.com/FasterXML/jackson-databind/issues/3972) - it's a false positive. Should be revoked in future
+   ]]></notes>
+        <sha1>aa95e46dbc32454f3983221d420e78ef19ddf844</sha1>
+        <cve>CVE-2023-35116</cve>
+    </suppress>
 </suppressions>
