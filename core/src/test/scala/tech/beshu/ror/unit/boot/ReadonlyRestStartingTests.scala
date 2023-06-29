@@ -349,6 +349,33 @@ class ReadonlyRestStartingTests
             failure.message shouldBe "Errors:\nfailed"
           }
         }
+        "ROR SSL (in elasticsearch.yml) is tried to be used when XPack Security is enabled" in {
+          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mock[IndexJsonContentService], "/boot_tests/ror_ssl_declared_in_es_file_xpack_security_enabled/")
+
+          val result = readonlyRest.start().runSyncUnsafe()
+
+          inside(result) { case Left(failure) =>
+            failure.message should be("Cannot use ROR SSL configuration when XPack Security is enabled")
+          }
+        }
+        "ROR SSL (in readonlyrest.yml) is tried to be used when XPack Security is enabled" in {
+          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mock[IndexJsonContentService], "/boot_tests/ror_ssl_declared_in_readonlyrest_file_xpack_security_enabled/")
+
+          val result = readonlyRest.start().runSyncUnsafe()
+
+          inside(result) { case Left(failure) =>
+            failure.message should be("Cannot use ROR SSL configuration when XPack Security is enabled")
+          }
+        }
+        "ROR FIPS SSL is tried to be used when XPack Security is enabled" in {
+          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mock[IndexJsonContentService], "/boot_tests/ror_fisb_ssl_declared_in_readonlyrest_file_xpack_security_enabled/")
+
+          val result = readonlyRest.start().runSyncUnsafe()
+
+          inside(result) { case Left(failure) =>
+            failure.message should be("Cannot use ROR FIBS configuration when XPack Security is enabled")
+          }
+        }
       }
     }
     "support the test engine" which {

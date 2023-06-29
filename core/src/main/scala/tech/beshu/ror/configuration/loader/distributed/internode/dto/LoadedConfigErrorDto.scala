@@ -30,6 +30,8 @@ object LoadedConfigErrorDto {
     case o: LoadedRorConfig.FileNotExist => FileNotExistDTO.create(o)
     case o: LoadedRorConfig.EsFileNotExist => EsFileNotExistDTO.create(o)
     case o: LoadedRorConfig.EsFileMalformed => EsFileMalformedDTO.create(o)
+    case o: LoadedRorConfig.CannotUseRorConfigurationWhenXpackSecurityIsEnabled =>
+      CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO.create(o)
     case o: LoadedRorConfig.IndexParsingError => IndexParsingErrorDTO.create(o)
     case _: LoadedRorConfig.IndexUnknownStructure.type => IndexUnknownStructureDTO
   }
@@ -39,12 +41,13 @@ object LoadedConfigErrorDto {
     case o: FileNotExistDTO => FileNotExistDTO.fromDto(o)
     case o: EsFileNotExistDTO => EsFileNotExistDTO.fromDto(o)
     case o: EsFileMalformedDTO => EsFileMalformedDTO.fromDto(o)
+    case o: CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO =>
+      CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO.fromDto(o)
     case o: IndexParsingErrorDTO => IndexParsingErrorDTO.fromDto(o)
     case _: IndexUnknownStructureDTO.type => LoadedRorConfig.IndexUnknownStructure
   }
 
   final case class FileParsingErrorDTO(message: String) extends LoadedConfigErrorDto
-
   object FileParsingErrorDTO {
     def create(o: LoadedRorConfig.FileParsingError): FileParsingErrorDTO =
       new FileParsingErrorDTO(
@@ -58,6 +61,7 @@ object LoadedConfigErrorDto {
       implicit def fromDto: LoadedRorConfig.FileParsingError = FileParsingErrorDTO.fromDto(o)
     }
   }
+
   final case class FileNotExistDTO(path: String) extends LoadedConfigErrorDto
   object FileNotExistDTO {
     def create(o: LoadedRorConfig.FileNotExist): FileNotExistDTO =
@@ -72,6 +76,7 @@ object LoadedConfigErrorDto {
       implicit def fromDto: LoadedRorConfig.FileNotExist = FileNotExistDTO.fromDto(o)
     }
   }
+
   final case class EsFileNotExistDTO(path: String) extends LoadedConfigErrorDto
   object EsFileNotExistDTO {
     def create(o: LoadedRorConfig.EsFileNotExist): EsFileNotExistDTO =
@@ -86,6 +91,7 @@ object LoadedConfigErrorDto {
       implicit def fromDto: LoadedRorConfig.EsFileNotExist = EsFileNotExistDTO.fromDto(o)
     }
   }
+
   final case class EsFileMalformedDTO(path: String, message: String) extends LoadedConfigErrorDto
   object EsFileMalformedDTO {
     def create(o: LoadedRorConfig.EsFileMalformed): EsFileMalformedDTO =
@@ -102,6 +108,24 @@ object LoadedConfigErrorDto {
       implicit def fromDto: LoadedRorConfig.EsFileMalformed = EsFileMalformedDTO.fromDto(o)
     }
   }
+
+  final case class CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO(typeOfConfiguration: String) extends LoadedConfigErrorDto
+  object CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO {
+    def create(o: LoadedRorConfig.CannotUseRorConfigurationWhenXpackSecurityIsEnabled): CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO =
+      new CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO(
+        typeOfConfiguration = o.typeOfConfiguration
+      )
+
+    def fromDto(o: CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO): LoadedRorConfig.CannotUseRorConfigurationWhenXpackSecurityIsEnabled =
+      LoadedRorConfig.CannotUseRorConfigurationWhenXpackSecurityIsEnabled(
+        typeOfConfiguration = o.typeOfConfiguration
+      )
+    implicit class Ops(o: CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO) {
+      implicit def fromDto: LoadedRorConfig.CannotUseRorConfigurationWhenXpackSecurityIsEnabled =
+        CannotUseRorConfigurationWhenXpackSecurityIsEnabledDTO.fromDto(o)
+    }
+  }
+
   final case class IndexParsingErrorDTO(message: String) extends LoadedConfigErrorDto
   object IndexParsingErrorDTO {
     def create(o: LoadedRorConfig.IndexParsingError): IndexParsingErrorDTO =
@@ -116,6 +140,7 @@ object LoadedConfigErrorDto {
       implicit def fromDto: LoadedRorConfig.IndexParsingError = IndexParsingErrorDTO.fromDto(o)
     }
   }
+
   case object IndexUnknownStructureDTO extends LoadedConfigErrorDto {
     implicit lazy val codecIndexUnknownStructureDto: Codec[IndexUnknownStructureDTO.type] = {
       val enc: Encoder[IndexUnknownStructureDTO.type] = Encoder.encodeString.contramap(_ => "index_not_exist")

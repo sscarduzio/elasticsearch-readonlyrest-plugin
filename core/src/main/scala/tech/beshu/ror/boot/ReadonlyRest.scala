@@ -98,6 +98,8 @@ class ReadonlyRest(coreFactory: CoreFactory,
         StartingFailure(s"Cannot find elasticsearch settings file: [${path.value}]")
       case LoadedRorConfig.EsFileMalformed(path, message) =>
         StartingFailure(s"Settings file is malformed: [${path.value}], $message")
+      case LoadedRorConfig.CannotUseRorConfigurationWhenXpackSecurityIsEnabled(typeOfConfiguration) =>
+        StartingFailure(s"Cannot use ROR $typeOfConfiguration when XPack Security is enabled")
       case LoadedRorConfig.IndexParsingError(message) =>
         StartingFailure(message)
       case LoadedRorConfig.IndexUnknownStructure =>
