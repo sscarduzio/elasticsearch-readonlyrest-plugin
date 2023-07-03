@@ -1,4 +1,5 @@
 readonlyrest:
+
   # comments should survive
   access_control_rules:
     - name: "CONTAINER ADMIN - updated"

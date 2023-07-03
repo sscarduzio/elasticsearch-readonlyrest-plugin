@@ -21,7 +21,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -44,7 +44,7 @@ class DynamicVariablesSuite
         environmentVariables = Map("TEST_VAR" -> "dev"),
         additionalElasticsearchYamlEntries = Map.empty
       ),
-      securityType = SecurityType.RorSecurity(Attributes.default.copy(
+      securityType = SecurityType.RorWithXpackSecurity(Attributes.default.copy(
         rorConfigFileName = rorConfigFileName
       )),
       nodeDataInitializer = DynamicVariablesSuite.nodeDataInitializer()

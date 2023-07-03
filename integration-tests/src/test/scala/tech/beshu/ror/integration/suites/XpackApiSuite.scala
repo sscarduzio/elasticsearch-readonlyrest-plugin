@@ -23,7 +23,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.XpackApiSuite.NextRollupJobName
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.{Attributes, Enabled, InternodeSsl, RestSsl}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, SecurityType}
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -46,10 +46,10 @@ class XpackApiSuite
     EsClusterSettings.create(
       clusterName = "ROR1",
       nodeDataInitializer = XpackApiSuite.nodeDataInitializer(),
-      securityType = SecurityType.RorSecurity(Attributes.default.copy(
+      securityType = SecurityType.RorWithXpackSecurity(Attributes.default.copy(
         rorConfigFileName = rorConfigFileName,
-        restSslEnabled = true,
-        internodeSslEnabled = false
+        restSsl = Enabled.Yes(RestSsl.Xpack),
+        internodeSsl = Enabled.Yes(InternodeSsl.Xpack)
       ))
     )
   )

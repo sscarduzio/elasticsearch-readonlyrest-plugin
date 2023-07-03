@@ -31,7 +31,7 @@ object ReadonlyRestPlugin {
                           attributes: Attributes)
   object Config {
     final case class Attributes(rorConfigReloading: RorConfigReloading,
-                                customSettingsIndex: Option[String],
+                                rorCustomSettingsIndex: Option[String],
                                 restSslEnabled: Boolean,
                                 internodeSslEnabled: Boolean,
                                 isFipsEnabled: Boolean,
@@ -39,7 +39,7 @@ object ReadonlyRestPlugin {
     object Attributes {
       val default: Attributes = Attributes(
         rorConfigReloading = RorConfigReloading.Disabled,
-        customSettingsIndex = None,
+        rorCustomSettingsIndex = None,
         restSslEnabled = true,
         internodeSslEnabled = false,
         isFipsEnabled = false,
@@ -75,7 +75,7 @@ class ReadonlyRestPlugin(esVersion: String,
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {
     builder
       .addWhen(!isEnabled(config.attributes.rorConfigReloading), "readonlyrest.force_load_from_file: true")
-      .addWhen(config.attributes.customSettingsIndex.isDefined, s"readonlyrest.settings_index: ${config.attributes.customSettingsIndex.get}")
+      .addWhen(config.attributes.rorCustomSettingsIndex.isDefined, s"readonlyrest.settings_index: ${config.attributes.rorCustomSettingsIndex.get}")
       .addWhen(config.attributes.restSslEnabled, "http.type: ssl_netty4")
       .addWhen(config.attributes.internodeSslEnabled, "transport.type: ror_ssl_internode")
       .add("xpack.security.enabled: false")

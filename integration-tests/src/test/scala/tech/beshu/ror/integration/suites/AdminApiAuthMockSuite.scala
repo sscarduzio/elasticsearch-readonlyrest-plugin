@@ -24,10 +24,11 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import tech.beshu.ror.integration.suites.base.support.BaseManyEsClustersIntegrationTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport, SingletonLdapContainers}
-import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
+import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes.RorConfigReloading
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.{IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 import ujson.Value.Value
@@ -56,9 +57,9 @@ class AdminApiAuthMockSuite
     EsClusterSettings.create(
       clusterName = "ROR1",
       numberOfInstances = 2,
-      securityType = RorSecurity(Attributes.default.copy(
-        rorConfigReloading = Attributes.RorConfigReloading.Enabled(interval = 2 seconds),
-        customSettingsIndex = Some(readonlyrestIndexName),
+      securityType = RorWithXpackSecurity(Attributes.default.copy(
+        rorConfigReloading = RorConfigReloading.Enabled(interval = 2 seconds),
+        rorCustomSettingsIndex = Some(readonlyrestIndexName),
         rorConfigFileName = rorConfigFileName
       )),
       nodeDataInitializer = NoOpElasticsearchNodeDataInitializer,

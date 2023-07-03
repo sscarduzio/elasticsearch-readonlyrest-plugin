@@ -23,7 +23,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.{Attributes, Enabled}
 import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -45,9 +45,9 @@ class RemoteReindexSuite
       clusterName = "ROR_SOURCE_ES",
       nodeDataInitializer = RemoteReindexSuite.sourceEsDataInitializer(),
       esVersion = EsVersion.SpecificVersion("es60x"),
-      securityType = SecurityType.RorSecurity(Attributes.default.copy(
-        restSslEnabled = false,
-        rorConfigFileName = RemoteReindexSuite.this.sourceEsRorConfigFileName
+      securityType = SecurityType.RorWithXpackSecurity(Attributes.default.copy(
+        rorConfigFileName = RemoteReindexSuite.this.sourceEsRorConfigFileName,
+        restSsl = Enabled.No
       ))
     )
   )
@@ -59,9 +59,9 @@ class RemoteReindexSuite
         environmentVariables = Map.empty,
         additionalElasticsearchYamlEntries = Map("reindex.remote.whitelist" -> "\"*:9200\"")
       ),
-      securityType = SecurityType.RorSecurity(Attributes.default.copy(
-        restSslEnabled = false,
-        rorConfigFileName = RemoteReindexSuite.this.rorConfigFileName
+      securityType = SecurityType.RorWithXpackSecurity(Attributes.default.copy(
+        rorConfigFileName = RemoteReindexSuite.this.rorConfigFileName,
+        restSsl = Enabled.No
       ))
     )
   )

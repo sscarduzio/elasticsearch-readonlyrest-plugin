@@ -24,7 +24,7 @@ import monix.execution.atomic.AtomicInt
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.SearchManager
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -167,7 +167,7 @@ private object RorStartingSuite {
         nodeSettings = EsNodeSettings(
           nodeName = nodeName,
           clusterName = clusterName,
-          securityType = SecurityType.RorSecurity(Attributes.default.copy(
+          securityType = SecurityType.RorWithXpackSecurity(Attributes.default.copy(
             rorConfigFileName = rorConfigFile
           )),
           containerSpecification = ContainerSpecification.empty.copy(

@@ -20,8 +20,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, RorApiManager}
 
@@ -40,7 +40,7 @@ class RorDisabledSuite
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings.create(
       clusterName = "ROR1",
-      securityType = RorSecurity(Attributes.default.copy(
+      securityType = RorWithXpackSecurity(Attributes.default.copy(
         rorConfigFileName = rorConfigFileName,
       )),
     )

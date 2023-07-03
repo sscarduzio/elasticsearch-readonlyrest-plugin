@@ -30,7 +30,7 @@ object XpackSecurityPlugin {
     object Attributes {
       val default: Attributes = Attributes(
         restSslEnabled = true,
-        internodeSslEnabled = false
+        internodeSslEnabled = true
       )
     }
   }
@@ -44,7 +44,7 @@ class XpackSecurityPlugin(esVersion: String,
       .copyFile(configDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
       .copyFile(configDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
       .copyFile(configDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
-      .configureKeystore()
+      .configureKeystore(config.attributes)
   }
 
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {
@@ -60,7 +60,7 @@ class XpackSecurityPlugin(esVersion: String,
   private implicit class ConfigureRestSsl(val builder: EsConfigBuilder) {
 
     def configureRestSsl(attributes: Attributes): EsConfigBuilder = {
-      if(attributes.internodeSslEnabled) {
+      if (attributes.restSslEnabled) {
         builder
           .add("xpack.security.http.ssl.enabled: true")
           .add("xpack.security.http.ssl.verification_mode: none")
@@ -76,7 +76,7 @@ class XpackSecurityPlugin(esVersion: String,
   private implicit class ConfigureTransportSsl(val builder: EsConfigBuilder) {
 
     def configureTransportSsl(attributes: Attributes): EsConfigBuilder = {
-      if(attributes.internodeSslEnabled) {
+      if (attributes.internodeSslEnabled) {
         builder
           .add("xpack.security.transport.ssl.enabled: true")
           .add("xpack.security.transport.ssl.verification_mode: none")
@@ -91,13 +91,13 @@ class XpackSecurityPlugin(esVersion: String,
 
   private implicit class ConfigureKeystore(val image: DockerImageDescription) {
 
-    def configureKeystore(): DockerImageDescription = {
+    def configureKeystore(attributes: Attributes): DockerImageDescription = {
       image
         .run(s"${esDir.toString()}/bin/elasticsearch-keystore create")
-        .run(s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.transport.ssl.keystore.secure_password")
-        .run(s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.transport.ssl.truststore.secure_password")
-        .run(s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.http.ssl.keystore.secure_password")
-        .run(s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.http.ssl.truststore.secure_password")
+        .runWhen(attributes.internodeSslEnabled, s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.transport.ssl.keystore.secure_password")
+        .runWhen(attributes.internodeSslEnabled, s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.transport.ssl.truststore.secure_password")
+        .runWhen(attributes.restSslEnabled, s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.http.ssl.keystore.secure_password")
+        .runWhen(attributes.restSslEnabled, s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.http.ssl.truststore.secure_password")
         .runWhen(Version.greaterOrEqualThan(esVersion, 6, 6, 0),
           s"printf 'elastic\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add bootstrap.password"
         )

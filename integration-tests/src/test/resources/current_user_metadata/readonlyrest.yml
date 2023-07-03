@@ -1,9 +1,4 @@
 readonlyrest:
-  ssl:
-    enable: true
-    keystore_file:  "ror-keystore.jks"
-    keystore_pass: readonlyrest
-    key_pass: readonlyrest
 
   access_control_rules:
 
@@ -66,7 +61,6 @@ readonlyrest:
         template_index: "user4_group6_kibana_template_index"
 
   users:
-
     - username: user1
       groups: ["group1", "group3"]
       auth_key: "user1:pass"

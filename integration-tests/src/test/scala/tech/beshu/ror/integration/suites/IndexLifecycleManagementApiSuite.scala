@@ -26,9 +26,9 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.IndexLifecycleManagementApiSuite.{ExamplePolicies, PolicyGenerator}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
+import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.{ClusterManager, DocumentManager, IndexLifecycleManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -54,7 +54,7 @@ class IndexLifecycleManagementApiSuite
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings.create(
       clusterName = "ROR1",
-      securityType = RorSecurity(Attributes.default.copy(
+      securityType = RorWithXpackSecurity(Attributes.default.copy(
         rorConfigFileName = rorConfigFileName
       )),
       numberOfInstances = 2,

@@ -23,9 +23,9 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, XPackSecurity}
+import tech.beshu.ror.utils.containers.SecurityType.{RorWithXpackSecurity, XPackSecurity}
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.{Attributes, Enabled, InternodeSsl}
 import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -50,9 +50,9 @@ class CrossClusterCallsSuite
   override val remoteClusterContainer: EsRemoteClustersContainer = createRemoteClustersContainer(
     localClustersSettings = EsClusterSettings.create(
       clusterName = "ROR_L1",
-      securityType = RorSecurity(Attributes.default.copy(
+      securityType = RorWithXpackSecurity(Attributes.default.copy(
         rorConfigFileName = rorConfigFileName,
-        internodeSslEnabled = true
+        internodeSsl = Enabled.Yes(InternodeSsl.Xpack)
       )),
       nodeDataInitializer = localClusterNodeDataInitializer(),
     ),
@@ -83,9 +83,9 @@ class CrossClusterCallsSuite
                                  nodeDataInitializer: ElasticsearchNodeDataInitializer) =
     EsClusterSettings.create(
       clusterName = name,
-      securityType = RorSecurity(Attributes.default.copy(
+      securityType = RorWithXpackSecurity(Attributes.default.copy(
         rorConfigFileName = rorConfigFileName,
-        internodeSslEnabled = true
+        internodeSsl = Enabled.Yes(InternodeSsl.Xpack)
       )),
       nodeDataInitializer = nodeDataInitializer
     )
