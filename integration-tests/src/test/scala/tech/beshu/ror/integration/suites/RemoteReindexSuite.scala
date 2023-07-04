@@ -23,7 +23,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.{Attributes, Enabled}
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Enabled
+import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -45,10 +46,11 @@ class RemoteReindexSuite
       clusterName = "ROR_SOURCE_ES",
       nodeDataInitializer = RemoteReindexSuite.sourceEsDataInitializer(),
       esVersion = EsVersion.SpecificVersion("es60x"),
-      securityType = SecurityType.RorWithXpackSecurity(Attributes.default.copy(
-        rorConfigFileName = RemoteReindexSuite.this.sourceEsRorConfigFileName,
-        restSsl = Enabled.No
-      ))
+      securityType = SecurityType.RorSecurity(
+        ReadonlyRestPlugin.Config.Attributes.default.copy(
+          rorConfigFileName = RemoteReindexSuite.this.sourceEsRorConfigFileName,
+          restSslEnabled = false,
+        ))
     )
   )
 
@@ -59,10 +61,11 @@ class RemoteReindexSuite
         environmentVariables = Map.empty,
         additionalElasticsearchYamlEntries = Map("reindex.remote.whitelist" -> "\"*:9200\"")
       ),
-      securityType = SecurityType.RorWithXpackSecurity(Attributes.default.copy(
-        rorConfigFileName = RemoteReindexSuite.this.rorConfigFileName,
-        restSsl = Enabled.No
-      ))
+      securityType = SecurityType.RorWithXpackSecurity(
+        ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+          rorConfigFileName = RemoteReindexSuite.this.rorConfigFileName,
+          restSsl = Enabled.No
+        ))
     )
   )
 
