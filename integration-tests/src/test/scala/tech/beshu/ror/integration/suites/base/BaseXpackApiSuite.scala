@@ -17,7 +17,6 @@
 package tech.beshu.ror.integration.suites.base
 
 import monix.execution.atomic.Atomic
-import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite.NextRollupJobName
@@ -34,7 +33,6 @@ trait BaseXpackApiSuite
     with PluginTestSupport
     with SingleClientSupport
     with ESVersionSupportForAnyWordSpecLike
-    with BeforeAndAfterEach
     with Matchers {
 
   override lazy val targetEs = container.nodes.head
