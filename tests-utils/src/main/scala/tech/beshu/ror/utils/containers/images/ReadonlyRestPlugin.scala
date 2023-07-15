@@ -67,29 +67,23 @@ class ReadonlyRestPlugin(esVersion: String,
       .copyFile(configDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
       .copyFile(configDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
       .copyFile(configDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
-      .updateFipsDependencies(config)
-      .user("root")
-      .installRorPlugin(config)
+      .updateFipsDependencies()
+      .installRorPlugin()
   }
 
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {
     builder
-      .addWhen(!isEnabled(config.attributes.rorConfigReloading), "readonlyrest.force_load_from_file: true")
-      .addWhen(config.attributes.rorCustomSettingsIndex.isDefined, s"readonlyrest.settings_index: ${config.attributes.rorCustomSettingsIndex.get}")
-      .addWhen(config.attributes.restSslEnabled, "http.type: ssl_netty4")
-      .addWhen(config.attributes.internodeSslEnabled, "transport.type: ror_ssl_internode")
       .add("xpack.security.enabled: false")
+      .configureRorConfigAutoReloading()
+      .configureRorCustomIndexSettings()
+      .configureRestSsl()
+      .configureTransportSsl()
   }
 
   override def updateEsJavaOptsBuilder(builder: EsJavaOptsBuilder): EsJavaOptsBuilder = {
     builder
       .add(unboundidDebug(false))
       .add(rorReloadingInterval(config.attributes.rorConfigReloading))
-  }
-
-  private def isEnabled(rorConfigReloading: RorConfigReloading) = rorConfigReloading match {
-    case RorConfigReloading.Disabled => false
-    case RorConfigReloading.Enabled(_) => true
   }
 
   private def unboundidDebug(enabled: Boolean) =
@@ -104,20 +98,22 @@ class ReadonlyRestPlugin(esVersion: String,
   }
 
   private implicit class InstallRorPlugin(val image: DockerImageDescription) {
-    def installRorPlugin(config: Config): DockerImageDescription = {
+    def installRorPlugin(): DockerImageDescription = {
       image
         .run(s"${esDir.toString()}/bin/elasticsearch-plugin install --batch file:///tmp/${config.rorPlugin.name}")
+        .user("root")
         .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
           command = s"${esDir.toString()}/jdk/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch"
         )
         .runWhen(Version.greaterOrEqualThan(esVersion, 6, 3, 0) && Version.lowerThan(esVersion, 7, 0, 0),
           command = s"$$JAVA_HOME/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch"
         )
+        .user("elasticsearch")
     }
   }
 
   private implicit class UpdateFipsDependencies(val image: DockerImageDescription) {
-    def updateFipsDependencies(config: Config): DockerImageDescription = {
+    def updateFipsDependencies(): DockerImageDescription = {
       if (!config.attributes.isFipsEnabled) image
       else {
         image
@@ -132,4 +128,61 @@ class ReadonlyRestPlugin(esVersion: String,
     }
   }
 
+  private implicit class ConfigureRorCustomIndexSettings(val builder: EsConfigBuilder) {
+
+    def configureRorCustomIndexSettings(): EsConfigBuilder = {
+      config.attributes.rorCustomSettingsIndex match {
+        case Some(customRorIndex) =>
+          builder.add(s"readonlyrest.settings_index: $customRorIndex")
+        case None =>
+          builder
+      }
+    }
+  }
+
+  private implicit class ConfigureRorConfigReloading(val builder: EsConfigBuilder) {
+
+    def configureRorConfigAutoReloading(): EsConfigBuilder = {
+      if(isEnabled(config.attributes.rorConfigReloading)) {
+        builder
+      } else {
+        builder.add("readonlyrest.force_load_from_file: true")
+      }
+    }
+
+    private def isEnabled(rorConfigReloading: RorConfigReloading) = rorConfigReloading match {
+      case RorConfigReloading.Disabled => false
+      case RorConfigReloading.Enabled(_) => true
+    }
+  }
+
+  private implicit class ConfigureRestSsl(val builder: EsConfigBuilder) {
+
+    def configureRestSsl(): EsConfigBuilder = {
+      if (config.attributes.restSslEnabled) {
+        builder
+          .add("http.type: ssl_netty4")
+          .add("readonlyrest.ssl.keystore_file: ror-keystore.jks")
+          .add("readonlyrest.ssl.keystore_pass: readonlyrest")
+          .add("readonlyrest.ssl.key_pass: readonlyrest")
+      } else {
+        builder
+      }
+    }
+  }
+
+  private implicit class ConfigureTransportSsl(val builder: EsConfigBuilder) {
+
+    def configureTransportSsl(): EsConfigBuilder = {
+      if (config.attributes.internodeSslEnabled) {
+        builder
+          .add("transport.type: ror_ssl_internode")
+          .add("readonlyrest.ssl_internode.keystore_file: ror-keystore.jks")
+          .add("readonlyrest.ssl_internode.keystore_pass: readonlyrest")
+          .add("readonlyrest.ssl_internode.key_pass: readonlyrest")
+      } else {
+        builder
+      }
+    }
+  }
 }
