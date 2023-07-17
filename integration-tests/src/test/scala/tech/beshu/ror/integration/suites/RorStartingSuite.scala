@@ -17,7 +17,6 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
-import cats.implicits._
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicInt
@@ -46,67 +45,78 @@ class RorStartingSuite extends AnyWordSpec {
   "ES" when {
     "ROR does not started yet" should {
       "return not started response with http code 403" when {
-        "403 configured" in {
-          val esContainer = new TestEsContainerManager(
-            rorConfigFile = validRorConfigFile,
-            additionalEsYamlEntries = Map(notStartedResponseCodeKey -> "403")
-          )
-
-          notStartedYetTestScenario(esContainer = esContainer, expectedResponseCode = 403)
-            .runSyncUnsafe(5 minutes)
+        "403 configured" in withTestEsContainerManager(Map(notStartedResponseCodeKey -> "403")) { esContainer =>
+          testRorStartup(using = esContainer, expectedResponseCode = 403)
         }
-        "no option configured" in {
-          val esContainer = new TestEsContainerManager(
-            rorConfigFile = validRorConfigFile,
-            additionalEsYamlEntries = Map.empty
-          )
-
-          notStartedYetTestScenario(esContainer = esContainer, expectedResponseCode = 403)
-            .runSyncUnsafe(5 minutes)
+        "no option configured" in withTestEsContainerManager(Map.empty) { esContainer =>
+          testRorStartup(using = esContainer, expectedResponseCode = 403)
         }
       }
       "return not started response with http code 503" when {
-        "503 configured" in {
-          val esContainer = new TestEsContainerManager(
-            rorConfigFile = validRorConfigFile,
-            additionalEsYamlEntries = Map(notStartedResponseCodeKey -> "503")
-          )
-
-          notStartedYetTestScenario(esContainer = esContainer, expectedResponseCode = 503)
-            .runSyncUnsafe(5 minutes)
+        "503 configured" in withTestEsContainerManager(Map(notStartedResponseCodeKey -> "503")) { esContainer =>
+          testRorStartup(using = esContainer, expectedResponseCode = 503)
         }
       }
     }
   }
 
-  private def notStartedYetTestScenario(esContainer: TestEsContainerManager, expectedResponseCode: Int) = {
-    NonEmptyList.of(
-      esContainer.start(),
-      testTrafficAndStopContainer(esContainer, expectedResponseCode)
+  private def withTestEsContainerManager(additionalEsYamlEntries: Map[String, String])
+                                        (testCode: TestEsContainerManager => Task[Unit]): Unit = {
+    val esContainer = new TestEsContainerManager(
+      rorConfigFile = validRorConfigFile,
+      additionalEsYamlEntries = additionalEsYamlEntries
     )
-      .parTraverse(identity)
+    try {
+      Task
+        .parSequence(List(
+          testCode(esContainer),
+          esContainer.start(),
+        ))
+        .runSyncUnsafe(5 minutes)
+    } finally {
+      esContainer.stop().runSyncUnsafe()
+    }
   }
 
-  private def testTrafficAndStopContainer(esContainer: TestEsContainerManager, expectedResponseCode: Int): Task[Unit] = {
+  private def testRorStartup(using: TestEsContainerManager, expectedResponseCode: Int): Task[Unit] = {
     for {
-      restClient <- esContainer.createRestClient
-      searchTestResults <- searchTest(client = restClient, searchAttemptsCount = 100000)
-      _ <- esContainer.stop()
+      restClient <- using.createRestClient
+      searchTestResults <- searchTest(client = restClient, searchAttemptsCount = 200)
       result <- handleResults(searchTestResults, expectedResponseCode)
     } yield result
   }
 
-  private def searchTest(client: RestClient, searchAttemptsCount: Int): Task[Seq[TestResponse]] = Task.delay {
-    val sm = new SearchManager(client)
-    Range.inclusive(1, searchAttemptsCount).flatMap { _ =>
-      Try(sm.searchAll("*")) match {
-        case Failure(_) =>
-          None
-        case Success(response) =>
-          Some(TestResponse(response.responseCode, response.responseJson))
-      }
+  private def searchTest(client: RestClient, searchAttemptsCount: Int): Task[Seq[TestResponse]] = {
+    searchAndWait(new SearchManager(client), searchAttemptsCount).map(_.distinct)
+  }
+
+  private def searchAndWait(manager: SearchManager, attemptLeft: Int): Task[List[TestResponse]] = {
+    if (attemptLeft == 0)
+      Task.now(List.empty)
+    else {
+      for {
+        currentResponses <- search(manager)
+        responses <- currentResponses match {
+          case Right(responses) => for {
+            _ <- Task.sleep(1 second)
+            otherResponses <- searchAndWait(manager, attemptLeft - 1)
+          } yield responses ::: otherResponses
+          case Left(responses) =>
+            Task.now(responses)
+        }
+      } yield responses
     }
-      .distinct
+  }
+
+  private def search(manger: SearchManager): Task[Either[List[TestResponse], List[TestResponse]]] = Task.delay {
+    Try(manger.searchAll("*")) match {
+      case Success(response) if response.isSuccess =>
+        Left(List(TestResponse(response.responseCode, response.responseJson)))
+      case Success(response) =>
+        Right(List(TestResponse(response.responseCode, response.responseJson)))
+      case Failure(_) =>
+        Right(List.empty)
+    }
   }
 
   private def handleResults(results: Seq[TestResponse], expectedResponseCode: Int): Task[Unit] = {
