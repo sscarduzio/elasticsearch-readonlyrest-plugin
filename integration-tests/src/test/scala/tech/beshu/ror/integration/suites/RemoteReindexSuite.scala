@@ -23,7 +23,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Enabled
+import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
@@ -49,7 +49,7 @@ class RemoteReindexSuite
       securityType = SecurityType.RorSecurity(
         ReadonlyRestPlugin.Config.Attributes.default.copy(
           rorConfigFileName = RemoteReindexSuite.this.sourceEsRorConfigFileName,
-          restSslEnabled = false,
+          restSsl = Enabled.No
         ))
     )
   )

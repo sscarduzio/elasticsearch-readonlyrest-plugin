@@ -20,6 +20,8 @@ package tech.beshu.ror.integration.suites
 import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite
 import tech.beshu.ror.utils.containers.SecurityType
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{InternodeSsl, RestSsl}
+import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
 
 class XpackApiWithRorWithDisabledXpackSecuritySuite extends BaseXpackApiSuite {
 
@@ -28,7 +30,7 @@ class XpackApiWithRorWithDisabledXpackSecuritySuite extends BaseXpackApiSuite {
   override protected def rorClusterSecurityType: SecurityType =
     SecurityType.RorSecurity(Attributes.default.copy(
       rorConfigFileName = rorConfigFileName,
-      restSslEnabled = true,
-      internodeSslEnabled = true
+      restSsl = Enabled.Yes(RestSsl.Ror(SourceFile.EsFile)),
+      internodeSsl = Enabled.Yes(InternodeSsl.Ror(SourceFile.EsFile))
     ))
 }

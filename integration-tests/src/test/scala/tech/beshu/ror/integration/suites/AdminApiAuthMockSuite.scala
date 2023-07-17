@@ -27,8 +27,8 @@ import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, Plu
 import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes.RorConfigReloading
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.elasticsearch.{IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 import ujson.Value.Value
@@ -58,7 +58,7 @@ class AdminApiAuthMockSuite
       clusterName = "ROR1",
       numberOfInstances = 2,
       securityType = RorWithXpackSecurity(Attributes.default.copy(
-        rorConfigReloading = RorConfigReloading.Enabled(interval = 2 seconds),
+        rorConfigReloading = Enabled.Yes(2 seconds),
         rorCustomSettingsIndex = Some(readonlyrestIndexName),
         rorConfigFileName = rorConfigFileName
       )),

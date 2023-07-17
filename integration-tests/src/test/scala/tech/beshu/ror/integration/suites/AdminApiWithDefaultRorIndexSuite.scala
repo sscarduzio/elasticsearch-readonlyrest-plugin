@@ -21,8 +21,8 @@ import tech.beshu.ror.integration.suites.base.BaseAdminApiSuite
 import tech.beshu.ror.integration.utils.PluginTestSupport
 import tech.beshu.ror.utils.containers.EsClusterSettings
 import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes.RorConfigReloading
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.domain.Enabled
 
 class AdminApiWithDefaultRorIndexSuite
   extends BaseAdminApiSuite
@@ -37,7 +37,7 @@ class AdminApiWithDefaultRorIndexSuite
       numberOfInstances = 2,
       securityType = RorWithXpackSecurity(Attributes.default.copy(
         rorConfigFileName = rorConfigFileName,
-        rorConfigReloading = RorConfigReloading.Enabled(interval = settingsReloadInterval)
+        rorConfigReloading = Enabled.Yes(settingsReloadInterval)
       )),
       nodeDataInitializer = nodeDataInitializer()
     )

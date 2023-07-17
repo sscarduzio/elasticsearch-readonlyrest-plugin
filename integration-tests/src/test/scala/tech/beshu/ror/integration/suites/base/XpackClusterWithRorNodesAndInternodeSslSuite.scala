@@ -26,6 +26,8 @@ import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, Plu
 import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
 import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, XPackSecurity}
 import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.InternodeSsl
+import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
@@ -59,7 +61,7 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
         numberOfInstances = 3,
         securityType = RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
           rorConfigFileName = rorConfigFileName,
-          internodeSslEnabled = true
+          internodeSsl = Enabled.Yes(InternodeSsl.Ror(SourceFile.EsFile))
         ))
       )
     } else {
@@ -69,7 +71,7 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
           NodeType(
             securityType = RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
               rorConfigFileName = rorConfigFileName,
-              internodeSslEnabled = true
+              internodeSsl = Enabled.Yes(InternodeSsl.Ror(SourceFile.EsFile))
             )),
             numberOfInstances = 1
           ),
