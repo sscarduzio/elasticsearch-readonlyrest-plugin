@@ -165,9 +165,9 @@ class ReadonlyRestPlugin(esVersion: String,
     def configureRorConfigAutoReloading(): EsConfigBuilder = {
       config.attributes.rorConfigReloading match {
         case Enabled.Yes(_) =>
-          builder.add("readonlyrest.force_load_from_file: true")
-        case Enabled.No =>
           builder
+        case Enabled.No =>
+          builder.add("readonlyrest.force_load_from_file: true")
       }
     }
   }
@@ -194,8 +194,10 @@ class ReadonlyRestPlugin(esVersion: String,
             .add("key_pass: readonlyrest")
         case Enabled.Yes(RestSsl.Ror(SourceFile.RorFile)) =>
           builder
+            .add("http.type: ssl_netty4")
         case Enabled.Yes(RestSsl.RorFips(SourceFile.RorFile)) =>
           builder
+            .add("http.type: ssl_netty4")
         case Enabled.No =>
           builder
       }
@@ -224,8 +226,10 @@ class ReadonlyRestPlugin(esVersion: String,
             .add("certificate_verification: true")
         case Enabled.Yes(InternodeSsl.Ror(SourceFile.RorFile)) =>
           builder
+            .add("transport.type: ror_ssl_internode")
         case Enabled.Yes(InternodeSsl.RorFips(SourceFile.RorFile)) =>
           builder
+            .add("transport.type: ror_ssl_internode")
         case Enabled.No =>
           builder
       }
