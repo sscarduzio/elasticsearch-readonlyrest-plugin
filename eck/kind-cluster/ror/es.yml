@@ -3,8 +3,8 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 8.7.0
-  image: coutopl/es_8.7.0_ror_1.49.0-eck-poc
+  version: 8.8.2
+  image: coutopl/es_8.8.2_ror_1.50.0-pre2
   nodeSets:
   - name: default
     count: 2
