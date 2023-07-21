@@ -9,11 +9,11 @@ trigger:
   batch: false
   branches:
     include:
-    - master
-    - develop
-    - '*/epic/*'
-    - RORDEV*
-    - '*/pull/*'
+      - master
+      - develop
+      - '*/epic/*'
+      - RORDEV*
+      - '*/pull/*'
   tags:
     exclude:
       - '*'
@@ -24,7 +24,7 @@ trigger:
       - 'docs/*'
       - '*.md'
       - '*/*/*.md'
-      
+
 pool:
   vmImage: 'ubuntu-20.04'
 
@@ -296,10 +296,10 @@ stages:
               var_aws_secret_access_key: $(aws_secret_access_key)
 
         strategy:
-            maxParallel: 99
-            matrix:
-              PKG_es8xx:
-                ROR_TASK: package_es8xx
+          maxParallel: 99
+          matrix:
+            PKG_es8xx:
+              ROR_TASK: package_es8xx
       - job:
         timeoutInMinutes: 60
         steps:
