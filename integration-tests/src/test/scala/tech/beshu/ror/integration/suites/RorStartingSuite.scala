@@ -23,10 +23,12 @@ import monix.execution.atomic.AtomicInt
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.SearchManager
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.EsModule.isCurrentModuleNotExcluded
+import tech.beshu.ror.utils.misc.EsModulePatterns
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -144,7 +146,7 @@ class RorStartingSuite extends AnyWordSpec {
   }
 }
 
-private object RorStartingSuite {
+private object RorStartingSuite extends EsModulePatterns {
   final case class TestResponse(responseCode: Int, responseJson: JSON)
 
   private val uniqueClusterId: AtomicInt = AtomicInt(1)
@@ -177,9 +179,16 @@ private object RorStartingSuite {
         nodeSettings = EsNodeSettings(
           nodeName = nodeName,
           clusterName = clusterName,
-          securityType = SecurityType.RorWithXpackSecurity(Attributes.default.copy(
-            rorConfigFileName = rorConfigFile
-          )),
+          securityType =
+            if (isCurrentModuleNotExcluded(allEs6xBelowEs63x)) {
+              SecurityType.RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+                rorConfigFileName = rorConfigFile
+              ))
+            } else {
+              SecurityType.RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
+                rorConfigFileName = rorConfigFile
+              ))
+            },
           containerSpecification = ContainerSpecification.empty.copy(
             additionalElasticsearchYamlEntries = additionalEsYamlEntries
           ),

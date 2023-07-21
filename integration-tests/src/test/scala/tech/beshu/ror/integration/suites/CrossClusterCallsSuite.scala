@@ -23,13 +23,13 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.containers.SecurityType.{RorWithXpackSecurity, XPackSecurity}
+import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, RorWithXpackSecurity, XPackSecurity}
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.{Attributes, InternodeSsl}
-import tech.beshu.ror.utils.containers.images.XpackSecurityPlugin
-import tech.beshu.ror.utils.containers.images.domain.Enabled
+import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
+import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.EsModule.isCurrentModuleNotExcluded
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -49,12 +49,20 @@ class CrossClusterCallsSuite
   override lazy val targetEs = container.localCluster.nodes.head
 
   override val remoteClusterContainer: EsRemoteClustersContainer = createRemoteClustersContainer(
-    localClustersSettings = EsClusterSettings.create(
+    esClusterSettings = EsClusterSettings.create(
       clusterName = "ROR_L1",
-      securityType = RorWithXpackSecurity(Attributes.default.copy(
-        rorConfigFileName = rorConfigFileName,
-        internodeSsl = Enabled.Yes(InternodeSsl.Xpack)
-      )),
+      securityType =
+        if (isCurrentModuleNotExcluded(allEs6xBelowEs63x)) {
+          RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+            rorConfigFileName = rorConfigFileName,
+            internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
+          ))
+        } else {
+          RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
+            rorConfigFileName = rorConfigFileName,
+            internodeSsl = Enabled.Yes(ReadonlyRestPlugin.Config.InternodeSsl.Ror(SourceFile.EsFile))
+          ))
+        },
       nodeDataInitializer = localClusterNodeDataInitializer(),
     ),
     remoteClustersSettings = if (executedOn(allEs6xExceptEs67x)) {
@@ -81,15 +89,24 @@ class CrossClusterCallsSuite
   )
 
   private def rorClusterSettings(name: String,
-                                 nodeDataInitializer: ElasticsearchNodeDataInitializer) =
+                                 nodeDataInitializer: ElasticsearchNodeDataInitializer) = {
     EsClusterSettings.create(
       clusterName = name,
-      securityType = RorWithXpackSecurity(Attributes.default.copy(
-        rorConfigFileName = rorConfigFileName,
-        internodeSsl = Enabled.Yes(InternodeSsl.Xpack)
-      )),
+      securityType =
+        if (isCurrentModuleNotExcluded(allEs6xBelowEs63x)) {
+          RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+            rorConfigFileName = rorConfigFileName,
+            internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
+          ))
+        } else {
+          RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
+            rorConfigFileName = rorConfigFileName,
+            internodeSsl = Enabled.Yes(ReadonlyRestPlugin.Config.InternodeSsl.Ror(SourceFile.EsFile))
+          ))
+        },
       nodeDataInitializer = nodeDataInitializer
     )
+  }
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))

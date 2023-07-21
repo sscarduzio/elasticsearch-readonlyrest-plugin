@@ -25,7 +25,7 @@ import tech.beshu.ror.utils.misc.EsModulePatterns
 import scala.collection.parallel.CollectionConverters._
 
 trait EsClusterProvider extends EsContainerCreator with EsModulePatterns {
-  
+
   def createLocalClusterContainer(esNewerOrEqual63ClusterSettings: EsClusterSettings,
                                   esOlderThan63ClusterSettings: EsClusterSettings): EsClusterContainer = {
     if (isCurrentModuleNotExcluded(allEs6xBelowEs63x)) {
@@ -63,11 +63,11 @@ trait EsClusterProvider extends EsContainerCreator with EsModulePatterns {
     )
   }
 
-  def createRemoteClustersContainer(localClustersSettings: EsClusterSettings,
+  def createRemoteClustersContainer(esClusterSettings: EsClusterSettings,
                                     remoteClustersSettings: NonEmptyList[EsClusterSettings],
                                     remoteClusterSetup: SetupRemoteCluster): EsRemoteClustersContainer = {
     new EsRemoteClustersContainer(
-      createLocalClusterContainer(localClustersSettings),
+      createLocalClusterContainer(esClusterSettings),
       NonEmptyList.fromListUnsafe(remoteClustersSettings.toList.par.map(createLocalClusterContainer).toList),
       remoteClusterSetup
     )
