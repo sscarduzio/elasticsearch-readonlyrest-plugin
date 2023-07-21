@@ -20,7 +20,6 @@ import com.typesafe.scalalogging.StrictLogging
 import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, RorWithXpackSecurity}
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.{IndexManager, LegacyTemplateManager, RorApiManager, SnapshotManager}
-import tech.beshu.ror.utils.misc.EsModule.isCurrentModuleNotExcluded
 import tech.beshu.ror.utils.misc.EsModulePatterns
 
 import scala.util.{Failure, Success, Try}
@@ -31,22 +30,16 @@ object SingletonEsContainerWithRorSecurity
     with StrictLogging
     with EsModulePatterns {
 
-  val singleton: EsClusterContainer =
-    if (isCurrentModuleNotExcluded(allEs6xBelowEs63x)) {
-      createLocalClusterContainer(
-        EsClusterSettings.create(
-          clusterName = "ROR_SINGLE",
-          securityType = RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default)
-        )
-      )
-    } else {
-      createLocalClusterContainer(
-        EsClusterSettings.create(
-          clusterName = "ROR_SINGLE",
-          securityType = RorSecurity(ReadonlyRestPlugin.Config.Attributes.default)
-        )
-      )
-    }
+  val singleton: EsClusterContainer = createLocalClusterContainer(
+    esNewerOrEqual63ClusterSettings = EsClusterSettings.create(
+      clusterName = "ROR_SINGLE",
+      securityType = RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default)
+    ),
+    esOlderThan63ClusterSettings =  EsClusterSettings.create(
+      clusterName = "ROR_SINGLE",
+      securityType = RorSecurity(ReadonlyRestPlugin.Config.Attributes.default)
+    )
+  )
 
   private lazy val adminClient = singleton.nodes.head.adminClient
 

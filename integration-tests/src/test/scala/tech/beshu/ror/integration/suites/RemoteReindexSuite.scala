@@ -23,8 +23,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
+import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -54,20 +54,34 @@ class RemoteReindexSuite
     )
   )
 
-  private lazy val destEsCluster = createLocalClusterContainer(
-    EsClusterSettings.create(
+  private lazy val destEsCluster = {
+    def clusterSettingsCreator(securityType: SecurityType) = EsClusterSettings.create(
       clusterName = "ROR_DEST_ES",
       containerSpecification = ContainerSpecification(
         environmentVariables = Map.empty,
         additionalElasticsearchYamlEntries = Map("reindex.remote.whitelist" -> "\"*:9200\"")
       ),
-      securityType = SecurityType.RorWithXpackSecurity(
-        ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorConfigFileName = RemoteReindexSuite.this.rorConfigFileName,
-          restSsl = Enabled.No
-        ))
+      securityType = securityType
     )
-  )
+    createLocalClusterContainer(
+      esNewerOrEqual63ClusterSettings = clusterSettingsCreator {
+        SecurityType.RorWithXpackSecurity(
+          ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+            rorConfigFileName = RemoteReindexSuite.this.rorConfigFileName,
+            restSsl = Enabled.No
+          )
+        )
+      },
+      esOlderThan63ClusterSettings =  clusterSettingsCreator {
+        SecurityType.RorSecurity(
+          ReadonlyRestPlugin.Config.Attributes.default.copy(
+            rorConfigFileName = RemoteReindexSuite.this.rorConfigFileName,
+            restSsl = Enabled.No
+          )
+        )
+      }
+    )
+  }
 
   private lazy val destEsIndexManager = new IndexManager(clients.last.basicAuthClient("dev1", "test"), esVersionUsed)
 

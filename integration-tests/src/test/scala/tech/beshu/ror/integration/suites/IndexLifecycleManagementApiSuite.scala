@@ -26,9 +26,9 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.IndexLifecycleManagementApiSuite.{ExamplePolicies, PolicyGenerator}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
+import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, RorWithXpackSecurity}
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.{ClusterManager, DocumentManager, IndexLifecycleManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -51,16 +51,26 @@ class IndexLifecycleManagementApiSuite
 
   override lazy val targetEs = container.nodes.head
 
-  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings.create(
+  override lazy val clusterContainer: EsClusterContainer = {
+    def esClusterSettingsCreator(securityType: SecurityType) = EsClusterSettings.create(
       clusterName = "ROR1",
-      securityType = RorWithXpackSecurity(Attributes.default.copy(
-        rorConfigFileName = rorConfigFileName
-      )),
+      securityType = securityType,
       numberOfInstances = 2,
       nodeDataInitializer = IndexLifecycleManagementApiSuite.nodeDataInitializer()
     )
-  )
+    createLocalClusterContainer(
+      esNewerOrEqual63ClusterSettings = esClusterSettingsCreator(
+        RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+          rorConfigFileName = rorConfigFileName
+        ))
+      ),
+      esOlderThan63ClusterSettings = esClusterSettingsCreator(
+        RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
+          rorConfigFileName = rorConfigFileName
+        ))
+      )
+    )
+  }
 
   private lazy val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
   private lazy val adminIndexLifecycleManager = new IndexLifecycleManager(adminClient)

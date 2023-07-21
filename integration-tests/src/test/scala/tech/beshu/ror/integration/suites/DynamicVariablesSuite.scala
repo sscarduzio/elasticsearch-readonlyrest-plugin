@@ -21,7 +21,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -37,19 +37,32 @@ class DynamicVariablesSuite
 
   override lazy val targetEs = container.nodes.head
 
-  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings.create(
-      clusterName = "ROR1",
-      containerSpecification = ContainerSpecification(
-        environmentVariables = Map("TEST_VAR" -> "dev"),
-        additionalElasticsearchYamlEntries = Map.empty
+  override lazy val clusterContainer: EsClusterContainer = {
+    def esClusterSettingsCreator(securityType: SecurityType) = {
+      EsClusterSettings.create(
+        clusterName = "ROR1",
+        containerSpecification = ContainerSpecification(
+          environmentVariables = Map("TEST_VAR" -> "dev"),
+          additionalElasticsearchYamlEntries = Map.empty
+        ),
+        securityType = securityType,
+        nodeDataInitializer = DynamicVariablesSuite.nodeDataInitializer()
+      )
+    }
+
+    createLocalClusterContainer(
+      esNewerOrEqual63ClusterSettings = esClusterSettingsCreator(
+        SecurityType.RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+          rorConfigFileName = rorConfigFileName
+        ))
       ),
-      securityType = SecurityType.RorWithXpackSecurity(Attributes.default.copy(
-        rorConfigFileName = rorConfigFileName
-      )),
-      nodeDataInitializer = DynamicVariablesSuite.nodeDataInitializer()
+      esOlderThan63ClusterSettings = esClusterSettingsCreator(
+        SecurityType.RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
+          rorConfigFileName = rorConfigFileName
+        ))
+      )
     )
-  )
+  }
 
   private lazy val searchManager = new SearchManager(basicAuthClient("simone", "dev"))
 
