@@ -17,6 +17,7 @@
 package tech.beshu.ror.unit.boot
 
 import cats.data.NonEmptyList
+import cats.effect.Resource
 import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
@@ -41,7 +42,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
 import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
-import tech.beshu.ror.boot.ReadonlyRest
+import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, TestConfig}
 import tech.beshu.ror.configuration.index.SavingIndexConfigError
 import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
@@ -69,10 +70,35 @@ class ReadonlyRestStartingTests
 
   private implicit val testClock: Clock = Clock.systemUTC()
 
+  def withReadonlyRestExt[EXT](readonlyRestAndExt: (ReadonlyRest, EXT))(testCode: (RorInstance, EXT) => Any): Unit = {
+    val (readonlyRest, ext) = readonlyRestAndExt
+    Resource
+      .make(
+        acquire = readonlyRest
+          .start()
+          .flatMap {
+            case Right(startedInstance) => Task.now(startedInstance)
+            case Left(startingFailure) => Task.raiseError(new Exception(s"$startingFailure"))
+          }
+      )(
+        release = _.stop()
+      )
+      .use { startedInstance =>
+        Task.delay {
+          testCode(startedInstance, ext)
+        }
+      }
+      .runSyncUnsafe()
+  }
+
+  def withReadonlyRest(readonlyRest: ReadonlyRest)(testCode: RorInstance => Any): Unit = {
+    withReadonlyRestExt((readonlyRest, ())) { case (rorInstance, ()) => testCode(rorInstance)}
+  }
+
   "A ReadonlyREST core" should {
     "support the main engine" should {
       "be loaded from file" when {
-        "index is not available but file config is provided" in {
+        "index is not available but file config is provided" in withReadonlyRest({
           val mockedIndexJsonContentManager = mock[IndexJsonContentService]
           (mockedIndexJsonContentManager.sourceOf _)
             .expects(fullIndexName(".readonlyrest"), "1")
@@ -82,30 +108,26 @@ class ReadonlyRestStartingTests
           mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
 
           val coreFactory = mockCoreFactory(mock[CoreFactory], "/boot_tests/no_index_config_file_config_provided/readonlyrest.yml")
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, "/boot_tests/no_index_config_file_config_provided/")
-
-          val result = readonlyRest.start().runSyncUnsafe()
-
-          val acl = result.value.engines.value.mainEngine.core.accessControl
+          readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, "/boot_tests/no_index_config_file_config_provided/")
+        }) { rorInstance =>
+          val acl = rorInstance.engines.value.mainEngine.core.accessControl
           acl shouldBe a[AccessControlLoggingDecorator]
           acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
         }
-        "file loading is forced in elasticsearch.yml" in {
+        "file loading is forced in elasticsearch.yml" in withReadonlyRest({
           val mockedIndexJsonContentManager = mock[IndexJsonContentService]
           mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
 
           val coreFactory = mockCoreFactory(mock[CoreFactory], "/boot_tests/forced_file_loading/readonlyrest.yml")
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, "/boot_tests/forced_file_loading/")
-
-          val result = readonlyRest.start().runSyncUnsafe()
-
-          val acl = result.value.engines.value.mainEngine.core.accessControl
+          readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, "/boot_tests/forced_file_loading/")
+        }){ rorInstance =>
+          val acl = rorInstance.engines.value.mainEngine.core.accessControl
           acl shouldBe a[AccessControlLoggingDecorator]
           acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
         }
       }
       "be loaded from index" when {
-        "index is available and file config is provided" in {
+        "index is available and file config is provided" in withReadonlyRest({
           val resourcesPath = "/boot_tests/index_config_available_file_config_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
@@ -114,15 +136,13 @@ class ReadonlyRestStartingTests
           mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
 
           val coreFactory = mockCoreFactory(mock[CoreFactory], resourcesPath + indexConfigFile)
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath)
-
-          val result = readonlyRest.start().runSyncUnsafe()
-
-          val acl = result.value.engines.value.mainEngine.core.accessControl
+          readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath)
+        }) { rorInstance =>
+          val acl = rorInstance.engines.value.mainEngine.core.accessControl
           acl shouldBe a[AccessControlLoggingDecorator]
           acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
         }
-        "index is available and file config is not provided" in {
+        "index is available and file config is not provided" in withReadonlyRest({
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
@@ -132,17 +152,15 @@ class ReadonlyRestStartingTests
 
           val coreFactory = mockCoreFactory(mock[CoreFactory], resourcesPath + indexConfigFile)
 
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath)
-
-          val result = readonlyRest.start().runSyncUnsafe()
-
-          val acl = result.value.engines.value.mainEngine.core.accessControl
+          readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath)
+        }) { rorInstance =>
+          val acl = rorInstance.engines.value.mainEngine.core.accessControl
           acl shouldBe a[AccessControlLoggingDecorator]
           acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
         }
       }
       "be able to be reloaded" when {
-        "new config is different than old one" in {
+        "new config is different than old one" in withReadonlyRest({
           val resourcesPath = "/boot_tests/config_reloading/"
           val initialIndexConfigFile = "readonlyrest_initial.yml"
           val newIndexConfigFile = "readonlyrest_first.yml"
@@ -156,23 +174,20 @@ class ReadonlyRestStartingTests
           mockIndexJsonContentManagerSaveCall(mockedIndexJsonContentManager, resourcesPath + newIndexConfigFile)
           mockIndexJsonContentManagerSourceOfCallTestConfig(mockedIndexJsonContentManager)
 
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
-
-          val result = readonlyRest.start().runSyncUnsafe()
-
-          val instance = result.value
-          val mainEngine = instance.engines.value.mainEngine
+          readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+        }) { rorInstance =>
+          val mainEngine = rorInstance.engines.value.mainEngine
           mainEngine.core.accessControl shouldBe a[AccessControlLoggingDecorator]
           mainEngine.core.accessControl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
 
-          val reload1Result = instance
-            .forceReloadAndSave(rorConfigFromResource(resourcesPath + newIndexConfigFile))(newRequestId())
+          val reload1Result = rorInstance
+            .forceReloadAndSave(rorConfigFromResource("/boot_tests/config_reloading/readonlyrest_first.yml"))(newRequestId())
             .runSyncUnsafe()
 
           reload1Result should be(Right(()))
-          assert(mainEngine != instance.engines.value.mainEngine, "Engine was not reloaded")
+          assert(mainEngine != rorInstance.engines.value.mainEngine, "Engine was not reloaded")
         }
-        "two parallel force reloads are invoked" in {
+        "two parallel force reloads are invoked" in withReadonlyRestExt({
           val resourcesPath = "/boot_tests/config_reloading/"
           val initialIndexConfigFile = "readonlyrest_initial.yml"
           val firstNewIndexConfigFile = "readonlyrest_first.yml"
@@ -197,19 +212,20 @@ class ReadonlyRestStartingTests
             Task.sleep(500 millis).map(_ => Right(())) // very long saving
           )
 
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
-
-          val result = readonlyRest.start().runSyncUnsafe()
-
-          val instance = result.value
+          val readonlyrest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+          (readonlyrest, mockedIndexJsonContentManager)
+        }) { case (rorInstance, mockedIndexJsonContentManager) =>
+          val resourcesPath = "/boot_tests/config_reloading/"
+          val firstNewIndexConfigFile = "readonlyrest_first.yml"
+          val secondNewIndexConfigFile = "readonlyrest_second.yml"
 
           eventually {
-            instance.engines.value.mainEngine.core.accessControl
+            rorInstance.engines.value.mainEngine.core.accessControl
           }
 
           val results = Task
             .parSequence(List(
-              instance
+              rorInstance
                 .forceReloadAndSave(rorConfigFromResource(resourcesPath + firstNewIndexConfigFile))(newRequestId())
                 .map { result =>
                   // schedule after first finish
@@ -219,7 +235,7 @@ class ReadonlyRestStartingTests
               Task
                 .sleep(200 millis)
                 .flatMap { _ =>
-                  instance.forceReloadAndSave(rorConfigFromResource(resourcesPath + secondNewIndexConfigFile))(newRequestId())
+                  rorInstance.forceReloadAndSave(rorConfigFromResource(resourcesPath + secondNewIndexConfigFile))(newRequestId())
                 }
             ))
             .runSyncUnsafe()
@@ -228,7 +244,7 @@ class ReadonlyRestStartingTests
           results should be(Right(List((), ())))
         }
       }
-      "be reloaded if index config changes" in {
+      "be reloaded if index config changes" in withReadonlyRest({
         val resourcesPath = "/boot_tests/index_config_reloading/"
         val originIndexConfigFile = "readonlyrest.yml"
         val updatedIndexConfigFile = "updated_readonlyrest.yml"
@@ -243,22 +259,19 @@ class ReadonlyRestStartingTests
         mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + updatedIndexConfigFile)
         mockCoreFactory(coreFactory, resourcesPath + updatedIndexConfigFile)
 
-        val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
+        readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
+      }) { rorInstance =>
+        val acl = rorInstance.engines.value.mainEngine.core.accessControl
+        acl shouldBe a[AccessControlLoggingDecorator]
+        acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[DisabledAcl]
 
-        val result = readonlyRest.start().flatMap { result =>
-          val acl = result.value.engines.value.mainEngine.core.accessControl
-          acl shouldBe a[AccessControlLoggingDecorator]
-          acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[DisabledAcl]
-
-          Task
-            .sleep(4 seconds)
-            .map(_ => result)
-        }
+        Task
+          .sleep(4 seconds)
           .runSyncUnsafe()
 
-        val acl = result.value.engines.value.mainEngine.core.accessControl
-        acl shouldBe a[AccessControlLoggingDecorator]
-        acl.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
+        val acl2 = rorInstance.engines.value.mainEngine.core.accessControl
+        acl2 shouldBe a[AccessControlLoggingDecorator]
+        acl2.asInstanceOf[AccessControlLoggingDecorator].underlying shouldBe a[EnabledAcl]
       }
       "failed to load" when {
         "force load from file is set and config is malformed" in {
@@ -349,11 +362,38 @@ class ReadonlyRestStartingTests
             failure.message shouldBe "Errors:\nfailed"
           }
         }
+        "ROR SSL (in elasticsearch.yml) is tried to be used when XPack Security is enabled" in {
+          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mock[IndexJsonContentService], "/boot_tests/ror_ssl_declared_in_es_file_xpack_security_enabled/")
+
+          val result = readonlyRest.start().runSyncUnsafe()
+
+          inside(result) { case Left(failure) =>
+            failure.message should be("Cannot use ROR SSL configuration when XPack Security is enabled")
+          }
+        }
+        "ROR SSL (in readonlyrest.yml) is tried to be used when XPack Security is enabled" in {
+          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mock[IndexJsonContentService], "/boot_tests/ror_ssl_declared_in_readonlyrest_file_xpack_security_enabled/")
+
+          val result = readonlyRest.start().runSyncUnsafe()
+
+          inside(result) { case Left(failure) =>
+            failure.message should be("Cannot use ROR SSL configuration when XPack Security is enabled")
+          }
+        }
+        "ROR FIPS SSL is tried to be used when XPack Security is enabled" in {
+          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mock[IndexJsonContentService], "/boot_tests/ror_fisb_ssl_declared_in_readonlyrest_file_xpack_security_enabled/")
+
+          val result = readonlyRest.start().runSyncUnsafe()
+
+          inside(result) { case Left(failure) =>
+            failure.message should be("Cannot use ROR FIBS configuration when XPack Security is enabled")
+          }
+        }
       }
     }
     "support the test engine" which {
       "can be initialized" when {
-        "there is no config in index" in {
+        "there is no config in index" in withReadonlyRest({
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
@@ -368,18 +408,15 @@ class ReadonlyRestStartingTests
           val coreFactory = mock[CoreFactory]
           mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
 
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(5 seconds))
-
-          val result = readonlyRest.start().runSyncUnsafe()
-
-          val rorInstance = result.value
+          readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(5 seconds))
+        }) { rorInstance =>
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(TestConfig.NotSet)
         }
         "there is some config stored in index" should {
           "load test engine as active" when {
-            "config is still valid" in {
+            "config is still valid" in withReadonlyRestExt({
               val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
               val indexConfigFile = "readonlyrest_index.yml"
 
@@ -404,10 +441,8 @@ class ReadonlyRestStartingTests
               mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
               val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
-
-              val result = readonlyRest.start().runSyncUnsafe()
-
-              val rorInstance = result.value
+              (readonlyRest, expirationTimestamp)
+            }) { case (rorInstance, expirationTimestamp) =>
               rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
 
               rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
@@ -444,7 +479,7 @@ class ReadonlyRestStartingTests
             }
           }
           "load test engine as invalidated" when {
-            "the expiration timestamp exceeded" in {
+            "the expiration timestamp exceeded" in withReadonlyRest({
               val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
               val indexConfigFile = "readonlyrest_index.yml"
 
@@ -467,11 +502,8 @@ class ReadonlyRestStartingTests
               val coreFactory = mock[CoreFactory]
               mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
 
-              val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
-
-              val result = readonlyRest.start().runSyncUnsafe()
-
-              val rorInstance = result.value
+              readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
+            }) { rorInstance =>
               rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
               rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
@@ -484,7 +516,7 @@ class ReadonlyRestStartingTests
           }
         }
         "index is not accessible" should {
-          "fallbacks to not configured" in {
+          "fallback to not configured" in withReadonlyRest({
             val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
             val indexConfigFile = "readonlyrest_index.yml"
 
@@ -499,18 +531,15 @@ class ReadonlyRestStartingTests
             val coreFactory = mock[CoreFactory]
             mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
 
-            val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(5 seconds))
-
-            val result = readonlyRest.start().runSyncUnsafe()
-
-            val rorInstance = result.value
+            readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(5 seconds))
+          }) { rorInstance =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
             rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(TestConfig.NotSet)
           }
         }
         "settings structure is not valid" should {
-          "fallback to not configured" in {
+          "fallback to not configured" in withReadonlyRest({
             val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
             val indexConfigFile = "readonlyrest_index.yml"
 
@@ -533,18 +562,15 @@ class ReadonlyRestStartingTests
             val coreFactory = mock[CoreFactory]
             mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
 
-            val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(5 seconds))
-
-            val result = readonlyRest.start().runSyncUnsafe()
-
-            val rorInstance = result.value
+            readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(5 seconds))
+          }) { rorInstance =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
             rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(TestConfig.NotSet)
           }
         }
         "settings structure is valid, rule is malformed and cannot start engine" should {
-          "fallback to invalidated config" in {
+          "fallback to invalidated config" in withReadonlyRest({
             val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
             val indexConfigFile = "readonlyrest_index.yml"
 
@@ -567,10 +593,8 @@ class ReadonlyRestStartingTests
             mockCoreFactory(coreFactory, resourcesPath + indexConfigFile)
             mockFailedCoreFactory(coreFactory, testConfigMalformed)
 
-            val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(5 seconds))
-
-            val result = readonlyRest.start().runSyncUnsafe()
-            val rorInstance = result.value
+            readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(5 seconds))
+          }) { rorInstance =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
             rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
               TestConfig.Invalidated(
@@ -582,7 +606,7 @@ class ReadonlyRestStartingTests
         }
       }
       "can be loaded on demand" when {
-        "there is no previous engine" in {
+        "there is no previous engine" in withReadonlyRestExt({
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
@@ -599,10 +623,8 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
-
-          val result = readonlyRest.start().runSyncUnsafe()
-
-          val rorInstance = result.value
+          (readonlyRest, mockedIndexJsonContentManager)
+        }) { case (rorInstance, mockedIndexJsonContentManager) =>
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(TestConfig.NotSet)
@@ -635,7 +657,7 @@ class ReadonlyRestStartingTests
             .map(i => (i.rawConfig, i.configuredTtl.value)) should be((testConfig1, 1 minute).some)
         }
         "there is previous engine" when {
-          "same config and ttl" in {
+          "same config and ttl" in withReadonlyRestExt({
             val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
             val indexConfigFile = "readonlyrest_index.yml"
 
@@ -652,10 +674,8 @@ class ReadonlyRestStartingTests
             mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
             val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
-
-            val result = readonlyRest.start().runSyncUnsafe()
-
-            val rorInstance = result.value
+            (readonlyRest, mockedIndexJsonContentManager)
+          }) { case (rorInstance, mockedIndexJsonContentManager) =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
             rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(TestConfig.NotSet)
 
@@ -704,7 +724,7 @@ class ReadonlyRestStartingTests
 
             testEngine2Expiration.isAfter(testEngine1Expiration) should be(true)
           }
-          "different ttl" in {
+          "different ttl" in withReadonlyRestExt({
             val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
             val indexConfigFile = "readonlyrest_index.yml"
 
@@ -721,10 +741,8 @@ class ReadonlyRestStartingTests
             mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
             val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
-
-            val result = readonlyRest.start().runSyncUnsafe()
-
-            val rorInstance = result.value
+            (readonlyRest, mockedIndexJsonContentManager)
+          }) { case (rorInstance, mockedIndexJsonContentManager) =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
             rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(TestConfig.NotSet)
 
@@ -789,7 +807,7 @@ class ReadonlyRestStartingTests
             testEngine2Expiration.isAfter(testEngine1Expiration) should be(false)
           }
         }
-        "different config is being loaded" in {
+        "different config is being loaded" in withReadonlyRestExt({
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
@@ -807,10 +825,8 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, testConfig2, mockEnabledAccessControl)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
-
-          val result = readonlyRest.start().runSyncUnsafe()
-
-          val rorInstance = result.value
+          (readonlyRest, mockedIndexJsonContentManager)
+        }) { case (rorInstance, mockedIndexJsonContentManager) =>
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(TestConfig.NotSet)
 
@@ -876,7 +892,7 @@ class ReadonlyRestStartingTests
         }
       }
       "can be reloaded if index config changes" when {
-        "new config and expiration time has not exceeded" in {
+        "new config and expiration time has not exceeded" in withReadonlyRestExt({
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
@@ -893,8 +909,8 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
-
-          val result = readonlyRest.start().runSyncUnsafe()
+          (readonlyRest, mockedIndexJsonContentManager)
+        }) { case (rorInstance, mockedIndexJsonContentManager) =>
 
           lazy val expirationTimestamp = testClock.instant().plusSeconds(100)
           (mockedIndexJsonContentManager.sourceOf _)
@@ -909,7 +925,6 @@ class ReadonlyRestStartingTests
               )
             )))
 
-          val rorInstance = result.value
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(TestConfig.NotSet)
 
@@ -926,7 +941,7 @@ class ReadonlyRestStartingTests
             )
           )
         }
-        "same config and the ttl has changed" in {
+        "same config and the ttl has changed" in withReadonlyRestExt({
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
@@ -952,9 +967,8 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
-
-          val result = readonlyRest.start().runSyncUnsafe()
-          val rorInstance = result.value
+          (readonlyRest, (mockedIndexJsonContentManager, expirationTimestamp))
+        }) { case (rorInstance, (mockedIndexJsonContentManager, expirationTimestamp)) =>
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
             TestConfig.Present(
               config = RorConfig.disabled,
@@ -990,7 +1004,7 @@ class ReadonlyRestStartingTests
             )
           )
         }
-        "same config and the expiration time has changed" in {
+        "same config and the expiration time has changed" in withReadonlyRestExt({
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
@@ -1016,9 +1030,9 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
+          (readonlyRest, (mockedIndexJsonContentManager, expirationTimestamp))
+        }) { case (rorInstance, (mockedIndexJsonContentManager, expirationTimestamp)) =>
 
-          val result = readonlyRest.start().runSyncUnsafe()
-          val rorInstance = result.value
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
             TestConfig.Present(
               config = RorConfig.disabled,
@@ -1054,7 +1068,7 @@ class ReadonlyRestStartingTests
             )
           )
         }
-        "new config and has already expired" in {
+        "new config and has already expired" in withReadonlyRestExt({
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
@@ -1080,9 +1094,9 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(2 seconds))
+          (readonlyRest, (mockedIndexJsonContentManager,expirationTimestamp))
+        }) { case (rorInstance, (mockedIndexJsonContentManager,expirationTimestamp)) =>
 
-          val result = readonlyRest.start().runSyncUnsafe()
-          val rorInstance = result.value
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
             TestConfig.Present(
               config = RorConfig.disabled,
@@ -1118,7 +1132,7 @@ class ReadonlyRestStartingTests
         }
       }
       "should be automatically unloaded" when {
-        "engine ttl has reached" in {
+        "engine ttl has reached" in withReadonlyRestExt({
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
@@ -1134,10 +1148,9 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(0 seconds))
+          (readonlyRest, mockedIndexJsonContentManager)
+        }) { case (rorInstance, mockedIndexJsonContentManager) =>
 
-          val result = readonlyRest.start().runSyncUnsafe()
-
-          val rorInstance = result.value
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(TestConfig.NotSet)
 
@@ -1169,7 +1182,7 @@ class ReadonlyRestStartingTests
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(TestConfig.Invalidated(testConfig1, 3 seconds))
         }
       }
-      "can be invalidated by user" in {
+      "can be invalidated by user" in withReadonlyRestExt({
         val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
         val indexConfigFile = "readonlyrest_index.yml"
 
@@ -1186,10 +1199,8 @@ class ReadonlyRestStartingTests
         mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
         val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
-
-        val result = readonlyRest.start().runSyncUnsafe()
-
-        val rorInstance = result.value
+        (readonlyRest, mockedIndexJsonContentManager)
+      }) { case (rorInstance, mockedIndexJsonContentManager) =>
         rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
         rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(TestConfig.NotSet)
 
@@ -1237,7 +1248,7 @@ class ReadonlyRestStartingTests
         rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(TestConfig.Invalidated(recent = testConfig1, configuredTtl = 1 minute))
       }
       "should return error for invalidation" when {
-        "cannot save invalidation timestamp in index" in {
+        "cannot save invalidation timestamp in index" in withReadonlyRestExt({
           val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
           val indexConfigFile = "readonlyrest_index.yml"
 
@@ -1262,10 +1273,8 @@ class ReadonlyRestStartingTests
           mockCoreFactory(coreFactory, testConfig1, mockEnabledAccessControl)
 
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexJsonContentManager, resourcesPath, refreshInterval = Some(10 seconds))
-
-          val result = readonlyRest.start().runSyncUnsafe()
-
-          val rorInstance = result.value
+          (readonlyRest, (mockedIndexJsonContentManager, expirationTimestamp))
+        }) { case (rorInstance, (mockedIndexJsonContentManager, expirationTimestamp)) =>
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlLoggingDecorator]
           rorInstance.currentTestConfig()(newRequestId()).runSyncUnsafe() should be(
             TestConfig.Present(

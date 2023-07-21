@@ -14,43 +14,36 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.suites
+package tech.beshu.ror.integration.suites.base
 
 import monix.execution.atomic.Atomic
-import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.integration.suites.XpackApiSuite.NextRollupJobName
+import org.scalatest.wordspec.AnyWordSpecLike
+import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite.NextRollupJobName
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, SecurityType}
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Null, Num, Str}
 
-class XpackApiSuite
-  extends AnyWordSpec
+trait BaseXpackApiSuite
+  extends AnyWordSpecLike
     with BaseEsClusterIntegrationTest
     with PluginTestSupport
     with SingleClientSupport
     with ESVersionSupportForAnyWordSpecLike
-    with BeforeAndAfterEach
     with Matchers {
 
-  override implicit val rorConfigFileName = "/xpack_api/readonlyrest.yml"
-
   override lazy val targetEs = container.nodes.head
+
+  protected def rorClusterSecurityType: SecurityType
 
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings.create(
       clusterName = "ROR1",
-      nodeDataInitializer = XpackApiSuite.nodeDataInitializer(),
-      securityType = SecurityType.RorSecurity(Attributes.default.copy(
-        rorConfigFileName = rorConfigFileName,
-        restSslEnabled = true,
-        internodeSslEnabled = false
-      ))
+      nodeDataInitializer = BaseXpackApiSuite.nodeDataInitializer(),
+      securityType = rorClusterSecurityType
     )
   )
 
@@ -945,7 +938,7 @@ class XpackApiSuite
   }
 }
 
-object XpackApiSuite {
+object BaseXpackApiSuite {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)

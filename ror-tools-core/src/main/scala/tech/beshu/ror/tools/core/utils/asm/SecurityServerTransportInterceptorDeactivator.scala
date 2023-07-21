@@ -20,35 +20,25 @@ import org.objectweb.asm._
 
 import java.io.{File, InputStream}
 import java.nio.file.Files
-import scala.language.postfixOps
 
-object SecurityActionFilterDeactivatorForEs60xAndAbove extends BytecodeJarModifier {
+object SecurityServerTransportInterceptorDeactivator extends BytecodeJarModifier {
 
-  // todo: remove
-  def main(args: Array[String]): Unit = {
-    val jar = os.root / "tmp" / "x-pack-6.1.0.jar"
-    val copiedJar = os.root / "tmp" / "x-pack-6.1.0.jar2"
-    os.remove(copiedJar)
-    os.copy(jar, copiedJar)
-    deactivateXpackSecurityFilter(copiedJar toIO)
-  }
-
-  def deactivateXpackSecurityFilter(jar: File): Unit = {
+  def deactivateSecurityServerTransportInterceptor(jar: File): Unit = {
     val originalFileOwner = Files.getOwner(jar.toPath)
     val modifiedSecurityClass = loadAndProcessFileFromJar(
       jar = jar,
-      classFileName = "org/elasticsearch/xpack/security/Security",
-      processFileContent = doDeactivateXpackSecurityFilter
+      classFileName = "org/elasticsearch/xpack/security/transport/SecurityServerTransportInterceptor",
+      processFileContent = doDeactivateSecurityServerTransportInterceptor
     )
     updateFileInJar(
       jar = jar,
-      destinationPathSting = "/org/elasticsearch/xpack/security/Security.class",
+      destinationPathSting = "/org/elasticsearch/xpack/security/transport/SecurityServerTransportInterceptor.class",
       newContent = modifiedSecurityClass
     )
     Files.setOwner(jar.toPath, originalFileOwner)
   }
 
-  private def doDeactivateXpackSecurityFilter(moduleInputStream: InputStream) = {
+  private def doDeactivateSecurityServerTransportInterceptor(moduleInputStream: InputStream) = {
     val reader = new ClassReader(moduleInputStream)
     val writer = new ClassWriter(reader, 0)
     reader.accept(new EsClassVisitor(writer), 0)
@@ -64,42 +54,37 @@ object SecurityActionFilterDeactivatorForEs60xAndAbove extends BytecodeJarModifi
                              signature: String,
                              exceptions: Array[String]): MethodVisitor = {
       name match {
-        case "getActionFilters" =>
-          new GetActionFiltersMethodReturningEmptyList(super.visitMethod(access, name, descriptor, signature, exceptions))
-        case "onIndexModule" =>
-          new OnIndexModuleDoingNothing(super.visitMethod(access, name, descriptor, signature, exceptions))
+        case "interceptSender" =>
+          new InterceptSenderReturningSenderFromParam(super.visitMethod(access, name, descriptor, signature, exceptions))
+        case "interceptHandler" =>
+          new InterceptHandlerReturningSenderFromParam(super.visitMethod(access, name, descriptor, signature, exceptions))
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
   }
 
-  private class GetActionFiltersMethodReturningEmptyList(underlying: MethodVisitor)
+  private class InterceptSenderReturningSenderFromParam(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
-      underlying.visitMethodInsn(
-        Opcodes.INVOKESTATIC,
-        "java/util/Collections",
-        "emptyList",
-        "()Ljava/util/List;",
-        false
-      )
+      underlying.visitVarInsn(Opcodes.ALOAD, 1)
       underlying.visitInsn(Opcodes.ARETURN)
-      underlying.visitMaxs(1, 1)
+      underlying.visitMaxs(1, 2)
       underlying.visitEnd()
     }
   }
 
-  private class OnIndexModuleDoingNothing(underlying: MethodVisitor)
+  private class InterceptHandlerReturningSenderFromParam(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
-      underlying.visitCode();
-      underlying.visitInsn(Opcodes.RETURN);
-      underlying.visitMaxs(0, 2);
-      underlying.visitEnd();
+      underlying.visitCode()
+      underlying.visitVarInsn(Opcodes.ALOAD, 4)
+      underlying.visitInsn(Opcodes.ARETURN)
+      underlying.visitMaxs(1, 5)
+      underlying.visitEnd()
     }
   }
 }

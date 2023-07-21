@@ -29,6 +29,7 @@ object LoadedRorConfig {
   final case class FileNotExist(path: Path) extends LoadedRorConfig.Error
   final case class EsFileNotExist(path: Path) extends LoadedRorConfig.Error
   final case class EsFileMalformed(path: Path, message: String) extends LoadedRorConfig.Error
+  final case class CannotUseRorConfigurationWhenXpackSecurityIsEnabled(typeOfConfiguration: String) extends LoadedRorConfig.Error
 
   sealed trait LoadingIndexError
   final case class IndexParsingError(message: String) extends LoadedRorConfig.Error with LoadingIndexError

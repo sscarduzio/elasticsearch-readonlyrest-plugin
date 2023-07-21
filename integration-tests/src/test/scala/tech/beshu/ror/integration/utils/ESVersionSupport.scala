@@ -17,10 +17,11 @@
 package tech.beshu.ror.integration.utils
 
 import cats.data.NonEmptyList
+import org.scalatest.Tag
 import org.scalatest.freespec.AnyFreeSpecLike
-import org.scalatest.{Tag, TestSuite}
 import org.scalatest.wordspec.AnyWordSpecLike
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
+import tech.beshu.ror.utils.misc.{EsModule, EsModulePatterns}
 
 import scala.util.matching.Regex
 
@@ -42,29 +43,9 @@ trait ESVersionSupportForAnyFreeSpecLike extends ESVersionSupport {
     string.taggedAs(firstTestTag, otherTestTags: _*)
 }
 
-sealed trait ESVersionSupport {
-  this: TestSuite =>
+sealed trait ESVersionSupport extends EsModulePatterns {
 
   type T
-
-  val es60x = "^es60x$".r
-  val allEs6x = "^es6\\dx$".r
-  val allEs6xBelowEs63x = "^es6[0-2]x$".r
-  val allEs6xBelowEs65x = "^es6[0-4]x$".r
-  val allEs6xBelowEs66x = "^es6[0-5]x$".r
-  val allEs6xExceptEs67x = "^es6(?!(?:7x)$)\\dx$".r
-  val allEs7x = "^es7\\d+x$".r
-  val allEs7xExceptEs70x = "^es(?!(?:70x)$)7\\d+x$".r
-  val allEs7xBelowEs74x = "^es7[0-3]x$".r
-  val allEs7xBelowEs77x = "^es7[0-6]x$".r
-  val allEs7xBelowEs78x = "^es7[0-7]x$".r
-  val allEs7xBelowEs79x = "^es7[0-8]x$".r
-  val allEs7xBelowEs716x = "^es7(0?[0-9]|1[0-5])x$".r
-  val allEs7xBelowEs714x = "^es7(0?[0-9]|1[0-3])x$".r
-  val allEs7xBelowEs711x = "^es7(0?[0-9]|10)x$".r
-  val allEs8x = "^es8\\d+x$".r
-  val allEs8xBelowEs87x = "^es8[0-6]x$".r
-  val allEs8xAboveEs86x = "^es8([7-9]|[1-9][0-9])*x$".r
 
   protected def stringTaggedAs(string: String, firstTestTag: Tag, otherTestTags: Tag*): T
 
@@ -74,14 +55,10 @@ sealed trait ESVersionSupport {
     }
 
     def excludeES(regex: Regex, regexArgs: Regex*): T = {
-      val excludedModuleNames =
-        RorPluginGradleProject.availableEsModules
-          .filter { name =>
-            (regex :: regexArgs.toList).exists(_.findFirstIn(name).isDefined)
-          }
+      val excludedModuleNames = EsModule.getExcludedModuleNames(regex, regexArgs: _*)
       NonEmptyList.fromList(excludedModuleNames) match {
-        case Some(names) =>
-          val excludedEsModules = names.map(new ExcludeESModule(_))
+        case Some(esModules) =>
+          val excludedEsModules = esModules.map(module => new ExcludeESModule(module.name))
           stringTaggedAs(string, excludedEsModules.head, excludedEsModules.tail: _*)
         case None =>
           throw new IllegalStateException("None of ES module was excluded")
@@ -90,7 +67,7 @@ sealed trait ESVersionSupport {
 
   }
 
-  def executedOn(regex: Regex, regexArgs: Regex*) = {
+  def executedOn(regex: Regex, regexArgs: Regex*): Boolean = {
     (regex :: regexArgs.toList).exists(_.findFirstIn(RorPluginGradleProject.fromSystemProperty.moduleName).isDefined)
   }
 

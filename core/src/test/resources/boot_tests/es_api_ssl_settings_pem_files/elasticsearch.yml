@@ -1,9 +1,8 @@
 node.name: n1_it
 cluster.initial_master_nodes: n1_it
+xpack.security.enabled: false
 
-readonlyrest:
-  ssl:
-    enable: true
-    server_certificate_file: "server_certificate.pem"
-    server_certificate_key_file: "server_certificate_key.pem"
-    client_trusted_certificate_file: "client_certificate.pem"
+readonlyrest.ssl.enable: true
+readonlyrest.ssl.server_certificate_file: "server_certificate.pem"
+readonlyrest.ssl.server_certificate_key_file: "server_certificate_key.pem"
+readonlyrest.ssl.client_trusted_certificate_file: "client_certificate.pem"

@@ -24,10 +24,11 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import tech.beshu.ror.integration.suites.base.support.BaseManyEsClustersIntegrationTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport, SingletonLdapContainers}
-import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
+import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, RorWithXpackSecurity}
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.domain.Enabled
+import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.{IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 import ujson.Value.Value
@@ -52,19 +53,33 @@ class AdminApiAuthMockSuite
 
   private val readonlyrestIndexName = ".readonlyrest"
 
-  private val esCluster: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings.create(
-      clusterName = "ROR1",
-      numberOfInstances = 2,
-      securityType = RorSecurity(Attributes.default.copy(
-        rorConfigReloading = Attributes.RorConfigReloading.Enabled(interval = 2 seconds),
-        customSettingsIndex = Some(readonlyrestIndexName),
-        rorConfigFileName = rorConfigFileName
-      )),
-      nodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-      dependentServicesContainers = clusterDependencies
+  private val esCluster: EsClusterContainer = {
+    def esClusterSettingsCreator(securityType: SecurityType) =
+      EsClusterSettings.create(
+        clusterName = "ROR1",
+        numberOfInstances = 2,
+        securityType = securityType,
+        nodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
+        dependentServicesContainers = clusterDependencies
+      )
+
+    createLocalClusterContainer(
+      esNewerOrEqual63ClusterSettings = esClusterSettingsCreator(
+        RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+          rorConfigReloading = Enabled.Yes(2 seconds),
+          rorCustomSettingsIndex = Some(readonlyrestIndexName),
+          rorConfigFileName = rorConfigFileName
+        ))
+      ),
+      esOlderThan63ClusterSettings = esClusterSettingsCreator(
+        RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
+          rorConfigReloading = Enabled.Yes(2 seconds),
+          rorCustomSettingsIndex = Some(readonlyrestIndexName),
+          rorConfigFileName = rorConfigFileName
+        ))
+      )
     )
-  )
+  }
 
   private def clusterDependencies: List[DependencyDef] = List(
     ldap(name = "LDAP1", SingletonLdapContainers.ldap1),

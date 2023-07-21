@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.configuration.ConfigLoading.LoadConfigAction
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
+import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled.SettingsType
 import tech.beshu.ror.configuration.index.{IndexConfigError, IndexConfigManager}
 import tech.beshu.ror.configuration.RorProperties.LoadingDelay
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
@@ -50,6 +51,13 @@ object ConfigLoadingInterpreter extends Logging {
               EsFileNotExist(Path(file.pathAsString))
             case LoadEsConfigError.MalformedContent(file, msg) =>
               EsFileMalformed(Path(file.pathAsString), msg)
+            case LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled(aType) =>
+              CannotUseRorConfigurationWhenXpackSecurityIsEnabled(
+                aType match {
+                  case SettingsType.Ssl => "SSL configuration"
+                  case SettingsType.Fibs => "FIBS configuration"
+                }
+              )
           })
       case ConfigLoading.LoadConfigAction.ForceLoadRorConfigFromFile(path) =>
         logger.info(s"Loading ReadonlyREST settings forced loading from file: ${path.value}")

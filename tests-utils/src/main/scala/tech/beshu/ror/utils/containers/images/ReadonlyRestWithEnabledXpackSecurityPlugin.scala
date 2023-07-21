@@ -17,16 +17,18 @@
 package tech.beshu.ror.utils.containers.images
 
 import better.files.File
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes.RorConfigReloading
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config
-import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.{Attributes, Enabled, InternodeSsl, RestSsl}
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.{Attributes, InternodeSsl, RestSsl}
+import tech.beshu.ror.utils.containers.images.domain.Enabled
+
+import scala.concurrent.duration.FiniteDuration
 
 object ReadonlyRestWithEnabledXpackSecurityPlugin {
   final case class Config(rorConfig: File,
                           rorPlugin: File,
                           attributes: Attributes)
   object Config {
-    final case class Attributes(rorConfigReloading: RorConfigReloading,
+    final case class Attributes(rorConfigReloading: Enabled[FiniteDuration],
                                 rorCustomSettingsIndex: Option[String],
                                 restSsl: Enabled[RestSsl],
                                 internodeSsl: Enabled[InternodeSsl],
@@ -34,30 +36,23 @@ object ReadonlyRestWithEnabledXpackSecurityPlugin {
     object Attributes {
       val default: Attributes = Attributes(
         rorConfigReloading = ReadonlyRestPlugin.Config.Attributes.default.rorConfigReloading,
-        rorCustomSettingsIndex = ReadonlyRestPlugin.Config.Attributes.default.customSettingsIndex,
-        restSsl = if(ReadonlyRestPlugin.Config.Attributes.default.restSslEnabled) Enabled.Yes(RestSsl.Ror) else Enabled.No,
-        internodeSsl = if(ReadonlyRestPlugin.Config.Attributes.default.internodeSslEnabled) Enabled.Yes(InternodeSsl.Ror) else Enabled.No,
+        rorCustomSettingsIndex = ReadonlyRestPlugin.Config.Attributes.default.rorCustomSettingsIndex,
+        restSsl = if(XpackSecurityPlugin.Config.Attributes.default.restSslEnabled) Enabled.Yes(RestSsl.Xpack) else Enabled.No,
+        internodeSsl = if(XpackSecurityPlugin.Config.Attributes.default.internodeSslEnabled) Enabled.Yes(InternodeSsl.Xpack) else Enabled.No,
         rorConfigFileName = "/basic/readonlyrest.yml"
       )
     }
 
-    sealed trait Enabled[+T]
-    object Enabled {
-      final case class Yes[T](value: T) extends Enabled[T]
-      case object No extends Enabled[Nothing]
-    }
-
     sealed trait RestSsl
     object RestSsl {
-      case object Ror extends RestSsl
-      case object RorFips extends RestSsl
+      case object Xpack extends RestSsl
+      final case class Ror(rorrestSsl: ReadonlyRestPlugin.Config.RestSsl) extends RestSsl
     }
 
     sealed trait InternodeSsl
     object InternodeSsl {
-      case object Es extends InternodeSsl
-      case object Ror extends InternodeSsl
-      case object RorFips extends InternodeSsl
+      case object Xpack extends InternodeSsl
+      final case class Ror(rorInternodeSsl: ReadonlyRestPlugin.Config.InternodeSsl) extends InternodeSsl
     }
   }
 }
@@ -98,54 +93,40 @@ class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
       attributes = ReadonlyRestPlugin.Config.Attributes(
         config.attributes.rorConfigReloading,
         config.attributes.rorCustomSettingsIndex,
-        isRorRestSslEnabled,
-        isRorInternodeSslEnabled,
-        isRorFibsEnabled,
+        restSsl = createRorRestSsl(),
+        internodeSsl = createRorInternodeSsl(),
         config.attributes.rorConfigFileName
       )
     )
   }
 
-  private def isRorRestSslEnabled = config.attributes.restSsl match {
-    case Enabled.Yes(RestSsl.Ror) => true
-    case Enabled.Yes(RestSsl.RorFips) => true
-    case Enabled.No => false
+  private def createRorRestSsl() = {
+    config.attributes.restSsl match {
+      case Enabled.Yes(RestSsl.Ror(rorRestSsl)) => Enabled.Yes(rorRestSsl)
+      case Enabled.Yes(RestSsl.Xpack) => Enabled.No
+      case Enabled.No => Enabled.No
+    }
   }
 
-  private def isRorInternodeSslEnabled = config.attributes.internodeSsl match {
-    case Enabled.Yes(InternodeSsl.Es) => false
-    case Enabled.Yes(InternodeSsl.Ror) => true
-    case Enabled.Yes(InternodeSsl.RorFips) => true
-    case Enabled.No => false
-  }
-
-  private def isRorFibsEnabled = {
-    (config.attributes.restSsl match {
-      case Enabled.Yes(RestSsl.Ror) => false
-      case Enabled.Yes(RestSsl.RorFips) => true
-      case Enabled.No => false
-    }) || (
-      config.attributes.internodeSsl match {
-        case Enabled.Yes(InternodeSsl.Es) => false
-        case Enabled.Yes(InternodeSsl.Ror) => false
-        case Enabled.Yes(InternodeSsl.RorFips) => true
-        case Enabled.No => false
-      }
-      )
+  private def createRorInternodeSsl() = {
+    config.attributes.internodeSsl match {
+      case Enabled.Yes(InternodeSsl.Ror(rorInternodeSsl)) => Enabled.Yes(rorInternodeSsl)
+      case Enabled.Yes(InternodeSsl.Xpack) => Enabled.No
+      case Enabled.No => Enabled.No
+    }
   }
 
   private def createXpackSecurityConfig() = {
     XpackSecurityPlugin.Config(
       XpackSecurityPlugin.Config.Attributes(
         restSslEnabled = config.attributes.restSsl match {
-          case Enabled.Yes(RestSsl.Ror) => true
-          case Enabled.Yes(RestSsl.RorFips) => false
+          case Enabled.Yes(RestSsl.Xpack) => true
+          case Enabled.Yes(RestSsl.Ror(_)) => false
           case Enabled.No => false
         },
         internodeSslEnabled = config.attributes.internodeSsl match {
-          case Enabled.Yes(InternodeSsl.Es) => true
-          case Enabled.Yes(InternodeSsl.Ror) => false
-          case Enabled.Yes(InternodeSsl.RorFips) => false
+          case Enabled.Yes(InternodeSsl.Xpack) => true
+          case Enabled.Yes(InternodeSsl.Ror(_)) => false
           case Enabled.No => false
         }
       )

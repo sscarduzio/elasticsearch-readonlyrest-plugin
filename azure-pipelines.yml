@@ -2,6 +2,7 @@ variables:
   ssh_file: '~/.ssh/gh_deploy_key.priv'
   isMaster: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
+  isEpic: $[contains(variables['Build.SourceBranch'], 'refs/heads/epic/')]
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
 
 trigger:
@@ -93,7 +94,7 @@ stages:
             UNIT:
               ROR_TASK: core_tests
       - job:
-        condition: or(eq(variables.isDevelop, true), eq(variables.isMaster, true))
+        condition: or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true))
         container: maven:3.8.1-openjdk-17-slim
         timeoutInMinutes: 120
         steps:
@@ -137,7 +138,7 @@ stages:
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
-        condition: and(ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
         container: maven:3.8.1-openjdk-17-slim
         timeoutInMinutes: 120
         steps:
@@ -169,7 +170,7 @@ stages:
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
-        condition: or(eq(variables.isDevelop, true), eq(variables.isMaster, true))
+        condition: or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true))
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -232,7 +233,7 @@ stages:
             IT_es60x:
               ROR_TASK: integration_es60x
       - job:
-        condition: and(ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
         timeoutInMinutes: 120
         steps:
           - checkout: self

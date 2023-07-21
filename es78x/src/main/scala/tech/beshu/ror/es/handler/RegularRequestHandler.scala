@@ -229,7 +229,7 @@ class RegularRequestHandler(engine: Engine,
   }
 
   private def addProperHeader(): Unit = {
-    if(esContext.action.isFieldCapsAction || esContext.action.isGetSettingsAction)
+    if(esContext.action.isFieldCapsAction || esContext.action.isRollupAction || esContext.action.isGetSettingsAction)
       threadPool.getThreadContext.addSystemAuthenticationHeader(esContext.nodeName)
     else if (esContext.action.isXpackSecurityAction)
       threadPool.getThreadContext.addRorUserAuthenticationHeader(esContext.nodeName)

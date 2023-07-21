@@ -60,6 +60,8 @@ object SecurityActionFilterDeactivator extends BytecodeJarModifier {
         case "onIndexModule" =>
           // removing the onIndexModule method
           null
+        case "getRequestCacheKeyDifferentiator" =>
+          new GetRequestCacheKeyDifferentiatorReturningNull(super.visitMethod(access, name, descriptor, signature, exceptions))
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
@@ -83,4 +85,17 @@ object SecurityActionFilterDeactivator extends BytecodeJarModifier {
       underlying.visitEnd()
     }
   }
+
+  private class GetRequestCacheKeyDifferentiatorReturningNull(underlying: MethodVisitor)
+    extends MethodVisitor(Opcodes.ASM9) {
+
+    override def visitCode(): Unit = {
+      underlying.visitCode()
+      underlying.visitInsn(Opcodes.ACONST_NULL)
+      underlying.visitInsn(Opcodes.ARETURN)
+      underlying.visitMaxs(1, 1)
+      underlying.visitEnd()
+    }
+  }
+
 }
