@@ -2,7 +2,7 @@ variables:
   ssh_file: '~/.ssh/gh_deploy_key.priv'
   isMaster: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
-  isEpic: $[contains(variables['Build.SourceBranch'], 'refs/heads/epic/')]
+  isEpic: $[contains(variables['Build.SourceBranch'], 'epic/')]
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
 
 trigger:
