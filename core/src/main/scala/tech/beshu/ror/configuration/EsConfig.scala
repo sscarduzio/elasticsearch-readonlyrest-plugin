@@ -113,11 +113,19 @@ object EsConfig {
         default = false
       ) map RorEsLevelSettings.apply
     }
-    implicit val xpackSettingsDecoder: Decoder[XpackSettings] =
-      YamlKeyDecoder[Boolean](
+
+    implicit val xpackSettingsDecoder: Decoder[XpackSettings] = {
+      val booleanDecoder = YamlKeyDecoder[Boolean](
         segments = NonEmptyList.of("xpack", "security", "enabled"),
         default = true
-      ) map XpackSettings.apply
+      )
+      val stringDecoder = YamlKeyDecoder[String](
+        segments = NonEmptyList.of("xpack", "security", "enabled"),
+        default = "true"
+      ) map { _.toBoolean }
+      (booleanDecoder or stringDecoder) map XpackSettings.apply
+    }
+
     implicit val esSettingsDecoder: Decoder[EsSettings] = {
       for {
         rorEsLevelSettings <- Decoder[RorEsLevelSettings]
