@@ -21,7 +21,7 @@ trigger:
     include:
       - '*'
     exclude:
-      - 'docs/*'w
+      - 'docs/*'
       - '*.md'
       - '*/*/*.md'
 
