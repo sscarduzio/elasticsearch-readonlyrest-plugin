@@ -37,7 +37,7 @@ object EsPatchVerifier extends Logging {
       esPatch <- createPatcher(esHome)
     } yield {
       if (!esPatch.isPatched) {
-        throw new IllegalStateException("Elasticsearch is not patched. ReadonlyREST cannot be started. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#3.-patch-es")
+        throw new IllegalStateException("Elasticsearch is not patched. ReadonlyREST cannot be started. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#3.-patch-elasticsearch")
       }
     }
     result match {

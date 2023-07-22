@@ -63,11 +63,7 @@ abstract class BytecodeJarModifier {
   private def findFileInJar(jarFile: JarFile, classFileName: String) = {
     jarFile
       .entries().asScala
-      .find { entry =>
-        val name = entry.getName
-        val classSuffix = ".class"
-        name.startsWith(classFileName) && name.endsWith(classSuffix) && name.length == (classFileName.length + classSuffix.length)
-      }
+      .find { entry => s"$classFileName.class" == entry.getName }
       .map(jarFile.getInputStream)
   }
 }
