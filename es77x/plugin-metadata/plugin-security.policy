@@ -1,5 +1,5 @@
 grant {
-``  permission java.io.FilePermission "\${java.home}/lib/security/cacerts", "read";
+  permission java.io.FilePermission "\${java.home}/lib/security/cacerts", "read";
   permission java.io.FilePermission "\${java.home}/lib/security/jssecacerts", "read";
   permission java.io.FilePermission "/usr/share/elasticsearch", "read";
   permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
