@@ -16,10 +16,8 @@
  */
 package tech.beshu.ror.es.utils
 
-import java.io.IOException
-import java.util.function.{Function => JFunction}
-
 import org.apache.lucene.index.DirectoryReader
+import org.apache.lucene.util.SetOnce.AlreadySetException
 import org.apache.lucene.util.{SetOnce => LuceneSetOnce}
 import org.elasticsearch.core.CheckedFunction
 import org.elasticsearch.index.{IndexModule, IndexService}
@@ -27,15 +25,32 @@ import org.joor.Reflect.on
 import tech.beshu.ror.es.utils.IndexModuleOps.ReaderWrapper
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
+import java.io.IOException
+import java.util.function.{Function => JFunction}
+import scala.annotation.tailrec
 import scala.language.implicitConversions
+import scala.util.{Failure, Success, Try}
 
 class IndexModuleOps(indexModule: IndexModule) {
 
   def overwrite(readerWrapper: ReaderWrapper): Unit = {
     doPrivileged {
-      on(indexModule).set("indexReaderWrapper", new LuceneSetOnce[ReaderWrapper]())
+      doOverwrite(readerWrapper)
     }
-    indexModule.setReaderWrapper(readerWrapper)
+  }
+
+  @tailrec
+  private def doOverwrite(readerWrapper: ReaderWrapper, triesLeft: Int = 1): Unit = {
+    Try {
+      indexModule.setReaderWrapper(readerWrapper)
+    } match {
+      case Success(()) => ()
+      case Failure(_: AlreadySetException) if triesLeft > 0 =>
+        on(indexModule).set("indexReaderWrapper", new LuceneSetOnce[ReaderWrapper]())
+        doOverwrite(readerWrapper, triesLeft - 1)
+      case Failure(ex) =>
+        throw ex
+    }
   }
 }
 
@@ -43,4 +58,5 @@ object IndexModuleOps {
   type ReaderWrapper = JFunction[IndexService, CheckedFunction[DirectoryReader, DirectoryReader, IOException]]
 
   implicit def toOps(indexModule: IndexModule): IndexModuleOps = new IndexModuleOps(indexModule)
+
 }

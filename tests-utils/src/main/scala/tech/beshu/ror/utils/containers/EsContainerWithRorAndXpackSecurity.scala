@@ -18,7 +18,7 @@ package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
-import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Enabled
+import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.httpclient.RestClient
 

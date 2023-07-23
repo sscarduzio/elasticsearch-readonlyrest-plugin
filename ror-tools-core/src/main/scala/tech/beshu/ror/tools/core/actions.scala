@@ -46,7 +46,7 @@ object actions {
       } else {
         println(
           "Elasticsearch is NOT patched! ReadonlyREST cannot be used yet. " +
-            "For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#3.-patch-es"
+            "For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#3.-patch-elasticsearch"
         )
       }
     }

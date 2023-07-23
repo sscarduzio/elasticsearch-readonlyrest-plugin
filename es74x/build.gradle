@@ -28,6 +28,8 @@ compileScala {
 
 dependencies {
     implementation  project(path: ':core')
+    implementation  project(path: ':ror-tools', configuration: 'shadow')
+    implementation  project(path: ':ror-tools-core')
     implementation  group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: esVersion
     implementation  group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-high-level-client',   version: esVersion
     implementation  group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.13'

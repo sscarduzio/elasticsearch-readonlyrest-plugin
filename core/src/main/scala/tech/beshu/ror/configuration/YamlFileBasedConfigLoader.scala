@@ -21,6 +21,7 @@ import io.circe.{Decoder, DecodingFailure, Json}
 import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.yaml
+import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
 
 final class YamlFileBasedConfigLoader(file: File)
                                      (implicit envVarsProvider: EnvVarsProvider) {
@@ -44,6 +45,7 @@ final class YamlFileBasedConfigLoader(file: File)
           JsonConfigStaticVariableResolver.resolve(json)
             .left.map(e => MalformedSettings(s"Unable to resolve environment variables for file ${file.pathAsString}. $e."))
         }
+        .map(jsonWithOneLinerKeysToRegularJson)
     }
   }
 

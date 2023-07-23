@@ -25,8 +25,8 @@ import org.elasticsearch.common.io.stream.StreamOutput;
 import java.io.IOException;
 import java.util.List;
 
-public class RRConfigsResponse
-        extends BaseNodesResponse<RRConfig>{
+public class RRConfigsResponse extends BaseNodesResponse<RRConfig> {
+
     protected RRConfigsResponse(StreamInput in) throws IOException {
         super(in);
     }

@@ -43,10 +43,10 @@ object RorToolsApp {
           }
         } recover {
           case ex: RorToolsException =>
-            println(s"ERROR: ${ex.getMessage}")
+            println(s"ERROR: ${ex.printStackTrace()}")
             sys.exit(1)
           case ex: Throwable =>
-            println(s"UNEXPECTED ERROR: ${ex.getMessage}")
+            println(s"UNEXPECTED ERROR: ${ex.printStackTrace()}")
             sys.exit(1)
         }
       }

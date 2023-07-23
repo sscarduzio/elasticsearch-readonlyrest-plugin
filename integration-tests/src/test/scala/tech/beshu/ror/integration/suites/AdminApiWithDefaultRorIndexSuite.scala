@@ -19,9 +19,10 @@ package tech.beshu.ror.integration.suites
 import eu.timepit.refined.auto._
 import tech.beshu.ror.integration.suites.base.BaseAdminApiSuite
 import tech.beshu.ror.integration.utils.PluginTestSupport
-import tech.beshu.ror.utils.containers.EsClusterSettings
-import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, RorWithXpackSecurity}
+import tech.beshu.ror.utils.containers.images.domain.Enabled
+import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
+import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings, SecurityType}
 
 class AdminApiWithDefaultRorIndexSuite
   extends BaseAdminApiSuite
@@ -30,24 +31,49 @@ class AdminApiWithDefaultRorIndexSuite
   override implicit val rorConfigFileName = "/admin_api/readonlyrest.yml"
   override protected val readonlyrestIndexName: String = ".readonlyrest"
 
-  override protected lazy val rorWithIndexConfig = createLocalClusterContainer(
-    EsClusterSettings.create(
-      clusterName = "ROR1",
-      numberOfInstances = 2,
-      securityType = RorSecurity(Attributes.default.copy(
-        rorConfigFileName = rorConfigFileName,
-        rorConfigReloading = Attributes.RorConfigReloading.Enabled(interval = settingsReloadInterval)
-      )),
-      nodeDataInitializer = nodeDataInitializer()
-    )
-  )
+  override protected lazy val rorWithIndexConfig: EsClusterContainer = {
+    def esClusterSettingsCreator(securityType: SecurityType) =
+      EsClusterSettings.create(
+        clusterName = "ROR1",
+        numberOfInstances = 2,
+        securityType = securityType,
+        nodeDataInitializer = nodeDataInitializer()
+      )
 
-  override protected lazy val rorWithNoIndexConfig = createLocalClusterContainer(
-    EsClusterSettings.create(
-      clusterName = "ROR2",
-      securityType = RorSecurity(Attributes.default.copy(
-        rorConfigFileName = rorConfigFileName
-      )),
+    createLocalClusterContainer(
+      esNewerOrEqual63ClusterSettings = esClusterSettingsCreator(
+        RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+          rorConfigFileName = rorConfigFileName,
+          rorConfigReloading = Enabled.Yes(settingsReloadInterval)
+        ))
+      ),
+      esOlderThan63ClusterSettings = esClusterSettingsCreator(
+        RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
+          rorConfigFileName = rorConfigFileName,
+          rorConfigReloading = Enabled.Yes(settingsReloadInterval)
+        ))
+      )
     )
-  )
+  }
+
+  override protected lazy val rorWithNoIndexConfig: EsClusterContainer = {
+    def esClusterSettingsCreator(securityType: SecurityType) =
+      EsClusterSettings.create(
+        clusterName = "ROR2",
+        securityType = securityType,
+      )
+
+    createLocalClusterContainer(
+      esNewerOrEqual63ClusterSettings = esClusterSettingsCreator(
+        RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+          rorConfigFileName = rorConfigFileName
+        ))
+      ),
+      esOlderThan63ClusterSettings = esClusterSettingsCreator(
+        RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
+          rorConfigFileName = rorConfigFileName
+        ))
+      )
+    )
+  }
 }

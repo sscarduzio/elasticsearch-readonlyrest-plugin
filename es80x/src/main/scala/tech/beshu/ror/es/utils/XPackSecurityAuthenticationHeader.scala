@@ -28,23 +28,38 @@ import scala.jdk.CollectionConverters._
 
 object XPackSecurityAuthenticationHeader {
 
+  def createRorUserAuthenticationHeader(nodeName: String) = new Header(
+    Header.Name("_xpack_security_authentication"),
+    getAuthenticationHeaderValue(nodeName, "ROR", isInternal = false)
+  )
+
   def createXpackSecurityAuthenticationHeader(nodeName: String) = new Header(
     Header.Name("_xpack_security_authentication"),
-    getAuthenticationHeaderValue(nodeName, "_xpack_security")
+    getAuthenticationHeaderValue(nodeName, "_xpack_security", isInternal = true)
   )
 
   def createSystemAuthenticationHeader(nodeName: String) = new Header(
     Header.Name("_xpack_security_authentication"),
-    getAuthenticationHeaderValue(nodeName, "_system")
+    getAuthenticationHeaderValue(nodeName, "_system", isInternal = true)
   )
 
-  private def getAuthenticationHeaderValue(nodeName: String, userName: String): NonEmptyString = {
+  private def getAuthenticationHeaderValue(nodeName: String, userName: String, isInternal: Boolean): NonEmptyString = {
     val output = new BytesStreamOutput()
     val currentVersion = Version.CURRENT
     output.setVersion(currentVersion)
     Version.writeVersion(currentVersion, output)
-    output.writeBoolean(true)
-    output.writeString(userName)
+    output.writeBoolean(isInternal)
+    if(isInternal) {
+      output.writeString(userName)
+    } else {
+      output.writeString(userName)
+      output.writeStringArray(Array("kibana_admin"))
+      output.writeMap(Map.empty[String, AnyRef].asJava)
+      output.writeOptionalString(null)
+      output.writeOptionalString(null)
+      output.writeBoolean(true)
+      output.writeBoolean(false)
+    }
     output.writeString(nodeName)
     output.writeString("__attach")
     output.writeString("__attach")

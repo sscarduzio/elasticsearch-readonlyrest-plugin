@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.utils
 
 import org.elasticsearch.common.util.concurrent.ThreadContext
+import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.utils.JavaConverters
 
@@ -30,6 +31,26 @@ final class ThreadContextOps(val threadContext: ThreadContext) extends AnyVal {
     val storedContext = threadContext.stashContext()
     responseHeaders.foreach { case (k, v) => threadContext.addResponseHeader(k, v) }
     storedContext
+  }
+
+  def putHeaderIfNotPresent(header: Header): ThreadContext = {
+    Option(threadContext.getHeader(header.name.value.value)) match {
+      case Some(_) =>
+      case None => threadContext.putHeader(header.name.value.value, header.value.value)
+    }
+    threadContext
+  }
+
+  def addRorUserAuthenticationHeader(nodeName: String): ThreadContext = {
+    putHeaderIfNotPresent(XPackSecurityAuthenticationHeader.createRorUserAuthenticationHeader(nodeName))
+  }
+
+  def addXpackSecurityAuthenticationHeader(nodeName: String): ThreadContext = {
+    putHeaderIfNotPresent(XPackSecurityAuthenticationHeader.createXpackSecurityAuthenticationHeader(nodeName))
+  }
+
+  def addSystemAuthenticationHeader(nodeName: String): ThreadContext = {
+    putHeaderIfNotPresent(XPackSecurityAuthenticationHeader.createSystemAuthenticationHeader(nodeName))
   }
 }
 

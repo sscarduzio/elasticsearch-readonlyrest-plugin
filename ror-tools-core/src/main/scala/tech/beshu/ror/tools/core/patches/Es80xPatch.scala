@@ -16,39 +16,70 @@
  */
 package tech.beshu.ror.tools.core.patches
 
-import tech.beshu.ror.tools.core.utils.{EsDirectory, EsUtil}
-import tech.beshu.ror.tools.core.utils.EsUtil.findTransportNetty4JarIn
-import tech.beshu.ror.tools.core.utils.RorToolsException.EsNotPatchedException
+import just.semver.SemVer
+import tech.beshu.ror.tools.core.utils.EsDirectory
+import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
+import tech.beshu.ror.tools.core.utils.asm.SecurityActionFilterDeactivator.deactivateXpackSecurityFilter
 
 import scala.language.postfixOps
+import scala.util.Try
 
-private[patches] class Es80xPatch(esDirectory: EsDirectory)
+private[patches] class Es80xPatch(esDirectory: EsDirectory,
+                                  esVersion: SemVer)
   extends EsPatch {
 
+  private val modulesPath = esDirectory.path / "modules"
+
+  private val readonlyRestPluginPath = readonlyrestPluginPath(esDirectory.path)
+  private val rorBackupFolderPath = readonlyRestPluginPath / "patch_backup"
+
+  private val xpackSecurityJar = s"x-pack-security-${esVersion.render}.jar"
+  private val xpackSecurityJarPath = modulesPath / "x-pack-security" / xpackSecurityJar
+  private val xpackSecurityRorBackupPath = rorBackupFolderPath / xpackSecurityJar
+
   private val transportNetty4ModulePath = esDirectory.path / "modules" / "transport-netty4"
-  private val readonlyRestPluginPath = EsUtil.readonlyrestPluginPath(esDirectory.path)
 
   override def isPatched: Boolean = {
-    findTransportNetty4JarIn(readonlyRestPluginPath).isDefined
+    doesBackupFolderExist && isTransportNetty4PresentInRorPluginPath
   }
 
   override def backup(): Unit = {
-    // nothing to do
+    copyJarsToBackupFolder()
+      .recoverWith { case ex =>
+        os.remove.all(target = rorBackupFolderPath)
+        throw ex
+      }
   }
 
   override def restore(): Unit = {
-    findTransportNetty4JarIn(readonlyRestPluginPath) match {
-      case Some(jar) => os.remove(jar)
-      case None => EsNotPatchedException
+    findTransportNetty4JarIn(readonlyRestPluginPath).foreach {
+      os.remove
     }
+    os.copy(from = xpackSecurityRorBackupPath, to = xpackSecurityJarPath, replaceExisting = true)
+    os.remove.all(target = rorBackupFolderPath)
   }
 
   override def execute(): Unit = {
     findTransportNetty4JarIn(transportNetty4ModulePath) match {
       case Some(jar) =>
         os.copy(from = jar, to = readonlyRestPluginPath / jar.last)
+        deactivateXpackSecurityFilter(xpackSecurityJarPath toIO)
       case None =>
         new IllegalStateException(s"ReadonlyREST plugin cannot be patched due to not found transport netty4 jar")
     }
   }
+
+  private def copyJarsToBackupFolder() = Try {
+    os.makeDir.all(path = rorBackupFolderPath)
+    os.copy(from = xpackSecurityJarPath, to = xpackSecurityRorBackupPath)
+  }
+
+  private def doesBackupFolderExist = {
+    os.exists(rorBackupFolderPath)
+  }
+
+  private def isTransportNetty4PresentInRorPluginPath = {
+    findTransportNetty4JarIn(readonlyRestPluginPath).isDefined
+  }
+
 }
