@@ -72,6 +72,7 @@ object ReflectionBasedDataStreamsEsRequestContext {
   final case class ClassCanonicalName(value: String) extends AnyVal
 
   private[datastreams] trait ReflectionBasedDataStreamsEsContextCreator {
+
     def actionRequestClass: ClassCanonicalName
 
     def unapply(arg: ReflectionBasedActionRequest): Option[BaseDataStreamsEsRequestContext[ActionRequest]]

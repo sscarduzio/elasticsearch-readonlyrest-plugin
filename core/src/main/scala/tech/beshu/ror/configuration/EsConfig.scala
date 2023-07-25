@@ -16,13 +16,14 @@
  */
 package tech.beshu.ror.configuration
 
-
 import better.files.File
 import cats.data.{EitherT, NonEmptyList}
 import io.circe.Decoder
 import monix.eval.Task
-import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.{FileNotFound, MalformedContent}
+import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.RorSettingsInactiveWhenXpackSecurityIsEnabled.SettingsType
+import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.{FileNotFound, MalformedContent, RorSettingsInactiveWhenXpackSecurityIsEnabled}
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings
+import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.yaml.{JsonFile, YamlKeyDecoder}
 
@@ -41,40 +42,68 @@ object EsConfig {
     val configFile = File(s"${esConfigFolderPath.toAbsolutePath}/elasticsearch.yml")
     (for {
       _ <- EitherT.fromEither[Task](Either.cond(configFile.exists, (), FileNotFound(configFile)))
-      rorEsLevelSettings <- parse(configFile)
-      ssl <- loadSslSettings(esConfigFolderPath, configFile)
+      esSettings <- parse(configFile)
+      ssl <- loadSslSettings(esConfigFolderPath, configFile, esSettings.xpackSettings)
       rorIndex <- loadRorIndexNameConfiguration(configFile)
-      fipsConfiguration <- loadFipsConfiguration(esConfigFolderPath, configFile)
-    } yield EsConfig(rorEsLevelSettings, ssl, rorIndex, fipsConfiguration)).value
+      fipsConfiguration <- loadFipsConfiguration(esConfigFolderPath, configFile, esSettings.xpackSettings)
+    } yield EsConfig(esSettings.rorSettings, ssl, rorIndex, fipsConfiguration)).value
   }
 
-  private def parse(configFile: File): EitherT[Task, LoadEsConfigError, RorEsLevelSettings] = {
+  private def parse(configFile: File): EitherT[Task, LoadEsConfigError, EsSettings] = {
     import decoders._
-    EitherT.fromEither[Task](new JsonFile(configFile).parse[RorEsLevelSettings].left.map(MalformedContent(configFile, _)))
+    EitherT.fromEither[Task](new JsonFile(configFile).parse[EsSettings].left.map(MalformedContent(configFile, _)))
   }
 
-  private def loadSslSettings(esConfigFolderPath: Path, configFile: File)
+  private def loadSslSettings(esConfigFolderPath: Path, configFile: File, xpackSettings: XpackSettings)
                              (implicit envVarsProvider: EnvVarsProvider,
                               propertiesProvider: PropertiesProvider): EitherT[Task, LoadEsConfigError, RorSsl] = {
-    EitherT(RorSsl.load(esConfigFolderPath).map(_.left.map(error => MalformedContent(configFile, error.message))))
+    EitherT(RorSsl.load(esConfigFolderPath))
+      .leftMap(error => MalformedContent(configFile, error.message))
+      .subflatMap { rorSsl =>
+        if(rorSsl != RorSsl.noSsl && xpackSettings.securityEnabled) {
+          Left(RorSettingsInactiveWhenXpackSecurityIsEnabled(SettingsType.Ssl))
+        } else {
+          Right(rorSsl)
+        }
+      }
   }
 
   private def loadRorIndexNameConfiguration(configFile: File): EitherT[Task, LoadEsConfigError, RorIndexNameConfiguration] = {
     EitherT(RorIndexNameConfiguration.load(configFile).map(_.left.map(error => MalformedContent(configFile, error.message))))
   }
 
-  private def loadFipsConfiguration(esConfigFolderPath: Path, configFile: File)
+  private def loadFipsConfiguration(esConfigFolderPath: Path, configFile: File, xpackSettings: XpackSettings)
                                    (implicit envVarsProvider: EnvVarsProvider,
                                     propertiesProvider: PropertiesProvider): EitherT[Task, LoadEsConfigError, FipsConfiguration] = {
-    EitherT(FipsConfiguration.load(esConfigFolderPath).map(_.left.map(error => MalformedContent(configFile, error.message))))
+    EitherT(FipsConfiguration.load(esConfigFolderPath))
+      .leftMap(error => MalformedContent(configFile, error.message))
+      .subflatMap { fipsConfiguration =>
+        fipsConfiguration.fipsMode match {
+          case FipsMode.SslOnly if xpackSettings.securityEnabled =>
+            Left(RorSettingsInactiveWhenXpackSecurityIsEnabled(SettingsType.Fibs))
+          case FipsMode.NonFips | FipsMode.SslOnly =>
+            Right(fipsConfiguration)
+        }
+      }
   }
 
+  final case class EsSettings(rorSettings: RorEsLevelSettings,
+                              xpackSettings: XpackSettings)
   final case class RorEsLevelSettings(forceLoadRorFromFile: Boolean)
+  final case class XpackSettings(securityEnabled: Boolean)
 
   sealed trait LoadEsConfigError
   object LoadEsConfigError {
     final case class FileNotFound(file: File) extends LoadEsConfigError
     final case class MalformedContent(file: File, message: String) extends LoadEsConfigError
+    final case class RorSettingsInactiveWhenXpackSecurityIsEnabled(settingsType: SettingsType) extends LoadEsConfigError
+    object RorSettingsInactiveWhenXpackSecurityIsEnabled {
+      sealed trait SettingsType
+      object SettingsType {
+        case object Ssl extends SettingsType
+        case object Fibs extends SettingsType
+      }
+    }
   }
 
   private object decoders {
@@ -82,8 +111,26 @@ object EsConfig {
       YamlKeyDecoder[Boolean](
         segments = NonEmptyList.of("readonlyrest", "force_load_from_file"),
         default = false
+      ) map RorEsLevelSettings.apply
+    }
+
+    implicit val xpackSettingsDecoder: Decoder[XpackSettings] = {
+      val booleanDecoder = YamlKeyDecoder[Boolean](
+        segments = NonEmptyList.of("xpack", "security", "enabled"),
+        default = true
       )
-        .map(RorEsLevelSettings.apply)
+      val stringDecoder = YamlKeyDecoder[String](
+        segments = NonEmptyList.of("xpack", "security", "enabled"),
+        default = "true"
+      ) map { _.toBoolean }
+      (booleanDecoder or stringDecoder) map XpackSettings.apply
+    }
+
+    implicit val esSettingsDecoder: Decoder[EsSettings] = {
+      for {
+        rorEsLevelSettings <- Decoder[RorEsLevelSettings]
+        xpackSettings <- Decoder[XpackSettings]
+      } yield EsSettings(rorEsLevelSettings, xpackSettings)
     }
   }
 

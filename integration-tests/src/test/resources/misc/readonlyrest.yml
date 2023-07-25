@@ -1,9 +1,4 @@
 readonlyrest:
-  ssl:
-    enable: true
-    keystore_file:  "ror-keystore.jks"
-    keystore_pass: "readonlyrest"
-    key_pass: "readonlyrest"
 
   access_control_rules:
     - name: "CONTAINER ADMIN - file"
@@ -12,22 +7,18 @@ readonlyrest:
       auth_key: "admin:container"
 
     - name: "es-pub7 snapshot_ro"
-      x_forwarded_for:
-        - es-pub7
+      x_forwarded_for: [es-pub7]
       type: allow
       auth_key: "user1:pass"
 
     - name: Do not allow to use admin users via kibana
       type: forbid
-      groups:
-      - 'admin'
-      x_forwarded_for:
-      - '0.0.0.0/0'
+      groups: ['admin']
+      x_forwarded_for: ['0.0.0.0/0']
 
     - name: Allow admins to write everywhere
       verbosity: error
-      groups:
-        - 'admin'
+      groups: ['admin']
 
     - name: "Access for data of selected users"
       filter: '{"bool": { "must": { "terms": { "user_id": [@{jwt:user_id_list}] }}}}'
@@ -43,5 +34,4 @@ readonlyrest:
   users:
     - username: admin
       auth_key: admin:admin123
-      groups:
-        - 'admin'
+      groups: ['admin']

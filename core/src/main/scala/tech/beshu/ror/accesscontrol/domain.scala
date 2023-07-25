@@ -486,6 +486,8 @@ object domain {
 
     def isInternal(actionString: String): Boolean = actionString.startsWith("internal:")
     def isMonitorState(actionString: String): Boolean = actionString == EsAction.monitorStateAction.value
+    def isXpackSecurity(actionString: String): Boolean = actionString.startsWith("cluster:admin/xpack/security/")
+    def isRollupAction(actionString: String): Boolean = actionString.startsWith("cluster:admin/xpack/rollup/")
 
     implicit class ActionOps(val action: Action) extends AnyVal {
       def isRorAction: Boolean = action match {
@@ -493,9 +495,14 @@ object domain {
         case _: RorAction => true
       }
 
-      def isFieldCapsAction: Boolean = {
+      def isXpackSecurityAction: Boolean =
+        Action.isXpackSecurity(action.value)
+
+      def isFieldCapsAction: Boolean =
         action == EsAction.fieldCapsAction
-      }
+
+      def isRollupAction: Boolean =
+        Action.isRollupAction(action.value)
 
       def isGetSettingsAction: Boolean =
         action == EsAction.getSettingsAction

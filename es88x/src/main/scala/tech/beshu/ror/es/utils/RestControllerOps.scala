@@ -26,6 +26,7 @@ import tech.beshu.ror.utils.ScalaOps._
 import java.util.function.UnaryOperator
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
+import scala.util.{Failure, Success, Try}
 
 class RestControllerOps(val restController: RestController) {
 
@@ -69,7 +70,7 @@ class RestControllerOps(val restController: RestController) {
           val newHandlersMap = handlersMap
             .asSafeMap
             .map { case (apiVersion, handler) =>
-              (apiVersion, restHandlerDecorator(handler))
+              (apiVersion, restHandlerDecorator(removeSecurityHandler(handler)))
             }
             .asJava
           (key, newHandlersMap)
@@ -84,9 +85,23 @@ class RestControllerOps(val restController: RestController) {
                                             restHandlerDecorator: RestHandler => RestHandler)
     extends UnaryOperator[RestHandler] {
 
-    override def apply(restHandler: RestHandler): RestHandler = restHandlerDecorator(wrapper.apply(restHandler))
+    override def apply(restHandler: RestHandler): RestHandler = doPrivileged {
+      restHandlerDecorator(removeSecurityHandler(wrapper.apply(restHandler)))
+    }
   }
 
+  private def removeSecurityHandler(handler: RestHandler) = {
+    val toProcessing = handler match {
+      case h: ChannelInterceptingRestHandlerDecorator => h.underlying
+      case h => h
+    }
+    Try(on(toProcessing).get[RestHandler]("restHandler")) match {
+      case Success(underlyingHandler) =>
+        underlyingHandler
+      case Failure(_) =>
+        toProcessing
+    }
+  }
 }
 
 object RestControllerOps {

@@ -27,22 +27,22 @@ import java.util.List;
 
 public class RRConfigsResponse extends BaseNodesResponse<RRConfig> {
 
-  protected RRConfigsResponse(StreamInput in) throws IOException {
-    super(in);
-  }
+    protected RRConfigsResponse(StreamInput in) throws IOException {
+        super(in);
+    }
 
-  public RRConfigsResponse(ClusterName clusterName, List<RRConfig> nodes, List<FailedNodeException> failures) {
-    super(clusterName, nodes, failures);
-  }
+    public RRConfigsResponse(ClusterName clusterName, List<RRConfig> nodes, List<FailedNodeException> failures) {
+        super(clusterName, nodes, failures);
+    }
 
-  @Override
-  protected List<RRConfig> readNodesFrom(StreamInput in) throws IOException {
-    return in.readList(RRConfig::new);
-  }
+    @Override
+    protected List<RRConfig> readNodesFrom(StreamInput in) throws IOException {
+        return in.readList(RRConfig::new);
+    }
 
-  @Override
-  protected void writeNodesTo(StreamOutput out, List<RRConfig> nodes) throws IOException {
-    out.writeList(nodes);
-  }
+    @Override
+    protected void writeNodesTo(StreamOutput out, List<RRConfig> nodes) throws IOException {
+        out.writeList(nodes);
+    }
 
 }

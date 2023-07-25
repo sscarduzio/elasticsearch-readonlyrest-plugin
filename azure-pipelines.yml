@@ -2,17 +2,18 @@ variables:
   ssh_file: '~/.ssh/gh_deploy_key.priv'
   isMaster: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
+  isEpic: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
 
 trigger:
   batch: false
   branches:
     include:
-    - master
-    - develop
-    - '*/epic/*'
-    - RORDEV*
-    - '*/pull/*'
+      - master
+      - develop
+      - '*/epic/*'
+      - RORDEV*
+      - '*/pull/*'
   tags:
     exclude:
       - '*'
@@ -23,7 +24,7 @@ trigger:
       - 'docs/*'
       - '*.md'
       - '*/*/*.md'
-      
+
 pool:
   vmImage: 'ubuntu-20.04'
 
@@ -63,6 +64,7 @@ stages:
   - stage: TEST
     jobs:
       - job:
+        timeoutInMinutes: 20
         steps:
           - checkout: self
             fetchDepth: 1
@@ -92,9 +94,9 @@ stages:
             UNIT:
               ROR_TASK: core_tests
       - job:
-        condition: or(eq(variables.isDevelop, true), eq(variables.isMaster, true))
+        condition: or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true))
         container: maven:3.8.1-openjdk-17-slim
-        timeoutInMinutes: 180
+        timeoutInMinutes: 120
         steps:
           - checkout: self
             fetchDepth: 1
@@ -136,9 +138,9 @@ stages:
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
-        condition: and(ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
         container: maven:3.8.1-openjdk-17-slim
-        timeoutInMinutes: 180
+        timeoutInMinutes: 120
         steps:
           - checkout: self
             fetchDepth: 1
@@ -168,7 +170,8 @@ stages:
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
-        condition: or(eq(variables.isDevelop, true), eq(variables.isMaster, true))
+        condition: or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true))
+        timeoutInMinutes: 120
         steps:
           - checkout: self
             fetchDepth: 1
@@ -230,7 +233,8 @@ stages:
             IT_es60x:
               ROR_TASK: integration_es60x
       - job:
-        condition: and(ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        timeoutInMinutes: 120
         steps:
           - checkout: self
             fetchDepth: 1
@@ -272,6 +276,7 @@ stages:
     condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
     jobs:
       - job:
+        timeoutInMinutes: 60
         container: maven:3.8.1-openjdk-17-slim
         steps:
           - checkout: self
@@ -291,11 +296,12 @@ stages:
               var_aws_secret_access_key: $(aws_secret_access_key)
 
         strategy:
-            maxParallel: 99
-            matrix:
-              PKG_es8xx:
-                ROR_TASK: package_es8xx
+          maxParallel: 99
+          matrix:
+            PKG_es8xx:
+              ROR_TASK: package_es8xx
       - job:
+        timeoutInMinutes: 60
         steps:
           - checkout: self
             fetchDepth: 1

@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.actions.rrconfig
 
 import java.util
-
 import cats.implicits._
 import org.elasticsearch.action.FailedNodeException
 import org.elasticsearch.action.support.ActionFilters
@@ -95,11 +94,12 @@ class TransportRRConfigAction(actionName: String,
     new RRConfigsResponse(clusterService.getClusterName, responses, failures)
   }
 
+  override def newNodeResponse(streamInput: StreamInput, discoveryNode: DiscoveryNode): RRConfig = {
+    new RRConfig(streamInput)
+  }
+
   override def newNodeRequest(request: RRConfigsRequest): RRConfigRequest =
     new RRConfigRequest(request.getNodeConfigRequest)
-
-  override def newNodeResponse(in: StreamInput, node: DiscoveryNode): RRConfig =
-    new RRConfig(in)
 
   private def loadConfig() =
     RawRorConfigLoadingAction

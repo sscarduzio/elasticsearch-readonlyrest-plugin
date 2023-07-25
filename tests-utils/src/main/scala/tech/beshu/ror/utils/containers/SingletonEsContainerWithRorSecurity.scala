@@ -17,21 +17,27 @@
 package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
-import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, RorWithXpackSecurity}
+import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.{IndexManager, LegacyTemplateManager, RorApiManager, SnapshotManager}
+import tech.beshu.ror.utils.misc.EsModulePatterns
 
 import scala.util.{Failure, Success, Try}
 
 object SingletonEsContainerWithRorSecurity
   extends EsClusterProvider
     with EsContainerCreator
-    with StrictLogging {
+    with StrictLogging
+    with EsModulePatterns {
 
   val singleton: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings.create(
+    esNewerOrEqual63ClusterSettings = EsClusterSettings.create(
       clusterName = "ROR_SINGLE",
-      securityType = RorSecurity(Attributes.default)
+      securityType = RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default)
+    ),
+    esOlderThan63ClusterSettings =  EsClusterSettings.create(
+      clusterName = "ROR_SINGLE",
+      securityType = RorSecurity(ReadonlyRestPlugin.Config.Attributes.default)
     )
   )
 

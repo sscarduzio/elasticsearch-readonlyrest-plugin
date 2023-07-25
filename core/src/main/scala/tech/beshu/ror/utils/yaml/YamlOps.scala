@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.utils.yaml
 
-import io.circe.Json
+import io.circe.{Json, JsonObject}
 import tech.beshu.ror.com.fasterxml.jackson.databind.ObjectMapper
 import tech.beshu.ror.com.fasterxml.jackson.dataformat.yaml.YAMLMapper
 
@@ -30,4 +30,20 @@ object YamlOps {
       .replace("---\n", "")
   }
 
+  def jsonWithOneLinerKeysToRegularJson(json: Json): Json = {
+    json.mapObject { obj =>
+      val list = obj.toMap.toList
+        .map { case (key, value) =>
+          key.split("\\.").toList match {
+            case Nil =>
+              (key, value)
+            case fst :: rest =>
+              (fst, rest.reverse.foldLeft(value) { case (acc, elem) => Json.obj(elem -> acc) })
+          }
+        }
+      list
+        .map(tuple => JsonObject(tuple))
+        .foldLeft(JsonObject.empty)(_.deepMerge(_))
+    }
+  }
 }

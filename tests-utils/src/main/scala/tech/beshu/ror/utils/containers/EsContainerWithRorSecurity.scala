@@ -18,6 +18,7 @@ package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
+import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{DockerImageCreator, Elasticsearch, ReadonlyRestPlugin}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -50,7 +51,10 @@ object EsContainerWithRorSecurity extends StrictLogging {
       esConfig,
       startedClusterDependencies,
       esImageWithRorFromDockerfile(esVersion, esConfig, rorConfig),
-      rorConfig.attributes.restSslEnabled
+      rorConfig.attributes.restSsl match {
+        case Enabled.Yes(_) => true
+        case Enabled.No => false
+      }
     )
     EsContainer.init(rorContainer, initializer, logger)
   }

@@ -34,7 +34,7 @@ final case class RorSsl(externalSsl: Option[ExternalSslConfiguration],
 
 object RorSsl extends Logging {
 
-  private val noSsl = RorSsl(None, None)
+  val noSsl: RorSsl = RorSsl(None, None)
 
   def load(esConfigFolderPath: Path)
           (implicit envVarsProvider:EnvVarsProvider,

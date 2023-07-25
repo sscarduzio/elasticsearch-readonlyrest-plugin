@@ -224,11 +224,17 @@ class RegularRequestHandler(engine: Engine,
 
   private def proceed(listener: ActionListener[ActionResponse] = esContext.listener): Unit = {
     logRequestProcessingTime()
-    if(esContext.action.isFieldCapsAction || esContext.action.isGetSettingsAction)
+    addProperHeader()
+    esContext.chain.continue(esContext, listener)
+  }
+
+  private def addProperHeader(): Unit = {
+    if(esContext.action.isFieldCapsAction || esContext.action.isRollupAction || esContext.action.isGetSettingsAction)
       threadPool.getThreadContext.addSystemAuthenticationHeader(esContext.nodeName)
+    else if (esContext.action.isXpackSecurityAction)
+      threadPool.getThreadContext.addRorUserAuthenticationHeader(esContext.nodeName)
     else
       threadPool.getThreadContext.addXpackSecurityAuthenticationHeader(esContext.nodeName)
-    esContext.chain.continue(esContext, listener)
   }
 
   private def respond(response: ActionResponse): Unit = {

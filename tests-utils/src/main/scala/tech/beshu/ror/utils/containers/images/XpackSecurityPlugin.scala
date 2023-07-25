@@ -25,10 +25,12 @@ object XpackSecurityPlugin {
 
   final case class Config(attributes: Attributes)
   object Config {
-    final case class Attributes(internodeSslEnabled: Boolean)
+    final case class Attributes(restSslEnabled: Boolean,
+                                internodeSslEnabled: Boolean)
     object Attributes {
       val default: Attributes = Attributes(
-        internodeSslEnabled = false
+        restSslEnabled = true,
+        internodeSslEnabled = true
       )
     }
   }
@@ -49,15 +51,32 @@ class XpackSecurityPlugin(esVersion: String,
     builder
       .add("xpack.security.enabled: true")
       .add("xpack.ml.enabled: false")
-      .configureTransportSsl(config.attributes)
+      .configureRestSsl()
+      .configureTransportSsl()
   }
 
   override def updateEsJavaOptsBuilder(builder: EsJavaOptsBuilder): EsJavaOptsBuilder = builder
 
+  private implicit class ConfigureRestSsl(val builder: EsConfigBuilder) {
+
+    def configureRestSsl(): EsConfigBuilder = {
+      if (config.attributes.restSslEnabled) {
+        builder
+          .add("xpack.security.http.ssl.enabled: true")
+          .add("xpack.security.http.ssl.verification_mode: none")
+          .add("xpack.security.http.ssl.client_authentication: none")
+          .add("xpack.security.http.ssl.keystore.path: elastic-certificates.p12")
+          .add("xpack.security.http.ssl.truststore.path: elastic-certificates.p12")
+      } else {
+        builder
+      }
+    }
+  }
+
   private implicit class ConfigureTransportSsl(val builder: EsConfigBuilder) {
 
-    def configureTransportSsl(attributes: Attributes): EsConfigBuilder = {
-      if(attributes.internodeSslEnabled) {
+    def configureTransportSsl(): EsConfigBuilder = {
+      if (config.attributes.internodeSslEnabled) {
         builder
           .add("xpack.security.transport.ssl.enabled: true")
           .add("xpack.security.transport.ssl.verification_mode: none")
@@ -74,12 +93,33 @@ class XpackSecurityPlugin(esVersion: String,
 
     def configureKeystore(): DockerImageDescription = {
       image
-        .run(s"${esDir.toString()}/bin/elasticsearch-keystore create")
-        .run(s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.transport.ssl.keystore.secure_password")
-        .run(s"printf 'readonlyrest\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add xpack.security.transport.ssl.truststore.secure_password")
-        .runWhen(Version.greaterOrEqualThan(esVersion, 6, 6, 0),
-          s"printf 'elastic\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add bootstrap.password"
+        .run(createKeystoreCommand)
+        .runWhen(
+          config.attributes.internodeSslEnabled,
+          addToKeystoreCommand(key = "xpack.security.transport.ssl.keystore.secure_password", value = "readonlyrest")
         )
+        .runWhen(
+          config.attributes.internodeSslEnabled,
+          addToKeystoreCommand(key = "xpack.security.transport.ssl.truststore.secure_password", value = "readonlyrest")
+        )
+        .runWhen(
+          config.attributes.restSslEnabled,
+          addToKeystoreCommand(key = "xpack.security.http.ssl.keystore.secure_password", value = "readonlyrest")
+        )
+        .runWhen(
+          config.attributes.restSslEnabled,
+          addToKeystoreCommand(key = "xpack.security.http.ssl.truststore.secure_password", value = "readonlyrest")
+        )
+        .runWhen(
+          Version.greaterOrEqualThan(esVersion, 6, 6, 0),
+          addToKeystoreCommand(key = "bootstrap.password", value = "elastic")
+        )
+    }
+
+    private def createKeystoreCommand = s"${esDir.toString()}/bin/elasticsearch-keystore create"
+
+    private def addToKeystoreCommand(key: String, value: String) = {
+      s"printf '$value\\n' | ${esDir.toString()}/bin/elasticsearch-keystore add $key"
     }
   }
 }

@@ -42,8 +42,7 @@ import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.plugins._
 import org.elasticsearch.repositories.RepositoriesService
-import org.elasticsearch.rest.action.cat.RestCatAction
-import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
+import org.elasticsearch.rest.{RestController, RestHandler}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.{Transport, TransportInterceptor}
@@ -65,19 +64,18 @@ import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 import tech.beshu.ror.es.actions.rrtestconfig.rest.RestRRTestConfigAction
 import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, TransportRRTestConfigAction}
-import tech.beshu.ror.es.actions.wrappers._cat.rest.RorWrappedRestCatAction
 import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, TransportRorWrappedCatAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
-import tech.beshu.ror.es.utils.ThreadRepo
+import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsPatchVerifier}
 import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import java.nio.file.Path
 import java.util
-import java.util.function.{Supplier, UnaryOperator}
-import scala.jdk.CollectionConverters._
+import java.util.function.Supplier
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 
 @Inject
@@ -90,6 +88,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     with ClusterPlugin {
 
   LogPluginBuildInfoMessage()
+  EsPatchVerifier.verify(s)
 
   Constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toList.asJava)
   // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor
@@ -158,7 +157,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
-    indexModule.setReaderWrapper(RoleIndexSearcherWrapper.instance)
+    import tech.beshu.ror.es.utils.IndexModuleOps._
+    indexModule.overwrite(RoleIndexSearcherWrapper.instance)
   }
 
   override def getSettings: util.List[Setting[_]] = {
@@ -232,6 +232,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                settingsFilter: SettingsFilter,
                                indexNameExpressionResolver: IndexNameExpressionResolver,
                                nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
+    import tech.beshu.ror.es.utils.RestControllerOps._
+    restController.decorateRestHandlersWith(ChannelInterceptingRestHandlerDecorator.create)
     List[RestHandler](
       new RestRRAdminAction(),
       new RestRRAuthMockAction(),
@@ -240,19 +242,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       new RestRRUserMetadataAction(),
       new RestRRAuditEventAction()
     ).asJava
-  }
-
-  override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
-    restHandler: RestHandler =>
-      (request: RestRequest, channel: RestChannel, client: NodeClient) => {
-        val handlerToUse = restHandler match {
-          case action: RestCatAction => new RorWrappedRestCatAction(action)
-          case _ => restHandler
-        }
-        val rorRestChannel = new RorRestChannel(channel)
-        ThreadRepo.setRestChannel(rorRestChannel)
-        handlerToUse.handleRequest(request, rorRestChannel, client)
-      }
   }
 
   override def getTransportInterceptors(namedWriteableRegistry: NamedWriteableRegistry, threadContext: ThreadContext): util.List[TransportInterceptor] = {

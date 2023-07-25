@@ -1,4 +1,5 @@
 readonlyrest:
+
   access_control_rules:
 
     # ES container initializer need this rule to configure ES instance after startup

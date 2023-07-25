@@ -23,8 +23,10 @@ import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationT
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Attributes
+import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{Attributes, InternodeSsl, RestSsl}
+import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
 import tech.beshu.ror.utils.elasticsearch.CatManager
+import tech.beshu.ror.utils.misc.EsModule.isCurrentModuleNotExcluded
 
 class FipsSslSuite
   extends AnyWordSpec
@@ -46,15 +48,15 @@ class FipsSslSuite
       numberOfInstances = 2,
       securityType = RorSecurity(Attributes.default.copy(
         rorConfigFileName = rorConfigFileName,
-        internodeSslEnabled = true,
-        isFipsEnabled = true
+        restSsl = Enabled.Yes(RestSsl.RorFips(SourceFile.RorFile)),
+        internodeSsl = Enabled.Yes(InternodeSsl.RorFips(SourceFile.RorFile))
       ))
     )
   )
 
   private lazy val rorClusterAdminStateManager = new CatManager(clients.last.adminClient, esVersion = esVersionUsed)
 
-  if (!executedOn(allEs6xBelowEs65x)) {
+  if(isCurrentModuleNotExcluded(allEs6xBelowEs65x)) {
     "Health check" should {
       "be successful" when {
         "internode ssl is enabled" in {
