@@ -28,8 +28,10 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataReque
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.domain.User.Id
@@ -102,8 +104,9 @@ class UsersRuleTests extends AnyWordSpec with MockFactory {
   }
 
   private def userIdValueFrom(value: String): RuntimeMultiResolvableVariable[User.Id] = {
+    val variableCreationConfig: VariableCreationConfig = VariableCreationConfig(TransformationCompiler.withoutAliases)
     RuntimeResolvableVariableCreator
-      .createMultiResolvableVariableFrom(NonEmptyString.unsafeFrom(value))(AlwaysRightConvertible.from(User.Id.apply))
+      .createMultiResolvableVariableFrom(NonEmptyString.unsafeFrom(value))(AlwaysRightConvertible.from(User.Id.apply), variableCreationConfig)
       .getOrElse(throw new IllegalStateException(s"Cannot create User Id Value from $value"))
   }
 }

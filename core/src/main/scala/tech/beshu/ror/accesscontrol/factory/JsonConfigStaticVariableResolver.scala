@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Json
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.{createMultiVariableFrom, createSingleVariableFrom}
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -27,7 +28,8 @@ import tech.beshu.ror.providers.EnvVarsProvider
 object JsonConfigStaticVariableResolver {
 
   def resolve(json: Json)
-             (implicit envProvider: EnvVarsProvider): Either[NonEmptyList[ResolvingError], Json] = {
+             (implicit envProvider: EnvVarsProvider,
+              config: VariableCreationConfig): Either[NonEmptyList[ResolvingError], Json] = {
     val errors = ResolvingErrors(Vector.empty)
     val jsonWithResolvedVars = mapJson(json, errors)
     errors.values.toList match {
@@ -37,7 +39,8 @@ object JsonConfigStaticVariableResolver {
   }
 
   private def mapJson(json: Json, errors: ResolvingErrors)
-                     (implicit envProvider: EnvVarsProvider): Json = {
+                     (implicit envProvider: EnvVarsProvider,
+                      config: VariableCreationConfig): Json = {
     json
       .mapArray(_.flatMap { json =>
         json.asString.flatMap(NonEmptyString.unapply) match {
@@ -81,7 +84,8 @@ object JsonConfigStaticVariableResolver {
 
 
   private def tryToResolveAllStaticSingleVars(str: NonEmptyString, errors: ResolvingErrors)
-                                             (implicit envProvider: EnvVarsProvider): String = {
+                                             (implicit envProvider: EnvVarsProvider,
+                                              config: VariableCreationConfig): String = {
     createSingleVariableFrom(str) match {
       case Right(variable) =>
         variable.resolve(envProvider) match {
@@ -97,7 +101,8 @@ object JsonConfigStaticVariableResolver {
   }
 
   private def tryToResolveAllStaticMultipleVars(str: NonEmptyString, errors: ResolvingErrors)
-                                               (implicit envProvider: EnvVarsProvider): NonEmptyList[String] = {
+                                               (implicit envProvider: EnvVarsProvider,
+                                                config: VariableCreationConfig): NonEmptyList[String] = {
     createMultiVariableFrom(str) match {
       case Right(variable) =>
         variable.resolve(envProvider) match {

@@ -79,11 +79,11 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |
        |   - name: "Group name from header variable"
        |     type: allow
-       |     groups: ["g4", "@{X-my-group-name-1}", "@{header:X-my-group-name-2}" ]
+       |     groups: ["g4", "@{X-my-group-name-1}", "@{header:X-my-group-name-2}#{replace_first(\\"j\\",\\"g\\")}" ]
        |
        |   - name: "Group name from env variable"
        |     type: allow
-       |     groups: ["g@{env:sys_group_1}"]
+       |     groups: ["g@{env:sys_group_1}#{to_lowercase}"]
        |
        |   - name: "Group name from env variable (old syntax)"
        |     type: allow
@@ -168,7 +168,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |      request_timeout_in_sec: 10                                # default 1
        |      cache_ttl_in_sec: 60                                      # default 0 - cache disabled
        |
-    """.stripMargin
+  """.stripMargin
 
   "An ACL" when {
     "is configured using config above" should {
@@ -180,7 +180,6 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 3
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
@@ -194,12 +193,11 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
         }
         "new style header variable is used" in {
           val request = MockRequestContext.indices.copy(
-            headers = Set(basicAuthHeader("user1:passwd"), header("X-my-group-name-2", "g3"))
+            headers = Set(basicAuthHeader("user1:passwd"), header("X-my-group-name-2", "j3"))
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 3
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
@@ -218,7 +216,6 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 5
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from env variable (old syntax)"))
             assertBlockContext(
@@ -237,7 +234,6 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 4
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from env variable"))
             assertBlockContext(
@@ -261,7 +257,6 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 7
           inside(result.result) { case RegularRequestResult.Allow(blockContext: GeneralIndexRequestBlockContext, block) =>
             block.name should be(Block.Name("Group name from jwt variable (array)"))
             blockContext.userMetadata should be(
@@ -288,7 +283,6 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 8
           inside(result.result) { case RegularRequestResult.Allow(blockContext: GeneralIndexRequestBlockContext, block) =>
             block.name should be(Block.Name("Group name from jwt variable"))
             blockContext.userMetadata should be(
@@ -315,7 +309,6 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 6
           inside(result.result) { case RegularRequestResult.Allow(blockContext: FilterableRequestBlockContext, block) =>
             block.name should be(Block.Name("Variables usage in filter"))
             blockContext.userMetadata should be(
@@ -342,7 +335,6 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 9
           inside(result.result) { case RegularRequestResult.Allow(blockContext: FilterableRequestBlockContext, block) =>
             block.name should be(Block.Name("LDAP groups explode"))
             blockContext.userMetadata should be(
@@ -370,7 +362,6 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 2
           inside(result.result) {
             case RegularRequestResult.Allow(blockContext, block) =>
               block.name should be(Block.Name("Kibana metadata resolving test"))

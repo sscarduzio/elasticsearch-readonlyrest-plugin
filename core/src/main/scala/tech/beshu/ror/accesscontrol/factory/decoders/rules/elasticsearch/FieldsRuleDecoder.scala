@@ -21,6 +21,7 @@ import io.circe.Decoder
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
@@ -29,11 +30,12 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 
 import scala.jdk.CollectionConverters._
 
-class FieldsRuleDecoder(flsEngine: FlsEngine)
+class FieldsRuleDecoder(flsEngine: FlsEngine,
+                        variableCreationConfig: VariableCreationConfig)
   extends RuleBaseDecoderWithoutAssociatedFields[FieldsRule] {
 
   override protected def decoder: Decoder[RuleDefinition[FieldsRule]] =
-    FieldsRuleDecoderHelper.fieldsRuleDecoder(flsEngine)
+    FieldsRuleDecoderHelper.fieldsRuleDecoder(flsEngine, variableCreationConfig)
 }
 
 private object FieldsRuleDecoderHelper extends FieldsRuleLikeDecoderHelperBase {
@@ -43,7 +45,8 @@ private object FieldsRuleDecoderHelper extends FieldsRuleLikeDecoderHelperBase {
   implicit val accessModeConverter: AccessModeConverter[AccessMode] =
     AccessModeConverter.create(whitelistElement = AccessMode.Whitelist, blacklistElement = AccessMode.Blacklist)
 
-  def fieldsRuleDecoder(flsEngine: FlsEngine): Decoder[RuleDefinition[FieldsRule]] = {
+  def fieldsRuleDecoder(flsEngine: FlsEngine, variableCreationConfig: VariableCreationConfig): Decoder[RuleDefinition[FieldsRule]] = {
+    implicit val _variableCreationConfig: VariableCreationConfig = variableCreationConfig
     for {
       configuredFields <- configuredFieldsDecoder
       accessMode <- accessModeDecoder[AccessMode](configuredFields)

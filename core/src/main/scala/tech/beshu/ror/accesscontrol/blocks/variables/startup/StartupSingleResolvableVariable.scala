@@ -22,6 +22,7 @@ import cats.syntax.either._
 import cats.syntax.show._
 import cats.syntax.traverse._
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariable.ResolvingError
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -42,6 +43,14 @@ object StartupSingleResolvableVariable {
   final case class Composed(vars: NonEmptyList[StartupResolvableVariable[String]]) extends StartupSingleResolvableVariable {
     override def resolve(provider: EnvVarsProvider): Either[ResolvingError, String] = {
       vars.map(_.resolve(provider)).sequence.map(_.toList.mkString)
+    }
+  }
+
+  final class TransformationApplyingResolvableDecorator(underlying: StartupSingleResolvableVariable,
+                                                        transformation: Function) extends StartupSingleResolvableVariable {
+    override def resolve(provider: EnvVarsProvider): Either[ResolvingError, String] = {
+      underlying.resolve(provider)
+        .map(transformation.apply)
     }
   }
 }

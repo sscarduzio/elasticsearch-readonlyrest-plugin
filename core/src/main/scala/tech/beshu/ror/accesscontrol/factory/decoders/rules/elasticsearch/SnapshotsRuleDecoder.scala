@@ -21,6 +21,7 @@ import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.SnapshotsRule
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
@@ -33,8 +34,10 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
 
-object SnapshotsRuleDecoder
+class SnapshotsRuleDecoder(variableCreationConfig: VariableCreationConfig)
   extends RuleBaseDecoderWithoutAssociatedFields[SnapshotsRule] {
+
+  private implicit val _variableCreationConfig: VariableCreationConfig = variableCreationConfig
 
   override protected def decoder: Decoder[RuleDefinition[SnapshotsRule]] = {
     DecoderHelpers
@@ -61,7 +64,7 @@ private object SnapshotDecodersHelper {
         case None => Left(Convertible.ConvertError("Snapshot name cannot be empty"))
       }
   }
-  implicit val snapshotNameValueDecoder: Decoder[RuntimeMultiResolvableVariable[SnapshotName]] =
+  implicit def snapshotNameValueDecoder(implicit variableCreationConfig: VariableCreationConfig): Decoder[RuntimeMultiResolvableVariable[SnapshotName]] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .toSyncDecoder

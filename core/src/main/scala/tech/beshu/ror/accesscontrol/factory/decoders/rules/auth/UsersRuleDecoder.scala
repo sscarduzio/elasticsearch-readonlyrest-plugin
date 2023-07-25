@@ -20,6 +20,7 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.domain.User
@@ -29,7 +30,8 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.UsersRuleDecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.utils.CaseMappingEquality._
 
-class UsersRuleDecoder(implicit val caseMappingEquality: UserIdCaseMappingEquality)
+class UsersRuleDecoder(implicit val caseMappingEquality: UserIdCaseMappingEquality,
+                       implicit val variableCreationConfig: VariableCreationConfig)
   extends RuleBaseDecoderWithoutAssociatedFields[UsersRule] {
 
   override protected def decoder: Decoder[RuleDefinition[UsersRule]] = {
@@ -40,6 +42,6 @@ class UsersRuleDecoder(implicit val caseMappingEquality: UserIdCaseMappingEquali
 }
 
 private object UsersRuleDecoderHelper {
-  implicit val userIdValueDecoder: Decoder[RuntimeMultiResolvableVariable[User.Id]] =
-    DecoderHelpers.alwaysRightMultiVariableDecoder[User.Id](AlwaysRightConvertible.from(User.Id.apply))
+  implicit def userIdValueDecoder(implicit variableCreationConfig: VariableCreationConfig): Decoder[RuntimeMultiResolvableVariable[User.Id]] =
+    DecoderHelpers.alwaysRightMultiVariableDecoder[User.Id](variableCreationConfig)(AlwaysRightConvertible.from(User.Id.apply))
 }

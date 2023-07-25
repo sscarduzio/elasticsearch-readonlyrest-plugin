@@ -20,6 +20,7 @@ import cats.Id
 import io.circe.{Decoder, HCursor}
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.{Name, SignatureCheckMethod}
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -28,14 +29,15 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps.fromError
 import tech.beshu.ror.accesscontrol.utils.CryptoOps.keyStringToPublicKey
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 
-object RorKbnDefinitionsDecoder {
+class RorKbnDefinitionsDecoderCreator(variableCreationConfig: VariableCreationConfig) {
 
-  def instance(): ADecoder[Id, Definitions[RorKbnDef]] = {
-    implicit val decoder: SyncDecoder[RorKbnDef] = SyncDecoderCreator.from(RorKbnDefinitionsDecoder.rorKbnDefDecoder)
+  def create(): ADecoder[Id, Definitions[RorKbnDef]] = {
+    implicit val decoder: SyncDecoder[RorKbnDef] = SyncDecoderCreator.from(rorKbnDefDecoder)
     DefinitionsBaseDecoder.instance[Id, RorKbnDef]("ror_kbn")
   }
 
   implicit val rorKbnDefNameDecoder: Decoder[RorKbnDef.Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
+  private implicit val _variableCreationConfig: VariableCreationConfig = variableCreationConfig
 
   private val rorKbnDefDecoder: Decoder[RorKbnDef] =  {
     SyncDecoderCreator
@@ -102,4 +104,8 @@ object RorKbnDefinitionsDecoder {
       }
     } yield checkMethod
   }
+}
+
+object RorKbnDefinitionsDecoderCreator {
+  implicit val rorKbnDefNameDecoder: Decoder[RorKbnDef.Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
 }

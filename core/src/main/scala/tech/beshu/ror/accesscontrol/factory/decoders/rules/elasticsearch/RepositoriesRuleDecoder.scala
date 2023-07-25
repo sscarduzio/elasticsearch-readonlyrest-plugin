@@ -21,6 +21,7 @@ import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.RepositoriesRule
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
@@ -33,8 +34,10 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
 
-object RepositoriesRuleDecoder
+class RepositoriesRuleDecoder(variableCreationConfig: VariableCreationConfig)
   extends RuleBaseDecoderWithoutAssociatedFields[RepositoriesRule] {
+
+  private implicit val _variableCreationConfig: VariableCreationConfig = variableCreationConfig
 
   override protected def decoder: Decoder[RuleDefinition[RepositoriesRule]] = {
     DecoderHelpers
@@ -61,7 +64,7 @@ private object RepositoriesDecodersHelper {
         case None => Left(Convertible.ConvertError("Repository name cannot be empty"))
       }
   }
-  implicit val repositoryValueDecoder: Decoder[RuntimeMultiResolvableVariable[RepositoryName]] =
+  implicit def repositoryValueDecoder(implicit variableCreationConfig: VariableCreationConfig): Decoder[RuntimeMultiResolvableVariable[RepositoryName]] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .toSyncDecoder

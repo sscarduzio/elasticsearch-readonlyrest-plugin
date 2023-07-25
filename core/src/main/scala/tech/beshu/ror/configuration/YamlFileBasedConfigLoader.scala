@@ -18,13 +18,15 @@ package tech.beshu.ror.configuration
 
 import better.files.File
 import io.circe.{Decoder, DecodingFailure, Json}
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.yaml
 import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
 
 final class YamlFileBasedConfigLoader(file: File)
-                                     (implicit envVarsProvider: EnvVarsProvider) {
+                                     (implicit envVarsProvider: EnvVarsProvider,
+                                      variableCreationConfig: VariableCreationConfig) {
 
   def loadConfig[CONFIG: Decoder](configName: String): Either[MalformedSettings, CONFIG] = {
     loadedConfigJson

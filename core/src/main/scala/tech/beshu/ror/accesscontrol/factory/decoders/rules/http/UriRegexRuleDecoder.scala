@@ -20,6 +20,7 @@ import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.http.UriRegexRule
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
@@ -33,8 +34,10 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import java.util.regex.Pattern
 import scala.util.Try
 
-object UriRegexRuleDecoder
+class UriRegexRuleDecoder(variableCreationConfig: VariableCreationConfig)
   extends RuleBaseDecoderWithoutAssociatedFields[UriRegexRule] {
+
+  private implicit val _variableCreationConfig: VariableCreationConfig = variableCreationConfig
 
   override protected def decoder: Decoder[RuleDefinition[UriRegexRule]] = {
     DecoderHelpers

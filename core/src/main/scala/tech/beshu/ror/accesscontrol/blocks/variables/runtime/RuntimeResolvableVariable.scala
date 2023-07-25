@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.Extractable.Extract
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function
 import tech.beshu.ror.accesscontrol.domain.{ClaimName, Header}
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
@@ -154,6 +155,14 @@ object SingleExtractable {
       Right(blockContext.userMetadata.availableGroups.toList.map(v => s""""${v.value.value}"""").mkString(","))
     }
   }
+
+  final class TransformationApplyingExtractableDecorator(underlying: SingleExtractable,
+                                                         transformation: Function) extends SingleExtractable {
+    override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] = {
+      underlying.extractUsing(blockContext)
+        .map(transformation.apply)
+    }
+  }
 }
 
 sealed trait MultiExtractable extends Extractable[NonEmptyList[String]] {
@@ -237,6 +246,14 @@ object MultiExtractable {
         case Some(value) => Right(value)
         case None => Left(ExtractError(s"There were no groups for request: ${blockContext.requestContext.id.show}"))
       }
+    }
+  }
+
+  final class TransformationApplyingExtractableDecorator(underlying: MultiExtractable,
+                                                         transformation: Function) extends MultiExtractable {
+    override def extractUsing(blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
+      underlying.extractUsing(blockContext)
+        .map(_.map(transformation.apply))
     }
   }
 }

@@ -28,8 +28,10 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FilterRule
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Filter, User}
 import tech.beshu.ror.mocks.MockRequestContext
@@ -131,8 +133,9 @@ class FilterRuleTests extends AnyWordSpec with MockFactory {
   }
 
   private def filterValueFrom(value: String): RuntimeSingleResolvableVariable[Filter] = {
+    val variableCreationConfig: VariableCreationConfig = VariableCreationConfig(TransformationCompiler.withoutAliases)
     RuntimeResolvableVariableCreator
-      .createSingleResolvableVariableFrom[Filter](NonEmptyString.unsafeFrom(value))(AlwaysRightConvertible.from(Filter.apply))
+      .createSingleResolvableVariableFrom[Filter](NonEmptyString.unsafeFrom(value))(AlwaysRightConvertible.from(Filter.apply), variableCreationConfig)
       .getOrElse(throw new IllegalStateException(s"Cannot create Filter Value from $value"))
   }
 }

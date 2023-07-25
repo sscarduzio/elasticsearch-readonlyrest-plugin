@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.http
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.http.XForwardedForRule
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
@@ -27,8 +28,10 @@ import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.accesscontrol.orders.addressOrder
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 
-object XForwardedForRuleDecoder
+class XForwardedForRuleDecoder(variableCreationConfig: VariableCreationConfig)
   extends RuleBaseDecoderWithoutAssociatedFields[XForwardedForRule] {
+
+  private implicit val _variableCreationConfig: VariableCreationConfig = variableCreationConfig
 
   override protected def decoder: Decoder[RuleDefinition[XForwardedForRule]] = {
     DecoderHelpers

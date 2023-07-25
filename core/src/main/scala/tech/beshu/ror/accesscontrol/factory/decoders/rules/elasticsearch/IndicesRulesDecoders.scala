@@ -21,6 +21,7 @@ import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
@@ -34,12 +35,14 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
-object IndicesRuleDecoders
+class IndicesRuleDecoders(variableCreationConfig: VariableCreationConfig)
   extends RuleBaseDecoderWithoutAssociatedFields[IndicesRule] {
 
+  private implicit val _variableCreationConfig: VariableCreationConfig = variableCreationConfig
+
   override protected def decoder: Decoder[RuleDefinition[IndicesRule]] = {
-    IndicesRuleDecoders.indicesRuleSimpleDecoder
-      .or(IndicesRuleDecoders.indicesRuleExtendedDecoder)
+    indicesRuleSimpleDecoder
+      .or(indicesRuleExtendedDecoder)
   }
 
   private val defaultMustInvolveIndicesValue = false
@@ -84,7 +87,7 @@ private object IndicesDecodersHelper {
         .fromString(str)
         .toRight(Convertible.ConvertError("Index name cannot be empty"))
   }
-  implicit val indexNameValueDecoder: Decoder[RuntimeMultiResolvableVariable[ClusterIndexName]] =
+  implicit def indexNameValueDecoder(implicit config: VariableCreationConfig): Decoder[RuntimeMultiResolvableVariable[ClusterIndexName]] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .toSyncDecoder

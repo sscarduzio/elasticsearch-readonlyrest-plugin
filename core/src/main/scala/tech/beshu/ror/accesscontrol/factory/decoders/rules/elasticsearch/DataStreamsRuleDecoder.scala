@@ -22,6 +22,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.DataStreamsRule
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
@@ -35,8 +36,10 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
-object DataStreamsRuleDecoder
+class DataStreamsRuleDecoder(variableCreationConfig: VariableCreationConfig)
   extends RuleBaseDecoderWithoutAssociatedFields[DataStreamsRule] {
+
+  private implicit val _variableCreationConfig: VariableCreationConfig = variableCreationConfig
 
   override protected def decoder: Decoder[RuleDefinition[DataStreamsRule]] =
     DecoderHelpers
@@ -76,7 +79,7 @@ private object DataStreamsDecodersHelper {
     private def isLowerCase(value: NonEmptyString) = value.value.toLowerCase == value.value
   }
 
-  implicit val dataStreamNameValueDecoder: Decoder[RuntimeMultiResolvableVariable[DataStreamName]] =
+  implicit def dataStreamNameValueDecoder(implicit variableCreationConfig: VariableCreationConfig): Decoder[RuntimeMultiResolvableVariable[DataStreamName]] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .toSyncDecoder

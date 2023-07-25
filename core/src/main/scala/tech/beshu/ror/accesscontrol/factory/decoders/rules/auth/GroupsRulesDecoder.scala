@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsAndRule, GroupsOrRule}
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -37,9 +38,10 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 class GroupsOrRuleDecoder(usersDefinitions: Definitions[UserDef],
-                          override implicit val caseMappingEquality: UserIdCaseMappingEquality)
+                          override implicit val caseMappingEquality: UserIdCaseMappingEquality,
+                          override implicit val variableCreationConfig: VariableCreationConfig)
                          (implicit ev: RuleName[GroupsOrRule])
-  extends BaseGroupsRuleDecoder[GroupsOrRule](usersDefinitions, caseMappingEquality) {
+  extends BaseGroupsRuleDecoder[GroupsOrRule](usersDefinitions, caseMappingEquality, variableCreationConfig) {
 
   override protected def createRule(settings: BaseGroupsRule.Settings,
                                     caseMappingEquality: UserIdCaseMappingEquality): GroupsOrRule = {
@@ -48,8 +50,9 @@ class GroupsOrRuleDecoder(usersDefinitions: Definitions[UserDef],
 }
 
 class GroupsAndRuleDecoder(usersDefinitions: Definitions[UserDef],
-                           override implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends BaseGroupsRuleDecoder[GroupsAndRule](usersDefinitions, caseMappingEquality) {
+                           override implicit val caseMappingEquality: UserIdCaseMappingEquality,
+                           override implicit val variableCreationConfig: VariableCreationConfig)
+  extends BaseGroupsRuleDecoder[GroupsAndRule](usersDefinitions, caseMappingEquality, variableCreationConfig) {
 
   override protected def createRule(settings: BaseGroupsRule.Settings,
                                     caseMappingEquality: UserIdCaseMappingEquality): GroupsAndRule = {
@@ -58,7 +61,8 @@ class GroupsAndRuleDecoder(usersDefinitions: Definitions[UserDef],
 }
 
 abstract class BaseGroupsRuleDecoder[R <: BaseGroupsRule : VariableUsage : LocalUsersSupport : ImpersonationWarningExtractor](usersDefinitions: Definitions[UserDef],
-                                                                                                                              implicit val caseMappingEquality: UserIdCaseMappingEquality)
+                                                                                                                              implicit val caseMappingEquality: UserIdCaseMappingEquality,
+                                                                                                                              implicit val variableCreationConfig: VariableCreationConfig)
                                                                                                                              (implicit ev: RuleName[R])
 
   extends RuleBaseDecoderWithoutAssociatedFields[R] {

@@ -27,6 +27,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
@@ -204,7 +205,7 @@ object common extends Logging {
     }
   }
 
-  implicit def valueLevelRuntimeSingleResolvableVariableDecoder[T : Convertible]: Decoder[RuntimeSingleResolvableVariable[T]] = {
+  implicit def valueLevelRuntimeSingleResolvableVariableDecoder[T : Convertible](implicit variableCreationConfig: VariableCreationConfig): Decoder[RuntimeSingleResolvableVariable[T]] = {
     DecoderHelpers
       .singleVariableDecoder[T]
       .toSyncDecoder
@@ -215,7 +216,7 @@ object common extends Logging {
       .decoder
   }
 
-  implicit def valueLevelRuntimeMultiResolvableVariableDecoder[T : Convertible]: Decoder[RuntimeMultiResolvableVariable[T]] = {
+  implicit def valueLevelRuntimeMultiResolvableVariableDecoder[T : Convertible](implicit variableCreationConfig: VariableCreationConfig): Decoder[RuntimeMultiResolvableVariable[T]] = {
     DecoderHelpers
       .multiVariableDecoder[T]
       .toSyncDecoder
@@ -317,7 +318,7 @@ object common extends Logging {
   implicit val groupsLogicOrDecoder: Decoder[GroupsLogic.Or] =
     permittedGroupsDecoder.map(GroupsLogic.Or.apply)
 
-  implicit val resolvableJsonRepresentationDecoder: Decoder[ResolvableJsonRepresentation] =
+  implicit def resolvableJsonRepresentationDecoder(implicit variableCreationConfig: VariableCreationConfig): Decoder[ResolvableJsonRepresentation] =
     Decoder
       .decodeJson
       .toSyncDecoder

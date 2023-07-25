@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.Json.JsonValue.{BooleanValue, NullValue, NumValue, StringValue}
@@ -38,6 +39,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 
 import scala.util.{Failure, Success, Try}
@@ -243,4 +245,7 @@ class KibanaUserDataRuleTests
         blockContext
       )
     }
+
+  private implicit val variableCreationConfig: VariableCreationConfig =
+    VariableCreationConfig(TransformationCompiler.withoutAliases)
 }

@@ -22,6 +22,7 @@ import cats.syntax.show._
 import cats.syntax.traverse._
 import com.github.tototoshi.csv._
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariable.ResolvingError
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -68,6 +69,14 @@ object StartupMultiResolvableVariable {
   final case class Wrapper(variable: StartupSingleResolvableVariable) extends StartupMultiResolvableVariable {
     override def resolve(provider: EnvVarsProvider): Either[ResolvingError, NonEmptyList[String]] =
       variable.resolve(provider).map(NonEmptyList.one)
+  }
+
+  final class TransformationApplyingResolvableDecorator(underlying: StartupMultiResolvableVariable,
+                                                        transformation: Function) extends StartupMultiResolvableVariable {
+    override def resolve(provider: EnvVarsProvider): Either[ResolvingError, NonEmptyList[String]] = {
+      underlying.resolve(provider)
+        .map(_.map(transformation.apply))
+    }
   }
 
 }
