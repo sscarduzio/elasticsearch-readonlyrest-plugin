@@ -19,8 +19,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.transport
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.{HostsRule, LocalHostsRule}
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{RuleBaseDecoderWithAssociatedFields, RuleBaseDecoderWithoutAssociatedFields}
@@ -29,10 +28,10 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 
-class HostsRuleDecoder(variableCreationConfig: VariableCreationConfig)
+class HostsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithAssociatedFields[HostsRule, Boolean] {
 
-  private implicit val _variableCreationConfig: VariableCreationConfig = variableCreationConfig
+  private implicit val _variableCreator: RuntimeResolvableVariableCreator = variableCreator
 
   override def ruleDecoderCreator: Boolean => Decoder[RuleDefinition[HostsRule]] =
     acceptXForwardedFor =>
@@ -49,10 +48,10 @@ class HostsRuleDecoder(variableCreationConfig: VariableCreationConfig)
       .or(Decoder.const(defaultAcceptForwardedForHeader))
 }
 
-class LocalHostsRuleDecoder(variableCreationConfig: VariableCreationConfig)
+class LocalHostsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[LocalHostsRule] {
 
-  private implicit val _variableCreationConfig: VariableCreationConfig = variableCreationConfig
+  private implicit val _variableCreator: RuntimeResolvableVariableCreator = variableCreator
 
   override protected def decoder: Decoder[RuleDefinition[LocalHostsRule]] = {
     DecoderHelpers

@@ -53,7 +53,8 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResul
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils._
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.localUsersMonoid
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
 import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
@@ -110,8 +111,11 @@ class RawRorConfigBasedCoreFactory()
                                        httpClientFactory: HttpClientsFactory,
                                        ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                                        mocksProvider: MocksProvider) = {
-    implicit val compiler: VariableCreationConfig = VariableCreationConfig(TransformationCompiler.withoutAliases)
-    JsonConfigStaticVariableResolver.resolve(rorSection) match {
+    val jsonConfigResolver = new JsonConfigStaticVariableResolver(
+      new StartupResolvableVariableCreator(TransformationCompiler.withoutAliases),
+      envVarProvider
+    )
+    jsonConfigResolver.resolve(rorSection) match {
       case Right(resolvedRorSection) =>
         createFrom(resolvedRorSection, rorIndexNameConfiguration, httpClientFactory, ldapConnectionPoolProvider, mocksProvider).map {
           case Right(settings) =>
@@ -292,15 +296,15 @@ class RawRorConfigBasedCoreFactory()
     AsyncDecoderCreator.instance[Core] { c =>
       val decoder = for {
         dynamicVariableTransformationAliases <-
-          AsyncDecoderCreator.from(DynamicVariableTransformationAliasesDefinitionsDecoder.create)
-        variableCreationConfig = VariableCreationConfig(TransformationCompiler.withAliases(dynamicVariableTransformationAliases.items.map(_.alias)))
+          AsyncDecoderCreator.from(VariableTransformationAliasesDefinitionsDecoder.create)
+        variableCreator = new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(dynamicVariableTransformationAliases.items.map(_.alias)))
         auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
         authorizationServices <- AsyncDecoderCreator.from(ExternalAuthorizationServicesDecoder.instance(httpClientFactory))
-        jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory, variableCreationConfig))
+        jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory, variableCreator))
         ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder(ldapConnectionPoolProvider)
-        rorKbnDefs <- AsyncDecoderCreator.from(new RorKbnDefinitionsDecoderCreator(variableCreationConfig).create())
+        rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance(variableCreator))
         impersonationDefinitionsDecoderCreator = new ImpersonationDefinitionsDecoderCreator(
           caseMappingEquality, authenticationServices, authProxies, ldapServices, mocksProvider
         )
@@ -330,7 +334,7 @@ class RawRorConfigBasedCoreFactory()
                 rorKbns = rorKbnDefs,
                 ldaps = ldapServices,
                 impersonators = impersonationDefs,
-                dynamicVariableTransformationAliases = dynamicVariableTransformationAliases,
+                variableTransformationAliases = dynamicVariableTransformationAliases,
               ),
               globalSettings,
               mocksProvider

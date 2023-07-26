@@ -20,7 +20,7 @@ import cats.Id
 import cats.data.NonEmptyMap
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.definitions.DynamicVariableTransformationAliasDef
+import tech.beshu.ror.accesscontrol.blocks.definitions.VariableTransformationAliasDef
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler.CompilationError
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.{FunctionAlias, FunctionName}
@@ -28,18 +28,18 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 
-object DynamicVariableTransformationAliasesDefinitionsDecoder {
+object VariableTransformationAliasesDefinitionsDecoder {
 
-  private val definitionsSectionName = "dynamic_var_transformation_aliases"
+  private val definitionsSectionName = "variable_transformation_aliases"
   private val transformationCompiler: TransformationCompiler = TransformationCompiler.withoutAliases
 
-  def create: ADecoder[Id, Definitions[DynamicVariableTransformationAliasDef]] = {
-    implicit val decoder: SyncDecoder[DynamicVariableTransformationAliasDef] = SyncDecoderCreator.from(aliasesDefinitionsDecoder)
+  def create: ADecoder[Id, Definitions[VariableTransformationAliasDef]] = {
+    implicit val decoder: SyncDecoder[VariableTransformationAliasDef] = SyncDecoderCreator.from(aliasesDefinitionsDecoder)
     DefinitionsBaseDecoder
-      .instance[Id, DynamicVariableTransformationAliasDef](definitionsSectionName)
+      .instance[Id, VariableTransformationAliasDef](definitionsSectionName)
   }
 
-  private def aliasesDefinitionsDecoder: Decoder[DynamicVariableTransformationAliasDef] = {
+  private def aliasesDefinitionsDecoder: Decoder[VariableTransformationAliasDef] = {
     Decoder
       .instance { c =>
         for {
@@ -51,7 +51,7 @@ object DynamicVariableTransformationAliasesDefinitionsDecoder {
             case CompilationError.UnableToCompileTransformation(message) =>
               error(s"Unable to compile transformation for alias '${aliasName.value}'. Cause: $message")
           }
-        } yield DynamicVariableTransformationAliasDef(
+        } yield VariableTransformationAliasDef(
           FunctionAlias(
             name = FunctionName(aliasName),
             value = function

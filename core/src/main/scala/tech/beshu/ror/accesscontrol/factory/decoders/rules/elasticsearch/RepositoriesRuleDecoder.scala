@@ -21,7 +21,6 @@ import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.RepositoriesRule
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
@@ -34,10 +33,10 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
 
-class RepositoriesRuleDecoder(variableCreationConfig: VariableCreationConfig)
+class RepositoriesRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[RepositoriesRule] {
 
-  private implicit val _variableCreationConfig: VariableCreationConfig = variableCreationConfig
+  private implicit val _variableCreator: RuntimeResolvableVariableCreator = variableCreator
 
   override protected def decoder: Decoder[RuleDefinition[RepositoriesRule]] = {
     DecoderHelpers
@@ -64,12 +63,12 @@ private object RepositoriesDecodersHelper {
         case None => Left(Convertible.ConvertError("Repository name cannot be empty"))
       }
   }
-  implicit def repositoryValueDecoder(implicit variableCreationConfig: VariableCreationConfig): Decoder[RuntimeMultiResolvableVariable[RepositoryName]] =
+  implicit def repositoryValueDecoder(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeMultiResolvableVariable[RepositoryName]] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .toSyncDecoder
       .emapE { str =>
-        RuntimeResolvableVariableCreator
+        variableCreator
           .createMultiResolvableVariableFrom[RepositoryName](str)
           .left.map(error => RulesLevelCreationError(Message(error.show)))
       }

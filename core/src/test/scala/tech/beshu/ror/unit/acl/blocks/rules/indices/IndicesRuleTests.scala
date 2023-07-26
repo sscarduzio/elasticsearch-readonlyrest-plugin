@@ -34,7 +34,6 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
@@ -2937,8 +2936,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
   }
 
   private def indexNameVar(value: NonEmptyString): RuntimeMultiResolvableVariable[ClusterIndexName] = {
-    RuntimeResolvableVariableCreator
-      .createMultiResolvableVariableFrom(value)(AlwaysRightConvertible.from(clusterIndexName), variableCreationConfig)
+    variableCreator
+      .createMultiResolvableVariableFrom(value)(AlwaysRightConvertible.from(clusterIndexName))
       .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))
   }
 
@@ -2995,6 +2994,6 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
     fullLocalDataStreamWithAliases(fullDataStreamName("test5"))
   )
 
-  private implicit val variableCreationConfig: VariableCreationConfig =
-    VariableCreationConfig(TransformationCompiler.withoutAliases)
+  private val variableCreator: RuntimeResolvableVariableCreator =
+    new RuntimeResolvableVariableCreator(TransformationCompiler.withoutAliases)
 }

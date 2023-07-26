@@ -20,7 +20,7 @@ import better.files._
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
+import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration}
@@ -72,7 +72,8 @@ object RorSsl extends Logging {
     new YamlFileBasedConfigLoader(configFile).loadConfig[RorSsl](configName = "ROR SSL configuration")
   }
 
-  private implicit val variableCreationConfig: VariableCreationConfig = VariableCreationConfig(TransformationCompiler.withoutAliases)
+  private implicit val variableCreator: StartupResolvableVariableCreator =
+    new StartupResolvableVariableCreator(TransformationCompiler.withoutAliases)
 }
 
 sealed trait SslConfiguration {

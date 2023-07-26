@@ -22,7 +22,7 @@ import io.circe.Decoder
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
+import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.configuration.YamlFileBasedConfigLoader
@@ -34,8 +34,8 @@ class YamlFileBasedConfigLoaderTest extends AnyWordSpec with Inside {
       case _ => None
     }
 
-  private implicit val variableCreationConfig: VariableCreationConfig =
-    VariableCreationConfig(TransformationCompiler.withoutAliases)
+  private val variableCreator: StartupResolvableVariableCreator =
+    new StartupResolvableVariableCreator(TransformationCompiler.withoutAliases)
 
   "YamlFileBasedConfigLoader" should {
     "decode file file" in {
@@ -67,5 +67,5 @@ class YamlFileBasedConfigLoaderTest extends AnyWordSpec with Inside {
 
   private def tempFile(content: String) = File.temporaryFile().map(_.write(content))
 
-  private def createFileConfigLoader(file: File) = new YamlFileBasedConfigLoader(file)
+  private def createFileConfigLoader(file: File) = new YamlFileBasedConfigLoader(file)(envVarsProvider, variableCreator)
 }

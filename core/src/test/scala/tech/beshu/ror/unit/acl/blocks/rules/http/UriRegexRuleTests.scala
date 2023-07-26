@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataReque
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.UriRegexRule
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
@@ -147,12 +146,12 @@ class UriRegexRuleTests extends AnyWordSpec with MockFactory {
             Try(Pattern.compile(str)).toEither.left.map(_ => ConvertError("msg"))
           }
         }
-        RuntimeResolvableVariableCreator
+        variableCreator
           .createMultiResolvableVariableFrom[Pattern](NonEmptyString.unsafeFrom(value))
           .getOrElse(throw new IllegalStateException(s"Cannot create Pattern Value from $value"))
       }
   }
 
-  private implicit val variableCreationConfig: VariableCreationConfig =
-    VariableCreationConfig(TransformationCompiler.withoutAliases)
+  private val variableCreator: RuntimeResolvableVariableCreator =
+    new RuntimeResolvableVariableCreator(TransformationCompiler.withoutAliases)
 }

@@ -95,27 +95,39 @@ class TransformationCompilerTest extends AnyWordSpec with Matchers with Inside {
             functionTest(f, inputsAndOutputs)
         }
       }
+      "function without args called with parentheses" in {
+        val result = compiler.compile("""to_uppercase()""")
+        inside(result) {
+          case Right(_: Function.ToUpperCase) =>
+        }
+      }
     }
     "return compilation error" when {
       "less args passed than needed" in {
         val result = compiler.compile("replace_first(\"group\")")
         inside(result) {
           case Left(message) =>
-            message should be(UnableToCompileTransformation("No function matching given signature: replace_first(string)"))
+            message should be(UnableToCompileTransformation(
+              "Error for function 'replace_first': Incorrect function arguments count. Expected: 2, actual: 1."
+            ))
         }
       }
       "more args passed than needed" in {
         val result = compiler.compile("""replace_first(a,b,c)""")
         inside(result) {
           case Left(message) =>
-            message should be(UnableToCompileTransformation("No function matching given signature: replace_first(string,string,string)"))
+            message should be(UnableToCompileTransformation(
+              "Error for function 'replace_first': Incorrect function arguments count. Expected: 2, actual: 3."
+            ))
         }
       }
       "no such function" in {
         val result = compiler.compile("replace_last(a,b)")
         inside(result) {
           case Left(message) =>
-            message should be(UnableToCompileTransformation("No function matching given signature: replace_last(string,string)"))
+            message should be(UnableToCompileTransformation(
+              "No function with name 'replace_last'. Supported functions are: [replace_all,replace_first,to_lowercase,to_uppercase]"
+            ))
         }
       }
       "no such alias" in {

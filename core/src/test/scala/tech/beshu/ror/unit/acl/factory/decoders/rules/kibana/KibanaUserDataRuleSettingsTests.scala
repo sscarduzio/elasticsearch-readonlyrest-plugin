@@ -20,7 +20,6 @@ import eu.timepit.refined.auto._
 import org.scalatest.{EitherValues, OptionValues}
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.Json.{JsonRepresentation, JsonTree}
 import tech.beshu.ror.accesscontrol.domain.Json.JsonValue.{BooleanValue, NullValue, NumValue, StringValue}
@@ -32,6 +31,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 
 class KibanaUserDataRuleSettingsTests
@@ -537,7 +537,7 @@ class KibanaUserDataRuleSettingsTests
               "g" -> JsonTree.Value(NullValue)
             ))
 
-          val resolvableMetadataJsonRepresentation = metadataJsonRepresentation.toResolvable
+          val resolvableMetadataJsonRepresentation = metadataJsonRepresentation.toResolvable(variableCreator)
             .getOrElse(throw new IllegalStateException("Example metadata JSON should be resolvable"))
           assertDecodingSuccess(
             yaml =
@@ -650,6 +650,6 @@ class KibanaUserDataRuleSettingsTests
     }
   }
 
-  private implicit val variableCreationConfig: VariableCreationConfig =
-    VariableCreationConfig(TransformationCompiler.withoutAliases)
+  private val variableCreator: RuntimeResolvableVariableCreator =
+    new RuntimeResolvableVariableCreator(TransformationCompiler.withoutAliases)
 }

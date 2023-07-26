@@ -104,7 +104,7 @@ object domain {
         case pattern :: replacement :: Nil =>
           Try(pattern.value.r).toEither
             .leftMap { ex =>
-              PartialApplyError(s"Incorrect first arg '${pattern.value}'. Cause ${patternErrorFor(ex)}")
+              PartialApplyError(s"Incorrect first arg '${pattern.value}'. Cause: ${patternErrorFor(ex)}")
             }
             .map { regex =>
               new Function.ReplaceAll(regex, replacement.value)
@@ -121,7 +121,7 @@ object domain {
         case pattern :: replacement :: Nil =>
           Try(pattern.value.r).toEither
             .leftMap { ex =>
-              PartialApplyError(s"Incorrect first arg '${pattern.value}'. Cause ${patternErrorFor(ex)}")
+              PartialApplyError(s"Incorrect first arg '${pattern.value}'. Cause: ${patternErrorFor(ex)}")
             }
             .map { regex =>
               new Function.ReplaceFirst(regex, replacement.value)

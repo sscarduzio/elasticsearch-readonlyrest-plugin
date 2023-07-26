@@ -17,21 +17,23 @@
 package tech.beshu.ror.unit.acl.blocks.variables
 
 import cats.data.NonEmptyList
+import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariable.ResolvingError
+import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.CreationError
+import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.CreationError.InvalidVariableDefinition
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.{StartupResolvableVariableCreator, StartupSingleResolvableVariable}
-import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.{CreationError, createMultiVariableFrom, createSingleVariableFrom}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
-import eu.timepit.refined.auto._
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
-import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.CreationError.InvalidVariableDefinition
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 
 class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
+
+  private val variableCreator: StartupResolvableVariableCreator =
+    new StartupResolvableVariableCreator(TransformationCompiler.withoutAliases)
 
   "An env variable" should {
     "have been resolved" when {
@@ -84,23 +86,23 @@ class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
     }
     "have not been able to be created" when {
       "env name is an empty string" in {
-        val result = createSingleVariableFrom("test_@{env:}")
+        val result = variableCreator.createSingleVariableFrom("test_@{env:}")
         result shouldBe Left(InvalidVariableDefinition("Empty ENV name passed"))
       }
       "more than one multivariable is used" in {
-        val result = createMultiVariableFrom("@explode{env:test-multi1}x@explode{env:test-multi2}")
+        val result = variableCreator.createMultiVariableFrom("@explode{env:test-multi1}x@explode{env:test-multi2}")
         result shouldBe Left(CreationError.OnlyOneMultiVariableCanBeUsedInVariableDefinition)
       }
       "multivariable is used in single variable context" in {
-        val result = createSingleVariableFrom("@explode{env:test-multi1}")
+        val result = variableCreator.createSingleVariableFrom("@explode{env:test-multi1}")
         result shouldBe Left(CreationError.CannotUserMultiVariableInSingleVariableContext)
       }
       "transformation is not valid" when {
         "empty transformation string" in {
-          val result = createSingleVariableFrom(s"@{env:test}#{}")
+          val result = variableCreator.createSingleVariableFrom(s"@{env:test}#{}")
           result shouldBe Left(InvalidVariableDefinition("Unable to parse transformation string: []. Cause: Expression cannot be empty"))
         }
-        "invalid syntax" in {
+        "incorrect syntax" in {
           val (inputs, outputs) = List[(NonEmptyString, Either[CreationError, StartupSingleResolvableVariable])](
             (
               "@{env:test}#{function(}",
@@ -116,22 +118,24 @@ class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
             ),
           ).unzip
 
-          val results = inputs.map(createSingleVariableFrom)
+          val results = inputs.map(variableCreator.createSingleVariableFrom)
           results should be(outputs)
         }
         "string does not match any function" in {
           val (inputs, outputs) = List[(NonEmptyString, Either[CreationError, StartupSingleResolvableVariable])](
             (
               "@{env:test}#{bilbo}",
-              Left(InvalidVariableDefinition("Unable to compile transformation string: [bilbo]. Cause: No function matching given signature: bilbo()"))
+              Left(InvalidVariableDefinition("Unable to compile transformation string: [bilbo]. Cause: No function with name 'bilbo'. " +
+                "Supported functions are: [replace_all,replace_first,to_lowercase,to_uppercase]"))
             ),
             (
               s"@{env:test}#{to_uppercase.bilbo}",
-              Left(InvalidVariableDefinition("Unable to compile transformation string: [to_uppercase.bilbo]. Cause: No function matching given signature: bilbo()"))
+              Left(InvalidVariableDefinition("Unable to compile transformation string: [to_uppercase.bilbo]. Cause: No function with name 'bilbo'. " +
+                "Supported functions are: [replace_all,replace_first,to_lowercase,to_uppercase]"))
             )
           ).unzip
 
-          val results = inputs.map(createSingleVariableFrom)
+          val results = inputs.map(variableCreator.createSingleVariableFrom)
           results should be(outputs)
         }
         "incorrect args passed to transformation" when {
@@ -139,30 +143,37 @@ class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
             val (inputs, outputs) = List[(NonEmptyString, Either[CreationError, StartupSingleResolvableVariable])](
               (
                 """@{env:test}#{to_uppercase("arg")}""",
-                Left(InvalidVariableDefinition("Unable to compile transformation string: [to_uppercase(\"arg\")]. Cause: No function matching given signature: to_uppercase(string)"))
+                Left(InvalidVariableDefinition("Unable to compile transformation string: [to_uppercase(\"arg\")]. " +
+                  "Cause: Error for function 'to_uppercase': Incorrect function arguments count. Expected: 0, actual: 1."
+                ))
               ),
               (
                 """@{env:test}#{replace_all("arg")}""",
-                Left(InvalidVariableDefinition("Unable to compile transformation string: [replace_all(\"arg\")]. Cause: No function matching given signature: replace_all(string)"))
+                Left(InvalidVariableDefinition("Unable to compile transformation string: [replace_all(\"arg\")]. " +
+                  "Cause: Error for function 'replace_all': Incorrect function arguments count. Expected: 2, actual: 1."
+                ))
               )
             ).unzip
 
-            val results = inputs.map(createSingleVariableFrom)
+            val results = inputs.map(variableCreator.createSingleVariableFrom)
             results should be(outputs)
           }
           "incorrect arg passed" in {
             val (inputs, outputs) = List[(NonEmptyString, Either[CreationError, StartupSingleResolvableVariable])](
               (
                 """@{env:test}#{replace_all("[a-z","arg")}""",
-                Left(InvalidVariableDefinition("Unable to compile transformation string: [replace_all(\"[a-z\",\"arg\")]. Cause: Incorrect first arg '[a-z'. Cause Unclosed character class near index 3"))
+                Left(InvalidVariableDefinition("Unable to compile transformation string: [replace_all(\"[a-z\",\"arg\")]. " +
+                  "Cause: Error for function 'replace_all': Incorrect first arg '[a-z'. Cause: Unclosed character class near index 3"))
               ),
               (
                 s"""@{env:test}#{replace_first("[a-z","arg")}""",
-                Left(InvalidVariableDefinition("Unable to compile transformation string: [replace_first(\"[a-z\",\"arg\")]. Cause: Incorrect first arg '[a-z'. Cause Unclosed character class near index 3"))
+                Left(InvalidVariableDefinition("Unable to compile transformation string: [replace_first(\"[a-z\",\"arg\")]. " +
+                  "Cause: Error for function 'replace_first': Incorrect first arg '[a-z'. Cause: Unclosed character class near index 3"
+                ))
               )
             ).unzip
 
-            val results = inputs.map(createSingleVariableFrom)
+            val results = inputs.map(variableCreator.createSingleVariableFrom)
             results should be(outputs)
           }
         }
@@ -198,11 +209,11 @@ class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
   }
 
   private def createSingleVariable(text: String) = {
-    createSingleVariableFrom(NonEmptyString.unsafeFrom(text)).toOption.get
+    variableCreator.createSingleVariableFrom(NonEmptyString.unsafeFrom(text)).toOption.get
   }
 
   private def createMultiVariable(text: String) = {
-    StartupResolvableVariableCreator.createMultiVariableFrom(NonEmptyString.unsafeFrom(text)).toOption.get
+    variableCreator.createMultiVariableFrom(NonEmptyString.unsafeFrom(text)).toOption.get
   }
 
   private def mockEnvVarProvider(envs: Map[String, Option[String]]) = {
@@ -212,7 +223,4 @@ class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
     }
     provider
   }
-
-  private implicit val variableCreationConfig: VariableCreationConfig =
-    VariableCreationConfig(TransformationCompiler.withoutAliases)
 }

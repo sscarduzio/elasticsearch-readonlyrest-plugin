@@ -27,7 +27,6 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.XForwardedForRule
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostnameResolver
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
@@ -160,12 +159,13 @@ class XForwardedForRuleTests extends AnyWordSpec with MockFactory {
   }
 
   private def addressValueFrom(value: String): RuntimeMultiResolvableVariable[Address] = {
-    val variableCreationConfig: VariableCreationConfig = VariableCreationConfig(TransformationCompiler.withoutAliases)
-    RuntimeResolvableVariableCreator
+    variableCreator
       .createMultiResolvableVariableFrom(NonEmptyString.unsafeFrom(value))(
-        AlwaysRightConvertible.from(extracted => Address.from(extracted.value).get),
-        variableCreationConfig
+        AlwaysRightConvertible.from(extracted => Address.from(extracted.value).get)
       )
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }
+
+  private val variableCreator: RuntimeResolvableVariableCreator =
+    new RuntimeResolvableVariableCreator(TransformationCompiler.withoutAliases)
 }

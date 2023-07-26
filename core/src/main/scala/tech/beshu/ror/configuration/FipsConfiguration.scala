@@ -20,7 +20,7 @@ import better.files.File
 import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
+import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode.NonFips
@@ -61,8 +61,8 @@ object FipsConfiguration extends Logging {
   }
 
 
-  def loadFipsConfigFromFile(configFile: File)
-                            (implicit envVarsProvider: EnvVarsProvider): Either[MalformedSettings, FipsConfiguration] = {
+  private def loadFipsConfigFromFile(configFile: File)
+                                    (implicit envVarsProvider: EnvVarsProvider): Either[MalformedSettings, FipsConfiguration] = {
     new YamlFileBasedConfigLoader(configFile).loadConfig[FipsConfiguration](configName = "ROR FIPS Configuration")
   }
 
@@ -82,7 +82,8 @@ object FipsConfiguration extends Logging {
     }
   }
 
-  private implicit val variableCreationConfig: VariableCreationConfig = VariableCreationConfig(TransformationCompiler.withoutAliases)
+  private implicit val variableCreator: StartupResolvableVariableCreator =
+    new StartupResolvableVariableCreator(TransformationCompiler.withoutAliases)
 
   sealed trait FipsMode
   object FipsMode {

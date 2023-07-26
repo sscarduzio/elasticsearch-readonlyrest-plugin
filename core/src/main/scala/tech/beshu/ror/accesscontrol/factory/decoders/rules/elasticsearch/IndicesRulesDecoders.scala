@@ -21,7 +21,6 @@ import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
@@ -35,10 +34,10 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
-class IndicesRuleDecoders(variableCreationConfig: VariableCreationConfig)
+class IndicesRuleDecoders(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[IndicesRule] {
 
-  private implicit val _variableCreationConfig: VariableCreationConfig = variableCreationConfig
+  private implicit val _variableCreator: RuntimeResolvableVariableCreator = variableCreator
 
   override protected def decoder: Decoder[RuleDefinition[IndicesRule]] = {
     indicesRuleSimpleDecoder
@@ -87,12 +86,12 @@ private object IndicesDecodersHelper {
         .fromString(str)
         .toRight(Convertible.ConvertError("Index name cannot be empty"))
   }
-  implicit def indexNameValueDecoder(implicit config: VariableCreationConfig): Decoder[RuntimeMultiResolvableVariable[ClusterIndexName]] =
+  implicit def indexNameValueDecoder(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeMultiResolvableVariable[ClusterIndexName]] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .toSyncDecoder
       .emapE { str =>
-        RuntimeResolvableVariableCreator
+        variableCreator
           .createMultiResolvableVariableFrom[ClusterIndexName](str)
           .left.map(error => RulesLevelCreationError(Message(error.show)))
       }

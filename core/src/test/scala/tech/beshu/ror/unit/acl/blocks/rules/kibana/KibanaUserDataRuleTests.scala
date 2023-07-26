@@ -24,7 +24,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.Json.JsonValue.{BooleanValue, NullValue, NumValue, StringValue}
@@ -39,6 +38,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 
@@ -150,7 +150,7 @@ class KibanaUserDataRuleTests
             "h" -> JsonTree.Value(StringValue("@{acl:current_group}_@{acl:user}"))
           ))
         }
-        val resolvableMetadataJsonRepresentation = metadataJsonRepresentation.toResolvable match {
+        val resolvableMetadataJsonRepresentation = metadataJsonRepresentation.toResolvable(variableCreator) match {
           case Right(value) => value
           case Left(error) => throw new IllegalStateException(s"Cannot resolve metadata: $error")
         }
@@ -246,6 +246,6 @@ class KibanaUserDataRuleTests
       )
     }
 
-  private implicit val variableCreationConfig: VariableCreationConfig =
-    VariableCreationConfig(TransformationCompiler.withoutAliases)
+  private val variableCreator: RuntimeResolvableVariableCreator =
+    new RuntimeResolvableVariableCreator(TransformationCompiler.withoutAliases)
 }

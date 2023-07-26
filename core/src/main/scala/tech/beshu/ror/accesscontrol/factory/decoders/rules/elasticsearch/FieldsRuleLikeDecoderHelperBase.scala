@@ -19,7 +19,6 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.elasticsearch
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
@@ -63,7 +62,7 @@ trait FieldsRuleLikeDecoderHelperBase {
 
   protected def documentFieldsDecoder[FIELD](configuredFields: UniqueNonEmptyList[ConfiguredField], alwaysAllowedFields: Set[NonEmptyString])
                                             (implicit itemConvertible: Convertible[FIELD],
-                                             config: VariableCreationConfig) =
+                                             variableCreator: RuntimeResolvableVariableCreator) =
     fromConfiguredFieldsDecoder(configuredFields, createDocumentFields[FIELD](alwaysAllowedFields))
 
   protected def fromConfiguredFieldsDecoder[ITEM](configuredFields: UniqueNonEmptyList[ConfiguredField],
@@ -87,7 +86,7 @@ trait FieldsRuleLikeDecoderHelperBase {
   private def createDocumentFields[FIELD](alwaysAllowedFields: Set[NonEmptyString])
                                          (fields: UniqueNonEmptyList[ConfiguredField])
                                          (implicit itemConvertible: Convertible[FIELD],
-                                          config: VariableCreationConfig) = {
+                                          variableCreator: RuntimeResolvableVariableCreator) = {
     val fieldsFromAlwaysAllowedList = checkForAlwaysAllowedFields(fields, alwaysAllowedFields)
 
     if (fieldsFromAlwaysAllowedList.nonEmpty) {
@@ -113,8 +112,8 @@ trait FieldsRuleLikeDecoderHelperBase {
 
   private def createRuntimeVariable[FIELD](field: ConfiguredField)
                                           (implicit itemConvertible: Convertible[FIELD],
-                                           config: VariableCreationConfig) = {
-    RuntimeResolvableVariableCreator
+                                           variableCreator: RuntimeResolvableVariableCreator) = {
+    variableCreator
       .createMultiResolvableVariableFrom[FIELD](field.fieldName)
       .left.map(error => RulesLevelCreationError(Message(error.show)))
   }

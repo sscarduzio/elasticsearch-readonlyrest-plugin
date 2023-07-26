@@ -21,7 +21,7 @@ import cats.data.NonEmptyList
 import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
+import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.configuration.RorBootConfiguration.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -48,7 +48,8 @@ object RorBootConfiguration extends Logging {
     new YamlFileBasedConfigLoader(configFile).loadConfig[RorBootConfiguration](configName = "ROR boot configuration")
   }
 
-  private implicit val variableCreationConfig: VariableCreationConfig = VariableCreationConfig(TransformationCompiler.withoutAliases)
+  private implicit val variableCreator: StartupResolvableVariableCreator =
+    new StartupResolvableVariableCreator(TransformationCompiler.withoutAliases)
 
   final case class RorNotStartedResponse(httpCode: RorNotStartedResponse.HttpCode)
   object RorNotStartedResponse {

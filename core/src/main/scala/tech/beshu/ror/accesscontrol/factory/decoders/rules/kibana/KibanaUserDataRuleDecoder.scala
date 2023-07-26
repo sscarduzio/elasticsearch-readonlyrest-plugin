@@ -22,8 +22,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath._
@@ -38,11 +37,11 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import scala.util.{Failure, Success}
 
 class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex,
-                                variableCreationConfig: VariableCreationConfig)
+                                variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaUserDataRule]
     with Logging {
 
-  private implicit val _variableCreationConfig: VariableCreationConfig = variableCreationConfig
+  private implicit val _variableCreator: RuntimeResolvableVariableCreator = variableCreator
   private implicit val uniqueNonEmptyListOfKibanaAppsDecoder: Decoder[Set[KibanaApp]] =
     DecoderHelpers.decodeStringLikeOrSet[KibanaApp]
 

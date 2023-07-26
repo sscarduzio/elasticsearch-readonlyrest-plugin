@@ -22,18 +22,18 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Funct
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.FunctionName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.decoders.definitions.DynamicVariableTransformationAliasesDefinitionsDecoder
+import tech.beshu.ror.accesscontrol.factory.decoders.definitions.VariableTransformationAliasesDefinitionsDecoder
 
-class DynamicVariableTransformationAliasesTests
-  extends BaseDecoderTest(DynamicVariableTransformationAliasesDefinitionsDecoder.create) {
+class VariableTransformationAliasesTests
+  extends BaseDecoderTest(VariableTransformationAliasesDefinitionsDecoder.create) {
 
-  "A dynamic variable transformation aliases definition" should {
+  "A variable transformation aliases definition" should {
     "be able to be loaded from config" when {
       "one alias is defined" in {
         assertDecodingSuccess(
           yaml =
             s"""
-               |dynamic_var_transformation_aliases:
+               |variable_transformation_aliases:
                | - strip_group_prefix: replace_first("^group", "")
              """.stripMargin,
           assertion = { definitions =>
@@ -48,7 +48,7 @@ class DynamicVariableTransformationAliasesTests
         assertDecodingSuccess(
           yaml =
             s"""
-               |dynamic_var_transformation_aliases:
+               |variable_transformation_aliases:
                | - strip_group_prefix: replace_first("^group", "")
                | - strip_group_suffix: replace_first("group$$", "")
              """.stripMargin,
@@ -68,7 +68,7 @@ class DynamicVariableTransformationAliasesTests
         assertDecodingSuccess(
           yaml =
             s"""
-               |dynamic_var_transformation_aliases:
+               |variable_transformation_aliases:
                | - normalize: replace_first("^group_", "").replace_all("x", "y").to_lowercase
              """.stripMargin,
           assertion = { definitions =>
@@ -104,11 +104,11 @@ class DynamicVariableTransformationAliasesTests
       assertDecodingFailure(
         yaml =
           s"""
-             |dynamic_var_transformation_aliases:
+             |variable_transformation_aliases:
        """.stripMargin,
         assertion = { error =>
           error should be(DefinitionsLevelCreationError(Message(
-            "dynamic_var_transformation_aliases declared, but no definition found"
+            "variable_transformation_aliases declared, but no definition found"
           )))
         }
       )
@@ -118,12 +118,13 @@ class DynamicVariableTransformationAliasesTests
         assertDecodingFailure(
           yaml =
             s"""
-               |dynamic_var_transformation_aliases:
+               |variable_transformation_aliases:
                | - alias_name: to_snakecase
              """.stripMargin,
           assertion = { error =>
             error should be(DefinitionsLevelCreationError(Message(
-              "dynamic_var_transformation_aliases definition malformed: Unable to compile transformation for alias 'alias_name'. Cause: No function matching given signature: to_snakecase()"
+              "variable_transformation_aliases definition malformed: Unable to compile transformation for alias 'alias_name'. " +
+                "Cause: No function with name 'to_snakecase'. Supported functions are: [replace_all,replace_first,to_lowercase,to_uppercase]"
             )))
           }
         )
@@ -132,12 +133,13 @@ class DynamicVariableTransformationAliasesTests
         assertDecodingFailure(
           yaml =
             s"""
-               |dynamic_var_transformation_aliases:
+               |variable_transformation_aliases:
                | - alias_name: replace_first("([a-z", "replacement")
              """.stripMargin,
           assertion = { error =>
             error should be(DefinitionsLevelCreationError(Message(
-              "dynamic_var_transformation_aliases definition malformed: Unable to compile transformation for alias 'alias_name'. Cause: Incorrect first arg '([a-z'. Cause Unclosed character class near index 4"
+              "variable_transformation_aliases definition malformed: Unable to compile transformation for alias 'alias_name'. " +
+                "Cause: Error for function 'replace_first': Incorrect first arg '([a-z'. Cause: Unclosed character class near index 4"
             )))
           }
         )
@@ -146,12 +148,13 @@ class DynamicVariableTransformationAliasesTests
         assertDecodingFailure(
           yaml =
             s"""
-               |dynamic_var_transformation_aliases:
+               |variable_transformation_aliases:
                | - alias_name: replace_first("xyz")
              """.stripMargin,
           assertion = { error =>
             error should be(DefinitionsLevelCreationError(Message(
-              "dynamic_var_transformation_aliases definition malformed: Unable to compile transformation for alias 'alias_name'. Cause: No function matching given signature: replace_first(string)"
+              "variable_transformation_aliases definition malformed: Unable to compile transformation for alias 'alias_name'. " +
+                "Cause: Error for function 'replace_first': Incorrect function arguments count. Expected: 2, actual: 1."
             )))
           }
         )
@@ -160,12 +163,13 @@ class DynamicVariableTransformationAliasesTests
         assertDecodingFailure(
           yaml =
             s"""
-               |dynamic_var_transformation_aliases:
+               |variable_transformation_aliases:
                | - alias_name: func(some_alias)
              """.stripMargin,
           assertion = { error =>
             error should be(DefinitionsLevelCreationError(Message(
-              "dynamic_var_transformation_aliases definition malformed: Unable to compile transformation for alias 'alias_name'. Cause: Function aliases cannot be applied in this context"
+              "variable_transformation_aliases definition malformed: Unable to compile transformation for alias 'alias_name'. " +
+                "Cause: Function aliases cannot be applied in this context"
             )))
           }
         )

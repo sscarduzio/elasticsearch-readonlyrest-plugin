@@ -22,16 +22,16 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Ite
 
 import java.util.UUID
 
-final case class DynamicVariableTransformationAliasDef private(id: DynamicVariableTransformationAliasDef#Id,
-                                                               alias: FunctionAlias)
+final case class VariableTransformationAliasDef private(id: VariableTransformationAliasDef#Id,
+                                                        alias: FunctionAlias)
   extends Item {
 
   override type Id = UUID // artificial ID (won't be used)
   override implicit val show: Show[UUID] = Show.show(_.toString)
 }
 
-object DynamicVariableTransformationAliasDef {
-  def apply(alias: FunctionAlias): DynamicVariableTransformationAliasDef = {
-    new DynamicVariableTransformationAliasDef(UUID.randomUUID(), alias)
+object VariableTransformationAliasDef {
+  def apply(alias: FunctionAlias): VariableTransformationAliasDef = {
+    new VariableTransformationAliasDef(UUID.randomUUID(), alias)
   }
 }

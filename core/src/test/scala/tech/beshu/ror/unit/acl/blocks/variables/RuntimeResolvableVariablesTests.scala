@@ -25,10 +25,10 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable.CannotExtractValue
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.{CreationError, createMultiResolvableVariableFrom, createSingleResolvableVariableFrom}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.CreationError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
@@ -42,8 +42,8 @@ import scala.jdk.CollectionConverters._
 
 class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
 
-  private implicit val variableCreationConfig: VariableCreationConfig =
-    VariableCreationConfig(TransformationCompiler.withoutAliases)
+  private val variableCreator: RuntimeResolvableVariableCreator =
+    new RuntimeResolvableVariableCreator(TransformationCompiler.withoutAliases)
 
   "A header variable" should {
     "have been resolved" when {
@@ -53,13 +53,6 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
             requestContext = MockRequestContext.metadata.copy(headers = Set(headerFrom("key1" -> "x,y")))
           ))
         variable shouldBe Right("x,y")
-      }
-      "given variable has corresponding header in request context (with transformation)" in {
-        val variable = forceCreateSingleVariable(s"""@{key1}#{replace_first("x","z")}""")
-          .resolve(currentUserMetadataRequestBlockContextFrom(
-            requestContext = MockRequestContext.metadata.copy(headers = Set(headerFrom("key1" -> "x,y")))
-          ))
-        variable shouldBe Right("z,y")
       }
       "given multivariable has corresponding header in request context" in {
         val variable = forceCreateMultiVariable("test_@explode{key1}#{to_lowercase}")
@@ -81,6 +74,13 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
             requestContext = MockRequestContext.metadata.copy(headers = Set(headerFrom("key1" -> "x")))
           ))
         variable shouldBe Right("x_ok")
+      }
+      "given variable has corresponding header in request context and is defined with new format (with transformation)" in {
+        val variable = forceCreateSingleVariable(s"""@{header:key1}#{replace_first("x","z")}_ok""")
+          .resolve(currentUserMetadataRequestBlockContextFrom(
+            requestContext = MockRequestContext.metadata.copy(headers = Set(headerFrom("key1" -> "x")))
+          ))
+        variable shouldBe Right("z_ok")
       }
       "given variable has corresponding header in request context and is defined with new format using '${}' syntax" in {
         val variable = forceCreateSingleVariable("h_${header:key1}_ok")
@@ -132,6 +132,13 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
           ))
         variable shouldBe Right("simone")
       }
+      "user variable is used with namespace and variable transformation and there is logged user" in {
+        val variable = forceCreateSingleVariable("@{acl:user}#{to_lowercase}")
+          .resolve(currentUserMetadataRequestBlockContextFrom(
+            _.withLoggedUser(DirectlyLoggedUser(User.Id("Simone")))
+          ))
+        variable shouldBe Right("simone")
+      }
       "user multivariable is used and there is logged user" in {
         val variable = forceCreateMultiVariable("@explode{user}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
@@ -158,7 +165,6 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
           ))
         variable shouldBe Right("g1")
       }
-
       "current group variable is used and initial group is present" in {
         val requestContext = MockRequestContext.metadata.copy(headers = Set(currentGroupHeader("g1")))
         val variable = forceCreateSingleVariable("@{acl:current_group}")
@@ -171,6 +177,13 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
             _.withAvailableGroups(UniqueList.of(GroupName("g1,g2"), GroupName("g3")))
           ))
         variable shouldBe Right(NonEmptyList.of("g1,g2"))
+      }
+      "current group multivariable with transformation is used and some groups has been added as available" in {
+        val variable = forceCreateMultiVariable("""@explode{acl:current_group}#{replace_all("g","group")}""")
+          .resolve(currentUserMetadataRequestBlockContextFrom(
+            _.withAvailableGroups(UniqueList.of(GroupName("g1,g2"), GroupName("g3")))
+          ))
+        variable shouldBe Right(NonEmptyList.of("group1,group2"))
       }
     }
     "have not been resolved" when {
@@ -190,6 +203,13 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
             _.withAvailableGroups(UniqueList.of(GroupName("g1"), GroupName("g2")))
           ))
         variable shouldBe Right(NonEmptyList.of("g1", "g2"))
+      }
+      "available groups multivariable with transformation is used and explode" in {
+        val variable = forceCreateMultiVariable("""@explode{acl:available_groups}#{replace_all("g","group").to_uppercase}""")
+          .resolve(currentUserMetadataRequestBlockContextFrom(
+            _.withAvailableGroups(UniqueList.of(GroupName("g1"), GroupName("g2")))
+          ))
+        variable shouldBe Right(NonEmptyList.of("GROUP1", "GROUP2"))
       }
       "available groups variable is used without explode" in {
         val variable = forceCreateSingleVariable("@{acl:available_groups}")
@@ -220,6 +240,17 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
             })
           ))
         variable shouldBe Right("group1")
+      }
+      "jwt variable with transformation is used with correct JSON path to string value and JWT token was set" in {
+        val variable = forceCreateSingleVariable("""@{jwt:tech.beshu.mainGroup}#{replace_first("^group\d","g")}""")
+          .resolve(currentUserMetadataRequestBlockContextFrom(
+            _.withJwtToken(JwtTokenPayload {
+              val claims = new DefaultClaims()
+              claims.put("tech", Map("beshu" -> Map("mainGroup" -> "group1").asJava).asJava)
+              claims
+            })
+          ))
+        variable shouldBe Right("g")
       }
       "jwt variable is used with correct JSON path to strings array value and JWT token was set" in {
         val variable = forceCreateSingleVariable("@{jwt:tech.beshu.groups}")
@@ -268,9 +299,8 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
     }
     "have not been able to be created" when {
       "JSON path cannot compile" in {
-        val variable = createSingleResolvableVariableFrom("@{jwt:tech[[.beshu}")(
+        val variable = variableCreator.createSingleResolvableVariableFrom("@{jwt:tech[[.beshu}")(
           AlwaysRightConvertible.stringAlwaysRightConvertible,
-          variableCreationConfig
         )
         variable should be(Left(CreationError.InvalidVariableDefinition("cannot compile 'tech[[.beshu' to JsonPath")))
       }
@@ -318,21 +348,22 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
     }
   }
 
-  private def forceCreateSingleVariable(text: String) = createSingleVariable(text).toOption.get
+  private def forceCreateSingleVariable(text: String) = createSingleVariable(text).fold(
+    m => throw new IllegalStateException(m.toString),
+    identity
+  )
 
   private def createSingleVariable(text: String) = {
-    createSingleResolvableVariableFrom(NonEmptyString.unsafeFrom(text))(
-      AlwaysRightConvertible.stringAlwaysRightConvertible,
-      variableCreationConfig
+    variableCreator.createSingleResolvableVariableFrom(NonEmptyString.unsafeFrom(text))(
+      AlwaysRightConvertible.stringAlwaysRightConvertible
     )
   }
 
   private def forceCreateMultiVariable(text: String) = createMultiVariable(text).toOption.get
 
   private def createMultiVariable(text: String) = {
-    createMultiResolvableVariableFrom(NonEmptyString.unsafeFrom(text))(
+    variableCreator.createMultiResolvableVariableFrom(NonEmptyString.unsafeFrom(text))(
       AlwaysRightConvertible.stringAlwaysRightConvertible,
-      variableCreationConfig
     )
   }
 

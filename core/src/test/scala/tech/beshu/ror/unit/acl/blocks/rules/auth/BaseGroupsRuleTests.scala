@@ -38,11 +38,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Authen
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule._
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
@@ -62,7 +61,8 @@ import scala.language.postfixOps
 trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextAssertion {
 
   implicit val provider: EnvVarsProvider = OsEnvVarsProvider
-  implicit val variableCreationConfig: VariableCreationConfig = VariableCreationConfig(TransformationCompiler.withoutAliases)
+  implicit val variableCreator: RuntimeResolvableVariableCreator =
+    new RuntimeResolvableVariableCreator(TransformationCompiler.withoutAliases)
 
   def createRule(settings: GroupsRulesSettings, caseSensitivity: UserIdCaseMappingEquality): BaseGroupsRule
 
@@ -587,7 +587,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
     }
 
   private def createVariable[T: Convertible](text: NonEmptyString) = {
-    createMultiResolvableVariableFrom[T](text)
+    variableCreator.createMultiResolvableVariableFrom[T](text)
   }
 
   object authenticationRule {

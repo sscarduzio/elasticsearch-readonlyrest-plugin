@@ -21,7 +21,6 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Json.Folder
 import io.circe.{Json, JsonNumber, JsonObject}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.{Convertible, Unresolvable}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.CreationError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
@@ -32,13 +31,13 @@ object ResolvableJsonRepresentationOps {
 
   implicit class CreateTree(val jsonRepresentation: JsonRepresentation) extends AnyVal {
 
-    def toResolvable(implicit config: VariableCreationConfig): Either[CreationError, ResolvableJsonRepresentation] = {
+    def toResolvable(implicit variableCreator: RuntimeResolvableVariableCreator): Either[CreationError, ResolvableJsonRepresentation] = {
       mapTree(jsonRepresentation)
     }
 
     // not stack safe ATM (but it should not a big deal - can be improved in the future)
     private def mapTree(tree: JsonRepresentation)
-                       (implicit config: VariableCreationConfig): Either[CreationError, ResolvableJsonRepresentation] = {
+                       (implicit variableCreator: RuntimeResolvableVariableCreator): Either[CreationError, ResolvableJsonRepresentation] = {
       tree match {
         case JsonTree.Object(fields) =>
           val (keys, mappedValuesResults) = fields.view.mapValues(mapTree).toList.unzip
@@ -54,7 +53,7 @@ object ResolvableJsonRepresentationOps {
         case JsonTree.Value(StringValue(value)) =>
           NonEmptyString.unapply(value) match {
             case Some(nonEmptyString) =>
-              RuntimeResolvableVariableCreator
+              variableCreator
                 .createSingleResolvableVariableFrom(nonEmptyString)
                 .map(resolvableString =>
                   JsonTree.Value(resolvableString.map(StringValue))

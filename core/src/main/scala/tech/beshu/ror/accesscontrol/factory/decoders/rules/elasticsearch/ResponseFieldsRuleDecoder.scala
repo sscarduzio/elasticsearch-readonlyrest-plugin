@@ -19,17 +19,17 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.elasticsearch
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ResponseFieldsRule
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, ResponseField}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 
-class ResponseFieldsRuleDecoder(variableCreationConfig: VariableCreationConfig)
+class ResponseFieldsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[ResponseFieldsRule]
     with FieldsRuleLikeDecoderHelperBase {
 
-  private implicit val _variableCreationConfig: VariableCreationConfig = variableCreationConfig
+  private implicit val _variableCreator: RuntimeResolvableVariableCreator = variableCreator
   private implicit val convertible: Convertible[ResponseField] = AlwaysRightConvertible.from(ResponseField.apply)
 
   implicit val accessModeConverter: AccessModeConverter[AccessMode] =

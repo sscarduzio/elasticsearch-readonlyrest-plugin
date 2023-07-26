@@ -22,7 +22,6 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.DataStreamsRule
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
@@ -36,10 +35,10 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
-class DataStreamsRuleDecoder(variableCreationConfig: VariableCreationConfig)
+class DataStreamsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[DataStreamsRule] {
 
-  private implicit val _variableCreationConfig: VariableCreationConfig = variableCreationConfig
+  private implicit val _variableCreator: RuntimeResolvableVariableCreator = variableCreator
 
   override protected def decoder: Decoder[RuleDefinition[DataStreamsRule]] =
     DecoderHelpers
@@ -79,12 +78,12 @@ private object DataStreamsDecodersHelper {
     private def isLowerCase(value: NonEmptyString) = value.value.toLowerCase == value.value
   }
 
-  implicit def dataStreamNameValueDecoder(implicit variableCreationConfig: VariableCreationConfig): Decoder[RuntimeMultiResolvableVariable[DataStreamName]] =
+  implicit def dataStreamNameValueDecoder(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeMultiResolvableVariable[DataStreamName]] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .toSyncDecoder
       .emapE { str =>
-        RuntimeResolvableVariableCreator
+        variableCreator
           .createMultiResolvableVariableFrom[DataStreamName](str)
           .left.map(error => RulesLevelCreationError(Message(error.show)))
       }

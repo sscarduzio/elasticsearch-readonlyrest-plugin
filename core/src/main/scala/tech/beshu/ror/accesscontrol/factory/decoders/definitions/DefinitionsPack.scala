@@ -28,7 +28,7 @@ final case class DefinitionsPack(proxies: Definitions[ProxyAuth],
                                  rorKbns: Definitions[RorKbnDef],
                                  ldaps: Definitions[LdapService],
                                  impersonators: Definitions[ImpersonatorDef],
-                                 dynamicVariableTransformationAliases: Definitions[DynamicVariableTransformationAliasDef])
+                                 variableTransformationAliases: Definitions[VariableTransformationAliasDef])
 
 final case class Definitions[Item](items: List[Item]) extends AnyVal
 object Definitions {

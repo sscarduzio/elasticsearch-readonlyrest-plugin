@@ -20,7 +20,7 @@ import cats.Id
 import io.circe.{Decoder, HCursor}
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.{Name, SignatureCheckMethod}
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -29,17 +29,16 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps.fromError
 import tech.beshu.ror.accesscontrol.utils.CryptoOps.keyStringToPublicKey
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 
-class RorKbnDefinitionsDecoderCreator(variableCreationConfig: VariableCreationConfig) {
+object RorKbnDefinitionsDecoder {
 
-  def create(): ADecoder[Id, Definitions[RorKbnDef]] = {
-    implicit val decoder: SyncDecoder[RorKbnDef] = SyncDecoderCreator.from(rorKbnDefDecoder)
+  def instance(variableCreator: RuntimeResolvableVariableCreator): ADecoder[Id, Definitions[RorKbnDef]] = {
+    implicit val decoder: SyncDecoder[RorKbnDef] = SyncDecoderCreator.from(rorKbnDefDecoder(variableCreator))
     DefinitionsBaseDecoder.instance[Id, RorKbnDef]("ror_kbn")
   }
 
   implicit val rorKbnDefNameDecoder: Decoder[RorKbnDef.Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
-  private implicit val _variableCreationConfig: VariableCreationConfig = variableCreationConfig
 
-  private val rorKbnDefDecoder: Decoder[RorKbnDef] =  {
+  private def rorKbnDefDecoder(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[RorKbnDef] =  {
     SyncDecoderCreator
       .instance { c =>
         for {
@@ -71,7 +70,8 @@ class RorKbnDefinitionsDecoderCreator(variableCreationConfig: VariableCreationCo
       ES384       EC
       ES512       EC
     */
-  private def signatureCheckMethod(c: HCursor): Decoder.Result[SignatureCheckMethod] = {
+  private def signatureCheckMethod(c: HCursor)
+                                  (implicit variableCreator: RuntimeResolvableVariableCreator): Decoder.Result[SignatureCheckMethod] = {
     def decodeSignatureKey =
       DecoderHelpers
         .decodeStringLikeWithSingleVarResolvedInPlace
@@ -104,8 +104,4 @@ class RorKbnDefinitionsDecoderCreator(variableCreationConfig: VariableCreationCo
       }
     } yield checkMethod
   }
-}
-
-object RorKbnDefinitionsDecoderCreator {
-  implicit val rorKbnDefNameDecoder: Decoder[RorKbnDef.Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
 }

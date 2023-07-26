@@ -21,9 +21,9 @@ import io.circe.Decoder
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
@@ -31,11 +31,11 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import scala.jdk.CollectionConverters._
 
 class FieldsRuleDecoder(flsEngine: FlsEngine,
-                        variableCreationConfig: VariableCreationConfig)
+                        variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[FieldsRule] {
 
   override protected def decoder: Decoder[RuleDefinition[FieldsRule]] =
-    FieldsRuleDecoderHelper.fieldsRuleDecoder(flsEngine, variableCreationConfig)
+    FieldsRuleDecoderHelper.fieldsRuleDecoder(flsEngine, variableCreator)
 }
 
 private object FieldsRuleDecoderHelper extends FieldsRuleLikeDecoderHelperBase {
@@ -45,8 +45,8 @@ private object FieldsRuleDecoderHelper extends FieldsRuleLikeDecoderHelperBase {
   implicit val accessModeConverter: AccessModeConverter[AccessMode] =
     AccessModeConverter.create(whitelistElement = AccessMode.Whitelist, blacklistElement = AccessMode.Blacklist)
 
-  def fieldsRuleDecoder(flsEngine: FlsEngine, variableCreationConfig: VariableCreationConfig): Decoder[RuleDefinition[FieldsRule]] = {
-    implicit val _variableCreationConfig: VariableCreationConfig = variableCreationConfig
+  def fieldsRuleDecoder(flsEngine: FlsEngine, variableCreator: RuntimeResolvableVariableCreator): Decoder[RuleDefinition[FieldsRule]] = {
+    implicit val _variableCreator: RuntimeResolvableVariableCreator = variableCreator
     for {
       configuredFields <- configuredFieldsDecoder
       accessMode <- accessModeDecoder[AccessMode](configuredFields)

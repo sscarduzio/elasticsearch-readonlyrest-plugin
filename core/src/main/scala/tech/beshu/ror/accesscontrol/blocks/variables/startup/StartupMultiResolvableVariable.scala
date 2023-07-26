@@ -31,9 +31,9 @@ import tech.beshu.ror.utils.ScalaOps._
 sealed trait StartupMultiResolvableVariable extends StartupResolvableVariable[NonEmptyList[String]]
 object StartupMultiResolvableVariable {
 
-  final case class Env(name: EnvVarName) extends StartupMultiResolvableVariable {
+  final class Env(name: EnvVarName, transformation: Option[Function]) extends StartupMultiResolvableVariable {
     private val csvParser =  new CSVParser(new DefaultCSVFormat {})
-    override def resolve(provider: EnvVarsProvider): Either[ResolvingError, NonEmptyList[String]] = {
+    override def resolve(provider: EnvVarsProvider): Either[ResolvingError, NonEmptyList[String]] = withTransformation {
       provider.getEnv(name) match {
         case Some(envValue) =>
           (for {
@@ -46,6 +46,11 @@ object StartupMultiResolvableVariable {
         case None =>
           Left(ResolvingError(s"Cannot resolve ENV variable '${name.show}'"))
       }
+    }
+
+    private def withTransformation(resolvable: => Either[ResolvingError, NonEmptyList[String]]) = transformation match {
+      case Some(function) => resolvable.map(_.map(function.apply))
+      case None => resolvable
     }
   }
 
@@ -69,14 +74,6 @@ object StartupMultiResolvableVariable {
   final case class Wrapper(variable: StartupSingleResolvableVariable) extends StartupMultiResolvableVariable {
     override def resolve(provider: EnvVarsProvider): Either[ResolvingError, NonEmptyList[String]] =
       variable.resolve(provider).map(NonEmptyList.one)
-  }
-
-  final class TransformationApplyingResolvableDecorator(underlying: StartupMultiResolvableVariable,
-                                                        transformation: Function) extends StartupMultiResolvableVariable {
-    override def resolve(provider: EnvVarsProvider): Either[ResolvingError, NonEmptyList[String]] = {
-      underlying.resolve(provider)
-        .map(_.map(transformation.apply))
-    }
   }
 
 }

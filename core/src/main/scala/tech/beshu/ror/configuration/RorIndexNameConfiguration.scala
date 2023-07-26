@@ -25,7 +25,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
+import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers._
@@ -47,7 +47,8 @@ object RorIndexNameConfiguration extends Logging {
   }
 
   private implicit val envVarsProvider: OsEnvVarsProvider.type = OsEnvVarsProvider
-  private implicit val variableCreationConfig: VariableCreationConfig = VariableCreationConfig(TransformationCompiler.withoutAliases)
+  private implicit val variableCreator: StartupResolvableVariableCreator =
+    new StartupResolvableVariableCreator(TransformationCompiler.withoutAliases)
 
   private implicit val rorIndexNameConfigurationDecoder: Decoder[RorIndexNameConfiguration] = {
     implicit val indexNameDecoder: Decoder[IndexName.Full] = Decoder[NonEmptyString].map(IndexName.Full.apply)

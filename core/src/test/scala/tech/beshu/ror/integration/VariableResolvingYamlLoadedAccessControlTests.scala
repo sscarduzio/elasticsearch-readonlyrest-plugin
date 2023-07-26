@@ -61,6 +61,9 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |
        |  enable: $${READONLYREST_ENABLE}
        |
+       |  variable_transformation_aliases:
+       |   - custom_replace: replace_all(\"\\\\d\",\"X\") # replace digits with X
+       |
        |  access_control_rules:
        |   - name: "CONTAINER ADMIN"
        |     type: allow
@@ -76,10 +79,11 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |       metadata:
        |         a: "jwt_value_@{jwt:tech.beshu.mainGroupsString}"
        |         b: "@{jwt:user_id_list}"
+       |         c: "jwt_value_transformed_@{jwt:tech.beshu.mainGroupsString}#{replace_first(\\"j\\",\\"g\\").to_uppercase}"
        |
        |   - name: "Group name from header variable"
        |     type: allow
-       |     groups: ["g4", "@{X-my-group-name-1}", "@{header:X-my-group-name-2}#{replace_first(\\"j\\",\\"g\\")}" ]
+       |     groups: ["g4", "@{X-my-group-name-1}", "@{header:X-my-group-name-2}#{func(custom_replace)}" ]
        |
        |   - name: "Group name from env variable"
        |     type: allow
@@ -87,7 +91,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |
        |   - name: "Group name from env variable (old syntax)"
        |     type: allow
-       |     groups: ["g$${sys_group_2}"]
+       |     groups: ['g$${sys_group_2}#{replace_first("s","")}']
        |
        |   - name: "Variables usage in filter"
        |     type: allow
@@ -99,7 +103,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |     type: allow
        |     jwt_auth:
        |       name: "jwt1"
-       |     indices: ["g@explode{jwt:tech.beshu.mainGroup}"]
+       |     indices: ['g@explode{jwt:tech.beshu.mainGroup}#{replace_all("j","jj")}']
        |
        |   - name: "Group name from jwt variable"
        |     type: allow
@@ -127,6 +131,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |       - g1: group1
        |       - g2: [group2]
        |       - g3: "group3"
+       |       - gX: group3
        |     ldap_auth:
        |       name: "ldap1"
        |       groups: ["group1", "group2", "group3"]
@@ -193,7 +198,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
         }
         "new style header variable is used" in {
           val request = MockRequestContext.indices.copy(
-            headers = Set(basicAuthHeader("user1:passwd"), header("X-my-group-name-2", "j3"))
+            headers = Set(basicAuthHeader("user1:passwd"), header("X-my-group-name-2", "g3"))
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -252,7 +257,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           ))
           val request = MockRequestContext.indices.copy(
             headers = Set(bearerHeader(jwt)),
-            filteredIndices = Set(clusterIndexName("gj1"))
+            filteredIndices = Set(clusterIndexName("gjj1"))
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -265,7 +270,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user3")))
                 .withJwtToken(JwtTokenPayload(jwt.defaultClaims()))
             )
-            blockContext.filteredIndices should be(Set(clusterIndexName("gj1")))
+            blockContext.filteredIndices should be(Set(clusterIndexName("gjj1")))
             blockContext.responseHeaders should be(Set.empty)
           }
         }
@@ -374,7 +379,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                   .withKibanaMetadata(
                     JsonTree.Object(Map(
                       "a" -> JsonTree.Value(JsonValue.StringValue("jwt_value_j0,j3")),
-                      "b" -> JsonTree.Value(JsonValue.StringValue("\"alice\",\"bob\""))
+                      "b" -> JsonTree.Value(JsonValue.StringValue("\"alice\",\"bob\"")),
+                      "c" -> JsonTree.Value(JsonValue.StringValue("jwt_value_transformed_G0,J3"))
                     ))
                   )
                   .withJwtToken(JwtTokenPayload(jwt.defaultClaims()))
@@ -387,8 +393,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
   }
 
   override implicit protected def envVarsProvider: EnvVarsProvider = {
-    case EnvVarName(n) if n.value == "sys_group_1" => Some("s1")
-    case EnvVarName(n) if n.value == "sys_group_2" => Some("s2")
+    case EnvVarName(n) if n.value == "sys_group_1" => Some("S1")
+    case EnvVarName(n) if n.value == "sys_group_2" => Some("ss2")
     case EnvVarName(n) if n.value == "READONLYREST_ENABLE" => Some("true")
     case EnvVarName(n) if n.value == "USER1_PASS" => Some("user1:passwd")
     case EnvVarName(n) if n.value == "LDAP_HOST" => Some(SingletonLdapContainers.ldap1.ldapHost)

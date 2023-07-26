@@ -31,13 +31,13 @@ import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCre
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import ExternalAuthenticationServicesDecoder.jwtExternalAuthenticationServiceDecoder
 import cats.Id
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 
 object JwtDefinitionsDecoder {
 
   def instance(httpClientFactory: HttpClientsFactory,
-               variableCreationConfig: VariableCreationConfig): ADecoder[Id, Definitions[JwtDef]] = {
-    implicit val decoder: SyncDecoder[JwtDef] = SyncDecoderCreator.from(jwtDefDecoder(httpClientFactory, variableCreationConfig))
+               variableCreator: RuntimeResolvableVariableCreator): ADecoder[Id, Definitions[JwtDef]] = {
+    implicit val decoder: SyncDecoder[JwtDef] = SyncDecoderCreator.from(jwtDefDecoder(httpClientFactory, variableCreator))
     DefinitionsBaseDecoder.instance[Id, JwtDef]("jwt")
   }
 
@@ -46,7 +46,7 @@ object JwtDefinitionsDecoder {
   private implicit val claimDecoder: Decoder[ClaimName] = jsonPathDecoder.map(ClaimName.apply)
 
   private def jwtDefDecoder(implicit httpClientFactory: HttpClientsFactory,
-                            variableCreationConfig: VariableCreationConfig): Decoder[JwtDef] = {
+                            variableCreator: RuntimeResolvableVariableCreator): Decoder[JwtDef] = {
     SyncDecoderCreator
       .instance { c =>
         for {
@@ -93,7 +93,7 @@ object JwtDefinitionsDecoder {
     */
   private def signatureCheckMethod(c: HCursor)
                                   (implicit httpClientFactory: HttpClientsFactory,
-                                   variableCreationConfig: VariableCreationConfig): Decoder.Result[SignatureCheckMethod] = {
+                                   variableCreator: RuntimeResolvableVariableCreator): Decoder.Result[SignatureCheckMethod] = {
     def decodeSignatureKey =
       DecoderHelpers
         .decodeStringLikeWithSingleVarResolvedInPlace

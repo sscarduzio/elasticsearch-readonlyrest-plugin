@@ -101,7 +101,10 @@ private[transformation] class ExpressionCompiler private(functions: Seq[Function
       case FunctionName(Refined("func")) =>
         for {
           _ <- Either.cond(useAlias, (), toError("Function aliases cannot be applied in this context"))
-          firstArg <- call.args.headOption.toRight(toError("One argument is required"))
+          firstArg <- call.args match {
+            case arg :: Nil => Right(arg)
+            case other => Left(toError(s"One argument is required, but was ${other.size}"))
+          }
           aliasName <-
             NonEmptyString
               .unapply(firstArg.value)
@@ -109,12 +112,14 @@ private[transformation] class ExpressionCompiler private(functions: Seq[Function
               .toRight(toError("The function alias name cannot be empty"))
           alias <- findAlias(aliasName)
         } yield alias.value
-      case otherFunctionName =>
+      case functionName =>
         functions
-          .find(f => f.functionName == otherFunctionName && f.argsCount == call.args.size)
-          .toRight(toError(s"No function matching given signature: ${call.show}"))
+          .find(f => f.functionName == functionName)
+          .toRight(toError(s"No function with name '${call.name.name.value}'. Supported functions are: [${functions.map(_.show).mkString(",")}]"))
           .flatMap {
-            _.partiallyApplied(call.args).left.map(partialApplyError => toError(partialApplyError.message))
+            _.partiallyApplied(call.args).left.map { partialApplyError =>
+              toError(s"Error for function '${functionName.name.value}': ${partialApplyError.message}")
+            }
           }
     }
   }
@@ -151,5 +156,7 @@ private[transformation] object ExpressionCompiler {
   implicit val showCompilationResultChain: Show[CompilationResult.Chain] = Show.show { r =>
     r.value.map(_.show).mkString_(".")
   }
+
+  implicit val showFunctionDefinition: Show[FunctionDefinition] = Show.show(_.functionName.name.value)
 
 }

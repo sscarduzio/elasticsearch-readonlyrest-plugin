@@ -20,18 +20,16 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableCreationConfig
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.UsersRuleDecoderHelper.userIdValueDecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.utils.CaseMappingEquality._
 
 class UsersRuleDecoder(implicit val caseMappingEquality: UserIdCaseMappingEquality,
-                       implicit val variableCreationConfig: VariableCreationConfig)
+                       variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[UsersRule] {
 
   override protected def decoder: Decoder[RuleDefinition[UsersRule]] = {
@@ -39,9 +37,7 @@ class UsersRuleDecoder(implicit val caseMappingEquality: UserIdCaseMappingEquali
       .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[User.Id]]
       .map(users => RuleDefinition.create(new UsersRule(Settings(users), caseMappingEquality)))
   }
-}
 
-private object UsersRuleDecoderHelper {
-  implicit def userIdValueDecoder(implicit variableCreationConfig: VariableCreationConfig): Decoder[RuntimeMultiResolvableVariable[User.Id]] =
-    DecoderHelpers.alwaysRightMultiVariableDecoder[User.Id](variableCreationConfig)(AlwaysRightConvertible.from(User.Id.apply))
+  private implicit val userIdValueDecoder: Decoder[RuntimeMultiResolvableVariable[User.Id]] =
+    DecoderHelpers.alwaysRightMultiVariableDecoder[User.Id](variableCreator)(AlwaysRightConvertible.from(User.Id.apply))
 }
