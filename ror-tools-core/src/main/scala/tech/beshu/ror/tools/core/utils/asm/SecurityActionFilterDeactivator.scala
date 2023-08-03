@@ -46,7 +46,7 @@ object SecurityActionFilterDeactivator extends BytecodeJarModifier {
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
+  private class EsClassVisitor(writer: ClassWriter, enabled: Boolean = false)
     extends ClassVisitor(Opcodes.ASM9, writer) {
 
     override def visitMethod(access: Int,
@@ -56,12 +56,16 @@ object SecurityActionFilterDeactivator extends BytecodeJarModifier {
                              exceptions: Array[String]): MethodVisitor = {
       name match {
         case "getActionFilters" =>
-          new GetActionFiltersMethodReturningEmptyList(super.visitMethod(access, name, descriptor, signature, exceptions))
+          new GetActionFiltersMethodReturningEmptyList(
+            super.visitMethod(access, name, descriptor, signature, exceptions)
+          )
         case "onIndexModule" =>
           // removing the onIndexModule method
           null
         case "getRequestCacheKeyDifferentiator" =>
-          new GetRequestCacheKeyDifferentiatorReturningNull(super.visitMethod(access, name, descriptor, signature, exceptions))
+          new GetRequestCacheKeyDifferentiatorReturningNull(
+            super.visitMethod(access, name, descriptor, signature, exceptions)
+          )
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
