@@ -17,7 +17,7 @@
 package tech.beshu.ror.tools.core.patches
 
 import tech.beshu.ror.tools.core.utils.EsDirectory
-import tech.beshu.ror.tools.core.utils.EsUtil.{es630, es700, es800, es830, readEsVersion}
+import tech.beshu.ror.tools.core.utils.EsUtil.{es630, es700, es800, es830, es890, readEsVersion}
 
 trait EsPatch {
 
@@ -38,6 +38,7 @@ object EsPatch {
   def create(esDirectory: EsDirectory): EsPatch = {
     new EsPatchLoggingDecorator(
       readEsVersion(esDirectory) match {
+        case esVersion if esVersion >= es890 => new Es89xPatch(esDirectory, esVersion)
         case esVersion if esVersion >= es830 => new Es83xPatch(esDirectory, esVersion)
         case esVersion if esVersion >= es800 => new Es80xPatch(esDirectory, esVersion)
         case esVersion if esVersion >= es700 => new Es70xPatch(esDirectory, esVersion)
