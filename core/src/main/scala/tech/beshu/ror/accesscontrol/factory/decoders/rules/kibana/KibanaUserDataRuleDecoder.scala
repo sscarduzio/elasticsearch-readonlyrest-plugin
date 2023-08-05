@@ -41,7 +41,7 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex,
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaUserDataRule]
     with Logging {
 
-  private implicit val _variableCreator: RuntimeResolvableVariableCreator = variableCreator
+  private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
   private implicit val uniqueNonEmptyListOfKibanaAppsDecoder: Decoder[Set[KibanaApp]] =
     DecoderHelpers.decodeStringLikeOrSet[KibanaApp]
 

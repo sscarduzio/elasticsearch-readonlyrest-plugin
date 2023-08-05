@@ -24,15 +24,14 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError.FileNotExist
-import tech.beshu.ror.configuration.{RawRorConfig, RorProperties}
-import tech.beshu.ror.providers.PropertiesProvider
+import tech.beshu.ror.configuration.{RawRorConfig, RorProperties, StartupConfig}
 
 class FileConfigLoader(esConfigPath: Path)
-                      (implicit propertiesProvider: PropertiesProvider)
+                      (implicit startupConfig: StartupConfig)
   extends ConfigLoader[FileConfigError] {
 
   def rawConfigFile: File = {
-    RorProperties.rorConfigCustomFile match {
+    RorProperties.rorConfigCustomFile(startupConfig.propertiesProvider) match {
       case Some(customRorFile) => customRorFile
       case None => File(s"${esConfigPath.toAbsolutePath}/readonlyrest.yml")
     }

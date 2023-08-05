@@ -61,7 +61,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |
        |  enable: $${READONLYREST_ENABLE}
        |
-       |  variable_transformation_aliases:
+       |  variables_function_aliases:
        |   - custom_replace: replace_all(\"\\\\d\",\"X\") # replace digits with X
        |
        |  access_control_rules:

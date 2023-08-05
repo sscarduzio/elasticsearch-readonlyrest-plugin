@@ -32,9 +32,8 @@ import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
 import tech.beshu.ror.boot.RorInstance.TestConfig
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
-import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
+import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, StartupConfig}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.DurationOps._
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils._
@@ -48,7 +47,6 @@ class RorIndexTest extends AnyWordSpec
   with Inside with OptionValues with EitherValues
   with MockFactory with Eventually {
 
-  implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   private implicit val testClock: Clock = Clock.systemUTC()
 
   private val defaultRorIndexName: NonEmptyString = ".readonlyrest"
@@ -223,18 +221,19 @@ class RorIndexTest extends AnyWordSpec
                                indexJsonContentService: IndexJsonContentService,
                                configPath: String,
                                refreshInterval: Option[FiniteDuration] = None) = {
-    implicit def propertiesProvider: PropertiesProvider =
-      TestsPropertiesProvider.usingMap(
+    def mapWithIntervalFrom(refreshInterval: Option[FiniteDuration]) =
+      refreshInterval
+        .map(i => "com.readonlyrest.settings.refresh.interval" -> i.toSeconds.toString)
+        .toMap
+
+    implicit val startupConfig: StartupConfig = StartupConfig.default.copy(
+      propertiesProvider = TestsPropertiesProvider.usingMap(
         mapWithIntervalFrom(refreshInterval) ++
           Map(
             "com.readonlyrest.settings.loading.delay" -> "0"
           )
       )
-
-    def mapWithIntervalFrom(refreshInterval: Option[FiniteDuration]) =
-      refreshInterval
-        .map(i => "com.readonlyrest.settings.refresh.interval" -> i.toSeconds.toString)
-        .toMap
+    )
 
     ReadonlyRest.create(
       factory,

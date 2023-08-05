@@ -31,7 +31,7 @@ import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 class HostsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithAssociatedFields[HostsRule, Boolean] {
 
-  private implicit val _variableCreator: RuntimeResolvableVariableCreator = variableCreator
+  private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
 
   override def ruleDecoderCreator: Boolean => Decoder[RuleDefinition[HostsRule]] =
     acceptXForwardedFor =>
@@ -51,7 +51,7 @@ class HostsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
 class LocalHostsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[LocalHostsRule] {
 
-  private implicit val _variableCreator: RuntimeResolvableVariableCreator = variableCreator
+  private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
 
   override protected def decoder: Decoder[RuleDefinition[LocalHostsRule]] = {
     DecoderHelpers

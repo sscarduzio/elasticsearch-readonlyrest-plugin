@@ -51,8 +51,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
                    val authServicesMocksProvider: MutableMocksProviderWithCachePerRequest,
                    val esConfigPath: Path)
                   (implicit scheduler: Scheduler,
-                   envVarsProvider: EnvVarsProvider,
-                   propertiesProvider: PropertiesProvider,
+                   startupConfig: StartupConfig,
                    clock: Clock) extends Logging {
 
   def start(): Task[Either[StartingFailure, RorInstance]] = {
@@ -83,7 +82,10 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   private def runStartingFailureProgram[A](action: LoadRorConfig[ErrorOr[A]]) = {
-    val compiler = ConfigLoadingInterpreter.create(indexConfigManager, RorProperties.rorIndexSettingLoadingDelay)
+    val compiler = ConfigLoadingInterpreter.create(
+      indexConfigManager,
+      RorProperties.rorIndexSettingLoadingDelay(startupConfig.propertiesProvider)
+    )
     EitherT(action.foldMap(compiler))
       .leftMap(toStartingFailure)
   }
@@ -108,7 +110,10 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   private def runTestProgram(action: LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]]): Task[LoadedTestRorConfig[TestRorConfig]] = {
-    val compiler = TestConfigLoadingInterpreter.create(indexTestConfigManager, RorProperties.rorIndexSettingLoadingDelay)
+    val compiler = TestConfigLoadingInterpreter.create(
+      indexTestConfigManager,
+      RorProperties.rorIndexSettingLoadingDelay(startupConfig.propertiesProvider)
+    )
     EitherT(action.foldMap(compiler))
       .leftMap {
         case LoadedTestRorConfig.IndexParsingError(message) =>
@@ -299,8 +304,7 @@ object ReadonlyRest {
              auditSinkCreator: AuditSinkCreator,
              esConfigPath: Path)
             (implicit scheduler: Scheduler,
-             envVarsProvider: EnvVarsProvider,
-             propertiesProvider: PropertiesProvider,
+             startupConfig: StartupConfig,
              clock: Clock): ReadonlyRest = {
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory()
@@ -313,8 +317,7 @@ object ReadonlyRest {
              auditSinkCreator: AuditSinkCreator,
              esConfigPath: Path)
             (implicit scheduler: Scheduler,
-             envVarsProvider: EnvVarsProvider,
-             propertiesProvider: PropertiesProvider,
+             startupConfig: StartupConfig,
              clock: Clock): ReadonlyRest = {
     val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService)
     val indexTestConfigManager: IndexTestConfigManager = new IndexTestConfigManager(indexContentService)

@@ -45,10 +45,9 @@ import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigInvalidationError, TestConfig}
 import tech.beshu.ror.configuration.index.SavingIndexConfigError
-import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
+import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, StartupConfig}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.DurationOps._
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils._
@@ -66,7 +65,6 @@ class ReadonlyRestStartingTests
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
-  implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
   private implicit val testClock: Clock = Clock.systemUTC()
 
@@ -1314,18 +1312,19 @@ class ReadonlyRestStartingTests
                                indexJsonContentService: IndexJsonContentService,
                                configPath: String,
                                refreshInterval: Option[FiniteDuration] = None) = {
-    implicit def propertiesProvider: PropertiesProvider =
-      TestsPropertiesProvider.usingMap(
+    def mapWithIntervalFrom(refreshInterval: Option[FiniteDuration]) =
+      refreshInterval
+        .map(i => "com.readonlyrest.settings.refresh.interval" -> i.toSeconds.toString)
+        .toMap
+
+    implicit val startupConfig: StartupConfig = StartupConfig.default.copy(
+      propertiesProvider = TestsPropertiesProvider.usingMap(
         mapWithIntervalFrom(refreshInterval) ++
           Map(
             "com.readonlyrest.settings.loading.delay" -> "0"
           )
       )
-
-    def mapWithIntervalFrom(refreshInterval: Option[FiniteDuration]) =
-      refreshInterval
-        .map(i => "com.readonlyrest.settings.refresh.interval" -> i.toSeconds.toString)
-        .toMap
+    )
 
     ReadonlyRest.create(
       factory,

@@ -40,7 +40,7 @@ object KibanaHideAppsRuleDecoder
 class KibanaIndexRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaIndexRule] {
 
-  private implicit val _variableCreator: RuntimeResolvableVariableCreator = variableCreator
+  private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
 
   override protected def decoder: Decoder[RuleDefinition[KibanaIndexRule]] = {
     Decoder[RuntimeSingleResolvableVariable[KibanaIndexName]]
@@ -52,7 +52,7 @@ class KibanaIndexRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
 class KibanaTemplateIndexRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaTemplateIndexRule] {
 
-  private implicit val _variableCreator: RuntimeResolvableVariableCreator = variableCreator
+  private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
 
   override protected def decoder: Decoder[RuleDefinition[KibanaTemplateIndexRule]] = {
     Decoder[RuntimeSingleResolvableVariable[KibanaIndexName]]

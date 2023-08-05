@@ -20,12 +20,9 @@ import better.files._
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration}
 import tech.beshu.ror.configuration.loader.FileConfigLoader
-import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.SSLCertHelper
 
 import java.io.{File => JFile}
@@ -39,8 +36,7 @@ object RorSsl extends Logging {
   val noSsl: RorSsl = RorSsl(None, None)
 
   def load(esConfigFolderPath: Path)
-          (implicit envVarsProvider:EnvVarsProvider,
-           propertiesProvider: PropertiesProvider): Task[Either[MalformedSettings, RorSsl]] = Task {
+          (implicit startupConfig: StartupConfig): Task[Either[MalformedSettings, RorSsl]] = Task {
     implicit val sslDecoder: Decoder[RorSsl] = SslDecoders.rorSslDecoder(esConfigFolderPath)
     val esConfig = File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
     loadSslConfigFromFile(esConfig)
@@ -55,8 +51,7 @@ object RorSsl extends Logging {
 
   private def fallbackToRorConfig(esConfigFolderPath: Path)
                                  (implicit rorSslDecoder: Decoder[RorSsl],
-                                  envVarsProvider: EnvVarsProvider,
-                                  propertiesProvider: PropertiesProvider) = {
+                                  startupConfig: StartupConfig) = {
     val rorConfig = new FileConfigLoader(esConfigFolderPath).rawConfigFile
     logger.info(s"Cannot find SSL configuration in elasticsearch.yml, trying: ${rorConfig.pathAsString}")
     if (rorConfig.exists) {
@@ -68,12 +63,9 @@ object RorSsl extends Logging {
 
   private def loadSslConfigFromFile(configFile: File)
                                    (implicit rorSslDecoder: Decoder[RorSsl],
-                                    envVarsProvider: EnvVarsProvider) = {
+                                    startupConfig: StartupConfig) = {
     new YamlFileBasedConfigLoader(configFile).loadConfig[RorSsl](configName = "ROR SSL configuration")
   }
-
-  private implicit val variableCreator: StartupResolvableVariableCreator =
-    new StartupResolvableVariableCreator(TransformationCompiler.withoutAliases)
 }
 
 sealed trait SslConfiguration {

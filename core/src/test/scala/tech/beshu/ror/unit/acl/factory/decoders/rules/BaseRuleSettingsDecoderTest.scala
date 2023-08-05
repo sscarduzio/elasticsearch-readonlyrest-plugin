@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.configuration.StartupConfig
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsUtils._
@@ -51,6 +52,9 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
   protected def factory: RawRorConfigBasedCoreFactory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
+    implicit val startupConfig: StartupConfig = StartupConfig.default.copy(
+      envVarsProvider = envVarsProvider
+    )
     new RawRorConfigBasedCoreFactory()
   }
 

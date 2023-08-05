@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.common._
 class XForwardedForRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[XForwardedForRule] {
 
-  private implicit val _variableCreator: RuntimeResolvableVariableCreator = variableCreator
+  private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
 
   override protected def decoder: Decoder[RuleDefinition[XForwardedForRule]] = {
     DecoderHelpers

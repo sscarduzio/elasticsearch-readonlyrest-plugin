@@ -35,10 +35,10 @@ import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration.index.{IndexConfigError, SavingIndexConfigError}
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.FileConfigLoader
-import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, RorProperties}
-import tech.beshu.ror.providers.{JavaUuidProvider, PropertiesProvider}
-import java.time.{Clock, Instant}
+import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, RorProperties, StartupConfig}
+import tech.beshu.ror.providers.JavaUuidProvider
 
+import java.time.{Clock, Instant}
 import scala.concurrent.duration.FiniteDuration
 
 class RorInstance private(boot: ReadonlyRest,
@@ -48,7 +48,7 @@ class RorInstance private(boot: ReadonlyRest,
                           initialTestEngine: ReadonlyRest.TestEngine,
                           testReloadInProgress: Semaphore[Task],
                           rorConfigurationIndex: RorConfigurationIndex)
-                         (implicit propertiesProvider: PropertiesProvider,
+                         (implicit startupConfig: StartupConfig,
                           scheduler: Scheduler,
                           clock: Clock)
   extends Logging {
@@ -59,7 +59,7 @@ class RorInstance private(boot: ReadonlyRest,
   logger.info("ReadonlyREST was loaded ...")
   private val configsReloadTask = mode match {
     case Mode.WithPeriodicIndexCheck =>
-      RorProperties.rorIndexSettingReloadInterval match {
+      RorProperties.rorIndexSettingReloadInterval(startupConfig.propertiesProvider) match {
         case RefreshInterval.Disabled =>
           logger.info(s"[CLUSTERWIDE SETTINGS] Scheduling in-index settings check disabled")
           Cancelable.empty
@@ -275,7 +275,7 @@ object RorInstance {
                                    mainEngine: ReadonlyRest.MainEngine,
                                    testEngine: ReadonlyRest.TestEngine,
                                    rorConfigurationIndex: RorConfigurationIndex)
-                                  (implicit propertiesProvider: PropertiesProvider,
+                                  (implicit startupConfig: StartupConfig,
                                    scheduler: Scheduler,
                                    clock: Clock): Task[RorInstance] = {
     create(boot, Mode.WithPeriodicIndexCheck, mainEngine, testEngine, rorConfigurationIndex)
@@ -285,7 +285,7 @@ object RorInstance {
                                       mainEngine: ReadonlyRest.MainEngine,
                                       testEngine: ReadonlyRest.TestEngine,
                                       rorConfigurationIndex: RorConfigurationIndex)
-                                     (implicit propertiesProvider: PropertiesProvider,
+                                     (implicit startupConfig: StartupConfig,
                                       scheduler: Scheduler,
                                       clock: Clock): Task[RorInstance] = {
     create(boot, Mode.NoPeriodicIndexCheck, mainEngine, testEngine, rorConfigurationIndex)
@@ -296,7 +296,7 @@ object RorInstance {
                      engine: ReadonlyRest.MainEngine,
                      testEngine: ReadonlyRest.TestEngine,
                      rorConfigurationIndex: RorConfigurationIndex)
-                    (implicit propertiesProvider: PropertiesProvider,
+                    (implicit startupConfig: StartupConfig,
                      scheduler: Scheduler,
                      clock: Clock) = {
     for {

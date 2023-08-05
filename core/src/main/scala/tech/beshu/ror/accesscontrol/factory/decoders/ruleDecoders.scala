@@ -32,7 +32,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.http._
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana._
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
@@ -56,13 +55,11 @@ object ruleDecoders {
                     definitions: DefinitionsPack,
                     globalSettings: GlobalSettings,
                     mocksProvider: MocksProvider,
+                    variableCreator: RuntimeResolvableVariableCreator,
                     caseMappingEquality: UserIdCaseMappingEquality)
                    (implicit clock: Clock,
                     uuidProvider: UuidProvider): Option[RuleDecoder[Rule]] = {
     implicit val userIdEq: Eq[User.Id] = caseMappingEquality.toOrder
-    implicit val variableCreator: RuntimeResolvableVariableCreator = new RuntimeResolvableVariableCreator(
-      TransformationCompiler.withAliases(definitions.variableTransformationAliases.items.map(_.alias))
-    )
     val optionalRuleDecoder = name match {
       case ActionsRule.Name.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.Name.name => Some(ApiKeysRuleDecoder)

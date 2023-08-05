@@ -21,14 +21,13 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.configuration.RorBootConfiguration.{RorFailedToStartResponse, RorNotStartedResponse}
-import tech.beshu.ror.configuration.{MalformedSettings, RorBootConfiguration}
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.configuration.{MalformedSettings, RorBootConfiguration, StartupConfig}
 import tech.beshu.ror.utils.TestsUtils.getResourcePath
 
 class RorBootConfigurationTest
   extends AnyWordSpec with Inside {
 
-  implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+  private implicit val startupConfig: StartupConfig = StartupConfig.default
 
   "A ReadonlyREST ES starting settings" should {
     "be loaded from elasticsearch config file" when {

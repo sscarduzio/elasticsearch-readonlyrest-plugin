@@ -36,7 +36,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
 class SnapshotsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[SnapshotsRule] {
 
-  private implicit val _variableCreator: RuntimeResolvableVariableCreator = variableCreator
+  private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
 
   override protected def decoder: Decoder[RuleDefinition[SnapshotsRule]] = {
     DecoderHelpers

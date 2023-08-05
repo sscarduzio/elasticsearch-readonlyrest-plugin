@@ -29,7 +29,7 @@ class ResponseFieldsRuleDecoder(variableCreator: RuntimeResolvableVariableCreato
   extends RuleBaseDecoderWithoutAssociatedFields[ResponseFieldsRule]
     with FieldsRuleLikeDecoderHelperBase {
 
-  private implicit val _variableCreator: RuntimeResolvableVariableCreator = variableCreator
+  private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
   private implicit val convertible: Convertible[ResponseField] = AlwaysRightConvertible.from(ResponseField.apply)
 
   implicit val accessModeConverter: AccessModeConverter[AccessMode] =

@@ -33,13 +33,13 @@ import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot._
 import tech.beshu.ror.boot.engines.Engines
+import tech.beshu.ror.configuration.StartupConfig
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, HighLevelClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
-import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
@@ -55,8 +55,7 @@ class IndexLevelActionFilter(nodeName: String,
                              snapshotsServiceSupplier: Supplier[Option[SnapshotsService]],
                              esInitListener: EsInitListener,
                              rorEsConfig: ReadonlyRestEsConfig)
-                            (implicit envVarsProvider: EnvVarsProvider,
-                             propertiesProvider: PropertiesProvider,
+                            (implicit startupConfig: StartupConfig,
                              generator: UniqueIdentifierGenerator)
   extends ActionFilter with Logging {
 

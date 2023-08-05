@@ -33,7 +33,7 @@ class VariableTransformationAliasesTests
         assertDecodingSuccess(
           yaml =
             s"""
-               |variable_transformation_aliases:
+               |variables_function_aliases:
                | - strip_group_prefix: replace_first("^group", "")
              """.stripMargin,
           assertion = { definitions =>
@@ -48,7 +48,7 @@ class VariableTransformationAliasesTests
         assertDecodingSuccess(
           yaml =
             s"""
-               |variable_transformation_aliases:
+               |variables_function_aliases:
                | - strip_group_prefix: replace_first("^group", "")
                | - strip_group_suffix: replace_first("group$$", "")
              """.stripMargin,
@@ -68,7 +68,7 @@ class VariableTransformationAliasesTests
         assertDecodingSuccess(
           yaml =
             s"""
-               |variable_transformation_aliases:
+               |variables_function_aliases:
                | - normalize: replace_first("^group_", "").replace_all("x", "y").to_lowercase
              """.stripMargin,
           assertion = { definitions =>
@@ -104,11 +104,11 @@ class VariableTransformationAliasesTests
       assertDecodingFailure(
         yaml =
           s"""
-             |variable_transformation_aliases:
+             |variables_function_aliases:
        """.stripMargin,
         assertion = { error =>
           error should be(DefinitionsLevelCreationError(Message(
-            "variable_transformation_aliases declared, but no definition found"
+            "variables_function_aliases declared, but no definition found"
           )))
         }
       )
@@ -118,12 +118,12 @@ class VariableTransformationAliasesTests
         assertDecodingFailure(
           yaml =
             s"""
-               |variable_transformation_aliases:
+               |variables_function_aliases:
                | - alias_name: to_snakecase
              """.stripMargin,
           assertion = { error =>
             error should be(DefinitionsLevelCreationError(Message(
-              "variable_transformation_aliases definition malformed: Unable to compile transformation for alias 'alias_name'. " +
+              "variables_function_aliases definition malformed: Unable to compile transformation for alias 'alias_name'. " +
                 "Cause: No function with name 'to_snakecase'. Supported functions are: [replace_all,replace_first,to_lowercase,to_uppercase]"
             )))
           }
@@ -133,12 +133,12 @@ class VariableTransformationAliasesTests
         assertDecodingFailure(
           yaml =
             s"""
-               |variable_transformation_aliases:
+               |variables_function_aliases:
                | - alias_name: replace_first("([a-z", "replacement")
              """.stripMargin,
           assertion = { error =>
             error should be(DefinitionsLevelCreationError(Message(
-              "variable_transformation_aliases definition malformed: Unable to compile transformation for alias 'alias_name'. " +
+              "variables_function_aliases definition malformed: Unable to compile transformation for alias 'alias_name'. " +
                 "Cause: Error for function 'replace_first': Incorrect first arg '([a-z'. Cause: Unclosed character class near index 4"
             )))
           }
@@ -148,12 +148,12 @@ class VariableTransformationAliasesTests
         assertDecodingFailure(
           yaml =
             s"""
-               |variable_transformation_aliases:
+               |variables_function_aliases:
                | - alias_name: replace_first("xyz")
              """.stripMargin,
           assertion = { error =>
             error should be(DefinitionsLevelCreationError(Message(
-              "variable_transformation_aliases definition malformed: Unable to compile transformation for alias 'alias_name'. " +
+              "variables_function_aliases definition malformed: Unable to compile transformation for alias 'alias_name'. " +
                 "Cause: Error for function 'replace_first': Incorrect function arguments count. Expected: 2, actual: 1."
             )))
           }
@@ -163,12 +163,12 @@ class VariableTransformationAliasesTests
         assertDecodingFailure(
           yaml =
             s"""
-               |variable_transformation_aliases:
+               |variables_function_aliases:
                | - alias_name: func(some_alias)
              """.stripMargin,
           assertion = { error =>
             error should be(DefinitionsLevelCreationError(Message(
-              "variable_transformation_aliases definition malformed: Unable to compile transformation for alias 'alias_name'. " +
+              "variables_function_aliases definition malformed: Unable to compile transformation for alias 'alias_name'. " +
                 "Cause: Function aliases cannot be applied in this context"
             )))
           }

@@ -26,10 +26,10 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.env.Environment
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
-import tech.beshu.ror.configuration.loader.distributed.{RawRorConfigLoadingAction, NodeConfig, Timeout}
+import tech.beshu.ror.configuration.StartupConfig
+import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, RawRorConfigLoadingAction, Timeout}
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.services.EsIndexJsonContentService
-import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
 
 import scala.annotation.nowarn
 import scala.concurrent.duration._
@@ -59,8 +59,7 @@ class TransportRRConfigAction(actionName: String,
 
   import tech.beshu.ror.boot.RorSchedulers.Implicits.rorRestApiScheduler
 
-  implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
-  implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
+  private implicit val startupConfig: StartupConfig = StartupConfig.default
 
   @Inject
   def this(actionName: String,

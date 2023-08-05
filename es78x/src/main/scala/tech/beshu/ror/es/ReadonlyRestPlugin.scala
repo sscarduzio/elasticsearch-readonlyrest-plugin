@@ -52,6 +52,7 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.boot.{EsInitListener, SecurityProviderConfiguratorForFips}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
+import tech.beshu.ror.configuration.StartupConfig
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
@@ -68,7 +69,6 @@ import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, Transpo
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsPatchVerifier}
-import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import java.nio.file.Path
@@ -98,8 +98,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     Netty4Utils.setAvailableProcessors(EsExecutors.PROCESSORS_SETTING.get(s))
   }
 
-  private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
-  private implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
+  private implicit val startupConfig: StartupConfig = StartupConfig.default
   private implicit val uniqueIdentifierGenerator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator
 
   private val environment = new Environment(s, p)

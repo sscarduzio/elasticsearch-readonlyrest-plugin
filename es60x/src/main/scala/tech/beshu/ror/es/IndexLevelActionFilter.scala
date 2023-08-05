@@ -35,14 +35,13 @@ import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot._
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.configuration.RorBootConfiguration
+import tech.beshu.ror.configuration.{RorBootConfiguration, StartupConfig}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService, HighLevelClientAuditSinkService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
-import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
@@ -70,8 +69,7 @@ class IndexLevelActionFilter(settings: Settings,
   }
 
   private implicit val clock: Clock = Clock.systemUTC()
-  private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
-  private implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
+  private implicit val startupConfig: StartupConfig = StartupConfig.default
   private implicit val generator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator
 
   private val rorNotAvailableRequestHandler: RorNotAvailableRequestHandler =

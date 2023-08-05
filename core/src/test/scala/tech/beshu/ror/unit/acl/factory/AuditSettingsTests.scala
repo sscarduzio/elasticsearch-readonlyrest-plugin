@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.{Core, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
-import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
+import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, StartupConfig}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsUtils._
@@ -47,7 +47,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+    implicit val startupConfig: StartupConfig = StartupConfig.default
     new RawRorConfigBasedCoreFactory()
   }
 

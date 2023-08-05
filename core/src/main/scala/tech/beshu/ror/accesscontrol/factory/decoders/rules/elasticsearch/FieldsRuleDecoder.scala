@@ -46,7 +46,7 @@ private object FieldsRuleDecoderHelper extends FieldsRuleLikeDecoderHelperBase {
     AccessModeConverter.create(whitelistElement = AccessMode.Whitelist, blacklistElement = AccessMode.Blacklist)
 
   def fieldsRuleDecoder(flsEngine: FlsEngine, variableCreator: RuntimeResolvableVariableCreator): Decoder[RuleDefinition[FieldsRule]] = {
-    implicit val _variableCreator: RuntimeResolvableVariableCreator = variableCreator
+    implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
     for {
       configuredFields <- configuredFieldsDecoder
       accessMode <- accessModeDecoder[AccessMode](configuredFields)

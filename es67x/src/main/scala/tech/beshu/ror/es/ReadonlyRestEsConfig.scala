@@ -18,8 +18,7 @@ package tech.beshu.ror.es
 
 import cats.data.EitherT
 import monix.eval.Task
-import tech.beshu.ror.configuration.{FipsConfiguration, MalformedSettings, RorBootConfiguration, RorSsl}
-import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
+import tech.beshu.ror.configuration.{FipsConfiguration, MalformedSettings, RorBootConfiguration, RorSsl, StartupConfig}
 import tech.beshu.ror.utils.ScalaOps._
 
 import java.nio.file.Path
@@ -30,8 +29,7 @@ final case class ReadonlyRestEsConfig(bootConfig: RorBootConfiguration,
 
 object ReadonlyRestEsConfig {
   def load(esConfigFolderPath: Path)
-          (implicit envVarsProvider: EnvVarsProvider,
-           propertiesProvider: PropertiesProvider): Task[Either[MalformedSettings, ReadonlyRestEsConfig]] = {
+          (implicit startupConfig: StartupConfig): Task[Either[MalformedSettings, ReadonlyRestEsConfig]] = {
     value {
       for {
         bootConfig <- EitherT(RorBootConfiguration.load(esConfigFolderPath))

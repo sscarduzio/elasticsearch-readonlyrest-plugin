@@ -22,16 +22,16 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.configuration.SslConfiguration.ServerCertificateConfiguration.{FileBasedConfiguration, KeystoreBasedConfiguration}
 import tech.beshu.ror.configuration.SslConfiguration.{ClientCertificateConfiguration, _}
-import tech.beshu.ror.configuration.{MalformedSettings, RorSsl}
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.configuration.{MalformedSettings, RorSsl, StartupConfig}
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.getResourcePath
 
 class SslConfigurationTest
   extends AnyWordSpec with Inside {
 
-  implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
-  implicit private val propertiesProvider = TestsPropertiesProvider.default
+  private implicit val startupConfig: StartupConfig = StartupConfig.default.copy(
+    propertiesProvider = TestsPropertiesProvider.default
+  )
 
   "A ReadonlyREST ES API SSL settings" should {
     "be loaded from elasticsearch config file" when {

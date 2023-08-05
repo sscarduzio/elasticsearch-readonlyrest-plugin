@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCre
 
 object VariableTransformationAliasesDefinitionsDecoder {
 
-  private val definitionsSectionName = "variable_transformation_aliases"
+  private val definitionsSectionName = "variables_function_aliases"
   private val transformationCompiler: TransformationCompiler = TransformationCompiler.withoutAliases
 
   def create: ADecoder[Id, Definitions[VariableTransformationAliasDef]] = {
