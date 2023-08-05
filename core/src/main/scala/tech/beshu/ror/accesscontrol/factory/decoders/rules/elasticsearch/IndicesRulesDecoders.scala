@@ -29,12 +29,13 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.elasticsearch.IndicesDecodersHelper._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.matchers.RandomBasedUniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
-class IndicesRuleDecoders(variableCreator: RuntimeResolvableVariableCreator)
+class IndicesRuleDecoders(variableCreator: RuntimeResolvableVariableCreator,
+                          uniqueIdentifierGenerator: UniqueIdentifierGenerator)
   extends RuleBaseDecoderWithoutAssociatedFields[IndicesRule] {
 
   private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
@@ -53,7 +54,7 @@ class IndicesRuleDecoders(variableCreator: RuntimeResolvableVariableCreator)
         RuleDefinition.create(
           new IndicesRule(
             settings = IndicesRule.Settings(indices, mustInvolveIndices = defaultMustInvolveIndicesValue),
-            identifierGenerator = RandomBasedUniqueIdentifierGenerator
+            identifierGenerator = uniqueIdentifierGenerator
           )
         )
       )
@@ -67,7 +68,7 @@ class IndicesRuleDecoders(variableCreator: RuntimeResolvableVariableCreator)
         RuleDefinition.create(
           new IndicesRule(
             settings = IndicesRule.Settings(indices, mustInvolveIndices.getOrElse(defaultMustInvolveIndicesValue)),
-            identifierGenerator = RandomBasedUniqueIdentifierGenerator
+            identifierGenerator = uniqueIdentifierGenerator
           )
         )
       }

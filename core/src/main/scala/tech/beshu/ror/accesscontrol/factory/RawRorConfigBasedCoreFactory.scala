@@ -56,13 +56,10 @@ import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.localUsersMon
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
-import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, StartupConfig}
-import tech.beshu.ror.providers.UuidProvider
+import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, EnvironmentConfig}
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.yaml.YamlOps
-
-import java.time.Clock
 
 final case class Core(accessControl: AccessControl,
                       rorConfig: RorConfig)
@@ -76,9 +73,7 @@ trait CoreFactory {
 }
 
 class RawRorConfigBasedCoreFactory()
-                                  (implicit clock: Clock,
-                                   uuidProvider: UuidProvider,
-                                   startupConfig: StartupConfig)
+                                  (implicit environmentConfig: EnvironmentConfig)
   extends CoreFactory with Logging {
 
   override def createCoreFrom(config: RawRorConfig,
@@ -111,8 +106,8 @@ class RawRorConfigBasedCoreFactory()
                                        ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                                        mocksProvider: MocksProvider) = {
     val jsonConfigResolver = new JsonConfigStaticVariableResolver(
-      startupConfig.variableCreator,
-      startupConfig.envVarsProvider
+      environmentConfig.envVarsProvider,
+      environmentConfig.startupVariablesTransformationCompiler,
     )
     jsonConfigResolver.resolve(rorSection) match {
       case Right(resolvedRorSection) =>
@@ -161,15 +156,14 @@ class RawRorConfigBasedCoreFactory()
 
   private def rulesNelDecoder(definitions: DefinitionsPack,
                               globalSettings: GlobalSettings,
-                              mocksProvider: MocksProvider,
-                              variableCreator: RuntimeResolvableVariableCreator): Decoder[NonEmptyList[RuleDefinition[Rule]]] = Decoder.instance { c =>
+                              mocksProvider: MocksProvider): Decoder[NonEmptyList[RuleDefinition[Rule]]] = Decoder.instance { c =>
     val init = State.pure[ACursor, Validated[List[String], Decoder.Result[List[RuleDefinition[Rule]]]]](Validated.Valid(Right(List.empty)))
 
     val (_, result) = c.keys.toList.flatten // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
       for {
         last <- collectedRuleResults
-        current <- decodeRuleInCursorContext(currentRuleName, definitions, globalSettings, mocksProvider, variableCreator).map {
+        current <- decodeRuleInCursorContext(currentRuleName, definitions, globalSettings, mocksProvider).map {
           case RuleDecodingResult.Result(value) => Validated.Valid(value.map(_ :: Nil))
           case RuleDecodingResult.UnknownRule => Validated.Invalid(currentRuleName :: Nil)
           case RuleDecodingResult.Skipped => Validated.Valid(Right(List.empty))
@@ -197,14 +191,13 @@ class RawRorConfigBasedCoreFactory()
   private def decodeRuleInCursorContext(name: String,
                                         definitions: DefinitionsPack,
                                         globalSettings: GlobalSettings,
-                                        mocksProvider: MocksProvider,
-                                        variableCreator: RuntimeResolvableVariableCreator): State[ACursor, RuleDecodingResult] = {
+                                        mocksProvider: MocksProvider): State[ACursor, RuleDecodingResult] = {
     val caseMappingEquality: UserIdCaseMappingEquality = createUserMappingEquality(globalSettings)
     State(cursor => {
       if (!cursor.keys.toList.flatten.contains(name)) {
         (cursor, RuleDecodingResult.Skipped)
       } else {
-        ruleDecoderBy(Rule.Name(name), definitions, globalSettings, mocksProvider, variableCreator, caseMappingEquality) match {
+        ruleDecoderBy(Rule.Name(name), definitions, globalSettings, mocksProvider, caseMappingEquality) match {
           case Some(decoder) =>
             decoder.tryDecode(cursor) match {
               case Right(RuleDecoder.Result(rule, unconsumedCursor)) =>
@@ -228,8 +221,7 @@ class RawRorConfigBasedCoreFactory()
 
   private def blockDecoder(definitions: DefinitionsPack,
                            globalSettings: GlobalSettings,
-                           mocksProvider: MocksProvider,
-                           variableCreator: RuntimeResolvableVariableCreator)
+                           mocksProvider: MocksProvider)
                           (implicit loggingContext: LoggingContext): Decoder[BlockDecodingResult] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] =
@@ -258,7 +250,7 @@ class RawRorConfigBasedCoreFactory()
           name <- c.downField(Attributes.Block.name).as[Block.Name]
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
           verbosity <- c.downField(Attributes.Block.verbosity).as[Option[Block.Verbosity]]
-          rules <- rulesNelDecoder(definitions, globalSettings, mocksProvider, variableCreator)
+          rules <- rulesNelDecoder(definitions, globalSettings, mocksProvider)
             .toSyncDecoder
             .decoder
             .tryDecode(c.withFocus(
@@ -342,7 +334,6 @@ class RawRorConfigBasedCoreFactory()
               ),
               globalSettings,
               mocksProvider,
-              variableCreator
             )
           }
           DecoderHelpers

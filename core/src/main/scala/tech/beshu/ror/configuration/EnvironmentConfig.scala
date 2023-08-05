@@ -16,18 +16,26 @@
  */
 package tech.beshu.ror.configuration
 
-import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
-import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
+import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
+import tech.beshu.ror.providers._
 
-final case class StartupConfig(envVarsProvider: EnvVarsProvider,
-                               propertiesProvider: PropertiesProvider,
-                               variableCreator: StartupResolvableVariableCreator)
+import java.time.Clock
 
-object StartupConfig {
-  val default: StartupConfig = StartupConfig(
+final case class EnvironmentConfig(clock: Clock,
+                                   envVarsProvider: EnvVarsProvider,
+                                   propertiesProvider: PropertiesProvider,
+                                   startupVariablesTransformationCompiler: TransformationCompiler,
+                                   uniqueIdentifierGenerator: UniqueIdentifierGenerator,
+                                   uuidProvider: UuidProvider)
+
+object EnvironmentConfig {
+  val default: EnvironmentConfig = EnvironmentConfig(
+    clock = Clock.systemUTC(),
     envVarsProvider = OsEnvVarsProvider,
     propertiesProvider = JvmPropertiesProvider,
-    variableCreator = new StartupResolvableVariableCreator(TransformationCompiler.withoutAliases)
+    startupVariablesTransformationCompiler = TransformationCompiler.withoutAliases,
+    uniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator,
+    uuidProvider = JavaUuidProvider
   )
 }

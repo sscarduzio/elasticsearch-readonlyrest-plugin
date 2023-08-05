@@ -33,7 +33,7 @@ import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot._
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.configuration.StartupConfig
+import tech.beshu.ror.configuration.EnvironmentConfig
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
@@ -44,7 +44,6 @@ import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
-import java.time.Clock
 import java.util.function.Supplier
 
 class IndexLevelActionFilter(nodeName: String,
@@ -56,11 +55,10 @@ class IndexLevelActionFilter(nodeName: String,
                              repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
                              esInitListener: EsInitListener,
                              rorEsConfig: ReadonlyRestEsConfig)
-                            (implicit startupConfig: StartupConfig,
-                             generator: UniqueIdentifierGenerator)
+                            (implicit environmentConfig: EnvironmentConfig)
   extends ActionFilter with Logging {
 
-  private implicit val clock: Clock = Clock.systemUTC()
+  private implicit val generator: UniqueIdentifierGenerator = environmentConfig.uniqueIdentifierGenerator
 
   private val rorNotAvailableRequestHandler: RorNotAvailableRequestHandler =
     new RorNotAvailableRequestHandler(rorEsConfig.bootConfig)

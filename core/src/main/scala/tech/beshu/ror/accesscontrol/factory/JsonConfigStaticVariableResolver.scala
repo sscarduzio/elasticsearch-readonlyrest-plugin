@@ -21,12 +21,15 @@ import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Json
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.providers.EnvVarsProvider
 
-class JsonConfigStaticVariableResolver(variableCreator: StartupResolvableVariableCreator,
-                                       envProvider: EnvVarsProvider) {
+class JsonConfigStaticVariableResolver(envProvider: EnvVarsProvider,
+                                       transformationCompiler: TransformationCompiler) {
+
+  private val variableCreator = new StartupResolvableVariableCreator(transformationCompiler)
 
   def resolve(json: Json): Either[NonEmptyList[ResolvingError], Json] = {
     val errors = ResolvingErrors(Vector.empty)

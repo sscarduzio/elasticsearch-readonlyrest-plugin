@@ -33,7 +33,7 @@ final case class RorBootConfiguration(rorNotStartedResponse: RorNotStartedRespon
 object RorBootConfiguration extends Logging {
 
   def load(esConfigFolderPath: Path)
-          (implicit startupConfig: StartupConfig): Task[Either[MalformedSettings, RorBootConfiguration]] = Task {
+          (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, RorBootConfiguration]] = Task {
     val esConfig = File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
     implicit val rorBootConfigurationDecoder: Decoder[RorBootConfiguration] = Decoders.decoder
     loadRorBootstrapConfig(esConfig)
@@ -41,7 +41,7 @@ object RorBootConfiguration extends Logging {
 
   private def loadRorBootstrapConfig(configFile: File)
                                     (implicit decoder: Decoder[RorBootConfiguration],
-                                     startupConfig: StartupConfig) = {
+                                     environmentConfig: EnvironmentConfig) = {
     new YamlFileBasedConfigLoader(configFile).loadConfig[RorBootConfiguration](configName = "ROR boot configuration")
   }
 

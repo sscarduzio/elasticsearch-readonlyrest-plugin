@@ -22,7 +22,7 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.Eventually
-import org.scalatest.matchers.should.Matchers.{a, be, _}
+import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{EitherValues, Inside, OptionValues}
 import tech.beshu.ror.RequestId
@@ -32,13 +32,12 @@ import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory}
 import tech.beshu.ror.boot.RorInstance.TestConfig
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
-import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, StartupConfig}
+import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, EnvironmentConfig}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.utils.DurationOps._
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils._
 
-import java.time.Clock
 import java.util.UUID
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -46,8 +45,6 @@ import scala.language.postfixOps
 class RorIndexTest extends AnyWordSpec
   with Inside with OptionValues with EitherValues
   with MockFactory with Eventually {
-
-  private implicit val testClock: Clock = Clock.systemUTC()
 
   private val defaultRorIndexName: NonEmptyString = ".readonlyrest"
   private val customRorIndexName: NonEmptyString = "custom_ror_index"
@@ -226,7 +223,7 @@ class RorIndexTest extends AnyWordSpec
         .map(i => "com.readonlyrest.settings.refresh.interval" -> i.toSeconds.toString)
         .toMap
 
-    implicit val startupConfig: StartupConfig = StartupConfig.default.copy(
+    implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default.copy(
       propertiesProvider = TestsPropertiesProvider.usingMap(
         mapWithIntervalFrom(refreshInterval) ++
           Map(

@@ -22,11 +22,11 @@ import io.circe.Decoder
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.configuration.{StartupConfig, YamlFileBasedConfigLoader}
+import tech.beshu.ror.configuration.{EnvironmentConfig, YamlFileBasedConfigLoader}
 
 class YamlFileBasedConfigLoaderTest extends AnyWordSpec with Inside {
 
-  private implicit val startupConfig: StartupConfig = StartupConfig.default.copy(
+  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default.copy(
     envVarsProvider = name =>
       name.value.value match {
         case "USER_NAME" => Some("John")

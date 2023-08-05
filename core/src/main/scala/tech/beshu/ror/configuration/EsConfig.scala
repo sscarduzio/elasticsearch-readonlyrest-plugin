@@ -36,7 +36,7 @@ final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings,
 object EsConfig {
 
   def from(esConfigFolderPath: Path)
-          (implicit startupConfig: StartupConfig): Task[Either[LoadEsConfigError, EsConfig]] = {
+          (implicit environmentConfig: EnvironmentConfig): Task[Either[LoadEsConfigError, EsConfig]] = {
     val configFile = File(s"${esConfigFolderPath.toAbsolutePath}/elasticsearch.yml")
     (for {
       _ <- EitherT.fromEither[Task](Either.cond(configFile.exists, (), FileNotFound(configFile)))
@@ -53,7 +53,7 @@ object EsConfig {
   }
 
   private def loadSslSettings(esConfigFolderPath: Path, configFile: File, xpackSettings: XpackSettings)
-                             (implicit startupConfig: StartupConfig): EitherT[Task, LoadEsConfigError, RorSsl] = {
+                             (implicit environmentConfig: EnvironmentConfig): EitherT[Task, LoadEsConfigError, RorSsl] = {
     EitherT(RorSsl.load(esConfigFolderPath))
       .leftMap(error => MalformedContent(configFile, error.message))
       .subflatMap { rorSsl =>
@@ -66,12 +66,12 @@ object EsConfig {
   }
 
   private def loadRorIndexNameConfiguration(configFile: File)
-                                           (implicit startupConfig: StartupConfig): EitherT[Task, LoadEsConfigError, RorIndexNameConfiguration] = {
+                                           (implicit environmentConfig: EnvironmentConfig): EitherT[Task, LoadEsConfigError, RorIndexNameConfiguration] = {
     EitherT(RorIndexNameConfiguration.load(configFile).map(_.left.map(error => MalformedContent(configFile, error.message))))
   }
 
   private def loadFipsConfiguration(esConfigFolderPath: Path, configFile: File, xpackSettings: XpackSettings)
-                                   (implicit startupConfig: StartupConfig): EitherT[Task, LoadEsConfigError, FipsConfiguration] = {
+                                   (implicit environmentConfig: EnvironmentConfig): EitherT[Task, LoadEsConfigError, FipsConfiguration] = {
     EitherT(FipsConfiguration.load(esConfigFolderPath))
       .leftMap(error => MalformedContent(configFile, error.message))
       .subflatMap { fipsConfiguration =>

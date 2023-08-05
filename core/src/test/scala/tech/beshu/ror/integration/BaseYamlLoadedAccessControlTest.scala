@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration
 
-import java.time.Clock
 import cats.implicits._
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
@@ -25,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.configuration.{RawRorConfig, StartupConfig}
+import tech.beshu.ror.configuration.{RawRorConfig, EnvironmentConfig}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsPropertiesProvider
@@ -40,9 +39,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
   protected implicit def propertiesProvider: TestsPropertiesProvider = TestsPropertiesProvider.default
 
   private val factory = {
-    implicit val clock: Clock = Clock.systemUTC()
-    implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val startupConfig: StartupConfig = StartupConfig.default.copy(
+    implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default.copy(
       envVarsProvider = envVarsProvider,
       propertiesProvider = propertiesProvider
     )

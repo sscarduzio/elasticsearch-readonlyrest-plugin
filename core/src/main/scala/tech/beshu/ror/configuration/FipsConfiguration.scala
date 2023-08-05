@@ -32,7 +32,7 @@ final case class FipsConfiguration(fipsMode: FipsMode)
 object FipsConfiguration extends Logging {
 
   def load(esConfigFolderPath: Path)
-          (implicit startupConfig: StartupConfig): Task[Either[MalformedSettings, FipsConfiguration]] = Task {
+          (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, FipsConfiguration]] = Task {
     val esConfig = File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
     loadFipsConfigFromFile(esConfig)
       .fold(
@@ -45,7 +45,7 @@ object FipsConfiguration extends Logging {
   }
 
   private def fallbackToRorConfig(esConfigFolderPath: Path)
-                                 (implicit startupConfig: StartupConfig) = {
+                                 (implicit environmentConfig: EnvironmentConfig) = {
     val rorConfig = new FileConfigLoader(esConfigFolderPath).rawConfigFile
     logger.info(s"Cannot find FIPS configuration in elasticsearch.yml, trying: ${rorConfig.pathAsString}")
     if (rorConfig.exists) {
@@ -57,7 +57,7 @@ object FipsConfiguration extends Logging {
 
 
   private def loadFipsConfigFromFile(configFile: File)
-                                    (implicit startupConfig: StartupConfig): Either[MalformedSettings, FipsConfiguration] = {
+                                    (implicit environmentConfig: EnvironmentConfig): Either[MalformedSettings, FipsConfiguration] = {
     new YamlFileBasedConfigLoader(configFile).loadConfig[FipsConfiguration](configName = "ROR FIPS Configuration")
   }
 

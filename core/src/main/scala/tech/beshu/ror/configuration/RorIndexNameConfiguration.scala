@@ -36,12 +36,12 @@ object RorIndexNameConfiguration extends Logging {
   private val defaultIndexName = IndexName.Full(".readonlyrest")
 
   def load(esConfigFolderPath: Path)
-          (implicit startupConfig: StartupConfig): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = {
+          (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = {
     load(File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath))
   }
 
   def load(esConfig: File)
-          (implicit startupConfig: StartupConfig): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = Task {
+          (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = Task {
     new YamlFileBasedConfigLoader(esConfig).loadConfig[RorIndexNameConfiguration](configName = "ROR index configuration")
   }
 

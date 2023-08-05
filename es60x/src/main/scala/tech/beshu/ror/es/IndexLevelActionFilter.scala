@@ -30,12 +30,12 @@ import org.elasticsearch.env.Environment
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
-import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
+import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.ReadonlyRest.AuditSinkCreator
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot._
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.configuration.{RorBootConfiguration, StartupConfig}
+import tech.beshu.ror.configuration.{RorBootConfiguration, EnvironmentConfig}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
@@ -45,7 +45,6 @@ import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
 
-import java.time.Clock
 import scala.annotation.nowarn
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -68,9 +67,8 @@ class IndexLevelActionFilter(settings: Settings,
     this(settings, clusterService, client, threadPool, env, ())
   }
 
-  private implicit val clock: Clock = Clock.systemUTC()
-  private implicit val startupConfig: StartupConfig = StartupConfig.default
-  private implicit val generator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator
+  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
+  private implicit val generator: UniqueIdentifierGenerator = environmentConfig.uniqueIdentifierGenerator
 
   private val rorNotAvailableRequestHandler: RorNotAvailableRequestHandler =
     RorBootConfiguration

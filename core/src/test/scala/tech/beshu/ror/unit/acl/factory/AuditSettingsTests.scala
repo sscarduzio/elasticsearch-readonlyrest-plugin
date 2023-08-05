@@ -34,20 +34,17 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.{Core, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
-import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, StartupConfig}
+import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, EnvironmentConfig}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
-import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsUtils._
 
-import java.time.{Clock, ZoneId, ZonedDateTime}
+import java.time.{ZoneId, ZonedDateTime}
 import scala.reflect.ClassTag
 
 class AuditSettingsTests extends AnyWordSpec with Inside {
 
   private val factory = {
-    implicit val clock: Clock = Clock.systemUTC()
-    implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val startupConfig: StartupConfig = StartupConfig.default
+    implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
     new RawRorConfigBasedCoreFactory()
   }
 

@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.boot.engines
 
-import java.time.Clock
-
 import cats.data.EitherT
 import cats.implicits._
 import monix.catnap.Semaphore
@@ -32,7 +30,7 @@ import tech.beshu.ror.boot.RorInstance.RawConfigReloadError.{ConfigUpToDate, Rel
 import tech.beshu.ror.boot.RorInstance._
 import tech.beshu.ror.boot.engines.BaseReloadableEngine.InitialEngine
 import tech.beshu.ror.boot.engines.ConfigHash._
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig}
 import tech.beshu.ror.configuration.index.SavingIndexConfigError.CannotSaveConfig
 import tech.beshu.ror.utils.ScalaOps.value
 
@@ -40,8 +38,8 @@ private[boot] class MainConfigBasedReloadableEngine(boot: ReadonlyRest,
                                                     initialEngine: (Engine, RawRorConfig),
                                                     reloadInProgress: Semaphore[Task],
                                                     rorConfigurationIndex: RorConfigurationIndex)
-                                                   (implicit scheduler: Scheduler,
-                                                    clock: Clock)
+                                                   (implicit environmentConfig: EnvironmentConfig,
+                                                    scheduler: Scheduler)
   extends BaseReloadableEngine(
     name = "main",
     boot = boot,

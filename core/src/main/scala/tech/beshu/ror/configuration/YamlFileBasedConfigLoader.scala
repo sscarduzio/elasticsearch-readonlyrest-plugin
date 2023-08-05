@@ -23,7 +23,7 @@ import tech.beshu.ror.utils.yaml
 import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
 
 final class YamlFileBasedConfigLoader(file: File)
-                                     (implicit startupConfig: StartupConfig) {
+                                     (implicit environmentConfig: EnvironmentConfig) {
 
   def loadConfig[CONFIG: Decoder](configName: String): Either[MalformedSettings, CONFIG] = {
     loadedConfigJson
@@ -41,7 +41,7 @@ final class YamlFileBasedConfigLoader(file: File)
         .parse(reader)
         .left.map(e => MalformedSettings(s"Cannot parse file ${file.pathAsString} content. Cause: ${e.message}"))
         .flatMap { json =>
-          new JsonConfigStaticVariableResolver(startupConfig.variableCreator, startupConfig.envVarsProvider)
+          new JsonConfigStaticVariableResolver(environmentConfig.envVarsProvider, environmentConfig.startupVariablesTransformationCompiler)
             .resolve(json)
             .left.map(e => MalformedSettings(s"Unable to resolve environment variables for file ${file.pathAsString}. $e."))
         }

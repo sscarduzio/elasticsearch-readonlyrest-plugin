@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.http._
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana._
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
@@ -45,9 +46,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.kibana._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.transport._
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.providers.UuidProvider
-
-import java.time.Clock
+import tech.beshu.ror.configuration.EnvironmentConfig
 
 object ruleDecoders {
 
@@ -55,11 +54,12 @@ object ruleDecoders {
                     definitions: DefinitionsPack,
                     globalSettings: GlobalSettings,
                     mocksProvider: MocksProvider,
-                    variableCreator: RuntimeResolvableVariableCreator,
                     caseMappingEquality: UserIdCaseMappingEquality)
-                   (implicit clock: Clock,
-                    uuidProvider: UuidProvider): Option[RuleDecoder[Rule]] = {
-    implicit val userIdEq: Eq[User.Id] = caseMappingEquality.toOrder
+                   (implicit environmentConfig: EnvironmentConfig): Option[RuleDecoder[Rule]] = {
+    val variableCreator = new RuntimeResolvableVariableCreator(
+      TransformationCompiler.withAliases(definitions.variableTransformationAliases.items.map(_.alias))
+    )
+    val userIdEq: Eq[User.Id] = caseMappingEquality.toOrder
     val optionalRuleDecoder = name match {
       case ActionsRule.Name.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.Name.name => Some(ApiKeysRuleDecoder)
@@ -74,7 +74,7 @@ object ruleDecoders {
       case HeadersAndRule.DeprecatedName.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.DeprecatedName))
       case HeadersOrRule.Name.name => Some(HeadersOrRuleDecoder)
       case HostsRule.Name.name => Some(new HostsRuleDecoder(variableCreator))
-      case IndicesRule.Name.name => Some(new IndicesRuleDecoders(variableCreator))
+      case IndicesRule.Name.name => Some(new IndicesRuleDecoders(variableCreator, environmentConfig.uniqueIdentifierGenerator))
       case KibanaUserDataRule.Name.name => Some(new KibanaUserDataRuleDecoder(globalSettings.configurationIndex, variableCreator))
       case KibanaAccessRule.Name.name => Some(new KibanaAccessRuleDecoder(globalSettings.configurationIndex))
       case KibanaHideAppsRule.Name.name => Some(KibanaHideAppsRuleDecoder)
@@ -84,7 +84,7 @@ object ruleDecoders {
       case MaxBodyLengthRule.Name.name => Some(MaxBodyLengthRuleDecoder)
       case MethodsRule.Name.name => Some(MethodsRuleDecoder)
       case RepositoriesRule.Name.name => Some(new RepositoriesRuleDecoder(variableCreator))
-      case SessionMaxIdleRule.Name.name => Some(new SessionMaxIdleRuleDecoder())
+      case SessionMaxIdleRule.Name.name => Some(new SessionMaxIdleRuleDecoder()(environmentConfig.clock, environmentConfig.uuidProvider, userIdEq))
       case SnapshotsRule.Name.name => Some(new SnapshotsRuleDecoder(variableCreator))
       case UriRegexRule.Name.name => Some(new UriRegexRuleDecoder(variableCreator))
       case UsersRule.Name.name => Some(new UsersRuleDecoder()(caseMappingEquality, variableCreator))

@@ -21,15 +21,15 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.configuration.SslConfiguration.ServerCertificateConfiguration.{FileBasedConfiguration, KeystoreBasedConfiguration}
-import tech.beshu.ror.configuration.SslConfiguration.{ClientCertificateConfiguration, _}
-import tech.beshu.ror.configuration.{MalformedSettings, RorSsl, StartupConfig}
+import tech.beshu.ror.configuration.SslConfiguration._
+import tech.beshu.ror.configuration.{MalformedSettings, RorSsl, EnvironmentConfig}
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.getResourcePath
 
 class SslConfigurationTest
   extends AnyWordSpec with Inside {
 
-  private implicit val startupConfig: StartupConfig = StartupConfig.default.copy(
+  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default.copy(
     propertiesProvider = TestsPropertiesProvider.default
   )
 

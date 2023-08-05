@@ -46,7 +46,7 @@ import org.elasticsearch.transport.Transport
 import org.elasticsearch.transport.netty4.Netty4Utils
 import tech.beshu.ror.Constants
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
-import tech.beshu.ror.configuration.{RorSsl, StartupConfig}
+import tech.beshu.ror.configuration.{RorSsl, EnvironmentConfig}
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
@@ -92,7 +92,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     Netty4Utils.setAvailableProcessors(EsExecutors.PROCESSORS_SETTING.get(s))
   }
 
-  private implicit val startupConfig: StartupConfig = StartupConfig.default
+  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
 
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds

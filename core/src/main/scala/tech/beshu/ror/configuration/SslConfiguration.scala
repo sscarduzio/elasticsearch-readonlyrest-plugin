@@ -36,7 +36,7 @@ object RorSsl extends Logging {
   val noSsl: RorSsl = RorSsl(None, None)
 
   def load(esConfigFolderPath: Path)
-          (implicit startupConfig: StartupConfig): Task[Either[MalformedSettings, RorSsl]] = Task {
+          (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, RorSsl]] = Task {
     implicit val sslDecoder: Decoder[RorSsl] = SslDecoders.rorSslDecoder(esConfigFolderPath)
     val esConfig = File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
     loadSslConfigFromFile(esConfig)
@@ -51,7 +51,7 @@ object RorSsl extends Logging {
 
   private def fallbackToRorConfig(esConfigFolderPath: Path)
                                  (implicit rorSslDecoder: Decoder[RorSsl],
-                                  startupConfig: StartupConfig) = {
+                                  environmentConfig: EnvironmentConfig) = {
     val rorConfig = new FileConfigLoader(esConfigFolderPath).rawConfigFile
     logger.info(s"Cannot find SSL configuration in elasticsearch.yml, trying: ${rorConfig.pathAsString}")
     if (rorConfig.exists) {
@@ -63,7 +63,7 @@ object RorSsl extends Logging {
 
   private def loadSslConfigFromFile(configFile: File)
                                    (implicit rorSslDecoder: Decoder[RorSsl],
-                                    startupConfig: StartupConfig) = {
+                                    environmentConfig: EnvironmentConfig) = {
     new YamlFileBasedConfigLoader(configFile).loadConfig[RorSsl](configName = "ROR SSL configuration")
   }
 }

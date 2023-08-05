@@ -32,13 +32,13 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.loader.LoadedRorConfig._
-import tech.beshu.ror.configuration.{ConfigLoading, EsConfig, StartupConfig}
+import tech.beshu.ror.configuration.{ConfigLoading, EsConfig, EnvironmentConfig}
 
 object ConfigLoadingInterpreter extends Logging {
 
   def create(indexConfigManager: IndexConfigManager,
              inIndexLoadingDelay: LoadingDelay)
-            (implicit startupConfig: StartupConfig): LoadConfigAction ~> Task = new (LoadConfigAction ~> Task) {
+            (implicit environmentConfig: EnvironmentConfig): LoadConfigAction ~> Task = new (LoadConfigAction ~> Task) {
     override def apply[A](fa: LoadConfigAction[A]): Task[A] = fa match {
       case ConfigLoading.LoadConfigAction.LoadEsConfig(esConfigPath) =>
         logger.info(s"Loading Elasticsearch settings from file: ${esConfigPath.value}")
