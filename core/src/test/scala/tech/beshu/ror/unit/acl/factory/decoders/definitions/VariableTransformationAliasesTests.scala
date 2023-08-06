@@ -18,6 +18,7 @@ package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
 import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.SupportedVariablesFunctions
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function.{FunctionChain, ReplaceFirst}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.FunctionName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
@@ -25,7 +26,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.VariableTransformationAliasesDefinitionsDecoder
 
 class VariableTransformationAliasesTests
-  extends BaseDecoderTest(VariableTransformationAliasesDefinitionsDecoder.create) {
+  extends BaseDecoderTest(VariableTransformationAliasesDefinitionsDecoder.create(SupportedVariablesFunctions.default)) {
 
   "A variable transformation aliases definition" should {
     "be able to be loaded from config" when {

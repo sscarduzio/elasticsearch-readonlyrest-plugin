@@ -18,12 +18,18 @@ package tech.beshu.ror.configuration
 
 import better.files.File
 import io.circe.{Decoder, DecodingFailure, Json}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver
 import tech.beshu.ror.utils.yaml
 import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
 
 final class YamlFileBasedConfigLoader(file: File)
                                      (implicit environmentConfig: EnvironmentConfig) {
+
+  private val jsonConfigResolver = new JsonConfigStaticVariableResolver(
+    environmentConfig.envVarsProvider,
+    TransformationCompiler.withoutAliases(environmentConfig.variablesFunctions)
+  )
 
   def loadConfig[CONFIG: Decoder](configName: String): Either[MalformedSettings, CONFIG] = {
     loadedConfigJson
@@ -41,7 +47,7 @@ final class YamlFileBasedConfigLoader(file: File)
         .parse(reader)
         .left.map(e => MalformedSettings(s"Cannot parse file ${file.pathAsString} content. Cause: ${e.message}"))
         .flatMap { json =>
-          new JsonConfigStaticVariableResolver(environmentConfig.envVarsProvider, environmentConfig.startupVariablesTransformationCompiler)
+          jsonConfigResolver
             .resolve(json)
             .left.map(e => MalformedSettings(s"Unable to resolve environment variables for file ${file.pathAsString}. $e."))
         }

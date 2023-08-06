@@ -16,10 +16,9 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.variables.transformation
 
-import eu.timepit.refined.auto._
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler.CompilationError
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler.CompilationError.{UnableToCompileTransformation, UnableToParseTransformation}
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.{Function, FunctionAlias, FunctionDefinition}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.FunctionAlias
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parser
 
 class TransformationCompiler(compiler: ExpressionCompiler, useAliases: Boolean) {
@@ -41,26 +40,18 @@ object TransformationCompiler {
     final case class UnableToCompileTransformation(message: String) extends CompilationError
   }
 
-  def withoutAliases: TransformationCompiler = {
+  def withoutAliases(supportedFunctions: SupportedVariablesFunctions): TransformationCompiler = {
     new TransformationCompiler(
-      compiler = ExpressionCompiler.create(functions = supportedFunctions, aliases = List.empty),
+      compiler = ExpressionCompiler.create(functions = supportedFunctions.functions, aliases = List.empty),
       useAliases = false
     )
   }
 
-  def withAliases(aliasedFunctions: Seq[FunctionAlias]): TransformationCompiler = {
+  def withAliases(supportedFunctions: SupportedVariablesFunctions,
+                  aliasedFunctions: Seq[FunctionAlias]): TransformationCompiler = {
     new TransformationCompiler(
-      compiler = ExpressionCompiler.create(functions = supportedFunctions, aliases = aliasedFunctions),
+      compiler = ExpressionCompiler.create(functions = supportedFunctions.functions, aliases = aliasedFunctions),
       useAliases = true
-    )
-  }
-
-  private val supportedFunctions: Seq[FunctionDefinition] = {
-    Seq(
-      FunctionDefinition[Function.ReplaceAll]("replace_all"),
-      FunctionDefinition[Function.ReplaceFirst]("replace_first"),
-      FunctionDefinition[Function.ToLowerCase]("to_lowercase"),
-      FunctionDefinition[Function.ToUpperCase]("to_uppercase"),
     )
   }
 }

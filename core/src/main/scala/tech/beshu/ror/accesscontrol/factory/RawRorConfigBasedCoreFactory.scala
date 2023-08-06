@@ -107,7 +107,7 @@ class RawRorConfigBasedCoreFactory()
                                        mocksProvider: MocksProvider) = {
     val jsonConfigResolver = new JsonConfigStaticVariableResolver(
       environmentConfig.envVarsProvider,
-      environmentConfig.startupVariablesTransformationCompiler,
+      TransformationCompiler.withoutAliases(environmentConfig.variablesFunctions),
     )
     jsonConfigResolver.resolve(rorSection) match {
       case Right(resolvedRorSection) =>
@@ -290,9 +290,12 @@ class RawRorConfigBasedCoreFactory()
     AsyncDecoderCreator.instance[Core] { c =>
       val decoder = for {
         dynamicVariableTransformationAliases <-
-          AsyncDecoderCreator.from(VariableTransformationAliasesDefinitionsDecoder.create)
+          AsyncDecoderCreator.from(VariableTransformationAliasesDefinitionsDecoder.create(environmentConfig.variablesFunctions))
         variableCreator = new RuntimeResolvableVariableCreator(
-          TransformationCompiler.withAliases(dynamicVariableTransformationAliases.items.map(_.alias))
+          TransformationCompiler.withAliases(
+            environmentConfig.variablesFunctions,
+            dynamicVariableTransformationAliases.items.map(_.alias)
+          )
         )
         auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)

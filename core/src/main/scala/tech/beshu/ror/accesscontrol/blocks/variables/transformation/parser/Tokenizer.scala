@@ -18,50 +18,6 @@ package tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser
 
 private[parser] object Tokenizer {
 
-  private final case class TokenizerState(tokens: List[Token], state: State) {
-    def plus(newTokens: List[Token], newState: State): TokenizerState = {
-      this.copy(
-        tokens = tokens ++ newTokens,
-        state = newState
-      )
-    }
-
-    def plus(token: Token, newState: State): TokenizerState = plus(List(token), newState)
-
-    def plus(newState: State): TokenizerState = {
-      this.copy(
-        state = newState
-      )
-    }
-  }
-
-  private object TokenizerState {
-    val empty: TokenizerState = TokenizerState(tokens = List.empty, state = State.empty)
-  }
-
-  sealed trait State
-  private object State {
-    val empty: State = ReadingText("")
-
-    final case class ReadingText(acc: String) extends State {
-      def toToken: Token = Token.Text(acc)
-
-      def withChar(char: Char): ReadingText = ReadingText(acc + char)
-    }
-
-    final case class ReadingQuotedText(acc: String) extends State {
-      def toToken: Token = Token.Text(acc)
-
-      def withChar(char: Char): ReadingQuotedText = ReadingQuotedText(acc + char)
-
-      def withQuote: ReadingQuotedText = ReadingQuotedText(acc.stripSuffix(escapeChar.toString).appended('"'))
-
-      def isLastCharEscaped: Boolean = acc.lastOption.contains(escapeChar)
-
-      private val escapeChar = '\\'
-    }
-  }
-
   def tokenize(text: String): List[Token] = {
     val pState = text.foldLeft(TokenizerState.empty) { (pState, c) =>
       pState.state match {
@@ -130,4 +86,42 @@ private[parser] object Tokenizer {
     c.isDigit || c.isLetter || c == '_'
   }
 
+  private final case class TokenizerState(tokens: List[Token], state: State) {
+    def plus(newTokens: List[Token], newState: State): TokenizerState = {
+      this.copy(
+        tokens = tokens ++ newTokens,
+        state = newState
+      )
+    }
+    def plus(token: Token, newState: State): TokenizerState = plus(List(token), newState)
+
+    def plus(newState: State): TokenizerState = {
+      this.copy(
+        state = newState
+      )
+    }
+  }
+
+  private object TokenizerState {
+    val empty: TokenizerState = TokenizerState(tokens = List.empty, state = State.empty)
+  }
+
+  private sealed trait State
+  private object State {
+    val empty: State = ReadingText("")
+
+    final case class ReadingText(acc: String) extends State {
+      def toToken: Token = Token.Text(acc)
+      def withChar(char: Char): ReadingText = ReadingText(acc + char)
+    }
+
+    final case class ReadingQuotedText(acc: String) extends State {
+      def toToken: Token = Token.Text(acc)
+      def withChar(char: Char): ReadingQuotedText = ReadingQuotedText(acc + char)
+      def withQuote: ReadingQuotedText = ReadingQuotedText(acc.stripSuffix(escapeChar.toString).appended('"'))
+      def isLastCharEscaped: Boolean = acc.lastOption.contains(escapeChar)
+
+      private val escapeChar = '\\'
+    }
+  }
 }

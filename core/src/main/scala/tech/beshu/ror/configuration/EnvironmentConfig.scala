@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.configuration
 
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.SupportedVariablesFunctions
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.providers._
 
@@ -25,17 +25,17 @@ import java.time.Clock
 final case class EnvironmentConfig(clock: Clock,
                                    envVarsProvider: EnvVarsProvider,
                                    propertiesProvider: PropertiesProvider,
-                                   startupVariablesTransformationCompiler: TransformationCompiler,
                                    uniqueIdentifierGenerator: UniqueIdentifierGenerator,
-                                   uuidProvider: UuidProvider)
+                                   uuidProvider: UuidProvider,
+                                   variablesFunctions: SupportedVariablesFunctions)
 
 object EnvironmentConfig {
   val default: EnvironmentConfig = EnvironmentConfig(
     clock = Clock.systemUTC(),
     envVarsProvider = OsEnvVarsProvider,
     propertiesProvider = JvmPropertiesProvider,
-    startupVariablesTransformationCompiler = TransformationCompiler.withoutAliases,
     uniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator,
-    uuidProvider = JavaUuidProvider
+    uuidProvider = JavaUuidProvider,
+    variablesFunctions = SupportedVariablesFunctions.default,
   )
 }

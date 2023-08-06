@@ -21,9 +21,9 @@ import cats.data.NonEmptyMap
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions.VariableTransformationAliasDef
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler.CompilationError
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.{FunctionAlias, FunctionName}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, Reason}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
@@ -31,15 +31,16 @@ import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCre
 object VariableTransformationAliasesDefinitionsDecoder {
 
   private val definitionsSectionName = "variables_function_aliases"
-  private val transformationCompiler: TransformationCompiler = TransformationCompiler.withoutAliases
 
-  def create: ADecoder[Id, Definitions[VariableTransformationAliasDef]] = {
-    implicit val decoder: SyncDecoder[VariableTransformationAliasDef] = SyncDecoderCreator.from(aliasesDefinitionsDecoder)
+  def create(supportedFunctions: SupportedVariablesFunctions): ADecoder[Id, Definitions[VariableTransformationAliasDef]] = {
+    val transformationCompiler = TransformationCompiler.withoutAliases(supportedFunctions)
+    implicit val decoder: SyncDecoder[VariableTransformationAliasDef] =
+      SyncDecoderCreator.from(aliasesDefinitionsDecoder(transformationCompiler))
     DefinitionsBaseDecoder
       .instance[Id, VariableTransformationAliasDef](definitionsSectionName)
   }
 
-  private def aliasesDefinitionsDecoder: Decoder[VariableTransformationAliasDef] = {
+  private def aliasesDefinitionsDecoder(transformationCompiler: TransformationCompiler): Decoder[VariableTransformationAliasDef] = {
     Decoder
       .instance { c =>
         for {

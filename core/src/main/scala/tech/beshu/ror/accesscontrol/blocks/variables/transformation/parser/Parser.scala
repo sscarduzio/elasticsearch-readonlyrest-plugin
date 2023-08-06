@@ -24,85 +24,6 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parse
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parselet.{InfixParselet, PrefixParselet}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parser._
 
-private class Parser private(tokens: NonEmptyList[Token]) {
-  private val leftTokens: Atomic[List[Token]] = Atomic(tokens.toList)
-
-  private[parser] def nextToken: Option[Token] = leftTokens.get().headOption
-
-  private[parser] def consumeToken: Option[Token] = leftTokens.getAndTransform(_.drop(1)).headOption
-
-  private[parser] def consumeIf(expected: Token): Boolean = leftTokens.transformAndExtract { tokens =>
-    if (tokens.headOption.contains(expected)) {
-      (true, tokens.tail)
-    } else {
-      (false, tokens)
-    }
-  }
-
-  private[parser] def parseExpression(): Either[ParsingError, Expression] = parseExpression(0)
-
-  private[parser] def parseExpression(precedence: Int): Either[ParsingError, Expression] = {
-    for {
-      expression <- parsePrefix
-      result <- parseInfix(expression, precedence)
-    } yield result
-  }
-
-  private def parse(): Either[ParsingError, Expression] = {
-    parseExpression()
-      .flatMap { expression =>
-        val left = leftTokens.get()
-        if (left.nonEmpty) {
-          Left(ParsingError(s"Some tokens left: $left}"))
-        } else {
-          Right(expression)
-        }
-      }
-  }
-
-  private def prefixParseletFor(tokenType: Token): Option[PrefixParselet] = {
-    tokenType match {
-      case _: Token.Text => Some(NameParselet)
-      case _: Token.Punctuator => None
-    }
-  }
-
-  private def infixParseletFor(tokenType: Token): Option[InfixParselet] = {
-    tokenType match {
-      case _: Token.Text => None
-      case Token.Punctuator.LeftParen => Some(CallParselet)
-      case Token.Punctuator.Dot => Some(ChainParselet)
-      case _: Token.Punctuator => None
-    }
-  }
-
-  private def getPrecedence: Int = {
-    nextToken.flatMap(infixParseletFor).map(_.getPrecedence).getOrElse(0)
-  }
-
-  private def parsePrefix: Either[ParsingError, Expression] = {
-    for {
-      token <- consumeToken.toRight(ParsingError("Could not parse expression"))
-      parselet <- prefixParseletFor(token).toRight(ParsingError(s"Could not parse expression '${token.show}'"))
-      expression <- parselet.parse(this, token)
-    } yield expression
-  }
-
-  // todo improvement - stack safety
-  private def parseInfix(expression: Expression, precedence: Int): Either[ParsingError, Expression] = {
-    if (precedence < getPrecedence) {
-      for {
-        token <- consumeToken.toRight(ParsingError("Could not parse expression"))
-        parselet <- infixParseletFor(token).toRight(ParsingError(s"Could not parse expression '${token.show}'"))
-        leftExpression <- parselet.parse(this, expression)
-        result <- parseInfix(leftExpression, precedence)
-      } yield result
-    } else {
-      Right(expression)
-    }
-  }
-}
-
 private[transformation] object Parser {
 
   def parse(str: String): Either[ParsingError, Expression] = {
@@ -124,3 +45,83 @@ private[transformation] object Parser {
   final case class ParsingError(message: String)
 }
 
+private class Parser private(tokens: NonEmptyList[Token]) {
+  private val leftTokens: Atomic[List[Token]] = Atomic(List.empty[Token])
+
+  // this method is not thread-safe
+  private def parse(): Either[ParsingError, Expression] = {
+    leftTokens.set(tokens.toList)
+    parseExpression()
+      .flatMap { expression =>
+        val left = leftTokens.get()
+        if (left.nonEmpty) {
+          Left(ParsingError(s"Some tokens left: $left"))
+        } else {
+          Right(expression)
+        }
+      }
+  }
+
+  private[parser] def nextToken: Option[Token] = leftTokens.get().headOption
+
+  private[parser] def consumeToken: Option[Token] = leftTokens.getAndTransform(_.drop(1)).headOption
+
+  private[parser] def consumeIf(expected: Token): Boolean = leftTokens.transformAndExtract { tokens =>
+    if (tokens.headOption.contains(expected)) {
+      (true, tokens.tail)
+    } else {
+      (false, tokens)
+    }
+  }
+
+  private[parser] def parseExpression(): Either[ParsingError, Expression] = parseExpression(0)
+
+  private[parser] def parseExpression(expressionPrecedence: Int): Either[ParsingError, Expression] = {
+    for {
+      expression <- parsePrefix
+      result <- parseInfix(expression, expressionPrecedence)
+    } yield result
+  }
+
+  private def prefixParseletFor(tokenType: Token): Option[PrefixParselet] = {
+    tokenType match {
+      case _: Token.Text => Some(NameParselet)
+      case _: Token.Punctuator => None
+    }
+  }
+
+  private def infixParseletFor(tokenType: Token): Option[InfixParselet] = {
+    tokenType match {
+      case _: Token.Text => None
+      case Token.Punctuator.LeftParenthesis => Some(CallParselet)
+      case Token.Punctuator.Dot => Some(ChainParselet)
+      case _: Token.Punctuator => None
+    }
+  }
+
+  private def precedence: Int = {
+    nextToken.flatMap(infixParseletFor).map(_.expressionPrecedence).getOrElse(0)
+  }
+
+  private def parsePrefix: Either[ParsingError, Expression] = {
+    for {
+      token <- consumeToken.toRight(ParsingError("Could not parse expression"))
+      parselet <- prefixParseletFor(token).toRight(ParsingError(s"Could not parse expression '${token.show}'"))
+      expression <- parselet.parse(this, token)
+    } yield expression
+  }
+
+  // todo improvement - stack safety
+  private def parseInfix(expression: Expression, expressionPrecedence: Int): Either[ParsingError, Expression] = {
+    if (expressionPrecedence < precedence) { //todo mkp
+      for {
+        token <- consumeToken.toRight(ParsingError("Could not parse expression"))
+        parselet <- infixParseletFor(token).toRight(ParsingError(s"Could not parse expression '${token.show}'"))
+        leftExpression <- parselet.parse(this, expression)
+        result <- parseInfix(leftExpression, expressionPrecedence)
+      } yield result
+    } else {
+      Right(expression)
+    }
+  }
+}

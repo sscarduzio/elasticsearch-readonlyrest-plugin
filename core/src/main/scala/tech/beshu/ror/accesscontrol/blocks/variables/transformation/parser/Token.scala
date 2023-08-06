@@ -24,12 +24,13 @@ private[parser] object Token {
 
   abstract class Punctuator(val value: Char) extends Token
   object Punctuator {
-    case object LeftParen extends Punctuator('(')
-    case object RightParen extends Punctuator(')')
+    case object LeftParenthesis extends Punctuator('(')
+    case object RightParenthesis extends Punctuator(')')
     case object Comma extends Punctuator(',')
     case object Dot extends Punctuator('.')
 
-    private val all: Map[Char, Punctuator] = Set(LeftParen, RightParen, Comma, Dot).map(p => (p.value, p)).toMap
+    private val all: Map[Char, Punctuator] =
+      Set(LeftParenthesis, RightParenthesis, Comma, Dot).map(p => (p.value, p)).toMap
 
     def getFor(char: Char): Option[Punctuator] = {
       all.get(char)

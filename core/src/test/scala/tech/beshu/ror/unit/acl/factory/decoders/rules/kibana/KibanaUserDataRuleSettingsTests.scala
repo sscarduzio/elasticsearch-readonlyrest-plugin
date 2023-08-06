@@ -32,7 +32,7 @@ import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTes
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 
 class KibanaUserDataRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[KibanaUserDataRule]
@@ -651,5 +651,5 @@ class KibanaUserDataRuleSettingsTests
   }
 
   private val variableCreator: RuntimeResolvableVariableCreator =
-    new RuntimeResolvableVariableCreator(TransformationCompiler.withoutAliases)
+    new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
 }

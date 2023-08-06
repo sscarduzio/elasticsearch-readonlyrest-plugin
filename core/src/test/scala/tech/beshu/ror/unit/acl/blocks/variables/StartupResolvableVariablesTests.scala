@@ -26,14 +26,14 @@ import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.CreationError
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.CreationError.InvalidVariableDefinition
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.{StartupResolvableVariableCreator, StartupSingleResolvableVariable}
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 
 class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
 
   private val variableCreator: StartupResolvableVariableCreator =
-    new StartupResolvableVariableCreator(TransformationCompiler.withoutAliases)
+    new StartupResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
 
   "An env variable" should {
     "have been resolved" when {

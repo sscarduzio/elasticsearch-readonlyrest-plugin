@@ -57,7 +57,10 @@ object ruleDecoders {
                     caseMappingEquality: UserIdCaseMappingEquality)
                    (implicit environmentConfig: EnvironmentConfig): Option[RuleDecoder[Rule]] = {
     val variableCreator = new RuntimeResolvableVariableCreator(
-      TransformationCompiler.withAliases(definitions.variableTransformationAliases.items.map(_.alias))
+      TransformationCompiler.withAliases(
+        environmentConfig.variablesFunctions,
+        definitions.variableTransformationAliases.items.map(_.alias)
+      )
     )
     val userIdEq: Eq[User.Id] = caseMappingEquality.toOrder
     val optionalRuleDecoder = name match {

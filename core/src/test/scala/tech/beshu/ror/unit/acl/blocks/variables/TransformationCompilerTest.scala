@@ -20,7 +20,7 @@ import eu.timepit.refined.auto._
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler.CompilationError.{UnableToCompileTransformation, UnableToParseTransformation}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.{Function, FunctionAlias, FunctionName}
 
@@ -30,7 +30,7 @@ class TransformationCompilerTest extends AnyWordSpec with Matchers with Inside {
     FunctionName("strip_group_prefix"),
     new Function.ReplaceFirst("^group".r, "")
   )
-  private val compiler = TransformationCompiler.withAliases(List(alias))
+  private val compiler = TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq(alias))
 
   "Variable transformation compiler" should {
     "return compiled function" when {
@@ -138,7 +138,8 @@ class TransformationCompilerTest extends AnyWordSpec with Matchers with Inside {
         }
       }
       "alias used when no alias allowed" in {
-        val result = TransformationCompiler.withoutAliases.compile("func(some_alias)")
+        val compiler = TransformationCompiler.withoutAliases(SupportedVariablesFunctions.default)
+        val result = compiler.compile("func(some_alias)")
         inside(result) {
           case Left(message) =>
             message should be(UnableToCompileTransformation("Function aliases cannot be applied in this context"))

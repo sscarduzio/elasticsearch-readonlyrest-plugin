@@ -40,34 +40,34 @@ private[parser] object Parselet {
 
   sealed trait InfixParselet {
     def parse(parser: Parser, left: Expression): Either[ParsingError, Expression]
-    def getPrecedence: Int
+    def expressionPrecedence: Int
   }
 
   object InfixParselet {
     object ChainParselet extends InfixParselet {
       override def parse(parser: Parser, left: Expression): Either[ParsingError, Expression] = {
         parser
-          .parseExpression(getPrecedence)
+          .parseExpression(expressionPrecedence)
           .map(right => Expression.Chain(left, right))
       }
 
-      override def getPrecedence: Int = 1
+      override def expressionPrecedence: Int = 1
     }
 
     object CallParselet extends InfixParselet {
       def parse(parser: Parser, left: Expression): Either[ParsingError, Expression] = {
-        if (!parser.consumeIf(Punctuator.RightParen)) {
+        if (parser.consumeIf(Punctuator.RightParenthesis)) {
+          Right(Expression.Call(left, List.empty))
+        }
+        else {
           parseArgs(parser)
             .map { args =>
               Expression.Call(left, args)
             }
         }
-        else {
-          Right(Expression.Call(left, List.empty))
-        }
       }
 
-      override def getPrecedence: Int = 2
+      override def expressionPrecedence: Int = 2
 
       private def parseArgs(parser: Parser): Either[ParsingError, List[Expression]] = parseArgs(parser, List.empty)
 
@@ -78,12 +78,12 @@ private[parser] object Parselet {
             parser.consumeToken match {
               case Some(Punctuator.Comma) =>
                 parseArgs(parser, expressions :+ expression)
-              case Some(Punctuator.RightParen) =>
+              case Some(Punctuator.RightParenthesis) =>
                 Right(expressions :+ expression)
               case Some(other) =>
-                ParsingError(s"Expected '${Punctuator.Comma.value}' or '${Punctuator.RightParen.value}' but was '${other.show}'").asLeft
+                ParsingError(s"Expected '${Punctuator.Comma.value}' or '${Punctuator.RightParenthesis.value}' but was '${other.show}'").asLeft
               case None =>
-                ParsingError(s"Expected '${Punctuator.Comma.value}' or '${Punctuator.RightParen.value}' but was ''").asLeft
+                ParsingError(s"Expected '${Punctuator.Comma.value}' or '${Punctuator.RightParenthesis.value}' but was ''").asLeft
             }
           }
       }
