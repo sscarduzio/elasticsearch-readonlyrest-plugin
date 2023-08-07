@@ -23,6 +23,7 @@ import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, Sin
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.Version
 
 class SplitIndexApiSuite
   extends AnyWordSpec
@@ -79,24 +80,39 @@ object SplitIndexApiSuite {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     val indexManager = new IndexManager(adminRestClient, esVersion)
 
-    val shardSettings =
-      ujson.read {
-        s"""
-           |{
-           |  "settings": {
-           |    "index": {
-           |      "number_of_shards": 1
-           |    }
-           |  }
-           |}
-          """.stripMargin
-      }
-
-    indexManager.createIndex("test1_index", settings = Some(shardSettings)).force()
-    indexManager.createIndex("test2_index", settings = Some(shardSettings)).force()
+    indexManager.createIndex("test1_index", settings = Some(shardSettings(esVersion))).force()
+    indexManager.createIndex("test2_index", settings = Some(shardSettings(esVersion))).force()
     documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
     indexManager.putSettingsIndexBlocksWrite("test1_index", indexBlockWrite = true).force()
     indexManager.putSettingsIndexBlocksWrite("test2_index", indexBlockWrite = true).force()
+  }
+
+  private def shardSettings(esVersion: String) = {
+      if(Version.greaterOrEqualThan(esVersion, 7, 0, 0))
+        ujson.read {
+          s"""
+             |{
+             |  "settings": {
+             |    "index": {
+             |      "number_of_shards": 2
+             |    }
+             |  }
+             |}
+          """.stripMargin
+        }
+      else
+        ujson.read {
+          s"""
+             |{
+             |  "settings": {
+             |    "index": {
+             |      "number_of_shards": 2,
+             |      "number_of_routing_shards": 2
+             |    }
+             |  }
+             |}
+          """.stripMargin
+        }
   }
 }
