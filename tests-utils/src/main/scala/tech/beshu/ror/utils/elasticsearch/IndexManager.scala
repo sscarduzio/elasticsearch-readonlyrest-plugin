@@ -157,8 +157,8 @@ class IndexManager(client: RestClient,
     call(createShrinkRequest(sourceIndex, targetIndex, aliases), new JsonResponse(_))
   }
 
-  def split(sourceIndex: String, targetIndex: String): JsonResponse = {
-    call(createSplitRequest(sourceIndex, targetIndex), new JsonResponse(_))
+  def split(sourceIndex: String, targetIndex: String, numOfShards: Int): JsonResponse = {
+    call(createSplitRequest(sourceIndex, targetIndex, numOfShards), new JsonResponse(_))
   }
 
   def closeIndex(indexName: String): JsonResponse = {
@@ -283,14 +283,14 @@ class IndexManager(client: RestClient,
     request
   }
 
-  private def createSplitRequest(sourceIndex: String, targetIndex: String) = {
+  private def createSplitRequest(sourceIndex: String, targetIndex: String, numOfShards: Int) = {
     val request = new HttpPost(client.from(s"/$sourceIndex/_split/$targetIndex"))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(
       s"""
          |{
          |  "settings": {
-         |    "index.number_of_shards": 2
+         |    "index.number_of_shards": $numOfShards
          |  }
          |}""".stripMargin))
     request
