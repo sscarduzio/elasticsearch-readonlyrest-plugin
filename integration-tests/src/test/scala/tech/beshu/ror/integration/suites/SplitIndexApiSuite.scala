@@ -102,7 +102,7 @@ object SplitIndexApiSuite {
       }
     else
       ujson.read {
-        s"""w
+        s"""
            |{
            |  "settings": {
            |    "index": {
