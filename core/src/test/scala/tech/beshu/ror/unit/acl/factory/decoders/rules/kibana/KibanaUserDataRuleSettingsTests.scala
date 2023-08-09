@@ -31,6 +31,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 
 class KibanaUserDataRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[KibanaUserDataRule]
@@ -535,7 +537,7 @@ class KibanaUserDataRuleSettingsTests
               "g" -> JsonTree.Value(NullValue)
             ))
 
-          val resolvableMetadataJsonRepresentation = metadataJsonRepresentation.toResolvable
+          val resolvableMetadataJsonRepresentation = metadataJsonRepresentation.toResolvable(variableCreator)
             .getOrElse(throw new IllegalStateException("Example metadata JSON should be resolvable"))
           assertDecodingSuccess(
             yaml =
@@ -647,4 +649,7 @@ class KibanaUserDataRuleSettingsTests
       }
     }
   }
+
+  private val variableCreator: RuntimeResolvableVariableCreator =
+    new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
 }

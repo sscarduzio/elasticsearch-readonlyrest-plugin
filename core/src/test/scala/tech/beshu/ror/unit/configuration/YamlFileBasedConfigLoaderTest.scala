@@ -22,15 +22,17 @@ import io.circe.Decoder
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.providers.EnvVarsProvider
-import tech.beshu.ror.configuration.YamlFileBasedConfigLoader
+import tech.beshu.ror.configuration.{EnvironmentConfig, YamlFileBasedConfigLoader}
 
 class YamlFileBasedConfigLoaderTest extends AnyWordSpec with Inside {
-  private implicit val envVarsProvider: EnvVarsProvider = name =>
-    name.value.value match {
-      case "USER_NAME" => Some("John")
-      case _ => None
-    }
+
+  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default.copy(
+    envVarsProvider = name =>
+      name.value.value match {
+        case "USER_NAME" => Some("John")
+        case _ => None
+      }
+  )
 
   "YamlFileBasedConfigLoader" should {
     "decode file file" in {
@@ -40,6 +42,10 @@ class YamlFileBasedConfigLoaderTest extends AnyWordSpec with Inside {
     "decode file with variable" in {
       val result = loadFromTempFile[String](""""${USER_NAME}"""")
       result shouldBe "John".asRight
+    }
+    "decode file with variable with transformation" in {
+      val result = loadFromTempFile[String](""""${USER_NAME}#{to_uppercase}"""")
+      result shouldBe "JOHN".asRight
     }
     "fail for non existing vairable" in {
       val result = loadFromTempFile[String](""""${WRONG_VARIABLE}"""")

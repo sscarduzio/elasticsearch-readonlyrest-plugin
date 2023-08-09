@@ -53,14 +53,13 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResul
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils._
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.localUsersMonoid
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
-import tech.beshu.ror.configuration.{RawRorConfig, RorConfig}
-import tech.beshu.ror.providers.{EnvVarsProvider, UuidProvider}
+import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, EnvironmentConfig}
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.yaml.YamlOps
-
-import java.time.Clock
 
 final case class Core(accessControl: AccessControl,
                       rorConfig: RorConfig)
@@ -74,9 +73,7 @@ trait CoreFactory {
 }
 
 class RawRorConfigBasedCoreFactory()
-                                  (implicit clock: Clock,
-                                   uuidProvider: UuidProvider,
-                                   envVarProvider: EnvVarsProvider)
+                                  (implicit environmentConfig: EnvironmentConfig)
   extends CoreFactory with Logging {
 
   override def createCoreFrom(config: RawRorConfig,
@@ -108,7 +105,11 @@ class RawRorConfigBasedCoreFactory()
                                        httpClientFactory: HttpClientsFactory,
                                        ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                                        mocksProvider: MocksProvider) = {
-    JsonConfigStaticVariableResolver.resolve(rorSection) match {
+    val jsonConfigResolver = new JsonConfigStaticVariableResolver(
+      environmentConfig.envVarsProvider,
+      TransformationCompiler.withoutAliases(environmentConfig.variablesFunctions),
+    )
+    jsonConfigResolver.resolve(rorSection) match {
       case Right(resolvedRorSection) =>
         createFrom(resolvedRorSection, rorIndexNameConfiguration, httpClientFactory, ldapConnectionPoolProvider, mocksProvider).map {
           case Right(settings) =>
@@ -288,13 +289,21 @@ class RawRorConfigBasedCoreFactory()
     val caseMappingEquality: UserIdCaseMappingEquality = createUserMappingEquality(globalSettings)
     AsyncDecoderCreator.instance[Core] { c =>
       val decoder = for {
+        dynamicVariableTransformationAliases <-
+          AsyncDecoderCreator.from(VariableTransformationAliasesDefinitionsDecoder.create(environmentConfig.variablesFunctions))
+        variableCreator = new RuntimeResolvableVariableCreator(
+          TransformationCompiler.withAliases(
+            environmentConfig.variablesFunctions,
+            dynamicVariableTransformationAliases.items.map(_.alias)
+          )
+        )
         auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
         authorizationServices <- AsyncDecoderCreator.from(ExternalAuthorizationServicesDecoder.instance(httpClientFactory))
-        jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory))
+        jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory, variableCreator))
         ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder(ldapConnectionPoolProvider)
-        rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance())
+        rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance(variableCreator))
         impersonationDefinitionsDecoderCreator = new ImpersonationDefinitionsDecoderCreator(
           caseMappingEquality, authenticationServices, authProxies, ldapServices, mocksProvider
         )
@@ -323,10 +332,11 @@ class RawRorConfigBasedCoreFactory()
                 jwts = jwtDefs,
                 rorKbns = rorKbnDefs,
                 ldaps = ldapServices,
-                impersonators = impersonationDefs
+                impersonators = impersonationDefs,
+                variableTransformationAliases = dynamicVariableTransformationAliases,
               ),
               globalSettings,
-              mocksProvider
+              mocksProvider,
             )
           }
           DecoderHelpers

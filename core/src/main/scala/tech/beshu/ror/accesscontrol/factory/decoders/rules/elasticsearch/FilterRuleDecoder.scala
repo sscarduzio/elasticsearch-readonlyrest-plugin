@@ -20,16 +20,17 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FilterRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.domain.Filter
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
-object FilterRuleDecoder
+class FilterRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[FilterRule] {
 
   override protected def decoder: Decoder[RuleDefinition[FilterRule]] = {
     DecoderHelpers
-      .alwaysRightSingleVariableDecoder(AlwaysRightConvertible.from(Filter.apply))
+      .alwaysRightSingleVariableDecoder(variableCreator)(AlwaysRightConvertible.from(Filter.apply))
       .map(filter => RuleDefinition.create(new FilterRule(FilterRule.Settings(filter))))
   }
 }

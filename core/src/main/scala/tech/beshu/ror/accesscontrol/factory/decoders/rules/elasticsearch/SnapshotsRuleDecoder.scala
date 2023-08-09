@@ -33,8 +33,10 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
 
-object SnapshotsRuleDecoder
+class SnapshotsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[SnapshotsRule] {
+
+  private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
 
   override protected def decoder: Decoder[RuleDefinition[SnapshotsRule]] = {
     DecoderHelpers
@@ -61,12 +63,12 @@ private object SnapshotDecodersHelper {
         case None => Left(Convertible.ConvertError("Snapshot name cannot be empty"))
       }
   }
-  implicit val snapshotNameValueDecoder: Decoder[RuntimeMultiResolvableVariable[SnapshotName]] =
+  implicit def snapshotNameValueDecoder(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeMultiResolvableVariable[SnapshotName]] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .toSyncDecoder
       .emapE { str =>
-        RuntimeResolvableVariableCreator
+        variableCreator
           .createMultiResolvableVariableFrom[SnapshotName](str)
           .left.map(error => RulesLevelCreationError(Message(error.show)))
       }

@@ -61,7 +61,8 @@ trait FieldsRuleLikeDecoderHelperBase {
     fromConfiguredFieldsDecoder(configuredFields, createAccessMode[MODE])
 
   protected def documentFieldsDecoder[FIELD](configuredFields: UniqueNonEmptyList[ConfiguredField], alwaysAllowedFields: Set[NonEmptyString])
-                                           (implicit itemConvertible: Convertible[FIELD])=
+                                            (implicit itemConvertible: Convertible[FIELD],
+                                             variableCreator: RuntimeResolvableVariableCreator) =
     fromConfiguredFieldsDecoder(configuredFields, createDocumentFields[FIELD](alwaysAllowedFields))
 
   protected def fromConfiguredFieldsDecoder[ITEM](configuredFields: UniqueNonEmptyList[ConfiguredField],
@@ -72,7 +73,7 @@ trait FieldsRuleLikeDecoderHelperBase {
       .decoder
 
   protected def createAccessMode[MODE](fields: UniqueNonEmptyList[ConfiguredField])
-                                (implicit accessModeConverter: AccessModeConverter[MODE]): Either[RulesLevelCreationError, MODE] = {
+                                      (implicit accessModeConverter: AccessModeConverter[MODE]): Either[RulesLevelCreationError, MODE] = {
     if (areDifferentAccessModesUsedSimultaneously(fields)) {
       val rawValues = fields.map(field => s"'${field.rawValue}'").mkString(",")
       Left(RulesLevelCreationError(Message(s"fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: $rawValues")))
@@ -84,7 +85,8 @@ trait FieldsRuleLikeDecoderHelperBase {
 
   private def createDocumentFields[FIELD](alwaysAllowedFields: Set[NonEmptyString])
                                          (fields: UniqueNonEmptyList[ConfiguredField])
-                                         (implicit itemConvertible: Convertible[FIELD])= {
+                                         (implicit itemConvertible: Convertible[FIELD],
+                                          variableCreator: RuntimeResolvableVariableCreator) = {
     val fieldsFromAlwaysAllowedList = checkForAlwaysAllowedFields(fields, alwaysAllowedFields)
 
     if (fieldsFromAlwaysAllowedList.nonEmpty) {
@@ -109,8 +111,9 @@ trait FieldsRuleLikeDecoderHelperBase {
   }
 
   private def createRuntimeVariable[FIELD](field: ConfiguredField)
-                                         (implicit itemConvertible: Convertible[FIELD])= {
-    RuntimeResolvableVariableCreator
+                                          (implicit itemConvertible: Convertible[FIELD],
+                                           variableCreator: RuntimeResolvableVariableCreator) = {
+    variableCreator
       .createMultiResolvableVariableFrom[FIELD](field.fieldName)
       .left.map(error => RulesLevelCreationError(Message(error.show)))
   }

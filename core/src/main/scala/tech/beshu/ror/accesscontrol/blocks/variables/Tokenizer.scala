@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.variables
 import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer.Token.TokenWithVariable
 
 object Tokenizer {
 
@@ -28,6 +29,12 @@ object Tokenizer {
       case ((tokens, TokenizerState.ReadingConst(accumulator)), char) =>
         if(specialChars.contains(char)) {
           (tokens, TokenizerState.PossiblyReadingVar(accumulator, char))
+        } else if (char == transformationChar && accumulator == "" && tokens.lastOption.exists(canBeTransformed)) {
+          val lastToken = tokens.last match {
+            case token: TokenWithVariable => token
+            case _:Token.Text => throw new IllegalStateException("Token should be a variable token")
+          }
+          (tokens, TokenizerState.PossiblyReadingVarTransformation(lastToken, transformationChar))
         } else {
           (tokens, TokenizerState.ReadingConst(accumulator + char))
         }
@@ -68,12 +75,33 @@ object Tokenizer {
         char match {
           case '}' =>
             val placeholder = keyword match {
-              case None => Token.Placeholder(accumulator, s"$specialChar{$accumulator}")
-              case Some(k: Keyword.Explodable.type) => Token.ExplodablePlaceholder(accumulator, s"$specialChar${k.name}{$accumulator}")
+              case None =>
+                Token.Placeholder(accumulator, s"$specialChar{$accumulator}", None)
+              case Some(k: Keyword.Explodable.type) =>
+                Token.ExplodablePlaceholder(accumulator, s"$specialChar${k.name}{$accumulator}", None)
             }
             (tokens :+ placeholder, TokenizerState.ReadingConst(""))
           case other =>
             (tokens, TokenizerState.ReadingVar(accumulator + other, specialChar, keyword))
+        }
+      case ((tokens, TokenizerState.PossiblyReadingVarTransformation(lastToken, specialChar)), char) =>
+        char match {
+          case '{' =>
+            (tokens, TokenizerState.ReadingVarTransformation(lastToken, "", specialChar))
+          case other =>
+            (tokens, TokenizerState.ReadingConst(s"$specialChar$other"))
+        }
+      case ((tokens, TokenizerState.ReadingVarTransformation(lastToken, accumulator, specialChar)), char) =>
+        char match {
+          case '}' if !accumulator.lastOption.contains('\\') =>
+            val transformation = Token.Transformation(accumulator, s"$specialChar{$accumulator}")
+            val token = lastToken match {
+              case t:Token.Placeholder => t.copy(transformation = Some(transformation))
+              case t:Token.ExplodablePlaceholder => t.copy(transformation = Some(transformation))
+            }
+            (tokens.dropRight(1) :+ token , TokenizerState.ReadingConst(""))
+          case _ =>
+            (tokens, TokenizerState.ReadingVarTransformation(lastToken, accumulator + char, specialChar))
         }
     }
 
@@ -90,6 +118,10 @@ object Tokenizer {
         Some(Token.Text(s"$specialChar{$accumulator"))
       case TokenizerState.ReadingVar(accumulator, specialChar, Some(keyword)) =>
         Some(Token.Text(s"$specialChar${keyword.name}{$accumulator"))
+      case TokenizerState.PossiblyReadingVarTransformation(_,specialChar) =>
+        Some(Token.Text(specialChar.toString))
+      case TokenizerState.ReadingVarTransformation(_, accumulator, specialChar) =>
+        Some(Token.Text(s"$specialChar{$accumulator"))
     }
 
     NonEmptyList.fromFoldable(foundTokens) match {
@@ -100,11 +132,25 @@ object Tokenizer {
     }
   }
 
+  private def canBeTransformed(token: Token): Boolean = {
+    token match {
+      case _:Token.Text => false
+      case Token.Placeholder(_, _, transformation) => transformation.isEmpty
+      case Token.ExplodablePlaceholder(_, _, transformation) => transformation.isEmpty
+    }
+  }
+
   sealed trait Token
   object Token {
+    sealed trait TokenWithVariable extends Token
     final case class Text(value: String) extends Token
-    final case class Placeholder(name: String, rawValue: String) extends Token
-    final case class ExplodablePlaceholder(name: String, rawValue: String) extends Token
+    final case class Placeholder(name: String,
+                                 rawValue: String,
+                                 transformation: Option[Transformation]) extends TokenWithVariable
+    final case class ExplodablePlaceholder(name: String,
+                                           rawValue: String,
+                                           transformation: Option[Transformation]) extends TokenWithVariable
+    final case class Transformation(name: String, rawValue: String)
   }
 
   private sealed trait TokenizerState
@@ -122,6 +168,8 @@ object Tokenizer {
       }
     }
     final case class ReadingVar(accumulator: String, specialChar: Char, keyword: Option[Keyword]) extends TokenizerState
+    final case class PossiblyReadingVarTransformation(lastToken: TokenWithVariable, specialChar: Char) extends TokenizerState
+    final case class ReadingVarTransformation(lastToken: TokenWithVariable, accumulator: String, specialChar: Char) extends TokenizerState
   }
 
   private sealed abstract class Keyword(val name: String)
@@ -130,5 +178,6 @@ object Tokenizer {
   }
 
   private val specialChars: Set[Char] = Set('@', '$')
+  private val transformationChar: Char = '#'
   private val keywords: Set[Keyword] = Set(Keyword.Explodable)
 }

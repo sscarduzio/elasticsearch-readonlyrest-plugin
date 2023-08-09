@@ -34,10 +34,9 @@ import tech.beshu.ror.boot.engines.BaseReloadableEngine.{EngineExpirationConfig,
 import tech.beshu.ror.boot.engines.ConfigHash._
 import tech.beshu.ror.configuration.TestRorConfig.Present.ExpirationConfig
 import tech.beshu.ror.configuration.index.SavingIndexConfigError
-import tech.beshu.ror.configuration.{RawRorConfig, TestRorConfig}
+import tech.beshu.ror.configuration.{EnvironmentConfig, RawRorConfig, TestRorConfig}
 import tech.beshu.ror.utils.ScalaOps.value
 
-import java.time.Clock
 import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
 
@@ -45,8 +44,8 @@ private[boot] class TestConfigBasedReloadableEngine private(boot: ReadonlyRest,
                                                             initialEngine: InitialEngine,
                                                             reloadInProgress: Semaphore[Task],
                                                             rorConfigurationIndex: RorConfigurationIndex)
-                                                           (implicit scheduler: Scheduler,
-                                                            clock: Clock)
+                                                           (implicit environmentConfig: EnvironmentConfig,
+                                                            scheduler: Scheduler)
   extends BaseReloadableEngine(
     "test", boot, initialEngine, reloadInProgress, rorConfigurationIndex
   ) {
@@ -241,8 +240,8 @@ object TestConfigBasedReloadableEngine {
              initialEngine: ReadonlyRest.TestEngine,
              reloadInProgress: Semaphore[Task],
              rorConfigurationIndex: RorConfigurationIndex)
-            (implicit scheduler: Scheduler,
-             clock: Clock): TestConfigBasedReloadableEngine = {
+            (implicit environmentConfig: EnvironmentConfig,
+             scheduler: Scheduler): TestConfigBasedReloadableEngine = {
     val engine = initialEngine match {
       case TestEngine.NotConfigured =>
         InitialEngine.NotConfigured

@@ -30,7 +30,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
@@ -204,9 +204,9 @@ object common extends Logging {
     }
   }
 
-  implicit def valueLevelRuntimeSingleResolvableVariableDecoder[T : Convertible]: Decoder[RuntimeSingleResolvableVariable[T]] = {
+  implicit def valueLevelRuntimeSingleResolvableVariableDecoder[T : Convertible](implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeSingleResolvableVariable[T]] = {
     DecoderHelpers
-      .singleVariableDecoder[T]
+      .singleVariableDecoder[T](variableCreator)
       .toSyncDecoder
       .emapE {
         case Right(value) => Right(value)
@@ -215,9 +215,9 @@ object common extends Logging {
       .decoder
   }
 
-  implicit def valueLevelRuntimeMultiResolvableVariableDecoder[T : Convertible]: Decoder[RuntimeMultiResolvableVariable[T]] = {
+  implicit def valueLevelRuntimeMultiResolvableVariableDecoder[T : Convertible](implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeMultiResolvableVariable[T]] = {
     DecoderHelpers
-      .multiVariableDecoder[T]
+      .multiVariableDecoder[T](variableCreator)
       .toSyncDecoder
       .emapE {
         case Right(value) => Right(value)
@@ -317,7 +317,7 @@ object common extends Logging {
   implicit val groupsLogicOrDecoder: Decoder[GroupsLogic.Or] =
     permittedGroupsDecoder.map(GroupsLogic.Or.apply)
 
-  implicit val resolvableJsonRepresentationDecoder: Decoder[ResolvableJsonRepresentation] =
+  implicit def resolvableJsonRepresentationDecoder(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[ResolvableJsonRepresentation] =
     Decoder
       .decodeJson
       .toSyncDecoder

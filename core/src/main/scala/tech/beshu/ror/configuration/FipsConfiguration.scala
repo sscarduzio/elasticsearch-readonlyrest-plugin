@@ -23,7 +23,6 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode.NonFips
 import tech.beshu.ror.configuration.loader.FileConfigLoader
-import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 
 import java.io.{File => JFile}
 import java.nio.file.Path
@@ -33,8 +32,7 @@ final case class FipsConfiguration(fipsMode: FipsMode)
 object FipsConfiguration extends Logging {
 
   def load(esConfigFolderPath: Path)
-          (implicit envVarsProvider: EnvVarsProvider,
-           propertiesProvider: PropertiesProvider): Task[Either[MalformedSettings, FipsConfiguration]] = Task {
+          (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, FipsConfiguration]] = Task {
     val esConfig = File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
     loadFipsConfigFromFile(esConfig)
       .fold(
@@ -47,8 +45,7 @@ object FipsConfiguration extends Logging {
   }
 
   private def fallbackToRorConfig(esConfigFolderPath: Path)
-                                 (implicit envVarsProvider: EnvVarsProvider,
-                                  propertiesProvider: PropertiesProvider) = {
+                                 (implicit environmentConfig: EnvironmentConfig) = {
     val rorConfig = new FileConfigLoader(esConfigFolderPath).rawConfigFile
     logger.info(s"Cannot find FIPS configuration in elasticsearch.yml, trying: ${rorConfig.pathAsString}")
     if (rorConfig.exists) {
@@ -59,8 +56,8 @@ object FipsConfiguration extends Logging {
   }
 
 
-  def loadFipsConfigFromFile(configFile: File)
-                            (implicit envVarsProvider: EnvVarsProvider): Either[MalformedSettings, FipsConfiguration] = {
+  private def loadFipsConfigFromFile(configFile: File)
+                                    (implicit environmentConfig: EnvironmentConfig): Either[MalformedSettings, FipsConfiguration] = {
     new YamlFileBasedConfigLoader(configFile).loadConfig[FipsConfiguration](configName = "ROR FIPS Configuration")
   }
 

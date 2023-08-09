@@ -20,14 +20,18 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Json
-import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.{createMultiVariableFrom, createSingleVariableFrom}
+import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
+import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.providers.EnvVarsProvider
 
-object JsonConfigStaticVariableResolver {
+class JsonConfigStaticVariableResolver(envProvider: EnvVarsProvider,
+                                       transformationCompiler: TransformationCompiler) {
 
-  def resolve(json: Json)
-             (implicit envProvider: EnvVarsProvider): Either[NonEmptyList[ResolvingError], Json] = {
+  private val variableCreator = new StartupResolvableVariableCreator(transformationCompiler)
+
+  def resolve(json: Json): Either[NonEmptyList[ResolvingError], Json] = {
     val errors = ResolvingErrors(Vector.empty)
     val jsonWithResolvedVars = mapJson(json, errors)
     errors.values.toList match {
@@ -36,8 +40,7 @@ object JsonConfigStaticVariableResolver {
     }
   }
 
-  private def mapJson(json: Json, errors: ResolvingErrors)
-                     (implicit envProvider: EnvVarsProvider): Json = {
+  private def mapJson(json: Json, errors: ResolvingErrors): Json = {
     json
       .mapArray(_.flatMap { json =>
         json.asString.flatMap(NonEmptyString.unapply) match {
@@ -80,9 +83,8 @@ object JsonConfigStaticVariableResolver {
   }
 
 
-  private def tryToResolveAllStaticSingleVars(str: NonEmptyString, errors: ResolvingErrors)
-                                             (implicit envProvider: EnvVarsProvider): String = {
-    createSingleVariableFrom(str) match {
+  private def tryToResolveAllStaticSingleVars(str: NonEmptyString, errors: ResolvingErrors): String = {
+    variableCreator.createSingleVariableFrom(str) match {
       case Right(variable) =>
         variable.resolve(envProvider) match {
           case Right(extracted) => extracted
@@ -96,9 +98,8 @@ object JsonConfigStaticVariableResolver {
     }
   }
 
-  private def tryToResolveAllStaticMultipleVars(str: NonEmptyString, errors: ResolvingErrors)
-                                               (implicit envProvider: EnvVarsProvider): NonEmptyList[String] = {
-    createMultiVariableFrom(str) match {
+  private def tryToResolveAllStaticMultipleVars(str: NonEmptyString, errors: ResolvingErrors): NonEmptyList[String] = {
+    variableCreator.createMultiVariableFrom(str) match {
       case Right(variable) =>
         variable.resolve(envProvider) match {
           case Right(extracted) => extracted
@@ -111,9 +112,9 @@ object JsonConfigStaticVariableResolver {
         NonEmptyList.one(str.value)
     }
   }
+}
 
+object JsonConfigStaticVariableResolver {
   final case class ResolvingError(msg: String) extends AnyVal
-
   private final case class ResolvingErrors(var values: Vector[ResolvingError])
-
 }

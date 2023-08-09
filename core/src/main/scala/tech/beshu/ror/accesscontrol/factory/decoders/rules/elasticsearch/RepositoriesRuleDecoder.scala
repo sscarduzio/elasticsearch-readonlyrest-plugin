@@ -33,8 +33,10 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
 
-object RepositoriesRuleDecoder
+class RepositoriesRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[RepositoriesRule] {
+
+  private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
 
   override protected def decoder: Decoder[RuleDefinition[RepositoriesRule]] = {
     DecoderHelpers
@@ -61,12 +63,12 @@ private object RepositoriesDecodersHelper {
         case None => Left(Convertible.ConvertError("Repository name cannot be empty"))
       }
   }
-  implicit val repositoryValueDecoder: Decoder[RuntimeMultiResolvableVariable[RepositoryName]] =
+  implicit def repositoryValueDecoder(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeMultiResolvableVariable[RepositoryName]] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .toSyncDecoder
       .emapE { str =>
-        RuntimeResolvableVariableCreator
+        variableCreator
           .createMultiResolvableVariableFrom[RepositoryName](str)
           .left.map(error => RulesLevelCreationError(Message(error.show)))
       }

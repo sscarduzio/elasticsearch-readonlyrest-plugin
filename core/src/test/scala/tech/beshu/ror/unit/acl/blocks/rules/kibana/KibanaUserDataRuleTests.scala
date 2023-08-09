@@ -38,6 +38,8 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 
 import scala.util.{Failure, Success, Try}
@@ -148,7 +150,7 @@ class KibanaUserDataRuleTests
             "h" -> JsonTree.Value(StringValue("@{acl:current_group}_@{acl:user}"))
           ))
         }
-        val resolvableMetadataJsonRepresentation = metadataJsonRepresentation.toResolvable match {
+        val resolvableMetadataJsonRepresentation = metadataJsonRepresentation.toResolvable(variableCreator) match {
           case Right(value) => value
           case Left(error) => throw new IllegalStateException(s"Cannot resolve metadata: $error")
         }
@@ -243,4 +245,7 @@ class KibanaUserDataRuleTests
         blockContext
       )
     }
+
+  private val variableCreator: RuntimeResolvableVariableCreator =
+    new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
 }
