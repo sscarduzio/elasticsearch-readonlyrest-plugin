@@ -121,6 +121,9 @@ class Elasticsearch(esVersion: String,
       .add(s"cluster.name: ${config.clusterName}")
       .add("network.host: 0.0.0.0")
       .add("path.repo: /tmp")
+      .addWhen(Version.lowerThan(esVersion, 8, 0, 0),
+        entry = "bootstrap.system_call_filter: false" // because of issues with Rosetta 2 on Mac OS
+      )
       .add("cluster.routing.allocation.disk.threshold_enabled: false")
       .addWhen(Version.greaterOrEqualThan(esVersion, 7, 6, 0),
         entry = "indices.lifecycle.history_index_enabled: false"
