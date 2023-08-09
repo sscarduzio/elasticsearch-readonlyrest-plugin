@@ -19,8 +19,10 @@ package tech.beshu.ror.utils.misc
 import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.matchers.{MatchResult, Matcher}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleResponse
 import ujson._
 
+import scala.language.implicitConversions
 import scala.util.matching.Regex
 
 trait CustomScalaTestMatchers extends Matchers {
@@ -78,6 +80,29 @@ trait CustomScalaTestMatchers extends Matchers {
   }
 
   def notContainElementsFrom(elements: Set[Regex]) = new SetMayNotContainsElementsMatcher(elements)
+
+  class StatusCodeEquals(statusCode: Int) extends Matcher[SimpleResponse] {
+
+    override def apply(response: SimpleResponse): MatchResult = {
+      MatchResult(
+        response.responseCode == statusCode,
+        s"Expected status code was [$statusCode], but the response has [$statusCode]; Moreover, body of the response was:\n${response.body}",
+        s"Expected status code was [$statusCode] equals the response status code: [$statusCode]; Moreover, body of the response was:\n${response.body}"
+      )
+    }
+  }
+
+  class HaveStatusCode[T <: SimpleResponse](val haveWord: ResultOfHaveWordForExtent[T])
+    extends CustomScalaTestMatchers {
+
+    def statusCode(statusCode: Int) = new StatusCodeEquals(statusCode)
+  }
+
+  implicit def toHaveWordStatusCode[T <: SimpleResponse](haveWord: ResultOfHaveWordForExtent[T]): HaveStatusCode[T] = {
+    new HaveStatusCode(haveWord)
+  }
 }
 
 object CustomScalaTestMatchers extends CustomScalaTestMatchers
+
+

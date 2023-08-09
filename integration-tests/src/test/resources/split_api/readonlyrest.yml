@@ -1,0 +1,17 @@
+readonlyrest:
+
+  access_control_rules:
+
+    # ES containter initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
+      verbosity: error
+      type: allow
+      auth_key: admin:container
+
+    - name: "test1"
+      indices: ["test1_index", "test1_index_resized", "test1_index_allowed_alias"]
+      auth_key: dev1:test
+
+    - name: "wildcard test"
+      indices: ["test2_*"]
+      auth_key: dev2:test
