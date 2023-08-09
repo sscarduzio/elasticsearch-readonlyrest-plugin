@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonLdapContainers, SingletonPluginTestSupport}
@@ -24,13 +23,14 @@ import tech.beshu.ror.utils.containers.dependencies.ldap
 import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class LdapIntegrationSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/ldap_integration/readonlyrest.yml"
 
@@ -56,10 +56,10 @@ class LdapIntegrationSuite
       "users, which belong to group1, request it" when {
         "no current group is sent" in {
           val cartmanResult = cartmanIndexManager.getIndex("test1")
-          cartmanResult.responseCode should be(200)
+          cartmanResult should have statusCode 200
 
           val chandlerResult = chandlerIndexManager.getIndex("test1")
-          chandlerResult.responseCode should be(200)
+          chandlerResult should have statusCode 200
         }
         "current group is sent in ROR header" when {
           "the group is group1" in {
@@ -69,7 +69,7 @@ class LdapIntegrationSuite
             )
 
             val result = indexManager.getIndex("test1")
-            result.responseCode should be(200)
+            result should have statusCode 200
           }
           "the group is group3" in {
             val indexManager = indexManagerWithHeader(
@@ -78,7 +78,7 @@ class LdapIntegrationSuite
             )
 
             val result = indexManager.getIndex("test1")
-            result.responseCode should be(200)
+            result should have statusCode 200
           }
         }
         "current group is sent in authorization header metadata" in {
@@ -88,20 +88,20 @@ class LdapIntegrationSuite
           )
 
           val result = indexManager.getIndex("test1")
-          result.responseCode should be(200)
+          result should have statusCode 200
         }
       }
     }
     "not be seen" when {
       "users, which don't belong to group1, request it" in {
         val response = bilboIndexManager.getIndex("test1")
-        response.responseCode should be(404)
+        response should have statusCode 404
       }
       "user cannot be authenticated" in {
         val indexManager = new IndexManager(basicAuthClient("cartman", "wrong_password"), esVersionUsed)
         val response = indexManager.getIndex("test1")
 
-        response.responseCode should be(403)
+        response should have statusCode 403
       }
     }
   }
@@ -110,13 +110,13 @@ class LdapIntegrationSuite
     "be seen" when {
       "users, which belong to group4, request it" in {
         val cartmanResult = cartmanIndexManager.getIndex("test2")
-        cartmanResult.responseCode should be(200)
+        cartmanResult should have statusCode 200
 
         val chandlerResult = chandlerIndexManager.getIndex("test2")
-        chandlerResult.responseCode should be(200)
+        chandlerResult should have statusCode 200
 
         val morganResult = morganIndexManager.getIndex("test2")
-        morganResult.responseCode should be(200)
+        morganResult should have statusCode 200
       }
     }
   }
@@ -126,10 +126,10 @@ class LdapIntegrationSuite
       "users, which belong to local_group1, request it" when {
         "no current group is sent" in {
           val cartmanResult = cartmanIndexManager.getIndex("test3")
-          cartmanResult.responseCode should be(200)
+          cartmanResult should have statusCode 200
 
           val bilboResult = bilboIndexManager.getIndex("test3")
-          bilboResult.responseCode should be(200)
+          bilboResult should have statusCode 200
         }
         "current group is sent in ROR header" when {
           "the group is local_group1" in {
@@ -139,7 +139,7 @@ class LdapIntegrationSuite
             )
 
             val result = indexManager.getIndex("test3")
-            result.responseCode should be(200)
+            result should have statusCode 200
           }
           "the group is local_group3" in {
             val indexManager = indexManagerWithHeader(
@@ -148,7 +148,7 @@ class LdapIntegrationSuite
             )
 
             val result = indexManager.getIndex("test3")
-            result.responseCode should be(200)
+            result should have statusCode 200
           }
         }
       }
@@ -156,7 +156,7 @@ class LdapIntegrationSuite
     "not be seen" when {
       "users, which don't belong to local_group1, request it" in {
         val result = chandlerIndexManager.getIndex("test3")
-        result.responseCode should be(404)
+        result should have statusCode 404
       }
     }
   }
@@ -165,13 +165,13 @@ class LdapIntegrationSuite
     "be seen" when {
       "users, which belong to local_group2, request it" in {
         val result = morganIndexManager.getIndex("test4")
-        result.responseCode should be(200)
+        result should have statusCode 200
       }
     }
     "not be seen" when {
       "users, which don't belong to local_group2, request it" in {
         val result = cartmanIndexManager.getIndex("test4")
-        result.responseCode should be(404)
+        result should have statusCode 404
       }
     }
   }
@@ -180,7 +180,7 @@ class LdapIntegrationSuite
     "be seen" when {
       "god is worshiped in europe" in {
         val result = jesusIndexManager.getIndex("test5")
-        result.responseCode should be(200)
+        result should have statusCode 200
       }
     }
 
@@ -188,13 +188,13 @@ class LdapIntegrationSuite
       "be seen" when {
         "users, which belong to group2 AND group3, request it" in {
           val result = morganIndexManager.getIndex("test6")
-          result.responseCode should be(200)
+          result should have statusCode 200
         }
       }
       "not be seen" when {
         "users, which don't belong to group2 AND group3, request it" in {
           val result = cartmanIndexManager.getIndex("test6")
-          result.responseCode should be(404)
+          result should have statusCode 404
         }
       }
     }
@@ -202,7 +202,7 @@ class LdapIntegrationSuite
     "not be seen" when {
       "god is not worshiped in europe" in {
         val result = allahIndexManager.getIndex("test5")
-        result.responseCode should be(403)
+        result should have statusCode 403
       }
     }
   }

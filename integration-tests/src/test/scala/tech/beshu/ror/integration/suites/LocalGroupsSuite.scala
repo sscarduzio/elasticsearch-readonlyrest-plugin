@@ -45,7 +45,7 @@ class LocalGroupsSuite
 
     val response = clusterManager.state()
 
-    response.responseCode should be(401)
+    response should have statusCode 401
   }
 
   "bad credentials, good rule" in {
@@ -57,7 +57,7 @@ class LocalGroupsSuite
 
     val response = clusterManager.state()
 
-    response.responseCode should be(401)
+    response should have statusCode 401
   }
 
   "bad credentials, bad rule" in {
@@ -68,7 +68,7 @@ class LocalGroupsSuite
 
     val response = catManager.indices()
 
-    response.responseCode should be(401)
+    response should have statusCode 401
   }
 
   "identify retrieval" in {
@@ -77,7 +77,7 @@ class LocalGroupsSuite
     val correlationId = UUID.randomUUID().toString
     val response = userMetadataManager.fetchMetadata(correlationId = Some(correlationId))
 
-    response.responseCode should be(200)
+    response should have statusCode 200
     response.responseJson should be(ujson.read(
       s"""{
          |  "x-ror-username": "user",
@@ -96,7 +96,7 @@ class LocalGroupsSuite
     val correlationId = UUID.randomUUID().toString
     val response = userMetadataManager.fetchMetadata(preferredGroup = Some("foogroup"), correlationId = Some(correlationId))
 
-    response.responseCode should be(200)
+    response should have statusCode 200
     response.responseJson should be(ujson.read(
       s"""{
          |  "x-ror-username": "user",

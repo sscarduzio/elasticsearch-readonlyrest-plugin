@@ -17,11 +17,11 @@
 package tech.beshu.ror.integration.suites
 
 import org.scalatest.BeforeAndAfterEach
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager}
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class DisabledAuditingToolsSuite
   extends AnyWordSpec
@@ -29,7 +29,7 @@ class DisabledAuditingToolsSuite
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with BeforeAndAfterEach
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/disabled_auditing_tools/readonlyrest.yml"
 
@@ -47,23 +47,23 @@ class DisabledAuditingToolsSuite
       "rule 1 is matching" in {
         val indexManager = new IndexManager(basicAuthClient("user", "dev"), esVersionUsed)
         val response = indexManager.getIndex("twitter")
-        response.responseCode shouldBe 200
+        response should have statusCode 200
 
-        auditIndexManager.getEntries.responseCode should be(404)
+        auditIndexManager.getEntries should have statusCode 404
       }
       "rule 2 is matching" in {
         val indexManager = new IndexManager(basicAuthClient("user", "dev"), esVersionUsed)
         val response = indexManager.getIndex("facebook")
-        response.responseCode shouldBe 200
+        response should have statusCode 200
 
-        auditIndexManager.getEntries.responseCode should be(404)
+        auditIndexManager.getEntries should have statusCode 404
       }
       "no rule is matching" in {
         val indexManager = new IndexManager(basicAuthClient("user", "wrong"), esVersionUsed)
         val response = indexManager.getIndex("twitter")
-        response.responseCode shouldBe 403
+        response should have statusCode 403
 
-        auditIndexManager.getEntries.responseCode should be(404)
+        auditIndexManager.getEntries should have statusCode 404
       }
     }
   }

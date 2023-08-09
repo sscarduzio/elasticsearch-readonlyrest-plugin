@@ -23,12 +23,14 @@ import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.elasticsearch.DocumentManager.BulkAction
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class DocumentApiSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
-    with ESVersionSupportForAnyWordSpecLike {
+    with ESVersionSupportForAnyWordSpecLike 
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/document_api/readonlyrest.yml"
 
@@ -57,7 +59,7 @@ class DocumentApiSuite
             )
           )
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           result.docs.size should be(2)
           result.docs(0)("_index").str should be("index1_fst")
           result.docs(0)("found").bool should be(true)
@@ -84,7 +86,7 @@ class DocumentApiSuite
             )
           )
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           result.docs.size should be(2)
           result.docs(0)("_index").str should be("index1_fst")
           result.docs(0)("found").bool should be(true)
@@ -110,7 +112,7 @@ class DocumentApiSuite
           )
         )
 
-        result.responseCode should be(401)
+        result should have statusCode 401
       }
     }
     "_bulk API is used" should {
@@ -121,7 +123,7 @@ class DocumentApiSuite
             BulkAction.Insert("index1_2020-01-02", 1, ujson.read("""{ "message" : "hello" }"""))
           )
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           val items = result.responseJson("items").arr.toVector
           items(0)("create")("status").num should be(201)
           items(0)("create")("_index").str should be("index1_2020-01-01")
@@ -136,7 +138,7 @@ class DocumentApiSuite
             BulkAction.Insert("index2_2020-01-01", 1, ujson.read("""{ "message" : "hello" }"""))
           )
 
-          result.responseCode should be(401)
+          result should have statusCode 401
         }
       }
     }

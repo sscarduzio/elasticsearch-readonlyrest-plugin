@@ -16,13 +16,13 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.dependencies.wiremock
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManager}
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 //TODO: change test names. Current names are copies from old java integration tests
 class ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
@@ -30,7 +30,7 @@ class ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/rev_proxy_groups_provider/readonlyrest.yml"
 
@@ -60,7 +60,7 @@ class ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
 
     val result = indexManager.getIndex("twitter")
 
-    result.responseCode should be(200)
+    result should have statusCode 200
   }
 
   "testAuthenticationAndAuthorizationErrorWithService1" in {
@@ -71,7 +71,7 @@ class ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
 
     val result = indexManager.getIndex("twitter")
 
-    result.responseCode should be(403)
+    result should have statusCode 403
   }
 
   "testAuthenticationAndAuthorizationSuccessWithService2" in {
@@ -82,6 +82,6 @@ class ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
 
     val result = indexManager.getIndex("facebook")
 
-    result.responseCode should be(200)
+    result should have statusCode 200
   }
 }

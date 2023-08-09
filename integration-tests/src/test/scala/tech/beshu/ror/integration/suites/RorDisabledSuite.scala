@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
@@ -24,6 +23,7 @@ import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, RorWithXpackSe
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, RorApiManager}
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class RorDisabledSuite
   extends AnyWordSpec
@@ -31,7 +31,7 @@ class RorDisabledSuite
     with PluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/plugin_disabled/readonlyrest.yml"
 
@@ -58,7 +58,7 @@ class RorDisabledSuite
 
       val result = user1ClusterStateManager.templates()
 
-      result.responseCode should be(200)
+      result should have statusCode 200
     }
     "return information that ROR is disabled" when {
       "ROR API endpoint is being called" in {
@@ -66,7 +66,7 @@ class RorDisabledSuite
 
         val result = user1MetadataManager.fetchMetadata()
 
-        result.responseCode should be(403)
+        result should have statusCode 402
         result.responseJson("error")("reason").str should be("forbidden")
         result.responseJson("error")("due_to").str should be("READONLYREST_NOT_ENABLED")
       }

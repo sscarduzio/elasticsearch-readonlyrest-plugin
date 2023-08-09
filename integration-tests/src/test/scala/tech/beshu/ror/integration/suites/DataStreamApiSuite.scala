@@ -24,7 +24,7 @@ import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTes
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
 import tech.beshu.ror.utils.elasticsearch._
-import tech.beshu.ror.utils.misc.Version
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
 import java.time.Instant
 import scala.util.Random
@@ -34,7 +34,8 @@ class DataStreamApiSuite
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyFreeSpecLike
-    with BeforeAndAfterEach {
+    with BeforeAndAfterEach
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName: String = "/data_stream_api/readonlyrest.yml"
 
@@ -163,7 +164,7 @@ class DataStreamApiSuite
           val searchManager = new SearchManager(clients.head.basicAuthClient("user7", "pass"))
 
           val dsAdminSearch = searchManager.searchAll("data-stream-admin")
-          dsAdminSearch.responseCode should be(401)
+          dsAdminSearch should have statusCode 401
 
           List(
             ("data-stream-dev", 2),
@@ -286,7 +287,7 @@ class DataStreamApiSuite
 
           findIndicesForDataStream(adminDataStream).foreach { indexName =>
             val response = searchManager.searchAll(indexName)
-            response.responseCode should be(401)
+            response should have statusCode 401
           }
           findIndicesForDataStream(devDataStream).foreach { indexName =>
             val response = searchManager.searchAll(indexName)
@@ -322,8 +323,7 @@ class DataStreamApiSuite
             val documentManager = new DocumentManager(clients.head.basicAuthClient("user7", "pass"), esVersionUsed)
 
             documentManager
-              .createDocWithGeneratedId("data-stream-admin", documentJson)
-              .responseCode should be(401)
+              .createDocWithGeneratedId("data-stream-admin", documentJson) should have statusCode 401
 
             documentManager
               .createDocWithGeneratedId("data-stream-dev", documentJson)
@@ -346,8 +346,7 @@ class DataStreamApiSuite
             val documentManager = new DocumentManager(clients.head.basicAuthClient("user10", "pass"), esVersionUsed)
 
             documentManager
-              .createDocWithGeneratedId("data-stream-admin", documentJson)
-              .responseCode should be(401)
+              .createDocWithGeneratedId("data-stream-admin", documentJson) should have statusCode 401
 
             documentManager
               .createDocWithGeneratedId("data-stream-dev", documentJson)
@@ -376,7 +375,7 @@ class DataStreamApiSuite
       }
 
       val statsResponse = adminDataStreamManager.getDataStreamStats(dataStream)
-      statsResponse.responseCode should be(200)
+      statsResponse should have statusCode 200
       statsResponse.dataStreamsCount should be(1)
       statsResponse.backingIndicesCount should be(3)
     }
@@ -399,7 +398,7 @@ class DataStreamApiSuite
 
               val dsm = new DataStreamManager(user2Client)
               val response = dsm.createDataStream(dataStream)
-              response.responseCode should be(200)
+              response should have statusCode 200
             }
             "wildcard data stream matching" excludeES(allEs6x, allEs7xBelowEs79x) in {
               val dataStream = DataStreamNameGenerator.next("test")
@@ -407,7 +406,7 @@ class DataStreamApiSuite
 
               val dsm = new DataStreamManager(user1Client)
               val response = dsm.createDataStream(dataStream)
-              response.responseCode should be(200)
+              response should have statusCode 200
             }
           }
         }
@@ -418,7 +417,7 @@ class DataStreamApiSuite
 
             val dsm = new DataStreamManager(user2Client)
             val response = dsm.createDataStream(dataStream)
-            response.responseCode should be(401)
+            response should have statusCode 401
           }
         }
       }
@@ -434,7 +433,7 @@ class DataStreamApiSuite
             createDataStream(dataStream2, IndexTemplateNameGenerator.next)
 
             val response = adminDataStreamManager.getAllDataStreams()
-            response.responseCode should be(200)
+            response should have statusCode 200
             response.allDataStreams.toSet should be(Set(dataStream1, dataStream2))
           }
         }
@@ -447,7 +446,7 @@ class DataStreamApiSuite
 
               val dsm = new DataStreamManager(user2Client)
               val response = dsm.getAllDataStreams()
-              response.responseCode should be(200)
+              response should have statusCode 200
               response.allDataStreams.toSet should be(Set(dataStream))
             }
             "wildcard data stream matching" excludeES(allEs6x, allEs7xBelowEs79x) in {
@@ -460,7 +459,7 @@ class DataStreamApiSuite
 
               val dsm = new DataStreamManager(user1Client)
               val response = dsm.getAllDataStreams()
-              response.responseCode should be(200)
+              response should have statusCode 200
               response.allDataStreams.toSet should be(Set(dataStream1, dataStream2))
             }
           }
@@ -476,7 +475,7 @@ class DataStreamApiSuite
 
               val dsm = new DataStreamManager(user4Client)
               val response = dsm.getAllDataStreams()
-              response.responseCode should be(200)
+              response should have statusCode 200
               response.allDataStreams.toSet should be(Set(dataStream1, dataStream2))
             }
             "user has access to all backing indices" excludeES(allEs6x, allEs7xBelowEs79x) in {
@@ -488,7 +487,7 @@ class DataStreamApiSuite
 
               val dsm = new DataStreamManager(user4Client)
               val response = dsm.getAllDataStreams()
-              response.responseCode should be(200)
+              response should have statusCode 200
               response.allDataStreams.toSet should be(Set(dataStream1, dataStream2))
             }
             "user has access to certain backing indices" excludeES(allEs6x, allEs7xBelowEs79x) in {
@@ -502,7 +501,7 @@ class DataStreamApiSuite
 
               val dsm = new DataStreamManager(user3Client)
               val response = dsm.getAllDataStreams()
-              response.responseCode should be(200)
+              response should have statusCode 200
               response.allDataStreams.toSet should be(Set(dataStream1, dataStream2))
             }
           }
@@ -513,7 +512,7 @@ class DataStreamApiSuite
 
               val dsm = new DataStreamManager(user1Client)
               val response = dsm.getAllDataStreams()
-              response.responseCode should be(200)
+              response should have statusCode 200
               response.allDataStreams.toSet should be(Set.empty)
             }
           }
@@ -529,7 +528,7 @@ class DataStreamApiSuite
             createDataStream(dataStream2, IndexTemplateNameGenerator.next)
 
             val response = adminDataStreamManager.getDataStream(dataStream1)
-            response.responseCode should be(200)
+            response should have statusCode 200
             response.dataStreamName should be(dataStream1)
           }
         }
@@ -541,7 +540,7 @@ class DataStreamApiSuite
 
             val dsm = new DataStreamManager(user2Client)
             val response = dsm.getDataStream(dataStream)
-            response.responseCode should be(200)
+            response should have statusCode 200
             response.dataStreamName should be(dataStream)
           }
           "wildcard data stream matching" excludeES(allEs6x, allEs7xBelowEs79x) in {
@@ -554,7 +553,7 @@ class DataStreamApiSuite
 
             val dsm = new DataStreamManager(user1Client)
             val response = dsm.getDataStream(dataStream1)
-            response.responseCode should be(200)
+            response should have statusCode 200
             response.dataStreamName should be(dataStream1)
           }
         }
@@ -566,7 +565,7 @@ class DataStreamApiSuite
 
               val dsm = new DataStreamManager(user3Client)
               val response = dsm.getDataStream(dataStream)
-              response.responseCode should be(200)
+              response should have statusCode 200
               response.dataStreamName should be(dataStream)
             }
           }
@@ -577,7 +576,7 @@ class DataStreamApiSuite
 
               val dsm = new DataStreamManager(user3Client)
               val response = dsm.getDataStream(dataStream)
-              response.responseCode should be(200)
+              response should have statusCode 200
               response.allDataStreams.toSet should be(Set.empty)
             }
           }
@@ -594,7 +593,7 @@ class DataStreamApiSuite
           createDataStream(dataStream2, IndexTemplateNameGenerator.next)
           createDocsInDataStream(dataStream2, 2)
           val response = adminDataStreamManager.getDataStreamStats("*")
-          response.responseCode should be(200)
+          response should have statusCode 200
           response.dataStreamsCount should be(2)
           response.backingIndicesCount should be(2)
         }
@@ -607,8 +606,7 @@ class DataStreamApiSuite
 
             val dsm = new DataStreamManager(user1Client)
             val response = dsm.getDataStreamStats(dataStream)
-            response.responseCode should be(200)
-            response.responseCode should be(200)
+            response should have statusCode 200
             response.dataStreamsCount should be(1)
             response.backingIndicesCount should be(1)
           }
@@ -620,7 +618,7 @@ class DataStreamApiSuite
 
             val dsm = new DataStreamManager(user1Client)
             val response = dsm.getDataStreamStats(dataStream)
-            response.responseCode should be(401)
+            response should have statusCode 401
           }
         }
       }
@@ -631,7 +629,7 @@ class DataStreamApiSuite
           val dataStream1 = DataStreamNameGenerator.next("admin")
           createDataStream(dataStream1, IndexTemplateNameGenerator.next)
           val response = adminDataStreamManager.deleteDataStream(dataStream1)
-          response.responseCode should be(200)
+          response should have statusCode 200
         }
       }
       "with data_streams rule should" - {
@@ -643,7 +641,7 @@ class DataStreamApiSuite
 
             val dsm = new DataStreamManager(user2Client)
             val response = dsm.deleteDataStream(dataStream)
-            response.responseCode should be(200)
+            response should have statusCode 200
           }
           "wildcard data stream matching" excludeES(allEs6x, allEs7xBelowEs79x) in {
             val dataStream1 = DataStreamNameGenerator.next("test")
@@ -655,7 +653,7 @@ class DataStreamApiSuite
 
             val dsm = new DataStreamManager(user1Client)
             val response = dsm.deleteDataStream(dataStream1)
-            response.responseCode should be(200)
+            response should have statusCode 200
           }
         }
         "forbid to delete data stream when" - {
@@ -665,7 +663,7 @@ class DataStreamApiSuite
 
             val dsm = new DataStreamManager(user2Client)
             val response = dsm.deleteDataStream(dataStream)
-            response.responseCode should be(401)
+            response should have statusCode 401
           }
         }
       }
@@ -682,10 +680,10 @@ class DataStreamApiSuite
           adminTemplateManager.createTemplate(IndexTemplateNameGenerator.next, indexTemplate(dataStream)).force()
 
           val migrateToDataStreamResponse = adminDataStreamManager.migrateToDataStream(dataStream)
-          migrateToDataStreamResponse.responseCode should be(200)
+          migrateToDataStreamResponse should have statusCode 200
 
           val statsResponse = adminDataStreamManager.getDataStreamStats(dataStream)
-          statsResponse.responseCode should be(200)
+          statsResponse should have statusCode 200
           statsResponse.dataStreamsCount should be(1)
           statsResponse.backingIndicesCount should be(1)
         }
@@ -703,10 +701,10 @@ class DataStreamApiSuite
 
             val dsm = new DataStreamManager(user5Client)
             val migrateToDataStreamResponse = dsm.migrateToDataStream(dataStream)
-            migrateToDataStreamResponse.responseCode should be(200)
+            migrateToDataStreamResponse should have statusCode 200
 
             val statsResponse = adminDataStreamManager.getDataStreamStats(dataStream)
-            statsResponse.responseCode should be(200)
+            statsResponse should have statusCode 200
             statsResponse.dataStreamsCount should be(1)
             statsResponse.backingIndicesCount should be(1)
           }
@@ -723,7 +721,7 @@ class DataStreamApiSuite
 
             val dsm = new DataStreamManager(user5Client)
             val migrateToDataStreamResponse = dsm.migrateToDataStream(dataStream)
-            migrateToDataStreamResponse.responseCode should be(401)
+            migrateToDataStreamResponse should have statusCode 401
           }
         }
       }
@@ -755,7 +753,7 @@ class DataStreamApiSuite
                |  ]
                |}
                |""".stripMargin))
-          modifyResponse.responseCode should be(200)
+          modifyResponse should have statusCode 200
         }
       }
       "with data_streams rule should" - {
@@ -785,7 +783,7 @@ class DataStreamApiSuite
                  |  ]
                  |}
                  |""".stripMargin))
-            modifyResponse.responseCode should be(200)
+            modifyResponse should have statusCode 200
           }
           "wildcard data stream matching" excludeES(allEs6x, allEs7xBelowEs716x) in {
             val dataStream = DataStreamNameGenerator.next("test")
@@ -812,7 +810,7 @@ class DataStreamApiSuite
                  |  ]
                  |}
                  |""".stripMargin))
-            modifyResponse.responseCode should be(200)
+            modifyResponse should have statusCode 200
           }
         }
         "forbid to modify data streams when" - {
@@ -841,7 +839,7 @@ class DataStreamApiSuite
                  |  ]
                  |}
                  |""".stripMargin))
-            modifyResponse.responseCode should be(401)
+            modifyResponse should have statusCode 401
           }
           "one of the data streams does not match the allowed data stream names" excludeES(allEs6x, allEs7xBelowEs716x) in {
             val dataStream = DataStreamNameGenerator.next("test")
@@ -873,7 +871,7 @@ class DataStreamApiSuite
                  |  ]
                  |}
                  |""".stripMargin))
-            modifyResponse.responseCode should be(401)
+            modifyResponse should have statusCode 401
           }
         }
       }
@@ -904,7 +902,7 @@ class DataStreamApiSuite
                  |  ]
                  |}
                  |""".stripMargin))
-            modifyResponse.responseCode should be(200)
+            modifyResponse should have statusCode 200
           }
         }
         "forbid to modify data stream when" - {
@@ -933,7 +931,7 @@ class DataStreamApiSuite
                  |  ]
                  |}
                  |""".stripMargin))
-            modifyResponse.responseCode should be(401)
+            modifyResponse should have statusCode 401
           }
         }
       }
@@ -943,7 +941,7 @@ class DataStreamApiSuite
   private def createDataStream(dataStreamName: String, indexTemplateName: String): Unit = {
     adminTemplateManager.createTemplate(indexTemplateName, indexTemplate(dataStreamName)).force()
     val createDataStreamResponse = adminDataStreamManager.createDataStream(dataStreamName)
-    createDataStreamResponse.responseCode should be(200)
+    createDataStreamResponse should have statusCode 200
   }
 
   private def createDocsInDataStream(streamName: String, count: Int): Unit = {

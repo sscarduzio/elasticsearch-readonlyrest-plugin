@@ -16,19 +16,19 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class ClosedIndicesSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/closed_indices/readonlyrest.yml"
 
@@ -56,7 +56,7 @@ class ClosedIndicesSuite
       "direct index search is used" in {
         val response = dev1SearchManager.search("intentp1_a1")
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         val foundIndices = response.searchHits.map(_("_index").str)
         foundIndices should contain("intentp1_a1")
         foundIndices should not contain ("intentp1_a2")
@@ -64,7 +64,7 @@ class ClosedIndicesSuite
       "wildcard search is used" in {
         val response = dev1SearchManager.search("*")
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         val foundIndices = response.searchHits.map(_("_index").str)
         foundIndices should contain("intentp1_a1")
         foundIndices should not contain ("intentp1_a2")
@@ -72,7 +72,7 @@ class ClosedIndicesSuite
       "generic search all" in {
         val response = dev1SearchManager.search()
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         val foundIndices = response.searchHits.map(_("_index").str)
         foundIndices should contain("intentp1_a1")
         foundIndices should not contain ("intentp1_a2")
@@ -80,7 +80,7 @@ class ClosedIndicesSuite
       "get mappings is used" in {
         val response = dev1IndexManager.getMapping(indexName = "intentp1_*", field = "*")
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         response.body.contains("intentp1_a1") should be(true)
         response.body.contains("intentp1_a2") should be(false)
       }

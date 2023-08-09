@@ -18,7 +18,6 @@ package tech.beshu.ror.integration.suites
 
 import org.junit.Assert.assertEquals
 import org.scalatest.BeforeAndAfterEach
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
@@ -35,7 +34,6 @@ class QueryAuditLogSerializerSuite
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with BeforeAndAfterEach
-    with Matchers
     with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/query_audit_log_serializer/readonlyrest.yml"
@@ -56,7 +54,7 @@ class QueryAuditLogSerializerSuite
 
         val result = user1MetadataManager.fetchMetadata()
 
-        assertEquals(403, result.responseCode)
+        result should have statusCode 403
 
         val auditEntries = auditIndexManager.getEntries.jsons
         auditEntries.size shouldBe 1
@@ -71,7 +69,8 @@ class QueryAuditLogSerializerSuite
 
         val result = user1MetadataManager.fetchMetadata()
 
-        assertEquals(200, result.responseCode)
+        result should have statusCode 200
+
         result.responseJson.obj.size should be(4)
         result.responseJson("x-ror-username").str should be("user1-proxy-id")
         result.responseJson("x-ror-current-group").str should be("group1")
@@ -90,7 +89,7 @@ class QueryAuditLogSerializerSuite
       "rule 1 is matching" in {
         val indexManager = new IndexManager(basicAuthClient("user", "dev"), esVersionUsed)
         val response = indexManager.getIndex("twitter")
-        response.responseCode shouldBe 200
+        response should have statusCode 200
 
         val auditEntries = auditIndexManager.getEntries.jsons
         auditEntries.size shouldBe 1
@@ -104,7 +103,7 @@ class QueryAuditLogSerializerSuite
       "no rule is matching" in {
         val indexManager = new IndexManager(basicAuthClient("user", "wrong"), esVersionUsed)
         val response = indexManager.getIndex("twitter")
-        response.responseCode shouldBe 403
+        response should have statusCode 403
 
         val auditEntries = auditIndexManager.getEntries.jsons
         auditEntries.size shouldBe 1
@@ -118,10 +117,10 @@ class QueryAuditLogSerializerSuite
       "rule 2 is matching" in {
         val indexManager = new IndexManager(basicAuthClient("user", "dev"), esVersionUsed)
         val response = indexManager.getIndex("facebook")
-        response.responseCode shouldBe 200
+        response should have statusCode 200
 
         val auditEntriesResponse = auditIndexManager.getEntries
-        auditEntriesResponse.responseCode should be(404)
+        auditEntriesResponse should have statusCode 404
       }
     }
   }

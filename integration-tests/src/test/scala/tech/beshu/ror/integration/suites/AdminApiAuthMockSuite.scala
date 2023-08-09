@@ -19,7 +19,6 @@ package tech.beshu.ror.integration.suites
 import cats.data.NonEmptyList
 import eu.timepit.refined.auto._
 import org.scalatest.concurrent.Eventually
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import tech.beshu.ror.integration.suites.base.support.BaseManyEsClustersIntegrationTest
@@ -30,6 +29,7 @@ import tech.beshu.ror.utils.containers.dependencies.{ldap, wiremock}
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.{IndexManager, RorApiManager, SearchManager}
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 import ujson.Value.Value
 
@@ -44,7 +44,7 @@ class AdminApiAuthMockSuite
     with BeforeAndAfterEach
     with Eventually
     with OptionValues
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override lazy val clusterContainers = NonEmptyList.of(esCluster)
   override lazy val esTargets = NonEmptyList.fromListUnsafe(esCluster.nodes)
@@ -96,7 +96,8 @@ class AdminApiAuthMockSuite
       "get current mocks" in {
         rorClients.foreach { rorApiManager =>
           val response = rorApiManager.currentMockedServices()
-          (response.responseCode, response.responseJson) should be(200, testSettingsNotConfiguredJson)
+          response should have statusCode 200
+          response.responseJson should be (testSettingsNotConfiguredJson)
         }
       }
       "update mocks" in {
@@ -114,7 +115,8 @@ class AdminApiAuthMockSuite
 
         rorClients.foreach { rorApiManager =>
           val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(payloadServices))
-          (response.responseCode, response.responseJson) should be(200, testSettingsNotConfiguredJson)
+          response should have statusCode 200
+          response.responseJson should be (testSettingsNotConfiguredJson)
         }
       }
     }
@@ -127,7 +129,7 @@ class AdminApiAuthMockSuite
 
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.currentMockedServices()
-            response.responseCode should be(200)
+            response should have statusCode 200
             response.responseJson("status").str should be("TEST_SETTINGS_INVALIDATED")
             response.responseJson("message").str should be("ROR Test settings are invalidated. To use Auth Services Mock ROR has to have Test settings active.")
           }
@@ -143,7 +145,7 @@ class AdminApiAuthMockSuite
         eventually {
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.currentMockedServices()
-            response.responseCode should be(200)
+            response should have statusCode 200
             response.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
             response.responseJson("services") should be(ujson.read(
               s"""
@@ -351,7 +353,7 @@ class AdminApiAuthMockSuite
         eventually {
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.currentMockedServices()
-            response.responseCode should be(200)
+            response should have statusCode 200
             response.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
             response.responseJson("services") should be(payloadServices)
           }
@@ -551,14 +553,16 @@ class AdminApiAuthMockSuite
         eventually { // await until all nodes load config
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.currentMockedServices()
-            (response.responseCode, response.responseJson("status").str) should be(200, "TEST_SETTINGS_PRESENT")
+            response should have statusCode 200
+            response.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
             response.responseJson("services") should be(payloadServices)
           }
         }
 
         rorClients.foreach { rorApiManager =>
           val response = rorApiManager.currentRorTestConfig
-          (response.responseCode, response.responseJson("status").str) should be(200, "TEST_SETTINGS_PRESENT")
+          response should have statusCode 200
+          response.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
           response.responseJson("warnings") should be(ujson.read(
             s"""
                |[
@@ -682,7 +686,8 @@ class AdminApiAuthMockSuite
 
             rorClients.foreach { rorApiManager =>
               val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(payloadServices))
-              (response.responseCode, response.responseJson) should be(200, authMocksUpdatedJson)
+              response should have statusCode 200
+              response.responseJson should be(authMocksUpdatedJson)
             }
           }
           "only some services are passed" in {
@@ -717,7 +722,8 @@ class AdminApiAuthMockSuite
 
             rorClients.foreach { rorApiManager =>
               val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(payloadServices))
-              (response.responseCode, response.responseJson) should be(200, authMocksUpdatedJson)
+              response should have statusCode 200
+              response.responseJson should be(authMocksUpdatedJson)
             }
           }
           "any of services are passed" in {
@@ -725,7 +731,8 @@ class AdminApiAuthMockSuite
 
             rorClients.foreach { rorApiManager =>
               val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(ujson.read("[]")))
-              (response.responseCode, response.responseJson) should be(200, authMocksUpdatedJson)
+              response should have statusCode 200
+              response.responseJson should be(authMocksUpdatedJson)
             }
           }
         }
@@ -748,7 +755,8 @@ class AdminApiAuthMockSuite
 
         rorClients.foreach { rorApiManager =>
           val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(payloadServices))
-          (response.responseCode, response.responseJson) should be(200, ujson.read(
+          response should have statusCode 200
+          response.responseJson should be(ujson.read(
             s"""
                |{
                |  "status": "TEST_SETTINGS_INVALIDATED",
@@ -780,7 +788,8 @@ class AdminApiAuthMockSuite
 
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(payloadServices))
-            (response.responseCode, response.responseJson) should be(200, ujson.read(
+            response should have statusCode 200
+            response.responseJson should be(ujson.read(
               s"""
                  |{
                  |  "status": "UNKNOWN_AUTH_SERVICES_DETECTED",
@@ -808,7 +817,8 @@ class AdminApiAuthMockSuite
 
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(malformedPayload))
-            (response.responseCode, response.responseJson) should be(400, ujson.read(
+            response should have statusCode 400
+            response.responseJson should be(ujson.read(
               s"""
                  |{
                  |  "status": "FAILED",
@@ -823,7 +833,8 @@ class AdminApiAuthMockSuite
 
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.configureImpersonationMocks("{}")
-            (response.responseCode, response.responseJson) should be(400, ujson.read(
+            response should have statusCode 400
+            response.responseJson should be(ujson.read(
               s"""
                  |{
                  |  "status": "FAILED",
@@ -868,7 +879,8 @@ class AdminApiAuthMockSuite
 
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(malformedPayload))
-            (response.responseCode, response.responseJson) should be(400, expectedResponse)
+            response should have statusCode 400
+            response.responseJson should be(expectedResponse)
           }
         }
       }
@@ -889,7 +901,8 @@ class AdminApiAuthMockSuite
 
   private def assertTestSettings(rorApiManager: RorApiManager, expectedStatus: String) = {
     val response = rorApiManager.currentRorTestConfig
-    (response.responseCode, response.responseJson("status").str) should be(200, expectedStatus)
+    response should have statusCode 200
+    response.responseJson("status").str should be(expectedStatus)
   }
 
   private def updateMocksPayload(payloadServices: Value) = {
@@ -905,7 +918,8 @@ class AdminApiAuthMockSuite
 
   private def testEngineConfig(): String = esCluster.resolvedRorConfig(getResourceContent(rorConfigFileName))
 
-  override implicit val patienceConfig: PatienceConfig = PatienceConfig(timeout = testEngineReloadInterval.plus(2 second), interval = 1 second)
+  override implicit val patienceConfig: PatienceConfig =
+    PatienceConfig(timeout = testEngineReloadInterval.plus(2 second), interval = 1 second)
 
   override protected def beforeEach(): Unit = {
     rorClients.foreach {
@@ -932,7 +946,7 @@ class AdminApiAuthMockSuite
   private def assertAuthMocksInIndex(expectedMocks: Value) = {
     val adminSearchManager = new SearchManager(clients.head.basicAuthClient("admin", "container"))
     val indexSearchResponse = adminSearchManager.search(readonlyrestIndexName)
-    indexSearchResponse.responseCode should be(200)
+    indexSearchResponse should have statusCode 200
     val indexSearchHits = indexSearchResponse.responseJson("hits")("hits").arr.toList
     indexSearchHits.size should be >= 1 // at least main document or test document should be present
     val testSettingsDocumentHit = indexSearchHits.find { searchResult =>

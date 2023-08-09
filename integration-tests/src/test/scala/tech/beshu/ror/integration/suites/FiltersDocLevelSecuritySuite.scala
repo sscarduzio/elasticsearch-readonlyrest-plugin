@@ -17,13 +17,13 @@
 package tech.beshu.ror.integration.suites
 
 import monix.execution.atomic.AtomicInt
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 //TODO change test names. Current names are copies from old java integration tests
 class FiltersDocLevelSecuritySuite
@@ -31,7 +31,7 @@ class FiltersDocLevelSecuritySuite
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/filters/readonlyrest.yml"
 
@@ -44,7 +44,7 @@ class FiltersDocLevelSecuritySuite
     )
     val response = searchManager.search("testfiltera")
 
-    response.responseCode should be(200)
+    response should have statusCode 200
     response.body.contains("a1") shouldBe true
     response.body.contains("a2") shouldBe false
     response.body.contains("b1") shouldBe false
@@ -60,7 +60,7 @@ class FiltersDocLevelSecuritySuite
     )
     val response = searchManager.search("testfiltera")
 
-    response.responseCode should be(200)
+    response should have statusCode 200
     response.body.contains("a1") shouldBe true
     response.body.contains("a2") shouldBe false
     response.body.contains("b1") shouldBe false
@@ -76,7 +76,7 @@ class FiltersDocLevelSecuritySuite
     )
     val response = searchManager.search("testfiltera")
 
-    response.responseCode should be(200)
+    response should have statusCode 200
     response.body.contains("a1") shouldBe true
     response.body.contains("a2") shouldBe false
     response.body.contains("b1") shouldBe false
@@ -92,7 +92,7 @@ class FiltersDocLevelSecuritySuite
     )
     val response = searchManager.search("testfilterbandc")
 
-    response.responseCode should be(200)
+    response should have statusCode 200
     response.body.contains("a1") shouldBe false
     response.body.contains("a2") shouldBe false
     response.body.contains("b1") shouldBe true
@@ -108,7 +108,7 @@ class FiltersDocLevelSecuritySuite
     )
     val response = searchManager.search("testfilterd")
 
-    response.responseCode should be(200)
+    response should have statusCode 200
     response.body.contains("a1") shouldBe false
     response.body.contains("a2") shouldBe false
     response.body.contains("b1") shouldBe false
@@ -128,7 +128,7 @@ class FiltersDocLevelSecuritySuite
       Map("x-api-key" -> "a_nofilter")
     )
     val firstResponse = searchManager.search("testfiltera")
-    firstResponse.responseCode shouldBe 200
+    firstResponse should have statusCode 200
 
     val searchManager2 = new SearchManager(
       adminClient,
@@ -137,7 +137,7 @@ class FiltersDocLevelSecuritySuite
 
     val response = searchManager2.search("testfiltera")
 
-    response.responseCode should be(200)
+    response should have statusCode 200
     response.body.contains("a1") shouldBe true
     response.body.contains("a2") shouldBe false
     response.body.contains("b1") shouldBe false

@@ -25,7 +25,7 @@ class FieldRuleMSearchQueryDSLSuite
   override protected def assertNoSearchHitsReturnedFor(index: String, query: String) = {
     val result = searchManager.mSearch(s"""{"index":"$index"}""", query.replaceAll("\\n", ""))
 
-    result.responseCode shouldBe 200
+    result should have statusCode 200
     result.responses.size shouldBe 1
     result.searchHitsForResponse(0).isEmpty shouldBe true
   }

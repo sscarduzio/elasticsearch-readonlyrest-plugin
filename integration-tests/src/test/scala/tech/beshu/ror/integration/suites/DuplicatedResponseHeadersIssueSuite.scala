@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.DuplicatedResponseHeadersIssueSuite.SearchResult
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
@@ -25,6 +24,7 @@ import tech.beshu.ror.utils.containers.dependencies.wiremock
 import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, SearchManager}
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 //TODO change test names. Current names are copies from old java integration tests
 class DuplicatedResponseHeadersIssueSuite
@@ -32,7 +32,7 @@ class DuplicatedResponseHeadersIssueSuite
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/duplicated_response_headers_issue/readonlyrest.yml"
 
@@ -74,7 +74,7 @@ class DuplicatedResponseHeadersIssueSuite
 
   private def searchCall(searchManager: SearchManager) = {
     val result = searchManager.search("neg*")
-    result.responseCode shouldBe 200
+    result should have statusCode 200
     SearchResult(result.responseCode, result.headers)
   }
 }

@@ -22,13 +22,15 @@ import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTes
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction.{Add, Delete}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, IndexManager}
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class IndexAliasesManagementSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with BeforeAndAfterEach
-    with ESVersionSupportForAnyWordSpecLike {
+    with ESVersionSupportForAnyWordSpecLike
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/aliases/readonlyrest.yml"
 
@@ -47,9 +49,9 @@ class IndexAliasesManagementSuite
 
         val result = adminIndexManager.createAliasOf("index", "admin-alias")
 
-        result.responseCode should be(200)
+        result should have statusCode 200
         val allAliasesResponse = adminIndexManager.getAliases
-        allAliasesResponse.responseCode should be(200)
+        allAliasesResponse should have statusCode 200
         allAliasesResponse.aliasesOfIndices("index") should be(Set("admin-alias"))
       }
       "user has access to both: index pattern and alias name" when {
@@ -60,9 +62,9 @@ class IndexAliasesManagementSuite
 
           val result = dev1IndexManager.createAliasOf("dev1-000*", "dev1")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           val allAliasesResponse = adminIndexManager.getAliases
-          allAliasesResponse.responseCode should be(200)
+          allAliasesResponse should have statusCode 200
           allAliasesResponse.aliasesOfIndices("dev1-0001") should be(Set("dev1"))
         }
         "no index of the pattern exists" in {
@@ -72,7 +74,7 @@ class IndexAliasesManagementSuite
 
           val result = dev1IndexManager.createAliasOf("dev1-0000*", "dev1")
 
-          result.responseCode should be(404)
+          result should have statusCode 404
         }
       }
     }
@@ -84,7 +86,7 @@ class IndexAliasesManagementSuite
 
         val result = dev1IndexManager.createAliasOf("dev1-000*", "dev2")
 
-        result.responseCode should be(403)
+        result should have statusCode 403
       }
       "user has no access to alias name" in {
         adminDocumentManager.createFirstDoc("index", exampleDocument).force()
@@ -93,7 +95,7 @@ class IndexAliasesManagementSuite
 
         val result = dev1IndexManager.createAliasOf("dev2-000*", "dev1")
 
-        result.responseCode should be(403)
+        result should have statusCode 403
       }
     }
   }
@@ -108,9 +110,9 @@ class IndexAliasesManagementSuite
 
         val result = adminIndexManager.deleteAliasOf("index", "admin-alias")
 
-        result.responseCode should be(200)
+        result should have statusCode 200
         val allAliasesResponse = adminCatManager.aliases()
-        allAliasesResponse.responseCode should be(200)
+        allAliasesResponse should have statusCode 200
         allAliasesResponse.results.size should be(0)
       }
       "user has access to both: index pattern and alias name" when {
@@ -122,10 +124,10 @@ class IndexAliasesManagementSuite
 
           val result = dev1IndexManager.deleteAliasOf("dev1-000*", "dev1")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
 
           val allAliasesResponse = adminCatManager.aliases()
-          allAliasesResponse.responseCode should be(200)
+          allAliasesResponse should have statusCode 200
           allAliasesResponse.results.size should be(0)
         }
         "no index of the pattern exists" in {
@@ -135,7 +137,7 @@ class IndexAliasesManagementSuite
 
           val result = dev1IndexManager.deleteAliasOf("dev1-0000*", "dev1")
 
-          result.responseCode should be(404)
+          result should have statusCode 404
         }
         "no alias exists" in {
           adminDocumentManager.createFirstDoc("index", exampleDocument).force()
@@ -144,7 +146,7 @@ class IndexAliasesManagementSuite
 
           val result = dev1IndexManager.deleteAliasOf("dev1-0001", "dev1-000x")
 
-          result.responseCode should be(404)
+          result should have statusCode 404
         }
       }
     }
@@ -157,7 +159,7 @@ class IndexAliasesManagementSuite
 
         val result = dev1IndexManager.deleteAliasOf("dev1-000*", "dev2")
 
-        result.responseCode should be(403)
+        result should have statusCode 403
       }
       "user has no access to alias name" in {
         adminDocumentManager.createFirstDoc("index", exampleDocument).force()
@@ -167,7 +169,7 @@ class IndexAliasesManagementSuite
 
         val result = dev1IndexManager.deleteAliasOf("dev2-000*", "dev1")
 
-        result.responseCode should be(403)
+        result should have statusCode 403
       }
     }
   }
@@ -183,9 +185,9 @@ class IndexAliasesManagementSuite
           Add("dev3-0002", "dev3")
         )
 
-        result.responseCode should be(200)
+        result should have statusCode 200
         val allAliasesResponse = adminIndexManager.getAliases
-        allAliasesResponse.responseCode should be(200)
+        allAliasesResponse should have statusCode 200
         allAliasesResponse.aliasesOfIndices("dev3-0001") should be(Set("dev3"))
         allAliasesResponse.aliasesOfIndices("dev3-0002") should be(Set("dev3"))
       }
@@ -201,9 +203,9 @@ class IndexAliasesManagementSuite
           Add("dev2-0001", "dev3")
         )
 
-        result.responseCode should be(403)
+        result should have statusCode 403
         val allAliasesResponse = adminIndexManager.getAliases
-        allAliasesResponse.responseCode should be(200)
+        allAliasesResponse should have statusCode 200
         allAliasesResponse.aliasesOfIndices("dev3-0001") should be(Set("dev3"))
       }
       "user doesn't have access to at least one alias from actions" in {
@@ -216,9 +218,9 @@ class IndexAliasesManagementSuite
           Add("dev3-0002", "dev2")
         )
 
-        result.responseCode should be(403)
+        result should have statusCode 403
         val allAliasesResponse = adminIndexManager.getAliases
-        allAliasesResponse.responseCode should be(200)
+        allAliasesResponse should have statusCode 200
         allAliasesResponse.aliasesOfIndices("dev3-0001") should be(Set("dev3"))
       }
     }

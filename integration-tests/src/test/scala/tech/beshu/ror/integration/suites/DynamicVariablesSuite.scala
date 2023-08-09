@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
@@ -24,6 +23,7 @@ import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class DynamicVariablesSuite
   extends AnyWordSpec
@@ -31,7 +31,7 @@ class DynamicVariablesSuite
     with PluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/dynamic_vars/readonlyrest.yml"
 
@@ -70,7 +70,7 @@ class DynamicVariablesSuite
     "be allowed with username as suffix" in {
       val response = searchManager.search(".kibana_simone")
 
-      response.responseCode should be(200)
+      response should have statusCode 200
       response.searchHits.size should be(1)
       response.searchHits.head("_id").str should be("doc-asd")
     }

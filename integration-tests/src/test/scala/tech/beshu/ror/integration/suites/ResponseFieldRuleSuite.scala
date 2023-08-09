@@ -16,20 +16,20 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class ResponseFieldRuleSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/response_field_rules/readonlyrest.yml"
 
@@ -72,7 +72,7 @@ class ResponseFieldRuleSuite
       val result = searchManager.search(
         ujson.read("""{"query": {"terms":{"user_id": ["alice", "bob"]}}}""")
       )
-      result.responseCode should be(200)
+      result should have statusCode 401
       result.searchHits.size should be(1)
       result.searchHits(0)("_source")("user_id").str should be("alice")
     }

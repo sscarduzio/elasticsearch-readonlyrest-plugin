@@ -23,14 +23,15 @@ import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.retry
-import tech.beshu.ror.utils.misc.Version
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
 class FilterRuleSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
-    with SingleClientSupport {
+    with SingleClientSupport 
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/filter_rules/readonlyrest.yml"
 
@@ -44,7 +45,7 @@ class FilterRuleSuite
             val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
             val result = searchManager.search("test1_index", ujson.read("""{ "query": { "term": { "code": 1 }}}"""))
 
-            result.responseCode shouldBe 200
+            result should have statusCode 200
             result.searchHits.size shouldBe 1
 
             result.head shouldBe ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}""")
@@ -55,7 +56,7 @@ class FilterRuleSuite
             val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
             val result = searchManager.search("test1_index")
 
-            result.responseCode shouldBe 200
+            result should have statusCode 200
             result.searchHits.size shouldBe 2
             result.docIds should contain allOf("1", "2")
 
@@ -68,7 +69,7 @@ class FilterRuleSuite
             val searchManager = new SearchManager(basicAuthClient("user2", "pass"))
             val result = searchManager.search("test1_index")
 
-            result.responseCode shouldBe 200
+            result should have statusCode 200
             result.searchHits.size shouldBe 1
 
             result.head shouldBe ujson.read("""{"db_name":"db_user2", "code": 1, "status": "ok"}""")
@@ -79,7 +80,7 @@ class FilterRuleSuite
             val searchManager = new SearchManager(basicAuthClient("user3", "pass"))
             val result = searchManager.search("test1_index")
 
-            result.responseCode shouldBe 200
+            result should have statusCode 200
             result.searchHits.size shouldBe 1
 
             result.head shouldBe ujson.read("""{"db_name":"db_user3", "code": 2, "status": "wrong"}""")
@@ -94,7 +95,7 @@ class FilterRuleSuite
             """{"query" : {"match_all" : {}}}""")
           val result = searchManager.mSearchUnsafe(matchAllIndicesQuery: _*)
 
-          result.responseCode shouldBe 200
+          result should have statusCode 200
           result.responses.size shouldBe 1
           result.searchHitsForResponse(0).size shouldBe 2
         }
@@ -105,7 +106,7 @@ class FilterRuleSuite
             val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), esVersionUsed)
             val result = documentManager.get("test1_index", 1)
 
-            result.responseCode shouldBe 200
+            result should have statusCode 200
             result.responseJson("found").bool shouldBe true
             result.responseJson("_source") shouldBe ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}""")
           }
@@ -115,7 +116,7 @@ class FilterRuleSuite
             val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), esVersionUsed)
             val result = documentManager.get("test2_index", 1)
 
-            result.responseCode shouldBe 401
+            result should have statusCode 401
           }
         }
         "index is not found" in {
@@ -123,7 +124,7 @@ class FilterRuleSuite
             val documentManager = new DocumentManager(adminClient, esVersionUsed)
             val result = documentManager.get("test3_index", 1)
 
-            result.responseCode shouldBe 404
+            result should have statusCode 404
           }
         }
         "document is filtered and inaccessible" in {
@@ -131,7 +132,7 @@ class FilterRuleSuite
             val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), esVersionUsed)
             val result = documentManager.get("test1_index", 4)
 
-            result.responseCode shouldBe 404
+            result should have statusCode 404
             result.responseJson("found").bool shouldBe false
           }
         }
@@ -157,7 +158,7 @@ class FilterRuleSuite
               )
             )
 
-            result.responseCode shouldBe 200
+            result should have statusCode 200
 
             result.docs(0)("found").bool shouldBe true
             result.docs(0)("_id").str shouldBe "1"
@@ -188,7 +189,7 @@ class FilterRuleSuite
               )
             )
 
-            result.responseCode shouldBe 200
+            result should have statusCode 200
 
             result.docs(0)("found").bool shouldBe true
             result.docs(0)("_id").str shouldBe "1"
@@ -218,7 +219,7 @@ class FilterRuleSuite
               )
             )
 
-            result.responseCode shouldBe 200
+            result should have statusCode 200
 
             result.docs(0)("found").bool shouldBe false
             result.docs(0)("_id").str shouldBe "100"
@@ -247,7 +248,7 @@ class FilterRuleSuite
               )
             )
 
-            result.responseCode shouldBe 200
+            result should have statusCode 200
 
             result.docs(0)("found").bool shouldBe false
             result.docs(0)("_id").str shouldBe "3"
@@ -275,7 +276,7 @@ class FilterRuleSuite
                   |}""".stripMargin
               )
             )
-            result.responseCode shouldBe 200
+            result should have statusCode 200
 
             result.docs(0)("found").bool shouldBe false
             result.docs(0)("_id").str shouldBe "300"
@@ -291,13 +292,13 @@ class FilterRuleSuite
         val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), esVersionUsed)
         val result = documentManager.createDoc("test1_index", 5, ujson.read("""{"db_name":"db_user4", "code": 2}"""))
 
-        result.responseCode shouldBe 401
+        result should have statusCode 401
       }
       "search request has 'profile' option" in {
         val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
         val result = searchManager.search("test1_index", ujson.read("""{ "query": { "term": { "code": 1 }}, "profile": true}"""))
 
-        result.responseCode shouldBe 401
+        result should have statusCode 401
       }
       "search request has suggestions" in {
         val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
@@ -316,7 +317,7 @@ class FilterRuleSuite
         )
         val result = searchManager.search("test1_index", query)
 
-        result.responseCode shouldBe 401
+        result should have statusCode 401
       }
       "return error" when {
         "filter query is malformed" in {
@@ -324,9 +325,9 @@ class FilterRuleSuite
           val result = searchManager.search("test1_index", ujson.read("""{ "query": { "term": { "code": 1 }}}"""))
 
           if (Version.greaterOrEqualThan(esVersionUsed, 7, 6, 0)) {
-            result.responseCode shouldBe 400
+            result should have statusCode 400
           } else {
-            result.responseCode shouldBe 500
+            result should have statusCode 500
           }
         }
       }
