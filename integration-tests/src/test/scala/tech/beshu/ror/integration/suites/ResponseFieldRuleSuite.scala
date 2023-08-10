@@ -72,7 +72,7 @@ class ResponseFieldRuleSuite
       val result = searchManager.search(
         ujson.read("""{"query": {"terms":{"user_id": ["alice", "bob"]}}}""")
       )
-      result should have statusCode 401
+      result should have statusCode 200
       result.searchHits.size should be(1)
       result.searchHits(0)("_source")("user_id").str should be("alice")
     }

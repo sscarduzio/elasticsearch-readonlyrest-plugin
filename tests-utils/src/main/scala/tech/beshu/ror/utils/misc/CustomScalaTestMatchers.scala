@@ -92,10 +92,17 @@ trait CustomScalaTestMatchers extends Matchers {
     }
   }
 
+  def haveStatusCode(statusCode: Int) = new StatusCodeEquals(statusCode)
+
   class HaveStatusCode[T <: SimpleResponse](val haveWord: ResultOfHaveWordForExtent[T])
     extends CustomScalaTestMatchers {
+    import org.joor.Reflect._
 
-    def statusCode(statusCode: Int) = new StatusCodeEquals(statusCode)
+    def statusCode(statusCode: Int): Assertion = {
+      val response = on(haveWord).get[T]("left")
+
+      response should haveStatusCode(statusCode)
+    }
   }
 
   implicit def toHaveWordStatusCode[T <: SimpleResponse](haveWord: ResultOfHaveWordForExtent[T]): HaveStatusCode[T] = {
