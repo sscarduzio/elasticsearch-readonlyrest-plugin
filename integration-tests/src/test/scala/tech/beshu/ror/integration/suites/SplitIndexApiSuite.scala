@@ -94,7 +94,7 @@ object SplitIndexApiSuite {
            |{
            |  "settings": {
            |    "index": {
-           |      "number_of_shards": 2
+           |      "number_of_shards": 1
            |    }
            |  }
            |}
