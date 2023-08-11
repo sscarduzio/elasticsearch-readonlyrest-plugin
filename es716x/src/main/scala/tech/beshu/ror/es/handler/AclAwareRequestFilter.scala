@@ -74,6 +74,7 @@ import tech.beshu.ror.es.handler.request.ActionRequestOps._
 import tech.beshu.ror.es.handler.request.RestRequestOps._
 import tech.beshu.ror.es.handler.request.context.types._
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import java.time.Instant
 import scala.reflect.ClassTag
@@ -84,6 +85,17 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
                            (implicit generator: UniqueIdentifierGenerator,
                             scheduler: Scheduler)
   extends Logging {
+
+  doPrivileged {
+    logger.error("ENGINES:")
+    import scala.jdk.CollectionConverters._
+    new javax.script.ScriptEngineManager(this.getClass.getClassLoader)
+      .getEngineFactories
+      .asScala
+      .foreach { e =>
+        logger.error(s"* ${e.getEngineName} ${e.getEngineVersion} ${e.getLanguageName}")
+      }
+  }
 
   def handle(engines: Engines,
              esContext: EsContext): Task[Either[Error, Unit]] = {
