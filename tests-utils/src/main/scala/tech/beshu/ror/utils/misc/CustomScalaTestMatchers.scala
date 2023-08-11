@@ -86,8 +86,8 @@ trait CustomScalaTestMatchers extends Matchers {
     override def apply(response: SimpleResponse): MatchResult = {
       MatchResult(
         response.responseCode == statusCode,
-        s"Expected status code was [$statusCode], but the response has [$statusCode]; Moreover, body of the response was:\n${response.body}",
-        s"Expected status code was [$statusCode] equals the response status code: [$statusCode]; Moreover, body of the response was:\n${response.body}"
+        s"Expected status code was [$statusCode], but the response has [${response.responseCode}]; Moreover, body of the response was:\n${response.body}",
+        s"Expected status code was [$statusCode] equals the response status code: [${response.responseCode}]; Moreover, body of the response was:\n${response.body}"
       )
     }
   }

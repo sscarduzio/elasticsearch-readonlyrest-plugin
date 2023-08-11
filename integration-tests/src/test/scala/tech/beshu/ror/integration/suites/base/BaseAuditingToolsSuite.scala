@@ -247,7 +247,7 @@ trait BaseAuditingToolsSuite
         val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
         val response = rorApiManager.sendAuditEvent(ujson.read("""[]"""))
-        response should have statusCode 404
+        response should have statusCode 400
         response.responseJson should be(ujson.read(
           """
             |{
