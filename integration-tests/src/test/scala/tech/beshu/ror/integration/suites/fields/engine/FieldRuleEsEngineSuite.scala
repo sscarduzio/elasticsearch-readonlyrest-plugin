@@ -26,6 +26,6 @@ class FieldRuleEsEngineSuite
   override implicit val rorConfigFileName = "/field_level_security_engine/readonlyrest_fls_engine_es.yml"
 
   override protected def unmodifiableQueryAssertion(result: SearchManager.SearchResult): Unit = {
-    result.responseCode shouldBe 401
+    result should have statusCode 401
   }
 }

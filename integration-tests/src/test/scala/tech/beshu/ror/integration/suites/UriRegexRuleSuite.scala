@@ -16,19 +16,18 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.junit.Assert.assertEquals
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.CatManager
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class UriRegexRuleSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/uri_regex_rules/readonlyrest.yml"
 
@@ -65,6 +64,6 @@ class UriRegexRuleSuite
   private def assertHealthCheckStatus(status: Int, name: String): Unit = {
     val manager = new CatManager(basicAuthClient(name, "pass"), esVersion = esVersionUsed)
     val result = manager.healthCheck()
-    assertEquals(status, result.responseCode)
+    result should have statusCode status
   }
 }

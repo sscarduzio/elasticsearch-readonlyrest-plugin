@@ -22,10 +22,12 @@ import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.SearchManager
 import tech.beshu.ror.utils.elasticsearch.SearchManager.MSearchResult
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class FieldRuleMSearchApiSourceFilteringSuite
   extends FieldRuleSourceFilteringSuite
-    with SingletonPluginTestSupport {
+    with SingletonPluginTestSupport
+    with CustomScalaTestMatchers {
 
   override protected type CALL_RESULT = MSearchResult
 
@@ -56,7 +58,7 @@ class FieldRuleMSearchApiSourceFilteringSuite
 
     val result = searchManager.mSearch("""{"index":"testfiltera"}""", query)
 
-    result.responseCode shouldBe 200
+    result should have statusCode 200
     result.responses.size shouldBe 1
     sourceOfFirstDoc(result) shouldBe Some(ujson.read(
       """|{

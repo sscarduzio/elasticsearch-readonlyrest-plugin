@@ -23,12 +23,14 @@ import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class MiscSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
-    with ESVersionSupportForAnyWordSpecLike {
+    with ESVersionSupportForAnyWordSpecLike 
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/misc/readonlyrest.yml"
 
@@ -45,7 +47,7 @@ class MiscSuite
       )
       val response = userClusterStateManager.healthCheck()
 
-      response.responseCode should be(401)
+      response should have statusCode 401
     }
     "allow the request when it doesn't contain x-forwarded-for header" in {
       val userClusterStateManager = new CatManager(
@@ -54,7 +56,7 @@ class MiscSuite
       )
       val response = userClusterStateManager.main()
 
-      response.responseCode should be(200)
+      response should have statusCode 200
     }
   }
   "Warning response header" should {
@@ -68,7 +70,7 @@ class MiscSuite
           "timeout" -> "30s",
         ))
 
-      indexResponse.responseCode should be(200)
+      indexResponse should have statusCode 200
       val warningHeader = indexResponse.headers.collectFirst { case SimpleHeader("Warning", value) => value }.get
       warningHeader should include("[types removal] Using include_type_name in create index requests is deprecated. The parameter will be removed in the next major version.")
     }
@@ -81,7 +83,7 @@ class MiscSuite
       ujson.read("""{"query": {"terms":{"user_id": ["alice", "bob"]}}}""")
     )
 
-    result.responseCode should be(200)
+    result should have statusCode 200
     result.searchHits.size should be(1)
     result.searchHits(0)("_source")("user_id").str should be("alice")
   }
@@ -89,7 +91,7 @@ class MiscSuite
     "be protected" in {
       val unknownUserCatManager = new CatManager(basicAuthClient("unknown", "unknown"), esVersion = esVersionUsed)
       val response = unknownUserCatManager.main()
-      response.responseCode should be(401)
+      response should have statusCode 401
     }
   }
 }

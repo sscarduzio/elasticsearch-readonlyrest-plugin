@@ -25,12 +25,13 @@ import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClus
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.Version
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
 trait FieldRuleSourceFilteringSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
-    with ESVersionSupportForAnyWordSpecLike {
+    with ESVersionSupportForAnyWordSpecLike 
+    with CustomScalaTestMatchers {
   this: EsClusterProvider =>
 
   protected type CALL_RESULT <: JsonResponse
@@ -54,7 +55,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = None
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
         source shouldBe Some(ujson.read("""{"user1":"user1Value"}"""))
@@ -66,7 +67,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = Some(DoNotFetchSource)
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
         source shouldBe None
@@ -78,7 +79,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = Some(Include("user2"))
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
         source shouldBe Some(ujson.read("""{}"""))
@@ -90,7 +91,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = Some(Exclude("user1"))
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
         source shouldBe Some(ujson.read("""{}"""))
@@ -102,7 +103,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = None
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
         source shouldBe Some(ujson.read("""{"user2":"user2Value"}"""))
@@ -114,7 +115,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = None
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
         source shouldBe Some(ujson.read("""{"~user":"~userValue"}"""))
@@ -126,7 +127,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = None
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
         source shouldBe Some(ujson.read("""{"user3":"user3Value"}"""))
@@ -138,7 +139,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = Some(Include("us*3"))
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
         source shouldBe Some(ujson.read("""{}"""))
@@ -151,7 +152,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = None
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
         source shouldBe Some(ujson.read(
@@ -173,7 +174,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = None
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
         source shouldBe Some(ujson.read(
@@ -195,7 +196,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = Some(Include("user5"))
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
 
@@ -208,7 +209,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = Some(Exclude("*"))
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
         source shouldBe Some(ujson.read("""{}"""))
@@ -220,7 +221,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = None
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
         source shouldBe Some(ujson.read(
@@ -244,7 +245,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = None
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
         source shouldBe Some(ujson.read(
@@ -274,7 +275,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = Some(Include("secrets.key"))
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
         source shouldBe Some(ujson.read(
@@ -295,7 +296,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = None
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
         source shouldBe Some(ujson.read(
@@ -325,7 +326,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = None
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
         source shouldBe Some(ujson.read(
@@ -347,7 +348,7 @@ trait FieldRuleSourceFilteringSuite
           clientSourceParams = None
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
 
         val source = sourceOfFirstDoc(result)
         //since ES 7.9.0 empty json array is included even when all its items are blacklisted

@@ -17,7 +17,6 @@
 package tech.beshu.ror.integration.suites.base
 
 import monix.execution.atomic.Atomic
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite.NextRollupJobName
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
@@ -25,6 +24,7 @@ import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, Plu
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, SecurityType}
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import ujson.{Null, Num, Str}
 
 trait BaseXpackApiSuite
@@ -33,7 +33,7 @@ trait BaseXpackApiSuite
     with PluginTestSupport
     with SingleClientSupport
     with ESVersionSupportForAnyWordSpecLike
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override lazy val targetEs = container.nodes.head
 
@@ -65,7 +65,7 @@ trait BaseXpackApiSuite
     "be allowed for dev1 and test1_index_a" excludeES(allEs6x, allEs7xBelowEs77x) in {
       val result = dev1SearchManager.asyncSearch("test1_index_a")
 
-      result.responseCode should be(200)
+      result should have statusCode 200
       result.searchHits.map(i => i("_index").str).toSet should be(
         Set("test1_index_a")
       )
@@ -73,12 +73,12 @@ trait BaseXpackApiSuite
     "not be allowed for dev2 and test1_index_a" excludeES(allEs6x, allEs7xBelowEs77x) in {
       val result = dev2SearchManager.asyncSearch("test1_index_a")
 
-      result.responseCode should be(404)
+      result should have statusCode 404
     }
     "support filter and fields rule" excludeES(allEs6x, allEs7xBelowEs77x) in {
       val result = dev2SearchManager.asyncSearch("test2_index")
 
-      result.responseCode should be(200)
+      result should have statusCode 200
       result.searchHits.map(i => i("_index").str).toSet should be(
         Set("test2_index")
       )
@@ -89,7 +89,7 @@ trait BaseXpackApiSuite
     "not be called for closed indices" excludeES(allEs6x, allEs7xBelowEs77x) in {
       val result = dev3SearchManager.asyncSearch("test3*")
 
-      result.responseCode should be(200)
+      result should have statusCode 200
       result.searchHits.map(i => i("_index").str).toSet should be(
         Set("test3_index_a", "test3_index_b")
       )
@@ -113,7 +113,7 @@ trait BaseXpackApiSuite
           )
         )
 
-        result.responseCode shouldEqual 200
+        result should have statusCode 200
         result.searchHits.map(_("_index").str).distinct should be(List("test1_index_a"))
         result.searchHits.map(_("_source")) should be(List(ujson.read("""{"hello":"world"}""")))
       }
@@ -132,7 +132,7 @@ trait BaseXpackApiSuite
           )
         )
 
-        result.responseCode shouldEqual 200
+        result should have statusCode 200
         result.searchHits.map(_("_index").str).distinct should be(List.empty)
         result.searchHits.map(_("_source")) should be(List.empty)
       }
@@ -165,7 +165,7 @@ trait BaseXpackApiSuite
           )
         )
 
-        result.responseCode shouldEqual 200
+        result should have statusCode 200
         result.searchHits.map(_("_index").str).distinct should be(List("test7_index"))
         result.searchHits.map(_("_source")) should be(List(ujson.read("""{"content":{ "app": "a1" }}""")))
       }
@@ -186,7 +186,7 @@ trait BaseXpackApiSuite
           )
         )
 
-        result.responseCode shouldEqual 200
+        result should have statusCode 200
         result.responseJson("responses").arr.size should be(1)
         val firstQueryResponse = result.responseJson("responses")(0)
         firstQueryResponse("hits")("hits").arr.map(_("_index").str).distinct should be(List("test1_index_a"))
@@ -207,7 +207,7 @@ trait BaseXpackApiSuite
           )
         )
 
-        result.responseCode shouldEqual 200
+        result should have statusCode 200
         result.responseJson("responses").arr.size should be(1)
         val firstQueryResponse = result.responseJson("responses")(0)
         firstQueryResponse("hits")("hits").arr.map(_("_index").str).distinct should be(List.empty)
@@ -242,7 +242,7 @@ trait BaseXpackApiSuite
           )
         )
 
-        result.responseCode shouldEqual 200
+        result should have statusCode 200
         result.responseJson("responses").arr.size should be(1)
         val firstQueryResponse = result.responseJson("responses")(0)
         firstQueryResponse("hits")("hits").arr.map(_("_index").str).distinct should be(List("test7_index"))
@@ -264,7 +264,7 @@ trait BaseXpackApiSuite
           """.stripMargin
         )
 
-        result.responseCode shouldEqual 200
+        result should have statusCode 200
         result.body should be("""{"template_output":{"query":{"match":{"hello":"world"}}}}""")
       }
     }
@@ -277,18 +277,18 @@ trait BaseXpackApiSuite
           val jobName = NextRollupJobName.get
           val result = adminXpackApiManager.rollup(jobName, "test3*", "admin_t3")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           val rollupJobsResult = adminXpackApiManager.getRollupJobs(jobName)
-          rollupJobsResult.responseCode should be(200)
+          rollupJobsResult should have statusCode 200
           rollupJobsResult.jobs.size should be(1)
         }
         "user has access to both: index pattern and rollup_index" excludeES (allEs6xBelowEs63x) in {
           val jobName = NextRollupJobName.get
           val result = dev3XpackApiManager.rollup(jobName, "test3*", s"rollup_test3_$jobName")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           val rollupJobsResult = adminXpackApiManager.getRollupJobs(jobName)
-          rollupJobsResult.responseCode should be(200)
+          rollupJobsResult should have statusCode 200
           rollupJobsResult.jobs.size should be(1)
         }
       }
@@ -296,17 +296,17 @@ trait BaseXpackApiSuite
         "user has no access to rollup_index" excludeES (allEs6xBelowEs63x) in {
           val result = dev3XpackApiManager.rollup(NextRollupJobName.get, "test3*", "rollup_index")
 
-          result.responseCode should be(403)
+          result should have statusCode 403
         }
         "user has no access to passed index" excludeES (allEs6xBelowEs63x) in {
           val result = dev3XpackApiManager.rollup(NextRollupJobName.get, "test1_index", "rollup_index")
 
-          result.responseCode should be(403)
+          result should have statusCode 403
         }
         "user has no access to given index pattern" excludeES (allEs6xBelowEs63x) in {
           val result = dev3XpackApiManager.rollup(NextRollupJobName.get, "test*", "rollup_index")
 
-          result.responseCode should be(403)
+          result should have statusCode 403
         }
       }
     }
@@ -318,7 +318,7 @@ trait BaseXpackApiSuite
 
           val result = adminXpackApiManager.getRollupJobCapabilities("test4*")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
           jobs.map(_("job_id").str) should contain(jobName)
         }
@@ -330,7 +330,7 @@ trait BaseXpackApiSuite
 
           val result = dev4XpackApiManager.getRollupJobCapabilities("test4_index_a")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
           jobs.map(_("job_id").str) should contain(jobName1)
           jobs.foreach { job =>
@@ -348,7 +348,7 @@ trait BaseXpackApiSuite
 
           val result = dev4XpackApiManager.getRollupJobCapabilities("test4*")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
           jobs should have size 1
           jobs.map(_("job_id").str) should contain(jobName2)
@@ -367,7 +367,7 @@ trait BaseXpackApiSuite
 
           val result = dev4XpackApiManager.getRollupJobCapabilities("test4*")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
           jobs should have size 2
           jobs.map(_("job_id").str) should contain(jobName2)
@@ -384,7 +384,7 @@ trait BaseXpackApiSuite
 
           val result = dev4XpackApiManager.getRollupJobCapabilities("test3_index_a")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
           jobs.size should be(0)
         }
@@ -394,7 +394,7 @@ trait BaseXpackApiSuite
 
           val result = dev4XpackApiManager.getRollupJobCapabilities("test3*")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
           jobs.size should be(0)
         }
@@ -408,7 +408,7 @@ trait BaseXpackApiSuite
 
           val result = adminXpackApiManager.getRollupIndexCapabilities("admin_t5")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
           jobs.map(_("job_id").str) should contain(jobName)
         }
@@ -420,7 +420,7 @@ trait BaseXpackApiSuite
 
           val result = dev5XpackApiManager.getRollupIndexCapabilities(s"rollup_test5_$jobName1")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
           jobs.map(_("job_id").str) should contain(jobName1)
           jobs.foreach { job =>
@@ -436,7 +436,7 @@ trait BaseXpackApiSuite
 
           val result = dev5XpackApiManager.getRollupIndexCapabilities("rollup_test5*")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
           jobs.map(_("job_id").str) should contain(jobName1)
           jobs.foreach { job =>
@@ -452,7 +452,7 @@ trait BaseXpackApiSuite
 
           val result = dev5XpackApiManager.getRollupIndexCapabilities("rollup_test*")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
           jobs.map(_("job_id").str) should contain(jobName1)
           jobs.foreach { job =>
@@ -468,7 +468,7 @@ trait BaseXpackApiSuite
 
           val result = dev5XpackApiManager.getRollupIndexCapabilities("rollup_test3*")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
           jobs.size should be(0)
         }
@@ -480,7 +480,7 @@ trait BaseXpackApiSuite
 
           val result = dev5XpackApiManager.getRollupIndexCapabilities(s"rollup_test3_$jobName")
 
-          result.responseCode should be(404)
+          result should have statusCode 404
         }
       }
     }
@@ -495,7 +495,7 @@ trait BaseXpackApiSuite
 
           val result = dev6XpackApiManager.rollupSearch(rollupIndex6a)
 
-          result.responseCode should be(200)
+          result should have statusCode 200
         }
       }
       "return 404" when {
@@ -506,7 +506,7 @@ trait BaseXpackApiSuite
 
           val result = dev6XpackApiManager.rollupSearch(rollupIndex)
 
-          result.responseCode should be(404)
+          result should have statusCode 404
         }
       }
     }
@@ -629,7 +629,7 @@ trait BaseXpackApiSuite
           "not-existent index name is used" excludeES (allEs6xBelowEs65x) in {
             val result = adminSqlManager.execute("""SELECT * FROM unknown""")
             result.isSuccess should be(false)
-            result.responseCode should be(400)
+            result should have statusCode 400
           }
         }
       }

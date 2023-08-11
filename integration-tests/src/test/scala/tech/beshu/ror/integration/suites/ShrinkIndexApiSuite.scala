@@ -16,20 +16,20 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class ShrinkIndexApiSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/shrink_api/readonlyrest.yml"
 
@@ -44,12 +44,12 @@ class ShrinkIndexApiSuite
         "wildcard is used" in {
           val result = user2IndexManager.shrink(sourceIndex = "test2_index", targetIndex = "test2_index_resized")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
         }
         "alias is used" in {
           val result = user1IndexManager.shrink(sourceIndex = "test1_index", targetIndex = "test1_index_resized", aliases = "test1_index_allowed_alias" :: Nil)
 
-          result.responseCode should be(200)
+          result should have statusCode 200
         }
       }
     }
@@ -57,32 +57,32 @@ class ShrinkIndexApiSuite
       "user has permission to source index and dest index but no permission to alias" in {
         val result = user1IndexManager.shrink(sourceIndex = "test1_index", targetIndex = "test1_index_resized", aliases = "test1_index_not_allowed_alias" :: Nil)
 
-        result.responseCode should be(401)
+        result should have statusCode 401
       }
       "user has permission to source index and dest index but no permission to one alias" in {
         val result = user1IndexManager.shrink(sourceIndex = "test1_index", targetIndex = "test1_index_resized", aliases = "test1_index_not_allowed_alias" :: "test1_index_allowed_alias" :: Nil)
 
-        result.responseCode should be(401)
+        result should have statusCode 401
       }
       "user has no permission to source index and dest index which are present on ES" in {
         val result = user1IndexManager.shrink(sourceIndex = "test2_index", targetIndex = "test2_index_resized")
 
-        result.responseCode should be(401)
+        result should have statusCode 401
       }
       "user has no permission to source index and dest index which are absent on ES" in {
         val result = user1IndexManager.shrink(sourceIndex = "not_allowed_index", targetIndex = "not_allowed_index_resized")
 
-        result.responseCode should be(401)
+        result should have statusCode 401
       }
       "user has permission to source index but no permission to dest index" in {
         val result = user1IndexManager.shrink(sourceIndex = "test1_index", targetIndex = "not_allowed_index_resized")
 
-        result.responseCode should be(401)
+        result should have statusCode 401
       }
       "user has permission to dest index and but no permission to source index" in {
         val result = user1IndexManager.shrink(sourceIndex = "not_allowed_index", targetIndex = "test1_index_resized")
 
-        result.responseCode should be(401)
+        result should have statusCode 401
       }
     }
   }

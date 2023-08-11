@@ -17,7 +17,6 @@
 package tech.beshu.ror.integration.suites
 
 import org.scalatest.concurrent.{Eventually, IntegrationPatience}
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
@@ -25,6 +24,7 @@ import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 import java.time.Instant
 
@@ -35,7 +35,7 @@ class SearchApiSuite
     with ESVersionSupportForAnyWordSpecLike
     with Eventually
     with IntegrationPatience
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/search_api/readonlyrest.yml"
 
@@ -54,28 +54,28 @@ class SearchApiSuite
       "data stream is being searched by full name" excludeES (allEs7xBelowEs77x) in {
         val result = user1SearchManager.search("logs-0001")
 
-        result.responseCode should be(200)
+        result should have statusCode 200
         result.searchHits.map(_("_index").str).sorted.distinct should be(List("logs-0001"))
         result.searchHits.map(_("_id").str).sorted should be(List("1", "2"))
       }
       "data stream is being searched by name with wildcard" excludeES (allEs7xBelowEs77x) in {
         val result = user1SearchManager.search("logs-*2")
 
-        result.responseCode should be(200)
+        result should have statusCode 200
         result.searchHits.map(_("_index").str).sorted.distinct should be(List("logs-0002"))
         result.searchHits.map(_("_id").str).sorted should be(List("1"))
       }
       "data stream is being searched by full alias name" excludeES (allEs7xBelowEs77x) in {
         val result = user1SearchManager.search("all-logs")
 
-        result.responseCode should be(200)
+        result should have statusCode 200
         result.searchHits.map(_("_index").str).sorted.distinct should be(List("logs-0001", "logs-0002"))
         result.searchHits.map(_("_id").str).sorted should be(List("1", "1", "2"))
       }
       "data stream is being searched by alias name with wildcard" excludeES (allEs7xBelowEs77x) in {
         val result = user1SearchManager.search("all-*")
 
-        result.responseCode should be(200)
+        result should have statusCode 200
         result.searchHits.map(_("_index").str).sorted.distinct should be(List("logs-0001", "logs-0002"))
         result.searchHits.map(_("_id").str).sorted should be(List("1", "1", "2"))
       }
@@ -87,79 +87,79 @@ class SearchApiSuite
       "it's a direct index query" in eventually {
         val response = unrestrictedDevSearchManager.search("my_data")
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         response.searchHits.size should be(2)
       }
       "it's an alias query" in {
         val response = unrestrictedDevSearchManager.search("public_data")
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         response.searchHits.size should be(1)
       }
       "it's an alias as wildcard" in {
         val response = unrestrictedDevSearchManager.search("pub*")
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         response.searchHits.size should be(1)
       }
       // Tests with indices rule restricting to "pub*"
       "it's a restricted pure index" in {
         val response = restrictedDevSearchManager.search("my_data")
 
-        response.responseCode should be(404)
+        response should have statusCode 404
       }
       "it's a restricted alias" in {
         val response = restrictedDevSearchManager.search("public_data")
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         response.searchHits.size should be(1)
       }
       "it's a restricted alias as wildcard" in {
         val response = restrictedDevSearchManager.search("public*")
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         response.searchHits.size should be(1)
       }
       "it's a restricted alias as half wildcard" in {
         val response = restrictedDevSearchManager.search("pu*")
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         response.searchHits.size should be(1)
       }
       // real cases from github
       "it's an index that can be accessed by admin using name or alias" in {
         val firstResponse = adminIndexManager.getIndex("blabla")
 
-        firstResponse.responseCode should be(200)
+        firstResponse should have statusCode 200
         firstResponse.indicesAndAliases.size should be(1)
 
         val secondResponse = adminIndexManager.getIndex("perfmon_my_test_alias")
 
-        secondResponse.responseCode should be(200)
+        secondResponse should have statusCode 200
         secondResponse.indicesAndAliases.size should be(1)
       }
       "it's an index that can be accessed by admin using name or alias with wildcard" in {
         val firstResponse = adminIndexManager.getIndex("bla*")
 
-        firstResponse.responseCode should be(200)
+        firstResponse should have statusCode 200
         firstResponse.indicesAndAliases.size should be(1)
 
         val secondResponse = adminIndexManager.getIndex("perf*mon_my_test*")
 
-        secondResponse.responseCode should be(200)
+        secondResponse should have statusCode 200
         secondResponse.indicesAndAliases.size should be(1)
       }
       "it's an index that can be accessed by user 'perfmon' using name or alias" in {
         val firstResponse = perfmonIndexManager.getIndex("blabla")
 
-        firstResponse.responseCode should be(200)
+        firstResponse should have statusCode 200
         firstResponse.indicesAndAliases should be(Map(
           "blabla" -> Set.empty
         ))
 
         val secondResponse = perfmonIndexManager.getIndex("perfmon_my_test_alias")
 
-        secondResponse.responseCode should be(200)
+        secondResponse should have statusCode 200
         secondResponse.indicesAndAliases should be(Map(
           "blabla" -> Set("perfmon_my_test_alias")
         ))
@@ -167,14 +167,14 @@ class SearchApiSuite
       "it's an index that can be accessed by user 'perfmon' using name or alias with wildcard" in {
         val firstResponse = perfmonIndexManager.getIndex("bla*")
 
-        firstResponse.responseCode should be(200)
+        firstResponse should have statusCode 200
         firstResponse.indicesAndAliases should be(Map(
           "blabla" -> Set.empty
         ))
 
         val secondResponse = perfmonIndexManager.getIndex("perf*mon_my_test*")
 
-        secondResponse.responseCode should be(200)
+        secondResponse should have statusCode 200
         secondResponse.indicesAndAliases should be(Map(
           "blabla" -> Set("perfmon_my_test_alias")
         ))
@@ -182,18 +182,18 @@ class SearchApiSuite
       "it's a 'VIET_MYAN' user who should be able to access 'Vietnam' index" in {
         val response = vietMyanSearchManager.search("vuln-ass-all-vietnam")
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         response.searchHits.size should be(1)
       }
       "it's a 'VIET_MYAN' user who should not be able to access 'Congo' index" in {
         val response = vietMyanSearchManager.search("vuln-ass-all-congo")
 
-        response.responseCode should be(404)
+        response should have statusCode 404
       }
       "it's a 'VIET_MYAN' user who should be able to see allowed indices using alias" in {
         val response = vietMyanSearchManager.search("all-subs-data")
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         response.searchHits.size should be(2)
       }
     }

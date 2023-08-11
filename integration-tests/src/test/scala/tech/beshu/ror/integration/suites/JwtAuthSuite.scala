@@ -21,6 +21,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.CatManager
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.JwtUtils._
 
 //TODO change test names. Current names are copies from old java integration tests
@@ -28,7 +29,8 @@ class JwtAuthSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
-    with ESVersionSupportForAnyWordSpecLike {
+    with ESVersionSupportForAnyWordSpecLike
+    with CustomScalaTestMatchers {
 
   private val algo = SignatureAlgorithm.valueOf("HS256")
   private val validKey = "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
@@ -41,7 +43,7 @@ class JwtAuthSuite
     val clusterStateManager = new CatManager(noBasicAuthClient, esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
-    response.responseCode should be(401)
+    response should have statusCode 401
   }
 
   "rejectTokenWithWrongKey" in {
@@ -54,7 +56,7 @@ class JwtAuthSuite
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
-    response.responseCode should be(401)
+    response should have statusCode 401
   }
 
   "rejectTokenWithoutUserClaim" in {
@@ -65,7 +67,7 @@ class JwtAuthSuite
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
-    response.responseCode should be(401)
+    response should have statusCode 401
   }
 
   "acceptValidTokenWithUserClaim" in {
@@ -78,7 +80,7 @@ class JwtAuthSuite
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
-    response.responseCode should be(200)
+    response should have statusCode 200
   }
 
   "acceptValidTokenWithUserClaimAndCustomHeader" in {
@@ -91,7 +93,7 @@ class JwtAuthSuite
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
-    response.responseCode should be(200)
+    response should have statusCode 200
   }
 
   "acceptValidTokenWithUserClaimAndCustomHeaderAndCustomHeaderPrefix" in {
@@ -104,7 +106,7 @@ class JwtAuthSuite
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
-    response.responseCode should be(200)
+    response should have statusCode 200
   }
 
   "rejectTokenWithUserClaimAndCustomHeader" in {
@@ -117,7 +119,7 @@ class JwtAuthSuite
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
-    response.responseCode should be(401)
+    response should have statusCode 401
   }
 
   "rejectExpiredToken" in {
@@ -131,7 +133,7 @@ class JwtAuthSuite
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
-    response.responseCode should be(401)
+    response should have statusCode 401
   }
 
   "rejectTokenWithoutRolesClaim" in {
@@ -142,7 +144,7 @@ class JwtAuthSuite
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
-    response.responseCode should be(401)
+    response should have statusCode 401
   }
 
   "rejectTokenWithWrongRolesClaim" in {
@@ -155,7 +157,7 @@ class JwtAuthSuite
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
-    response.responseCode should be(401)
+    response should have statusCode 401
   }
 
   "acceptValidTokenWithRolesClaim" in {
@@ -169,7 +171,7 @@ class JwtAuthSuite
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
-    response.responseCode should be(200)
+    response should have statusCode 200
   }
 
 }

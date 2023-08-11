@@ -18,7 +18,6 @@ package tech.beshu.ror.integration.suites.base
 
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.Eventually
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.SingleClientSupport
@@ -26,6 +25,7 @@ import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.containers.providers.ClientProvider
 import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, IndexManager, RorApiManager}
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 import java.util.UUID
 
@@ -34,7 +34,7 @@ trait BaseAuditingToolsSuite
     with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
     with BeforeAndAfterEach
-    with Matchers
+    with CustomScalaTestMatchers
     with Eventually {
   this: EsClusterProvider =>
 
@@ -55,7 +55,7 @@ trait BaseAuditingToolsSuite
       "rule 1 is matched with logged user" in {
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
         val response = indexManager.getIndex("twitter")
-        response.responseCode shouldBe 200
+        response should have statusCode 200
 
         eventually {
           val auditEntries = adminAuditIndexManager.getEntries.force().jsons
@@ -72,7 +72,7 @@ trait BaseAuditingToolsSuite
           basicAuthClient("username", "wrong"), esVersionUsed
         )
         val response = indexManager.getIndex("twitter")
-        response.responseCode shouldBe 403
+        response should have statusCode 403
 
         eventually {
           val auditEntries = adminAuditIndexManager.getEntries.jsons
@@ -86,7 +86,7 @@ trait BaseAuditingToolsSuite
       "no rule is matched with raw auth header as user" in {
         val indexManager = new IndexManager(tokenAuthClient("user_token"), esVersionUsed)
         val response = indexManager.getIndex("twitter")
-        response.responseCode shouldBe 403
+        response should have statusCode 403
 
         eventually {
           val auditEntries = adminAuditIndexManager.getEntries.jsons
@@ -107,10 +107,10 @@ trait BaseAuditingToolsSuite
           )
 
           val response1 = indexManager.getIndex("twitter")
-          response1.responseCode shouldBe 200
+          response1 should have statusCode 200
 
           val response2 = indexManager.getIndex("twitter")
-          response2.responseCode shouldBe 200
+          response2 should have statusCode 200
 
           eventually {
             val auditEntries = adminAuditIndexManager.getEntries.jsons
@@ -124,7 +124,7 @@ trait BaseAuditingToolsSuite
           val userMetadataManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
           val userMetadataResponse = userMetadataManager.fetchMetadata()
 
-          userMetadataResponse.responseCode should be(200)
+          userMetadataResponse should have statusCode 200
           val correlationId = userMetadataResponse.responseJson("x-ror-correlation-id").str
 
           val indexManager = new IndexManager(
@@ -134,7 +134,7 @@ trait BaseAuditingToolsSuite
           )
 
           val getIndexResponse = indexManager.getIndex("twitter")
-          getIndexResponse.responseCode shouldBe 200
+          getIndexResponse should have statusCode 200
 
           eventually {
             val auditEntries = adminAuditIndexManager.getEntries.jsons
@@ -155,11 +155,11 @@ trait BaseAuditingToolsSuite
 
           val correlationId = UUID.randomUUID().toString
           val response1 = fetchMetadata(correlationId = Some(correlationId))
-          response1.responseCode should be(200)
+          response1 should have statusCode 200
           val loggingId1 = response1.responseJson("x-ror-correlation-id").str
 
           val response2 = fetchMetadata(correlationId = Some(correlationId))
-          response2.responseCode should be(200)
+          response2 should have statusCode 200
           val loggingId2 = response2.responseJson("x-ror-correlation-id").str
 
           loggingId1 should be(loggingId2)
@@ -177,11 +177,11 @@ trait BaseAuditingToolsSuite
       "rule 2 is matched" in {
         val indexManager = new IndexManager(basicAuthClient("username", "dev"), esVersionUsed)
         val response = indexManager.getIndex("facebook")
-        response.responseCode shouldBe 200
+        response should have statusCode 200
 
         eventually {
           val auditEntriesResponse = adminAuditIndexManager.getEntries
-          auditEntriesResponse.responseCode should be(404)
+          auditEntriesResponse should have statusCode 404
         }
       }
     }
@@ -195,7 +195,7 @@ trait BaseAuditingToolsSuite
 
           val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }""")).force()
 
-          response.responseCode shouldBe 204
+          response should have statusCode 204
 
           eventually {
             val auditEntries = adminAuditIndexManager.getEntries.jsons
@@ -208,7 +208,7 @@ trait BaseAuditingToolsSuite
 
           val response = rorApiManager.sendAuditEvent(ujson.read("""{ "user": "unknown" }"""))
 
-          response.responseCode shouldBe 204
+          response should have statusCode 204
 
           eventually {
             val auditEntries = adminAuditIndexManager.getEntries.jsons
@@ -221,7 +221,7 @@ trait BaseAuditingToolsSuite
 
           val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": { "field1": 1, "fields2": "f2" } }"""))
 
-          response.responseCode shouldBe 204
+          response should have statusCode 204
 
           eventually {
             val auditEntries = adminAuditIndexManager.getEntries.jsons
@@ -236,18 +236,18 @@ trait BaseAuditingToolsSuite
         val rorApiManager = new RorApiManager(adminClient, esVersionUsed)
 
         val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }"""))
-        response.responseCode shouldBe 204
+        response should have statusCode 204
 
         eventually {
           val entriesResult = adminAuditIndexManager.getEntries
-          entriesResult.responseCode should be(404)
+          entriesResult should have statusCode 404
         }
       }
       "request JSON is malformed" in {
         val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
         val response = rorApiManager.sendAuditEvent(ujson.read("""[]"""))
-        response.responseCode shouldBe 400
+        response should have statusCode 400
         response.responseJson should be(ujson.read(
           """
             |{
@@ -267,14 +267,14 @@ trait BaseAuditingToolsSuite
 
         eventually {
           val entriesResult = adminAuditIndexManager.getEntries
-          entriesResult.responseCode should be(404)
+          entriesResult should have statusCode 404
         }
       }
       "request JSON is too large (>5KB)" in {
         val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
         val response = rorApiManager.sendAuditEvent(ujson.read(s"""{ "event": "${LazyList.continually("!").take(5000).mkString}" }"""))
-        response.responseCode shouldBe 413
+        response should have statusCode 413
         response.responseJson should be(ujson.read(
           """
             |{
@@ -294,7 +294,7 @@ trait BaseAuditingToolsSuite
 
         eventually {
           val entriesResult = adminAuditIndexManager.getEntries
-          entriesResult.responseCode should be(404)
+          entriesResult should have statusCode 404
         }
       }
     }

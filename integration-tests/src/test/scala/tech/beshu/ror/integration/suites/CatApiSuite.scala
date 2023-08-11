@@ -22,12 +22,14 @@ import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.{BaseTemplateManager, CatManager, IndexTemplateManager, LegacyTemplateManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class CatApiSuite
   extends AnyWordSpec
     with BaseTemplatesSuite
     with SingletonPluginTestSupport
-    with ESVersionSupportForAnyWordSpecLike {
+    with ESVersionSupportForAnyWordSpecLike 
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/cat_api/readonlyrest.yml"
 
@@ -38,12 +40,12 @@ class CatApiSuite
   "A /_cat" should {
     "be allowed when user is authorized" in {
       val response = dev1CatManager.cat()
-      response.responseCode should be(200)
+      response should have statusCode 200
     }
     "be not allowed when user is not authorized" in {
       val unknownUserCatManager = new CatManager(basicAuthClient("unknown", "unknown"), esVersion = esVersionUsed)
       val response = unknownUserCatManager.cat()
-      response.responseCode should be(403)
+      response should have statusCode 403
     }
   }
 
@@ -52,7 +54,7 @@ class CatApiSuite
       lazy val adminClusterStateManager = new CatManager(adminClient, esVersion = esVersionUsed)
       val response = adminClusterStateManager.healthCheck()
 
-      response.responseCode should be(200)
+      response should have statusCode 200
     }
   }
 
@@ -61,7 +63,7 @@ class CatApiSuite
       "there is no index in ES" in {
         val indices = dev1CatManager.indices()
 
-        indices.responseCode should be(200)
+        indices should have statusCode 200
         indices.results.map(_("index").str) should be(Vector.empty)
       }
       "dev1 has no indices" in {
@@ -69,7 +71,7 @@ class CatApiSuite
 
         val indices = dev1CatManager.indices()
 
-        indices.responseCode should be(200)
+        indices should have statusCode 200
         indices.results.map(_("index").str) should be(Vector.empty)
       }
       "user asked for index with wildcard but there is no matching index which belongs to the user" in {
@@ -77,7 +79,7 @@ class CatApiSuite
 
         val indices = dev1CatManager.indices("dev2_*")
 
-        indices.responseCode should be(200)
+        indices should have statusCode 200
         indices.results.map(_("index").str) should be(Vector.empty)
       }
     }
@@ -88,7 +90,7 @@ class CatApiSuite
 
         val indices = dev1CatManager.indices()
 
-        indices.responseCode should be(200)
+        indices should have statusCode 200
         indices.results.map(_("index").str) should be(Vector("dev1_index"))
       }
       "request is related to one index" in {
@@ -97,7 +99,7 @@ class CatApiSuite
 
         val indices = dev1CatManager.indices("dev1_index")
 
-        indices.responseCode should be(200)
+        indices should have statusCode 200
         indices.results.map(_("index").str) should be(Vector("dev1_index"))
       }
       "request index has wildcard" in {
@@ -106,7 +108,7 @@ class CatApiSuite
 
         val indices = dev1CatManager.indices("dev*")
 
-        indices.responseCode should be(200)
+        indices should have statusCode 200
         indices.results.map(_("index").str) should be(Vector("dev1_index"))
       }
     }
@@ -117,7 +119,7 @@ class CatApiSuite
 
         val indices = dev3CatManager.indices()
 
-        indices.responseCode should be(200)
+        indices should have statusCode 200
         indices.results.map(_("index").str) should contain allOf("dev1_index", "dev2_index")
       }
     }
@@ -125,14 +127,14 @@ class CatApiSuite
       "user is trying to access non-existent index" in {
         val indices = dev1CatManager.indices("non-existent")
 
-        indices.responseCode should be(404)
+        indices should have statusCode 404
       }
       "user asked for index with no access to it" in {
         createIndexWithExampleDoc(adminDocumentManager, "dev2_index")
 
         val indices = dev1CatManager.indices("dev2_index")
 
-        indices.responseCode should be(404)
+        indices should have statusCode 404
       }
     }
   }
@@ -157,7 +159,7 @@ class CatApiSuite
 
                 val templates = dev1CatManager.templates()
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str).toList should contain("temp1")
               }
               "rule has index pattern with no wildcard" in {
@@ -168,7 +170,7 @@ class CatApiSuite
 
                 val templates = dev1CatManager.templates()
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str).toList should contain("temp1")
               }
             }
@@ -181,7 +183,7 @@ class CatApiSuite
 
                 val templates = dev1CatManager.templates()
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str).toList should contain("temp1")
               }
               "rule has index pattern with no wildcard" in {
@@ -192,7 +194,7 @@ class CatApiSuite
 
                 val templates = dev1CatManager.templates()
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str).toList should contain("temp1")
               }
             }
@@ -208,7 +210,7 @@ class CatApiSuite
 
                 val templates = dev1CatManager.templates()
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str).toList should contain("temp1")
               }
               "rule has index pattern with no wildcard" in {
@@ -220,7 +222,7 @@ class CatApiSuite
 
                 val templates = dev1CatManager.templates()
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str).toList should contain("temp1")
               }
             }
@@ -234,7 +236,7 @@ class CatApiSuite
 
                 val templates = dev1CatManager.templates()
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str).toList should contain("temp1")
               }
               "rule has index pattern with no wildcard" in {
@@ -246,7 +248,7 @@ class CatApiSuite
 
                 val templates = dev1CatManager.templates()
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str).toList should contain("temp1")
               }
             }
@@ -263,7 +265,7 @@ class CatApiSuite
 
                 val templates = dev1CatManager.templates("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str) should be(Vector("temp1"))
               }
               "rule has index pattern with no wildcard" in {
@@ -274,7 +276,7 @@ class CatApiSuite
 
                 val templates = dev1CatManager.templates("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str) should be(Vector("temp1"))
               }
             }
@@ -287,7 +289,7 @@ class CatApiSuite
 
                 val templates = dev1CatManager.templates("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str) should be(Vector("temp1"))
               }
               "rule has index pattern with no wildcard" in {
@@ -298,7 +300,7 @@ class CatApiSuite
 
                 val templates = dev1CatManager.templates("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str) should be(Vector("temp1"))
               }
             }
@@ -314,7 +316,7 @@ class CatApiSuite
 
                 val templates = dev1CatManager.templates("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str) should be(Vector("temp1"))
               }
               "rule has index pattern with no wildcard" in {
@@ -326,7 +328,7 @@ class CatApiSuite
 
                 val templates = dev1CatManager.templates("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str) should be(Vector("temp1"))
               }
             }
@@ -340,7 +342,7 @@ class CatApiSuite
 
                 val templates = dev1CatManager.templates("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str) should be(Vector("temp1"))
               }
               "rule has index pattern with no wildcard" in {
@@ -352,7 +354,7 @@ class CatApiSuite
 
                 val templates = dev1CatManager.templates("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str) should be(Vector("temp1"))
               }
             }
@@ -373,7 +375,7 @@ class CatApiSuite
                   val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                   val templates = dev1ClusterStateManager.templates()
 
-                  templates.responseCode should be(200)
+                  templates should have statusCode 200
                   templates.results.map(_("name").str) should be(Vector.empty)
                 }
                 "rule has index pattern with no wildcard" in {
@@ -385,7 +387,7 @@ class CatApiSuite
                   val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                   val templates = dev1ClusterStateManager.templates()
 
-                  templates.responseCode should be(200)
+                  templates should have statusCode 200
                   templates.results.map(_("name").str) should be(Vector.empty)
                 }
               }
@@ -399,7 +401,7 @@ class CatApiSuite
                   val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                   val templates = dev1ClusterStateManager.templates()
 
-                  templates.responseCode should be(200)
+                  templates should have statusCode 200
                   templates.results.map(_("name").str) should be(Vector.empty)
                 }
                 "rule has index pattern with no wildcard" in {
@@ -411,7 +413,7 @@ class CatApiSuite
                   val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                   val templates = dev1ClusterStateManager.templates()
 
-                  templates.responseCode should be(200)
+                  templates should have statusCode 200
                   templates.results.map(_("name").str) should be(Vector.empty)
                 }
               }
@@ -427,7 +429,7 @@ class CatApiSuite
 
                   val templates = dev2CatManager.templates()
 
-                  templates.responseCode should be(200)
+                  templates should have statusCode 200
                   templates.results.map(_("name").str) should be(Vector.empty)
                 }
                 "rule has index pattern with no wildcard" in {
@@ -439,7 +441,7 @@ class CatApiSuite
 
                   val templates = dev2CatManager.templates()
 
-                  templates.responseCode should be(200)
+                  templates should have statusCode 200
                   templates.results.map(_("name").str) should be(Vector.empty)
                 }
               }
@@ -453,7 +455,7 @@ class CatApiSuite
 
                   val templates = dev2CatManager.templates()
 
-                  templates.responseCode should be(200)
+                  templates should have statusCode 200
                   templates.results.map(_("name").str) should be(Vector.empty)
                 }
                 "rule has index pattern with no wildcard" in {
@@ -465,7 +467,7 @@ class CatApiSuite
 
                   val templates = dev2CatManager.templates()
 
-                  templates.responseCode should be(200)
+                  templates should have statusCode 200
                   templates.results.map(_("name").str) should be(Vector.empty)
                 }
               }
@@ -484,7 +486,7 @@ class CatApiSuite
                 val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                 val templates = dev1ClusterStateManager.templates("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str) should be(Vector.empty)
               }
               "rule has index pattern with no wildcard" in {
@@ -496,7 +498,7 @@ class CatApiSuite
                 val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                 val templates = dev1ClusterStateManager.templates("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str) should be(Vector.empty)
               }
             }
@@ -510,7 +512,7 @@ class CatApiSuite
                 val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                 val templates = dev1ClusterStateManager.templates("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str) should be(Vector.empty)
               }
               "rule has index pattern with no wildcard" in {
@@ -522,7 +524,7 @@ class CatApiSuite
                 val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                 val templates = dev1ClusterStateManager.templates("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str) should be(Vector.empty)
               }
             }
@@ -539,7 +541,7 @@ class CatApiSuite
                 val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                 val templates = dev1ClusterStateManager.templates("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str) should be(Vector.empty)
               }
               "rule has index pattern with no wildcard" in {
@@ -552,7 +554,7 @@ class CatApiSuite
                 val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                 val templates = dev1ClusterStateManager.templates("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str) should be(Vector.empty)
               }
             }
@@ -567,7 +569,7 @@ class CatApiSuite
                 val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                 val templates = dev1ClusterStateManager.templates("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str) should be(Vector.empty)
               }
               "rule has index pattern with no wildcard" in {
@@ -580,7 +582,7 @@ class CatApiSuite
                 val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                 val templates = dev1ClusterStateManager.templates("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.results.map(_("name").str) should be(Vector.empty)
               }
             }

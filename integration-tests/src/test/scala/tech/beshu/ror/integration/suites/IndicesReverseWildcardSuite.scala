@@ -16,20 +16,20 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class IndicesReverseWildcardSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/indices_reverse_wildcards/readonlyrest.yml"
 
@@ -42,21 +42,21 @@ class IndicesReverseWildcardSuite
       "direct index search is used" in {
         val response = dev1SearchManager.search("logstash-a1")
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         response.searchHits.size should be(1)
         response.searchHits.head("_id").str should be("doc-a1")
       }
       "simple wildcard search is used" in {
         val response = dev1SearchManager.search("logstash-a*")
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         response.searchHits.size should be(2)
         response.searchHits.map(_("_id").str) should contain allOf("doc-a1", "doc-a2")
       }
       "reverse wildcard search is used" in {
         val response = dev1SearchManager.search("logstash-*")
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         response.searchHits.size should be(2)
         response.searchHits.map(_("_id").str) should contain allOf("doc-a1", "doc-a2")
       }
@@ -64,7 +64,7 @@ class IndicesReverseWildcardSuite
       "reverse total wildcard search is used" in {
         val response = dev1SearchManager.search("*")
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         response.searchHits.size should be(2)
         response.searchHits.map(_("_id").str) should contain allOf("doc-a1", "doc-a2")
       }
@@ -72,7 +72,7 @@ class IndicesReverseWildcardSuite
       "generic search all is used" in {
         val response = dev1SearchManager.search()
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         response.searchHits.size should be(2)
         response.searchHits.map(_("_id").str) should contain allOf("doc-a1", "doc-a2")
       }

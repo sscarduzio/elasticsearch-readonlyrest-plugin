@@ -86,16 +86,23 @@ trait CustomScalaTestMatchers extends Matchers {
     override def apply(response: SimpleResponse): MatchResult = {
       MatchResult(
         response.responseCode == statusCode,
-        s"Expected status code was [$statusCode], but the response has [$statusCode]; Moreover, body of the response was:\n${response.body}",
-        s"Expected status code was [$statusCode] equals the response status code: [$statusCode]; Moreover, body of the response was:\n${response.body}"
+        s"Expected status code was [$statusCode], but the response has [${response.responseCode}]; Moreover, body of the response was:\n${response.body}",
+        s"Expected status code was [$statusCode] equals the response status code: [${response.responseCode}]; Moreover, body of the response was:\n${response.body}"
       )
     }
   }
 
+  def haveStatusCode(statusCode: Int) = new StatusCodeEquals(statusCode)
+
   class HaveStatusCode[T <: SimpleResponse](val haveWord: ResultOfHaveWordForExtent[T])
     extends CustomScalaTestMatchers {
+    import org.joor.Reflect._
 
-    def statusCode(statusCode: Int) = new StatusCodeEquals(statusCode)
+    def statusCode(statusCode: Int): Assertion = {
+      val response = on(haveWord).get[T]("left")
+
+      response should haveStatusCode(statusCode)
+    }
   }
 
   implicit def toHaveWordStatusCode[T <: SimpleResponse](haveWord: ResultOfHaveWordForExtent[T]): HaveStatusCode[T] = {
