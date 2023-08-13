@@ -53,7 +53,7 @@ object XPackSecurityAuthenticationHeader {
       output.writeString(userName)
     } else {
       output.writeString(userName)
-      output.writeStringArray(Array("kibana_admin", "superuser"))
+      output.writeStringArray(Array("superuser"))
       output.writeGenericMap(Map.empty[String, AnyRef].asJava)
       output.writeOptionalString(null)
       output.writeOptionalString(null)
