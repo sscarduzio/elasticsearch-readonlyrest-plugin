@@ -25,12 +25,6 @@ object JsCompiler {
   private val mozillaJsContext: Context = Context.enter
   private val scope: ScriptableObject = mozillaJsContext.initStandardObjects
 
-//  /*A Javascript JSON Object*/
-//  val source = """new RegExp('(([0-9]+)-([0-9]+)-([0-9]+)')"""
-//
-//  val result = Context.toString(jsObjectResult)
-//  System.out.println("After Evaluating JS Object value is: " + result)
-
   def compile(jsCodeString: String): Try[AnyRef] = Try {
     val jsScript = mozillaJsContext.compileString(jsCodeString, "js", 1, null)
     val result = jsScript.exec(mozillaJsContext, scope)

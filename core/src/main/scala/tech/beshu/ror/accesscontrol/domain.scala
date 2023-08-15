@@ -1486,12 +1486,12 @@ object domain {
 
   final case class JsRegex private(value: NonEmptyString)
   object JsRegex {
-    private val extractRawRegex = """\\(.*)\\""".r
+    private val extractRawRegex = """\/(.*)\/""".r
 
     def compile(str: NonEmptyString): Either[CompilationResult, JsRegex] =
       str.value match {
         case extractRawRegex(regex) =>
-          JsCompiler.compile(regex) match {
+          JsCompiler.compile(s"new RegExp('$regex')") match {
             case Success(_) =>
               Right(new JsRegex(str))
             case Failure(_) =>

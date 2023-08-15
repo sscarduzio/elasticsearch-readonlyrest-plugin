@@ -28,8 +28,8 @@ import tech.beshu.ror.accesscontrol.domain.Json.JsonValue.{BooleanValue, NullVal
 import tech.beshu.ror.accesscontrol.domain.Json.{JsonRepresentation, JsonTree}
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
-import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
-import tech.beshu.ror.accesscontrol.domain.{IndexName, JavaRegex, KibanaAccess, KibanaAllowedApiPath, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.KibanaApp.{FullNameKibanaApp, KibanaAppRegex}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, JavaRegex, JsRegex, KibanaAccess, KibanaAllowedApiPath, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
@@ -277,14 +277,17 @@ class KibanaUserDataRuleSettingsTests
                 |  - name: test_block1
                 |    kibana:
                 |      access: "ro"
-                |      hide_apps: [app1, app2]
+                |      hide_apps: [app1, "/^(?!(Analytics\\|Management).*$).*$/"]
                 |
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.access should be(KibanaAccess.RO)
               rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
-              rule.settings.appsToHide should be(Set(FullNameKibanaApp("app1"), FullNameKibanaApp("app2")))
+              rule.settings.appsToHide should be(Set(
+                FullNameKibanaApp("app1"),
+                KibanaAppRegex(JsRegex.compile("/^(?!(Analytics\\|Management).*$).*$/").toOption.get)
+              ))
               rule.settings.allowedApiPaths should be(Set.empty)
               rule.settings.metadata should be(None)
               rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
@@ -644,6 +647,28 @@ class KibanaUserDataRuleSettingsTests
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message(
               "Unknown kibana access 'unknown'. Available options: 'ro', 'ro_strict', 'rw', 'api_only', 'admin', 'unrestricted'"
+            )))
+          }
+        )
+      }
+      "kibana app is malformed" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    kibana:
+              |      access: ro
+              |      hide_apps: ["/^(?!(Analytics\\|Maps).*$.*$/"]
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(RulesLevelCreationError(Message(
+              "Cannot compile [/^(?!(Analytics\\|Maps).*$.*$/] as a JS regex (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions)"
             )))
           }
         )

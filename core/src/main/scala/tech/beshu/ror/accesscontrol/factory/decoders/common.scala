@@ -309,7 +309,13 @@ object common extends Logging {
       }
       .decoder
 
-  implicit val kibanaAppDecoder: Decoder[KibanaApp] = nonEmptyStringDecoder.emap(KibanaApp.from)
+  implicit val kibanaAppDecoder: Decoder[KibanaApp] =
+    nonEmptyStringDecoder
+      .toSyncDecoder
+      .emapE[KibanaApp](str =>
+        KibanaApp.from(str).left.map(error => CoreCreationError.ValueLevelCreationError(Message(error)))
+      )
+      .decoder
 
   implicit val groupsLogicAndDecoder: Decoder[GroupsLogic.And] =
     permittedGroupsDecoder.map(GroupsLogic.And.apply)
