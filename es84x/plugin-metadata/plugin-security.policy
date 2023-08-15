@@ -5,6 +5,7 @@ grant {
   permission java.lang.RuntimePermission "accessClassInPackage.sun.misc.*";
   permission java.lang.RuntimePermission "accessDeclaredMembers";
   permission java.lang.RuntimePermission "getClassLoader";
+  permission java.lang.RuntimePermission "createClassLoader";
   permission java.lang.RuntimePermission "setContextClassLoader";
   permission java.net.SocketPermission "*", "accept, resolve, connect";
   permission java.security.SecurityPermission "insertProvider";
