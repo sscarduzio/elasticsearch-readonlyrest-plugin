@@ -14,15 +14,26 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror
+package tech.beshu.ror.utils
 
-// todo: remove
-object Example extends App {
+import org.mozilla.javascript.{Context, ScriptableObject}
 
+import scala.util.Try
 
-  val engine = new javax.script.ScriptEngineManager().getEngineByName("JS")
-  val res = engine.eval(
-  """'2012-07-02'.match(new RegExp('([0-9]+)-([0-9]+)-([0-9]+)'))"""
-  )
-  res.toString
+object JsCompiler {
+
+  private val mozillaJsContext: Context = Context.enter
+  private val scope: ScriptableObject = mozillaJsContext.initStandardObjects
+
+//  /*A Javascript JSON Object*/
+//  val source = """new RegExp('(([0-9]+)-([0-9]+)-([0-9]+)')"""
+//
+//  val result = Context.toString(jsObjectResult)
+//  System.out.println("After Evaluating JS Object value is: " + result)
+
+  def compile(jsCodeString: String): Try[Unit] = Try {
+    val jsScript = mozillaJsContext.compileString(jsCodeString, "js", 1, null)
+    val result = jsScript.exec(mozillaJsContext, scope)
+    result
+  }
 }

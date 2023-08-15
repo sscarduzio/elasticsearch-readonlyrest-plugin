@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.domain.Json.{JsonRepresentation, JsonTree}
 import tech.beshu.ror.accesscontrol.domain.Json.JsonValue.{BooleanValue, NullValue, NumValue, StringValue}
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
-import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, KibanaAllowedApiPath, KibanaApp, Regex, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, KibanaAllowedApiPath, KibanaApp, JavaRegex, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
@@ -87,7 +87,7 @@ class KibanaUserDataRuleSettingsTests
             rule.settings.kibanaTemplateIndex should be(Some(AlreadyResolved(kibanaIndexName(".kibana_template"))))
             rule.settings.appsToHide should be(Set(KibanaApp("app1"), KibanaApp("app2")))
             rule.settings.allowedApiPaths should be(
-              Set(KibanaAllowedApiPath(AllowedHttpMethod.Any, Regex.compile("""^/api/spaces/.*$""").get))
+              Set(KibanaAllowedApiPath(AllowedHttpMethod.Any, JavaRegex.compile("""^/api/spaces/.*$""").get))
             )
             rule.settings.metadata should be(None)
             rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
@@ -337,7 +337,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(
-                Set(KibanaAllowedApiPath(AllowedHttpMethod.Any, Regex.compile("""^/api/spaces/.*$""").get))
+                Set(KibanaAllowedApiPath(AllowedHttpMethod.Any, JavaRegex.compile("""^/api/spaces/.*$""").get))
               )
               rule.settings.metadata should be(None)
               rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
@@ -366,7 +366,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.allowedApiPaths should be(
                 Set(KibanaAllowedApiPath(
                   AllowedHttpMethod.Any,
-                  Regex.compile("""^/api/spaces\?test\=12\.2$""").get
+                  JavaRegex.compile("""^/api/spaces\?test\=12\.2$""").get
                 ))
               )
               rule.settings.metadata should be(None)
@@ -398,7 +398,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.allowedApiPaths should be(
                 Set(KibanaAllowedApiPath(
                   AllowedHttpMethod.Specific(HttpMethod.Get),
-                  Regex.compile("""^/api/spaces\?test\=12\.2$""").get
+                  JavaRegex.compile("""^/api/spaces\?test\=12\.2$""").get
                 ))
               )
               rule.settings.metadata should be(None)
@@ -431,11 +431,11 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.allowedApiPaths should be(Set(
                 KibanaAllowedApiPath(
                   AllowedHttpMethod.Any,
-                  Regex.compile("""^/api/spaces/.*$""").get
+                  JavaRegex.compile("""^/api/spaces/.*$""").get
                 ),
                 KibanaAllowedApiPath(
                   AllowedHttpMethod.Specific(HttpMethod.Get),
-                  Regex.compile("""^/api/spaces\?test\=12\.2$""").get
+                  JavaRegex.compile("""^/api/spaces\?test\=12\.2$""").get
                 )
               ))
               rule.settings.metadata should be(None)

@@ -39,12 +39,11 @@ import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{Empty
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.accesscontrol.matchers.{IndicesNamesMatcher, MatcherWithWildcardsScalaAdapter, TemplateNamePatternMatcher, UniqueIdentifierGenerator}
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
-import tech.beshu.ror.utils.CaseMappingEquality
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
+import tech.beshu.ror.utils.{CaseMappingEquality, JsCompiler}
 
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.format.DateTimeFormatter
@@ -188,18 +187,18 @@ object domain {
       val userGroupsMatchedSoFar = Vector.empty[GroupName]
       val (isThereNotPermittedGroup, matchedUserGroups) =
         groupsLogic
-        .permittedGroups
-        .groups.toList.widen[GroupLike]
-        .foldLeft((atLeastPermittedGroupNotMatched, userGroupsMatchedSoFar)) {
-          case ((false, userGroupsMatchedSoFar), permittedGroup: GroupLike) =>
-            val matchedUserGroups = userGroups.toList.filter(userGroup => permittedGroup.matches(userGroup))
-            matchedUserGroups match {
-              case Nil => (true, userGroupsMatchedSoFar)
-              case nonEmptyList => (false, userGroupsMatchedSoFar ++ nonEmptyList)
-            }
-          case (result@(true, _), _) =>
-            result
-        }
+          .permittedGroups
+          .groups.toList.widen[GroupLike]
+          .foldLeft((atLeastPermittedGroupNotMatched, userGroupsMatchedSoFar)) {
+            case ((false, userGroupsMatchedSoFar), permittedGroup: GroupLike) =>
+              val matchedUserGroups = userGroups.toList.filter(userGroup => permittedGroup.matches(userGroup))
+              matchedUserGroups match {
+                case Nil => (true, userGroupsMatchedSoFar)
+                case nonEmptyList => (false, userGroupsMatchedSoFar ++ nonEmptyList)
+              }
+            case (result@(true, _), _) =>
+              result
+          }
       if (isThereNotPermittedGroup) None
       else UniqueNonEmptyList.fromIterable(matchedUserGroups)
     }
@@ -485,8 +484,11 @@ object domain {
     }
 
     def isInternal(actionString: String): Boolean = actionString.startsWith("internal:")
+
     def isMonitorState(actionString: String): Boolean = actionString == EsAction.monitorStateAction.value
+
     def isXpackSecurity(actionString: String): Boolean = actionString.startsWith("cluster:admin/xpack/security/")
+
     def isRollupAction(actionString: String): Boolean = actionString.startsWith("cluster:admin/xpack/rollup/")
 
     implicit class ActionOps(val action: Action) extends AnyVal {
@@ -604,7 +606,7 @@ object domain {
   }
 
   sealed trait ClusterIndexName {
-    private [domain] lazy val matcher = MatcherWithWildcardsScalaAdapter.create(this :: Nil)
+    private[domain] lazy val matcher = MatcherWithWildcardsScalaAdapter.create(this :: Nil)
   }
   object ClusterIndexName {
 
@@ -1209,12 +1211,18 @@ object domain {
     implicit val eqAuthKey: Eq[PlainTextSecret] = Eq.fromUniversalEquals
   }
 
-  final case class KibanaApp(value: NonEmptyString)
+  sealed trait KibanaApp
   object KibanaApp {
-    implicit val eqKibanaApps: Eq[KibanaApp] = Eq.fromUniversalEquals
+    final case class FullNameKibanaApp(name: NonEmptyString) extends KibanaApp
+    final case class KibanaAppRegex(regex: JsRegex) extends KibanaApp
+
+    implicit val eqKibanaApps: Eq[KibanaApp] = Eq.by {
+      case FullNameKibanaApp(name) => name.value
+      case KibanaAppRegex(regex) => regex.value
+    }
   }
 
-  final case class KibanaAllowedApiPath(httpMethod: AllowedHttpMethod, pathRegex: Regex)
+  final case class KibanaAllowedApiPath(httpMethod: AllowedHttpMethod, pathRegex: JavaRegex)
   object KibanaAllowedApiPath {
 
     sealed trait AllowedHttpMethod
@@ -1447,21 +1455,46 @@ object domain {
 
   }
 
-  final case class Regex private(value: String) {
+  final case class JavaRegex private(value: String) {
     val pattern: regex.Pattern = regex.Pattern.compile(value)
   }
-  object Regex {
+  object JavaRegex {
     private val specialChars = """<([{\^-=$!|]})?*+.>"""
 
-    def compile(value: String): Try[Regex] = Try(new Regex(value))
-    def buildFromLiteral(value: String): Regex = {
+    def compile(value: String): Try[JavaRegex] = Try(new JavaRegex(value))
+
+    def buildFromLiteral(value: String): JavaRegex = {
       val escapedValue = value
         .map {
           case c if specialChars.contains(c) => s"""\\$c"""
           case c => c
         }
         .mkString
-      new Regex(s"^$escapedValue$$")
+      new JavaRegex(s"^$escapedValue$$")
+    }
+  }
+
+  final case class JsRegex private(value: NonEmptyString)
+  object JsRegex {
+    private val extractRawRegex = """\\(.*)\\""".r
+
+    def compile(str: NonEmptyString): Either[CompilationResult, JsRegex] =
+      str.value match {
+        case extractRawRegex(regex) =>
+          JsCompiler.compile(regex) match {
+            case Success(_) =>
+              Right(new JsRegex(str))
+            case Failure(_) =>
+              Left(CompilationResult.SyntaxError)
+          }
+        case _ =>
+          Left(CompilationResult.NotRegex)
+      }
+
+    sealed trait CompilationResult
+    object CompilationResult {
+      case object NotRegex extends CompilationResult
+      case object SyntaxError extends CompilationResult
     }
   }
 

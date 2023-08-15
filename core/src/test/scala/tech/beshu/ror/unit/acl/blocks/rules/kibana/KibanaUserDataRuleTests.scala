@@ -101,15 +101,15 @@ class KibanaUserDataRuleTests
         val paths: UniqueNonEmptyList[KibanaAllowedApiPath] = UniqueNonEmptyList.of(
           KibanaAllowedApiPath(
             AllowedHttpMethod.Any,
-            Regex.buildFromLiteral("/api/index_management/indices")
+            JavaRegex.buildFromLiteral("/api/index_management/indices")
           ),
           KibanaAllowedApiPath(
             AllowedHttpMethod.Any,
-            Regex.compile("""^\/api\/spaces\/.*$""").get
+            JavaRegex.compile("""^\/api\/spaces\/.*$""").get
           ),
           KibanaAllowedApiPath(
             AllowedHttpMethod.Specific(HttpMethod.Get),
-            Regex.compile("""^\/api\/alerting\/rule\/.*$""").get
+            JavaRegex.compile("""^\/api\/alerting\/rule\/.*$""").get
           )
         )
         val rule = createRuleFrom(KibanaUserDataRule.Settings(

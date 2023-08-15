@@ -32,9 +32,10 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.JsRegex.CompilationResult
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{Address, ClusterIndexName, GroupLike, GroupsLogic, Header, KibanaAccess, KibanaApp, KibanaIndexName, PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.domain.{Address, ClusterIndexName, GroupLike, GroupsLogic, Header, JsRegex, KibanaAccess, KibanaApp, KibanaIndexName, PermittedGroups, User}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -309,7 +310,13 @@ object common extends Logging {
       }
       .decoder
 
-  implicit val kibanaApp: Decoder[KibanaApp] = nonEmptyStringDecoder.map(KibanaApp.apply)
+  implicit val kibanaApp: Decoder[KibanaApp] = nonEmptyStringDecoder.emap { nes =>
+    JsRegex.compile(nes) match {
+      case Right(jsRegex) => Right(KibanaApp.KibanaAppRegex(jsRegex))
+      case Left(CompilationResult.NotRegex) => Right(KibanaApp.FullNameKibanaApp(nes))
+      case Left(CompilationResult.SyntaxError) => Left(s"Cannot compile [${nes.value}] as a JS regex (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions)")
+    }
+  }
 
   implicit val groupsLogicAndDecoder: Decoder[GroupsLogic.And] =
     permittedGroupsDecoder.map(GroupsLogic.And.apply)

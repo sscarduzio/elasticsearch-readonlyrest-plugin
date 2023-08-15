@@ -273,8 +273,8 @@ class CurrentUserMetadataAccessControlTests
             userMetadata.kibanaIndex should be (Some(kibanaIndexName("user2_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user2_app1"), KibanaApp("user2_app2")))
             userMetadata.allowedKibanaApiPaths should be (Set(
-              KibanaAllowedApiPath(AllowedHttpMethod.Any, Regex("^/api/spaces/.*$")),
-              KibanaAllowedApiPath(AllowedHttpMethod.Specific(HttpMethod.Get), Regex("""^/api/spaces\?test\=12\.2$"""))
+              KibanaAllowedApiPath(AllowedHttpMethod.Any, JavaRegex("^/api/spaces/.*$")),
+              KibanaAllowedApiPath(AllowedHttpMethod.Specific(HttpMethod.Get), JavaRegex("""^/api/spaces\?test\=12\.2$"""))
             ))
             userMetadata.kibanaAccess should be (Some(KibanaAccess.RO))
             userMetadata.userOrigin should be (None)
