@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMet
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
@@ -223,7 +224,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             availableGroups = UniqueList.of(GroupName("Administrators"), GroupName("Infosec")),
             kibanaIndex = Some(kibanaIndexName(".kibana_admins")),
             kibanaTemplateIndex = None,
-            hiddenKibanaApps = Set(KibanaApp("Enterprise Search|Overview"), KibanaApp("Observability")),
+            hiddenKibanaApps = Set(FullNameKibanaApp("Enterprise Search|Overview"), FullNameKibanaApp("Observability")),
             allowedKibanaApiPaths = Set.empty,
             kibanaAccess = Some(KibanaAccess.Admin),
             kibanaMetadata = None,
@@ -255,7 +256,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             kibanaIndex = Some(kibanaIndexName(".kibana_admins")),
             kibanaAccess = Some(KibanaAccess.Admin),
             indices = Set(clusterIndexName(".kibana_admins")),
-            hiddenKibanaApps = Set(KibanaApp("Observability"), KibanaApp("Enterprise Search|Overview"))
+            hiddenKibanaApps = Set(FullNameKibanaApp("Observability"), FullNameKibanaApp("Enterprise Search|Overview"))
           ) {
             blockContext
           }

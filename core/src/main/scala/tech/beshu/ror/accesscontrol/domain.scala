@@ -36,9 +36,11 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
+import tech.beshu.ror.accesscontrol.domain.JsRegex.CompilationResult
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.accesscontrol.matchers.{IndicesNamesMatcher, MatcherWithWildcardsScalaAdapter, TemplateNamePatternMatcher, UniqueIdentifierGenerator}
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.ScalaOps._
@@ -1216,9 +1218,17 @@ object domain {
     final case class FullNameKibanaApp(name: NonEmptyString) extends KibanaApp
     final case class KibanaAppRegex(regex: JsRegex) extends KibanaApp
 
+    def from(str: NonEmptyString): Either[String, KibanaApp] = {
+      JsRegex.compile(str) match {
+        case Right(jsRegex) => Right(KibanaApp.KibanaAppRegex(jsRegex))
+        case Left(CompilationResult.NotRegex) => Right(KibanaApp.FullNameKibanaApp(str))
+        case Left(CompilationResult.SyntaxError) => Left(s"Cannot compile [${str.value}] as a JS regex (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions)")
+      }
+    }
+
     implicit val eqKibanaApps: Eq[KibanaApp] = Eq.by {
-      case FullNameKibanaApp(name) => name.value
-      case KibanaAppRegex(regex) => regex.value
+      case FullNameKibanaApp(name) => name.value.value
+      case KibanaAppRegex(regex) => regex.value.value
     }
   }
 

@@ -31,7 +31,7 @@ object JsCompiler {
 //  val result = Context.toString(jsObjectResult)
 //  System.out.println("After Evaluating JS Object value is: " + result)
 
-  def compile(jsCodeString: String): Try[Unit] = Try {
+  def compile(jsCodeString: String): Try[AnyRef] = Try {
     val jsScript = mozillaJsContext.compileString(jsCodeString, "js", 1, null)
     val result = jsScript.exec(mozillaJsContext, scope)
     result

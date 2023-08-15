@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.kibana
 
+import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaHideAppsRule.Settings
@@ -25,14 +26,16 @@ import tech.beshu.ror.accesscontrol.domain.{KibanaAccess, KibanaApp, KibanaIndex
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 object KibanaHideAppsRuleDecoder
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaHideAppsRule] {
 
   override protected def decoder: Decoder[RuleDefinition[KibanaHideAppsRule]] = {
     DecoderHelpers
-      .decodeNonEmptyStringLikeOrUniqueNonEmptyList(KibanaApp.apply)
-      .map(apps => new KibanaHideAppsRule(Settings(apps)))
+      .decodeNonEmptyStringLikeOrUniqueNonEmptyList(identity)
+      .emap(_.toList.map(KibanaApp.from).traverse(identity))
+      .map(apps => new KibanaHideAppsRule(Settings(UniqueNonEmptyList.unsafeFromIterable(apps))))
       .map(RuleDefinition.create(_))
   }
 }

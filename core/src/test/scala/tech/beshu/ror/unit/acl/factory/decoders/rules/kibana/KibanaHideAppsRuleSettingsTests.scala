@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.kibana
 import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaHideAppsRule
-import tech.beshu.ror.accesscontrol.domain.KibanaApp
+import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.MalformedValue
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
@@ -42,7 +42,7 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.kibanaAppsToHide should be(UniqueNonEmptyList.of(KibanaApp("app1")))
+            rule.settings.kibanaAppsToHide should be(UniqueNonEmptyList.of(FullNameKibanaApp("app1")))
           }
         )
       }
@@ -59,7 +59,7 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               |
               |""".stripMargin,
           assertion = rule => {
-            val apps = UniqueNonEmptyList.of(KibanaApp("app1"), KibanaApp("app2"))
+            val apps = UniqueNonEmptyList.of(FullNameKibanaApp("app1"), FullNameKibanaApp("app2"))
             rule.settings.kibanaAppsToHide should be(apps)
           }
         )

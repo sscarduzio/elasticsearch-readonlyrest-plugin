@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
+import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, HttpClientsFactory}
@@ -271,7 +272,7 @@ class CurrentUserMetadataAccessControlTests
             userMetadata.currentGroup should be (Some(GroupName("group2")))
             userMetadata.availableGroups.toSet should be (Set(GroupName("group2")))
             userMetadata.kibanaIndex should be (Some(kibanaIndexName("user2_kibana_index")))
-            userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user2_app1"), KibanaApp("user2_app2")))
+            userMetadata.hiddenKibanaApps should be (Set(FullNameKibanaApp("user2_app1"), FullNameKibanaApp("user2_app2")))
             userMetadata.allowedKibanaApiPaths should be (Set(
               KibanaAllowedApiPath(AllowedHttpMethod.Any, JavaRegex("^/api/spaces/.*$")),
               KibanaAllowedApiPath(AllowedHttpMethod.Specific(HttpMethod.Get), JavaRegex("""^/api/spaces\?test\=12\.2$"""))
@@ -288,7 +289,7 @@ class CurrentUserMetadataAccessControlTests
             userMetadata.currentGroup should be (None)
             userMetadata.availableGroups.toSet should be (UniqueList.empty)
             userMetadata.kibanaIndex should be (Some(kibanaIndexName("user3_kibana_index")))
-            userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user3_app1"), KibanaApp("user3_app2")))
+            userMetadata.hiddenKibanaApps should be (Set(FullNameKibanaApp("user3_app1"), FullNameKibanaApp("user3_app2")))
             userMetadata.allowedKibanaApiPaths should be (Set.empty)
             userMetadata.kibanaAccess should be (Some(KibanaAccess.Unrestricted))
             userMetadata.userOrigin should be (None)

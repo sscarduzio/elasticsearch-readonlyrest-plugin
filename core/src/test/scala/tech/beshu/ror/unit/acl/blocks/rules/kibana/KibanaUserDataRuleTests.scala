@@ -41,6 +41,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepre
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 
 import scala.util.{Failure, Success, Try}
 
@@ -74,7 +75,7 @@ class KibanaUserDataRuleTests
     }
     "kibana apps are configured" should {
       "pass the apps to the User Metadata object if the rule matches" in {
-        val apps = UniqueNonEmptyList.of(KibanaApp("app1"), KibanaApp("app2"))
+        val apps: UniqueNonEmptyList[KibanaApp] = UniqueNonEmptyList.of(FullNameKibanaApp("app1"), FullNameKibanaApp("app2"))
         val rule = createRuleFrom(KibanaUserDataRule.Settings(
           access = KibanaAccess.Unrestricted,
           kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),

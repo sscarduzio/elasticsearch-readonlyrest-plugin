@@ -17,22 +17,23 @@
 package tech.beshu.ror.unit.acl.factory.decoders.rules.kibana
 
 import eu.timepit.refined.auto._
-import org.scalatest.{EitherValues, OptionValues}
 import org.scalatest.matchers.should.Matchers._
+import org.scalatest.{EitherValues, OptionValues}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.accesscontrol.domain.Json.{JsonRepresentation, JsonTree}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.domain.Json.JsonValue.{BooleanValue, NullValue, NumValue, StringValue}
+import tech.beshu.ror.accesscontrol.domain.Json.{JsonRepresentation, JsonTree}
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
-import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, KibanaAllowedApiPath, KibanaApp, JavaRegex, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
+import tech.beshu.ror.accesscontrol.domain.{IndexName, JavaRegex, KibanaAccess, KibanaAllowedApiPath, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 
 class KibanaUserDataRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[KibanaUserDataRule]
@@ -85,7 +86,7 @@ class KibanaUserDataRuleSettingsTests
             rule.settings.access should be(KibanaAccess.RW)
             rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana_custom")))
             rule.settings.kibanaTemplateIndex should be(Some(AlreadyResolved(kibanaIndexName(".kibana_template"))))
-            rule.settings.appsToHide should be(Set(KibanaApp("app1"), KibanaApp("app2")))
+            rule.settings.appsToHide should be(Set(FullNameKibanaApp("app1"), FullNameKibanaApp("app2")))
             rule.settings.allowedApiPaths should be(
               Set(KibanaAllowedApiPath(AllowedHttpMethod.Any, JavaRegex.compile("""^/api/spaces/.*$""").get))
             )
@@ -258,7 +259,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.access should be(KibanaAccess.RO)
               rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
-              rule.settings.appsToHide should be(Set(KibanaApp("app1")))
+              rule.settings.appsToHide should be(Set(FullNameKibanaApp("app1")))
               rule.settings.allowedApiPaths should be(Set.empty)
               rule.settings.metadata should be(None)
               rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))
@@ -283,7 +284,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.access should be(KibanaAccess.RO)
               rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
-              rule.settings.appsToHide should be(Set(KibanaApp("app1"), KibanaApp("app2")))
+              rule.settings.appsToHide should be(Set(FullNameKibanaApp("app1"), FullNameKibanaApp("app2")))
               rule.settings.allowedApiPaths should be(Set.empty)
               rule.settings.metadata should be(None)
               rule.settings.rorIndex should be(RorConfigurationIndex(IndexName.Full(".readonlyrest")))

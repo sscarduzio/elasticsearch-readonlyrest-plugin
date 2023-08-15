@@ -105,7 +105,7 @@ object orders {
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
   implicit val kibanaAppOrder: Order[KibanaApp] = Order.by {
     case KibanaApp.FullNameKibanaApp(name) => name.value
-    case KibanaApp.KibanaAppRegex(regex) => regex.value
+    case KibanaApp.KibanaAppRegex(regex) => regex.value.value
   }
   implicit val documentFieldOrder: Order[DocumentField] = Order.by(_.value)
   implicit val actionOrder: Order[Action] = Order.by(_.value)
@@ -172,7 +172,7 @@ object show {
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
     implicit val kibanaAppShow: Show[KibanaApp] = Show.show {
       case KibanaApp.FullNameKibanaApp(name) => name.value
-      case KibanaApp.KibanaAppRegex(regex) => regex.value
+      case KibanaApp.KibanaAppRegex(regex) => regex.value.value
     }
     implicit val kibanaAllowedApiPathShow: Show[KibanaAllowedApiPath] = Show.show { p =>
       val httpMethodStr = p.httpMethod match {
