@@ -53,7 +53,7 @@ class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
       case r: GetDataStreamAction.Response =>
         blockContext.backingIndices match {
           case BackingIndices.IndicesInvolved(_, allAllowedIndices) =>
-            Task.now(updateGetDataStreamResponse(r, allAllowedIndices))
+            Task.now(updateGetDataStreamResponse(r, extendAllowedIndicesSet(allAllowedIndices)))
           case BackingIndices.IndicesNotInvolved =>
             Task.now(r)
         }
@@ -62,12 +62,16 @@ class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
     }
   }
 
+  private def extendAllowedIndicesSet(allowedIndices: Iterable[ClusterIndexName]) = {
+    allowedIndices.toList.map(_.formatAsDataStreamBackingIndexName).toSet ++ allowedIndices.toSet
+  }
+
   private def setDataStreamNames(dataStreams: Set[domain.DataStreamName]): Unit = {
     actionRequest.indices(dataStreams.map(DataStreamName.toString).toList: _*) // method is named indices but it sets data streams
   }
 
   private def updateGetDataStreamResponse(response: GetDataStreamAction.Response,
-                                          allAllowedIndices: Set[ClusterIndexName]): GetDataStreamAction.Response = {
+                                          allAllowedIndices: Iterable[ClusterIndexName]): GetDataStreamAction.Response = {
     val allowedIndicesMatcher = MatcherWithWildcardsScalaAdapter.create(allAllowedIndices)
     val filteredStreams =
       response

@@ -33,7 +33,7 @@ class DataStreamsStatsEsRequestContext(actionRequest: DataStreamsStatsAction.Req
                                        override val threadPool: ThreadPool)
   extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  override def backingIndicesFrom(request: DataStreamsStatsAction.Request): BackingIndices =  BackingIndices.IndicesNotInvolved
+  override def backingIndicesFrom(request: DataStreamsStatsAction.Request): BackingIndices = BackingIndices.IndicesNotInvolved
 
   override def dataStreamsFrom(request: DataStreamsStatsAction.Request): Set[domain.DataStreamName] =
     actionRequest.indices().asSafeList.flatMap(DataStreamName.fromString).toSet
