@@ -1485,7 +1485,7 @@ object domain {
   }
 
   final case class JsRegex private(value: NonEmptyString)
-  object JsRegex {
+  object JsRegex extends Logging {
     private val extractRawRegex = """\/(.*)\/""".r
 
     def compile(str: NonEmptyString): Either[CompilationResult, JsRegex] =
@@ -1494,7 +1494,8 @@ object domain {
           JsCompiler.compile(s"new RegExp('$regex')") match {
             case Success(_) =>
               Right(new JsRegex(str))
-            case Failure(_) =>
+            case Failure(ex) =>
+              logger.error("JS compiler error", ex)
               Left(CompilationResult.SyntaxError)
           }
         case _ =>

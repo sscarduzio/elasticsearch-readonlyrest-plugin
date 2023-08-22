@@ -87,7 +87,7 @@ class CurrentUserMetadataSuite
                |  "x-ror-correlation-id": "$correlationId",
                |  "x-ror-kibana_index": "user2_kibana_index",
                |  "x-ror-kibana_access": "ro",
-               |  "x-ror-kibana-hidden-apps": [ "user2_app1", "user2_app2" ],
+               |  "x-ror-kibana-hidden-apps": [ "user2_app1", "user2_app2", "/^Analytics\\|(?!(Maps)$$).*$$/" ],
                |  "x-ror-kibana-allowed-api-paths":[
                |    {
                |      "http_method":"ANY",

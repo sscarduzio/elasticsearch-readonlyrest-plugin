@@ -23,6 +23,7 @@ import scala.util.Try
 object JsCompiler {
 
   private val mozillaJsContext: Context = Context.enter
+  mozillaJsContext.setApplicationClassLoader(this.getClass.getClassLoader)
   private val scope: ScriptableObject = mozillaJsContext.initStandardObjects
 
   def compile(jsCodeString: String): Try[AnyRef] = Try {
