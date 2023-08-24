@@ -69,6 +69,10 @@ import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter._
 import tech.beshu.ror.es.handler.request.RestRequestOps._
 import tech.beshu.ror.es.handler.request.context.types._
+import tech.beshu.ror.es.handler.request.context.types.repositories.{CleanupRepositoryEsRequestContext, CreateRepositoryEsRequestContext, DeleteRepositoryEsRequestContext, GetRepositoriesEsRequestContext, VerifyRepositoryEsRequestContext}
+import tech.beshu.ror.es.handler.request.context.types.ror.{AuditEventESRequestContext, CurrentUserMetadataEsRequestContext, RorApiEsRequestContext}
+import tech.beshu.ror.es.handler.request.context.types.snapshots.{CreateSnapshotEsRequestContext, DeleteSnapshotEsRequestContext, GetSnapshotsEsRequestContext, RestoreSnapshotEsRequestContext, SnapshotsStatusEsRequestContext}
+import tech.beshu.ror.es.handler.request.context.types.templates.{DeleteComponentTemplateEsRequestContext, DeleteComposableIndexTemplateEsRequestContext, DeleteTemplateEsRequestContext, GetComponentTemplateEsRequestContext, GetComposableIndexTemplateEsRequestContext, GetTemplatesEsRequestContext, MultiSearchTemplateEsRequestContext, PutComponentTemplateEsRequestContext, PutComposableIndexTemplateEsRequestContext, PutTemplateEsRequestContext, SearchTemplateEsRequestContext, SimulateIndexTemplateRequestEsRequestContext}
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
 import java.time.Instant
