@@ -56,7 +56,7 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
         case r: ActionResponse if isGetDataStreamActionResponse(r) =>
           blockContext.backingIndices match {
             case BackingIndices.IndicesInvolved(_, allAllowedIndices) =>
-              Task.now(updateActionResponse(r, allAllowedIndices))
+              Task.now(updateActionResponse(r, extendAllowedIndicesSet(allAllowedIndices)))
             case BackingIndices.IndicesNotInvolved =>
               Task.now(r)
           }
@@ -67,7 +67,10 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
       logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getCanonicalName} request. We're using reflection to modify the request data streams and it fails. Please, report the issue.")
       ModificationResult.ShouldBeInterrupted
     }
+  }
 
+  private def extendAllowedIndicesSet(allowedIndices: Iterable[ClusterIndexName]) = {
+    allowedIndices.toList.map(_.formatAsDataStreamBackingIndexName).toSet ++ allowedIndices.toSet
   }
 
   private def modifyActionRequest(blockContext: BlockContext.DataStreamRequestBlockContext): Boolean = {
@@ -82,9 +85,8 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
     r.getClass.getCanonicalName == "org.elasticsearch.xpack.core.action.GetDataStreamAction.Response"
   }
 
-
   private def updateActionResponse(response: ActionResponse,
-                                   allAllowedIndices: Set[ClusterIndexName]): ActionResponse = {
+                                   allAllowedIndices: Iterable[ClusterIndexName]): ActionResponse = {
     val allowedIndicesMatcher = MatcherWithWildcardsScalaAdapter.create(allAllowedIndices)
     val filteredDataStreams =
       invokeMethod(response, response.getClass, "getDataStreams")

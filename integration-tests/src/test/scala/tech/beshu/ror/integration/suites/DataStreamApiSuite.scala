@@ -45,6 +45,7 @@ class DataStreamApiSuite
   private lazy val user3Client = clients.head.basicAuthClient("user3", "pass")
   private lazy val user4Client = clients.head.basicAuthClient("user4", "pass")
   private lazy val user5Client = clients.head.basicAuthClient("user5", "pass")
+  private lazy val user11Client = clients.head.basicAuthClient("user11", "pass")
   private lazy val adminDocumentManager = new DocumentManager(client, esVersionUsed)
   private lazy val adminDataStreamManager = new DataStreamManager(client)
   private lazy val adminIndexManager = new IndexManager(client, esVersionUsed)
@@ -263,8 +264,8 @@ class DataStreamApiSuite
             (s".ds-$testDataStream*", 1),
             (s".ds-$adminDataStream*", 0),
           )
-            .foreach { case (dataStream, expectedHits) =>
-              val response = searchManager.searchAll(dataStream)
+            .foreach { case (dataStreamIndexPattern, expectedHits) =>
+              val response = searchManager.searchAll(dataStreamIndexPattern)
               response.totalHits should be(expectedHits)
             }
         }
@@ -503,6 +504,17 @@ class DataStreamApiSuite
               val response = dsm.getAllDataStreams()
               response should have statusCode 200
               response.allDataStreams.toSet should be(Set(dataStream1, dataStream2))
+            }
+            "in the allowed indices list there is only the name of the stream" excludeES(allEs6x, allEs7xBelowEs79x) in {
+              createDataStream("user11_index1", IndexTemplateNameGenerator.next)
+              createDataStream("user11_index200", IndexTemplateNameGenerator.next)
+              createDataStream("user11_index300", IndexTemplateNameGenerator.next)
+
+              val dsm = new DataStreamManager(user11Client)
+              val response = dsm.getAllDataStreams()
+
+              response should have statusCode 200
+              response.allDataStreams.toSet should be(Set("user11_index1", "user11_index200"))
             }
           }
           "return empty list of data streams when" - {

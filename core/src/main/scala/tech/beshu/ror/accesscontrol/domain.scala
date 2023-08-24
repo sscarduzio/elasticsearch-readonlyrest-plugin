@@ -23,6 +23,7 @@ import cats.kernel.Monoid
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
+//import eu.timepit.refined.types.all.NonEmptyString
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import io.lemonlabs.uri.Uri
@@ -780,6 +781,45 @@ object domain {
         case Remote(IndexName.Full(_) | IndexName.Wildcard(_), _) => false
       }
     }
+
+    implicit class ToDataStreamBackingIndexNameFormat(val index: ClusterIndexName) extends AnyVal {
+
+      def formatAsDataStreamBackingIndexName: ClusterIndexName = {
+        format(backingIndexWildcardNameFrom)
+      }
+
+      def formatAsLegacyDataStreamBackingIndexName: ClusterIndexName = {
+        format(legacyBackingIndexWildcardNameFrom)
+      }
+
+      private def format(backingIndexWildcardFromString: NonEmptyString => IndexName.Wildcard) = {
+        index match {
+          case ClusterIndexName.Local(IndexName.Full(name)) if !doesItLookLikeABackingIndex(name) =>
+            ClusterIndexName.Local(backingIndexWildcardFromString(name))
+          case ClusterIndexName.Local(IndexName.Wildcard(name)) if !doesItLookLikeABackingIndex(name) =>
+            ClusterIndexName.Local(backingIndexWildcardFromString(name))
+          case ClusterIndexName.Remote(IndexName.Full(name), cluster) if !doesItLookLikeABackingIndex(name) =>
+            ClusterIndexName.Remote(backingIndexWildcardFromString(name), cluster)
+          case ClusterIndexName.Remote(IndexName.Wildcard(name), cluster) if !doesItLookLikeABackingIndex(name) =>
+            ClusterIndexName.Remote(backingIndexWildcardFromString(name), cluster)
+          case index =>
+            index
+        }
+      }
+
+      private def doesItLookLikeABackingIndex(nameStr: NonEmptyString) = {
+        nameStr.value.startsWith(".ds-")
+      }
+
+      private def backingIndexWildcardNameFrom(nameStr: NonEmptyString) = {
+        IndexName.Wildcard(NonEmptyString.unsafeFrom(s".ds-$nameStr-*.*.*-*"))
+      }
+
+      private def legacyBackingIndexWildcardNameFrom(nameStr: NonEmptyString) = {
+        IndexName.Wildcard(NonEmptyString.unsafeFrom(s".ds-$nameStr-*"))
+      }
+    }
+
   }
 
   final case class IndexPattern(value: ClusterIndexName) {
