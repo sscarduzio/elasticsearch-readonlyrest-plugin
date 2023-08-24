@@ -34,7 +34,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.domain.{Jwt => _, _}
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.UserIdEq
@@ -67,7 +68,7 @@ class RorKbnAuthRuleTests
           blockContext =>
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              jwt = Some(JwtTokenPayload(jwt.defaultClaims()))
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
             )(blockContext)
         }
       }
@@ -87,7 +88,7 @@ class RorKbnAuthRuleTests
           blockContext =>
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              jwt = Some(JwtTokenPayload(jwt.defaultClaims()))
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
             )(blockContext)
         }
       }
@@ -107,7 +108,7 @@ class RorKbnAuthRuleTests
           blockContext =>
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              jwt = Some(JwtTokenPayload(jwt.defaultClaims()))
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
             )(blockContext)
         }
       }
@@ -134,7 +135,7 @@ class RorKbnAuthRuleTests
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupName("group2")),
               availableGroups = UniqueList.of(GroupName("group2")),
-              jwt = Some(JwtTokenPayload(jwt.defaultClaims()))
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
             )(blockContext)
         }
       }
@@ -162,7 +163,7 @@ class RorKbnAuthRuleTests
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupName("group2")),
               availableGroups = UniqueList.of(GroupName("group2")),
-              jwt = Some(JwtTokenPayload(jwt.defaultClaims()))
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
             )(blockContext)
         }
       }
@@ -190,7 +191,7 @@ class RorKbnAuthRuleTests
                 loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 currentGroup = Some(GroupName("group2")),
                 availableGroups = UniqueList.of(GroupName("group2")),
-                jwt = Some(JwtTokenPayload(jwt.defaultClaims()))
+                jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
               )(blockContext)
           }
         }
@@ -217,7 +218,7 @@ class RorKbnAuthRuleTests
                 loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 currentGroup = Some(GroupName("group2")),
                 availableGroups = UniqueList.of(GroupName("group2")),
-                jwt = Some(JwtTokenPayload(jwt.defaultClaims()))
+                jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
               )(blockContext)
           }
         }
@@ -246,7 +247,7 @@ class RorKbnAuthRuleTests
                 loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 currentGroup = Some(GroupName("group3")),
                 availableGroups = UniqueList.of(GroupName("group3"), GroupName("group2")),
-                jwt = Some(JwtTokenPayload(jwt.defaultClaims()))
+                jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
               )(blockContext)
           }
         }
@@ -273,7 +274,7 @@ class RorKbnAuthRuleTests
                 loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 currentGroup = Some(GroupName("group3")),
                 availableGroups = UniqueList.of(GroupName("group3"), GroupName("group2")),
-                jwt = Some(JwtTokenPayload(jwt.defaultClaims()))
+                jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
               )(blockContext)
           }
         }
