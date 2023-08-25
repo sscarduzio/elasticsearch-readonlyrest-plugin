@@ -71,7 +71,7 @@ import tech.beshu.ror.es.handler.request.context.types._
 import tech.beshu.ror.es.handler.request.context.types.repositories.{CleanupRepositoryEsRequestContext, CreateRepositoryEsRequestContext, DeleteRepositoryEsRequestContext, GetRepositoriesEsRequestContext, VerifyRepositoryEsRequestContext}
 import tech.beshu.ror.es.handler.request.context.types.ror.{AuditEventESRequestContext, CurrentUserMetadataEsRequestContext, RorApiEsRequestContext}
 import tech.beshu.ror.es.handler.request.context.types.snapshots.{CreateSnapshotEsRequestContext, DeleteSnapshotEsRequestContext, GetSnapshotsEsRequestContext, RestoreSnapshotEsRequestContext, SnapshotsStatusEsRequestContext}
-import tech.beshu.ror.es.handler.request.context.types.templates.{DeleteTemplateEsRequestContext, GetTemplatesEsRequestContext, MultiSearchTemplateEsRequestContext, PutTemplateEsRequestContext, SearchTemplateEsRequestContext}
+import tech.beshu.ror.es.handler.request.context.types.templates.{DeleteTemplateEsRequestContext, GetTemplatesEsRequestContext, MultiSearchTemplateEsRequestContext, PutTemplateEsRequestContext, SearchTemplateEsRequestContext, TemplateClusterStateEsRequestContext}
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
 import java.time.Instant

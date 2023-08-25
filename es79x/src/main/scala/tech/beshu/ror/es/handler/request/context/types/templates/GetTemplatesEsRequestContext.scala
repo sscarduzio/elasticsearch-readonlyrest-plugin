@@ -99,7 +99,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
 
 }
 
-private[types] object GetTemplatesEsRequestContext extends Logging {
+private[templates] object GetTemplatesEsRequestContext extends Logging {
 
   def filter(templates: List[IndexTemplateMetadata],
              using: Set[Template] => Set[Template])

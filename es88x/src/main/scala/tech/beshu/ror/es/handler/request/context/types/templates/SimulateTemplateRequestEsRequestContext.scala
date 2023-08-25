@@ -31,6 +31,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
+import tech.beshu.ror.es.handler.request.context.types.templates.SimulateIndexTemplateRequestEsRequestContext.TunedSimulateIndexTemplateResponse
 import tech.beshu.ror.utils.ScalaOps._
 
 object SimulateTemplateRequestEsRequestContext {

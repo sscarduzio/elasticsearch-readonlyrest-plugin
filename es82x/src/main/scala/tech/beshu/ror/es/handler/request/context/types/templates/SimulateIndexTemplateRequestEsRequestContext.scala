@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.handler.request.context.types.templates
 
+import java.util.{List => JList, Map => JMap}
 import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
@@ -24,15 +25,14 @@ import org.elasticsearch.action.admin.indices.template.post.{SimulateIndexTempla
 import org.elasticsearch.cluster.metadata.{Template => EsMetadataTemplate}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
-import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexPattern, TemplateNamePattern}
+import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseIndicesEsRequestContext
 import tech.beshu.ror.utils.ScalaOps._
 
-import java.util.{List => JList, Map => JMap}
 import scala.jdk.CollectionConverters._
 
 class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexTemplateRequest,
@@ -40,7 +40,7 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
                                                    aclContext: AccessControlStaticContext,
                                                    clusterService: RorClusterService,
                                                    override val threadPool: ThreadPool)
-  // note: it may seem that it's template request but it's not. It's rather related with index and that's why we treat it in this way
+// note: it may seem that it's template request but it's not. It's rather related with index and that's why we treat it in this way
   extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override lazy val isReadOnlyRequest: Boolean = true

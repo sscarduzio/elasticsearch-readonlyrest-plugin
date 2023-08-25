@@ -102,7 +102,7 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
 
 }
 
-private[types] object GetComposableIndexTemplateEsRequestContext extends Logging {
+private[templates] object GetComposableIndexTemplateEsRequestContext extends Logging {
 
   def filter(templates: Map[String, ComposableIndexTemplate],
              using: Set[Template] => Set[Template])
