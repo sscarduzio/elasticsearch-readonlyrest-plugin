@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import io.circe.{Decoder, HCursor, Json}
-import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, ClaimName, Header}
+import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, Header, Jwt}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{Name, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
@@ -43,7 +43,7 @@ object JwtDefinitionsDecoder {
 
   implicit val jwtDefNameDecoder: Decoder[Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
 
-  private implicit val claimDecoder: Decoder[ClaimName] = jsonPathDecoder.map(ClaimName.apply)
+  private implicit val claimDecoder: Decoder[Jwt.ClaimName] = jsonPathDecoder.map(Jwt.ClaimName.apply)
 
   private def jwtDefDecoder(implicit httpClientFactory: HttpClientsFactory,
                             variableCreator: RuntimeResolvableVariableCreator): Decoder[JwtDef] = {
@@ -54,8 +54,8 @@ object JwtDefinitionsDecoder {
           checkMethod <- signatureCheckMethod(c)
           headerName <- c.downField("header_name").as[Option[Header.Name]]
           authTokenPrefix <- c.downField("header_prefix").as[Option[String]]
-          userClaim <- c.downField("user_claim").as[Option[ClaimName]]
-          groupsClaim <- c.downFields("roles_claim", "groups_claim").as[Option[ClaimName]]
+          userClaim <- c.downField("user_claim").as[Option[Jwt.ClaimName]]
+          groupsClaim <- c.downFields("roles_claim", "groups_claim").as[Option[Jwt.ClaimName]]
         } yield JwtDef(
           name,
           AuthorizationTokenDef(

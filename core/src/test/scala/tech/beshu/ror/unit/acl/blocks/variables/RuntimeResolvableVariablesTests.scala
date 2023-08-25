@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolv
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{JwtTokenPayload, User}
+import tech.beshu.ror.accesscontrol.domain.{Jwt, User}
 import tech.beshu.ror.mocks.{MockRequestContext, MockUserMetadataRequestContext}
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -233,7 +233,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
       "jwt variable is used with correct JSON path to string value and JWT token was set" in {
         val variable = forceCreateSingleVariable("@{jwt:tech.beshu.mainGroup}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            _.withJwtToken(JwtTokenPayload {
+            _.withJwtToken(Jwt.Payload {
               val claims = new DefaultClaims()
               claims.put("tech", Map("beshu" -> Map("mainGroup" -> "group1").asJava).asJava)
               claims
@@ -244,7 +244,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
       "jwt variable with transformation is used with correct JSON path to string value and JWT token was set" in {
         val variable = forceCreateSingleVariable("""@{jwt:tech.beshu.mainGroup}#{replace_first("^group\d","g")}""")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            _.withJwtToken(JwtTokenPayload {
+            _.withJwtToken(Jwt.Payload {
               val claims = new DefaultClaims()
               claims.put("tech", Map("beshu" -> Map("mainGroup" -> "group1").asJava).asJava)
               claims
@@ -256,7 +256,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
         val variable = forceCreateSingleVariable("@{jwt:tech.beshu.groups}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
             _.withJwtToken(
-              JwtTokenPayload {
+              Jwt.Payload {
                 val claims = new DefaultClaims()
                 claims.put("tech", Map("beshu" -> Map("groups" -> List("group1", "group2").asJava).asJava).asJava)
                 claims
@@ -268,7 +268,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
       "jwt multivariable is used with correct JSON path to strings array value and JWT token was set" in {
         val variable = forceCreateMultiVariable("@explode{jwt:tech.beshu.groups}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            _.withJwtToken(JwtTokenPayload {
+            _.withJwtToken(Jwt.Payload {
               val claims = new DefaultClaims()
               claims.put("tech", Map("beshu" -> Map("groups" -> List("group1", "group2").asJava).asJava).asJava)
               claims
@@ -287,7 +287,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
         val variable = forceCreateSingleVariable("@{jwt:tech.beshu}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
             _.withJwtToken(
-              JwtTokenPayload {
+              Jwt.Payload {
                 val claims = new DefaultClaims()
                 claims.put("tech", Map("beshu" -> Map("groups" -> List("group1", "group2").asJava).asJava).asJava)
                 claims

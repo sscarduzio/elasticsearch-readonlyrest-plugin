@@ -76,7 +76,7 @@ final class RorKbnAuthRule(val settings: Settings,
 
   private def authorizeUsingJwtToken[B <: BlockContext : BlockContextUpdater](blockContext: B): RuleResult[B] = {
     val authHeaderName = Header.Name.authorization
-    blockContext.requestContext.bearerToken.map(h => JwtToken(h.value)) match {
+    blockContext.requestContext.bearerToken.map(h => Jwt.Token(h.value)) match {
       case None =>
         logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
         Rejected()
@@ -85,7 +85,7 @@ final class RorKbnAuthRule(val settings: Settings,
     }
   }
 
-  private def process[B <: BlockContext : BlockContextUpdater](token: JwtToken, blockContext: B): RuleResult[B] = {
+  private def process[B <: BlockContext : BlockContextUpdater](token: Jwt.Token, blockContext: B): RuleResult[B] = {
     jwtTokenData(token) match {
       case Left(_) =>
         Rejected()
@@ -103,7 +103,7 @@ final class RorKbnAuthRule(val settings: Settings,
     }
   }
 
-  private def jwtTokenData(token: JwtToken) = {
+  private def jwtTokenData(token: Jwt.Token) = {
     claimsFrom(token)
       .map { tokenPayload =>
         (
@@ -115,10 +115,10 @@ final class RorKbnAuthRule(val settings: Settings,
       }
   }
 
-  private def claimsFrom(token: JwtToken) = {
+  private def claimsFrom(token: Jwt.Token) = {
     Try(parser.parseClaimsJws(token.value.value).getBody)
       .toEither
-      .map(JwtTokenPayload.apply)
+      .map(Jwt.Payload.apply)
       .left.map { ex => logger.debug(s"JWT token '${token.show}' parsing error " + ex.getClass.getSimpleName) }
   }
 
@@ -183,6 +183,6 @@ object RorKbnAuthRule {
     final case class Defined(groupsLogic: GroupsLogic) extends Groups
   }
 
-  private val userClaimName = ClaimName(JsonPath.compile("user"))
-  private val groupsClaimName = ClaimName(JsonPath.compile("groups"))
+  private val userClaimName = Jwt.ClaimName(JsonPath.compile("user"))
+  private val groupsClaimName = Jwt.ClaimName(JsonPath.compile("groups"))
 }

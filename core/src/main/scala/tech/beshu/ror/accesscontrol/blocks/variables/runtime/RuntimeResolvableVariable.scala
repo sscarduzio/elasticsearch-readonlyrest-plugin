@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function
-import tech.beshu.ror.accesscontrol.domain.{ClaimName, Header}
+import tech.beshu.ror.accesscontrol.domain.{Header, Jwt}
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.CustomClaimValue.{CollectionValue, SingleValue}
@@ -117,7 +117,7 @@ object SingleExtractable {
   }
 
   final class JwtPayloadVar(jsonPath: JsonPath, transformation: Option[Function]) extends SingleExtractable with VariableType.Jwt {
-    private val varClaim = ClaimName(jsonPath)
+    private val varClaim = Jwt.ClaimName(jsonPath)
 
     override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] = withTransformation(transformation) {
       blockContext.userMetadata.jwtToken match {

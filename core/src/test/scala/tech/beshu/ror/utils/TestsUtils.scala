@@ -46,7 +46,7 @@ import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.configuration.RawRorConfig
-import tech.beshu.ror.utils.misc.JwtUtils.Jwt
+import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import java.nio.file.Path
@@ -65,10 +65,10 @@ object TestsUtils {
       NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(value.getBytes)}")
     )
 
-  def bearerHeader(jwt: Jwt): Header =
+  def bearerHeader(jwt: JwtUtils.Jwt): Header =
     bearerHeader(Header.Name.authorization.value, jwt)
 
-  def bearerHeader(headerName: NonEmptyString, jwt: Jwt): Header =
+  def bearerHeader(headerName: NonEmptyString, jwt: JwtUtils.Jwt): Header =
     new Header(
       Header.Name(headerName),
       NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")
@@ -229,7 +229,7 @@ object TestsUtils {
                            hiddenKibanaApps: Set[KibanaApp] = Set.empty,
                            kibanaAccess: Option[KibanaAccess] = None,
                            userOrigin: Option[UserOrigin] = None,
-                           jwt: Option[JwtTokenPayload] = None,
+                           jwt: Option[Jwt.Payload] = None,
                            responseHeaders: Set[Header] = Set.empty,
                            indices: Set[ClusterIndexName] = Set.empty,
                            aliases: Set[ClusterIndexName] = Set.empty,
