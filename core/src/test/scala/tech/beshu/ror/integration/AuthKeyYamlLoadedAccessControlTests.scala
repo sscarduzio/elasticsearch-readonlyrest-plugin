@@ -33,7 +33,8 @@ import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
 
-class AuthKeyYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
+class AuthKeyYamlLoadedAccessControlTests
+  extends AnyWordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
 
   protected def configYaml: String =
     """

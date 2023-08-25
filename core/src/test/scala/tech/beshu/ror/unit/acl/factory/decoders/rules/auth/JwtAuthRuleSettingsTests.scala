@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthent
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule.Groups
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, ClaimName, GroupLike, GroupsLogic, Header, PermittedGroups}
+import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, GroupLike, GroupsLogic, Header, PermittedGroups}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
@@ -36,6 +36,7 @@ import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.accesscontrol.domain
 
 import java.security.KeyPairGenerator
 import java.util.Base64
@@ -306,7 +307,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-            rule.settings.jwt.userClaim should be(Some(ClaimName(JsonPath.compile("user"))))
+            rule.settings.jwt.userClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("user"))))
             rule.settings.jwt.groupsClaim should be(None)
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
@@ -335,7 +336,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(Some(ClaimName(JsonPath.compile("groups"))))
+            rule.settings.jwt.groupsClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("groups"))))
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -363,7 +364,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(Some(ClaimName(JsonPath.compile("https://{domain}/claims/roles"))))
+            rule.settings.jwt.groupsClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("https://{domain}/claims/roles"))))
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -393,7 +394,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(Some(ClaimName(JsonPath.compile("groups"))))
+            rule.settings.jwt.groupsClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("groups"))))
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -422,7 +423,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(Some(ClaimName(JsonPath.compile("groups"))))
+            rule.settings.jwt.groupsClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("groups"))))
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -453,7 +454,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(Some(ClaimName(JsonPath.compile("groups"))))
+            rule.settings.jwt.groupsClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("groups"))))
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -483,7 +484,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Ec]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(Some(ClaimName(JsonPath.compile("groups"))))
+            rule.settings.jwt.groupsClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("groups"))))
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -518,7 +519,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.NoCheck]
             rule.settings.jwt.checkMethod.asInstanceOf[SignatureCheckMethod.NoCheck].service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(Some(ClaimName(JsonPath.compile("groups"))))
+            rule.settings.jwt.groupsClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("groups"))))
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -556,7 +557,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.NoCheck]
             rule.settings.jwt.checkMethod.asInstanceOf[SignatureCheckMethod.NoCheck].service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(Some(ClaimName(JsonPath.compile("groups"))))
+            rule.settings.jwt.groupsClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("groups"))))
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )

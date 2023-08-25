@@ -61,3 +61,7 @@ readonlyrest:
       indices:
         - 'data-stream-d*' #-ev
         - 'data-stream-t*' #-est
+
+    - name: "User11 access streams"
+      auth_key: "user11:pass"
+      indices: ["user11_index1", "user11_index2*"]

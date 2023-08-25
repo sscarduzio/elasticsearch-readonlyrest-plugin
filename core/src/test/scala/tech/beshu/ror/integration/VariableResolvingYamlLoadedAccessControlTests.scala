@@ -31,7 +31,8 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Json.{JsonTree, JsonValue}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.domain.{Jwt => _, _}
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -268,7 +269,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
               UserMetadata
                 .empty
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user3")))
-                .withJwtToken(JwtTokenPayload(jwt.defaultClaims()))
+                .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
             )
             blockContext.filteredIndices should be(Set(clusterIndexName("gjj1")))
             blockContext.responseHeaders should be(Set.empty)
@@ -294,7 +295,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
               UserMetadata
                 .from(request)
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user4")))
-                .withJwtToken(JwtTokenPayload(jwt.defaultClaims()))
+                .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
             )
             blockContext.filteredIndices should be(Set(clusterIndexName("gj0")))
             blockContext.responseHeaders should be(Set.empty)
@@ -320,7 +321,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
               UserMetadata
                 .from(request)
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user5")))
-                .withJwtToken(JwtTokenPayload(jwt.defaultClaims()))
+                .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
             )
             blockContext.filteredIndices should be(Set.empty)
             blockContext.responseHeaders should be(Set.empty)
@@ -383,7 +384,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                       "c" -> JsonTree.Value(JsonValue.StringValue("jwt_value_transformed_G0,J3"))
                     ))
                   )
-                  .withJwtToken(JwtTokenPayload(jwt.defaultClaims()))
+                  .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
               )
               blockContext.responseHeaders should be(Set.empty)
           }

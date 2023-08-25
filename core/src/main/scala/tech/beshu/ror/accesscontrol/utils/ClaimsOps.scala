@@ -23,7 +23,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.{ClaimName, Header, User}
+import tech.beshu.ror.accesscontrol.domain.{Header, Jwt, User}
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult._
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.{ClaimSearchResult, CustomClaimValue}
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -42,7 +42,7 @@ class ClaimsOps(val claims: Claims) extends Logging {
     }
   }
 
-  def userIdClaim(claimName: ClaimName): ClaimSearchResult[User.Id] = {
+  def userIdClaim(claimName: Jwt.ClaimName): ClaimSearchResult[User.Id] = {
     Try(claimName.name.read[Any](claims))
       .map {
         case value: String =>
@@ -55,7 +55,7 @@ class ClaimsOps(val claims: Claims) extends Logging {
       .fold(_ => NotFound, identity)
   }
 
-  def groupsClaim(claimName: ClaimName): ClaimSearchResult[UniqueList[GroupName]] = {
+  def groupsClaim(claimName: Jwt.ClaimName): ClaimSearchResult[UniqueList[GroupName]] = {
     Try(claimName.name.read[Any](claims))
       .map {
         case value: String =>
@@ -77,7 +77,7 @@ class ClaimsOps(val claims: Claims) extends Logging {
       .fold(_ => NotFound, identity)
   }
 
-  def customClaim(claimName: ClaimName): ClaimSearchResult[CustomClaimValue] = {
+  def customClaim(claimName: Jwt.ClaimName): ClaimSearchResult[CustomClaimValue] = {
     Try(claimName.name.read[Any](claims))
       .map {
         case value: String =>
