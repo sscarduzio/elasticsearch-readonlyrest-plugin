@@ -70,7 +70,7 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
   }
 
   private def extendAllowedIndicesSet(allowedIndices: Iterable[ClusterIndexName]) = {
-    allowedIndices.toList.map(_.formatAsDataStreamBackingIndexName).toSet ++ allowedIndices.toSet
+    allowedIndices.toList.map(_.formatAsLegacyDataStreamBackingIndexName).toSet ++ allowedIndices.toSet
   }
 
   private def modifyActionRequest(blockContext: BlockContext.DataStreamRequestBlockContext): Boolean = {
