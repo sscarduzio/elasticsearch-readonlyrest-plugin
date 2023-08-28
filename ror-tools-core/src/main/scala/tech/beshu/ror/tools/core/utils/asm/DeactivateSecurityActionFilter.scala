@@ -20,25 +20,26 @@ import org.objectweb.asm._
 
 import java.io.{File, InputStream}
 import java.nio.file.Files
+import scala.language.postfixOps
 
-object SecurityServerTransportInterceptorDeactivator extends BytecodeJarModifier {
+object DeactivateSecurityActionFilter extends BytecodeJarModifier {
 
-  def deactivateSecurityServerTransportInterceptor(jar: File): Unit = {
+  override def apply(jar: File): Unit = {
     val originalFileOwner = Files.getOwner(jar.toPath)
     val modifiedSecurityClass = loadAndProcessFileFromJar(
       jar = jar,
-      classFileName = "org/elasticsearch/xpack/security/transport/SecurityServerTransportInterceptor",
-      processFileContent = doDeactivateSecurityServerTransportInterceptor
+      classFileName = "org/elasticsearch/xpack/security/Security",
+      processFileContent = doDeactivateXpackSecurityFilter
     )
     updateFileInJar(
       jar = jar,
-      destinationPathSting = "/org/elasticsearch/xpack/security/transport/SecurityServerTransportInterceptor.class",
+      destinationPathSting = "/org/elasticsearch/xpack/security/Security.class",
       newContent = modifiedSecurityClass
     )
     Files.setOwner(jar.toPath, originalFileOwner)
   }
 
-  private def doDeactivateSecurityServerTransportInterceptor(moduleInputStream: InputStream) = {
+  private def doDeactivateXpackSecurityFilter(moduleInputStream: InputStream) = {
     val reader = new ClassReader(moduleInputStream)
     val writer = new ClassWriter(reader, 0)
     reader.accept(new EsClassVisitor(writer), 0)
@@ -54,37 +55,51 @@ object SecurityServerTransportInterceptorDeactivator extends BytecodeJarModifier
                              signature: String,
                              exceptions: Array[String]): MethodVisitor = {
       name match {
-        case "interceptSender" =>
-          new InterceptSenderReturningSenderFromParam(super.visitMethod(access, name, descriptor, signature, exceptions))
-        case "interceptHandler" =>
-          new InterceptHandlerReturningSenderFromParam(super.visitMethod(access, name, descriptor, signature, exceptions))
+        case "getActionFilters" =>
+          new GetActionFiltersMethodReturningEmptyList(
+            super.visitMethod(access, name, descriptor, signature, exceptions)
+          )
+        case "onIndexModule" =>
+          // removing the onIndexModule method
+          null
+        case "getRequestCacheKeyDifferentiator" =>
+          new GetRequestCacheKeyDifferentiatorReturningNull(
+            super.visitMethod(access, name, descriptor, signature, exceptions)
+          )
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
   }
 
-  private class InterceptSenderReturningSenderFromParam(underlying: MethodVisitor)
+  private class GetActionFiltersMethodReturningEmptyList(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
+      underlying.visitMethodInsn(
+        Opcodes.INVOKESTATIC,
+        "java/util/Collections",
+        "emptyList",
+        "()Ljava/util/List;",
+        false
+      )
       underlying.visitInsn(Opcodes.ARETURN)
-      underlying.visitMaxs(1, 2)
+      underlying.visitMaxs(1, 1)
       underlying.visitEnd()
     }
   }
 
-  private class InterceptHandlerReturningSenderFromParam(underlying: MethodVisitor)
+  private class GetRequestCacheKeyDifferentiatorReturningNull(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
+      underlying.visitInsn(Opcodes.ACONST_NULL)
       underlying.visitInsn(Opcodes.ARETURN)
-      underlying.visitMaxs(1, 5)
+      underlying.visitMaxs(1, 1)
       underlying.visitEnd()
     }
   }
+
 }

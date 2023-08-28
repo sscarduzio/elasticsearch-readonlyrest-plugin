@@ -22,9 +22,9 @@ import org.objectweb.asm._
 import java.io.{File, InputStream}
 import java.nio.file.Files
 
-object AuthenticationServiceInHttpTransportDeactivator extends BytecodeJarModifier {
+object DeactivateAuthenticationServiceInHttpTransport extends BytecodeJarModifier {
 
-  def deactivateAuthenticationServiceInHttpTransport(jar: File): Unit = {
+  override def apply(jar: File): Unit = {
     val originalFileOwner = Files.getOwner(jar.toPath)
     val modifiedSecurityClass = loadAndProcessFileFromJar(
       jar = jar,
@@ -46,7 +46,7 @@ object AuthenticationServiceInHttpTransportDeactivator extends BytecodeJarModifi
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter, enabled: Boolean = false)
+  private class EsClassVisitor(writer: ClassWriter)
     extends ClassVisitor(Opcodes.ASM9, writer) {
 
     override def visitMethod(access: Int,

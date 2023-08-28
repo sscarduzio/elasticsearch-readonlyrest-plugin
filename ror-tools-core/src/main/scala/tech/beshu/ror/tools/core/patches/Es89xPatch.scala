@@ -19,9 +19,9 @@ package tech.beshu.ror.tools.core.patches
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
-import tech.beshu.ror.tools.core.utils.asm.AuthenticationServiceInHttpTransportDeactivator.deactivateAuthenticationServiceInHttpTransport
-import tech.beshu.ror.tools.core.utils.asm.ModuleOpener.openModule
-import tech.beshu.ror.tools.core.utils.asm.SecurityActionFilterDeactivator.deactivateXpackSecurityFilter
+import tech.beshu.ror.tools.core.utils.asm.DeactivateAuthenticationServiceInHttpTransport
+import tech.beshu.ror.tools.core.utils.asm.OpenModule
+import tech.beshu.ror.tools.core.utils.asm.DeactivateSecurityActionFilter
 
 import scala.language.postfixOps
 import scala.util.Try
@@ -72,11 +72,11 @@ private[patches] class Es89xPatch(esDirectory: EsDirectory,
     findTransportNetty4JarIn(transportNetty4ModulePath) match {
       case Some(jar) =>
         os.copy(from = jar, to = readonlyRestPluginPath / jar.last)
-        openModule(elasticsearchJarOriginPath toIO)
-        openModule(xpackCoreJarPath toIO)
-        openModule(xpackSecurityJarPath toIO)
-        deactivateXpackSecurityFilter(xpackSecurityJarPath toIO)
-        deactivateAuthenticationServiceInHttpTransport(xpackSecurityJarPath toIO)
+        OpenModule(elasticsearchJarOriginPath toIO)
+        OpenModule(xpackCoreJarPath toIO)
+        OpenModule(xpackSecurityJarPath toIO)
+        DeactivateSecurityActionFilter(xpackSecurityJarPath toIO)
+        DeactivateAuthenticationServiceInHttpTransport(xpackSecurityJarPath toIO)
       case None =>
         new IllegalStateException(s"ReadonlyREST plugin cannot be patched due to not found transport netty4 jar")
     }

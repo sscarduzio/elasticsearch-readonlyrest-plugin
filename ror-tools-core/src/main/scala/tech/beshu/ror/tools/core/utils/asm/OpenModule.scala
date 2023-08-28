@@ -20,9 +20,9 @@ import org.objectweb.asm._
 
 import java.io.{File, InputStream}
 
-object ModuleOpener extends BytecodeJarModifier {
+object OpenModule extends BytecodeJarModifier {
 
-  def openModule(jar: File): Unit = {
+  override def apply(jar: File): Unit = {
     val updatedContentOfModuleInfo = loadAndProcessFileFromJar(
       jar = jar,
       classFileName = "module-info",
