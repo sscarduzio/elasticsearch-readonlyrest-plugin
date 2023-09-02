@@ -219,9 +219,41 @@ object RorApiManager {
 
     def forceOkStatus(): this.type = {
       force()
-      val status = responseJson("status").str.toUpperCase()
-      if (status =!= "OK") throw new IllegalStateException(s"Expected business status 'OK' but got '$status'}; Message: '${responseJson.obj.get("message").map(_.str).getOrElse("[none]")}'")
+      if (businessStatus =!= "OK") {
+        throw new IllegalStateException(
+          s"""
+             |Expected business status 'OK' but got:
+             |
+             |HTTP $responseCode
+             |${responseJson.toString()}
+             |""".stripMargin
+        )
+      }
       this
     }
+
+    def forceOKStatusOrConfigAlreadyLoaded(): this.type = {
+      force()
+      if(businessStatus === "OK" || isConfigAlreadyLoaded) {
+        this
+      } else {
+        throw new IllegalStateException(
+          s"""
+             |Expected business status 'OK' or info about already loaded config, but got:"
+             |
+             |HTTP $responseCode
+             |${responseJson.toString()}
+             |""".stripMargin
+        )
+      }
+    }
+
+    private def isConfigAlreadyLoaded = {
+      businessStatus == "KO" && message.contains("already loaded")
+    }
+
+    private def businessStatus = responseJson("status").str.toUpperCase()
+
+    private def message = responseJson.obj.get("message").map(_.str).getOrElse("[none]")
   }
 }
