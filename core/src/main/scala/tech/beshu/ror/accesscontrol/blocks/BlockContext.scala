@@ -167,23 +167,23 @@ object BlockContext {
 
     def apply[B <: BlockContext](implicit instance: HasIndices[B]): HasIndices[B] = instance
 
-    implicit val indicesFromFilterableBlockContext = new HasIndices[FilterableRequestBlockContext] {
+    implicit val indicesFromFilterableBlockContext: HasIndices[FilterableRequestBlockContext] = new HasIndices[FilterableRequestBlockContext] {
       override def indices(blockContext: FilterableRequestBlockContext): Set[ClusterIndexName] = blockContext.filteredIndices
     }
 
-    implicit val indicesFromGeneralIndexBlockContext = new HasIndices[GeneralIndexRequestBlockContext] {
+    implicit val indicesFromGeneralIndexBlockContext: HasIndices[GeneralIndexRequestBlockContext] = new HasIndices[GeneralIndexRequestBlockContext] {
       override def indices(blockContext: GeneralIndexRequestBlockContext): Set[ClusterIndexName] = blockContext.filteredIndices
     }
 
-    implicit val indicesFromAliasRequestBlockContext = new HasIndices[AliasRequestBlockContext] {
+    implicit val indicesFromAliasRequestBlockContext: HasIndices[AliasRequestBlockContext] = new HasIndices[AliasRequestBlockContext] {
       override def indices(blockContext: AliasRequestBlockContext): Set[ClusterIndexName] = blockContext.indices
     }
 
-    implicit val indicesFromSnapshotRequestBlockContext = new HasIndices[SnapshotRequestBlockContext] {
+    implicit val indicesFromSnapshotRequestBlockContext: HasIndices[SnapshotRequestBlockContext] = new HasIndices[SnapshotRequestBlockContext] {
       override def indices(blockContext: SnapshotRequestBlockContext): Set[ClusterIndexName] = blockContext.filteredIndices
     }
 
-    implicit val indicesFromDataStreamRequestBlockContext = new HasIndices[DataStreamRequestBlockContext] {
+    implicit val indicesFromDataStreamRequestBlockContext: HasIndices[DataStreamRequestBlockContext] = new HasIndices[DataStreamRequestBlockContext] {
       override def indices(blockContext: DataStreamRequestBlockContext): Set[ClusterIndexName] = blockContext.backingIndices match {
         case BackingIndices.IndicesInvolved(filteredIndices, _) => filteredIndices
         case BackingIndices.IndicesNotInvolved => Set.empty
@@ -202,11 +202,11 @@ object BlockContext {
 
     def apply[B <: BlockContext](implicit instance: HasIndexPacks[B]): HasIndexPacks[B] = instance
 
-    implicit val indexPacksFromFilterableMultiBlockContext = new HasIndexPacks[FilterableMultiRequestBlockContext] {
+    implicit val indexPacksFromFilterableMultiBlockContext: HasIndexPacks[FilterableMultiRequestBlockContext] = new HasIndexPacks[FilterableMultiRequestBlockContext] {
       override def indexPacks(blockContext: FilterableMultiRequestBlockContext): List[Indices] = blockContext.indexPacks
     }
 
-    implicit val indexPacksFromMultiIndexBlockContext = new HasIndexPacks[MultiIndexRequestBlockContext] {
+    implicit val indexPacksFromMultiIndexBlockContext: HasIndexPacks[MultiIndexRequestBlockContext] = new HasIndexPacks[MultiIndexRequestBlockContext] {
       override def indexPacks(blockContext: MultiIndexRequestBlockContext): List[Indices] = blockContext.indexPacks
     }
 
@@ -222,11 +222,11 @@ object BlockContext {
 
     def apply[B <: BlockContext](implicit instance: HasFilter[B]): HasFilter[B] = instance
 
-    implicit val filterFromFilterableMultiBlockContext = new HasFilter[FilterableMultiRequestBlockContext] {
+    implicit val filterFromFilterableMultiBlockContext: HasFilter[FilterableMultiRequestBlockContext] = new HasFilter[FilterableMultiRequestBlockContext] {
       override def filter(blockContext: FilterableMultiRequestBlockContext): Option[Filter] = blockContext.filter
     }
 
-    implicit val filterFromFilterableRequestBlockContext = new HasFilter[FilterableRequestBlockContext] {
+    implicit val filterFromFilterableRequestBlockContext: HasFilter[FilterableRequestBlockContext] = new HasFilter[FilterableRequestBlockContext] {
       override def filter(blockContext: FilterableRequestBlockContext): Option[Filter] = blockContext.filter
     }
 
@@ -242,11 +242,11 @@ object BlockContext {
 
     def apply[B <: BlockContext](implicit instance: HasFieldLevelSecurity[B]): HasFieldLevelSecurity[B] = instance
 
-    implicit val flsFromFilterableMultiBlockContext = new HasFieldLevelSecurity[FilterableMultiRequestBlockContext] {
+    implicit val flsFromFilterableMultiBlockContext: HasFieldLevelSecurity[FilterableMultiRequestBlockContext] = new HasFieldLevelSecurity[FilterableMultiRequestBlockContext] {
       override def fieldLevelSecurity(blockContext: FilterableMultiRequestBlockContext): Option[FieldLevelSecurity] = blockContext.fieldLevelSecurity
     }
 
-    implicit val flsFromFilterableRequestBlockContext = new HasFieldLevelSecurity[FilterableRequestBlockContext] {
+    implicit val flsFromFilterableRequestBlockContext: HasFieldLevelSecurity[FilterableRequestBlockContext] = new HasFieldLevelSecurity[FilterableRequestBlockContext] {
       override def fieldLevelSecurity(blockContext: FilterableRequestBlockContext): Option[FieldLevelSecurity] = blockContext.fieldLevelSecurity
     }
 
@@ -262,11 +262,11 @@ object BlockContext {
 
     def apply[B <: BlockContext](implicit instance: AllowsFieldsInRequest[B]): AllowsFieldsInRequest[B] = instance
 
-    implicit val fieldsFromFilterableMultiBlockContext = new AllowsFieldsInRequest[FilterableMultiRequestBlockContext] {
+    implicit val fieldsFromFilterableMultiBlockContext: AllowsFieldsInRequest[FilterableMultiRequestBlockContext] = new AllowsFieldsInRequest[FilterableMultiRequestBlockContext] {
       override def requestFieldsUsage(blockContext: FilterableMultiRequestBlockContext): RequestFieldsUsage = blockContext.requestFieldsUsage
     }
 
-    implicit val fieldsFromFilterableRequestBlockContext = new AllowsFieldsInRequest[FilterableRequestBlockContext] {
+    implicit val fieldsFromFilterableRequestBlockContext: AllowsFieldsInRequest[FilterableRequestBlockContext] = new AllowsFieldsInRequest[FilterableRequestBlockContext] {
       override def requestFieldsUsage(blockContext: FilterableRequestBlockContext): RequestFieldsUsage = blockContext.requestFieldsUsage
     }
 
