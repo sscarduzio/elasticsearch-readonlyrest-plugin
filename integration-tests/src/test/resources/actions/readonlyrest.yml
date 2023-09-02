@@ -6,25 +6,11 @@ readonlyrest:
       type: "allow"
       auth_key: "admin:container"
 
-
-    - name: "user11"
-      indices:
-        - "fasdsadsa"
-      kibana:
-        access: unrestricted
-        index: "user3_kibana_index"
-        hide_apps: ["user2_app1", "user2_app2", "/^Analytics\\|(?!(Maps)$).*$/"]
-
-
     - name: "user:forbidden"
       type: forbid
-      actions:
-        - "indices:data/write/*"
-      indices:
-        - "test1_index"
+      actions: ["indices:data/write/*"]
+      indices: ["test1_index"]
 
     - name: "user"
-      actions:
-        - "indices:data/write/*"
-      indices:
-        - "test2_index"
+      actions: ["indices:data/write/*"]
+      indices: ["test2_index"]
