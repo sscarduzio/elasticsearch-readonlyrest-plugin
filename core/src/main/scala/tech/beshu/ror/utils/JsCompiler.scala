@@ -22,13 +22,17 @@ import scala.util.Try
 
 object JsCompiler {
 
-  private val mozillaJsContext: Context = Context.enter
-  mozillaJsContext.setApplicationClassLoader(this.getClass.getClassLoader)
-  private val scope: ScriptableObject = mozillaJsContext.initStandardObjects
+  private val (mozillaJsContext: Context, scope: ScriptableObject) = synchronized {
+    val context = Context.enter
+    context.setApplicationClassLoader(this.getClass.getClassLoader)
+    (context, context.initStandardObjects)
+  }
 
-  def compile(jsCodeString: String): Try[AnyRef] = Try {
-    val jsScript = mozillaJsContext.compileString(jsCodeString, "js", 1, null)
-    val result = jsScript.exec(mozillaJsContext, scope)
-    result
+  def compile(jsCodeString: String): Try[AnyRef] = synchronized {
+    Try {
+      val jsScript = mozillaJsContext.compileString(jsCodeString, "js", 1, null)
+      val result = jsScript.exec(mozillaJsContext, scope)
+      result
+    }
   }
 }

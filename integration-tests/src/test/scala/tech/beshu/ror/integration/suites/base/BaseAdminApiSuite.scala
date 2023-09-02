@@ -1032,7 +1032,7 @@ trait BaseAdminApiSuite
     // back to configuration loaded on container start
     rorWithNoIndexConfigAdminActionManager
       .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest.yml"))
-      .forceOkStatus()
+      .forceOKStatusOrConfigAlreadyLoaded()
 
     new IndexManager(ror2_1Node.adminClient, esVersionUsed).removeIndex(readonlyrestIndexName)
 
@@ -1040,7 +1040,7 @@ trait BaseAdminApiSuite
 
     ror1WithIndexConfigAdminActionManager
       .updateRorInIndexConfig(getResourceContent("/admin_api/readonlyrest_index.yml"))
-      .forceOkStatus()
+      .forceOKStatusOrConfigAlreadyLoaded()
 
     eventually { // await until all nodes invalidate the config
       rorClients.foreach(assertTestSettingsNotConfigured)
