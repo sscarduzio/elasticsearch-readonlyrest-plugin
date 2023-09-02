@@ -140,7 +140,7 @@ class AdminApiAuthMockSuite
 
         rorClients.head
           .invalidateImpersonationMocks()
-          .forceOk()
+          .forceOkStatus()
 
         eventually {
           rorClients.foreach { rorApiManager =>
@@ -304,7 +304,7 @@ class AdminApiAuthMockSuite
 
         rorClients.head
           .configureImpersonationMocks(updateMocksPayload(payloadServices))
-          .forceOk()
+          .forceOkStatus()
 
         assertAuthMocksInIndex(ujson.read(
           s"""
@@ -465,7 +465,7 @@ class AdminApiAuthMockSuite
 
         rorClients.head
           .configureImpersonationMocks(updateMocksPayload(payloadServices))
-          .forceOk()
+          .forceOkStatus()
 
         assertAuthMocksInIndex(ujson.read(
           s"""
@@ -890,7 +890,7 @@ class AdminApiAuthMockSuite
   private def invalidateTestSettingsOnAllNodes(): Unit = {
     rorClients.head
       .invalidateRorTestConfig()
-      .forceOk()
+      .forceOkStatus()
 
     eventually { // await until all nodes load config
       rorClients.foreach {
@@ -960,7 +960,7 @@ class AdminApiAuthMockSuite
   private def setupTestSettingsOnAllNodes(): Unit = {
     rorClients.head
       .updateRorTestConfig(testEngineConfig())
-      .forceOk()
+      .forceOkStatus()
 
     eventually { // await until all nodes load config
       rorClients.foreach {
