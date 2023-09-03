@@ -26,9 +26,10 @@ import tech.beshu.ror.accesscontrol.domain.{KibanaAccess, KibanaApp, KibanaIndex
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.utils.js.JsCompiler
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-object KibanaHideAppsRuleDecoder
+class KibanaHideAppsRuleDecoder(implicit jsCompiler: JsCompiler)
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaHideAppsRule] {
 
   override protected def decoder: Decoder[RuleDefinition[KibanaHideAppsRule]] = {

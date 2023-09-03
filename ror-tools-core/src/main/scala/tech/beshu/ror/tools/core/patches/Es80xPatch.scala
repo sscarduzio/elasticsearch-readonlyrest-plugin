@@ -38,9 +38,9 @@ private[patches] class Es80xPatch(esDirectory: EsDirectory,
   private val xpackSecurityJarPath = modulesPath / "x-pack-security" / xpackSecurityJar
   private val xpackSecurityRorBackupPath = rorBackupFolderPath / xpackSecurityJar
 
-  private val esMainJar = s"elasticsearch-${esVersion.render}.jar"
-  private val esMainJarPath = libPath / esMainJar
-  private val esMainJarBackupPath = rorBackupFolderPath / esMainJar
+  private val elasticsearchJar = s"elasticsearch-${esVersion.render}.jar"
+  private val elasticsearchJarPath = libPath / elasticsearchJar
+  private val elasticsearchJarRorBackupPath = rorBackupFolderPath / elasticsearchJar
 
   private val rorSecurityPolicy = s"plugin-security.policy"
   private val rorSecurityPolicyPath = readonlyRestPluginPath / rorSecurityPolicy
@@ -65,7 +65,7 @@ private[patches] class Es80xPatch(esDirectory: EsDirectory,
       os.remove
     }
     os.copy(from = rorSecurityPolicyBackupPath, to = rorSecurityPolicyPath, replaceExisting = true)
-    os.copy(from = esMainJarBackupPath, to = esMainJarPath, replaceExisting = true)
+    os.copy(from = elasticsearchJarRorBackupPath, to = elasticsearchJarPath, replaceExisting = true)
     os.copy(from = xpackSecurityRorBackupPath, to = xpackSecurityJarPath, replaceExisting = true)
     os.remove.all(target = rorBackupFolderPath)
   }
@@ -75,7 +75,7 @@ private[patches] class Es80xPatch(esDirectory: EsDirectory,
       case Some(jar) =>
         os.copy(from = jar, to = readonlyRestPluginPath / jar.last)
         AddCreateClassLoaderPermission(rorSecurityPolicyPath toIO)
-        ModifyPolicyUtilClass(esMainJarPath toIO)
+        ModifyPolicyUtilClass(elasticsearchJarPath toIO)
         DeactivateSecurityActionFilter(xpackSecurityJarPath toIO)
       case None =>
         new IllegalStateException(s"ReadonlyREST plugin cannot be patched due to not found transport netty4 jar")
@@ -85,7 +85,7 @@ private[patches] class Es80xPatch(esDirectory: EsDirectory,
   private def copyJarsToBackupFolder() = Try {
     os.makeDir.all(path = rorBackupFolderPath)
     os.copy(from = rorSecurityPolicyPath, to = rorSecurityPolicyBackupPath)
-    os.copy(from = esMainJarPath, to = esMainJarBackupPath)
+    os.copy(from = elasticsearchJarPath, to = elasticsearchJarRorBackupPath)
     os.copy(from = xpackSecurityJarPath, to = xpackSecurityRorBackupPath)
   }
 

@@ -103,7 +103,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     Netty4Utils.setAvailableProcessors(EsExecutors.NODE_PROCESSORS_SETTING.get(s).roundDown())
   }
 
-  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
+  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default(isEsPatched = true)
 
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds

@@ -27,13 +27,12 @@ import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMet
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.KibanaApp.{FullNameKibanaApp, KibanaAppRegex}
+import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
-import tech.beshu.ror.utils.uniquelist.UniqueList
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
   with BaseYamlLoadedAccessControlTest
@@ -227,7 +226,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             hiddenKibanaApps = Set(
               FullNameKibanaApp("Enterprise Search|Overview"),
               FullNameKibanaApp("Observability"),
-              KibanaAppRegex(JsRegex.compile("/^Analytics\\|(?!(Maps)$).*$/").toOption.get)
+              kibanaAppRegex("/^Analytics\\|(?!(Maps)$).*$/")
             ),
             allowedKibanaApiPaths = Set.empty,
             kibanaAccess = Some(KibanaAccess.Admin),
@@ -263,7 +262,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             hiddenKibanaApps = Set(
               FullNameKibanaApp("Observability"),
               FullNameKibanaApp("Enterprise Search|Overview"),
-              KibanaAppRegex(JsRegex.compile("/^Analytics\\|(?!(Maps)$).*$/").toOption.get)
+              kibanaAppRegex("/^Analytics\\|(?!(Maps)$).*$/")
             )
           ) {
             blockContext

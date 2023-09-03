@@ -14,28 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils
-
-import org.mozilla.javascript.{Context, ScriptableObject}
+package tech.beshu.ror.utils.js
 
 import scala.util.Try
 
-object JsCompiler {
+trait JsCompiler {
 
-  def compile(jsCodeString: String): Try[AnyRef] = synchronized {
-    Try {
-      val (mozillaJsContext: Context, scope: ScriptableObject) = {
-        val context = Context.enter
-        context.setApplicationClassLoader(this.getClass.getClassLoader)
-        (context, context.initStandardObjects)
-      }
-      try {
-        val jsScript = mozillaJsContext.compileString(jsCodeString, "js", 1, null)
-        val result = jsScript.exec(mozillaJsContext, scope)
-        result
-      } finally {
-        mozillaJsContext.close()
-      }
-    }
-  }
+  def compile(jsCodeString: String): Try[Unit]
 }
+

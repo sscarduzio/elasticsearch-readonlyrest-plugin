@@ -67,7 +67,7 @@ class IndexLevelActionFilter(settings: Settings,
     this(settings, clusterService, client, threadPool, env, ())
   }
 
-  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
+  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default(isEsPatched = false)
   private implicit val generator: UniqueIdentifierGenerator = environmentConfig.uniqueIdentifierGenerator
 
   private val rorNotAvailableRequestHandler: RorNotAvailableRequestHandler =

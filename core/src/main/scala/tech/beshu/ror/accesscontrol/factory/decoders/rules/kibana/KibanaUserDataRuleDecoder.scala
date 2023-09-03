@@ -26,18 +26,20 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableV
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath._
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaAccess, KibanaAllowedApiPath, KibanaApp, KibanaIndexName, JavaRegex, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, JavaRegex, KibanaAccess, KibanaAllowedApiPath, KibanaApp, KibanaIndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{RulesLevelCreationError, ValueLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.utils.js.JsCompiler
 
 import scala.util.{Failure, Success}
 
 class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex,
                                 variableCreator: RuntimeResolvableVariableCreator)
+                               (implicit jsCompiler: JsCompiler)
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaUserDataRule]
     with Logging {
 

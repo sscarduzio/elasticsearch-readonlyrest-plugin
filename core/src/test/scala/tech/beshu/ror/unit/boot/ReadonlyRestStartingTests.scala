@@ -1317,14 +1317,16 @@ class ReadonlyRestStartingTests
         .map(i => "com.readonlyrest.settings.refresh.interval" -> i.toSeconds.toString)
         .toMap
 
-    implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default.copy(
-      propertiesProvider = TestsPropertiesProvider.usingMap(
-        mapWithIntervalFrom(refreshInterval) ++
-          Map(
-            "com.readonlyrest.settings.loading.delay" -> "0"
-          )
+    implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig
+      .default(isEsPatched = true)
+      .copy(
+        propertiesProvider = TestsPropertiesProvider.usingMap(
+          mapWithIntervalFrom(refreshInterval) ++
+            Map(
+              "com.readonlyrest.settings.loading.delay" -> "0"
+            )
+        )
       )
-    )
 
     ReadonlyRest.create(
       factory,

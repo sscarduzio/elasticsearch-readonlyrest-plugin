@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.TestsUtils.getResourcePath
 class RorBootConfigurationTest
   extends AnyWordSpec with Inside {
 
-  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
+  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default(isEsPatched = true)
 
   "A ReadonlyREST ES starting settings" should {
     "be loaded from elasticsearch config file" when {

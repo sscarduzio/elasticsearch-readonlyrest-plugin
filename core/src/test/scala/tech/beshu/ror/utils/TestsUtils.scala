@@ -43,9 +43,11 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, definitions}
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Header.Name
+import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -93,6 +95,14 @@ object TestsUtils {
     header("x-ror-current-group", value)
 
   def kibanaIndexName(str: NonEmptyString): KibanaIndexName = KibanaIndexName(localIndexName(str))
+
+  def kibanaAppRegex(str: NonEmptyString): KibanaAppRegex = {
+    implicit val compiler: JsCompiler = MozillaJsCompiler
+    JsRegex.compile(str) match {
+      case Right(jsRegex) => KibanaAppRegex(jsRegex)
+      case Left(error) => throw new IllegalArgumentException(s"Cannot create KibanaAppRegex from '$str'; Cause: $error")
+    }
+  }
 
   def clusterIndexName(str: NonEmptyString): ClusterIndexName = ClusterIndexName.unsafeFromString(str.value)
 

@@ -46,6 +46,7 @@ import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.js.JsCompiler
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.net.URI
@@ -309,7 +310,7 @@ object common extends Logging {
       }
       .decoder
 
-  implicit val kibanaAppDecoder: Decoder[KibanaApp] =
+  implicit def kibanaAppDecoder(implicit jsCompiler: JsCompiler): Decoder[KibanaApp] =
     nonEmptyStringDecoder
       .toSyncDecoder
       .emapE[KibanaApp](str =>

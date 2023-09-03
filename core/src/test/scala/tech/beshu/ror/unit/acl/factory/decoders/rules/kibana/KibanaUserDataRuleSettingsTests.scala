@@ -28,8 +28,8 @@ import tech.beshu.ror.accesscontrol.domain.Json.JsonValue.{BooleanValue, NullVal
 import tech.beshu.ror.accesscontrol.domain.Json.{JsonRepresentation, JsonTree}
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
-import tech.beshu.ror.accesscontrol.domain.KibanaApp.{FullNameKibanaApp, KibanaAppRegex}
-import tech.beshu.ror.accesscontrol.domain.{IndexName, JavaRegex, JsRegex, KibanaAccess, KibanaAllowedApiPath, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
@@ -286,7 +286,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set(
                 FullNameKibanaApp("app1"),
-                KibanaAppRegex(JsRegex.compile("/^(?!(Analytics\\|Management).*$).*$/").toOption.get)
+                kibanaAppRegex("/^(?!(Analytics\\|Management).*$).*$/")
               ))
               rule.settings.allowedApiPaths should be(Set.empty)
               rule.settings.metadata should be(None)

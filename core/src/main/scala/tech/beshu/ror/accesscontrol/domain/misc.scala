@@ -22,7 +22,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.utils.JsCompiler
+import tech.beshu.ror.utils.js.JsCompiler
 
 import java.util.regex
 import scala.util.{Failure, Success, Try}
@@ -69,16 +69,17 @@ final case class JsRegex private(value: NonEmptyString)
 object JsRegex extends Logging {
   private val extractRawRegex = """\/(.*)\/""".r
 
-  def compile(str: NonEmptyString): Either[CompilationResult, JsRegex] =
+  def compile(str: NonEmptyString)
+             (implicit jsCompiler: JsCompiler): Either[CompilationResult, JsRegex] =
     str.value match {
       case extractRawRegex(regex) =>
-        JsCompiler.compile(s"new RegExp('$regex')") match {
-          case Success(_) =>
-            Right(new JsRegex(str))
-          case Failure(ex) =>
-            logger.error("JS compiler error", ex)
-            Left(CompilationResult.SyntaxError)
-        }
+        jsCompiler.compile(s"new RegExp('$regex')") match {
+            case Success(_) =>
+              Right(new JsRegex(str))
+            case Failure(ex) =>
+              logger.error("JS compiler error", ex)
+              Left(CompilationResult.SyntaxError)
+          }
       case _ =>
         Left(CompilationResult.NotRegex)
     }

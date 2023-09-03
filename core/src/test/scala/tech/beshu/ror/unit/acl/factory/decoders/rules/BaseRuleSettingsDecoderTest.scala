@@ -49,9 +49,11 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
   protected implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
   protected def factory: RawRorConfigBasedCoreFactory = {
-    implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default.copy(
-      envVarsProvider = envVarsProvider
-    )
+    implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig
+      .default(isEsPatched = true)
+      .copy(
+        envVarsProvider = envVarsProvider
+      )
     new RawRorConfigBasedCoreFactory()
   }
 

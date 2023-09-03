@@ -153,6 +153,12 @@ sealed abstract class AsyncDecoder[A] extends ADecoder[Task, A] {
 
 object AsyncDecoderCreator extends ADecoderCreator[Task, AsyncDecoder] {
 
+  def from[A](value: => Task[A]): AsyncDecoder[A] = new AsyncDecoder[A] {
+    override def apply(c: HCursor): Task[Either[DecodingFailure, A]] = {
+      value.map(Right.apply)
+    }
+  }
+
   def from[A](decoder: ADecoder[Id, A]): AsyncDecoder[A] = new AsyncDecoder[A] {
     override def apply(c: HCursor): Task[Either[DecodingFailure, A]] = Task(decoder.apply(c))
   }

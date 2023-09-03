@@ -39,7 +39,7 @@ import tech.beshu.ror.utils.TestsUtils._
 class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
 
   private val factory = {
-    implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
+    implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default(isEsPatched = true)
     new RawRorConfigBasedCoreFactory()
   }
 
