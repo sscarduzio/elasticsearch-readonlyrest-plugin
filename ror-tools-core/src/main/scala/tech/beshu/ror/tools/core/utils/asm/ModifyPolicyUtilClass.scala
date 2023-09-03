@@ -21,7 +21,7 @@ import org.objectweb.asm._
 import java.io.{File, InputStream}
 import java.nio.file.Files
 
-object Es6xAnd7xModifyPolicyUtilClass extends BytecodeJarModifier {
+object ModifyPolicyUtilClass extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     val originalFileOwner = Files.getOwner(jar.toPath)
@@ -77,11 +77,12 @@ object Es6xAnd7xModifyPolicyUtilClass extends BytecodeJarModifier {
     )
     methodVisitor.visitCode()
     methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
-    methodVisitor.visitFieldInsn(
-      Opcodes.GETFIELD,
+    methodVisitor.visitMethodInsn(
+      Opcodes.INVOKEVIRTUAL,
       "org/elasticsearch/bootstrap/PluginPolicyInfo",
       "file",
-      "Ljava/nio/file/Path;"
+      "()Ljava/nio/file/Path;",
+      false
     )
     methodVisitor.visitMethodInsn(
       Opcodes.INVOKEINTERFACE,
@@ -144,15 +145,8 @@ object Es6xAnd7xModifyPolicyUtilClass extends BytecodeJarModifier {
     methodVisitor.visitMethodInsn(
       Opcodes.INVOKEVIRTUAL,
       "java/security/PermissionCollection",
-      "elements",
-      "()Ljava/util/Enumeration;",
-      false
-    )
-    methodVisitor.visitMethodInsn(
-      Opcodes.INVOKESTATIC,
-      "java/util/Collections",
-      "list",
-      "(Ljava/util/Enumeration;)Ljava/util/ArrayList;",
+      "elementsAsStream",
+      "()Ljava/util/stream/Stream;",
       false
     )
     methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
@@ -186,11 +180,11 @@ object Es6xAnd7xModifyPolicyUtilClass extends BytecodeJarModifier {
       Type.getType("(Ljava/security/Permission;)V")
     )
     methodVisitor.visitMethodInsn(
-      Opcodes.INVOKEVIRTUAL,
-      "java/util/ArrayList",
+      Opcodes.INVOKEINTERFACE,
+      "java/util/stream/Stream",
       "forEach",
       "(Ljava/util/function/Consumer;)V",
-      false
+      true
     )
     methodVisitor.visitVarInsn(Opcodes.ALOAD, 0)
     methodVisitor.visitTypeInsn(Opcodes.NEW, "java/lang/RuntimePermission")

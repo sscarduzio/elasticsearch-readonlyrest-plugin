@@ -82,7 +82,7 @@ private[patches] class Es83xPatch(esDirectory: EsDirectory,
         OpenModule(xpackCoreJarPath toIO)
         OpenModule(xpackSecurityJarPath toIO)
         OpenModule(elasticsearchJarPath toIO)
-        Es8xAndNewerModifyPolicyUtilClass(elasticsearchJarPath toIO)
+        ModifyPolicyUtilClass(elasticsearchJarPath toIO)
         DeactivateSecurityActionFilter(xpackSecurityJarPath toIO)
         AddCreateClassLoaderPermission(rorSecurityPolicyPath toIO)
       case None =>

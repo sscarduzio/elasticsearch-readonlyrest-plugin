@@ -65,7 +65,7 @@ class TransportRRConfigAction(setting: Settings,
 
   import tech.beshu.ror.boot.RorSchedulers.Implicits.rorRestApiScheduler
 
-  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default(isEsPatched = false)
+  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
 
   @Inject
   def this(setting: Settings,

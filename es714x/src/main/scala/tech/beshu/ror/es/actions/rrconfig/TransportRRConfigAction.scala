@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.actions.rrconfig
 
-import java.util
 import cats.implicits._
 import org.elasticsearch.action.FailedNodeException
 import org.elasticsearch.action.support.ActionFilters
@@ -31,8 +30,8 @@ import tech.beshu.ror.configuration.EnvironmentConfig
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, RawRorConfigLoadingAction, Timeout}
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.services.EsIndexJsonContentService
-import tech.beshu.ror.es.utils.EsPatchVerifier
 
+import java.util
 import scala.annotation.nowarn
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -63,8 +62,7 @@ class TransportRRConfigAction(actionName: String,
 
   import tech.beshu.ror.boot.RorSchedulers.Implicits.rorRestApiScheduler
 
-  private implicit val environmentConfig: EnvironmentConfig =
-    EnvironmentConfig.default(isEsPatched = EsPatchVerifier.isPatched)
+  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
 
   @Inject
   def this(actionName: String,

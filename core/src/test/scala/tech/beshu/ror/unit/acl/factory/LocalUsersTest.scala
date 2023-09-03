@@ -316,7 +316,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
   }
 
   private val factory = {
-    implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default(isEsPatched = true)
+    implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
     new RawRorConfigBasedCoreFactory()
   }
 

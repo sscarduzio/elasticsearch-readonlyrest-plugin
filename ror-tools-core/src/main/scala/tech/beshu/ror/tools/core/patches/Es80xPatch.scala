@@ -75,7 +75,7 @@ private[patches] class Es80xPatch(esDirectory: EsDirectory,
       case Some(jar) =>
         os.copy(from = jar, to = readonlyRestPluginPath / jar.last)
         AddCreateClassLoaderPermission(rorSecurityPolicyPath toIO)
-        Es8xAndNewerModifyPolicyUtilClass(elasticsearchJarPath toIO)
+        ModifyPolicyUtilClass(elasticsearchJarPath toIO)
         DeactivateSecurityActionFilter(xpackSecurityJarPath toIO)
       case None =>
         new IllegalStateException(s"ReadonlyREST plugin cannot be patched due to not found transport netty4 jar")

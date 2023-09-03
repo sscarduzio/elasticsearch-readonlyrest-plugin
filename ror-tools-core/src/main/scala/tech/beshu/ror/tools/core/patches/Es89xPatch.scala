@@ -82,7 +82,7 @@ private[patches] class Es89xPatch(esDirectory: EsDirectory,
         OpenModule(xpackCoreJarPath toIO)
         OpenModule(xpackSecurityJarPath toIO)
         OpenModule(elasticsearchJarPath toIO)
-        Es8xAndNewerModifyPolicyUtilClass(elasticsearchJarPath toIO)
+        ModifyPolicyUtilClass(elasticsearchJarPath toIO)
         DeactivateSecurityActionFilter(xpackSecurityJarPath toIO)
         DeactivateAuthenticationServiceInHttpTransport(xpackSecurityJarPath toIO)
         AddCreateClassLoaderPermission(rorSecurityPolicyPath toIO)

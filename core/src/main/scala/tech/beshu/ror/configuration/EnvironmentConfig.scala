@@ -19,7 +19,7 @@ package tech.beshu.ror.configuration
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.SupportedVariablesFunctions
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.providers._
-import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler, NoOpJsCompiler}
+import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 
 import java.time.Clock
 
@@ -33,13 +33,13 @@ final case class EnvironmentConfig(clock: Clock,
 
 object EnvironmentConfig {
 
-  def default(isEsPatched: Boolean): EnvironmentConfig = EnvironmentConfig(
+  val default: EnvironmentConfig = EnvironmentConfig(
     clock = Clock.systemUTC(),
     envVarsProvider = OsEnvVarsProvider,
     propertiesProvider = JvmPropertiesProvider,
     uniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator,
     uuidProvider = JavaUuidProvider,
-    jsCompiler = if(isEsPatched) MozillaJsCompiler else NoOpJsCompiler,
+    jsCompiler = MozillaJsCompiler,
     variablesFunctions = SupportedVariablesFunctions.default,
   )
 }
