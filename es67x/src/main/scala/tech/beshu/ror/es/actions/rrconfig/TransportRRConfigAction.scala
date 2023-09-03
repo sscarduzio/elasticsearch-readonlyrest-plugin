@@ -32,7 +32,6 @@ import tech.beshu.ror.configuration.EnvironmentConfig
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, RawRorConfigLoadingAction, Timeout}
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.services.EsIndexJsonContentService
-import tech.beshu.ror.es.utils.EsPatchVerifier
 
 import scala.annotation.nowarn
 import scala.concurrent.duration._

@@ -27,7 +27,7 @@ import tech.beshu.ror.configuration.{EnvironmentConfig, YamlFileBasedConfigLoade
 class YamlFileBasedConfigLoaderTest extends AnyWordSpec with Inside {
 
   private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig
-    .default(isEsPatched = true)
+    .default
     .copy(
       envVarsProvider = name =>
         name.value.value match {

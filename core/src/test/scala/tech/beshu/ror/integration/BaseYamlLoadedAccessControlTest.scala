@@ -40,7 +40,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
 
   private val factory = {
     implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig
-      .default(isEsPatched = true)
+      .default
       .copy(
         envVarsProvider = envVarsProvider,
         propertiesProvider = propertiesProvider

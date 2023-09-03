@@ -1318,7 +1318,7 @@ class ReadonlyRestStartingTests
         .toMap
 
     implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig
-      .default(isEsPatched = true)
+      .default
       .copy(
         propertiesProvider = TestsPropertiesProvider.usingMap(
           mapWithIntervalFrom(refreshInterval) ++

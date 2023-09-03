@@ -30,7 +30,7 @@ class SslConfigurationTest
   extends AnyWordSpec with Inside {
 
   private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig
-    .default(isEsPatched = true)
+    .default
     .copy(
       propertiesProvider = TestsPropertiesProvider.default
     )
