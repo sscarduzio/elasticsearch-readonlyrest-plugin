@@ -19,7 +19,7 @@ package tech.beshu.ror.tools.core.patches
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.utils.{AddCreateClassLoaderPermission, EsDirectory}
 import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
-import tech.beshu.ror.tools.core.utils.asm.{DeactivateSecurityActionFilter, ModifyPolicyUtilClass, OpenModule}
+import tech.beshu.ror.tools.core.utils.asm._
 
 import scala.language.postfixOps
 import scala.util.Try
@@ -82,7 +82,7 @@ private[patches] class Es83xPatch(esDirectory: EsDirectory,
         OpenModule(xpackCoreJarPath toIO)
         OpenModule(xpackSecurityJarPath toIO)
         OpenModule(elasticsearchJarPath toIO)
-        ModifyPolicyUtilClass(elasticsearchJarPath toIO)
+        Es8xAndNewerModifyPolicyUtilClass(elasticsearchJarPath toIO)
         DeactivateSecurityActionFilter(xpackSecurityJarPath toIO)
         AddCreateClassLoaderPermission(rorSecurityPolicyPath toIO)
       case None =>

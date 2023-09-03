@@ -18,7 +18,7 @@ package tech.beshu.ror.tools.core.patches
 
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
-import tech.beshu.ror.tools.core.utils.asm.{DeactivateSecurityActionFilter, ModifyPolicyUtilClass}
+import tech.beshu.ror.tools.core.utils.asm._
 import tech.beshu.ror.tools.core.utils.{AddCreateClassLoaderPermission, EsDirectory}
 
 import scala.language.postfixOps
@@ -75,7 +75,7 @@ private[patches] class Es80xPatch(esDirectory: EsDirectory,
       case Some(jar) =>
         os.copy(from = jar, to = readonlyRestPluginPath / jar.last)
         AddCreateClassLoaderPermission(rorSecurityPolicyPath toIO)
-        ModifyPolicyUtilClass(elasticsearchJarPath toIO)
+        Es8xAndNewerModifyPolicyUtilClass(elasticsearchJarPath toIO)
         DeactivateSecurityActionFilter(xpackSecurityJarPath toIO)
       case None =>
         new IllegalStateException(s"ReadonlyREST plugin cannot be patched due to not found transport netty4 jar")

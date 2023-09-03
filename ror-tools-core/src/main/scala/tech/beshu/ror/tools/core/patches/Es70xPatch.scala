@@ -17,10 +17,9 @@
 package tech.beshu.ror.tools.core.patches
 
 import just.semver.SemVer
-import tech.beshu.ror.tools.core.utils.EsDirectory
+import tech.beshu.ror.tools.core.utils.{AddCreateClassLoaderPermission, EsDirectory}
 import tech.beshu.ror.tools.core.utils.EsUtil.readonlyrestPluginPath
-import tech.beshu.ror.tools.core.utils.asm.DeactivateSecurityActionFilter
-import tech.beshu.ror.tools.core.utils.asm.DeactivateSecurityServerTransportInterceptor
+import tech.beshu.ror.tools.core.utils.asm._
 
 import scala.language.postfixOps
 import scala.util.Try
@@ -30,6 +29,7 @@ private[patches] class Es70xPatch(esDirectory: EsDirectory,
   extends EsPatch {
 
   private val modulesPath = esDirectory.path / "modules"
+  private val libPath = esDirectory.path / "lib"
 
   private val readonlyRestPluginPath = readonlyrestPluginPath(esDirectory.path)
   private val rorBackupFolderPath = readonlyRestPluginPath / "patch_backup"
@@ -37,6 +37,14 @@ private[patches] class Es70xPatch(esDirectory: EsDirectory,
   private val xpackSecurityJar = s"x-pack-security-${esVersion.render}.jar"
   private val xpackSecurityJarPath = modulesPath / "x-pack-security" / xpackSecurityJar
   private val xpackSecurityRorBackupPath = rorBackupFolderPath / xpackSecurityJar
+
+  private val elasticsearchJar = s"elasticsearch-${esVersion.render}.jar"
+  private val elasticsearchJarPath = libPath / elasticsearchJar
+  private val elasticsearchJarRorBackupPath = rorBackupFolderPath / elasticsearchJar
+
+  private val rorSecurityPolicy = s"plugin-security.policy"
+  private val rorSecurityPolicyPath = readonlyRestPluginPath / rorSecurityPolicy
+  private val rorSecurityPolicyBackupPath = rorBackupFolderPath / rorSecurityPolicy
 
   override def isPatched: Boolean = {
     doesBackupFolderExist
@@ -51,17 +59,23 @@ private[patches] class Es70xPatch(esDirectory: EsDirectory,
   }
 
   override def restore(): Unit = {
+    os.copy(from = rorSecurityPolicyBackupPath, to = rorSecurityPolicyPath, replaceExisting = true)
+    os.copy(from = elasticsearchJarRorBackupPath, to = elasticsearchJarPath, replaceExisting = true)
     os.copy(from = xpackSecurityRorBackupPath, to = xpackSecurityJarPath, replaceExisting = true)
     os.remove.all(target = rorBackupFolderPath)
   }
 
   override def execute(): Unit = {
+    AddCreateClassLoaderPermission(rorSecurityPolicyPath toIO)
+    Es6xAnd7xModifyPolicyUtilClass(elasticsearchJarPath toIO)
     DeactivateSecurityActionFilter(xpackSecurityJarPath toIO)
     DeactivateSecurityServerTransportInterceptor(xpackSecurityJarPath toIO)
   }
 
   private def copyJarsToBackupFolder() = Try {
     os.makeDir.all(path = rorBackupFolderPath)
+    os.copy(from = rorSecurityPolicyPath, to = rorSecurityPolicyBackupPath)
+    os.copy(from = elasticsearchJarPath, to = elasticsearchJarRorBackupPath)
     os.copy(from = xpackSecurityJarPath, to = xpackSecurityRorBackupPath)
   }
 
