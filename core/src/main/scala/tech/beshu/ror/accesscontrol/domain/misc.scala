@@ -90,10 +90,10 @@ object JsRegex extends Logging {
   }
 
   private def validateInput(str: NonEmptyString) = {
-    doesNotContainSemicolon(str) && isNotMultilineString(str)
+    doesNotContainEndOfFunctionInvocation(str) && isNotMultilineString(str)
   }
 
-  private def doesNotContainSemicolon(str: NonEmptyString) = !str.contains(");")
+  private def doesNotContainEndOfFunctionInvocation(str: NonEmptyString) = !str.contains(");")
   private def isNotMultilineString(str: NonEmptyString) = !str.contains("\n")
 
   sealed trait CompilationResult
