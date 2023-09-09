@@ -16,10 +16,13 @@
  */
 package tech.beshu.ror.utils.js
 
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.language.postfixOps
 import scala.util.Try
 
 trait JsCompiler {
 
-  def compile(jsCodeString: String): Try[Unit]
+  def compile(jsCodeString: String)
+             (implicit timeout: FiniteDuration = 10 seconds): Try[Unit]
 }
 

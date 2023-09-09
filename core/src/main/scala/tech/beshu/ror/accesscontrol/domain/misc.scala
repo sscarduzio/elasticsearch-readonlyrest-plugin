@@ -70,19 +70,31 @@ object JsRegex extends Logging {
   private val extractRawRegex = """\/(.*)\/""".r
 
   def compile(str: NonEmptyString)
-             (implicit jsCompiler: JsCompiler): Either[CompilationResult, JsRegex] =
-    str.value match {
-      case extractRawRegex(regex) =>
-        jsCompiler.compile(s"new RegExp('$regex')") match {
+             (implicit jsCompiler: JsCompiler): Either[CompilationResult, JsRegex] = {
+    if(validateInput(str)) {
+      str.value match {
+        case extractRawRegex(regex) =>
+          jsCompiler.compile(s"new RegExp('$regex')") match {
             case Success(_) =>
               Right(new JsRegex(str))
             case Failure(ex) =>
               logger.error("JS compiler error", ex)
               Left(CompilationResult.SyntaxError)
           }
-      case _ =>
-        Left(CompilationResult.NotRegex)
+        case _ =>
+          Left(CompilationResult.NotRegex)
+      }
+    } else {
+      Left(CompilationResult.SyntaxError)
     }
+  }
+
+  private def validateInput(str: NonEmptyString) = {
+    doesNotContainSemicolon(str) && isNotMultilineString(str)
+  }
+
+  private def doesNotContainSemicolon(str: NonEmptyString) = !str.contains(");")
+  private def isNotMultilineString(str: NonEmptyString) = !str.contains("\n")
 
   sealed trait CompilationResult
   object CompilationResult {

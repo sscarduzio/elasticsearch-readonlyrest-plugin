@@ -21,18 +21,21 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.mozilla.javascript.Context
 
+import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.util.Try
 
 object MozillaJsCompiler
   extends JsCompiler {
 
-  override def compile(jsCodeString: String): Try[Unit] = {
+  override def compile(jsCodeString: String)
+                      (implicit timeout: FiniteDuration = 10 seconds): Try[Unit] = {
     createJsContext
       .use { context =>
         Task.delay(runCompilation(context, jsCodeString))
       }
       // at the moment there is no need to do it better, because the JS compiler is used only during documentation parsing
-      .runSyncUnsafe()
+      .runSyncUnsafe(timeout)
   }
 
   private def createJsContext: Resource[Task, Context] = {

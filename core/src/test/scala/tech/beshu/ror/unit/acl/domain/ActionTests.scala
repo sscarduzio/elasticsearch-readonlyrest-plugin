@@ -20,7 +20,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.Action
 
-class ActionTest extends AnyWordSpec with Matchers {
+class ActionTests extends AnyWordSpec with Matchers {
 
   "action" when {
     "outdated ror action name is passed" should {
