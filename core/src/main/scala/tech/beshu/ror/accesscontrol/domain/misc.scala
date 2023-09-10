@@ -20,10 +20,12 @@ import cats.data.NonEmptyList
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.utils.js.JsCompiler
 
 import java.util.regex
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 final case class RorAuditLoggerName(value: NonEmptyString)
 object RorAuditLoggerName {
@@ -44,21 +46,60 @@ object AuditCluster {
   final case class RemoteAuditCluster(uris: NonEmptyList[Uri]) extends AuditCluster
 }
 
-final case class Regex private(value: String) {
+final case class JavaRegex private(value: String) {
   val pattern: regex.Pattern = regex.Pattern.compile(value)
 }
-object Regex {
+object JavaRegex {
   private val specialChars = """<([{\^-=$!|]})?*+.>"""
 
-  def compile(value: String): Try[Regex] = Try(new Regex(value))
-  def buildFromLiteral(value: String): Regex = {
+  def compile(value: String): Try[JavaRegex] = Try(new JavaRegex(value))
+
+  def buildFromLiteral(value: String): JavaRegex = {
     val escapedValue = value
       .map {
         case c if specialChars.contains(c) => s"""\\$c"""
         case c => c
       }
       .mkString
-    new Regex(s"^$escapedValue$$")
+    new JavaRegex(s"^$escapedValue$$")
+  }
+}
+
+final case class JsRegex private(value: NonEmptyString)
+object JsRegex extends Logging {
+  private val extractRawRegex = """\/(.*)\/""".r
+
+  def compile(str: NonEmptyString)
+             (implicit jsCompiler: JsCompiler): Either[CompilationResult, JsRegex] = {
+    if(validateInput(str)) {
+      str.value match {
+        case extractRawRegex(regex) =>
+          jsCompiler.compile(s"new RegExp('$regex')") match {
+            case Success(_) =>
+              Right(new JsRegex(str))
+            case Failure(ex) =>
+              logger.error("JS compiler error", ex)
+              Left(CompilationResult.SyntaxError)
+          }
+        case _ =>
+          Left(CompilationResult.NotRegex)
+      }
+    } else {
+      Left(CompilationResult.SyntaxError)
+    }
+  }
+
+  private def validateInput(str: NonEmptyString) = {
+    doesNotContainEndOfFunctionInvocation(str) && isNotMultilineString(str)
+  }
+
+  private def doesNotContainEndOfFunctionInvocation(str: NonEmptyString) = !str.contains(");")
+  private def isNotMultilineString(str: NonEmptyString) = !str.contains("\n")
+
+  sealed trait CompilationResult
+  object CompilationResult {
+    case object NotRegex extends CompilationResult
+    case object SyntaxError extends CompilationResult
   }
 }
 

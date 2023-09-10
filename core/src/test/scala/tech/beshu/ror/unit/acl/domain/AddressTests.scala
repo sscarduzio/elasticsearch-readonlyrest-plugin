@@ -20,7 +20,7 @@ import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.Address
 
-class AddressTest extends AnyWordSpec {
+class AddressTests extends AnyWordSpec {
   import org.scalatest.matchers.should.Matchers._
 
   "address" when {

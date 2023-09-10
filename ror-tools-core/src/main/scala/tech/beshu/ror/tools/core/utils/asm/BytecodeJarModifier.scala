@@ -18,11 +18,13 @@ package tech.beshu.ror.tools.core.utils.asm
 
 import java.io.{ByteArrayInputStream, File, InputStream}
 import java.net.URI
-import java.nio.file.{FileSystems, Files, StandardCopyOption}
+import java.nio.file.{FileSystems, Files, Paths, StandardCopyOption}
 import java.util.jar.JarFile
 import scala.jdk.CollectionConverters._
 
 abstract class BytecodeJarModifier {
+
+  def apply(jar: File): Unit
 
   protected def loadAndProcessFileFromJar(jar: File,
                                           classFileName: String,
@@ -65,5 +67,12 @@ abstract class BytecodeJarModifier {
       .entries().asScala
       .find { entry => s"$classFileName.class" == entry.getName }
       .map(jarFile.getInputStream)
+  }
+
+  // for manual tests purposes
+  def main(args: Array[String]): Unit = {
+    val pathToJar = args(0)
+    val jar = Paths.get(pathToJar).toFile
+    apply(jar)
   }
 }

@@ -22,6 +22,7 @@ import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
+import tech.beshu.ror.utils.elasticsearch.RorApiManager.RorApiResponse
 import tech.beshu.ror.utils.httpclient.RestClient
 
 import java.util.concurrent.TimeUnit
@@ -55,12 +56,12 @@ class RorApiManager(client: RestClient,
     call(createLoadRorCurrentConfigRequest(additionalParams), new JsonResponse(_))
   }
 
-  def updateRorInIndexConfig(config: String): JsonResponse = {
-    call(createUpdateRorInIndexConfigRequest(config), new JsonResponse(_))
+  def updateRorInIndexConfig(config: String): RorApiResponse = {
+    call(createUpdateRorInIndexConfigRequest(config), new RorApiResponse(_))
   }
 
-  def updateRorInIndexConfigRaw(rawRequestBody: String): JsonResponse = {
-    call(createUpdateRorInIndexConfigRequestFromRaw(rawRequestBody), new JsonResponse(_))
+  def updateRorInIndexConfigRaw(rawRequestBody: String): RorApiResponse = {
+    call(createUpdateRorInIndexConfigRequestFromRaw(rawRequestBody), new RorApiResponse(_))
   }
 
   def currentRorTestConfig: JsonResponse = {
@@ -71,8 +72,8 @@ class RorApiManager(client: RestClient,
     call(createUpdateRorTestConfigRequest(config, ttl), new RorApiResponse(_))
   }
 
-  def updateRorTestConfigRaw(rawRequestBody: String): JsonResponse = {
-    call(createUpdateRorTestConfigRequest(rawRequestBody), new JsonResponse(_))
+  def updateRorTestConfigRaw(rawRequestBody: String): RorApiResponse = {
+    call(createUpdateRorTestConfigRequest(rawRequestBody), new RorApiResponse(_))
   }
 
   def invalidateRorTestConfig(): RorApiResponse = {
@@ -211,13 +212,48 @@ class RorApiManager(client: RestClient,
     new HttpGet(client.from("/_readonlyrest/admin/config/load", additionalParams))
   }
 
+}
+object RorApiManager {
+
   final class RorApiResponse(override val response: HttpResponse) extends JsonResponse(response) {
 
-    def forceOk(): this.type = {
+    def forceOkStatus(): this.type = {
       force()
-      val status = responseJson("status").str
-      if (status =!= "OK") throw new IllegalStateException(s"Expected business status 'OK' but got '$status'}; Message: '${responseJson.obj.get("message").map(_.str).getOrElse("[none]")}'")
+      if (businessStatus =!= "OK") {
+        throw new IllegalStateException(
+          s"""
+             |Expected business status 'OK' but got:
+             |
+             |HTTP $responseCode
+             |${responseJson.toString()}
+             |""".stripMargin
+        )
+      }
       this
     }
+
+    def forceOKStatusOrConfigAlreadyLoaded(): this.type = {
+      force()
+      if(businessStatus === "OK" || isConfigAlreadyLoaded) {
+        this
+      } else {
+        throw new IllegalStateException(
+          s"""
+             |Expected business status 'OK' or info about already loaded config, but got:"
+             |
+             |HTTP $responseCode
+             |${responseJson.toString()}
+             |""".stripMargin
+        )
+      }
+    }
+
+    private def isConfigAlreadyLoaded = {
+      businessStatus == "KO" && message.contains("already loaded")
+    }
+
+    private def businessStatus = responseJson("status").str.toUpperCase()
+
+    private def message = responseJson.obj.get("message").map(_.str).getOrElse("[none]")
   }
 }

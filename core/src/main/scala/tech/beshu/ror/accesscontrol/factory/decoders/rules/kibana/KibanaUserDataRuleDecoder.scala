@@ -26,18 +26,20 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableV
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath._
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaAccess, KibanaAllowedApiPath, KibanaApp, KibanaIndexName, Regex, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, JavaRegex, KibanaAccess, KibanaAllowedApiPath, KibanaApp, KibanaIndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{RulesLevelCreationError, ValueLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.utils.js.JsCompiler
 
 import scala.util.{Failure, Success}
 
 class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex,
                                 variableCreator: RuntimeResolvableVariableCreator)
+                               (implicit jsCompiler: JsCompiler)
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaUserDataRule]
     with Logging {
 
@@ -83,14 +85,14 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex,
     val extendedKibanaAllowedApiDecoder: Decoder[KibanaAllowedApiPath] = Decoder.instance { c =>
       for {
         httpMethod <- c.downField("http_method").as[HttpMethod]
-        httpPath <- c.downField("http_path").as[Regex]
+        httpPath <- c.downField("http_path").as[JavaRegex]
       } yield KibanaAllowedApiPath(AllowedHttpMethod.Specific(httpMethod), httpPath)
     }
 
     extendedKibanaAllowedApiDecoder.or(simpleKibanaAllowedApiPathDecoder)
   }
 
-  private implicit lazy val pathRegexDecoder: Decoder[Regex] =
+  private implicit lazy val pathRegexDecoder: Decoder[JavaRegex] =
     Decoder
       .decodeString
       .toSyncDecoder
@@ -120,7 +122,7 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex,
 
   private def pathRegexFrom(str: NonEmptyString) = {
     if (str.value.startsWith("^") && str.value.endsWith("$")) {
-      Regex.compile(str.value) match {
+      JavaRegex.compile(str.value) match {
         case Success(regex) =>
           Right(regex)
         case Failure(exception) =>
@@ -128,7 +130,7 @@ class KibanaUserDataRuleDecoder(configurationIndex: RorConfigurationIndex,
           Left(ValueLevelCreationError(Message(s"Cannot create Kibana allowed API path regex from [$str]")))
       }
     } else {
-      Right(Regex.buildFromLiteral(str.value))
+      Right(JavaRegex.buildFromLiteral(str.value))
     }
   }
 }

@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.domain.{BasicAuth, Credentials, PlainTextSec
 import tech.beshu.ror.utils.TestsUtils._
 import eu.timepit.refined.auto._
 
-class BasicAuthTest extends AnyWordSpec with Inside {
+class BasicAuthTests extends AnyWordSpec with Inside {
 
   "BasicAuth class" should {
     "be able to be created from Authentication header" when {

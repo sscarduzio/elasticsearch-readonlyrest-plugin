@@ -19,8 +19,7 @@ package tech.beshu.ror.tools.core.patches
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.EsUtil.readonlyrestPluginPath
-import tech.beshu.ror.tools.core.utils.asm.SecurityActionFilterDeactivator.deactivateXpackSecurityFilter
-import tech.beshu.ror.tools.core.utils.asm.SecurityServerTransportInterceptorDeactivator.deactivateSecurityServerTransportInterceptor
+import tech.beshu.ror.tools.core.utils.asm._
 
 import scala.language.postfixOps
 import scala.util.Try
@@ -56,8 +55,8 @@ private[patches] class Es63xPatch(esDirectory: EsDirectory,
   }
 
   override def execute(): Unit = {
-    deactivateXpackSecurityFilter(xpackSecurityJarPath toIO)
-    deactivateSecurityServerTransportInterceptor(xpackSecurityJarPath toIO)
+    DeactivateSecurityActionFilter(xpackSecurityJarPath toIO)
+    DeactivateSecurityServerTransportInterceptor(xpackSecurityJarPath toIO)
   }
 
   private def copyJarsToBackupFolder() = Try {

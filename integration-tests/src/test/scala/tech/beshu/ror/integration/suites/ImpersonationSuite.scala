@@ -65,7 +65,7 @@ class ImpersonationSuite
            |      auth_key: admin:container
            |""".stripMargin
       )
-      .force()
+      .forceOkStatus()
   }
 
   override protected def beforeEach(): Unit = {
@@ -137,7 +137,7 @@ class ImpersonationSuite
                  |}
              """.stripMargin
             ))
-            .forceOk()
+            .forceOkStatus()
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ldap_user_1").foreach { searchManager =>
             val result = searchManager.search("test3_index")
@@ -170,7 +170,7 @@ class ImpersonationSuite
                  |}
                  |""".stripMargin
             ))
-            .forceOk()
+            .forceOkStatus()
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ldap_user_1").foreach { searchManager =>
             val result = searchManager.search("test3_index")
@@ -210,7 +210,7 @@ class ImpersonationSuite
                  |}
                  |""".stripMargin
             ))
-            .forceOk()
+            .forceOkStatus()
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ext_user_1").foreach { searchManager =>
             val result = searchManager.search("test3_index")
@@ -241,7 +241,7 @@ class ImpersonationSuite
                  |}
                  |""".stripMargin
             ))
-            .forceOk()
+            .forceOkStatus()
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ext_user_1").foreach { searchManager =>
             val result = searchManager.search("test3_index")
@@ -281,7 +281,7 @@ class ImpersonationSuite
                  |}
                  |""".stripMargin
             ))
-            .forceOk()
+            .forceOkStatus()
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "gpa_user_1").foreach { searchManager =>
             val result = searchManager.search("test3_index")
@@ -312,7 +312,7 @@ class ImpersonationSuite
                  |}
                  |""".stripMargin
             ))
-            .forceOk()
+            .forceOkStatus()
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "gpa_user_1").foreach { searchManager =>
             val result = searchManager.search("test3_index")
@@ -346,7 +346,7 @@ class ImpersonationSuite
                  |}
                  |""".stripMargin
             ))
-            .forceOk()
+            .forceOkStatus()
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ldap_user_1").foreach { searchManager =>
             val result = searchManager.search("test4_index")
@@ -386,7 +386,7 @@ class ImpersonationSuite
                  |}
                  |""".stripMargin
             ))
-            .forceOk()
+            .forceOkStatus()
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ldap_user_1").foreach { searchManager =>
             val result = searchManager.search("test4_index")
@@ -449,13 +449,13 @@ class ImpersonationSuite
                |}
                |""".stripMargin
           ))
-          .forceOk()
+          .forceOkStatus()
 
         val result1 = searchManager.search("test3_index")
 
         result1 should have statusCode 200
 
-        rorApiManager.invalidateImpersonationMocks().forceOk()
+        rorApiManager.invalidateImpersonationMocks().forceOkStatus()
 
         val result2 = searchManager.search("test3_index")
 
@@ -465,7 +465,7 @@ class ImpersonationSuite
     }
     "test engine is not configured" in {
       impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ldap_user_1").foreach { searchManager =>
-        rorApiManager.invalidateRorTestConfig().forceOk()
+        rorApiManager.invalidateRorTestConfig().forceOkStatus()
         loadTestSettings()
 
         rorApiManager
@@ -489,12 +489,12 @@ class ImpersonationSuite
                |}
                |""".stripMargin
           ))
-          .forceOk()
+          .forceOkStatus()
 
         val result1 = searchManager.search("test3_index")
         result1 should have statusCode 200
 
-        rorApiManager.invalidateRorTestConfig().forceOk()
+        rorApiManager.invalidateRorTestConfig().forceOkStatus()
 
         val result2 = searchManager.search("test3_index")
         result2 should have statusCode 403
@@ -599,7 +599,9 @@ class ImpersonationSuite
   }
 
   private def loadTestSettings(): Unit = {
-    rorApiManager.updateRorTestConfig(resolvedRorConfigFile.contentAsString).forceOk()
+    rorApiManager
+      .updateRorTestConfig(resolvedRorConfigFile.contentAsString)
+      .forceOkStatus()
   }
 
   private def configureSomeMocksForAllExternalServices(): Unit = {
@@ -674,7 +676,7 @@ class ImpersonationSuite
            |}
            |""".stripMargin
       ))
-      .forceOk()
+      .forceOkStatus()
   }
 
   private lazy val impersonationNotSupportedResponse = ujson.read(
