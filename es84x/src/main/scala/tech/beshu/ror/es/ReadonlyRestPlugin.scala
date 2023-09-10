@@ -50,9 +50,9 @@ import org.elasticsearch.watcher.ResourceWatcherService
 import org.elasticsearch.xcontent.NamedXContentRegistry
 import org.joor.Reflect.on
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.boot.{EsInitListener, SecurityProviderConfiguratorForFips}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
+import tech.beshu.ror.configuration.EnvironmentConfig
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
@@ -70,7 +70,6 @@ import tech.beshu.ror.es.actions.wrappers._upgrade.{RorWrappedUpgradeActionType,
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsPatchVerifier}
-import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SetOnce
 
@@ -101,9 +100,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     Netty4Utils.setAvailableProcessors(EsExecutors.NODE_PROCESSORS_SETTING.get(s))
   }
 
-  private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
-  private implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
-  private implicit val uniqueIdentifierGenerator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator
+  private implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
 
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds

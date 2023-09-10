@@ -72,7 +72,11 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter._
 import tech.beshu.ror.es.handler.request.ActionRequestOps._
 import tech.beshu.ror.es.handler.request.RestRequestOps._
 import tech.beshu.ror.es.handler.request.context.types._
-import tech.beshu.ror.es.handler.request.context.types.datastreams.{ModifyDataStreamsEsRequestContext, ReflectionBasedDataStreamsEsRequestContext}
+import tech.beshu.ror.es.handler.request.context.types.datastreams._
+import tech.beshu.ror.es.handler.request.context.types.repositories._
+import tech.beshu.ror.es.handler.request.context.types.ror._
+import tech.beshu.ror.es.handler.request.context.types.snapshots._
+import tech.beshu.ror.es.handler.request.context.types.templates._
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
 import java.time.Instant

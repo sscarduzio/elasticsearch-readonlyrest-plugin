@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataReque
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaHideAppsRule
-import tech.beshu.ror.accesscontrol.domain.KibanaApp
+import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -36,7 +36,7 @@ class KibanaHideAppsRuleTests extends AnyWordSpec with MockFactory {
   "A KibanaHideAppsRule" should {
     "always match" should {
       "set kibana app" in {
-        val rule = new KibanaHideAppsRule(KibanaHideAppsRule.Settings(UniqueNonEmptyList.of(KibanaApp("app1"))))
+        val rule = new KibanaHideAppsRule(KibanaHideAppsRule.Settings(UniqueNonEmptyList.of(FullNameKibanaApp("app1"))))
         val requestContext = mock[RequestContext]
         val blockContext = CurrentUserMetadataRequestBlockContext(
           requestContext = requestContext,
@@ -52,7 +52,7 @@ class KibanaHideAppsRuleTests extends AnyWordSpec with MockFactory {
             userMetadata = UserMetadata
               .empty
               .withLoggedUser(DirectlyLoggedUser(Id("user1")))
-              .withHiddenKibanaApps(UniqueNonEmptyList.of(KibanaApp("app1"))),
+              .withHiddenKibanaApps(UniqueNonEmptyList.of(FullNameKibanaApp("app1"))),
             responseHeaders = Set.empty,
             responseTransformations = List.empty
           )

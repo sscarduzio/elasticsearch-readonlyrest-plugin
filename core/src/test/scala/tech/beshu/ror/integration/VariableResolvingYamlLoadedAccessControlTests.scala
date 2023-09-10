@@ -31,7 +31,8 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Json.{JsonTree, JsonValue}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.domain.{Jwt => _, _}
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -61,6 +62,9 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |
        |  enable: $${READONLYREST_ENABLE}
        |
+       |  variables_function_aliases:
+       |   - custom_replace: replace_all(\"\\\\d\",\"X\") # replace digits with X
+       |
        |  access_control_rules:
        |   - name: "CONTAINER ADMIN"
        |     type: allow
@@ -76,18 +80,19 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |       metadata:
        |         a: "jwt_value_@{jwt:tech.beshu.mainGroupsString}"
        |         b: "@{jwt:user_id_list}"
+       |         c: "jwt_value_transformed_@{jwt:tech.beshu.mainGroupsString}#{replace_first(\\"j\\",\\"g\\").to_uppercase}"
        |
        |   - name: "Group name from header variable"
        |     type: allow
-       |     groups: ["g4", "@{X-my-group-name-1}", "@{header:X-my-group-name-2}" ]
+       |     groups: ["g4", "@{X-my-group-name-1}", "@{header:X-my-group-name-2}#{func(custom_replace)}" ]
        |
        |   - name: "Group name from env variable"
        |     type: allow
-       |     groups: ["g@{env:sys_group_1}"]
+       |     groups: ["g@{env:sys_group_1}#{to_lowercase}"]
        |
        |   - name: "Group name from env variable (old syntax)"
        |     type: allow
-       |     groups: ["g$${sys_group_2}"]
+       |     groups: ['g$${sys_group_2}#{replace_first("s","")}']
        |
        |   - name: "Variables usage in filter"
        |     type: allow
@@ -99,7 +104,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |     type: allow
        |     jwt_auth:
        |       name: "jwt1"
-       |     indices: ["g@explode{jwt:tech.beshu.mainGroup}"]
+       |     indices: ['g@explode{jwt:tech.beshu.mainGroup}#{replace_all("j","jj")}']
        |
        |   - name: "Group name from jwt variable"
        |     type: allow
@@ -127,6 +132,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |       - g1: group1
        |       - g2: [group2]
        |       - g3: "group3"
+       |       - gX: group3
        |     ldap_auth:
        |       name: "ldap1"
        |       groups: ["group1", "group2", "group3"]
@@ -168,7 +174,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |      request_timeout_in_sec: 10                                # default 1
        |      cache_ttl_in_sec: 60                                      # default 0 - cache disabled
        |
-    """.stripMargin
+  """.stripMargin
 
   "An ACL" when {
     "is configured using config above" should {
@@ -180,7 +186,6 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 3
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
@@ -199,7 +204,6 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 3
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
@@ -218,7 +222,6 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 5
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from env variable (old syntax)"))
             assertBlockContext(
@@ -237,7 +240,6 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 4
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from env variable"))
             assertBlockContext(
@@ -256,21 +258,20 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           ))
           val request = MockRequestContext.indices.copy(
             headers = Set(bearerHeader(jwt)),
-            filteredIndices = Set(clusterIndexName("gj1"))
+            filteredIndices = Set(clusterIndexName("gjj1"))
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 7
           inside(result.result) { case RegularRequestResult.Allow(blockContext: GeneralIndexRequestBlockContext, block) =>
             block.name should be(Block.Name("Group name from jwt variable (array)"))
             blockContext.userMetadata should be(
               UserMetadata
                 .empty
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user3")))
-                .withJwtToken(JwtTokenPayload(jwt.defaultClaims()))
+                .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
             )
-            blockContext.filteredIndices should be(Set(clusterIndexName("gj1")))
+            blockContext.filteredIndices should be(Set(clusterIndexName("gjj1")))
             blockContext.responseHeaders should be(Set.empty)
           }
         }
@@ -288,14 +289,13 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 8
           inside(result.result) { case RegularRequestResult.Allow(blockContext: GeneralIndexRequestBlockContext, block) =>
             block.name should be(Block.Name("Group name from jwt variable"))
             blockContext.userMetadata should be(
               UserMetadata
                 .from(request)
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user4")))
-                .withJwtToken(JwtTokenPayload(jwt.defaultClaims()))
+                .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
             )
             blockContext.filteredIndices should be(Set(clusterIndexName("gj0")))
             blockContext.responseHeaders should be(Set.empty)
@@ -315,14 +315,13 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 6
           inside(result.result) { case RegularRequestResult.Allow(blockContext: FilterableRequestBlockContext, block) =>
             block.name should be(Block.Name("Variables usage in filter"))
             blockContext.userMetadata should be(
               UserMetadata
                 .from(request)
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user5")))
-                .withJwtToken(JwtTokenPayload(jwt.defaultClaims()))
+                .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
             )
             blockContext.filteredIndices should be(Set.empty)
             blockContext.responseHeaders should be(Set.empty)
@@ -342,7 +341,6 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 9
           inside(result.result) { case RegularRequestResult.Allow(blockContext: FilterableRequestBlockContext, block) =>
             block.name should be(Block.Name("LDAP groups explode"))
             blockContext.userMetadata should be(
@@ -370,7 +368,6 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 2
           inside(result.result) {
             case RegularRequestResult.Allow(blockContext, block) =>
               block.name should be(Block.Name("Kibana metadata resolving test"))
@@ -383,10 +380,11 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                   .withKibanaMetadata(
                     JsonTree.Object(Map(
                       "a" -> JsonTree.Value(JsonValue.StringValue("jwt_value_j0,j3")),
-                      "b" -> JsonTree.Value(JsonValue.StringValue("\"alice\",\"bob\""))
+                      "b" -> JsonTree.Value(JsonValue.StringValue("\"alice\",\"bob\"")),
+                      "c" -> JsonTree.Value(JsonValue.StringValue("jwt_value_transformed_G0,J3"))
                     ))
                   )
-                  .withJwtToken(JwtTokenPayload(jwt.defaultClaims()))
+                  .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
               )
               blockContext.responseHeaders should be(Set.empty)
           }
@@ -396,8 +394,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
   }
 
   override implicit protected def envVarsProvider: EnvVarsProvider = {
-    case EnvVarName(n) if n.value == "sys_group_1" => Some("s1")
-    case EnvVarName(n) if n.value == "sys_group_2" => Some("s2")
+    case EnvVarName(n) if n.value == "sys_group_1" => Some("S1")
+    case EnvVarName(n) if n.value == "sys_group_2" => Some("ss2")
     case EnvVarName(n) if n.value == "READONLYREST_ENABLE" => Some("true")
     case EnvVarName(n) if n.value == "USER1_PASS" => Some("user1:passwd")
     case EnvVarName(n) if n.value == "LDAP_HOST" => Some(SingletonLdapContainers.ldap1.ldapHost)

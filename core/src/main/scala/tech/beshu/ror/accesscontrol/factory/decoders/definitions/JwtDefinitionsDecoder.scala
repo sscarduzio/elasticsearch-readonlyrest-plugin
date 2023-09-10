@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import io.circe.{Decoder, HCursor, Json}
-import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, ClaimName, Header}
+import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, Header, Jwt}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{Name, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
@@ -31,19 +31,22 @@ import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCre
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import ExternalAuthenticationServicesDecoder.jwtExternalAuthenticationServiceDecoder
 import cats.Id
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 
 object JwtDefinitionsDecoder {
 
-  def instance(httpClientFactory: HttpClientsFactory): ADecoder[Id, Definitions[JwtDef]] = {
-    implicit val decoder: SyncDecoder[JwtDef] = SyncDecoderCreator.from(jwtDefDecoder(httpClientFactory))
+  def instance(httpClientFactory: HttpClientsFactory,
+               variableCreator: RuntimeResolvableVariableCreator): ADecoder[Id, Definitions[JwtDef]] = {
+    implicit val decoder: SyncDecoder[JwtDef] = SyncDecoderCreator.from(jwtDefDecoder(httpClientFactory, variableCreator))
     DefinitionsBaseDecoder.instance[Id, JwtDef]("jwt")
   }
 
   implicit val jwtDefNameDecoder: Decoder[Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
 
-  private implicit val claimDecoder: Decoder[ClaimName] = jsonPathDecoder.map(ClaimName.apply)
+  private implicit val claimDecoder: Decoder[Jwt.ClaimName] = jsonPathDecoder.map(Jwt.ClaimName.apply)
 
-  private def jwtDefDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[JwtDef] = {
+  private def jwtDefDecoder(implicit httpClientFactory: HttpClientsFactory,
+                            variableCreator: RuntimeResolvableVariableCreator): Decoder[JwtDef] = {
     SyncDecoderCreator
       .instance { c =>
         for {
@@ -51,8 +54,8 @@ object JwtDefinitionsDecoder {
           checkMethod <- signatureCheckMethod(c)
           headerName <- c.downField("header_name").as[Option[Header.Name]]
           authTokenPrefix <- c.downField("header_prefix").as[Option[String]]
-          userClaim <- c.downField("user_claim").as[Option[ClaimName]]
-          groupsClaim <- c.downFields("roles_claim", "groups_claim").as[Option[ClaimName]]
+          userClaim <- c.downField("user_claim").as[Option[Jwt.ClaimName]]
+          groupsClaim <- c.downFields("roles_claim", "groups_claim").as[Option[Jwt.ClaimName]]
         } yield JwtDef(
           name,
           AuthorizationTokenDef(
@@ -89,7 +92,8 @@ object JwtDefinitionsDecoder {
       ES512       EC
     */
   private def signatureCheckMethod(c: HCursor)
-                                  (implicit httpClientFactory: HttpClientsFactory): Decoder.Result[SignatureCheckMethod] = {
+                                  (implicit httpClientFactory: HttpClientsFactory,
+                                   variableCreator: RuntimeResolvableVariableCreator): Decoder.Result[SignatureCheckMethod] = {
     def decodeSignatureKey =
       DecoderHelpers
         .decodeStringLikeWithSingleVarResolvedInPlace

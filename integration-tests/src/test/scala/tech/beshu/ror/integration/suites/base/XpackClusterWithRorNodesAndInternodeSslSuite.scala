@@ -30,6 +30,7 @@ import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.Internod
 import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch._
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
 trait XpackClusterWithRorNodesAndInternodeSslSuite
@@ -39,7 +40,8 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
     with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
     with BeforeAndAfterAll
-    with Eventually {
+    with Eventually
+    with CustomScalaTestMatchers {
 
   def rorConfigPath: String
 
@@ -92,7 +94,7 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
 
     val response = rorClusterAdminStateManager.healthCheck()
 
-    response.responseCode should be(200)
+    response should have statusCode 200
   }
   "ROR config reload can be done" in {
     val rorApiManager = new RorApiManager(clusterContainer.nodes.head.adminClient, esVersion = esVersionUsed)
@@ -100,7 +102,7 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
     val updateResult = rorApiManager
       .updateRorInIndexConfig(getResourceContent("/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_update.yml"))
 
-    updateResult.responseCode should be(200)
+    updateResult should have statusCode 200
     updateResult.responseJson("status").str should be("ok")
 
     val indexManager = new IndexManager(basicAuthClient("user1", "test"), esVersion = esVersionUsed)
@@ -108,7 +110,7 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
 
     val getIndexResult = indexManager.getIndex("test")
 
-    getIndexResult.responseCode should be(200)
+    getIndexResult should have statusCode 200
     getIndexResult.indicesAndAliases.keys.toList should be(List("test"))
   }
   "Field caps request works" in {
@@ -119,7 +121,7 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
       val searchManager = new SearchManager(basicAuthClient("user2", "test"))
       val result = searchManager.fieldCaps(indices = "user2_index" :: Nil, fields = "data1" :: Nil)
 
-      result.responseCode should be(200)
+      result should have statusCode 200
     }
   }
 }

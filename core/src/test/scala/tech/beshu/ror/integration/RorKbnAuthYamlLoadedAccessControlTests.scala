@@ -29,14 +29,15 @@ import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{JwtTokenPayload, User}
+import tech.beshu.ror.accesscontrol.domain.{Jwt, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.jdk.CollectionConverters._
 
-class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
+class RorKbnAuthYamlLoadedAccessControlTests
+  extends AnyWordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
 
   override protected def configYaml: String =
     """http.bind_host: _eth0:ipv4_
@@ -111,7 +112,7 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
             block.name should be(Block.Name("Valid JWT token is present"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
-              jwt = Some(JwtTokenPayload(claims))
+              jwt = Some(Jwt.Payload(claims))
             ) {
               blockContext
             }

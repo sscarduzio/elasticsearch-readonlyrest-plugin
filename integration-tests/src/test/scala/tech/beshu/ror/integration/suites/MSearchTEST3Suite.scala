@@ -16,13 +16,13 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 //TODO change test names. Current names are copies from old java integration tests
 class MSearchTEST3Suite
@@ -30,7 +30,7 @@ class MSearchTEST3Suite
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   private val msearchBodyTryMatchBoth = Seq(
     """{"index":["monit_private*"]}""",
@@ -49,7 +49,7 @@ class MSearchTEST3Suite
 
     val response = searchManager.mSearchUnsafe(msearchBodyTryMatchBoth: _*)
 
-    response.responseCode shouldBe 200
+    response should have statusCode 200
     response.responses.size shouldBe 1
     response.totalHitsForResponse(0) shouldBe 1
   }

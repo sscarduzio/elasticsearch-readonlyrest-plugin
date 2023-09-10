@@ -43,10 +43,12 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, definitions}
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Header.Name
+import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.configuration.RawRorConfig
-import tech.beshu.ror.utils.misc.JwtUtils.Jwt
+import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
+import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import java.nio.file.Path
@@ -65,10 +67,10 @@ object TestsUtils {
       NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(value.getBytes)}")
     )
 
-  def bearerHeader(jwt: Jwt): Header =
+  def bearerHeader(jwt: JwtUtils.Jwt): Header =
     bearerHeader(Header.Name.authorization.value, jwt)
 
-  def bearerHeader(headerName: NonEmptyString, jwt: Jwt): Header =
+  def bearerHeader(headerName: NonEmptyString, jwt: JwtUtils.Jwt): Header =
     new Header(
       Header.Name(headerName),
       NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}")
@@ -93,6 +95,14 @@ object TestsUtils {
     header("x-ror-current-group", value)
 
   def kibanaIndexName(str: NonEmptyString): KibanaIndexName = KibanaIndexName(localIndexName(str))
+
+  def kibanaAppRegex(str: NonEmptyString): KibanaAppRegex = {
+    implicit val compiler: JsCompiler = MozillaJsCompiler
+    JsRegex.compile(str) match {
+      case Right(jsRegex) => KibanaAppRegex(jsRegex)
+      case Left(error) => throw new IllegalArgumentException(s"Cannot create KibanaAppRegex from '$str'; Cause: $error")
+    }
+  }
 
   def clusterIndexName(str: NonEmptyString): ClusterIndexName = ClusterIndexName.unsafeFromString(str.value)
 
@@ -229,7 +239,7 @@ object TestsUtils {
                            hiddenKibanaApps: Set[KibanaApp] = Set.empty,
                            kibanaAccess: Option[KibanaAccess] = None,
                            userOrigin: Option[UserOrigin] = None,
-                           jwt: Option[JwtTokenPayload] = None,
+                           jwt: Option[Jwt.Payload] = None,
                            responseHeaders: Set[Header] = Set.empty,
                            indices: Set[ClusterIndexName] = Set.empty,
                            aliases: Set[ClusterIndexName] = Set.empty,

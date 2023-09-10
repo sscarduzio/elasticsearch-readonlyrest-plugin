@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.factory
 
-import java.time.Clock
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
@@ -32,9 +31,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.{RawRorConfig, EnvironmentConfig}
 import tech.beshu.ror.mocks.MockHttpClientsFactory
-import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -385,9 +383,7 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
   }
 
   private val factory = {
-    implicit val clock: Clock = Clock.systemUTC()
-    implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val provider: EnvVarsProvider = OsEnvVarsProvider
+    implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
     new RawRorConfigBasedCoreFactory()
   }
 }

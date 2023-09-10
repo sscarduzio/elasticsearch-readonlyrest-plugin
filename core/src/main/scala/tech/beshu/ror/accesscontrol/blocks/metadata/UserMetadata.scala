@@ -33,7 +33,7 @@ final case class UserMetadata private(loggedUser: Option[LoggedUser],
                                       kibanaAccess: Option[KibanaAccess],
                                       kibanaMetadata: Option[JsonRepresentation],
                                       userOrigin: Option[UserOrigin],
-                                      jwtToken: Option[JwtTokenPayload]) {
+                                      jwtToken: Option[Jwt.Payload]) {
 
   def withLoggedUser(user: LoggedUser): UserMetadata = this.copy(loggedUser = Some(user))
   def withCurrentGroup(group: GroupName): UserMetadata = this.copy(currentGroup = Some(group))
@@ -59,7 +59,7 @@ final case class UserMetadata private(loggedUser: Option[LoggedUser],
   def withKibanaAccess(access: KibanaAccess): UserMetadata = this.copy(kibanaAccess = Some(access))
   def withKibanaMetadata(json: JsonRepresentation): UserMetadata = this.copy(kibanaMetadata = Some(json))
   def withUserOrigin(origin: UserOrigin): UserMetadata = this.copy(userOrigin = Some(origin))
-  def withJwtToken(token: JwtTokenPayload): UserMetadata = this.copy(jwtToken = Some(token))
+  def withJwtToken(token: Jwt.Payload): UserMetadata = this.copy(jwtToken = Some(token))
   def clearCurrentGroup: UserMetadata = this.copy(currentGroup = None)
 }
 

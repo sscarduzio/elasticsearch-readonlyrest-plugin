@@ -27,7 +27,6 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers._
-import tech.beshu.ror.providers.OsEnvVarsProvider
 import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 final case class RorIndexNameConfiguration(index: RorConfigurationIndex)
@@ -36,15 +35,15 @@ object RorIndexNameConfiguration extends Logging {
 
   private val defaultIndexName = IndexName.Full(".readonlyrest")
 
-  def load(esConfigFolderPath: Path): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = {
+  def load(esConfigFolderPath: Path)
+          (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = {
     load(File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath))
   }
 
-  def load(esConfig: File): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = Task {
+  def load(esConfig: File)
+          (implicit environmentConfig: EnvironmentConfig): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = Task {
     new YamlFileBasedConfigLoader(esConfig).loadConfig[RorIndexNameConfiguration](configName = "ROR index configuration")
   }
-
-  private implicit val envVarsProvider: OsEnvVarsProvider.type = OsEnvVarsProvider
 
   private implicit val rorIndexNameConfigurationDecoder: Decoder[RorIndexNameConfiguration] = {
     implicit val indexNameDecoder: Decoder[IndexName.Full] = Decoder[NonEmptyString].map(IndexName.Full.apply)

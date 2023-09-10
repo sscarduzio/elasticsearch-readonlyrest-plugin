@@ -29,17 +29,20 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.elasticsearch.IndicesDecodersHelper._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.matchers.RandomBasedUniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
-object IndicesRuleDecoders
+class IndicesRuleDecoders(variableCreator: RuntimeResolvableVariableCreator,
+                          uniqueIdentifierGenerator: UniqueIdentifierGenerator)
   extends RuleBaseDecoderWithoutAssociatedFields[IndicesRule] {
 
+  private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
+
   override protected def decoder: Decoder[RuleDefinition[IndicesRule]] = {
-    IndicesRuleDecoders.indicesRuleSimpleDecoder
-      .or(IndicesRuleDecoders.indicesRuleExtendedDecoder)
+    indicesRuleSimpleDecoder
+      .or(indicesRuleExtendedDecoder)
   }
 
   private val defaultMustInvolveIndicesValue = false
@@ -51,7 +54,7 @@ object IndicesRuleDecoders
         RuleDefinition.create(
           new IndicesRule(
             settings = IndicesRule.Settings(indices, mustInvolveIndices = defaultMustInvolveIndicesValue),
-            identifierGenerator = RandomBasedUniqueIdentifierGenerator
+            identifierGenerator = uniqueIdentifierGenerator
           )
         )
       )
@@ -65,7 +68,7 @@ object IndicesRuleDecoders
         RuleDefinition.create(
           new IndicesRule(
             settings = IndicesRule.Settings(indices, mustInvolveIndices.getOrElse(defaultMustInvolveIndicesValue)),
-            identifierGenerator = RandomBasedUniqueIdentifierGenerator
+            identifierGenerator = uniqueIdentifierGenerator
           )
         )
       }
@@ -84,12 +87,12 @@ private object IndicesDecodersHelper {
         .fromString(str)
         .toRight(Convertible.ConvertError("Index name cannot be empty"))
   }
-  implicit val indexNameValueDecoder: Decoder[RuntimeMultiResolvableVariable[ClusterIndexName]] =
+  implicit def indexNameValueDecoder(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeMultiResolvableVariable[ClusterIndexName]] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .toSyncDecoder
       .emapE { str =>
-        RuntimeResolvableVariableCreator
+        variableCreator
           .createMultiResolvableVariableFrom[ClusterIndexName](str)
           .left.map(error => RulesLevelCreationError(Message(error.show)))
       }

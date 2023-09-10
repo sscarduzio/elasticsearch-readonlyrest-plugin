@@ -23,12 +23,14 @@ import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterProvider}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 trait FieldRuleEngineSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike
-    with BeforeAndAfterAll {
+    with BeforeAndAfterAll 
+    with CustomScalaTestMatchers {
   this: EsClusterProvider =>
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some {
@@ -55,7 +57,7 @@ trait FieldRuleEngineSuite
                 |""".stripMargin)
           )
 
-          result.responseCode shouldBe 200
+          result should have statusCode 200
           result.searchHits shouldBe List.empty
         }
       }
@@ -95,7 +97,7 @@ trait FieldRuleEngineSuite
              """.stripMargin)
         )
 
-        result.responseCode shouldBe 200
+        result should have statusCode 200
         result.searchHits.size shouldBe 5
 
         val aggregateName = "my_aggregate"

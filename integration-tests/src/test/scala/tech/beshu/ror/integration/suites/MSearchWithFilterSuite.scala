@@ -17,12 +17,12 @@
 package tech.beshu.ror.integration.suites
 
 import net.jodah.failsafe.{Failsafe, RetryPolicy}
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.SearchManager.MSearchResult
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, SearchManager}
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 import java.time.Duration
 import java.util.function.BiPredicate
@@ -33,7 +33,7 @@ class MSearchWithFilterSuite
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/msearch_with_filter/readonlyrest.yml"
 
@@ -65,7 +65,7 @@ class MSearchWithFilterSuite
   }
 
   private def assertSearchResult(expectedIndex: String, searchResult: MSearchResult): Unit = {
-    searchResult.responseCode shouldBe 200
+    searchResult should have statusCode 200
     searchResult.responses.size shouldBe 1
 
     val searchHits = searchResult.searchHitsForResponse(responseIdx = 0)

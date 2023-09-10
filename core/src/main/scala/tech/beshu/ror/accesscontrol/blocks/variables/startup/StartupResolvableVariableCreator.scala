@@ -17,26 +17,22 @@
 package tech.beshu.ror.accesscontrol.blocks.variables.startup
 
 import cats.data.NonEmptyList
-import cats.instances.either._
-import cats.instances.list._
-import cats.syntax.traverse._
+import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer
 import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer.Token
+import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer.Token.Transformation
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupMultiResolvableVariable.Wrapper
-import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.CreationError.{CannotUserMultiVariableInSingleVariableContext, InvalidVariableDefinition, OnlyOneMultiVariableCanBeUsedInVariableDefinition}
+import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator._
+import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.CreationError._
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler.CompilationError
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 
 import scala.util.matching.Regex
 
-object StartupResolvableVariableCreator {
-
-  sealed trait CreationError
-  object CreationError {
-    case object CannotUserMultiVariableInSingleVariableContext extends CreationError
-    case object OnlyOneMultiVariableCanBeUsedInVariableDefinition extends CreationError
-    final case class InvalidVariableDefinition(cause: String) extends CreationError
-  }
+class StartupResolvableVariableCreator(transformationCompiler: TransformationCompiler) {
 
   def createSingleVariableFrom(text: NonEmptyString): Either[CreationError, StartupSingleResolvableVariable] = {
     oldFashionedEnvAndTextHandling(text, VariableType.Single)
@@ -54,7 +50,7 @@ object StartupResolvableVariableCreator {
     if (text.value.startsWith("env:")) {
       NonEmptyString
         .unapply(text.value.substring("env:".length))
-        .map(str => `type`.createEnvVariable(EnvVarName(str)))
+        .map(str => `type`.createEnvVariable(EnvVarName(str), None))
         .map(variable => NonEmptyList.one(variable).asRight[CreationError])
     } else if (text.value.startsWith("text:")) {
       Some {
@@ -70,19 +66,19 @@ object StartupResolvableVariableCreator {
       .map {
         case Token.Text(value) =>
           Right(VariableType.Single.createTextVariable(value))
-        case Token.Placeholder(name, rawValue) =>
+        case Token.Placeholder(name, rawValue, maybeTransformation) =>
           name match {
             case regexes.envVar(envVarName) =>
-              createEnvVariableFromString(envVarName, VariableType.Single)
+              createEnvVariable(envVarName, maybeTransformation, VariableType.Single)
             case _ =>
               rawValue match {
                 case regexes.envVarOldStyle(envVarName) =>
-                  createEnvVariableFromString(envVarName, VariableType.Single)
+                  createEnvVariable(envVarName, maybeTransformation, VariableType.Single)
                 case _ =>
-                  Right(VariableType.Single.createTextVariable(rawValue))
+                  createTextVariable(rawValue, maybeTransformation, VariableType.Single)
               }
           }
-        case Token.ExplodablePlaceholder(_, _) =>
+        case Token.ExplodablePlaceholder(_, _, _) =>
           Left(CannotUserMultiVariableInSingleVariableContext)
       }
       .sequence
@@ -93,62 +89,120 @@ object StartupResolvableVariableCreator {
       case (Acc(results, multiVariableCount), token) => token match {
         case Token.Text(value) =>
           Acc(results :+ Right(VariableType.Multi.createTextVariable(value)), multiVariableCount)
-        case Token.Placeholder(name, rawValue) =>
-          Acc(results :+ variableFrom(name, rawValue, VariableType.Single).map(Wrapper.apply), multiVariableCount)
-        case Token.ExplodablePlaceholder(name, rawValue) =>
-          Acc(results :+ variableFrom(name, rawValue, VariableType.Multi), multiVariableCount + 1)
+        case Token.Placeholder(name, rawValue, maybeTransformation) =>
+          val variable = variableFrom(name, rawValue, maybeTransformation, VariableType.Single).map(Wrapper.apply)
+          Acc(results :+ variable, multiVariableCount)
+        case Token.ExplodablePlaceholder(name, rawValue, maybeTransformation) =>
+          val variable = variableFrom(name, rawValue, maybeTransformation, VariableType.Multi)
+          Acc(results :+ variable, multiVariableCount + 1)
       }
     }
-    if(acc.realMultiVariablesCount <= 1) {
+    if (acc.realMultiVariablesCount <= 1) {
       acc.results.toList.sequence.map(NonEmptyList.fromListUnsafe)
     } else {
       Left(OnlyOneMultiVariableCanBeUsedInVariableDefinition)
     }
   }
 
-  private def variableFrom(name: String, rawValue: String, `type`: VariableType): Either[CreationError, `type`.T] = {
+  private def variableFrom(name: String,
+                           rawValue: String,
+                           maybeTransformation: Option[Transformation],
+                           `type`: VariableType): Either[CreationError, `type`.T] = {
     name match {
       case regexes.envVar(envVarName) =>
-        createEnvVariableFromString(envVarName, `type`)
+        createEnvVariable(envVarName, maybeTransformation, `type`)
       case _ if rawValue.startsWith("$") => // backward compatibility (old ${EX} === new @{env:EX})
-        createEnvVariableFromString(name, `type`)
+        createEnvVariable(name, maybeTransformation, `type`)
       case _ =>
-        Right(`type`.createTextVariable(rawValue))
+        createTextVariable(rawValue, maybeTransformation, `type`)
     }
   }
 
-  private def createEnvVariableFromString(envVarName: String, `type`: VariableType): Either[CreationError, `type`.T] = {
+  private def createTextVariable(rawValue: String,
+                                 maybeTransformation: Option[Transformation],
+                                 `type`: VariableType) = {
+    val variable = `type`.createTextVariable(rawValue)
+    maybeTransformation
+      .map { transformation =>
+        `type`.createComposedVariable(
+          NonEmptyList.of(
+            variable,
+            `type`.createTextVariable(transformation.rawValue) // we should not apply transformation on text variable
+          )
+        )
+      }
+      .getOrElse(variable)
+      .asRight[CreationError]
+  }
+
+  private def createEnvVariable(envVarName: String,
+                                maybeTransformation: Option[Transformation],
+                                `type`: VariableType): Either[CreationError, `type`.T] = {
+    for {
+      transformation <- maybeTransformation.map(compile(_).map(Some.apply)).getOrElse(Right(None))
+      variable <- createEnvVariableFromString(envVarName, transformation, `type`)
+    } yield variable
+  }
+
+  private def createEnvVariableFromString(envVarName: String,
+                                          maybeTransformation: Option[Function],
+                                          `type`: VariableType): Either[CreationError, `type`.T] = {
     NonEmptyString.unapply(envVarName) match {
-      case Some(nes) => Right(`type`.createEnvVariable(EnvVarName(nes)))
+      case Some(nes) => Right(`type`.createEnvVariable(EnvVarName(nes), maybeTransformation))
       case None => Left(InvalidVariableDefinition("Empty ENV name passed"))
     }
+  }
+
+  private def compile(transformation: Token.Transformation) = {
+    transformationCompiler
+      .compile(transformation.name)
+      .left.map(toCreationError(transformation.name, _))
+  }
+
+  private def toCreationError(transformationStr: String,
+                              error: TransformationCompiler.CompilationError): CreationError = error match {
+    case CompilationError.UnableToParseTransformation(message) =>
+      CreationError.InvalidVariableDefinition(s"Unable to parse transformation string: [$transformationStr]. Cause: $message")
+    case CompilationError.UnableToCompileTransformation(message) =>
+      CreationError.InvalidVariableDefinition(s"Unable to compile transformation string: [$transformationStr]. Cause: $message")
   }
 
   private object regexes {
     val envVar: Regex = "env:(.*)".r
     val envVarOldStyle: Regex = """\$\{(.*)\}""".r
   }
+}
+
+object StartupResolvableVariableCreator {
+  sealed trait CreationError
+  object CreationError {
+    case object CannotUserMultiVariableInSingleVariableContext extends CreationError
+    case object OnlyOneMultiVariableCanBeUsedInVariableDefinition extends CreationError
+    final case class InvalidVariableDefinition(cause: String) extends CreationError
+  }
 
   private sealed trait VariableType {
     type T <: StartupResolvableVariable[_]
-    def createEnvVariable(envName: EnvVarName): T
+    def createEnvVariable(envName: EnvVarName, transformation: Option[Function]): T
     def createTextVariable(value: String): T
     def createComposedVariable(variables: NonEmptyList[T]): T
   }
+
   private object VariableType {
     case object Single extends VariableType {
       override type T = StartupSingleResolvableVariable
-      override def createEnvVariable(envName: EnvVarName): StartupSingleResolvableVariable =
-        StartupSingleResolvableVariable.Env(envName)
+      override def createEnvVariable(envName: EnvVarName, transformation: Option[Function]): StartupSingleResolvableVariable =
+        new StartupSingleResolvableVariable.Env(envName, transformation)
       override def createTextVariable(value: String): StartupSingleResolvableVariable =
         StartupSingleResolvableVariable.Text(value)
       override def createComposedVariable(variables: NonEmptyList[StartupSingleResolvableVariable]): StartupSingleResolvableVariable =
         StartupSingleResolvableVariable.Composed(variables)
     }
+
     case object Multi extends VariableType {
       override type T = StartupMultiResolvableVariable
-      override def createEnvVariable(envName: EnvVarName): StartupMultiResolvableVariable =
-        StartupMultiResolvableVariable.Env(envName)
+      override def createEnvVariable(envName: EnvVarName, transformation: Option[Function]): StartupMultiResolvableVariable =
+        new StartupMultiResolvableVariable.Env(envName, transformation)
       override def createTextVariable(value: String): StartupMultiResolvableVariable =
         StartupMultiResolvableVariable.Text(value)
       override def createComposedVariable(variables: NonEmptyList[StartupMultiResolvableVariable]): StartupMultiResolvableVariable =
@@ -158,5 +212,4 @@ object StartupResolvableVariableCreator {
 
   private final case class Acc(results: Vector[Either[CreationError, StartupMultiResolvableVariable]],
                                realMultiVariablesCount: Int)
-
 }

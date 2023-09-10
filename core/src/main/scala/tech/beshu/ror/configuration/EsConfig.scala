@@ -24,7 +24,6 @@ import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.RorSettingsInacti
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.{FileNotFound, MalformedContent, RorSettingsInactiveWhenXpackSecurityIsEnabled}
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings
 import tech.beshu.ror.configuration.FipsConfiguration.FipsMode
-import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.yaml.{JsonFile, YamlKeyDecoder}
 
 import java.nio.file.Path
@@ -37,8 +36,7 @@ final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings,
 object EsConfig {
 
   def from(esConfigFolderPath: Path)
-          (implicit envVarsProvider: EnvVarsProvider,
-           propertiesProvider: PropertiesProvider): Task[Either[LoadEsConfigError, EsConfig]] = {
+          (implicit environmentConfig: EnvironmentConfig): Task[Either[LoadEsConfigError, EsConfig]] = {
     val configFile = File(s"${esConfigFolderPath.toAbsolutePath}/elasticsearch.yml")
     (for {
       _ <- EitherT.fromEither[Task](Either.cond(configFile.exists, (), FileNotFound(configFile)))
@@ -55,8 +53,7 @@ object EsConfig {
   }
 
   private def loadSslSettings(esConfigFolderPath: Path, configFile: File, xpackSettings: XpackSettings)
-                             (implicit envVarsProvider: EnvVarsProvider,
-                              propertiesProvider: PropertiesProvider): EitherT[Task, LoadEsConfigError, RorSsl] = {
+                             (implicit environmentConfig: EnvironmentConfig): EitherT[Task, LoadEsConfigError, RorSsl] = {
     EitherT(RorSsl.load(esConfigFolderPath))
       .leftMap(error => MalformedContent(configFile, error.message))
       .subflatMap { rorSsl =>
@@ -68,13 +65,13 @@ object EsConfig {
       }
   }
 
-  private def loadRorIndexNameConfiguration(configFile: File): EitherT[Task, LoadEsConfigError, RorIndexNameConfiguration] = {
+  private def loadRorIndexNameConfiguration(configFile: File)
+                                           (implicit environmentConfig: EnvironmentConfig): EitherT[Task, LoadEsConfigError, RorIndexNameConfiguration] = {
     EitherT(RorIndexNameConfiguration.load(configFile).map(_.left.map(error => MalformedContent(configFile, error.message))))
   }
 
   private def loadFipsConfiguration(esConfigFolderPath: Path, configFile: File, xpackSettings: XpackSettings)
-                                   (implicit envVarsProvider: EnvVarsProvider,
-                                    propertiesProvider: PropertiesProvider): EitherT[Task, LoadEsConfigError, FipsConfiguration] = {
+                                   (implicit environmentConfig: EnvironmentConfig): EitherT[Task, LoadEsConfigError, FipsConfiguration] = {
     EitherT(FipsConfiguration.load(esConfigFolderPath))
       .leftMap(error => MalformedContent(configFile, error.message))
       .subflatMap { fipsConfiguration =>

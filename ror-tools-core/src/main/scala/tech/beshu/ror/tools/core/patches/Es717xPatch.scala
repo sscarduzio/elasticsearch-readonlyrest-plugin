@@ -19,9 +19,9 @@ package tech.beshu.ror.tools.core.patches
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.EsUtil.readonlyrestPluginPath
-import tech.beshu.ror.tools.core.utils.asm.AuthenticationServiceInHttpTransportDeactivator.deactivateAuthenticationServiceInHttpTransport
-import tech.beshu.ror.tools.core.utils.asm.SecurityActionFilterDeactivator.deactivateXpackSecurityFilter
-import tech.beshu.ror.tools.core.utils.asm.SecurityServerTransportInterceptorDeactivator.deactivateSecurityServerTransportInterceptor
+import tech.beshu.ror.tools.core.utils.asm.DeactivateAuthenticationServiceInHttpTransport
+import tech.beshu.ror.tools.core.utils.asm.DeactivateSecurityActionFilter
+import tech.beshu.ror.tools.core.utils.asm.DeactivateSecurityServerTransportInterceptor
 
 import scala.language.postfixOps
 import scala.util.Try
@@ -57,9 +57,9 @@ private[patches] class Es717xPatch(esDirectory: EsDirectory,
   }
 
   override def execute(): Unit = {
-    deactivateXpackSecurityFilter(xpackSecurityJarPath toIO)
-    deactivateSecurityServerTransportInterceptor(xpackSecurityJarPath toIO)
-    deactivateAuthenticationServiceInHttpTransport(xpackSecurityJarPath toIO)
+    DeactivateSecurityActionFilter(xpackSecurityJarPath toIO)
+    DeactivateSecurityServerTransportInterceptor(xpackSecurityJarPath toIO)
+    DeactivateAuthenticationServiceInHttpTransport(xpackSecurityJarPath toIO)
   }
 
   private def copyJarsToBackupFolder() = Try {

@@ -22,6 +22,7 @@ import cats.syntax.either._
 import cats.syntax.show._
 import cats.syntax.traverse._
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariable.ResolvingError
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Function
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -29,9 +30,19 @@ import tech.beshu.ror.providers.EnvVarsProvider
 sealed trait StartupSingleResolvableVariable extends StartupResolvableVariable[String]
 object StartupSingleResolvableVariable {
 
-  final case class Env(name: EnvVarName) extends StartupSingleResolvableVariable {
-    override def resolve(provider: EnvVarsProvider): Either[ResolvingError, String] =
-      Either.fromOption(provider.getEnv(name), ResolvingError(s"Cannot resolve ENV variable '${name.show}'"))
+  final class Env(name: EnvVarName, transformation: Option[Function]) extends StartupSingleResolvableVariable {
+    override def resolve(provider: EnvVarsProvider): Either[ResolvingError, String] = {
+      withTransformation(
+        Either.fromOption(provider.getEnv(name), ResolvingError(s"Cannot resolve ENV variable '${name.show}'"))
+      )
+    }
+
+    private def withTransformation(resolvable: => Either[ResolvingError, String]) = {
+      transformation match {
+        case Some(function) => resolvable.map(function.apply)
+        case None => resolvable
+      }
+    }
   }
 
   final case class Text(value: String) extends StartupSingleResolvableVariable {

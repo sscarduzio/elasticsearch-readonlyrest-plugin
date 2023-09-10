@@ -26,6 +26,7 @@ import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{Attributes, InternodeSsl, RestSsl}
 import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
 import tech.beshu.ror.utils.elasticsearch.CatManager
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.EsModule.isCurrentModuleNotExcluded
 
 class FipsSslSuite
@@ -34,7 +35,8 @@ class FipsSslSuite
     with PluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
-    with BeforeAndAfterAll {
+    with BeforeAndAfterAll
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/fips_ssl/readonlyrest.yml"
 
@@ -62,7 +64,7 @@ class FipsSslSuite
         "internode ssl is enabled" in {
           val response = rorClusterAdminStateManager.healthCheck()
 
-          response.responseCode should be(200)
+          response should have statusCode 200
         }
       }
     }

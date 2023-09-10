@@ -25,6 +25,7 @@ import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestW
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, SecurityType}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 
 class ClusterApiSuite
@@ -32,7 +33,8 @@ class ClusterApiSuite
     with BaseEsClusterIntegrationTest
     with PluginTestSupport
     with SingleClientSupport
-    with ESVersionSupportForAnyWordSpecLike {
+    with ESVersionSupportForAnyWordSpecLike
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/cluster_api/readonlyrest.yml"
   override lazy val targetEs = container.nodes.head
@@ -70,7 +72,7 @@ class ClusterApiSuite
     "allow to be used" when {
       "user has access to given index" in {
         val result = dev1ClusterManager.allocationExplain("test1_index")
-        result.responseCode should be(200)
+        result should have statusCode 200
       }
       "no index is passed and block without no `indices` rule was matched" in {
         val result = dev4ClusterManager.allocationExplain()
@@ -81,18 +83,18 @@ class ClusterApiSuite
       "user doesn't have an access to given index" when {
         "the index doesn't exist" in {
           val result = dev2ClusterManager.allocationExplain("test3_index")
-          result.responseCode should be(404)
+          result should have statusCode 404
         }
         "the index does exist" in {
           val result = dev2ClusterManager.allocationExplain("test1_index")
-          result.responseCode should be(404)
+          result should have statusCode 404
         }
       }
     }
     "not be allowed" when {
       "no index is passed" in {
         val result = dev1ClusterManager.allocationExplain()
-        result.responseCode should be(403)
+        result should have statusCode 403
       }
     }
   }
@@ -101,24 +103,24 @@ class ClusterApiSuite
     "allow to be used" when {
       "no index is specified" in {
         val result = dev1ClusterManager.health()
-        result.responseCode should be(200)
+        result should have statusCode 200
         result.responseJson("status").str should not be "red"
       }
       "index is specified and user has access to it" in {
         val result = dev1ClusterManager.health("test1_index")
-        result.responseCode should be(200)
+        result should have statusCode 200
         result.responseJson("status").str should not be "red"
       }
     }
     "not allow to be used (pretend that index doesn't exist)" when {
       "user doesn't have an access to specified existing index" in {
         val result = dev2ClusterManager.health("test1_index")
-        result.responseCode should be(408)
+        result should have statusCode 408
         result.responseJson("status").str should be("red")
       }
       "user doesn't have an access to specified index which doesn't exist" in {
         val result = dev2ClusterManager.health("test3_index")
-        result.responseCode should be(408)
+        result should have statusCode 408
         result.responseJson("status").str should be("red")
       }
     }
@@ -150,7 +152,7 @@ class ClusterApiSuite
                |  }
                |}""".stripMargin)
         )
-        result.responseCode should be(200)
+        result should have statusCode 200
       }
     }
     "not allow to be used (pretend that index doesn't exist)" when {
@@ -178,7 +180,7 @@ class ClusterApiSuite
                  |  }
                  |}""".stripMargin)
           )
-          result.responseCode should be(403)
+          result should have statusCode 403
         }
         "the index doesn't exist" in {
           val result = dev1ClusterManager.reroute(
@@ -192,7 +194,7 @@ class ClusterApiSuite
                  |  }
                  |}""".stripMargin)
           )
-          result.responseCode should be(403)
+          result should have statusCode 403
         }
       }
     }
@@ -202,26 +204,26 @@ class ClusterApiSuite
     "return info about indices" when {
       "user has access to all requested indices" in {
         val result = dev1ClusterManager.state("test1_index")
-        result.responseCode should be(200)
+        result should have statusCode 200
         result.responseJson("routing_table")("indices").obj.keys.toSet should be(Set("test1_index"))
       }
       "user has access only to part of requested indices" in {
         val result = dev1ClusterManager.state("test1_index", "test2_index", "test3_index")
-        result.responseCode should be(200)
+        result should have statusCode 200
         result.responseJson("routing_table")("indices").obj.keys.toSet should be(Set("test1_index"))
         result.responseJson should not(containKeyOrValue("test2_index"))
         result.responseJson should not(containKeyOrValue("test3_index"))
       }
       "user don't have access to all indices" in {
         val result = dev1ClusterManager.state()
-        result.responseCode should be(200)
+        result should have statusCode 200
         result.responseJson("routing_table")("indices").obj.keys.toSet should be(Set("test1_index"))
       }
     }
     "return no info about indices" when {
       "user has access to only not existing ones" in {
         val result = dev3ClusterManager.state("test3_index")
-        result.responseCode should be(200)
+        result should have statusCode 200
         result.responseJson should not(containKeyOrValue("test3_index"))
       }
     }
@@ -240,7 +242,7 @@ class ClusterApiSuite
              |}""".stripMargin
         )
       )
-      response.responseCode should be(200)
+      response should have statusCode 200
 
       val settingsAfterPut = adminClusterManager.getSettings
       settingsAfterPut should not be settingsBeforePut

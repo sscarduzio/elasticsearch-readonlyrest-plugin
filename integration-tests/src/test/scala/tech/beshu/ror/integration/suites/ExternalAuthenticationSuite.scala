@@ -16,13 +16,13 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.containers.dependencies.wiremock
 import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer}
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManager}
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 //TODO change test names. Current names are copies from old java integration tests
 class ExternalAuthenticationSuite
@@ -30,7 +30,7 @@ class ExternalAuthenticationSuite
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/external_authentication/readonlyrest.yml"
 
@@ -45,23 +45,23 @@ class ExternalAuthenticationSuite
     val indexManager = new IndexManager(basicAuthClient("cartman", "user1"), esVersionUsed)
     val response = indexManager.getIndex("twitter")
 
-    response.responseCode shouldBe 200
+    response should have statusCode 200
   }
   "testAuthenticationSuccessWithService2" in {
     val indexManager = new IndexManager(basicAuthClient("cartman", "user1"), esVersionUsed)
     val response = indexManager.getIndex("facebook")
 
-    response.responseCode shouldBe 200
+    response should have statusCode 200
   }
   "testAuthenticationErrorWithService1" in {
     val firstIndexManager = new IndexManager(basicAuthClient("cartman", "user2"), esVersionUsed)
     val firstResult = firstIndexManager.getIndex("twitter")
 
-    firstResult.responseCode shouldBe 403
+    firstResult should have statusCode 403
 
     val indexManager = new IndexManager(basicAuthClient("morgan", "user2"), esVersionUsed)
     val response = indexManager.getIndex("twitter")
 
-    response.responseCode shouldBe 403
+    response should have statusCode 403
   }
 }

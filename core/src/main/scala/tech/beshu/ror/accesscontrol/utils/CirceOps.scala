@@ -27,9 +27,9 @@ import io.circe.generic.extras.Configuration
 import io.circe.parser._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.{CreationError, createMultiResolvableVariableFrom, createSingleResolvableVariableFrom}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.CreationError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{Reason, ValueLevelCreationError}
@@ -138,8 +138,8 @@ object CirceOps {
       }
     }
 
-    val decodeStringLikeWithSingleVarResolvedInPlace: Decoder[String] = {
-      alwaysRightSingleVariableDecoder(AlwaysRightConvertible.stringAlwaysRightConvertible)
+    def decodeStringLikeWithSingleVarResolvedInPlace(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[String] = {
+      alwaysRightSingleVariableDecoder(variableCreator)(AlwaysRightConvertible.stringAlwaysRightConvertible)
         .toSyncDecoder
         .emapE {
           case AlreadyResolved(resolved) => Right(resolved)
@@ -148,31 +148,33 @@ object CirceOps {
         .decoder
     }
 
-    def singleVariableDecoder[T: Convertible]: Decoder[Either[CreationError, RuntimeSingleResolvableVariable[T]]] =
+    def singleVariableDecoder[T: Convertible](variableCreator: RuntimeResolvableVariableCreator): Decoder[Either[CreationError, RuntimeSingleResolvableVariable[T]]] =
       DecoderHelpers
         .decodeStringLikeNonEmpty
-        .map { str => createSingleResolvableVariableFrom(str) }
+        .map { str => variableCreator.createSingleResolvableVariableFrom(str) }
 
-    def multiVariableDecoder[T: Convertible]: Decoder[Either[CreationError, RuntimeMultiResolvableVariable[T]]] =
+    def multiVariableDecoder[T: Convertible](variableCreator: RuntimeResolvableVariableCreator): Decoder[Either[CreationError, RuntimeMultiResolvableVariable[T]]] =
       DecoderHelpers
         .decodeStringLikeNonEmpty
-        .map { str => createMultiResolvableVariableFrom(str) }
+        .map { str => variableCreator.createMultiResolvableVariableFrom(str) }
 
-    def alwaysRightSingleVariableDecoder[T: AlwaysRightConvertible]: Decoder[RuntimeSingleResolvableVariable[T]] =
+    def alwaysRightSingleVariableDecoder[T: AlwaysRightConvertible](variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeSingleResolvableVariable[T]] = {
       SyncDecoderCreator
-        .from(singleVariableDecoder[T])
+        .from(singleVariableDecoder[T](variableCreator))
         .emapE {
           _.left.map(error => CoreCreationError.RulesLevelCreationError(Message(error.show)))
         }
         .decoder
+    }
 
-    def alwaysRightMultiVariableDecoder[T: AlwaysRightConvertible]: Decoder[RuntimeMultiResolvableVariable[T]] =
+    def alwaysRightMultiVariableDecoder[T: AlwaysRightConvertible](variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeMultiResolvableVariable[T]] = {
       SyncDecoderCreator
-        .from(multiVariableDecoder[T])
+        .from(multiVariableDecoder[T](variableCreator))
         .emapE {
           _.left.map(error => CoreCreationError.RulesLevelCreationError(Message(error.show)))
         }
         .decoder
+    }
 
     def decodeStringOrJson[T](simpleDecoder: Decoder[T], expandedDecoder: Decoder[T]): Decoder[T] = {
       Decoder

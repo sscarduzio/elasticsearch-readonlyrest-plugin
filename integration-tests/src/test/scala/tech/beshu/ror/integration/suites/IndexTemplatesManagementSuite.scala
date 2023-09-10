@@ -24,12 +24,14 @@ import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager.Template
 import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplate
 import tech.beshu.ror.utils.elasticsearch.{BaseTemplateManager, ComponentTemplateManager, IndexTemplateManager, LegacyTemplateManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class IndexTemplatesManagementSuite
   extends AnyWordSpec
     with BaseTemplatesSuite
     with SingletonPluginTestSupport
-    with ESVersionSupportForAnyWordSpecLike {
+    with ESVersionSupportForAnyWordSpecLike
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/templates/readonlyrest.yml"
 
@@ -52,7 +54,7 @@ class IndexTemplatesManagementSuite
           "there is none" in {
             val templates = dev1TemplateManager.getTemplates
 
-            templates.responseCode should be(200)
+            templates should have statusCode 200
             templates.templates should be(List.empty)
           }
         }
@@ -68,7 +70,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev1TemplateManager.getTemplates
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.templates should be(List(Template("temp1", Set("custom_dev1_*"), Set("dev1_index"))))
               }
               "rule has index pattern with no wildcard" in {
@@ -80,7 +82,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev1TemplateManager.getTemplates
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.templates should be(List(Template("temp1", Set("dev1_*"), Set.empty)))
               }
             }
@@ -94,7 +96,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev1TemplateManager.getTemplates
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.templates should be(List(Template("temp1", Set("custom_dev1_index_test"), Set.empty)))
               }
               "rule has index pattern with no wildcard" in {
@@ -106,7 +108,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev1TemplateManager.getTemplates
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.templates should be(List(Template("temp1", Set("dev1_index"), Set.empty)))
               }
             }
@@ -124,7 +126,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev1TemplateManager.getTemplates
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.templates should be(List(Template("temp1", Set("custom_dev1_*"), Set.empty)))
               }
               "rule has index pattern with no wildcard" in {
@@ -138,7 +140,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev1TemplateManager.getTemplates
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.templates should be(List(Template("temp1", Set("dev1_*"), Set.empty)))
               }
             }
@@ -154,7 +156,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev1TemplateManager.getTemplates
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.templates should be(List(Template("temp1", Set("custom_dev1_index_test"), Set.empty)))
               }
               "rule has index pattern with no wildcard" in {
@@ -168,7 +170,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev1TemplateManager.getTemplates
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.templates should be(List(Template("temp1", Set("dev1_index"), Set.empty)))
               }
             }
@@ -186,7 +188,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev1TemplateManager.getTemplate("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.templates should be(List(Template("temp1", Set("custom_dev1_*"), Set.empty)))
               }
               "rule has index pattern with no wildcard" in {
@@ -198,7 +200,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev1TemplateManager.getTemplate("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.templates should be(List(Template("temp1", Set("dev1_*"), Set.empty)))
               }
             }
@@ -212,7 +214,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev1TemplateManager.getTemplate("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.templates should be(List(Template("temp1", Set("custom_dev1_index_test"), Set.empty)))
               }
               "rule has index pattern with no wildcard" in {
@@ -224,7 +226,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev1TemplateManager.getTemplate("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.templates should be(List(Template("temp1", Set("dev1_index"), Set.empty)))
               }
             }
@@ -241,7 +243,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev1TemplateManager.getTemplate("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.templates should be(List(Template("temp1", Set("custom_dev1_*"), Set.empty)))
               }
               "rule has index pattern with no wildcard" in {
@@ -254,7 +256,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev1TemplateManager.getTemplate("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.templates should be(List(Template("temp1", Set("dev1_*"), Set.empty)))
               }
             }
@@ -269,7 +271,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev1TemplateManager.getTemplate("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.templates should be(List(Template("temp1", Set("custom_dev1_index_test"), Set.empty)))
               }
               "rule has index pattern with no wildcard" in {
@@ -282,7 +284,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev1TemplateManager.getTemplate("temp1")
 
-                templates.responseCode should be(200)
+                templates should have statusCode 200
                 templates.templates should be(List(Template("temp1", Set("dev1_index"), Set.empty)))
               }
             }
@@ -296,7 +298,7 @@ class IndexTemplatesManagementSuite
 
             val templates = dev1TemplateManager.getTemplate("temp1")
 
-            templates.responseCode should be(200)
+            templates should have statusCode 200
             templates.templates should be(List(Template("temp1", Set("custom_dev1_*"), Set("dev1_index"))))
           }
           "at least one template index pattern matches user's allowed indices" in {
@@ -310,7 +312,7 @@ class IndexTemplatesManagementSuite
 
             val templates = dev1TemplateManager.getTemplate("temp1")
 
-            templates.responseCode should be(200)
+            templates should have statusCode 200
             templates.templates should be(List(Template("temp1", Set("custom_dev1_*"), Set.empty)))
           }
         }
@@ -324,7 +326,7 @@ class IndexTemplatesManagementSuite
                   aliases = Set("dev1_index")
                 )
 
-                result.responseCode should be(200)
+                result should have statusCode 200
               }
             }
             "template has index pattern with no wildcard" when {
@@ -335,7 +337,7 @@ class IndexTemplatesManagementSuite
                   aliases = Set.empty
                 )
 
-                result.responseCode should be(200)
+                result should have statusCode 200
               }
               "rule has index pattern with no wildcard" in {
                 val result = dev1TemplateManager.putTemplate(
@@ -344,7 +346,7 @@ class IndexTemplatesManagementSuite
                   aliases = Set.empty
                 )
 
-                result.responseCode should be(200)
+                result should have statusCode 200
               }
             }
           }
@@ -359,7 +361,7 @@ class IndexTemplatesManagementSuite
                   aliases = Set.empty
                 )
 
-                result.responseCode should be(200)
+                result should have statusCode 200
               }
             }
             "template has index pattern with no wildcard" when {
@@ -372,7 +374,7 @@ class IndexTemplatesManagementSuite
                   aliases = Set.empty
                 )
 
-                result.responseCode should be(200)
+                result should have statusCode 200
               }
               "rule has index pattern with no wildcard" in {
                 adminDocumentManager.createFirstDoc("dev1_index", ujson.read("""{"hello":"world"}"""))
@@ -383,7 +385,7 @@ class IndexTemplatesManagementSuite
                   aliases = Set("custom_dev1_index_test")
                 )
 
-                result.responseCode should be(200)
+                result should have statusCode 200
               }
             }
           }
@@ -394,10 +396,10 @@ class IndexTemplatesManagementSuite
               aliases = Set.empty
             )
 
-            result.responseCode should be(200)
+            result should have statusCode 200
 
             val user1Template = adminTemplateManager.getTemplate("new_template")
-            user1Template.responseCode should be(200)
+            user1Template should have statusCode 200
             user1Template.templates should be(List(Template("new_template", Set("custom_dev1_index_*"), Set.empty)))
           }
           "template applies to generic index pattern (ES < 6.0.0)" excludeES(allEs6x, allEs7x, allEs8x) in {
@@ -407,10 +409,10 @@ class IndexTemplatesManagementSuite
               aliases = Set.empty
             )
 
-            result.responseCode should be(200)
+            result should have statusCode 200
 
             val user1Template = adminTemplateManager.getTemplate("new_template")
-            user1Template.responseCode should be(200)
+            user1Template should have statusCode 200
             user1Template.templates should be(List(Template("new_template", Set("custom_dev1_index_*"), Set.empty)))
           }
         }
@@ -421,10 +423,10 @@ class IndexTemplatesManagementSuite
               indexPatterns = NonEmptyList.one("custom_dev1_index_test*"),
               aliases = Set.empty
             )
-            insert1Result.responseCode should be(200)
+            insert1Result should have statusCode 200
 
             val user1Template = dev1TemplateManager.getTemplates
-            user1Template.responseCode should be(200)
+            user1Template should have statusCode 200
             user1Template.templates should be(List(Template("new_template", Set("custom_dev1_index_test*"), Set.empty)))
 
             val insert2Result = dev1TemplateManager.putTemplate(
@@ -432,10 +434,10 @@ class IndexTemplatesManagementSuite
               indexPatterns = NonEmptyList.one("dev1_index"),
               aliases = Set.empty
             )
-            insert2Result.responseCode should be(200)
+            insert2Result should have statusCode 200
 
             val user1TemplateAfterOverride = dev1TemplateManager.getTemplates
-            user1TemplateAfterOverride.responseCode should be(200)
+            user1TemplateAfterOverride should have statusCode 200
             user1TemplateAfterOverride.templates should be(List(Template("new_template", Set("dev1_index"), Set.empty)))
           }
         }
@@ -451,7 +453,7 @@ class IndexTemplatesManagementSuite
 
                 val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
 
-                result.responseCode should be(200)
+                result should have statusCode 200
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -462,7 +464,7 @@ class IndexTemplatesManagementSuite
 
                 val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
 
-                result.responseCode should be(200)
+                result should have statusCode 200
               }
             }
             "template has index pattern with no wildcard" when {
@@ -475,7 +477,7 @@ class IndexTemplatesManagementSuite
 
                 val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
 
-                result.responseCode should be(200)
+                result should have statusCode 200
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -486,7 +488,7 @@ class IndexTemplatesManagementSuite
 
                 val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
 
-                result.responseCode should be(200)
+                result should have statusCode 200
               }
             }
           }
@@ -502,7 +504,7 @@ class IndexTemplatesManagementSuite
 
                 val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
 
-                result.responseCode should be(200)
+                result should have statusCode 200
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -514,7 +516,7 @@ class IndexTemplatesManagementSuite
 
                 val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
 
-                result.responseCode should be(200)
+                result should have statusCode 200
               }
             }
             "template has index pattern with no wildcard" when {
@@ -528,7 +530,7 @@ class IndexTemplatesManagementSuite
 
                 val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
 
-                result.responseCode should be(200)
+                result should have statusCode 200
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -540,7 +542,7 @@ class IndexTemplatesManagementSuite
 
                 val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
 
-                result.responseCode should be(200)
+                result should have statusCode 200
               }
             }
           }
@@ -553,7 +555,7 @@ class IndexTemplatesManagementSuite
 
             val result = dev1TemplateManager.deleteTemplate("temp")
 
-            result.responseCode should be(200)
+            result should have statusCode 200
           }
           "index pattern defined in template is allowed to the user" in {
             adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -564,7 +566,7 @@ class IndexTemplatesManagementSuite
 
             val result = dev1TemplateManager.deleteTemplate("temp")
 
-            result.responseCode should be(200)
+            result should have statusCode 200
           }
         }
       }
@@ -582,7 +584,7 @@ class IndexTemplatesManagementSuite
 
                   val templates = dev2TemplateManager.getTemplates
 
-                  templates.responseCode should be(200)
+                  templates should have statusCode 200
                   templates.templates should be(List.empty)
                 }
                 "rule has index pattern with no wildcard" in {
@@ -594,7 +596,7 @@ class IndexTemplatesManagementSuite
 
                   val templates = dev2TemplateManager.getTemplates
 
-                  templates.responseCode should be(200)
+                  templates should have statusCode 200
                   templates.templates should be(List.empty)
                 }
               }
@@ -608,7 +610,7 @@ class IndexTemplatesManagementSuite
 
                   val templates = dev2TemplateManager.getTemplates
 
-                  templates.responseCode should be(200)
+                  templates should have statusCode 200
                   templates.templates should be(List.empty)
                 }
                 "rule has index pattern with no wildcard" in {
@@ -620,7 +622,7 @@ class IndexTemplatesManagementSuite
 
                   val templates = dev2TemplateManager.getTemplates
 
-                  templates.responseCode should be(200)
+                  templates should have statusCode 200
                   templates.templates should be(List.empty)
                 }
               }
@@ -637,7 +639,7 @@ class IndexTemplatesManagementSuite
 
                   val templates = dev2TemplateManager.getTemplates
 
-                  templates.responseCode should be(200)
+                  templates should have statusCode 200
                   templates.templates should be(List.empty)
                 }
                 "rule has index pattern with no wildcard" in {
@@ -650,7 +652,7 @@ class IndexTemplatesManagementSuite
 
                   val templates = dev2TemplateManager.getTemplates
 
-                  templates.responseCode should be(200)
+                  templates should have statusCode 200
                   templates.templates should be(List.empty)
                 }
               }
@@ -665,7 +667,7 @@ class IndexTemplatesManagementSuite
 
                   val templates = dev2TemplateManager.getTemplates
 
-                  templates.responseCode should be(200)
+                  templates should have statusCode 200
                   templates.templates should be(List.empty)
                 }
                 "rule has index pattern with no wildcard" in {
@@ -678,7 +680,7 @@ class IndexTemplatesManagementSuite
 
                   val templates = dev2TemplateManager.getTemplates
 
-                  templates.responseCode should be(200)
+                  templates should have statusCode 200
                   templates.templates should be(List.empty)
                 }
               }
@@ -697,7 +699,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev2TemplateManager.getTemplate("temp1")
 
-                templates.responseCode should be(404)
+                templates should have statusCode 404
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -708,7 +710,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev2TemplateManager.getTemplate("temp1")
 
-                templates.responseCode should be(404)
+                templates should have statusCode 404
               }
             }
             "template has index pattern with no wildcard" when {
@@ -721,7 +723,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev2TemplateManager.getTemplate("temp1")
 
-                templates.responseCode should be(404)
+                templates should have statusCode 404
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -732,7 +734,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev2TemplateManager.getTemplate("temp1")
 
-                templates.responseCode should be(404)
+                templates should have statusCode 404
               }
             }
           }
@@ -748,7 +750,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev2TemplateManager.getTemplate("temp1")
 
-                templates.responseCode should be(404)
+                templates should have statusCode 404
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -760,7 +762,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev2TemplateManager.getTemplate("temp1")
 
-                templates.responseCode should be(404)
+                templates should have statusCode 404
               }
             }
             "template has index pattern with no wildcard" when {
@@ -774,7 +776,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev2TemplateManager.getTemplate("temp1")
 
-                templates.responseCode should be(404)
+                templates should have statusCode 404
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -786,7 +788,7 @@ class IndexTemplatesManagementSuite
 
                 val templates = dev2TemplateManager.getTemplate("temp1")
 
-                templates.responseCode should be(404)
+                templates should have statusCode 404
               }
             }
           }
@@ -800,7 +802,7 @@ class IndexTemplatesManagementSuite
                 aliases = Set.empty
               )
 
-              result.responseCode should be(401)
+              result should have statusCode 401
             }
             "rule has index pattern with no wildcard" in {
               val result = dev2TemplateManager.putTemplate(
@@ -809,7 +811,7 @@ class IndexTemplatesManagementSuite
                 aliases = Set.empty
               )
 
-              result.responseCode should be(401)
+              result should have statusCode 401
             }
           }
           "template has index pattern with no wildcard" when {
@@ -820,7 +822,7 @@ class IndexTemplatesManagementSuite
                 aliases = Set.empty
               )
 
-              result.responseCode should be(401)
+              result should have statusCode 401
             }
             "rule has index pattern with no wildcard" in {
               val result = dev2TemplateManager.putTemplate(
@@ -829,7 +831,7 @@ class IndexTemplatesManagementSuite
                 aliases = Set.empty
               )
 
-              result.responseCode should be(401)
+              result should have statusCode 401
             }
           }
           "template contains only not allowed index patterns" in {
@@ -839,7 +841,7 @@ class IndexTemplatesManagementSuite
               aliases = Set.empty
             )
 
-            result.responseCode should be(401)
+            result should have statusCode 401
           }
           "template contains only not allowed aliases" in {
             val result = dev2TemplateManager.putTemplate(
@@ -848,7 +850,7 @@ class IndexTemplatesManagementSuite
               aliases = Set("dev1_index")
             )
 
-            result.responseCode should be(401)
+            result should have statusCode 401
           }
           "template applies to allowed index and not allowed index patterns" in {
             val result = dev2TemplateManager.putTemplate(
@@ -857,7 +859,7 @@ class IndexTemplatesManagementSuite
               aliases = Set.empty
             )
 
-            result.responseCode should be(401)
+            result should have statusCode 401
           }
         }
         "not be able to override existing template" which {
@@ -867,14 +869,14 @@ class IndexTemplatesManagementSuite
               indexPatterns = NonEmptyList.of("custom_dev1_index_*"),
               aliases = Set.empty
             )
-            result1.responseCode should be(200)
+            result1 should have statusCode 200
 
             val result2 = dev2TemplateManager.putTemplate(
               templateName = "new_template",
               indexPatterns = NonEmptyList.of("custom_dev2_index_*"),
               aliases = Set.empty
             )
-            result2.responseCode should be(401)
+            result2 should have statusCode 401
           }
           "doesn't belong to him (not allowed aliases)" in {
             adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -888,7 +890,7 @@ class IndexTemplatesManagementSuite
               indexPatterns = NonEmptyList.of("dev2_index"),
               aliases = Set.empty
             )
-            result.responseCode should be(401)
+            result should have statusCode 401
           }
         }
         "not be able to delete foreign template" when {
@@ -903,7 +905,7 @@ class IndexTemplatesManagementSuite
 
                 val result = dev2TemplateManager.deleteTemplate("temp1")
 
-                result.responseCode should be(401)
+                result should have statusCode 401
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -914,7 +916,7 @@ class IndexTemplatesManagementSuite
 
                 val result = dev2TemplateManager.deleteTemplate("temp1")
 
-                result.responseCode should be(401)
+                result should have statusCode 401
               }
             }
             "template has index pattern with no wildcard" when {
@@ -927,7 +929,7 @@ class IndexTemplatesManagementSuite
 
                 val result = dev2TemplateManager.deleteTemplate("temp1")
 
-                result.responseCode should be(401)
+                result should have statusCode 401
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -938,7 +940,7 @@ class IndexTemplatesManagementSuite
 
                 val result = dev2TemplateManager.deleteTemplate("temp1")
 
-                result.responseCode should be(401)
+                result should have statusCode 401
               }
             }
           }
@@ -954,7 +956,7 @@ class IndexTemplatesManagementSuite
 
                 val result = dev2TemplateManager.deleteTemplate("temp1")
 
-                result.responseCode should be(401)
+                result should have statusCode 401
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -966,7 +968,7 @@ class IndexTemplatesManagementSuite
 
                 val result = dev2TemplateManager.deleteTemplate("temp1")
 
-                result.responseCode should be(401)
+                result should have statusCode 401
               }
             }
             "template has index pattern with no wildcard" when {
@@ -980,7 +982,7 @@ class IndexTemplatesManagementSuite
 
                 val result = dev2TemplateManager.deleteTemplate("temp1")
 
-                result.responseCode should be(401)
+                result should have statusCode 401
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -992,7 +994,7 @@ class IndexTemplatesManagementSuite
 
                 val result = dev2TemplateManager.deleteTemplate("temp1")
 
-                result.responseCode should be(401)
+                result should have statusCode 401
               }
             }
           }
@@ -1005,7 +1007,7 @@ class IndexTemplatesManagementSuite
 
             val result = dev2TemplateManager.deleteTemplate("temp")
 
-            result.responseCode should be(401)
+            result should have statusCode 401
           }
           "index pattern defined in template are too generic" in {
             adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -1016,7 +1018,7 @@ class IndexTemplatesManagementSuite
 
             val result = dev2TemplateManager.deleteTemplate("temp")
 
-            result.responseCode should be(401)
+            result should have statusCode 401
           }
           "one of aliases is not allowed" in {
             adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -1027,7 +1029,7 @@ class IndexTemplatesManagementSuite
 
             val result = dev2TemplateManager.deleteTemplate("temp1")
 
-            result.responseCode should be(404)
+            result should have statusCode 404
           }
         }
       }
@@ -1038,10 +1040,10 @@ class IndexTemplatesManagementSuite
               templateName = "new_template",
               indexPatterns = NonEmptyList.of("any_index_*")
             )
-            addingResult.responseCode should be(200)
+            addingResult should have statusCode 200
 
             val deletingResult = dev3TemplateManager.deleteTemplate("new_template")
-            deletingResult.responseCode should be(200)
+            deletingResult should have statusCode 200
           }
         }
       }
@@ -1064,7 +1066,7 @@ class IndexTemplatesManagementSuite
 
           val result = dev1TemplateManager.getTemplates
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           result.templates should contain allOf(
             ComponentTemplate("temp1", Set.empty),
             ComponentTemplate("temp2", Set("dev1_index")),
@@ -1079,7 +1081,7 @@ class IndexTemplatesManagementSuite
 
             val result = dev1TemplateManager.getTemplate("temp2")
 
-            result.responseCode should be(200)
+            result should have statusCode 200
             result.templates should contain(
               ComponentTemplate("temp2", Set("dev1_index"))
             )
@@ -1090,7 +1092,7 @@ class IndexTemplatesManagementSuite
 
             val result = dev1TemplateManager.getTemplate("temp*")
 
-            result.responseCode should be(200)
+            result should have statusCode 200
             result.templates should contain allOf(
               ComponentTemplate("temp1", Set("dev1_index")),
               ComponentTemplate("temp2", Set.empty)
@@ -1101,12 +1103,12 @@ class IndexTemplatesManagementSuite
           "the template has no aliases" in {
             val result = dev1TemplateManager.putTemplate("temp1", Set.empty)
 
-            result.responseCode should be(200)
+            result should have statusCode 200
           }
           "the template has aliases and the user has access to them" in {
             val result = dev1TemplateManager.putTemplate("temp1", Set("dev1_index", "custom_dev1_index_1"))
 
-            result.responseCode should be(200)
+            result should have statusCode 200
           }
         }
         "be allowed to override an existing template" when {
@@ -1115,14 +1117,14 @@ class IndexTemplatesManagementSuite
 
             val result = dev1TemplateManager.putTemplate("temp1", Set("dev1_index"))
 
-            result.responseCode should be(200)
+            result should have statusCode 200
           }
           "the existing template has only aliases which are allowed" in {
             adminTemplateManager.putTemplateAndWaitForIndexing("temp1", Set("dev1_index", "custom_dev1_index_1"))
 
             val result = dev1TemplateManager.putTemplate("temp1", Set("custom_dev1_index_2"))
 
-            result.responseCode should be(200)
+            result should have statusCode 200
           }
         }
         "be allowed to remove a template" when {
@@ -1131,14 +1133,14 @@ class IndexTemplatesManagementSuite
 
             val result = dev1TemplateManager.deleteTemplate("temp1")
 
-            result.responseCode should be(200)
+            result should have statusCode 200
           }
           "the template has aliases which user is allowed to see" in {
             adminTemplateManager.putTemplateAndWaitForIndexing("temp1", Set("dev1_index", "custom_dev1_index_1"))
 
             val result = dev1TemplateManager.deleteTemplate("temp1")
 
-            result.responseCode should be(200)
+            result should have statusCode 200
           }
         }
       }
@@ -1147,7 +1149,7 @@ class IndexTemplatesManagementSuite
           "template has at least one non allowed alias" in {
             val result = dev2TemplateManager.putTemplate("temp1", Set("dev2_index", "custom_dev1_index_1"))
 
-            result.responseCode should be(401)
+            result should have statusCode 401
           }
         }
         "not be allowed to override an existing template" when {
@@ -1156,7 +1158,7 @@ class IndexTemplatesManagementSuite
 
             val result = dev2TemplateManager.putTemplate("temp1", Set.empty)
 
-            result.responseCode should be(401)
+            result should have statusCode 401
           }
         }
         "not be allowed to remove a template" when {
@@ -1165,7 +1167,7 @@ class IndexTemplatesManagementSuite
 
             val result = dev2TemplateManager.deleteTemplate("temp1")
 
-            result.responseCode should be(401)
+            result should have statusCode 401
           }
         }
       }
@@ -1196,7 +1198,7 @@ class IndexTemplatesManagementSuite
 
           val result = user1IndexTemplateManager.simulateIndex("custom_dev1_index_test")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           result.templateAliases should be(Set("dev1_index"))
           result.overlappingTemplates should be(List(Template("temp2", Set("custom*"), Set.empty)))
         }
@@ -1212,7 +1214,7 @@ class IndexTemplatesManagementSuite
 
           val result = user1IndexTemplateManager.simulateIndex("custom_dev2_index_test")
 
-          result.responseCode should be(401)
+          result should have statusCode 401
         }
       }
     }
@@ -1237,7 +1239,7 @@ class IndexTemplatesManagementSuite
 
           val result = user1IndexTemplateManager.simulateTemplate("temp1")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           result.templateAliases should be(Set("dev1_index"))
           result.overlappingTemplates should be(List.empty)
         }
@@ -1255,7 +1257,7 @@ class IndexTemplatesManagementSuite
             aliases = Set("dev1_index")
           )
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           result.templateAliases should be(Set("dev1_index"))
           result.overlappingTemplates should be(List(
             Template("temp2", Set("custom*"), Set.empty)
@@ -1273,7 +1275,7 @@ class IndexTemplatesManagementSuite
 
           val result = user1IndexTemplateManager.simulateTemplate("temp1")
 
-          result.responseCode should be(400)
+          result should have statusCode 400
         }
         "has no access to the given non-existing template" excludeES(allEs6x, allEs7xBelowEs79x) in {
           adminIndexTemplateManager
@@ -1285,7 +1287,7 @@ class IndexTemplatesManagementSuite
 
           val result = user1IndexTemplateManager.simulateTemplate("temp1")
 
-          result.responseCode should be(400)
+          result should have statusCode 400
         }
       }
     }

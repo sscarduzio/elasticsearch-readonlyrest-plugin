@@ -16,18 +16,19 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.junit.Assert.assertEquals
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class ActionsSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
-    with ESVersionSupportForAnyWordSpecLike {
+    with ESVersionSupportForAnyWordSpecLike
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/actions/readonlyrest.yml"
 
@@ -43,11 +44,11 @@ class ActionsSuite
     "work for delete request" which {
       "forbid deleting from test1_index" in {
         val result = actionManager.deleteDoc("test1_index", 1)
-        assertEquals(401, result.responseCode)
+        result should have statusCode 401
       }
       "allow deleting from test2_index" in {
         val result = actionManager.deleteDoc("test2_index", 1)
-        assertEquals(200, result.responseCode)
+        result should have statusCode 200
       }
     }
   }

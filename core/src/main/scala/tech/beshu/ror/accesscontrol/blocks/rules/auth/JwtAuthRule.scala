@@ -92,10 +92,10 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
   private def jwtTokenFrom(requestContext: RequestContext) = {
     requestContext
       .authorizationToken(settings.jwt.authorizationTokenDef)
-      .map(t => JwtToken(t.value))
+      .map(t => Jwt.Token(t.value))
   }
 
-  private def process[B <: BlockContext : BlockContextUpdater](token: JwtToken,
+  private def process[B <: BlockContext : BlockContextUpdater](token: Jwt.Token,
                                                                blockContext: B): Task[RuleResult[B]] = {
     userAndGroupsFromJwtToken(token) match {
       case Left(_) =>
@@ -138,13 +138,13 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
     }
   }
 
-  private def userAndGroupsFromJwtToken(token: JwtToken) = {
+  private def userAndGroupsFromJwtToken(token: Jwt.Token) = {
     claimsFrom(token).map { decodedJwtToken =>
       (decodedJwtToken, userIdFrom(decodedJwtToken), groupsFrom(decodedJwtToken))
     }
   }
 
-  private def logBadToken(ex: Throwable, token: JwtToken): Unit = {
+  private def logBadToken(ex: Throwable, token: Jwt.Token): Unit = {
     val tokenParts = token.show.split("\\.")
     val printableToken = if (!logger.delegate.isDebugEnabled && tokenParts.length === 3) {
       // signed JWT, last block is the cryptographic digest, which should be treated as a secret.
@@ -156,14 +156,14 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
     logger.debug(s"JWT token '$printableToken' parsing error: " + ex.getClass.getSimpleName + " " + ex.getMessage)
   }
 
-  private def claimsFrom(token: JwtToken) = {
+  private def claimsFrom(token: Jwt.Token) = {
     settings.jwt.checkMethod match {
       case NoCheck(_) =>
         token.value.value.split("\\.").toList match {
           case fst :: snd :: _ =>
             Try(parser.parseClaimsJwt(s"$fst.$snd.").getBody)
               .toEither
-              .map(JwtTokenPayload.apply)
+              .map(Jwt.Payload.apply)
               .left.map { ex => logBadToken(ex, token) }
           case _ =>
             Left(())
@@ -171,16 +171,16 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
       case Hmac(_) | Rsa(_) | Ec(_) =>
         Try(parser.parseClaimsJws(token.value.value).getBody)
           .toEither
-          .map(JwtTokenPayload.apply)
+          .map(Jwt.Payload.apply)
           .left.map { ex => logBadToken(ex, token) }
     }
   }
 
-  private def userIdFrom(payload: JwtTokenPayload) = {
+  private def userIdFrom(payload: Jwt.Payload) = {
     settings.jwt.userClaim.map(payload.claims.userIdClaim)
   }
 
-  private def groupsFrom(payload: JwtTokenPayload) = {
+  private def groupsFrom(payload: Jwt.Payload) = {
     settings.jwt.groupsClaim.map(payload.claims.groupsClaim)
   }
 

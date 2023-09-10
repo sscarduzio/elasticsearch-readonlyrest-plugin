@@ -31,6 +31,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices._
 import tech.beshu.ror.accesscontrol.blocks.rules.http._
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana._
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport._
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
@@ -44,9 +46,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.kibana._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.transport._
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.providers.UuidProvider
-
-import java.time.Clock
+import tech.beshu.ror.configuration.EnvironmentConfig
 
 object ruleDecoders {
 
@@ -55,38 +55,43 @@ object ruleDecoders {
                     globalSettings: GlobalSettings,
                     mocksProvider: MocksProvider,
                     caseMappingEquality: UserIdCaseMappingEquality)
-                   (implicit clock: Clock,
-                    uuidProvider: UuidProvider): Option[RuleDecoder[Rule]] = {
-    implicit val userIdEq: Eq[User.Id] = caseMappingEquality.toOrder
+                   (implicit environmentConfig: EnvironmentConfig): Option[RuleDecoder[Rule]] = {
+    val variableCreator = new RuntimeResolvableVariableCreator(
+      TransformationCompiler.withAliases(
+        environmentConfig.variablesFunctions,
+        definitions.variableTransformationAliases.items.map(_.alias)
+      )
+    )
+    val userIdEq: Eq[User.Id] = caseMappingEquality.toOrder
     val optionalRuleDecoder = name match {
       case ActionsRule.Name.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.Name.name => Some(ApiKeysRuleDecoder)
-      case FieldsRule.Name.name => Some(new FieldsRuleDecoder(globalSettings.flsEngine))
-      case ResponseFieldsRule.Name.name => Some(ResponseFieldsRuleDecoder)
-      case FilterRule.Name.name => Some(FilterRuleDecoder)
-      case GroupsOrRule.Name.name => Some(new GroupsOrRuleDecoder(definitions.users, caseMappingEquality)(GroupsOrRule.Name))
-      case GroupsOrRule.DeprecatedName.name => Some(new GroupsOrRuleDecoder(definitions.users, caseMappingEquality)(GroupsOrRule.DeprecatedName))
-      case GroupsAndRule.Name.name => Some(new GroupsAndRuleDecoder(definitions.users, caseMappingEquality))
+      case DataStreamsRule.Name.name => Some(new DataStreamsRuleDecoder(variableCreator))
+      case FieldsRule.Name.name => Some(new FieldsRuleDecoder(globalSettings.flsEngine, variableCreator))
+      case ResponseFieldsRule.Name.name => Some(new ResponseFieldsRuleDecoder(variableCreator))
+      case FilterRule.Name.name => Some(new FilterRuleDecoder(variableCreator))
+      case GroupsOrRule.Name.name => Some(new GroupsOrRuleDecoder(definitions.users, caseMappingEquality, variableCreator)(GroupsOrRule.Name))
+      case GroupsOrRule.DeprecatedName.name => Some(new GroupsOrRuleDecoder(definitions.users, caseMappingEquality, variableCreator)(GroupsOrRule.DeprecatedName))
+      case GroupsAndRule.Name.name => Some(new GroupsAndRuleDecoder(definitions.users, caseMappingEquality, variableCreator))
       case HeadersAndRule.Name.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.Name))
       case HeadersAndRule.DeprecatedName.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.DeprecatedName))
       case HeadersOrRule.Name.name => Some(HeadersOrRuleDecoder)
-      case HostsRule.Name.name => Some(HostsRuleDecoder)
-      case IndicesRule.Name.name => Some(IndicesRuleDecoders)
-      case KibanaUserDataRule.Name.name => Some(new KibanaUserDataRuleDecoder(globalSettings.configurationIndex))
+      case HostsRule.Name.name => Some(new HostsRuleDecoder(variableCreator))
+      case IndicesRule.Name.name => Some(new IndicesRuleDecoders(variableCreator, environmentConfig.uniqueIdentifierGenerator))
+      case KibanaUserDataRule.Name.name => Some(new KibanaUserDataRuleDecoder(globalSettings.configurationIndex, variableCreator)(environmentConfig.jsCompiler))
       case KibanaAccessRule.Name.name => Some(new KibanaAccessRuleDecoder(globalSettings.configurationIndex))
-      case KibanaHideAppsRule.Name.name => Some(KibanaHideAppsRuleDecoder)
-      case KibanaIndexRule.Name.name => Some(KibanaIndexRuleDecoder)
-      case KibanaTemplateIndexRule.Name.name => Some(KibanaTemplateIndexRuleDecoder)
-      case LocalHostsRule.Name.name => Some(new LocalHostsRuleDecoder)
+      case KibanaHideAppsRule.Name.name => Some(new KibanaHideAppsRuleDecoder()(environmentConfig.jsCompiler))
+      case KibanaIndexRule.Name.name => Some(new KibanaIndexRuleDecoder(variableCreator))
+      case KibanaTemplateIndexRule.Name.name => Some(new KibanaTemplateIndexRuleDecoder(variableCreator))
+      case LocalHostsRule.Name.name => Some(new LocalHostsRuleDecoder(variableCreator))
       case MaxBodyLengthRule.Name.name => Some(MaxBodyLengthRuleDecoder)
       case MethodsRule.Name.name => Some(MethodsRuleDecoder)
-      case RepositoriesRule.Name.name => Some(RepositoriesRuleDecoder)
-      case SessionMaxIdleRule.Name.name => Some(new SessionMaxIdleRuleDecoder())
-      case SnapshotsRule.Name.name => Some(SnapshotsRuleDecoder)
-      case DataStreamsRule.Name.name => Some(DataStreamsRuleDecoder)
-      case UriRegexRule.Name.name => Some(UriRegexRuleDecoder)
-      case UsersRule.Name.name => Some(new UsersRuleDecoder()(caseMappingEquality))
-      case XForwardedForRule.Name.name => Some(XForwardedForRuleDecoder)
+      case RepositoriesRule.Name.name => Some(new RepositoriesRuleDecoder(variableCreator))
+      case SessionMaxIdleRule.Name.name => Some(new SessionMaxIdleRuleDecoder()(environmentConfig.clock, environmentConfig.uuidProvider, userIdEq))
+      case SnapshotsRule.Name.name => Some(new SnapshotsRuleDecoder(variableCreator))
+      case UriRegexRule.Name.name => Some(new UriRegexRuleDecoder(variableCreator))
+      case UsersRule.Name.name => Some(new UsersRuleDecoder()(caseMappingEquality, variableCreator))
+      case XForwardedForRule.Name.name => Some(new XForwardedForRuleDecoder(variableCreator))
       case _ => usersDefinitionsAllowedRulesDecoderBy(
         name,
         definitions.authenticationServices,

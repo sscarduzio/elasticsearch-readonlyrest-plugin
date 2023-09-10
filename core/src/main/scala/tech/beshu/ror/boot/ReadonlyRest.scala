@@ -17,7 +17,7 @@
 package tech.beshu.ror.boot
 
 import java.nio.file.Path
-import java.time.{Clock, Instant}
+import java.time.Instant
 
 import cats.data.{EitherT, NonEmptyList}
 import eu.timepit.refined.api.Refined
@@ -40,7 +40,6 @@ import tech.beshu.ror.configuration._
 import tech.beshu.ror.configuration.index.{IndexConfigManager, IndexTestConfigManager}
 import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadRawTestRorConfig, LoadedRorConfig, LoadedTestRorConfig, TestConfigLoadingInterpreter}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
-import tech.beshu.ror.providers._
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -50,10 +49,8 @@ class ReadonlyRest(coreFactory: CoreFactory,
                    val indexTestConfigManager: IndexTestConfigManager,
                    val authServicesMocksProvider: MutableMocksProviderWithCachePerRequest,
                    val esConfigPath: Path)
-                  (implicit scheduler: Scheduler,
-                   envVarsProvider: EnvVarsProvider,
-                   propertiesProvider: PropertiesProvider,
-                   clock: Clock) extends Logging {
+                  (implicit environmentConfig: EnvironmentConfig,
+                   scheduler: Scheduler) extends Logging {
 
   def start(): Task[Either[StartingFailure, RorInstance]] = {
     (for {
@@ -83,7 +80,10 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   private def runStartingFailureProgram[A](action: LoadRorConfig[ErrorOr[A]]) = {
-    val compiler = ConfigLoadingInterpreter.create(indexConfigManager, RorProperties.rorIndexSettingLoadingDelay)
+    val compiler = ConfigLoadingInterpreter.create(
+      indexConfigManager,
+      RorProperties.rorIndexSettingLoadingDelay(environmentConfig.propertiesProvider)
+    )
     EitherT(action.foldMap(compiler))
       .leftMap(toStartingFailure)
   }
@@ -108,7 +108,10 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   private def runTestProgram(action: LoadTestRorConfig[IndexErrorOr[LoadedTestRorConfig[TestRorConfig]]]): Task[LoadedTestRorConfig[TestRorConfig]] = {
-    val compiler = TestConfigLoadingInterpreter.create(indexTestConfigManager, RorProperties.rorIndexSettingLoadingDelay)
+    val compiler = TestConfigLoadingInterpreter.create(
+      indexTestConfigManager,
+      RorProperties.rorIndexSettingLoadingDelay(environmentConfig.propertiesProvider)
+    )
     EitherT(action.foldMap(compiler))
       .leftMap {
         case LoadedTestRorConfig.IndexParsingError(message) =>
@@ -138,7 +141,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
     loadedTestRorConfig.value match {
       case TestRorConfig.NotSet =>
         Task.now(TestEngine.NotConfigured)
-      case config: TestRorConfig.Present if !config.isExpired(clock) =>
+      case config: TestRorConfig.Present if !config.isExpired(environmentConfig.clock) =>
         loadActiveTestEngine(esConfig, config)
       case config: TestRorConfig.Present =>
         loadInvalidatedTestEngine(config)
@@ -235,7 +238,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def createAuditingTool(core: Core)
                                 (implicit loggingContext: LoggingContext): Option[AuditingTool] = {
     core.rorConfig.auditingSettings
-      .flatMap(settings => AuditingTool.create(settings, auditSinkCreator))
+      .flatMap(settings => AuditingTool.create(settings, auditSinkCreator)(environmentConfig.clock, loggingContext))
   }
 
   private def inspectFlsEngine(engine: Engine): Unit = {
@@ -299,12 +302,8 @@ object ReadonlyRest {
              auditSinkCreator: AuditSinkCreator,
              esConfigPath: Path)
             (implicit scheduler: Scheduler,
-             envVarsProvider: EnvVarsProvider,
-             propertiesProvider: PropertiesProvider,
-             clock: Clock): ReadonlyRest = {
-    implicit val uuidProvider: UuidProvider = JavaUuidProvider
+             environmentConfig: EnvironmentConfig): ReadonlyRest = {
     val coreFactory: CoreFactory = new RawRorConfigBasedCoreFactory()
-
     create(coreFactory, indexContentService, auditSinkCreator, esConfigPath)
   }
 
@@ -313,9 +312,7 @@ object ReadonlyRest {
              auditSinkCreator: AuditSinkCreator,
              esConfigPath: Path)
             (implicit scheduler: Scheduler,
-             envVarsProvider: EnvVarsProvider,
-             propertiesProvider: PropertiesProvider,
-             clock: Clock): ReadonlyRest = {
+             environmentConfig: EnvironmentConfig): ReadonlyRest = {
     val indexConfigManager: IndexConfigManager = new IndexConfigManager(indexContentService)
     val indexTestConfigManager: IndexTestConfigManager = new IndexTestConfigManager(indexContentService)
     val mocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)

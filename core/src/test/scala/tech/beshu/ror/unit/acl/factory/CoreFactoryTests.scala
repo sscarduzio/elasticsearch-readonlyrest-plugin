@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.factory
 
-import java.time.Clock
-
 import cats.data.NonEmptyList
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
@@ -34,17 +32,14 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{BlocksLevelCreationError, DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.{RawRorConfig, EnvironmentConfig}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient, MockLdapConnectionPoolProvider}
-import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsUtils._
 
 class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
 
   private val factory = {
-    implicit val clock: Clock = Clock.systemUTC()
-    implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val provider: EnvVarsProvider = OsEnvVarsProvider
+    implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig.default
     new RawRorConfigBasedCoreFactory()
   }
 

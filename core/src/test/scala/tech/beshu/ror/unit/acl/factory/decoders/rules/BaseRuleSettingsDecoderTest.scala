@@ -29,11 +29,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.{Core, HttpClientsFactory, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.configuration.EnvironmentConfig
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsUtils._
 
-import java.time.Clock
 import scala.reflect.ClassTag
 
 abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWordSpec with BeforeAndAfterAll with Inside {
@@ -49,8 +49,11 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
   protected implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
   protected def factory: RawRorConfigBasedCoreFactory = {
-    implicit val clock: Clock = Clock.systemUTC()
-    implicit val uuidProvider: UuidProvider = JavaUuidProvider
+    implicit val environmentConfig: EnvironmentConfig = EnvironmentConfig
+      .default
+      .copy(
+        envVarsProvider = envVarsProvider
+      )
     new RawRorConfigBasedCoreFactory()
   }
 

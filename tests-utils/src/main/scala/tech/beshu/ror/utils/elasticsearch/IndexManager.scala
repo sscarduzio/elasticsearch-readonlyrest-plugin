@@ -80,16 +80,43 @@ class IndexManager(client: RestClient,
     call(createGetSettingsRequest(Set("_all")), new JsonResponse(_))
   }
 
-  def putAllSettings(numberOfReplicas: Int): JsonResponse = {
-    call(createPutAllSettingsRequest(numberOfReplicas), new JsonResponse(_))
-  }
-
-  def putSettings(indexName: String, allocationNodeNames: String*): JsonResponse = {
-    call(createPutSettingsRequest(indexName, allocationNodeNames.toList), new JsonResponse(_))
-  }
-
   def putSettings(indexName: String, settings: JSON): SimpleResponse = {
     call(createPutSettingsRequest(indexName, settings), new SimpleResponse(_))
+  }
+
+  def putAllSettings(numberOfReplicas: Int): SimpleResponse = {
+    putSettings(
+      "_all",
+      ujson.read(
+        s"""{
+           |  "index":{
+           |    "number_of_replicas":$numberOfReplicas
+           |  }
+           |}""".stripMargin
+      )
+    )
+  }
+
+  def putSettings(indexName: String, allocationNodeNames: String*): SimpleResponse = {
+    putSettings(
+      indexName = indexName,
+      settings = ujson.read(
+        s"""{
+           |  "index.routing.allocation.include._name":"${allocationNodeNames.mkString(",")}"
+           |}""".stripMargin)
+    )
+  }
+
+  def putSettingsIndexBlocksWrite(indexName: String, indexBlockWrite: Boolean): SimpleResponse = {
+    putSettings(
+      indexName = indexName,
+      settings = ujson.read(
+        s"""{
+           |  "settings":{
+           |    "index.blocks.write": $indexBlockWrite
+           |  }
+           |}""".stripMargin)
+    )
   }
 
   def removeAllIndices(): SimpleResponse =
@@ -126,8 +153,12 @@ class IndexManager(client: RestClient,
     call(createReindexRequest(source, destIndexName), new JsonResponse(_))
   }
 
-  def resize(source: String, target: String, aliases: List[String] = Nil): JsonResponse = {
-    call(createResizeRequest(source, target, aliases), new JsonResponse(_))
+  def shrink(sourceIndex: String, targetIndex: String, aliases: List[String] = Nil): JsonResponse = {
+    call(createShrinkRequest(sourceIndex, targetIndex, aliases), new JsonResponse(_))
+  }
+
+  def split(sourceIndex: String, targetIndex: String, numOfShards: Int): JsonResponse = {
+    call(createSplitRequest(sourceIndex, targetIndex, numOfShards), new JsonResponse(_))
   }
 
   def closeIndex(indexName: String): JsonResponse = {
@@ -188,24 +219,6 @@ class IndexManager(client: RestClient,
     new HttpDelete(client.from("/_all/_aliases/_all"))
   }
 
-  private def createPutAllSettingsRequest(numberOfReplicas: Int) = {
-    val request = new HttpPut(client.from("/_all/_settings/"))
-    request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""{"index":{"number_of_replicas":$numberOfReplicas}}"""
-    ))
-    request
-  }
-
-  private def createPutSettingsRequest(indexName: String, allocationNodeNames: List[String]) = {
-    val request = new HttpPut(client.from(s"/$indexName/_settings/"))
-    request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""{"index.routing.allocation.include._name":"${allocationNodeNames.mkString(",")}"}"""
-    ))
-    request
-  }
-
   private def createPutSettingsRequest(indexName: String, settings: JSON) = {
     val request = new HttpPut(client.from(s"/$indexName/_settings/"))
     request.addHeader("Content-Type", "application/json")
@@ -256,9 +269,9 @@ class IndexManager(client: RestClient,
     new HttpGet(client.from(s"/_resolve/index/${indicesPatterns.mkString(",")}"))
   }
 
-  private def createResizeRequest(source: String, target: String, aliases: List[String]): HttpPost = {
+  private def createShrinkRequest(sourceIndex: String, targetIndex: String, aliases: List[String]): HttpPost = {
     val parsedAliases = aliases.map(alias => s""""$alias": {}""").mkString(",")
-    val request = new HttpPost(client.from(s"/$source/_shrink/$target"))
+    val request = new HttpPost(client.from(s"/$sourceIndex/_shrink/$targetIndex"))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(
       s"""
@@ -266,6 +279,19 @@ class IndexManager(client: RestClient,
          |	"aliases": {
          |		$parsedAliases
          |	}
+         |}""".stripMargin))
+    request
+  }
+
+  private def createSplitRequest(sourceIndex: String, targetIndex: String, numOfShards: Int) = {
+    val request = new HttpPost(client.from(s"/$sourceIndex/_split/$targetIndex"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""
+         |{
+         |  "settings": {
+         |    "index.number_of_shards": $numOfShards
+         |  }
          |}""".stripMargin))
     request
   }

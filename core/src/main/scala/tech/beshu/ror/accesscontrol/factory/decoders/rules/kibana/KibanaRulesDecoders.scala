@@ -16,29 +16,35 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.kibana
 
+import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaHideAppsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.domain.{KibanaAccess, KibanaApp, KibanaIndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.utils.js.JsCompiler
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-object KibanaHideAppsRuleDecoder
+class KibanaHideAppsRuleDecoder(implicit jsCompiler: JsCompiler)
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaHideAppsRule] {
 
   override protected def decoder: Decoder[RuleDefinition[KibanaHideAppsRule]] = {
     DecoderHelpers
-      .decodeNonEmptyStringLikeOrUniqueNonEmptyList(KibanaApp.apply)
-      .map(apps => new KibanaHideAppsRule(Settings(apps)))
+      .decodeNonEmptyStringLikeOrUniqueNonEmptyList(identity)
+      .emap(_.toList.map(KibanaApp.from).traverse(identity))
+      .map(apps => new KibanaHideAppsRule(Settings(UniqueNonEmptyList.unsafeFromIterable(apps))))
       .map(RuleDefinition.create(_))
   }
 }
 
-object KibanaIndexRuleDecoder
+class KibanaIndexRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaIndexRule] {
+
+  private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
 
   override protected def decoder: Decoder[RuleDefinition[KibanaIndexRule]] = {
     Decoder[RuntimeSingleResolvableVariable[KibanaIndexName]]
@@ -47,8 +53,10 @@ object KibanaIndexRuleDecoder
   }
 }
 
-object KibanaTemplateIndexRuleDecoder
+class KibanaTemplateIndexRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[KibanaTemplateIndexRule] {
+
+  private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
 
   override protected def decoder: Decoder[RuleDefinition[KibanaTemplateIndexRule]] = {
     Decoder[RuntimeSingleResolvableVariable[KibanaIndexName]]

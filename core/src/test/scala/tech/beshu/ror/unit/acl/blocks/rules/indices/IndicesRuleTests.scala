@@ -37,6 +37,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRu
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullRemoteDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.domain.Template.{ComponentTemplate, IndexTemplate, LegacyTemplate}
@@ -2935,7 +2936,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
   }
 
   private def indexNameVar(value: NonEmptyString): RuntimeMultiResolvableVariable[ClusterIndexName] = {
-    RuntimeResolvableVariableCreator
+    variableCreator
       .createMultiResolvableVariableFrom(value)(AlwaysRightConvertible.from(clusterIndexName))
       .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))
   }
@@ -2992,4 +2993,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
     fullLocalDataStreamWithAliases(fullDataStreamName("test4")),
     fullLocalDataStreamWithAliases(fullDataStreamName("test5"))
   )
+
+  private val variableCreator: RuntimeResolvableVariableCreator =
+    new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
 }

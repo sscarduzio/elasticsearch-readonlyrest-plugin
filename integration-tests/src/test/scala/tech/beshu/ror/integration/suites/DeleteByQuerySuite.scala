@@ -16,18 +16,18 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, ElasticsearchTweetsInitializer}
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class DeleteByQuerySuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   private val matchAllQuery = ujson.read("""{"query" : {"match_all" : {}}}""".stripMargin)
 
@@ -42,13 +42,13 @@ class DeleteByQuerySuite
     "be allowed" when {
       "is executed by blue client" in {
         val response = blueTeamDeleteByQueryManager.deleteByQuery("twitter", matchAllQuery)
-        response.responseCode shouldBe 200
+        response should have statusCode 200
       }
     }
     "not be allowed" when {
       "is executed by red client" in {
         val response = redTeamDeleteByQueryManager.deleteByQuery("facebook", matchAllQuery)
-        response.responseCode shouldBe 401
+        response should have statusCode 401
       }
     }
   }

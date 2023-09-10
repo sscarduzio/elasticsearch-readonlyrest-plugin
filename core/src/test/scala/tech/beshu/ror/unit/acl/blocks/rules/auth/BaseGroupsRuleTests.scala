@@ -39,8 +39,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.Eligibl
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -59,6 +61,8 @@ import scala.language.postfixOps
 trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextAssertion {
 
   implicit val provider: EnvVarsProvider = OsEnvVarsProvider
+  implicit val variableCreator: RuntimeResolvableVariableCreator =
+    new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
 
   def createRule(settings: GroupsRulesSettings, caseSensitivity: UserIdCaseMappingEquality): BaseGroupsRule
 
@@ -71,7 +75,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
+                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
@@ -153,7 +157,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
+                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
@@ -168,7 +172,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
+                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
@@ -189,7 +193,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
+                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
@@ -210,7 +214,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
+                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
@@ -234,7 +238,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
+                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
@@ -582,6 +586,9 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
       )(blockContext)
     }
 
+  private def createVariable[T: Convertible](text: NonEmptyString) = {
+    variableCreator.createMultiResolvableVariableFrom[T](text)
+  }
 
   object authenticationRule {
 

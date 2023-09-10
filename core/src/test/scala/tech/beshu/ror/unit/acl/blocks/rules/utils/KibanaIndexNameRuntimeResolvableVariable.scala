@@ -19,13 +19,19 @@ package tech.beshu.ror.unit.acl.blocks.rules.utils
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName}
 import tech.beshu.ror.utils.TestsUtils._
 
-object KibanaIndexNameRuntimeResolvableVariable{
+object KibanaIndexNameRuntimeResolvableVariable {
+  private val variableCreator: RuntimeResolvableVariableCreator =
+    new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
+
   def create(value: String): RuntimeSingleResolvableVariable[KibanaIndexName] = {
-    RuntimeResolvableVariableCreator
-      .createSingleResolvableVariableFrom[ClusterIndexName.Local](NonEmptyString.unsafeFrom(value))(AlwaysRightConvertible.from(localIndexName))
+    variableCreator
+      .createSingleResolvableVariableFrom[ClusterIndexName.Local](NonEmptyString.unsafeFrom(value))(
+        AlwaysRightConvertible.from(localIndexName),
+      )
       .map(_.map(KibanaIndexName.apply))
       .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))
   }

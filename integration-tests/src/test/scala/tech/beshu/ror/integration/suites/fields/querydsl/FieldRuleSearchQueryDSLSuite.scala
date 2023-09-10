@@ -24,7 +24,7 @@ class FieldRuleSearchQueryDSLSuite
 
   override protected def assertNoSearchHitsReturnedFor(index: String, query: String): Unit = {
     val result = searchManager.search(index, ujson.read(query))
-    result.responseCode shouldBe 200
+    result should have statusCode 200
     result.searchHits.isEmpty shouldBe true
   }
 }

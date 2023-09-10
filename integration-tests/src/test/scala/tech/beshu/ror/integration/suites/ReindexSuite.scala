@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
@@ -24,13 +23,14 @@ import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class ReindexSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/reindex/readonlyrest.yml"
 
@@ -43,29 +43,29 @@ class ReindexSuite
       "user has permission to source index and dest index" in {
         val result = user1IndexManager.reindex(ReindexSource.Local("test1_index"), "test1_index_reindexed")
 
-        result.responseCode should be(200)
+        result should have statusCode 200
       }
     }
     "not be able to proceed" when {
       "user has no permission to source index and dest index which are present on ES" in {
         val result = user1IndexManager.reindex(ReindexSource.Local("test2_index"), "test2_index_reindexed")
 
-        result.responseCode should be(401)
+        result should have statusCode 401
       }
       "user has no permission to source index and dest index which are absent on ES" in {
         val result = user1IndexManager.reindex(ReindexSource.Local("not_allowed_index"), "not_allowed_index_reindexed")
 
-        result.responseCode should be(401)
+        result should have statusCode 401
       }
       "user has permission to source index and but no permission to dest index" in {
         val result = user1IndexManager.reindex(ReindexSource.Local("test1_index"), "not_allowed_index_reindexed")
 
-        result.responseCode should be(401)
+        result should have statusCode 401
       }
       "user has permission to dest index and but no permission to source index" in {
         val result = user1IndexManager.reindex(ReindexSource.Local("not_allowed_index"), "test1_index_reindexed")
 
-        result.responseCode should be(401)
+        result should have statusCode 401
       }
     }
   }

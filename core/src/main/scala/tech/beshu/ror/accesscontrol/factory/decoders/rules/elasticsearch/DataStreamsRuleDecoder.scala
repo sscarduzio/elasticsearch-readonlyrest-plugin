@@ -35,8 +35,10 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
-object DataStreamsRuleDecoder
+class DataStreamsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[DataStreamsRule] {
+
+  private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
 
   override protected def decoder: Decoder[RuleDefinition[DataStreamsRule]] =
     DecoderHelpers
@@ -76,12 +78,12 @@ private object DataStreamsDecodersHelper {
     private def isLowerCase(value: NonEmptyString) = value.value.toLowerCase == value.value
   }
 
-  implicit val dataStreamNameValueDecoder: Decoder[RuntimeMultiResolvableVariable[DataStreamName]] =
+  implicit def dataStreamNameValueDecoder(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeMultiResolvableVariable[DataStreamName]] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .toSyncDecoder
       .emapE { str =>
-        RuntimeResolvableVariableCreator
+        variableCreator
           .createMultiResolvableVariableFrom[DataStreamName](str)
           .left.map(error => RulesLevelCreationError(Message(error.show)))
       }

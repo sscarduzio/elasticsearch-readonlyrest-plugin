@@ -18,16 +18,16 @@ package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
 import org.scalatest.BeforeAndAfterEach
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.containers.images.domain.Enabled
+import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class RemoteReindexSuite
   extends AnyWordSpec
@@ -36,7 +36,7 @@ class RemoteReindexSuite
     with MultipleClientsSupport
     with BeforeAndAfterEach
     with ESVersionSupportForAnyWordSpecLike
-    with Matchers {
+    with CustomScalaTestMatchers {
 
   override implicit val rorConfigFileName = "/reindex_multi_containers/readonlyrest_dest_es.yml"
   private val sourceEsRorConfigFileName = "/reindex_multi_containers/readonlyrest_source_es.yml"
@@ -95,36 +95,36 @@ class RemoteReindexSuite
       "request specifies source and dest index that are allowed on both source and dest ES" in {
         val result = destEsIndexManager.reindex(createReindexSource("test1_index", "dev1"), "test1_index_reindexed")
 
-        result.responseCode should be(200)
+        result should have statusCode 200
       }
     }
     "be blocked by dest ES" when {
       "request specifies source index that is allowed, but dest that isn't allowed" in {
         val result = destEsIndexManager.reindex(createReindexSource("test1_index", "dev1"), "not_allowed_index")
 
-        result.responseCode should be(401)
+        result should have statusCode 401
       }
       "request specifies source index that isn't allowed, but dest that is allowed" in {
         val result = destEsIndexManager.reindex(createReindexSource("not_allowed_index", "dev1"), "test1_index_reindexed")
 
-        result.responseCode should be(401)
+        result should have statusCode 401
       }
       "request specifies both source index and dest index that are not allowed" in {
         val result = destEsIndexManager.reindex(createReindexSource("not_allowed_index", "dev1"), "not_allowed_index_reindexed")
 
-        result.responseCode should be(401)
+        result should have statusCode 401
       }
     }
     "be blocked by source ES" when {
       "request specifies source index that is allowed on dest ES, but is not allowed on source ES" in {
         val result = destEsIndexManager.reindex(createReindexSource("test1_index", "dev3"), "test1_index_reindexed")
 
-        result.responseCode should be(401)
+        result should have statusCode 401
       }
       "request specifies index which is allowed, but is not present in source ES" in {
         val result = destEsIndexManager.reindex(createReindexSource("test2_index", "dev4"), "test2_index_reindexed")
 
-        result.responseCode should be(404)
+        result should have statusCode 404
       }
     }
   }
@@ -138,7 +138,7 @@ object RemoteReindexSuite {
   private def sourceEsDataInitializer(): ElasticsearchNodeDataInitializer = {
     (esVersion: String, adminRestClient: RestClient) => {
       val documentManager = new DocumentManager(adminRestClient, esVersion)
-      documentManager.createDoc("test1_index", "Sometype", 1, ujson.read("""{"hello":"world"}"""))
+      documentManager.createDoc("test1_index", "Sometype", 1, ujson.read("""{"hello":"world"}""")).force()
     }
   }
 }

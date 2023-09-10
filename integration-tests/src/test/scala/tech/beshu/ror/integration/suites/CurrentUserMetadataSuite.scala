@@ -42,7 +42,7 @@ class CurrentUserMetadataSuite
           val correlationId = UUID.randomUUID().toString
           val result = user1MetadataManager.fetchMetadata(correlationId = Some(correlationId))
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           result.responseJson should be(ujson.read(
             s"""{
                |  "x-ror-username": "user1",
@@ -60,7 +60,7 @@ class CurrentUserMetadataSuite
             correlationId = Some(correlationId)
           )
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           result.responseJson should be(ujson.read(
             s"""{
                |  "x-ror-username": "user4",
@@ -78,7 +78,7 @@ class CurrentUserMetadataSuite
           val correlationId = UUID.randomUUID().toString
           val result = user2MetadataManager.fetchMetadata(correlationId = Some(correlationId))
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           result.responseJson should be(ujson.read(
             s"""{
                |  "x-ror-username": "user2",
@@ -87,7 +87,7 @@ class CurrentUserMetadataSuite
                |  "x-ror-correlation-id": "$correlationId",
                |  "x-ror-kibana_index": "user2_kibana_index",
                |  "x-ror-kibana_access": "ro",
-               |  "x-ror-kibana-hidden-apps": [ "user2_app1", "user2_app2" ],
+               |  "x-ror-kibana-hidden-apps": [ "user2_app1", "user2_app2", "/^Analytics\\\\|(?!(Maps)$$).*$$/" ],
                |  "x-ror-kibana-allowed-api-paths":[
                |    {
                |      "http_method":"ANY",
@@ -116,7 +116,7 @@ class CurrentUserMetadataSuite
           val correlationId = UUID.randomUUID().toString
           val result = user3MetadataManager.fetchMetadata(correlationId = Some(correlationId))
 
-          result.responseCode should be(200)
+          result should have statusCode 200
           result.responseJson should be(ujson.read(
             s"""{
                |  "x-ror-username": "user3",
@@ -133,21 +133,21 @@ class CurrentUserMetadataSuite
 
           val result = unknownUserMetadataManager.fetchMetadata()
 
-          result.responseCode should be(401)
+          result should have statusCode 401
         }
         "current group is set but it doesn't exist on available groups list" in {
           val user4MetadataManager = new RorApiManager(basicAuthClient("user4", "pass"), esVersionUsed)
 
           val result = user4MetadataManager.fetchMetadata(preferredGroup = Some("group7"))
 
-          result.responseCode should be(401)
+          result should have statusCode 401
         }
         "block with no available groups collected is matched and current group is set" in {
           val user3MetadataManager = new RorApiManager(basicAuthClient("user3", "pass"), esVersionUsed)
 
           val result = user3MetadataManager.fetchMetadata(preferredGroup = Some("group7"))
 
-          result.responseCode should be(401)
+          result should have statusCode 401
         }
       }
     }

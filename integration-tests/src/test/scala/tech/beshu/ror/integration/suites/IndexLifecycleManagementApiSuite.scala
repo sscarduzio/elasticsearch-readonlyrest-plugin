@@ -20,7 +20,6 @@ import eu.timepit.refined.auto._
 import monix.execution.atomic.Atomic
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.Eventually
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.IndexLifecycleManagementApiSuite.{ExamplePolicies, PolicyGenerator}
@@ -33,7 +32,7 @@ import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.{ClusterManager, DocumentManager, IndexLifecycleManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
-import tech.beshu.ror.utils.misc.Version
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
 import scala.util.{Failure, Success, Try}
 
@@ -44,7 +43,7 @@ class IndexLifecycleManagementApiSuite
     with SingleClientSupport
     with ESVersionSupportForAnyWordSpecLike
     with BeforeAndAfterEach
-    with Matchers
+    with CustomScalaTestMatchers
     with Eventually {
 
   override implicit val rorConfigFileName = "/index_lifecycle_management_api/readonlyrest.yml"
@@ -84,7 +83,7 @@ class IndexLifecycleManagementApiSuite
     "create lifecycle operation is used" should {
       "be handled" excludeES (allEs6xBelowEs66x) in {
         val response = dev1IndexLifecycleManager.putPolicy(PolicyGenerator.next(), ExamplePolicies.forceMergePolicy)
-        response.responseCode should be(200)
+        response should have statusCode 200
       }
     }
     "delete lifecycle operation is used" should {
@@ -93,7 +92,7 @@ class IndexLifecycleManagementApiSuite
         dev1IndexLifecycleManager.putPolicy(policy, ExamplePolicies.forceMergePolicy).force()
 
         val response = dev1IndexLifecycleManager.deletePolicy(policy)
-        response.responseCode should be(200)
+        response should have statusCode 200
       }
     }
     "get lifecycle operation is used" should {
@@ -103,7 +102,7 @@ class IndexLifecycleManagementApiSuite
 
         val response = dev1IndexLifecycleManager.getPolicy(policy)
 
-        response.responseCode should be(200)
+        response should have statusCode 200
         response.policies.get(policy) should be(Some(ExamplePolicies.forceMergePolicy))
       }
     }
@@ -137,7 +136,7 @@ class IndexLifecycleManagementApiSuite
             )
           )
 
-          result.responseCode should be(200)
+          result should have statusCode 200
         }
         "user has access to requested index (through configured wildcard)" excludeES (allEs6xBelowEs66x) in {
           val index = "dynamic_1"
@@ -164,7 +163,7 @@ class IndexLifecycleManagementApiSuite
             )
           )
 
-          result.responseCode should be(200)
+          result should have statusCode 200
         }
         "no indices rule was used" excludeES (allEs6xBelowEs66x) in {
           val index = "dynamic_2"
@@ -191,7 +190,7 @@ class IndexLifecycleManagementApiSuite
             )
           )
 
-          result.responseCode should be(200)
+          result should have statusCode 200
         }
       }
       "be forbidden" when {
@@ -217,7 +216,7 @@ class IndexLifecycleManagementApiSuite
             )
           )
 
-          result.responseCode should be(403)
+          result should have statusCode 403
         }
       }
     }
@@ -229,7 +228,7 @@ class IndexLifecycleManagementApiSuite
           eventually {
             val result = dev3IndexLifecycleManager.retryPolicyExecution(index)
 
-            result.responseCode should be(200)
+            result should have statusCode 200
           }
         }
       }
@@ -241,7 +240,7 @@ class IndexLifecycleManagementApiSuite
           eventually {
             val result = dev3IndexLifecycleManager.retryPolicyExecution(index1, index2)
 
-            result.responseCode should be(403)
+            result should have statusCode 403
           }
         }
       }
@@ -256,7 +255,7 @@ class IndexLifecycleManagementApiSuite
 
           val result = dev3IndexLifecycleManager.removePolicyFromIndex(index1, index2)
 
-          result.responseCode should be(200)
+          result should have statusCode 200
         }
         "user has access to requested index pattern" excludeES (allEs6xBelowEs66x) in {
           val index = "dynamic_1"
@@ -264,7 +263,7 @@ class IndexLifecycleManagementApiSuite
 
           val result = dev3IndexLifecycleManager.removePolicyFromIndex("dynamic_1*")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
         }
         "no indices rule was used" excludeES (allEs6xBelowEs66x) in {
           val index = "dynamic_1"
@@ -272,7 +271,7 @@ class IndexLifecycleManagementApiSuite
 
           val result = adminIndexLifecycleManager.removePolicyFromIndex("*")
 
-          result.responseCode should be(200)
+          result should have statusCode 200
         }
       }
       "not be allowed" when {
@@ -284,7 +283,7 @@ class IndexLifecycleManagementApiSuite
 
           val result = dev3IndexLifecycleManager.removePolicyFromIndex(index1, index2)
 
-          result.responseCode should be(403)
+          result should have statusCode 403
         }
         "user has no access to requested index pattern" excludeES (allEs6xBelowEs66x) in {
           val index = "dynamic1"
@@ -292,7 +291,7 @@ class IndexLifecycleManagementApiSuite
 
           val result = dev3IndexLifecycleManager.removePolicyFromIndex("dynamic*")
 
-          result.responseCode should be(403)
+          result should have statusCode 403
         }
       }
     }
@@ -302,19 +301,19 @@ class IndexLifecycleManagementApiSuite
     "start ILM operation is used" should {
       "be handled" excludeES (allEs6xBelowEs66x) in {
         val response = dev1IndexLifecycleManager.startIlm()
-        response.responseCode should be(200)
+        response should have statusCode 200
       }
     }
     "stop ILM operation is used" should {
       "be handled" excludeES (allEs6xBelowEs66x) in {
         val response = dev1IndexLifecycleManager.stopIlm()
-        response.responseCode should be(200)
+        response should have statusCode 200
       }
     }
     "ILM status operation is used" should {
       "be handled" excludeES (allEs6xBelowEs66x) in {
         val response = dev1IndexLifecycleManager.ilmStatus()
-        response.responseCode should be(200)
+        response should have statusCode 200
       }
     }
     "explain operation is used" should {
@@ -322,39 +321,39 @@ class IndexLifecycleManagementApiSuite
         "user has access to all requested indices" excludeES (allEs6xBelowEs66x) in {
           val response = dev1IndexLifecycleManager.ilmExplain("index1", "index1_1")
 
-          response.responseCode should be(200)
+          response should have statusCode 200
           response.indices.keys.toSet should be(Set("index1", "index1_1"))
         }
         "user has access to at least one requested index" when {
           "full name index was used" excludeES (allEs6xBelowEs66x) in {
             val response = dev1IndexLifecycleManager.ilmExplain("index1", "index2")
 
-            response.responseCode should be(200)
+            response should have statusCode 200
             response.indices.keys.toSet should be(Set("index1"))
           }
           "index with wildcard is used (no need to narrow the pattern)" excludeES (allEs6xBelowEs66x) in {
             val response = dev1IndexLifecycleManager.ilmExplain("index1_*", "index2_*")
 
-            response.responseCode should be(200)
+            response should have statusCode 200
             response.indices.keys.toSet should be(Set("index1_1", "index1_2"))
           }
           "index with wildcard is used (the pattern is narrowed)" excludeES (allEs6xBelowEs66x) in {
             val response = dev1IndexLifecycleManager.ilmExplain("index1*", "index2*")
 
-            response.responseCode should be(200)
+            response should have statusCode 200
             response.indices.keys.toSet should be(Set("index1", "index1_1", "index1_2"))
           }
           "all indices are requested" excludeES (allEs6xBelowEs66x) in {
             val response = dev1IndexLifecycleManager.ilmExplain("_all")
 
-            response.responseCode should be(200)
+            response should have statusCode 200
             response.indices.keys.toSet should be(Set("index1", "index1_1", "index1_2"))
           }
         }
         "no indices rule was used" excludeES (allEs6xBelowEs66x) in {
           val response = adminIndexLifecycleManager.ilmExplain("*")
 
-          response.responseCode should be(200)
+          response should have statusCode 200
           response.indices.keys.toSet should contain allOf("index1", "index1_1", "index1_2", "index2", "index2_1")
         }
       }
@@ -363,7 +362,7 @@ class IndexLifecycleManagementApiSuite
           "index name with wildcard is used" excludeES (allEs6xBelowEs66x) in {
             val response = dev1IndexLifecycleManager.ilmExplain("index2*")
 
-            response.responseCode should be(200)
+            response should have statusCode 200
             response.indices.keys.toSet should be(Set.empty)
           }
         }
@@ -373,7 +372,7 @@ class IndexLifecycleManagementApiSuite
           "full name index was used" excludeES (allEs6xBelowEs66x) in {
             val response = dev1IndexLifecycleManager.ilmExplain("index2")
 
-            response.responseCode should be(404)
+            response should have statusCode 404
           }
         }
       }

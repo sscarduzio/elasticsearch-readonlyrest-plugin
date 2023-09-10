@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.mocks.MockRequestContext
@@ -107,11 +108,15 @@ class HostsRuleTests extends AnyWordSpec with MockFactory {
   }
 
   private def addressValueFrom(value: String): RuntimeMultiResolvableVariable[Address] = {
-    RuntimeResolvableVariableCreator
-      .createMultiResolvableVariableFrom[Address](NonEmptyString.unsafeFrom(value)) {
-      AlwaysRightConvertible
-        .from(extracted => Address.from(extracted.value).getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value")))
-    }
+    variableCreator
+      .createMultiResolvableVariableFrom[Address](NonEmptyString.unsafeFrom(value))(
+        AlwaysRightConvertible.from(extracted => Address.from(extracted.value)
+          .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
+        )
+      )
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }
+
+  private val variableCreator: RuntimeResolvableVariableCreator =
+    new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
 }

@@ -60,7 +60,6 @@ import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.es.handler.request.context.types.datastreams.{ModifyDataStreamsEsRequestContext, ReflectionBasedDataStreamsEsRequestContext}
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{Action, Header}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
@@ -73,6 +72,11 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter._
 import tech.beshu.ror.es.handler.request.ActionRequestOps._
 import tech.beshu.ror.es.handler.request.RestRequestOps._
 import tech.beshu.ror.es.handler.request.context.types._
+import tech.beshu.ror.es.handler.request.context.types.datastreams._
+import tech.beshu.ror.es.handler.request.context.types.repositories._
+import tech.beshu.ror.es.handler.request.context.types.ror._
+import tech.beshu.ror.es.handler.request.context.types.snapshots._
+import tech.beshu.ror.es.handler.request.context.types.templates._
 import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
 import java.time.Instant

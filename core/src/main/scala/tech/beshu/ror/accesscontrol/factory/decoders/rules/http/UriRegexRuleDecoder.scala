@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import java.util.regex.Pattern
 import scala.util.Try
 
-object UriRegexRuleDecoder
+class UriRegexRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
   extends RuleBaseDecoderWithoutAssociatedFields[UriRegexRule] {
 
   override protected def decoder: Decoder[RuleDefinition[UriRegexRule]] = {
@@ -56,7 +56,7 @@ object UriRegexRuleDecoder
       .decodeStringLikeNonEmpty
       .toSyncDecoder
       .emapE { str =>
-        RuntimeResolvableVariableCreator
+        variableCreator
           .createMultiResolvableVariableFrom[Pattern](str)
           .left.map(error => RulesLevelCreationError(Message(error.show)))
       }

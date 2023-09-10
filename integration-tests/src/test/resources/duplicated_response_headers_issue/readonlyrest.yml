@@ -41,7 +41,7 @@ readonlyrest:
       kibana:
         access: rw
         index: ".kibana_@{user}"
-        hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
+        hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "/^(?!(Analytic\\|Management).*$).*$/"]
 
     - name: "011"
       external_authentication: "ExternalAuthService"
@@ -51,7 +51,7 @@ readonlyrest:
       kibana:
         access: rw
         index: ".kibana_@{user}"
-        hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
+        hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "/^(?!(Analytics\\|Management).*$).*$/"]
 
     - name: "013-data"
       external_authentication: "ExternalAuthService"
@@ -63,7 +63,7 @@ readonlyrest:
       kibana:
         access: rw
         index: ".kibana_@{user}"
-        hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
+        hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "/^(?!(Analytics\\|Management).*$).*$/"]
 
     - name: "013"
       external_authentication: "ExternalAuthService"
@@ -73,7 +73,7 @@ readonlyrest:
       kibana:
         access: rw
         index: ".kibana_@{user}"
-        hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
+        hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "/^(?!(Analytics\\|Management).*$).*$/"]
 
   external_authentication_service_configs:
     - name: "ExternalAuthService"
