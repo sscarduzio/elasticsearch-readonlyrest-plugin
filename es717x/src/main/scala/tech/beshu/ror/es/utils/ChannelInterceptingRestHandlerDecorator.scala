@@ -51,7 +51,7 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
   private def unwrapWithSecurityRestFilterIfNeeded(restHandler: RestHandler) = {
     restHandler match {
       case action if action.getClass.getName.contains("SecurityRestFilter") =>
-        Try(on(action).get[RestHandler]("restHandler")) match {
+        Try(on(action).get[RestHandler]("delegate")) match {
           case Success(underlyingHandler) =>
             underlyingHandler
           case Failure(_) =>
