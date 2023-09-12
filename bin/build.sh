@@ -85,6 +85,11 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es80x" ]]; then
     ./gradlew integration-tests:test '-PesModule=es80x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es717x" ]]; then
+    echo ">>> es717x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es717x' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es716x" ]]; then
     echo ">>> es716x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es716x' || ( find . |grep hs_err |xargs cat && exit 1 )
@@ -185,6 +190,7 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es8xx" ]]; then
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
     #es89
+    ./gradlew --stacktrace es89x:ror '-PesVersion=8.9.2'
     ./gradlew --stacktrace es89x:ror '-PesVersion=8.9.1'
     ./gradlew --stacktrace es89x:ror '-PesVersion=8.9.0'
 
@@ -239,6 +245,9 @@ fi
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
 
     echo ">>> ($0) additional builds of ES module for specified ES version"
+
+    #es717x
+    ./gradlew --stacktrace es717x:ror '-PesVersion=7.17.13'
 
     #es716x
     ./gradlew --stacktrace es716x:ror '-PesVersion=7.17.12'

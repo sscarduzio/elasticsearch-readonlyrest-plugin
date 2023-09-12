@@ -198,6 +198,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            IT_es717x:
+              ROR_TASK: integration_es717x
             IT_es716x:
               ROR_TASK: integration_es716x
             IT_es714x:
@@ -261,8 +263,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            IT_es716x:
-              ROR_TASK: integration_es716x
+            IT_es717x:
+              ROR_TASK: integration_es717x
             IT_es710x:
               ROR_TASK: integration_es710x
             IT_es70x:

@@ -1,0 +1,13 @@
+grant {
+  permission java.io.FilePermission "/usr/share/elasticsearch", "read";
+  permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
+  permission java.lang.RuntimePermission "accessClassInPackage.sun.misc";
+  permission java.lang.RuntimePermission "accessDeclaredMembers";
+  permission java.lang.RuntimePermission "createClassLoader";
+  permission java.lang.RuntimePermission "getClassLoader";
+  permission java.lang.RuntimePermission "setContextClassLoader";
+  permission java.net.SocketPermission "*", "accept, resolve, connect";
+  permission java.security.SecurityPermission "insertProvider";
+  permission java.security.SecurityPermission "putProviderProperty.BCFIPS";
+  permission java.security.SecurityPermission "putProviderProperty.BCJSSE";
+};
