@@ -66,3 +66,13 @@ readonlyrest:
       auth_key: "user4:pass"
       indices: ["nestedtest"]
       fields: ["~items.*Date", "~secrets.*", "~user.*"]
+
+    - name: Many docs test 1
+      auth_key: "user5:pass"
+      indices: [ "manydocs" ]
+      fields: [ "~user1" ]
+
+    - name: Many docs test 2
+      auth_key: "user6:pass"
+      indices: [ "manydocs" ]
+      fields: [ "user1" ]
