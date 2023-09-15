@@ -225,13 +225,13 @@ final class SimpleStatement(val underlyingObject: AnyRef)
   }
 
   private def preAnalyzerClass(implicit classLoader: ClassLoader) =
-    classLoader.loadClass("org.elasticsearch.xpack.sql.analysis.analyzer.PreAnalyzer")
+    classLoader.loadClass("org.elasticsearch.xpack.ql.analyzer.PreAnalyzer")
 
   private def preAnalysisClass(implicit classLoader: ClassLoader) =
-    classLoader.loadClass("org.elasticsearch.xpack.sql.analysis.analyzer.PreAnalyzer$PreAnalysis")
+    classLoader.loadClass("org.elasticsearch.xpack.ql.analyzer.PreAnalyzer$PreAnalysis")
 
   private def tableInfoClass(implicit classLoader: ClassLoader) =
-    classLoader.loadClass("org.elasticsearch.xpack.sql.analysis.analyzer.TableInfo")
+    classLoader.loadClass("org.elasticsearch.xpack.ql.analyzer.TableInfo")
 
   private def tableIdentifierClass(implicit classLoader: ClassLoader) =
     classLoader.loadClass("org.elasticsearch.xpack.ql.plan.TableIdentifier")
