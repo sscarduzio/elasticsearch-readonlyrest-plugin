@@ -156,17 +156,7 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
   }
 
   def testBindingForAllHosts(connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, Unit]] = {
-    val serverSet = createLdapServerSet(connectionConfig)
-    val bindReq = bindRequest(connectionConfig.bindRequestUser)
-    val bindResult = retry {
-      val resource = Resource.make(Task(serverSet.getConnection)) { conn =>
-        Task(conn.close())
-      }
-      resource.use { connection =>
-        Task(connection.bind(bindReq))
-      }
-    }
-    bindResult
+    testBinding(connectionConfig)
       .executeOn(ldapUnboundIdBlockingScheduler)
       .map(_.getResultCode == ResultCode.SUCCESS)
       .recover { case NonFatal(ex) =>
@@ -184,6 +174,31 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
         )
       }
       .asyncBoundary
+  }
+
+  private def testBinding(connectionConfig: LdapConnectionConfig) = {
+    val serverSet = createLdapServerSet(connectionConfig)
+    val bindReq = bindRequest(connectionConfig.bindRequestUser)
+    val maxRetries = if (connectionConfig.ignoreLdapConnectivityProblems) 0 else 5
+    val connectionTimeout: FiniteDuration = if (connectionConfig.ignoreLdapConnectivityProblems) {
+      List(2 seconds, connectionConfig.connectionTimeout.value).min
+    } else {
+      connectionConfig.connectionTimeout.value
+    }
+    val resource =
+      Resource.make(
+        Task(serverSet.getConnection).timeout(connectionTimeout)
+      ) { conn =>
+        Task(conn.close())
+      }
+    retryBackoff(
+      source = resource.use { connection =>
+        Task(connection.bind(bindReq)).timeout(connectionConfig.requestTimeout.value)
+      },
+      maxRetries = maxRetries,
+      firstDelay = 500 millis,
+      backOffScaler = 1
+    )
   }
 
   private def bindRequest(bindRequestUser: BindRequestUser) = bindRequestUser match {

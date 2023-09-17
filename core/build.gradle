@@ -122,7 +122,7 @@ dependencies {
     api group: 'org.scala-lang.modules',    name: 'scala-parallel-collections_2.13',        version: '1.0.4'
     api group: 'io.lemonlabs',              name: 'scala-uri_2.13',                         version: '3.5.0'
     api group: 'org.typelevel',             name: 'squants_2.13',                           version: '1.8.3'
-    api group: 'com.unboundid',             name: 'unboundid-ldapsdk',                      version: '6.0.6'
+    api group: 'com.unboundid',             name: 'unboundid-ldapsdk',                      version: '6.0.9'
     api group: 'com.lihaoyi',               name: 'upickle_2.13',                           version: '3.1.0'
     // https://www.bouncycastle.org/latest_releases.html#1.0.2.4-NONCERT
     api group: 'org.bouncycastle',          name: 'bc-noncert',                             version: '1.0.2.4'
