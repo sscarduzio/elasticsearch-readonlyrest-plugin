@@ -75,4 +75,4 @@ readonlyrest:
     - name: Many docs test 2
       auth_key: "user6:pass"
       indices: [ "manydocs" ]
-      fields: [ "user1" ]
+      fields: ["_source", "user1" ]

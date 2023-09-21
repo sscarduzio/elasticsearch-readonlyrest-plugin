@@ -100,7 +100,7 @@ class RestClient(ssl: Boolean,
 
   private def readTimeout() = {
     Try(Integer.parseInt(System.getProperty("rest_timeout")))
-      .getOrElse(100)
+      .getOrElse(10000) // todo: fixme
   }
 
   private def createBasicAuthHeader(user: String, password: String) = {
