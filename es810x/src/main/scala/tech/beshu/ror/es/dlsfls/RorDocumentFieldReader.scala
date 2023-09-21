@@ -60,14 +60,16 @@ private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fie
 
   override def getFieldInfos: FieldInfos = remainingFieldsInfo
 
-  override def getTermVectors(docID: Int): Fields = {
-    val original = in.getTermVectors(docID)
-    new Fields {
-      override def iterator(): JavaIterator[String] = Iterators.filter(original.iterator, (s: String) => policy.canKeep(s))
+  override def termVectors(): TermVectors = {
+    val originalTermVectors = in.termVectors()
+    new TermVectors {
+      override def get(doc: Int): Fields = new Fields {
+        private val originalFields = originalTermVectors.get(doc)
 
-      override def terms(field: String): Terms = if (policy.canKeep(field)) original.terms(field) else null
-
-      override def size(): Int = remainingFieldsInfo.size
+        override def iterator(): JavaIterator[String] = Iterators.filter(originalFields.iterator, (s: String) => policy.canKeep(s))
+        override def terms(field: String): Terms = if (policy.canKeep(field)) originalFields.terms(field) else null
+        override def size(): Int = remainingFieldsInfo.size
+      }
     }
   }
 
@@ -116,8 +118,8 @@ private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fie
   private class RorStoredFieldsReaderDecorator(final val underlying: StoredFieldsReader)
     extends StoredFieldsReaderForScalaHelper(underlying) {
 
-    override def visitDocument(docID: Int, visitor: StoredFieldVisitor): Unit = {
-      underlying.visitDocument(docID, new RorStoredFieldVisitorDecorator(visitor))
+    override def document(docID: Int, visitor: StoredFieldVisitor): Unit = {
+      underlying.document(docID, new RorStoredFieldVisitorDecorator(visitor))
     }
 
     override def clone(): StoredFieldsReader = {
