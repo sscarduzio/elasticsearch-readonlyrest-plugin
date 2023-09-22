@@ -31,7 +31,7 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.es.dlsfls.RorDocumentFieldDirectoryReader.RorDocumentFieldDirectorySubReader
 import tech.beshu.ror.es.utils.XContentBuilderOps._
-import tech.beshu.ror.fls.FieldsPolicy
+import tech.beshu.ror.fls.{FieldsPolicy, JsonPolicyBasedFilterer}
 
 import java.io.ByteArrayOutputStream
 import java.util.{Iterator => JavaIterator}
@@ -107,6 +107,14 @@ private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fie
 
   override def document(docID: Int, visitor: StoredFieldVisitor): Unit =
     super.document(docID, new RorStoredFieldVisitorDecorator(visitor))
+
+  override def storedFields(): StoredFields = {
+    val storedFields = super.storedFields()
+    new StoredFields {
+      override def document(docID: Int, visitor: StoredFieldVisitor): Unit =
+        storedFields.document(docID, new RorStoredFieldVisitorDecorator(visitor))
+    }
+  }
 
   override def getCoreCacheHelper: IndexReader.CacheHelper = this.in.getCoreCacheHelper
 

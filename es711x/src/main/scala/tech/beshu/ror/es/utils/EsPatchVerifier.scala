@@ -80,4 +80,3 @@ object EsPatchVerifier extends Logging {
     settings.getAsBoolean("xpack.security.enabled", false)
   }
 }
-
