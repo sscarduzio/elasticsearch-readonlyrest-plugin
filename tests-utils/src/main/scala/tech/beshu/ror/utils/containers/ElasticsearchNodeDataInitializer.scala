@@ -25,3 +25,13 @@ trait ElasticsearchNodeDataInitializer {
 object NoOpElasticsearchNodeDataInitializer extends ElasticsearchNodeDataInitializer {
   override def initialize(esVersion: String, adminRestClient: RestClient): Unit = {}
 }
+
+class ComposedElasticsearchNodeDataInitializer(initializer1: ElasticsearchNodeDataInitializer,
+                                               initializer2: ElasticsearchNodeDataInitializer)
+  extends ElasticsearchNodeDataInitializer {
+
+  override def initialize(esVersion: String, adminRestClient: RestClient): Unit = {
+    initializer1.initialize(esVersion, adminRestClient)
+    initializer2.initialize(esVersion, adminRestClient)
+  }
+}
