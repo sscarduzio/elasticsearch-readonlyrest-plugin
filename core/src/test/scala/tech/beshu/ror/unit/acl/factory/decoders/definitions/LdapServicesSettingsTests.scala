@@ -159,12 +159,12 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
             val ldap1Service = definitions.items.head
             ldap1Service.id should be(LdapService.Name("ldap1"))
             ldap1Service shouldBe a[LdapAuthService]
-            getLdapAuthorizationGroupsSearchFilterConfig(ldap1Service) should be (None)
+            getLdapAuthorizationGroupsSearchFilterConfig(ldap1Service) should be(None)
 
             val ldap2Service = definitions.items(1)
             ldap2Service.id should be(LdapService.Name("ldap2"))
             ldap2Service shouldBe a[LdapAuthService]
-            getLdapAuthorizationGroupsSearchFilterConfig(ldap2Service) should be (None)
+            getLdapAuthorizationGroupsSearchFilterConfig(ldap2Service) should be(None)
           }
         )
       }
@@ -228,6 +228,27 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
           }
         )
       }
+      "Unknown host is configured, but connection check on startup is disabled" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: dummy-host
+               |    port: 234
+               |    ignore_ldap_connectivity_problems: true
+               |    connection_timeout: 500 ms
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
+           """.stripMargin,
+          assertion = { definitions =>
+            definitions.items should have size 1
+            val ldapService = definitions.items.head
+            ldapService.id should be(LdapService.Name("ldap1"))
+            ldapService shouldBe a[LdapAuthenticationService]
+          }
+        )
+      }
       "two LDAP hosts are defined" in {
         assertDecodingSuccess(
           yaml =
@@ -258,14 +279,15 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
           }
         )
       }
-      "server discovery is enabled" ignore {
-        // Ignored until feature allowing starting up ROR without LDAP connection will be developed
+      "server discovery is enabled" in {
+        val ignoreLdapConnectivityProblems = "true" // required to test settings decoding locally
         assertDecodingSuccess(
           yaml =
             s"""
                |  ldaps:
                |  - name: ldap1
                |    server_discovery: true
+               |    ignore_ldap_connectivity_problems: $ignoreLdapConnectivityProblems
                |    ssl_enabled: false                                        # default true
                |    ssl_trust_all_certs: true                                 # default false
                |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
@@ -400,7 +422,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
               ldapService.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
               ldapService.id should be(LdapService.Name("ldap1"))
 
-              getLdapAuthorizationGroupsSearchFilterConfig(ldapService) should be (Some(NestedGroupsConfig(
+              getLdapAuthorizationGroupsSearchFilterConfig(ldapService) should be(Some(NestedGroupsConfig(
                 nestedLevels = 5,
                 Dn("ou=Groups,dc=example,dc=com"),
                 GroupSearchFilter("(objectClass=*)"),
@@ -436,7 +458,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
               ldapService.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
               ldapService.id should be(LdapService.Name("ldap1"))
 
-              getLdapAuthorizationGroupsSearchFilterConfig(ldapService) should be (Some(NestedGroupsConfig(
+              getLdapAuthorizationGroupsSearchFilterConfig(ldapService) should be(Some(NestedGroupsConfig(
                 nestedLevels = 5,
                 Dn("ou=Groups,dc=example,dc=com"),
                 GroupSearchFilter("(objectClass=*)"),
@@ -677,7 +699,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
           }
         )
       }
-      "one of LDAP services are unavailable" in {
+      "one of LDAP services is unavailable (invalid port)" in {
         assertDecodingFailure(
           yaml =
             s"""
@@ -690,6 +712,56 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
            """.stripMargin,
           assertion = { error =>
             error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with LDAP connection to: ldaps://localhost:12345")))
+          }
+        )
+      }
+      "one of LDAP services is unavailable (invalid host)" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: "dummy-host"
+               |    port: 12345
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+             """.stripMargin,
+          assertion = { error =>
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with LDAP connection to: ldaps://dummy-host:12345")))
+          }
+        )
+      }
+      "some of LDAP services are unavailable" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    hosts:
+               |      - ldaps://ssl-ldap2.foo.com:836
+               |      - ldaps://ssl-ldap3.foo.com:836
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    connection_timeout_in_sec: 2
+            """.stripMargin,
+          assertion = { error =>
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("There was a problem with LDAP connection to: ldaps://ssl-ldap2.foo.com:836,ldaps://ssl-ldap3.foo.com:836")))
+          }
+        )
+      }
+      "malformed ldap host syntax" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: "ldaps://ssl-ldap2.foo.com:836"
+               |    port: 12345
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+             """.stripMargin,
+          assertion = { error =>
+            error should be(CoreCreationError.DefinitionsLevelCreationError(Message("Server information missing: use 'host' and 'port', 'servers'/'hosts' or 'service_discovery' option.")))
           }
         )
       }
