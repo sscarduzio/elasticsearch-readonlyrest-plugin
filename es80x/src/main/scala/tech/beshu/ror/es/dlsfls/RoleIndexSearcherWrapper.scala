@@ -49,7 +49,7 @@ object RoleIndexSearcherWrapper extends Logging {
             case Some(fieldsHeader) =>
               fieldsFromHeaderValue(fieldsHeader)
                 .flatMap { fields =>
-                  Try(DocumentFieldReader.wrap(reader, fields))
+                  Try(RorDocumentFieldReader.wrap(reader, fields))
                     .recover { case e => throw new IllegalStateException("FLS: Couldn't extract FLS fields from threadContext", e) }
                 }
                 .map(r => (r, r))

@@ -30,7 +30,7 @@ import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 trait FieldRuleSourceFilteringSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
-    with ESVersionSupportForAnyWordSpecLike 
+    with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
   this: EsClusterProvider =>
 
@@ -38,7 +38,8 @@ trait FieldRuleSourceFilteringSuite
 
   override implicit val rorConfigFileName = "/field_level_security/readonlyrest.yml"
 
-  override def nodeDataInitializer = Some(FieldRuleSourceFilteringSuite.nodeDataInitializer())
+  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] =
+    Some(FieldRuleSourceFilteringSuite.nodeDataInitializer())
 
   protected def fetchDocument(client: RestClient,
                               index: String,
