@@ -77,10 +77,10 @@ object LdapServicesDecoder {
   private def decodeLdapService(cursor: HCursor)
                                (implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): Task[Either[DecodingFailure, LdapUserService]] = {
     for {
-      authenticationService <- (authenticationServiceDecoder: AsyncDecoder[LdapAuthenticationService]) (cursor)
-      authortizationService <- (authorizationServiceDecoder: AsyncDecoder[LdapAuthorizationService]) (cursor)
+      authenticationService <- (authenticationServiceDecoder: AsyncDecoder[LdapAuthenticationService])(cursor)
+      authorizationService <- (authorizationServiceDecoder: AsyncDecoder[LdapAuthorizationService])(cursor)
       circuitBreakerSettings <- AsyncDecoderCreator.from(circuitBreakerDecoder)(cursor)
-    } yield (authenticationService, authortizationService, circuitBreakerSettings) match {
+    } yield (authenticationService, authorizationService, circuitBreakerSettings) match {
       case (Right(authn), Right(authz), Right(circuitBreakerConfig)) => Right {
         new CircuitBreakerLdapServiceDecorator(
           new ComposedLdapAuthService(authn.id, authn, authz), circuitBreakerConfig
@@ -159,7 +159,7 @@ object LdapServicesDecoder {
   private def serverDiscoveryConnectionDecodingFailureFrom(error: ServerDiscoveryConnectionError) = {
     val connectionErrorMessage = Message(
       s"There was a problem with LDAP connection in discovery mode. " +
-      s"Connection details: recordName=${error.recordName.getOrElse("default")}, " +
+        s"Connection details: recordName=${error.recordName.getOrElse("default")}, " +
         s"providerUrl=${error.providerUrl.getOrElse("default")}")
     DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))
   }

@@ -8,13 +8,9 @@ readonlyrest:
 
     - name: "user:forbidden"
       type: forbid
-      actions:
-        - "indices:data/write/*"
-      indices:
-        - "test1_index"
+      actions: ["indices:data/write/*"]
+      indices: ["test1_index"]
 
     - name: "user"
-      actions:
-        - "indices:data/write/*"
-      indices:
-        - "test2_index"
+      actions: ["indices:data/write/*"]
+      indices: ["test2_index"]

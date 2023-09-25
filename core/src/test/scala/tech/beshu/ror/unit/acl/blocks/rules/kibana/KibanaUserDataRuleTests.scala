@@ -41,6 +41,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepre
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 
 import scala.util.{Failure, Success, Try}
 
@@ -74,7 +75,7 @@ class KibanaUserDataRuleTests
     }
     "kibana apps are configured" should {
       "pass the apps to the User Metadata object if the rule matches" in {
-        val apps = UniqueNonEmptyList.of(KibanaApp("app1"), KibanaApp("app2"))
+        val apps: UniqueNonEmptyList[KibanaApp] = UniqueNonEmptyList.of(FullNameKibanaApp("app1"), FullNameKibanaApp("app2"))
         val rule = createRuleFrom(KibanaUserDataRule.Settings(
           access = KibanaAccess.Unrestricted,
           kibanaIndex = AlreadyResolved(ClusterIndexName.Local.kibanaDefault),
@@ -101,15 +102,15 @@ class KibanaUserDataRuleTests
         val paths: UniqueNonEmptyList[KibanaAllowedApiPath] = UniqueNonEmptyList.of(
           KibanaAllowedApiPath(
             AllowedHttpMethod.Any,
-            Regex.buildFromLiteral("/api/index_management/indices")
+            JavaRegex.buildFromLiteral("/api/index_management/indices")
           ),
           KibanaAllowedApiPath(
             AllowedHttpMethod.Any,
-            Regex.compile("""^\/api\/spaces\/.*$""").get
+            JavaRegex.compile("""^\/api\/spaces\/.*$""").get
           ),
           KibanaAllowedApiPath(
             AllowedHttpMethod.Specific(HttpMethod.Get),
-            Regex.compile("""^\/api\/alerting\/rule\/.*$""").get
+            JavaRegex.compile("""^\/api\/alerting\/rule\/.*$""").get
           )
         )
         val rule = createRuleFrom(KibanaUserDataRule.Settings(

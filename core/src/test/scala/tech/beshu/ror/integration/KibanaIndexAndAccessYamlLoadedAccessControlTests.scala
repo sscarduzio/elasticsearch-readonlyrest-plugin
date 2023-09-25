@@ -27,12 +27,12 @@ import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMet
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
-import tech.beshu.ror.utils.uniquelist.UniqueList
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
   with BaseYamlLoadedAccessControlTest
@@ -59,13 +59,13 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
       |  - name: PERSONAL_GRP
       |    groups: [ Personal ]
       |    kibana_access: rw
-      |    kibana_hide_apps: [ "Enterprise Search|Overview", "Observability" ]
+      |    kibana_hide_apps: [ "Enterprise Search|Overview", "Observability", "/^Analytics\\|(?!(Maps)$).*$/" ]
       |    kibana_index: '.kibana_@{user}'
       |
       |  - name: ADMIN_GRP
       |    groups: [ Administrators ]
       |    kibana_access: admin
-      |    kibana_hide_apps: [ "Enterprise Search|Overview", "Observability" ]
+      |    kibana_hide_apps: [ "Enterprise Search|Overview", "Observability", "/^Analytics\\|(?!(Maps)$).*$/" ]
       |    kibana_index: '.kibana_admins'
       |
       |  - name: Infosec
@@ -223,7 +223,11 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             availableGroups = UniqueList.of(GroupName("Administrators"), GroupName("Infosec")),
             kibanaIndex = Some(kibanaIndexName(".kibana_admins")),
             kibanaTemplateIndex = None,
-            hiddenKibanaApps = Set(KibanaApp("Enterprise Search|Overview"), KibanaApp("Observability")),
+            hiddenKibanaApps = Set(
+              FullNameKibanaApp("Enterprise Search|Overview"),
+              FullNameKibanaApp("Observability"),
+              kibanaAppRegex("/^Analytics\\|(?!(Maps)$).*$/")
+            ),
             allowedKibanaApiPaths = Set.empty,
             kibanaAccess = Some(KibanaAccess.Admin),
             kibanaMetadata = None,
@@ -255,7 +259,11 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             kibanaIndex = Some(kibanaIndexName(".kibana_admins")),
             kibanaAccess = Some(KibanaAccess.Admin),
             indices = Set(clusterIndexName(".kibana_admins")),
-            hiddenKibanaApps = Set(KibanaApp("Observability"), KibanaApp("Enterprise Search|Overview"))
+            hiddenKibanaApps = Set(
+              FullNameKibanaApp("Observability"),
+              FullNameKibanaApp("Enterprise Search|Overview"),
+              kibanaAppRegex("/^Analytics\\|(?!(Maps)$).*$/")
+            )
           ) {
             blockContext
           }

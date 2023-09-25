@@ -18,14 +18,31 @@ package tech.beshu.ror.accesscontrol.domain
 
 import cats.Eq
 import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.accesscontrol.domain.JsRegex.CompilationResult
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
+import tech.beshu.ror.utils.js.JsCompiler
 
-final case class KibanaApp(value: NonEmptyString)
+sealed trait KibanaApp
 object KibanaApp {
-  implicit val eqKibanaApps: Eq[KibanaApp] = Eq.fromUniversalEquals
+  final case class FullNameKibanaApp(name: NonEmptyString) extends KibanaApp
+  final case class KibanaAppRegex(regex: JsRegex) extends KibanaApp
+
+  def from(str: NonEmptyString)
+          (implicit jsCompiler: JsCompiler): Either[String, KibanaApp] = {
+    JsRegex.compile(str) match {
+        case Right(jsRegex) => Right(KibanaApp.KibanaAppRegex(jsRegex))
+        case Left(CompilationResult.NotRegex) => Right(KibanaApp.FullNameKibanaApp(str))
+        case Left(CompilationResult.SyntaxError) => Left(s"Cannot compile [${str.value}] as a JS regex (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions)")
+      }
+  }
+
+  implicit val eqKibanaApps: Eq[KibanaApp] = Eq.by {
+    case FullNameKibanaApp(name) => name.value
+    case KibanaAppRegex(regex) => regex.value.value
+  }
 }
 
-final case class KibanaAllowedApiPath(httpMethod: AllowedHttpMethod, pathRegex: Regex)
+final case class KibanaAllowedApiPath(httpMethod: AllowedHttpMethod, pathRegex: JavaRegex)
 object KibanaAllowedApiPath {
 
   sealed trait AllowedHttpMethod

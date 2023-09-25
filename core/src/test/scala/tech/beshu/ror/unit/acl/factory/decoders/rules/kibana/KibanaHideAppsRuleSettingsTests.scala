@@ -19,10 +19,11 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.kibana
 import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaHideAppsRule
-import tech.beshu.ror.accesscontrol.domain.KibanaApp
+import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.MalformedValue
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
+import tech.beshu.ror.utils.TestsUtils.kibanaAppRegex
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaHideAppsRule] {
@@ -42,7 +43,7 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.kibanaAppsToHide should be(UniqueNonEmptyList.of(KibanaApp("app1")))
+            rule.settings.kibanaAppsToHide should be(UniqueNonEmptyList.of(FullNameKibanaApp("app1")))
           }
         )
       }
@@ -55,11 +56,14 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    kibana_hide_apps: [app1, app2]
+              |    kibana_hide_apps: [app1, "/^Analytics\\|(?!(Maps)$).*$/"]
               |
               |""".stripMargin,
           assertion = rule => {
-            val apps = UniqueNonEmptyList.of(KibanaApp("app1"), KibanaApp("app2"))
+            val apps = UniqueNonEmptyList.of(
+              FullNameKibanaApp("app1"),
+              kibanaAppRegex("/^Analytics\\|(?!(Maps)$).*$/")
+            )
             rule.settings.kibanaAppsToHide should be(apps)
           }
         )
@@ -103,6 +107,28 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
             errors should have size 1
             errors.head should be (RulesLevelCreationError(MalformedValue(
               """kibana_hide_apps: null
+                |""".stripMargin)))
+          }
+        )
+      }
+      "at least one kibana app regex cannot be compiled" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    kibana_hide_apps: ["/^(?!(Analytics\\|Management).*$).*$/", "/^(?!(Analytics\\|Maps).*$.*$/"]
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be (RulesLevelCreationError(MalformedValue(
+              """kibana_hide_apps:
+                |- "/^(?!(Analytics\\|Management).*$).*$/"
+                |- "/^(?!(Analytics\\|Maps).*$.*$/"
                 |""".stripMargin)))
           }
         )

@@ -22,7 +22,7 @@ import cats.implicits._
 import tech.beshu.ror.accesscontrol.domain.Json._
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
-import tech.beshu.ror.accesscontrol.domain.{CorrelationId, KibanaAccess}
+import tech.beshu.ror.accesscontrol.domain.{CorrelationId, KibanaAccess, KibanaApp}
 
 import scala.jdk.CollectionConverters._
 
@@ -72,7 +72,13 @@ object MetadataValue {
   private def hiddenKibanaApps(userMetadata: UserMetadata) = {
     NonEmptyList
       .fromList(userMetadata.hiddenKibanaApps.toList)
-      .map(apps => ("x-ror-kibana-hidden-apps", MetadataList(apps.map(_.value.value))))
+      .map(apps => (
+        "x-ror-kibana-hidden-apps",
+        MetadataList(apps.map {
+          case KibanaApp.FullNameKibanaApp(name) => name.value
+          case KibanaApp.KibanaAppRegex(regex) => regex.value.value
+        })
+      ))
       .toMap
   }
 
