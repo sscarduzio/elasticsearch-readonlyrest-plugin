@@ -32,7 +32,7 @@ class MiscSuite
     with ESVersionSupportForAnyWordSpecLike 
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/misc/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/misc/readonlyrest.yml"
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(MiscSuite.nodeDataInitializer())
 

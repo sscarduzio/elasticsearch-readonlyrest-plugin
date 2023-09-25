@@ -31,7 +31,7 @@ class DeleteByQuerySuite
 
   private val matchAllQuery = ujson.read("""{"query" : {"match_all" : {}}}""".stripMargin)
 
-  override implicit val rorConfigFileName = "/delete_by_query/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/delete_by_query/readonlyrest.yml"
 
   override def nodeDataInitializer = Some(ElasticsearchTweetsInitializer)
 

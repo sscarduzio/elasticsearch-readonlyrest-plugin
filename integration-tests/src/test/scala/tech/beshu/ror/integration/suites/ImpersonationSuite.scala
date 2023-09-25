@@ -37,7 +37,7 @@ class ImpersonationSuite
     with BeforeAndAfterAll 
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/impersonation/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/impersonation/readonlyrest.yml"
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ImpersonationSuite.nodeDataInitializer())
 

@@ -28,7 +28,7 @@ class AdminApiWithDefaultRorIndexSuite
   extends BaseAdminApiSuite
     with PluginTestSupport {
 
-  override implicit val rorConfigFileName = "/admin_api/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/admin_api/readonlyrest.yml"
   override protected val readonlyrestIndexName: String = ".readonlyrest"
 
   override protected lazy val rorWithIndexConfig: EsClusterContainer = {

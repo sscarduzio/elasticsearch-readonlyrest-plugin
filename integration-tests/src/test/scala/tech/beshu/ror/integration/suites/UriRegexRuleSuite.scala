@@ -29,7 +29,7 @@ class UriRegexRuleSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/uri_regex_rules/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/uri_regex_rules/readonlyrest.yml"
 
   "A uri rule" should {
     "allow health check" when {

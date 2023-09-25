@@ -38,7 +38,7 @@ class RemoteReindexSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/reindex_multi_containers/readonlyrest_dest_es.yml"
+  override implicit val rorConfigFileName: String = "/reindex_multi_containers/readonlyrest_dest_es.yml"
   private val sourceEsRorConfigFileName = "/reindex_multi_containers/readonlyrest_source_es.yml"
 
   private lazy val sourceEsCluster = createLocalClusterContainer(

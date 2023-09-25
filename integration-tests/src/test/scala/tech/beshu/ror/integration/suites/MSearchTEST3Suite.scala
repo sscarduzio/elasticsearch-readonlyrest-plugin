@@ -37,7 +37,7 @@ class MSearchTEST3Suite
     """{"version":true,"size":0,"query":{"match_all":{}}}"""
   )
 
-  override implicit val rorConfigFileName = "/msearch_test3/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/msearch_test3/readonlyrest.yml"
 
   override def nodeDataInitializer = Some(MSearchTEST3Suite.nodeDataInitializer())
 

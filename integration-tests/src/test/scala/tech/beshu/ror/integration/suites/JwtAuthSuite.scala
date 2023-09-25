@@ -37,7 +37,7 @@ class JwtAuthSuite
   private val validKeyRole = "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
   private val wrongKey = "abcdefdsadsadsafdsfsadasdfdsfdfdsfdsfsadsdsaffds"
 
-  override implicit val rorConfigFileName = "/jwt_auth/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/jwt_auth/readonlyrest.yml"
 
   "rejectRequestWithoutAuthorizationHeader" in {
     val clusterStateManager = new CatManager(noBasicAuthClient, esVersion = esVersionUsed)

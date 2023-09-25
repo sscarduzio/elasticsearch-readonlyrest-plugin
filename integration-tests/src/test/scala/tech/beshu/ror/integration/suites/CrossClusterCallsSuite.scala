@@ -46,7 +46,7 @@ class CrossClusterCallsSuite
 
   import tech.beshu.ror.integration.suites.CrossClusterCallsSuite._
 
-  override implicit val rorConfigFileName = "/cross_cluster_search/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/cross_cluster_search/readonlyrest.yml"
 
   override lazy val targetEs = container.localCluster.nodes.head
 

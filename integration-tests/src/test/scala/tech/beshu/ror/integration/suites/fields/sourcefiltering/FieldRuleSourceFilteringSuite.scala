@@ -36,7 +36,7 @@ trait FieldRuleSourceFilteringSuite
 
   protected type CALL_RESULT <: JsonResponse
 
-  override implicit val rorConfigFileName = "/field_level_security/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/field_level_security/readonlyrest.yml"
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] =
     Some(FieldRuleSourceFilteringSuite.nodeDataInitializer())

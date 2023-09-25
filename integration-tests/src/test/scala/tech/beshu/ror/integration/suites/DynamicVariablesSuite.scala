@@ -33,7 +33,7 @@ class DynamicVariablesSuite
     with SingleClientSupport
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/dynamic_vars/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/dynamic_vars/readonlyrest.yml"
 
   override lazy val targetEs = container.nodes.head
 

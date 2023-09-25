@@ -37,7 +37,7 @@ class RorKbnAuthSuite
   private val validKeyRole = "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
   private val wrongKey = "abcdefdsadsadsadsadsadfdsfdsfdsfdsfds"
 
-  override implicit val rorConfigFileName = "/ror_kbn_auth/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/ror_kbn_auth/readonlyrest.yml"
 
   "rejectRequestWithoutAuthorizationHeader" in {
     val clusterStateManager = new CatManager(noBasicAuthClient, esVersion = esVersionUsed)

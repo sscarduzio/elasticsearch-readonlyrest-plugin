@@ -32,7 +32,7 @@ class HostsRuleSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/hosts_rule/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/hosts_rule/readonlyrest.yml"
 
   override def nodeDataInitializer = Some(HostsRuleSuite.nodeDataInitializer())
 

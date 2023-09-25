@@ -32,7 +32,7 @@ class ExternalAuthenticationSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/external_authentication/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/external_authentication/readonlyrest.yml"
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 

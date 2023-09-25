@@ -32,7 +32,7 @@ class DocumentApiSuite
     with ESVersionSupportForAnyWordSpecLike 
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/document_api/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/document_api/readonlyrest.yml"
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(DocumentApiSuite.nodeDataInitializer())
 

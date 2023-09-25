@@ -30,7 +30,7 @@ class ActionsSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/actions/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/actions/readonlyrest.yml"
 
   override val nodeDataInitializer = Some { (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)

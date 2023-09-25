@@ -35,7 +35,7 @@ class QueryAuditLogSerializerSuite
     with BeforeAndAfterEach
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/query_audit_log_serializer/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/query_audit_log_serializer/readonlyrest.yml"
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 

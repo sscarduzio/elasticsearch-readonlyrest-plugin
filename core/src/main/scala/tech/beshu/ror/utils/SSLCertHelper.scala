@@ -44,7 +44,9 @@ object SSLCertHelper extends Logging {
   def prepareSSLEngine(sslContext: SslContext,
                        channelHandlerContext: ChannelHandlerContext,
                        serverName: Option[SNIServerName]): SSLEngine = {
-    val sslEngine = sslContext.newEngine(channelHandlerContext.alloc())
+    val sslEngine = sslContext
+      .newEngine(channelHandlerContext.alloc())
+      .enableHostnameVerification
     serverName.foreach { name =>
       val sslParameters = sslEngine.getSSLParameters
       sslParameters.setServerNames(List(name).asJava)
@@ -294,7 +296,9 @@ object SSLCertHelper extends Logging {
   }
 
   private def trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder, config: SslConfiguration) = Try {
-    val sslEngine = sslContextBuilder.build().newEngine(ByteBufAllocator.DEFAULT)
+    val sslEngine = sslContextBuilder.build()
+      .newEngine(ByteBufAllocator.DEFAULT)
+      .enableHostnameVerification
     logger.info("ROR SSL: Available ciphers: " + sslEngine.getEnabledCipherSuites.mkString(","))
     if (config.allowedCiphers.nonEmpty) {
       sslEngine.setEnabledCipherSuites(config.allowedCiphers.map(_.value).toArray)
@@ -328,6 +332,16 @@ object SSLCertHelper extends Logging {
         logger.info(s"Initializing ROR SSL using default SSL provider ${SslContext.defaultServerProvider().name()}")
         SslContextBuilder.forServer(privateKey, certificateChain.toList.asJava)
       }
+    }
+  }
+
+  private implicit class EnableHostnameVerification(val sslEngine: SSLEngine) extends AnyVal {
+
+    def enableHostnameVerification: SSLEngine = {
+      val sslParameters = sslEngine.getSSLParameters
+      sslParameters.setEndpointIdentificationAlgorithm("HTTPS")
+      sslEngine.setSSLParameters(sslParameters)
+      sslEngine
     }
   }
 

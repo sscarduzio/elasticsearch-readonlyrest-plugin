@@ -49,7 +49,7 @@ class MSearchTEST1Suite
 
   val msearchBodyCombo = msearchBodyNotExists ++ msearchBodyQueryWorks ++ msearchBodyEmptyIndex
 
-  override implicit val rorConfigFileName = "/msearch_test1/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/msearch_test1/readonlyrest.yml"
 
   override def nodeDataInitializer = Some(MSearchTEST1Suite.nodeDataInitializer())
 

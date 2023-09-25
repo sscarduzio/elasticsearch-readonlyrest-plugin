@@ -36,7 +36,7 @@ class ClusterApiSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/cluster_api/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/cluster_api/readonlyrest.yml"
   override lazy val targetEs = container.nodes.head
 
   override lazy val clusterContainer: EsClusterContainer = {
