@@ -98,4 +98,16 @@
         <sha1>aa95e46dbc32454f3983221d420e78ef19ddf844</sha1>
         <cve>CVE-2023-35116</cve>
     </suppress>
+    <suppress>
+        <notes><![CDATA[hostname verification is not enabled in SSLCertHelper]]></notes>
+        <sha1>196a9c42b23c0326f6fe53f8be06b706ca1f0fe4</sha1>
+        <cve>CVE-2023-4586</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: jackson-databind-2.15.2.jar - false positive (https://github.com/FasterXML/jackson-databind/issues/3972)
+   ]]></notes>
+        <sha1>9353b021f10c307c00328f52090de2bdb4b6ff9c</sha1>
+        <cve>CVE-2023-35116</cve>
+    </suppress>
 </suppressions>
