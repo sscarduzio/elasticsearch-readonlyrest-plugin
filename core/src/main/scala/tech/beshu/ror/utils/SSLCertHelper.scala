@@ -43,10 +43,16 @@ object SSLCertHelper extends Logging {
 
   def prepareSSLEngine(sslContext: SslContext,
                        channelHandlerContext: ChannelHandlerContext,
-                       serverName: Option[SNIServerName]): SSLEngine = {
-    val sslEngine = sslContext
-      .newEngine(channelHandlerContext.alloc())
-      .enableHostnameVerification
+                       serverName: Option[SNIServerName],
+                       fipsCompliant: Boolean): SSLEngine = {
+    val sslEngine = if(fipsCompliant) {
+      sslContext
+        .newEngine(channelHandlerContext.alloc())
+    } else {
+      sslContext
+        .newEngine(channelHandlerContext.alloc())
+        .enableHostnameVerification
+    }
     serverName.foreach { name =>
       val sslParameters = sslEngine.getSSLParameters
       sslParameters.setServerNames(List(name).asJava)
@@ -101,7 +107,7 @@ object SSLCertHelper extends Logging {
       .attempt
       .map {
         case Right(sslCtxBuilder) =>
-          areProtocolAndCiphersValid(sslCtxBuilder, sslConfiguration)
+          areProtocolAndCiphersValid(sslCtxBuilder, sslConfiguration, fipsCompliant)
           if (sslConfiguration.allowedCiphers.nonEmpty) {
             sslCtxBuilder.ciphers(sslConfiguration.allowedCiphers.map(_.value).asJava)
           }
@@ -127,16 +133,6 @@ object SSLCertHelper extends Logging {
       }
       .unsafeRunSync()
   }
-
-  def areProtocolAndCiphersValid(sslContextBuilder: SslContextBuilder, config: SslConfiguration): Boolean =
-    trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder, config)
-      .fold(
-        ex => {
-          logger.error("ROR SSL: cannot validate SSL protocols and ciphers! " + ex.getClass.getSimpleName + ": " + ex.getMessage, ex)
-          false
-        },
-        _ => true
-      )
 
   def isPEMHandlingAvailable: Boolean = {
     Try {
@@ -171,6 +167,18 @@ object SSLCertHelper extends Logging {
       }
       .unsafeRunSync()
   }
+
+  private def areProtocolAndCiphersValid(sslContextBuilder: SslContextBuilder,
+                                         config: SslConfiguration,
+                                         fipsCompliant: Boolean): Boolean =
+    trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder, config, fipsCompliant)
+      .fold(
+        ex => {
+          logger.error("ROR SSL: cannot validate SSL protocols and ciphers! " + ex.getClass.getSimpleName + ": " + ex.getMessage, ex)
+          false
+        },
+        _ => true
+      )
 
   private def getKeyManagerFactoryInstance(fipsCompliant: Boolean) = {
     if(fipsCompliant) {
@@ -295,10 +303,17 @@ object SSLCertHelper extends Logging {
       }
   }
 
-  private def trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder, config: SslConfiguration) = Try {
-    val sslEngine = sslContextBuilder.build()
-      .newEngine(ByteBufAllocator.DEFAULT)
-      .enableHostnameVerification
+  private def trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder,
+                                                       config: SslConfiguration,
+                                                       fipsCompliant: Boolean) = Try {
+    val sslEngine = if(fipsCompliant) {
+      sslContextBuilder.build()
+        .newEngine(ByteBufAllocator.DEFAULT)
+    } else {
+      sslContextBuilder.build()
+        .newEngine(ByteBufAllocator.DEFAULT)
+        .enableHostnameVerification
+    }
     logger.info("ROR SSL: Available ciphers: " + sslEngine.getEnabledCipherSuites.mkString(","))
     if (config.allowedCiphers.nonEmpty) {
       sslEngine.setEnabledCipherSuites(config.allowedCiphers.map(_.value).toArray)
