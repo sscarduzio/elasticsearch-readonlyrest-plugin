@@ -29,7 +29,7 @@ trait FieldRuleQueryDSLSuite
     with ESVersionSupportForAnyWordSpecLike {
   this: EsClusterProvider =>
 
-  override implicit val rorConfigFileName = "/field_level_security_query/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/field_level_security_query/readonlyrest.yml"
 
   override def nodeDataInitializer = Some(FieldRuleQueryDSLSuite.nodeDataInitializer())
 

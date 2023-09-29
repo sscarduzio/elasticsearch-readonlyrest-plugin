@@ -33,7 +33,7 @@ class RorDisabledSuite
     with SingleClientSupport
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/plugin_disabled/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/plugin_disabled/readonlyrest.yml"
 
   override lazy val targetEs = container.nodes.head
 

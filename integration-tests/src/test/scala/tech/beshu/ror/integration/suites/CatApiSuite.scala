@@ -31,7 +31,7 @@ class CatApiSuite
     with ESVersionSupportForAnyWordSpecLike 
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/cat_api/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/cat_api/readonlyrest.yml"
 
   private lazy val dev1CatManager = new CatManager(basicAuthClient("dev1", "test"), esVersion = esVersionUsed)
   private lazy val dev2CatManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)

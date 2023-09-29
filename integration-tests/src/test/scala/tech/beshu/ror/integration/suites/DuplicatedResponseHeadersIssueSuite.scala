@@ -34,7 +34,7 @@ class DuplicatedResponseHeadersIssueSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/duplicated_response_headers_issue/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/duplicated_response_headers_issue/readonlyrest.yml"
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 

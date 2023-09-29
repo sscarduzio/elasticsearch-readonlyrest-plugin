@@ -30,7 +30,7 @@ class RemoteClusterAuditingToolsSuite
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport {
 
-  override implicit val rorConfigFileName = "/cluster_auditing_tools/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/cluster_auditing_tools/readonlyrest.yml"
 
   private lazy val auditEsContainer: EsContainer = {
     val cluster = createLocalClusterContainer(

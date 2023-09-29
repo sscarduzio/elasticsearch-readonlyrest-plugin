@@ -38,7 +38,7 @@ class FipsSslSuite
     with BeforeAndAfterAll
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/fips_ssl/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/fips_ssl/readonlyrest.yml"
 
   override def clusterContainer: EsClusterContainer = generalClusterContainer
 

@@ -28,7 +28,7 @@ class LocalClusterAuditingToolsSuite
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport {
 
-  override implicit val rorConfigFileName = "/enabled_auditing_tools/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/enabled_auditing_tools/readonlyrest.yml"
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 

@@ -38,7 +38,7 @@ class SnapshotAndRestoreApiSuite
     with CustomScalaTestMatchers
     with ESVersionSupportForAnyWordSpecLike {
 
-  override implicit val rorConfigFileName = "/snapshot_and_restore_api/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/snapshot_and_restore_api/readonlyrest.yml"
 
   override def nodeDataInitializer = Some(SnapshotAndRestoreApiSuite.nodeDataInitializer())
 

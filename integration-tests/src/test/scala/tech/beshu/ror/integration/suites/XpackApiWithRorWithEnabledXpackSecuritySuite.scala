@@ -24,7 +24,7 @@ import tech.beshu.ror.utils.misc.EsModule.isCurrentModuleNotExcluded
 
 class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
 
-  override implicit val rorConfigFileName = "/xpack_api/readonlyrest_without_ror_ssl.yml"
+  override implicit val rorConfigFileName: String = "/xpack_api/readonlyrest_without_ror_ssl.yml"
 
   override protected def rorClusterSecurityType: SecurityType = {
     if(isCurrentModuleNotExcluded(allEs6xBelowEs63x)) {

@@ -33,7 +33,7 @@ class IndexTemplatesManagementSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/templates/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/templates/readonlyrest.yml"
 
   indexTemplateApiTests("A legacy template API")(new LegacyTemplateManager(_, esVersionUsed))
   if (doesSupportIndexTemplates) indexTemplateApiTests("A new template API")(new IndexTemplateManager(_, esVersionUsed))

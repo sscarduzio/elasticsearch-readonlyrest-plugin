@@ -32,7 +32,7 @@ class ReindexSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/reindex/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/reindex/readonlyrest.yml"
 
   override def nodeDataInitializer = Some(ReindexSuite.nodeDataInitializer())
 

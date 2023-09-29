@@ -31,7 +31,7 @@ class IndicesReverseWildcardSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/indices_reverse_wildcards/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/indices_reverse_wildcards/readonlyrest.yml"
 
   override def nodeDataInitializer = Some(IndicesReverseWildcardSuite.nodeDataInitializer())
 

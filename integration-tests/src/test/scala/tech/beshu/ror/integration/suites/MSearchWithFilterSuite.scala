@@ -35,7 +35,7 @@ class MSearchWithFilterSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/msearch_with_filter/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/msearch_with_filter/readonlyrest.yml"
 
   override def nodeDataInitializer = Some(ElasticsearchTweetsInitializer)
 

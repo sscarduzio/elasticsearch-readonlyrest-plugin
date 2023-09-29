@@ -31,7 +31,7 @@ class SplitIndexApiSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/split_api/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/split_api/readonlyrest.yml"
 
   private lazy val user1IndexManager = new IndexManager(basicAuthClient("dev1", "test"), esVersionUsed)
   private lazy val user2IndexManager = new IndexManager(basicAuthClient("dev2", "test"), esVersionUsed)

@@ -32,7 +32,7 @@ class LdapIntegrationSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/ldap_integration/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/ldap_integration/readonlyrest.yml"
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(LdapIntegrationSuite.nodeDataInitializer())
 

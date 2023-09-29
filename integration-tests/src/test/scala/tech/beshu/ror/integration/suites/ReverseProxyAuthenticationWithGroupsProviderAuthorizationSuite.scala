@@ -32,7 +32,7 @@ class ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/rev_proxy_groups_provider/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/rev_proxy_groups_provider/readonlyrest.yml"
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 

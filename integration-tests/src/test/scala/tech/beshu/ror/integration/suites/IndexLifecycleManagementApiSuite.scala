@@ -46,7 +46,7 @@ class IndexLifecycleManagementApiSuite
     with CustomScalaTestMatchers
     with Eventually {
 
-  override implicit val rorConfigFileName = "/index_lifecycle_management_api/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/index_lifecycle_management_api/readonlyrest.yml"
 
   override lazy val targetEs = container.nodes.head
 

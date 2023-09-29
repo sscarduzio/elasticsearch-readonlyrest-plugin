@@ -17,7 +17,7 @@
 
 plugins {
     id "com.github.johnrengelman.shadow" version "7.1.2"
-    id "org.owasp.dependencycheck"       version "8.1.2"
+    id "org.owasp.dependencycheck"       version "8.2.1"
     id "java"
     id "maven-publish"
 }

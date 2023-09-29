@@ -52,7 +52,8 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
           val sslEngine = SSLCertHelper.prepareSSLEngine(
             sslContext = clientSslCtx,
             channelHandlerContext = ctx,
-            serverName = None
+            serverName = None,
+            fipsCompliant = fipsCompliant
           )
           ctx.pipeline().replace(this, "internode_ssl_client", new SslHandler(sslEngine))
           super.connect(ctx, remoteAddress, localAddress, promise)

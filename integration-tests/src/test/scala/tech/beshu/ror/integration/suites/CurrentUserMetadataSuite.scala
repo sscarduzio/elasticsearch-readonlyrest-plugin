@@ -31,7 +31,7 @@ class CurrentUserMetadataSuite
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/current_user_metadata/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/current_user_metadata/readonlyrest.yml"
 
   "An ACL" when {
     "handling current user metadata kibana plugin request" should {

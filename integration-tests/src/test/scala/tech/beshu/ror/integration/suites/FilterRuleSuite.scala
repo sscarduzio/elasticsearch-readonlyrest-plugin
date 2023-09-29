@@ -33,7 +33,7 @@ class FilterRuleSuite
     with SingleClientSupport 
     with CustomScalaTestMatchers {
 
-  override implicit val rorConfigFileName = "/filter_rules/readonlyrest.yml"
+  override implicit val rorConfigFileName: String = "/filter_rules/readonlyrest.yml"
 
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(FilterRuleSuite.nodeDataInitializer())
 
