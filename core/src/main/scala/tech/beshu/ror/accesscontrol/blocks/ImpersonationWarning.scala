@@ -147,6 +147,7 @@ object ImpersonationWarning {
     implicit val rorKbnAuthRule: ImpersonationWarningExtractor[RorKbnAuthRule] = ImpersonationWarningExtractor[RorKbnAuthRule] { (rule, blockName, _) =>
       Some(impersonationNotSupportedWarning(rule, blockName))
     }
+    implicit val tokenAuthenticationRule: ImpersonationWarningExtractor[TokenAuthenticationRule] = noWarnings[TokenAuthenticationRule]
 
     private def fromHashedCredentials[R <: BasicAuthenticationRule[HashedCredentials]](rule: R,
                                                                                        blockName: Block.Name,

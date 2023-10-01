@@ -94,6 +94,7 @@ object VariableContext {
     implicit val proxyAuthRule: VariableUsage[ProxyAuthRule] = NotUsingVariable
     implicit val rorKbnAuthRule: VariableUsage[RorKbnAuthRule] = NotUsingVariable
     implicit val sessionMaxIdleRule: VariableUsage[SessionMaxIdleRule] = NotUsingVariable
+    implicit val tokenAuthenticationRule: VariableUsage[TokenAuthenticationRule] = NotUsingVariable
   }
 
   final case class Context(currentRule: Rule,
