@@ -91,7 +91,10 @@ public class Constants {
       "indices:admin/template/*",
       "cluster:admin/component_template/*",
       "cluster:admin/settings/*",
-      "indices:admin/aliases/*"
+      "indices:admin/aliases/*",
+      "cluster:monitor/health_api",
+      "cluster:admin/migration/get_system_feature",
+      "cluster:monitor/settings"
   );
 
   public static final Set<String> ADMIN_ACTIONS = Sets.newHashSet(
@@ -104,7 +107,6 @@ public class Constants {
       "cluster:admin/ingest/pipeline/put",
       "cluster:admin/ingest/pipeline/delete",
       "indices:admin/data_stream/get",
-      "cluster:monitor/settings",
       "indices:admin/settings/update",
       "cluster:admin/ilm/put",
       "cluster:admin/ilm/delete",
