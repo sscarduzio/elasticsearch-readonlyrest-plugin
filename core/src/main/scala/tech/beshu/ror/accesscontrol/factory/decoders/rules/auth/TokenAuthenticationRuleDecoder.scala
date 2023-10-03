@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{Header, User}
+import tech.beshu.ror.accesscontrol.domain.{Header, Token, User}
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.OptionalImpersonatorDefinitionOps
@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 final class TokenAuthenticationRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                            mocksProvider: MocksProvider,
                                            implicit val caseMappingEquality: UserIdCaseMappingEquality) extends RuleBaseDecoderWithoutAssociatedFields[TokenAuthenticationRule] {
+
   override protected def decoder: Decoder[Block.RuleDefinition[TokenAuthenticationRule]] =
     TokenAuthenticationRuleDecoder
       .decoder
@@ -50,11 +51,13 @@ private object TokenAuthenticationRuleDecoder {
   private val decoder: Decoder[TokenAuthenticationRule.Settings] =
     Decoder.instance { c =>
       for {
-        token <- c.downField("token").as[NonEmptyString]
+        token <- c.downField("token").as[NonEmptyString].map(Token.apply)
         username <- c.downField("username").as[User.Id]
-        header <- c.downField("header").as[Option[NonEmptyString]].map(_.map(Header.Name.apply))
+        maybeCustomHeaderName <- c.downField("header").as[Option[Header.Name]]
       } yield TokenAuthenticationRule.Settings(
-        username, token, header
+        user = username,
+        token = token,
+        customHeaderName = maybeCustomHeaderName
       )
     }
 

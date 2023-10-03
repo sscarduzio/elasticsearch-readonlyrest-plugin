@@ -331,6 +331,11 @@ object TestsUtils {
     case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to ApiKey")
   }
 
+  def tokenFrom(value: String): Token = NonEmptyString.from(value) match {
+    case Right(v) => Token(v)
+    case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to Token")
+  }
+
   implicit class NonEmptyListOps[T](val value: T) extends AnyVal {
     def nel: NonEmptyList[T] = NonEmptyList.one(value)
   }

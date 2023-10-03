@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
-import tech.beshu.ror.utils.TestsUtils.headerFrom
+import tech.beshu.ror.utils.TestsUtils.{headerNameFrom, tokenFrom}
 
 class TokenAuthenticationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[TokenAuthenticationRule] {
@@ -49,7 +49,8 @@ class TokenAuthenticationRuleSettingsTests
           assertion = rule =>
             rule.settings should be(Settings(
               user = User.Id("john"),
-              tokenHeader = headerFrom("Authorization" -> "Bearer abc123XYZ")
+              token = tokenFrom("Bearer abc123XYZ"),
+              tokenHeaderName = headerNameFrom("Authorization")
             ))
         )
       }
@@ -70,7 +71,8 @@ class TokenAuthenticationRuleSettingsTests
           assertion = rule =>
             rule.settings should be(Settings(
               user = User.Id("john"),
-              tokenHeader = headerFrom("X-Custom-Header" -> "Bearer abc123XYZ")
+              token = tokenFrom("Bearer abc123XYZ"),
+              tokenHeaderName = headerNameFrom("X-Custom-Header")
             ))
         )
       }
@@ -91,7 +93,8 @@ class TokenAuthenticationRuleSettingsTests
           assertion = rule =>
             rule.settings should be(Settings(
               user = User.Id("john"),
-              tokenHeader = headerFrom("Authorization" -> "Bearer abc123XYZ")
+              token = tokenFrom("Bearer abc123XYZ"),
+              tokenHeaderName = headerNameFrom("Authorization")
             ))
         )
       }
@@ -111,13 +114,14 @@ class TokenAuthenticationRuleSettingsTests
           assertion = rule =>
             rule.settings should be(Settings(
               user = User.Id("john"),
-              tokenHeader = headerFrom("Authorization" -> "Bearer abc123XYZ")
+              token = tokenFrom("Bearer abc123XYZ"),
+              tokenHeaderName = headerNameFrom("Authorization")
             ))
         )
       }
     }
     "not be able to be loaded from config" when {
-      "token is not defined" in {
+      "username is not defined" in {
         assertDecodingFailure(
           yaml =
             s"""
@@ -139,7 +143,7 @@ class TokenAuthenticationRuleSettingsTests
           }
         )
       }
-      "username is not defined" in {
+      "token is not defined" in {
         assertDecodingFailure(
           yaml =
             s"""

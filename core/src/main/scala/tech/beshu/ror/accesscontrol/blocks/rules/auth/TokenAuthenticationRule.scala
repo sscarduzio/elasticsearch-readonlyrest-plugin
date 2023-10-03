@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.Eq
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.RequestId
@@ -34,7 +33,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleA
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{Header, User}
+import tech.beshu.ror.accesscontrol.domain.{Header, Token, User}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 final class TokenAuthenticationRule(val settings: Settings,
@@ -59,18 +58,18 @@ final class TokenAuthenticationRule(val settings: Settings,
       .unit
       .map { _ =>
         val requestContext = blockContext.requestContext
-        if (hasTokenInHeader(requestContext)) {
+        if (verifyTokenFromHeader(requestContext)) {
           Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(settings.user))))
         } else {
           Rejected()
         }
       }
 
-  private def hasTokenInHeader(requestContext: RequestContext) = {
+  private def verifyTokenFromHeader(requestContext: RequestContext) = {
     requestContext
       .headers
-      .find(_.name === settings.tokenHeader.name)
-      .exists(_.value == settings.tokenHeader.value)
+      .find(_.name === settings.tokenHeaderName)
+      .exists(_.value == settings.token.value)
   }
 }
 
@@ -80,16 +79,17 @@ object TokenAuthenticationRule {
   }
 
   final case class Settings(user: User.Id,
-                            tokenHeader: Header)
+                            token: Token,
+                            tokenHeaderName: Header.Name)
 
   object Settings {
     def apply(user: User.Id,
-              token: NonEmptyString,
-              customHeader: Option[Header.Name]): Settings = {
-      val headerName = customHeader.getOrElse(Header.Name.authorization)
+              token: Token,
+              customHeaderName: Option[Header.Name]): Settings = {
       Settings(
-        user,
-        Header(headerName, token)
+        user = user,
+        token = token,
+        tokenHeaderName = customHeaderName.getOrElse(Header.Name.authorization)
       )
     }
   }

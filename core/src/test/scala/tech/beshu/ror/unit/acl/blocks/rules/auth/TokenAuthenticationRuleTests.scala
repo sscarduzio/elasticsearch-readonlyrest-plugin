@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impers
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.{Credentials, Header, PlainTextSecret, User}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, _}
+import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, headerNameFrom, _}
 import tech.beshu.ror.utils.UserIdEq
 
 import scala.concurrent.duration._
@@ -47,9 +47,27 @@ class TokenAuthenticationRuleTests
 
   "A TokenAuthenticationRule" should {
     "match" when {
-      "token is configured and the same token can be find in auth header" in {
+      "token is configured and default header name is used" in {
         assertMatchRule(
-          settings = TokenAuthenticationRule.Settings(User.Id("userA"), headerFrom("custom-user-auth-header" -> "Bearer abc123XYZ")),
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("userA"),
+            token = tokenFrom("Bearer abc123XYZ"),
+            customHeaderName = None
+          ),
+          headers = Set(headerFrom("Authorization" -> "Bearer abc123XYZ"))
+        )(
+          blockContextAssertion = defaultOutputBlockContextAssertion(
+            User.Id("userA")
+          )
+        )
+      }
+      "token and header name are configured and the same token can be find in auth header" in {
+        assertMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("userA"),
+            token = tokenFrom("Bearer abc123XYZ"),
+            tokenHeaderName = headerNameFrom("custom-user-auth-header")
+          ),
           headers = Set(headerFrom("custom-user-auth-header" -> "Bearer abc123XYZ"))
         )(
           blockContextAssertion = defaultOutputBlockContextAssertion(
@@ -57,9 +75,13 @@ class TokenAuthenticationRuleTests
           )
         )
       }
-      "token is configured and the same token can be find in auth header (header name case ignoring)" in {
+      "token and header name are configured and the same token can be find in auth header (header name case ignoring)" in {
         assertMatchRule(
-          settings = TokenAuthenticationRule.Settings(User.Id("userA"), headerFrom("custom-user-auth-header" -> "Bearer abc123XYZ")),
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("userA"),
+            token = tokenFrom("Bearer abc123XYZ"),
+            tokenHeaderName = headerNameFrom("custom-user-auth-header")
+          ),
           headers = Set(headerFrom("CUSTOM-USER-AUTH-HEADER" -> "Bearer abc123XYZ"))
         )(
           blockContextAssertion = defaultOutputBlockContextAssertion(
@@ -71,7 +93,11 @@ class TokenAuthenticationRuleTests
         "impersonation is enabled" when {
           "impersonated user is on allowed users list" in {
             assertMatchRule(
-              settings = TokenAuthenticationRule.Settings(User.Id("userA"), headerFrom("custom-user-auth-header" -> "Bearer abc123XYZ")),
+              settings = TokenAuthenticationRule.Settings(
+                user = User.Id("userA"),
+                token = tokenFrom("Bearer abc123XYZ"),
+                tokenHeaderName = headerNameFrom("custom-user-auth-header")
+              ),
               headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("userA")),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
@@ -94,14 +120,22 @@ class TokenAuthenticationRuleTests
     "not match" when {
       "configured token does not correspond to the auth header one" in {
         assertNotMatchRule(
-          settings = TokenAuthenticationRule.Settings(User.Id("userA"), headerFrom("custom-user-auth-header" -> "Bearer abc123XYZ")),
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("userA"),
+            token = tokenFrom("Bearer abc123XYZ"),
+            tokenHeaderName = headerNameFrom("custom-user-auth-header")
+          ),
           impersonation = Impersonation.Disabled,
           headers = Set(headerFrom("custom-user-auth-header" -> "Bearer 123"))
         )
       }
       "token is passed in different header than the configured one" in {
         assertNotMatchRule(
-          settings = TokenAuthenticationRule.Settings(User.Id("userA"), headerFrom("custom-user-auth-header" -> "Bearer abc123XYZ")),
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("userA"),
+            token = tokenFrom("Bearer abc123XYZ"),
+            tokenHeaderName = headerNameFrom("custom-user-auth-header")
+          ),
           impersonation = Impersonation.Disabled,
           headers = Set(headerFrom("Authorization" -> "Bearer abc123XYZ"))
         )
@@ -110,7 +144,11 @@ class TokenAuthenticationRuleTests
         "impersonation is enabled" when {
           "admin cannot be authenticated" in {
             assertNotMatchRule(
-              settings = TokenAuthenticationRule.Settings(User.Id("userA"), headerFrom("custom-user-auth-header" -> "Bearer abc123XYZ")),
+              settings = TokenAuthenticationRule.Settings(
+                user = User.Id("userA"),
+                token = tokenFrom("Bearer abc123XYZ"),
+                tokenHeaderName = headerNameFrom("custom-user-auth-header")
+              ),
               headers = Set(basicAuthHeader("admin:wrong_pass"), impersonationHeader("userA")),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
@@ -125,7 +163,11 @@ class TokenAuthenticationRuleTests
           }
           "admin cannot impersonate the given user" in {
             assertNotMatchRule(
-              settings = TokenAuthenticationRule.Settings(User.Id("userA"), headerFrom("custom-user-auth-header" -> "Bearer abc123XYZ")),
+              settings = TokenAuthenticationRule.Settings(
+                user = User.Id("userA"),
+                token = tokenFrom("Bearer abc123XYZ"),
+                tokenHeaderName = headerNameFrom("custom-user-auth-header")
+              ),
               headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("userA")),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
@@ -140,7 +182,11 @@ class TokenAuthenticationRuleTests
           }
           "rule doesn't accept given impersonated user" in {
             assertNotMatchRule(
-              settings = TokenAuthenticationRule.Settings(User.Id("userB"), headerFrom("custom-user-auth-header" -> "Bearer abc123XYZ")),
+              settings = TokenAuthenticationRule.Settings(
+                user = User.Id("userB"),
+                token = tokenFrom("Bearer abc123XYZ"),
+                tokenHeaderName = headerNameFrom("custom-user-auth-header")
+              ),
               headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("userA")),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
@@ -177,10 +223,10 @@ class TokenAuthenticationRuleTests
     val rule = new TokenAuthenticationRule(settings, impersonation, UserIdEq.caseSensitive)
     val requestContext = MockRequestContext.metadata.copy(headers = headers)
     val blockContext = CurrentUserMetadataRequestBlockContext(
-      requestContext,
-      UserMetadata.from(requestContext),
-      Set.empty,
-      List.empty
+      requestContext = requestContext,
+      userMetadata = UserMetadata.from(requestContext),
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty
     )
     val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
     assertionType match {
