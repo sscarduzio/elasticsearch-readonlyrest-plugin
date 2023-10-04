@@ -85,6 +85,7 @@ object LocalUsersContext {
     implicit val authKeySha512Rule: LocalUsersSupport[AuthKeySha512Rule] = AvailableLocalUsers[AuthKeySha512Rule](fromEligibleUsers)
     implicit val authKeyUnixRule: LocalUsersSupport[AuthKeyUnixRule] = AvailableLocalUsers[AuthKeyUnixRule](fromEligibleUsers)
     implicit val proxyAuthRule: LocalUsersSupport[ProxyAuthRule] = AvailableLocalUsers[ProxyAuthRule](fromEligibleUsers)
+    implicit val tokenAuthenticationRule: LocalUsersSupport[TokenAuthenticationRule] = AvailableLocalUsers[TokenAuthenticationRule](fromEligibleUsers)
     implicit val usersRule: LocalUsersSupport[UsersRule] = AvailableLocalUsers[UsersRule] {
       _.settings.userIds
         .toList

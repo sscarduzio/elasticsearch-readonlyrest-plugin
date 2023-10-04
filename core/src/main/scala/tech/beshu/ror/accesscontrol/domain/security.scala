@@ -84,6 +84,8 @@ object PlainTextSecret {
   implicit val eqAuthKey: Eq[PlainTextSecret] = Eq.fromUniversalEquals
 }
 
+final case class Token(value: NonEmptyString)
+
 final case class AuthorizationToken(value: NonEmptyString)
 
 object Jwt {

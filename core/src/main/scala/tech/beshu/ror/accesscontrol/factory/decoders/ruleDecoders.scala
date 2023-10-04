@@ -169,6 +169,8 @@ object ruleDecoders {
         Some(new LdapAuthenticationRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
       case ProxyAuthRule.Name.name =>
         Some(new ProxyAuthRuleDecoder(authProxyDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+      case TokenAuthenticationRule.Name.name =>
+        Some(new TokenAuthenticationRuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
       case _ => None
     }
     optionalRuleDecoder
