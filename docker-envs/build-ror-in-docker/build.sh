@@ -3,7 +3,7 @@
 cd "$(dirname $0)"
 
 if [[ $# -eq 0 ]] ; then
-    echo "Please pass to the script an ES version you'd like to build ROR for"
+    echo "Please pass to the script ES versions you'd like to build ROR for"
     exit 1
 fi
 
