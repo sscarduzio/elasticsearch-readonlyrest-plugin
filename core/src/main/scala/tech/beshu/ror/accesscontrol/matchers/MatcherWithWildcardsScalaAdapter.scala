@@ -18,14 +18,14 @@ package tech.beshu.ror.accesscontrol.matchers
 
 import cats.Show
 import cats.implicits._
-import tech.beshu.ror.utils.{CaseMappingEquality, MatcherWithWildcards, StringMatcherWithWildcards}
+import tech.beshu.ror.utils.{Matchable, MatcherWithWildcardsScala}
 
 import scala.jdk.CollectionConverters._
 
 trait Matcher[A] {
   type Conversion[B] = Function1[B, A]
 
-  def underlying: MatcherWithWildcards[A]
+  def underlying: MatcherWithWildcardsScala[A]
 
   def filter[B <: A](items: Set[B]): Set[B]
 
@@ -36,23 +36,17 @@ trait Matcher[A] {
   def contains(str: String): Boolean
 }
 object Matcher {
-  def asMatcherWithWildcards[A](matcher: Matcher[A]): StringMatcherWithWildcards = {
-    new StringMatcherWithWildcards(matcher.underlying.getMatchers)
-  }
 
   object Conversion {
     def from[B, A](func: B => A): Matcher[A]#Conversion[B] = (a: B) => func(a)
   }
 }
 
-class MatcherWithWildcardsScalaAdapter[A](override val underlying: MatcherWithWildcards[A])
+class MatcherWithWildcardsScalaAdapter[A](override val underlying: MatcherWithWildcardsScala[A])
   extends Matcher[A] {
 
   override def filter[B <: A](items: Set[B]): Set[B] = {
-    underlying
-      .filter(items.asJava)
-      .asScala
-      .toSet
+    underlying.filter(items)
   }
 
   override def filter[B: Conversion](items: Set[B]): Set[B] = {
@@ -68,22 +62,22 @@ class MatcherWithWildcardsScalaAdapter[A](override val underlying: MatcherWithWi
   }
 
   override def contains(str: String): Boolean =
-    underlying.getMatchers.contains(str)
+    underlying.globPatterns.exists(_.pattern.value == str)
 
 }
 
 object MatcherWithWildcardsScalaAdapter {
 
-  def create[T: CaseMappingEquality](items: Iterable[T]): Matcher[T] =
-    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(items.map(Show[T].show).asJava, CaseMappingEquality.summonJava))
+  def create[A](items: Iterable[A]): Matcher[A] =
+    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcardsScala(items.map(Show[T].show)))
 
-  def apply[A: CaseMappingEquality](patterns: Set[A]): MatcherWithWildcardsScalaAdapter[A] =
+  def apply[A : Matchable](patterns: Set[A]): MatcherWithWildcardsScalaAdapter[A] =
     fromJavaSetString(patterns.map(_.show).asJava)
 
-  def fromJavaSetString[A: CaseMappingEquality](patterns: java.util.Set[String]): MatcherWithWildcardsScalaAdapter[A] =
-    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards[A](patterns, CaseMappingEquality.summonJava))
+  def fromJavaSetString[A](patterns: java.util.Set[String]): MatcherWithWildcardsScalaAdapter[A] =
+    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcardsScala[A](patterns.asScala))
 
-  def fromSetString[A: CaseMappingEquality](patterns: Set[String]): MatcherWithWildcardsScalaAdapter[A] =
+  def fromSetString[A](patterns: Set[String]): MatcherWithWildcardsScalaAdapter[A] =
     fromJavaSetString(patterns.asJava)
 
   def isMatched(pattern: String, value: String): Boolean =

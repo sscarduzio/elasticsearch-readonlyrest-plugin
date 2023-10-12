@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
-import cats.Eq
 import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.RequestId
@@ -29,12 +28,12 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthenticationRule.Set
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseBasicAuthAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 
 final class LdapAuthenticationRule(val settings: Settings,
-                                   override val impersonation: Impersonation,
-                                   implicit override val caseMappingEquality: UserIdCaseMappingEquality)
+                                   override implicit val userIdCaseSensitivity: CaseSensitivity,
+                                   override val impersonation: Impersonation)
   extends BaseBasicAuthAuthenticationRule {
 
   override val name: Rule.Name = LdapAuthenticationRule.Name.name
@@ -45,8 +44,7 @@ final class LdapAuthenticationRule(val settings: Settings,
     settings.ldap.authenticate(credentials.user, credentials.secret)
 
   override protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)
-                                      (implicit requestId: RequestId,
-                                       eq: Eq[User.Id]): Task[UserExistence] = Task.delay {
+                                      (implicit requestId: RequestId): Task[UserExistence] = Task.delay {
     mocksProvider
       .ldapServiceWith(settings.ldap.id)
       .map { mock =>

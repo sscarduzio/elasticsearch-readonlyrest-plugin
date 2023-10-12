@@ -17,9 +17,9 @@
 package tech.beshu.ror.accesscontrol.matchers
 
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
-import tech.beshu.ror.utils.CaseMappingEquality
+import tech.beshu.ror.utils.Matchable
 
-class DataStreamMatcher[T <: DataStreamName : CaseMappingEquality](dataStreams: Set[T]) {
+class DataStreamMatcher[T <: DataStreamName : Matchable](dataStreams: Set[T]) {
   val availableDataStreamsMatcher: Matcher[T] = MatcherWithWildcardsScalaAdapter[T](dataStreams)
 
   def filterDataStreams(dataStreams: Set[T]): Set[T] = availableDataStreamsMatcher.filter(dataStreams)
@@ -30,7 +30,7 @@ class DataStreamMatcher[T <: DataStreamName : CaseMappingEquality](dataStreams: 
 }
 
 object DataStreamMatcher {
-  def create[T <: DataStreamName : CaseMappingEquality](dataStreams: Set[T]): DataStreamMatcher[T] = {
+  def create[T <: DataStreamName : Matchable](dataStreams: Set[T]): DataStreamMatcher[T] = {
     new DataStreamMatcher(dataStreams)
   }
 }

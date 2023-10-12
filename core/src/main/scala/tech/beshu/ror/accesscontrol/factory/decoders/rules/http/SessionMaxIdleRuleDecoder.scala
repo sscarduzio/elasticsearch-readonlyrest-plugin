@@ -16,12 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.http
 
-import cats.Eq
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule.Settings
-import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
@@ -30,15 +29,15 @@ import tech.beshu.ror.providers.UuidProvider
 
 import java.time.Clock
 
-class SessionMaxIdleRuleDecoder(implicit clock: Clock,
-                                uuidProvider: UuidProvider,
-                                userIdEq: Eq[User.Id])
+class SessionMaxIdleRuleDecoder(globalSettings: GlobalSettings)
+                               (implicit clock: Clock,
+                                uuidProvider: UuidProvider)
   extends RuleBaseDecoderWithoutAssociatedFields[SessionMaxIdleRule] {
 
   override protected def decoder: Decoder[RuleDefinition[SessionMaxIdleRule]] = {
     common
       .positiveFiniteDurationDecoder
-      .map(maxIdle => RuleDefinition.create(new SessionMaxIdleRule(Settings(maxIdle))))
+      .map(maxIdle => RuleDefinition.create(new SessionMaxIdleRule(Settings(maxIdle), globalSettings.userIdCaseSensitivity)))
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .decoder

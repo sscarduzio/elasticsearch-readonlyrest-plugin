@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
-import cats.Eq
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -31,17 +30,17 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthenticationRul
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final class ProxyAuthRule(val settings: Settings,
-                          override val impersonation: Impersonation,
-                          implicit override val caseMappingEquality: UserIdCaseMappingEquality)
+                          override val userIdCaseSensitivity: CaseSensitivity,
+                          override val impersonation: Impersonation)
   extends BaseAuthenticationRule
     with Logging {
 
@@ -63,8 +62,7 @@ final class ProxyAuthRule(val settings: Settings,
   }
 
   override protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)
-                                      (implicit requestId: RequestId,
-                                       userIdEq: Eq[Id]): Task[UserExistence] = Task.delay {
+                                      (implicit requestId: RequestId): Task[UserExistence] = Task.delay {
     if (shouldAuthenticate(user)) UserExistence.Exists
     else UserExistence.NotExist
   }

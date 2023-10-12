@@ -25,10 +25,9 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.BaseKibanaRule.Settings
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
-import tech.beshu.ror.accesscontrol.domain.KibanaIndexName._
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local.devNullKibana
-import tech.beshu.ror.accesscontrol.domain.IndexName.Wildcard
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
+import tech.beshu.ror.accesscontrol.domain.KibanaIndexName._
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.matchers.{DataStreamMatcher, IndicesMatcher, MatcherWithWildcardsScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -260,8 +259,8 @@ object BaseKibanaRule {
     ))
     val indicesWriteAction = MatcherWithWildcardsScalaAdapter[Action](Set(Action("indices:data/write/*")))
 
-    val kibanaSampleDataIndexMatcher = IndicesMatcher.create[ClusterIndexName](Set(Local(Wildcard("kibana_sample_data_*"))))
-    val kibanaSampleDataStreamMatcher = DataStreamMatcher.create[DataStreamName](Set(DataStreamName.Pattern("kibana_sample_data_*")))
+    val kibanaSampleDataIndexMatcher = IndicesMatcher.create[ClusterIndexName](Set(Local(IndexName.Pattern(GlobPattern("kibana_sample_data_*")))))
+    val kibanaSampleDataStreamMatcher = DataStreamMatcher.create[DataStreamName](Set(DataStreamName.Pattern(GlobPattern("kibana_sample_data_*"))))
   }
 
   type ProcessingContext = ReaderT[Id, (RequestContext, KibanaIndexName), Boolean]

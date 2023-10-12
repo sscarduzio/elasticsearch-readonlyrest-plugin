@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
-import cats.Eq
 import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.RequestId
@@ -29,14 +28,14 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthorizationRule.Sett
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, LoggedUser, PermittedGroups, User}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 class LdapAuthorizationRule(val settings: Settings,
-                            override val impersonation: Impersonation,
-                            override val caseMappingEquality: UserIdCaseMappingEquality)
+                            override implicit val userIdCaseSensitivity: CaseSensitivity,
+                            override val impersonation: Impersonation)
   extends BaseAuthorizationRule {
 
   override val name: Rule.Name = LdapAuthorizationRule.Name.name
@@ -51,8 +50,7 @@ class LdapAuthorizationRule(val settings: Settings,
 
   override protected def mockedGroupsOf(user: User.Id,
                                         mocksProvider: MocksProvider)
-                                       (implicit requestId: RequestId,
-                                        eq: Eq[User.Id]): Groups = {
+                                       (implicit requestId: RequestId): Groups = {
     mocksProvider
       .ldapServiceWith(settings.ldap.id)
       .map { mock =>

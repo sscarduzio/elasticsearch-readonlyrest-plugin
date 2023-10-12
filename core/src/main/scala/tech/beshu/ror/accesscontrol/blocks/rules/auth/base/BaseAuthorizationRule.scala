@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
-import cats.Eq
 import monix.eval.Task
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
@@ -27,10 +26,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleRe
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings, SimpleAuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{LoggedUser, PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.domain.{LoggedUser, PermittedGroups}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.annotation.nowarn
@@ -39,9 +38,9 @@ private[auth] trait BaseAuthorizationRule
   extends AuthorizationRule
     with SimpleAuthorizationImpersonationSupport {
 
-  protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[GroupName]): Option[UniqueNonEmptyList[GroupName]]
+  protected def userIdCaseSensitivity: CaseSensitivity
 
-  protected def caseMappingEquality: UserIdCaseMappingEquality
+  protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[GroupName]): Option[UniqueNonEmptyList[GroupName]]
 
   protected def groupsPermittedByRule: PermittedGroups
 
@@ -76,7 +75,6 @@ private[auth] trait BaseAuthorizationRule
                                                                                  user: LoggedUser.ImpersonatedUser,
                                                                                  mocksProvider: MocksProvider): Task[RuleResult[B]] = {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
-    implicit val eqUserId: Eq[User.Id] = caseMappingEquality.toOrder
     mockedGroupsOf(user.id, mocksProvider) match {
       case Groups.Present(mockedGroups) =>
         authorizeLoggedUser(

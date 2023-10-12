@@ -25,13 +25,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, Ru
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{LoggedUser, User}
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 
-class UsersRule(val settings: Settings,
-                implicit val caseMappingEquality: UserIdCaseMappingEquality)
+class UsersRule(val settings: Settings)
   extends RegularRule {
 
   override val name: Rule.Name = UsersRule.Name.name

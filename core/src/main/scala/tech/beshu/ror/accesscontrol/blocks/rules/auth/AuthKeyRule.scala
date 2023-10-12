@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
-import cats.Eq
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -28,12 +27,12 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 
 final class AuthKeyRule(override val settings: BasicAuthenticationRule.Settings[Credentials],
-                        override val impersonation: Impersonation,
-                        implicit override val caseMappingEquality: UserIdCaseMappingEquality)
+                        override implicit val userIdCaseSensitivity: CaseSensitivity,
+                        override val impersonation: Impersonation)
   extends BasicAuthenticationRule(settings)
     with Logging {
 
@@ -41,17 +40,14 @@ final class AuthKeyRule(override val settings: BasicAuthenticationRule.Settings[
 
   override protected def compare(configuredCredentials: Credentials,
                                  credentials: Credentials): Task[Boolean] = Task.now {
-    import tech.beshu.ror.utils.CaseMappingEquality._
     configuredCredentials === credentials
   }
 
   override def exists(user: User.Id, mocksProvider: MocksProvider)
-                     (implicit requestId: RequestId,
-                      eq: Eq[User.Id]): Task[UserExistence] = Task.now {
+                     (implicit requestId: RequestId): Task[UserExistence] = Task.now {
     if (user === settings.credentials.user) UserExistence.Exists
     else UserExistence.NotExist
   }
-
 
   override val eligibleUsers: EligibleUsersSupport =
     EligibleUsersSupport.Available(Set(settings.credentials.user))

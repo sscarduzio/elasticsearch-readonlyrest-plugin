@@ -55,7 +55,7 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMetho
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{Blacklist, Whitelist}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, _}
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.KibanaUserDataRuleTogetherWith
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
@@ -186,10 +186,12 @@ object show {
     }
     implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
     implicit val clusterIndexNameShow: Show[ClusterIndexName] = Show.show(_.stringify)
+    implicit val localClusterIndexNameShow: Show[ClusterIndexName.Local] = Show.show(_.stringify)
+    implicit val remoteClusterIndexNameShow: Show[ClusterIndexName.Remote] = Show.show(_.stringify)
     implicit val clusterNameFullShow: Show[ClusterName.Full] = Show.show(_.value.value)
     implicit val indexNameShow: Show[IndexName] = Show.show {
       case f@IndexName.Full(_) => f.show
-      case IndexName.Wildcard(name) => name.value
+      case IndexName.Pattern(name) => name.value.pattern.show
     }
     implicit val kibanaIndexNameShow: Show[KibanaIndexName] = Show.show(_.underlying.show)
     implicit val fullIndexNameShow: Show[IndexName.Full] = Show.show(_.name.value)

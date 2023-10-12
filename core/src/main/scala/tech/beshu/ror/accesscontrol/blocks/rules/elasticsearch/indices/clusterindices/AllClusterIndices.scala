@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.matchers.IndicesMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.accesscontrol.show.logs._
 
 trait AllClusterIndices extends BaseIndicesProcessor {
   this: IndicesRule =>

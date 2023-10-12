@@ -68,7 +68,7 @@ private object DataStreamsDecodersHelper {
 
     private def validateIsLowerCase(value: DataStreamName) = value match {
       case DataStreamName.Full(name) if isLowerCase(name) => Right(())
-      case DataStreamName.Pattern(name) if isLowerCase(name) => Right(())
+      case DataStreamName.Pattern(name) if isLowerCase(name.pattern) => Right(())
       case DataStreamName.Full(_) | DataStreamName.Pattern(_) =>
         Left(Convertible.ConvertError("Data stream name cannot contain the upper case characters"))
       case DataStreamName.All => Right(())

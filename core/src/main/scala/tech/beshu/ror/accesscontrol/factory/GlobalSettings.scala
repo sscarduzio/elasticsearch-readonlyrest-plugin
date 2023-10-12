@@ -16,20 +16,16 @@
  */
 package tech.beshu.ror.accesscontrol.factory
 
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 
 final case class GlobalSettings(showBasicAuthPrompt: Boolean,
                                 forbiddenRequestMessage: String,
                                 flsEngine: GlobalSettings.FlsEngine,
                                 configurationIndex: RorConfigurationIndex,
-                                usernameCaseMapping: GlobalSettings.UsernameCaseMapping)
+                                userIdCaseSensitivity: CaseSensitivity)
 
 object GlobalSettings {
-  sealed trait UsernameCaseMapping
-  object UsernameCaseMapping {
-    case object CaseSensitive extends UsernameCaseMapping
-    case object CaseInsensitive extends UsernameCaseMapping
-  }
 
   sealed trait FlsEngine
   object FlsEngine {

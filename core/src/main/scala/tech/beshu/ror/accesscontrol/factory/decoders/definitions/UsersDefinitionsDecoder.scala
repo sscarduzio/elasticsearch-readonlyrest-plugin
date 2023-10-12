@@ -28,9 +28,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.GroupsOrRule
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain.{GroupLike, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
@@ -52,7 +52,7 @@ object UsersDefinitionsDecoder {
                ldapServiceDefinitions: Definitions[LdapService],
                impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                mocksProvider: MocksProvider,
-               caseMappingEquality: UserIdCaseMappingEquality): ADecoder[Id, Definitions[UserDef]] = {
+               globalSettings: GlobalSettings): ADecoder[Id, Definitions[UserDef]] = {
     implicit val userDefDecoder: SyncDecoder[UserDef] =
       SyncDecoderCreator
         .instance { c =>
@@ -71,7 +71,7 @@ object UsersDefinitionsDecoder {
                 ldapServiceDefinitions,
                 impersonatorsDefinitions,
                 mocksProvider,
-                caseMappingEquality
+                globalSettings
               )
               rulesDecoder.tryDecode(c.withoutKeys(Set(usernameKey, groupsKey)))
             }
@@ -133,7 +133,7 @@ object UsersDefinitionsDecoder {
                                   ldapServiceDefinitions: Definitions[LdapService],
                                   impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                                   mocksProvider: MocksProvider,
-                                  caseMappingEquality: UserIdCaseMappingEquality): Decoder[List[Rule]] = Decoder.instance { c =>
+                                  globalSettings: GlobalSettings): Decoder[List[Rule]] = Decoder.instance { c =>
     type RuleDecoders = List[RuleDecoder[Rule]]
     val ruleNames = c.keys.toList.flatten.map(Rule.Name.apply)
     val ruleDecoders = ruleNames.foldLeft(Either.right[Message, RuleDecoders](List.empty)) {
@@ -149,7 +149,7 @@ object UsersDefinitionsDecoder {
           ldapServiceDefinitions,
           impersonatorsDefinitions,
           mocksProvider,
-          caseMappingEquality
+          globalSettings
         ) match {
           case Some(ruleDecoder) => Right(ruleDecoder :: decoders)
           case None => Left(Message(s"Unknown rule '${ruleName.show}' in users definitions section"))

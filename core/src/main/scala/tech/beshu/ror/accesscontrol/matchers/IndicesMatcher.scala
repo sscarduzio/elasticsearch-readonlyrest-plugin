@@ -17,9 +17,9 @@
 package tech.beshu.ror.accesscontrol.matchers
 
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexName}
-import tech.beshu.ror.utils.CaseMappingEquality
+import tech.beshu.ror.utils.Matchable
 
-class IndicesMatcher[T <: ClusterIndexName : CaseMappingEquality](indices: Set[T]) {
+class IndicesMatcher[T <: ClusterIndexName : Matchable](indices: Set[T]) {
   val availableIndicesMatcher: Matcher[T] = MatcherWithWildcardsScalaAdapter[T](indices)
 
   def filterIndices(indices: Set[T]): Set[T] = availableIndicesMatcher.filter(indices)
@@ -30,12 +30,12 @@ class IndicesMatcher[T <: ClusterIndexName : CaseMappingEquality](indices: Set[T
 }
 
 object IndicesMatcher {
-  def create[T <: ClusterIndexName : CaseMappingEquality](indices: Set[T]): IndicesMatcher[T] = {
+  def create[T <: ClusterIndexName : Matchable](indices: Set[T]): IndicesMatcher[T] = {
     new IndicesMatcher(indices)
   }
 }
 
-class IndicesNamesMatcher[T <: IndexName : CaseMappingEquality](indices: Set[T]) {
+class IndicesNamesMatcher[T <: IndexName : Matchable](indices: Set[T]) {
   val availableIndicesMatcher: Matcher[T] = MatcherWithWildcardsScalaAdapter[T](indices)
 
   def filterIndices(indices: Set[T]): Set[T] = availableIndicesMatcher.filter(indices)
@@ -46,7 +46,7 @@ class IndicesNamesMatcher[T <: IndexName : CaseMappingEquality](indices: Set[T])
 }
 
 object IndicesNamesMatcher {
-  def create[T <: IndexName : CaseMappingEquality](indices: Set[T]): IndicesNamesMatcher[T] = {
+  def create[T <: IndexName : Matchable](indices: Set[T]): IndicesNamesMatcher[T] = {
     new IndicesNamesMatcher(indices)
   }
 }

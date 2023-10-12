@@ -24,8 +24,8 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyUnixRule.UnixHashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.auth._
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
@@ -37,7 +37,7 @@ import tech.beshu.ror.utils.StringWiseSplitter._
 
 class AuthKeyRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                          mocksProvider: MocksProvider,
-                         implicit val caseMappingEquality: UserIdCaseMappingEquality)
+                         globalSettings: GlobalSettings)
   extends RuleBaseDecoderWithoutAssociatedFields[AuthKeyRule] {
 
   override protected def decoder: Decoder[RuleDefinition[AuthKeyRule]] = {
@@ -47,8 +47,8 @@ class AuthKeyRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
         RuleDefinition.create(
           new AuthKeyRule(
             settings,
-            impersonatorsDef.toImpersonation(mocksProvider),
-            caseMappingEquality
+            globalSettings.userIdCaseSensitivity,
+            impersonatorsDef.toImpersonation(mocksProvider)
           )
         )
       )
@@ -57,7 +57,7 @@ class AuthKeyRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
 
 class AuthKeySha1RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                              mocksProvider: MocksProvider,
-                             implicit val caseMappingEquality: UserIdCaseMappingEquality)
+                             globalSettings: GlobalSettings)
   extends RuleBaseDecoderWithoutAssociatedFields[AuthKeySha1Rule] {
 
   override protected def decoder: Decoder[RuleDefinition[AuthKeySha1Rule]] = {
@@ -67,8 +67,8 @@ class AuthKeySha1RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDe
         RuleDefinition.create(
           new AuthKeySha1Rule(
             settings,
+            globalSettings.userIdCaseSensitivity,
             impersonatorsDef.toImpersonation(mocksProvider),
-            caseMappingEquality
           )
         )
       )
@@ -77,7 +77,7 @@ class AuthKeySha1RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDe
 
 class AuthKeySha256RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                mocksProvider: MocksProvider,
-                               implicit val caseMappingEquality: UserIdCaseMappingEquality)
+                               globalSettings: GlobalSettings)
   extends RuleBaseDecoderWithoutAssociatedFields[AuthKeySha256Rule] {
 
   override protected def decoder: Decoder[RuleDefinition[AuthKeySha256Rule]] = {
@@ -87,8 +87,8 @@ class AuthKeySha256RuleDecoder(impersonatorsDef: Option[Definitions[Impersonator
         RuleDefinition.create(
           new AuthKeySha256Rule(
             settings,
+            globalSettings.userIdCaseSensitivity,
             impersonatorsDef.toImpersonation(mocksProvider),
-            caseMappingEquality
           )
         )
       )
@@ -97,7 +97,7 @@ class AuthKeySha256RuleDecoder(impersonatorsDef: Option[Definitions[Impersonator
 
 class AuthKeySha512RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                mocksProvider: MocksProvider,
-                               implicit val caseMappingEquality: UserIdCaseMappingEquality)
+                               globalSettings: GlobalSettings)
   extends RuleBaseDecoderWithoutAssociatedFields[AuthKeySha512Rule] {
 
   override protected def decoder: Decoder[RuleDefinition[AuthKeySha512Rule]] = {
@@ -107,8 +107,8 @@ class AuthKeySha512RuleDecoder(impersonatorsDef: Option[Definitions[Impersonator
         RuleDefinition.create(
           new AuthKeySha512Rule(
             settings,
+            globalSettings.userIdCaseSensitivity,
             impersonatorsDef.toImpersonation(mocksProvider),
-            caseMappingEquality
           )
         )
       )
@@ -117,7 +117,7 @@ class AuthKeySha512RuleDecoder(impersonatorsDef: Option[Definitions[Impersonator
 
 class AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                              mocksProvider: MocksProvider,
-                                             implicit val caseMappingEquality: UserIdCaseMappingEquality)
+                                             globalSettings: GlobalSettings)
   extends RuleBaseDecoderWithoutAssociatedFields[AuthKeyPBKDF2WithHmacSHA512Rule] {
 
   override protected def decoder: Decoder[RuleDefinition[AuthKeyPBKDF2WithHmacSHA512Rule]] = {
@@ -127,8 +127,8 @@ class AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDef: Option[Definition
         RuleDefinition.create(
           new AuthKeyPBKDF2WithHmacSHA512Rule(
             settings,
+            globalSettings.userIdCaseSensitivity,
             impersonatorsDef.toImpersonation(mocksProvider),
-            caseMappingEquality
           )
         )
       )
@@ -137,7 +137,7 @@ class AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDef: Option[Definition
 
 class AuthKeyUnixRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                              mocksProvider: MocksProvider,
-                             implicit val caseMappingEquality: UserIdCaseMappingEquality)
+                             globalSettings: GlobalSettings)
   extends RuleBaseDecoderWithoutAssociatedFields[AuthKeyUnixRule] {
 
   override protected def decoder: Decoder[RuleDefinition[AuthKeyUnixRule]] = {
@@ -147,8 +147,8 @@ class AuthKeyUnixRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDe
         RuleDefinition.create(
           new AuthKeyUnixRule(
             settings,
+            globalSettings.userIdCaseSensitivity,
             impersonatorsDef.toImpersonation(mocksProvider),
-            caseMappingEquality
           )
         )
       )
