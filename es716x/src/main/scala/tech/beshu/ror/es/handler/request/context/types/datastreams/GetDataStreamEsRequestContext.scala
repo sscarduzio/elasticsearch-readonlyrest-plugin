@@ -23,7 +23,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName}
-import tech.beshu.ror.accesscontrol.matchers.{Matcher, MatcherWithWildcardsScalaAdapter}
+import tech.beshu.ror.accesscontrol.matchers.Matcher
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -87,7 +87,7 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
 
   private def updateActionResponse(response: ActionResponse,
                                    allAllowedIndices: Iterable[ClusterIndexName]): ActionResponse = {
-    val allowedIndicesMatcher = MatcherWithWildcardsScalaAdapter.create(allAllowedIndices)
+    val allowedIndicesMatcher = MatcherWithWildcardsScala.create(allAllowedIndices)
     val filteredDataStreams =
       invokeMethod(response, response.getClass, "getDataStreams")
         .asInstanceOf[java.util.List[Object]]

@@ -20,7 +20,7 @@
 //import tech.beshu.ror.utils.Matchable
 //
 //class DataStreamMatcher[T <: DataStreamName : Matchable](dataStreams: Set[T]) {
-//  val availableDataStreamsMatcher: Matcher[T] = MatcherWithWildcardsScalaAdapter[T](dataStreams)
+//  val availableDataStreamsMatcher: Matcher[T] = MatcherWithWildcardsScala[T](dataStreams)
 //
 //  def filterDataStreams(dataStreams: Set[T]): Set[T] = availableDataStreamsMatcher.filter(dataStreams)
 //

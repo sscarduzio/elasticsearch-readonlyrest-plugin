@@ -50,7 +50,7 @@ private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fie
       val remainingFields = fInfos.asScala.filter(f => policy.canKeep(f.name)).toSet
       new FieldInfos(remainingFields.toArray)
     }
-    logger.debug(s"always allow: ${constants.FIELDS_ALWAYS_ALLOW.asScala.mkString(",")}")
+    logger.debug(s"always allow: ${constants.FIELDS_ALWAYS_ALLOW.mkString(",")}")
     logger.debug(s"original fields were: ${fInfos.asScala.map(_.name).mkString(",")}")
     logger.debug(s"new fields are: ${newInfos.asScala.map(_.name).mkString(",")}")
     newInfos

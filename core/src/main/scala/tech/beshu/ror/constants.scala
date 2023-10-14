@@ -1,6 +1,7 @@
 package tech.beshu.ror
 
 import tech.beshu.ror.accesscontrol.domain.Action
+import scala.collection.mutable.{Set => MutableSet}
 
 object constants {
 
@@ -30,7 +31,8 @@ object constants {
 
   val FIELDS_TRANSIENT = "_fields"
 
-  val FIELDS_ALWAYS_ALLOW: Set[String] = Set("_id", "_uid", "_type", "_version", "_seq_no", "_primary_term", "_parent", "_routing", "_timestamp", "_ttl", "_size", "_index")
+  val FIELDS_ALWAYS_ALLOW: MutableSet[String] =
+    MutableSet("_id", "_uid", "_type", "_version", "_seq_no", "_primary_term", "_parent", "_routing", "_timestamp", "_ttl", "_size", "_index")
 
   val AUDIT_LOG_DEFAULT_INDEX_TEMPLATE = "'readonlyrest_audit-'yyyy-MM-dd"
   val roActionPatterns: Set[Action] = Set(

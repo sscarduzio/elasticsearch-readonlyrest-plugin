@@ -24,15 +24,15 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroup
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.{Settings => GroupsRuleSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsOrRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 class GroupsOrRuleTests extends BaseGroupsRuleTests {
 
-  override def createRule(settings: GroupsRuleSettings, caseSensitivity: UserIdCaseMappingEquality): BaseGroupsRule = {
+  override def createRule(settings: GroupsRuleSettings, caseSensitivity: CaseSensitivity): BaseGroupsRule = {
     new GroupsOrRule(settings, caseSensitivity)
   }
 
@@ -56,7 +56,7 @@ class GroupsOrRuleTests extends BaseGroupsRuleTests {
         assertMatchRule(
           settings = ruleSettings,
           loggedUser = usr,
-          caseSensitivity = false,
+          caseSensitivity = CaseSensitivity.Disabled,
           preferredGroup = None
         )(defaultOutputBlockContextAssertion(
           user = User.Id("user1"),
@@ -85,7 +85,7 @@ class GroupsOrRuleTests extends BaseGroupsRuleTests {
         assertMatchRule(
           settings = ruleSettings,
           loggedUser = usr,
-          caseSensitivity = false,
+          caseSensitivity = CaseSensitivity.Disabled,
           preferredGroup = None
         )(
           blockContextAssertion = defaultOutputBlockContextAssertion(

@@ -33,10 +33,11 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
-import tech.beshu.ror.accesscontrol.factory.GlobalSettings.{FlsEngine, UsernameCaseMapping}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -64,7 +65,7 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
               forbiddenRequestMessage = "Forbidden",
               flsEngine = FlsEngine.default,
               configurationIndex = RorConfigurationIndex(IndexName.Full(".readonlyrest")),
-              userIdCaseSensitivity = UsernameCaseMapping.CaseSensitive
+              userIdCaseSensitivity = CaseSensitivity.Enabled
             ),
             Set.empty
           )

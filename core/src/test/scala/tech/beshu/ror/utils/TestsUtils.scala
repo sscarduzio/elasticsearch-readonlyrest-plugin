@@ -41,6 +41,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRu
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, definitions}
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
@@ -148,8 +149,8 @@ object TestsUtils {
       UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(userIdPattern))),
       new AuthKeyRule(
         BasicAuthenticationRule.Settings(impersonatorCredentials),
-        Impersonation.Disabled,
-        UserIdEq.caseSensitive
+        CaseSensitivity.Enabled,
+        Impersonation.Disabled
       ),
       ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.fromNonEmptyList(impersonatedUsersIdPatterns.map(UserIdPattern))))
     )

@@ -32,11 +32,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ProxyAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.{Credentials, Header, PlainTextSecret, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.concurrent.duration._
@@ -180,7 +180,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory with Inside with B
                          impersonation: Impersonation,
                          headers: Set[Header],
                          assertionType: AssertionType): Unit = {
-    val rule = new ProxyAuthRule(settings, impersonation, UserIdEq.caseSensitive)
+    val rule = new ProxyAuthRule(settings, CaseSensitivity.Enabled, impersonation)
 
     val requestContext = MockRequestContext.metadata.copy(headers = headers)
     val blockContext = CurrentUserMetadataRequestBlockContext(

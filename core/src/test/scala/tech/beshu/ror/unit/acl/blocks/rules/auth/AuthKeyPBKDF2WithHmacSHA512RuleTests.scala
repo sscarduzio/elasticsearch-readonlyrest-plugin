@@ -21,8 +21,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedC
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyPBKDF2WithHmacSHA512Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.utils.UserIdEq
 
 class AuthKeyPBKDF2WithHmacSHA512RuleTests
   extends BasicAuthenticationTestTemplate(supportingImpersonation = false) {
@@ -34,8 +34,8 @@ class AuthKeyPBKDF2WithHmacSHA512RuleTests
       BasicAuthenticationRule.Settings(
         HashedUserAndPassword("KhIxF5EEYkH5GPX51zTRIR4cHqhpRVALSmTaWE18mZEL2KqCkRMeMU4GR848mGq4SDtNvsybtJ/sZBuX6oFaSg==")
       ),
+      CaseSensitivity.Enabled,
       impersonation,
-      UserIdEq.caseSensitive
     )
 }
 
@@ -52,7 +52,7 @@ class AuthKeyPBKDF2WithHmacSHA512RuleAltSyntaxTests
           "JltDNAoXNtc7MIBs2FYlW0o1f815ucj+bel3drdAk2yOufg2PNfQ51qr0EQ6RSkojw/DzrDLFDeXONumzwKjOA=="
         )
       ),
+      CaseSensitivity.Enabled,
       impersonation,
-      UserIdEq.caseSensitive
     )
 }

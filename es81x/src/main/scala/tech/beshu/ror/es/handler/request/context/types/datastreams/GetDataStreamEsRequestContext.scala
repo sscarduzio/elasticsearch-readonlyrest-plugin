@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName}
-import tech.beshu.ror.accesscontrol.matchers.{Matcher, MatcherWithWildcardsScalaAdapter}
+import tech.beshu.ror.accesscontrol.matchers.Matcher
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -73,7 +73,7 @@ class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
 
   private def updateGetDataStreamResponse(response: GetDataStreamAction.Response,
                                           allAllowedIndices: Iterable[ClusterIndexName]): GetDataStreamAction.Response = {
-    val allowedIndicesMatcher = MatcherWithWildcardsScalaAdapter.create(allAllowedIndices)
+    val allowedIndicesMatcher = MatcherWithWildcardsScala.create(allAllowedIndices)
     val filteredStreams =
       response
         .getDataStreams.asSafeList

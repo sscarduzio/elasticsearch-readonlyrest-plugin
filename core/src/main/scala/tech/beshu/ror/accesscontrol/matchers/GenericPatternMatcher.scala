@@ -23,7 +23,6 @@ import tech.beshu.ror.utils.{Matchable, MatcherWithWildcardsScala}
 class GenericPatternMatcher[T : Matchable](patterns: Iterable[Pattern[T]]) {
 
   private val underlyingMatcher: Matcher[String] = {
-    implicit val matchable: Matchable[String] = Matchable.matchable(identity)
     MatcherWithWildcardsScala.create[String](patterns.map(_.value.value)) // todo: probably a problem with ignored case sensitivity
   }
 

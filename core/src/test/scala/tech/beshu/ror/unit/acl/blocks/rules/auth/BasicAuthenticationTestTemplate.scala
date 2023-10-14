@@ -31,12 +31,12 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRu
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.{Id, UserIdPattern}
 import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, impersonationHeader}
-import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
@@ -170,7 +170,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
 
   private def adminAuthenticationRule(credentials: Credentials) = new AuthKeyRule(
     BasicAuthenticationRule.Settings(credentials),
-    Impersonation.Disabled,
-    UserIdEq.caseSensitive
+    CaseSensitivity.Enabled,
+    Impersonation.Disabled
   )
 }

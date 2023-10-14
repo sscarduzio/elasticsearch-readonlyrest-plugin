@@ -31,13 +31,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.{ImpersonationNotAllowed, ImpersonationNotSupported}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser._
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.UserIdEq
 
 class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
@@ -52,8 +52,8 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
         val rule = new LdapAuthenticationRule(
           LdapAuthenticationRule.Settings(service),
-          Impersonation.Disabled,
-          UserIdEq.caseSensitive
+          CaseSensitivity.Enabled,
+          Impersonation.Disabled
         )
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
           CurrentUserMetadataRequestBlockContext(
@@ -76,6 +76,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
             val rule = new LdapAuthenticationRule(
               LdapAuthenticationRule.Settings(service),
+              CaseSensitivity.Enabled,
               Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
@@ -85,8 +86,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 mocksProvider = mocksProviderForLdapFrom(Map(
                   LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(GroupName("g1")))
                 ))
-              )),
-              UserIdEq.caseSensitive
+              ))
             )
             rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
               CurrentUserMetadataRequestBlockContext(
@@ -109,8 +109,8 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
         val rule = new LdapAuthenticationRule(
           LdapAuthenticationRule.Settings(service),
-          Impersonation.Disabled,
-          UserIdEq.caseSensitive
+          CaseSensitivity.Enabled,
+          Impersonation.Disabled
         )
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
@@ -121,8 +121,8 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
         val rule = new LdapAuthenticationRule(
           LdapAuthenticationRule.Settings(service),
-          Impersonation.Disabled,
-          UserIdEq.caseSensitive
+          CaseSensitivity.Enabled,
+          Impersonation.Disabled
         )
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
@@ -135,8 +135,8 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
         val rule = new LdapAuthenticationRule(
           LdapAuthenticationRule.Settings(service),
-          Impersonation.Disabled,
-          UserIdEq.caseSensitive
+          CaseSensitivity.Enabled,
+          Impersonation.Disabled
         )
         val thrown = the[TestException] thrownBy rule.check(blockContext).runSyncUnsafe()
         thrown.getMessage should equal("Cannot reach LDAP")
@@ -152,6 +152,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
             val rule = new LdapAuthenticationRule(
               LdapAuthenticationRule.Settings(service),
+              CaseSensitivity.Enabled,
               Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
@@ -161,8 +162,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 mocksProvider = mocksProviderForLdapFrom(Map(
                   LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(GroupName("g1")))
                 ))
-              )),
-              UserIdEq.caseSensitive
+              ))
             )
 
             rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected(ImpersonationNotAllowed))
@@ -176,6 +176,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
             val rule = new LdapAuthenticationRule(
               LdapAuthenticationRule.Settings(service),
+              CaseSensitivity.Enabled,
               Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
@@ -185,8 +186,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 mocksProvider = mocksProviderForLdapFrom(Map(
                   LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(GroupName("g1")))
                 ))
-              )),
-              UserIdEq.caseSensitive
+              ))
             )
 
             rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected(ImpersonationNotAllowed))
@@ -201,6 +201,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
             val rule = new LdapAuthenticationRule(
               LdapAuthenticationRule.Settings(service),
+              CaseSensitivity.Enabled,
               Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
@@ -210,8 +211,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 mocksProvider = mocksProviderForLdapFrom(Map(
                   LdapService.Name("ldap1") -> Map(User.Id("user2") -> Set(GroupName("g1")))
                 ))
-              )),
-              UserIdEq.caseSensitive
+              ))
             )
 
             rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
@@ -226,6 +226,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
             val rule = new LdapAuthenticationRule(
               LdapAuthenticationRule.Settings(service),
+              CaseSensitivity.Enabled,
               Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
@@ -233,8 +234,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                   impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = NoOpMocksProvider
-              )),
-              UserIdEq.caseSensitive
+              ))
             )
 
             rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected(ImpersonationNotSupported))
@@ -251,8 +251,8 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
             val rule = new LdapAuthenticationRule(
               LdapAuthenticationRule.Settings(service),
-              Impersonation.Disabled,
-              UserIdEq.caseSensitive
+              CaseSensitivity.Enabled,
+              Impersonation.Disabled
             )
             rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
           }

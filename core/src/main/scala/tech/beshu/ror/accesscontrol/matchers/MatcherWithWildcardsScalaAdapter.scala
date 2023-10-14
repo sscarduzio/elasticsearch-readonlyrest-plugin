@@ -40,7 +40,7 @@ object Matcher {
 }
 
 // todo: remove
-//class MatcherWithWildcardsScalaAdapter[A](override val underlying: MatcherWithWildcardsScala[A])
+//class MatcherWithWildcardsScala[A](override val underlying: MatcherWithWildcardsScala[A])
 //  extends Matcher[A] {
 //
 //  override def filter[B <: A](items: Set[B]): Set[B] =
@@ -58,20 +58,20 @@ object Matcher {
 //
 //}
 //
-//object MatcherWithWildcardsScalaAdapter {
+//object MatcherWithWildcardsScala {
 //
 //  // todo: remove
 ////  def create[A](items: Iterable[A]): Matcher[A] =
-////    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcardsScala(items.map(Show[T].show)))
+////    new MatcherWithWildcardsScala(new MatcherWithWildcardsScala(items.map(Show[T].show)))
 //
-//  def apply[A : Matchable](patterns: Set[A]): MatcherWithWildcardsScalaAdapter[A] =
+//  def apply[A : Matchable](patterns: Set[A]): MatcherWithWildcardsScala[A] =
 //    fromJavaSetString(patterns.map(_.show).asJava)
 //
 //  // todo: remove
-//  def fromJavaSetString[A](patterns: java.util.Set[String]): MatcherWithWildcardsScalaAdapter[A] =
-//    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcardsScala[A](patterns.asScala))
+//  def fromJavaSetString[A](patterns: java.util.Set[String]): MatcherWithWildcardsScala[A] =
+//    new MatcherWithWildcardsScala(new MatcherWithWildcardsScala[A](patterns.asScala))
 //
-//  def fromSetString[A](patterns: Set[String]): MatcherWithWildcardsScalaAdapter[A] =
+//  def fromSetString[A](patterns: Set[String]): MatcherWithWildcardsScala[A] =
 //    fromJavaSetString(patterns.asJava)
 //
 //  // todo: remove

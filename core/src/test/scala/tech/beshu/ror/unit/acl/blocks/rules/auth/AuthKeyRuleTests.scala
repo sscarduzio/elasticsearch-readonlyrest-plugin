@@ -20,8 +20,8 @@ import eu.timepit.refined.auto._
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
-import tech.beshu.ror.utils.UserIdEq
 
 class AuthKeyRuleTests extends BasicAuthenticationTestTemplate(supportingImpersonation = true) {
 
@@ -30,7 +30,7 @@ class AuthKeyRuleTests extends BasicAuthenticationTestTemplate(supportingImperso
   override protected def ruleCreator: Impersonation => BasicAuthenticationRule[_] = impersonation =>
     new AuthKeyRule(
       BasicAuthenticationRule.Settings(Credentials(User.Id("logstash"), PlainTextSecret("logstash"))),
-      impersonation,
-      UserIdEq.caseSensitive
+      CaseSensitivity.Enabled,
+      impersonation
     )
 }

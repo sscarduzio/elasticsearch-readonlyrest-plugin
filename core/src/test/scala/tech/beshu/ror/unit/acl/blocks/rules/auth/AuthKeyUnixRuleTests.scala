@@ -20,8 +20,8 @@ import eu.timepit.refined.auto._
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyUnixRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.utils.UserIdEq
 
 class AuthKeyUnixRuleTests extends BasicAuthenticationTestTemplate(supportingImpersonation = true) {
 
@@ -34,7 +34,7 @@ class AuthKeyUnixRuleTests extends BasicAuthenticationTestTemplate(supportingImp
           User.Id("logstash"),
           "$6$rounds=65535$d07dnv4N$jh8an.nDSXG6PZlfVh5ehigYL8.5gtV.9yoXAOYFHTQvwPWhBdEIOxnS8tpbuIAk86shjJiqxeap5o0A1PoFI/"
         )),
-      impersonation,
-      UserIdEq.caseSensitive
+      CaseSensitivity.Enabled,
+      impersonation
     )
 }

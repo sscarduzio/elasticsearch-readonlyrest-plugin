@@ -35,20 +35,19 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedC
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{AuthKeyRule, AuthKeySha1Rule}
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class ImpersonationRuleDecoratorTests
   extends AnyWordSpec
     with MockFactory with Inside with BlockContextAssertion {
 
-  private implicit val defaultUserIdEq: UserIdCaseMappingEquality = UserIdEq.caseSensitive
+  private implicit val defaultUserIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
 
   private val rule = authKeyRuleWithConfiguredImpersonation("user1", "secret")
 
@@ -137,8 +136,8 @@ class ImpersonationRuleDecoratorTests
         val rule = authRuleWithImpersonation { defs =>
           new AuthKeySha1Rule(
             settings = BasicAuthenticationRule.Settings(HashedCredentials.HashedUserAndPassword("xxxxxxxxxxx")),
+            userIdCaseSensitivity = CaseSensitivity.Enabled,
             impersonation = Impersonation.Enabled(ImpersonationSettings(defs, NoOpMocksProvider)),
-            caseMappingEquality = UserIdEq.caseSensitive,
           )
         }
         val result = rule.check(blockContext).runSyncUnsafe()
@@ -174,8 +173,8 @@ class ImpersonationRuleDecoratorTests
           User.Id(NonEmptyString.unsafeFrom(user)),
           PlainTextSecret(NonEmptyString.unsafeFrom(password))
         )),
+        CaseSensitivity.Enabled,
         Impersonation.Enabled(ImpersonationSettings(defs, NoOpMocksProvider)),
-        UserIdEq.caseSensitive
       )
     }
   }
@@ -208,8 +207,8 @@ class ImpersonationRuleDecoratorTests
         User.Id(NonEmptyString.unsafeFrom(user)),
         PlainTextSecret(NonEmptyString.unsafeFrom(password))
       )),
-      impersonation = Impersonation.Disabled,
-      caseMappingEquality = defaultUserIdEq
+      userIdCaseSensitivity = defaultUserIdCaseSensitivity,
+      impersonation = Impersonation.Disabled
     )
   }
 

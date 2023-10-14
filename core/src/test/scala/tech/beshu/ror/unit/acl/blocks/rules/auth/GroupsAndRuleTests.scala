@@ -24,15 +24,15 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroup
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.{Settings => GroupsRulesSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsAndRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 class GroupsAndRuleTests extends BaseGroupsRuleTests {
 
-  override def createRule(settings: GroupsRulesSettings, caseSensitivity: UserIdCaseMappingEquality): BaseGroupsRule = {
+  override def createRule(settings: GroupsRulesSettings, caseSensitivity: CaseSensitivity): BaseGroupsRule = {
     new GroupsAndRule(settings, caseSensitivity)
   }
 
@@ -56,7 +56,7 @@ class GroupsAndRuleTests extends BaseGroupsRuleTests {
         assertNotMatchRule(
           settings = ruleSettings,
           loggedUser = usr,
-          caseSensitivity = false,
+          caseSensitivity = CaseSensitivity.Disabled,
           preferredGroup = None
         )
       }
@@ -81,7 +81,7 @@ class GroupsAndRuleTests extends BaseGroupsRuleTests {
         assertMatchRule(
           settings = ruleSettings,
           loggedUser = usr,
-          caseSensitivity = false,
+          caseSensitivity = CaseSensitivity.Disabled,
           preferredGroup = None
         )(
           blockContextAssertion = defaultOutputBlockContextAssertion(
@@ -109,7 +109,7 @@ class GroupsAndRuleTests extends BaseGroupsRuleTests {
         assertMatchRule(
           settings = ruleSettings,
           loggedUser = usr,
-          caseSensitivity = false,
+          caseSensitivity = CaseSensitivity.Disabled,
           preferredGroup = None
         )(
           blockContextAssertion = defaultOutputBlockContextAssertion(

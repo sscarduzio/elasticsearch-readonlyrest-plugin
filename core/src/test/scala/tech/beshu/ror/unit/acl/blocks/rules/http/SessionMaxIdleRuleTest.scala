@@ -29,16 +29,14 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule.Settings
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.providers.UuidProvider
 import tech.beshu.ror.unit.acl.blocks.rules.http.SessionMaxIdleRuleTest.{fixedClock, fixedUuidProvider, rorSessionCookie, someday}
-import tech.beshu.ror.utils.CaseMappingEquality._
 import tech.beshu.ror.utils.DurationOps._
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.UserIdEq
 
 import java.time._
 import java.util.UUID
@@ -46,8 +44,6 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
-
-  private implicit val defaultCaseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
 
   "A SessionMaxIdleRule" should {
     "match" when {
@@ -86,7 +82,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
     "not match" when {
       "user is not logged" in {
         implicit val _clock: Clock = fixedClock
-        val rule = new SessionMaxIdleRule(Settings(positive(1 minute)))
+        val rule = new SessionMaxIdleRule(Settings(positive(1 minute)), CaseSensitivity.Enabled)
         val requestContext = mock[RequestContext]
         val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
         rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
@@ -140,8 +136,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
                          loggedUser: Option[DirectlyLoggedUser],
                          isMatched: Boolean)
                         (implicit clock: Clock) = {
-    implicit val defaultCaseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
-    val rule = new SessionMaxIdleRule(Settings(sessionMaxIdle))
+    val rule = new SessionMaxIdleRule(Settings(sessionMaxIdle), CaseSensitivity.Enabled)
     val requestContext = mock[RequestContext]
     val headers = NonEmptyString.unapply(rawCookie) match {
       case Some(cookieHeader) => Set(headerFrom("Cookie" -> cookieHeader.value))

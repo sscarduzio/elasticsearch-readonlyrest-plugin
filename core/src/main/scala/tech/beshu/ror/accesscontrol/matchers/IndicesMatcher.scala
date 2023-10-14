@@ -20,7 +20,7 @@
 //import tech.beshu.ror.utils.Matchable
 //
 //class IndicesMatcher[T <: ClusterIndexName : Matchable](indices: Set[T]) {
-//  val availableIndicesMatcher: Matcher[T] = MatcherWithWildcardsScalaAdapter[T](indices)
+//  val availableIndicesMatcher: Matcher[T] = MatcherWithWildcardsScala[T](indices)
 //
 //  def filterIndices(indices: Set[T]): Set[T] = availableIndicesMatcher.filter(indices)
 //
@@ -36,7 +36,7 @@
 //}
 //
 //class IndicesNamesMatcher[T <: IndexName : Matchable](indices: Set[T]) {
-//  val availableIndicesMatcher: Matcher[T] = MatcherWithWildcardsScalaAdapter[T](indices)
+//  val availableIndicesMatcher: Matcher[T] = MatcherWithWildcardsScala[T](indices)
 //
 //  def filterIndices(indices: Set[T]): Set[T] = availableIndicesMatcher.filter(indices)
 //

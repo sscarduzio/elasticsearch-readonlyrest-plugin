@@ -48,7 +48,7 @@ private object FieldsRuleDecoderHelper extends FieldsRuleLikeDecoderHelperBase {
     for {
       configuredFields <- configuredFieldsDecoder
       accessMode <- accessModeDecoder[AccessMode](configuredFields)
-      documentFields <- documentFieldsDecoder[DocumentField](configuredFields, constants.FIELDS_ALWAYS_ALLOW.map(NonEmptyString.unsafeFrom))
+      documentFields <- documentFieldsDecoder[DocumentField](configuredFields, constants.FIELDS_ALWAYS_ALLOW.map(NonEmptyString.unsafeFrom).toSet)
     } yield RuleDefinition.create(new FieldsRule(FieldsRule.Settings(documentFields, accessMode, flsEngine)))
   }
 

@@ -87,4 +87,5 @@ object Matchable {
     override implicit def toGlobPattern(value: A): GlobPattern = GlobPattern(f(value), caseSensitivity)
   }
 
+  implicit val stringMatchable: Matchable[String] = Matchable.matchable(identity)
 }

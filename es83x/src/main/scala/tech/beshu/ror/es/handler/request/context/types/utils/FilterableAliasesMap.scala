@@ -20,11 +20,11 @@ import cats.data.NonEmptyList
 import org.elasticsearch.cluster.metadata.AliasMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.matchers.Matcher.Conversion
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
+import tech.beshu.ror.utils.MatcherWithWildcardsScala
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap.AliasesMap
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.ImmutableOpenMapOps
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.{CaseMappingEquality, StringCaseMapping}
+
 
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
@@ -41,7 +41,7 @@ class FilterableAliasesMap(val value: AliasesMap) extends AnyVal {
                      allowedAliases: NonEmptyList[ClusterIndexName]) = {
     implicit val mapping: CaseMappingEquality[String] = StringCaseMapping.caseSensitiveEquality
     implicit val conversion = Conversion.from[AliasMetadata, String](_.alias())
-    val matcher = MatcherWithWildcardsScalaAdapter.create(allowedAliases.toList.map(_.stringify))
+    val matcher = MatcherWithWildcardsScala.create(allowedAliases.toList.map(_.stringify))
     responseIndicesNadAliases
       .map { case (indexName, aliasesList) =>
         val filteredAliases = matcher.filter(aliasesList.asSafeList.toSet)
