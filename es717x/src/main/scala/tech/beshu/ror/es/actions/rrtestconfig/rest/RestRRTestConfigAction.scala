@@ -22,7 +22,7 @@ import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
 import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
 import org.elasticsearch.rest._
-import tech.beshu.ror.Constants
+import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, RRTestConfigRequest, RRTestConfigResponse}
 import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
@@ -34,10 +34,10 @@ class RestRRTestConfigAction()
   extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(
-    new Route(GET, Constants.PROVIDE_TEST_CONFIG_PATH),
-    new Route(POST, Constants.UPDATE_TEST_CONFIG_PATH),
-    new Route(DELETE, Constants.DELETE_TEST_CONFIG_PATH),
-    new Route(GET, Constants.PROVIDE_LOCAL_USERS_PATH)
+    new Route(GET, constants.PROVIDE_TEST_CONFIG_PATH),
+    new Route(POST, constants.UPDATE_TEST_CONFIG_PATH),
+    new Route(DELETE, constants.DELETE_TEST_CONFIG_PATH),
+    new Route(GET, constants.PROVIDE_LOCAL_USERS_PATH)
   ).asJava
 
   override val getName: String = "ror-test-config-handler"

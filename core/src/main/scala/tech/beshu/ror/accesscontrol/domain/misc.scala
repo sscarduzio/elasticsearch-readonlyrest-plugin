@@ -28,17 +28,24 @@ import tech.beshu.ror.utils.js.JsCompiler
 import java.util.regex
 import scala.util.{Failure, Success, Try}
 
-final case class GlobPattern(pattern: NonEmptyString,
-                             caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled)
+// todo: move?
+final case class GlobPattern(pattern: String, caseSensitivity: CaseSensitivity)
 object GlobPattern {
 
-  val wildcard: GlobPattern = GlobPattern("*")
+  val wildcard: GlobPattern = GlobPattern("*", CaseSensitivity.Enabled)
 
   sealed trait CaseSensitivity
   object CaseSensitivity {
     case object Enabled extends CaseSensitivity
     case object Disabled extends CaseSensitivity
+
+    // in order to call from java
+    def enabled: Enabled.type = Enabled
+    def disabled: Disabled.type = Disabled
   }
+
+  // in order to call from java
+  def caseSensitivity: CaseSensitivity.type = CaseSensitivity
 }
 
 final case class RorAuditLoggerName(value: NonEmptyString)

@@ -158,7 +158,7 @@ object UsersDefinitionsDecoder {
     ruleDecoders
       .left.map(error => DecodingFailureOps.fromError(DefinitionsLevelCreationError(error)))
       .map { decoders =>
-        decoders.map(withUserIdParamsCheck(_, usernamePatterns, decodingFailure))
+        decoders.map(withUserIdParamsCheck(_, usernamePatterns, globalSettings, decodingFailure))
       }
       .flatMap { decoders =>
         val emptyAcc: (ACursor, Decoder.Result[List[Rule]]) = (c, Right(List.empty))

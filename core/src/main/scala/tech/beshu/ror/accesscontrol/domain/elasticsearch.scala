@@ -133,7 +133,7 @@ final case class DocumentWithIndex(index: ClusterIndexName, documentId: Document
 sealed trait RepositoryName
 object RepositoryName {
   final case class Full private(value: NonEmptyString) extends RepositoryName
-  final case class Pattern private(value: GlobPattern) extends RepositoryName
+  final case class Pattern private(value: NonEmptyString) extends RepositoryName
   case object All extends RepositoryName
   case object Wildcard extends RepositoryName
 
@@ -145,22 +145,22 @@ object RepositoryName {
     NonEmptyString.unapply(value).map {
       case Refined("_all") => All
       case Refined("*") => Wildcard
-      case v if v.contains("*") => Pattern(GlobPattern(NonEmptyString.unsafeFrom(v)))
+      case v if v.contains("*") => Pattern(NonEmptyString.unsafeFrom(v))
       case v => Full(NonEmptyString.unsafeFrom(v))
     }
   }
 
   def toString(snapshotName: RepositoryName): String = snapshotName match {
-    case Full(value) => value.value
-    case Pattern(value) => value.pattern.value
+    case Full(name) => name.value
+    case Pattern(namePattern) => namePattern.value
     case All => "_all"
     case Wildcard => "*"
   }
 
   implicit val eqRepository: Eq[RepositoryName] = Eq.fromUniversalEquals
   implicit val matchableRepositoryName: Matchable[RepositoryName] = Matchable.matchable {
-    case Full(value) => value.value
-    case Pattern(value) => value.pattern.value
+    case Full(name) => name.value
+    case Pattern(namePattern) => namePattern.value
     case All => "*"
     case Wildcard => "*"
   }
@@ -169,7 +169,7 @@ object RepositoryName {
 sealed trait SnapshotName
 object SnapshotName {
   final case class Full private(value: NonEmptyString) extends SnapshotName
-  final case class Pattern private(value: GlobPattern) extends SnapshotName
+  final case class Pattern private(value: NonEmptyString) extends SnapshotName
   case object All extends SnapshotName
   case object Wildcard extends SnapshotName
 
@@ -181,22 +181,22 @@ object SnapshotName {
     NonEmptyString.unapply(value).map {
       case Refined("_all") => All
       case Refined("*") => Wildcard
-      case v if v.contains("*") => Pattern(GlobPattern(NonEmptyString.unsafeFrom(v)))
+      case v if v.contains("*") => Pattern(NonEmptyString.unsafeFrom(v))
       case v => Full(NonEmptyString.unsafeFrom(v))
     }
   }
 
   def toString(snapshotName: SnapshotName): String = snapshotName match {
-    case Full(value) => value.value
-    case Pattern(value) => value.pattern.value
+    case Full(name) => name.value
+    case Pattern(namePattern) => namePattern.value
     case All => "_all"
     case Wildcard => "*"
   }
 
   implicit val eqSnapshotName: Eq[SnapshotName] = Eq.fromUniversalEquals
   implicit val matchableSnapshotName: Matchable[SnapshotName] = Matchable.matchable {
-    case Full(value) => value.value
-    case Pattern(value) => value.pattern.value
+    case Full(name) => name.value
+    case Pattern(namePattern) => namePattern.value
     case All => "*"
     case Wildcard => "*"
   }
@@ -211,7 +211,7 @@ object DataStreamName {
     }
   }
 
-  final case class Pattern private(value: GlobPattern) extends DataStreamName
+  final case class Pattern private(value: NonEmptyString) extends DataStreamName
   case object All extends DataStreamName
   case object Wildcard extends DataStreamName
 
@@ -223,22 +223,22 @@ object DataStreamName {
     NonEmptyString.unapply(value).map {
       case Refined("_all") => All
       case Refined("*") => Wildcard
-      case v if v.contains("*") => Pattern(GlobPattern(NonEmptyString.unsafeFrom(v)))
+      case v if v.contains("*") => Pattern(NonEmptyString.unsafeFrom(v))
       case v => Full(NonEmptyString.unsafeFrom(v))
     }
   }
 
   def toString(dataStreamName: DataStreamName): String = dataStreamName match {
-    case Full(value) => value.value
-    case Pattern(value) => value.pattern.value
+    case Full(name) => name.value
+    case Pattern(namePattern) => namePattern.value
     case All => "_all"
     case Wildcard => "*"
   }
 
   implicit val eqDataStreamName: Eq[DataStreamName] = Eq.fromUniversalEquals
   implicit val matchableDataStreamName: Matchable[DataStreamName] = Matchable.matchable {
-    case Full(value) => value.value
-    case Pattern(name) => name.pattern.value
+    case Full(name) => name.value
+    case Pattern(namePattern) => namePattern.value
     case All => "*"
     case Wildcard => "*"
   }

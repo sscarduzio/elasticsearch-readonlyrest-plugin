@@ -19,11 +19,12 @@ package tech.beshu.ror.accesscontrol.matchers
 import tech.beshu.ror.accesscontrol.domain.Pattern
 import tech.beshu.ror.utils.{Matchable, MatcherWithWildcardsScala}
 
+// todo: to remove?
 class GenericPatternMatcher[T : Matchable](patterns: Iterable[Pattern[T]]) {
 
   private val underlyingMatcher: Matcher[String] = {
     implicit val matchable: Matchable[String] = Matchable.matchable(identity)
-    new MatcherWithWildcardsScalaAdapter[String](new MatcherWithWildcardsScala(patterns.map(_.value)))
+    MatcherWithWildcardsScala.create[String](patterns.map(_.value.value)) // todo: probably a problem with ignored case sensitivity
   }
 
   def `match`(value: T): Boolean = {

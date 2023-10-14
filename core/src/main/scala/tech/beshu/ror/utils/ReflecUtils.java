@@ -19,7 +19,7 @@ package tech.beshu.ror.utils;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import tech.beshu.ror.Constants;
+import tech.beshu.ror.constants$;
 import tech.beshu.ror.exceptions.SecurityPermissionException;
 
 import java.lang.reflect.Field;
@@ -176,8 +176,8 @@ public class ReflecUtils {
     }
     for (Method m : c.getDeclaredMethods()) {
       if (methodName.equals(m.getName()) && m.getReturnType().equals(returnClass)) {
-        if (methodsCache.size() > Constants.CACHE_WATERMARK) {
-          new Exception("Method cache has exceeded the watermark of " + Constants.CACHE_WATERMARK +
+        if (methodsCache.size() > constants$.MODULE$.CACHE_WATERMARK()) {
+          new Exception("Method cache has exceeded the watermark of " + constants$.MODULE$.CACHE_WATERMARK() +
               " keys, currently at " + methodsCache.size()).printStackTrace();
         }
         m.setAccessible(true);

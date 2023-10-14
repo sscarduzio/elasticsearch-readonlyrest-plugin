@@ -25,10 +25,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRu
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass.No.Reason
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
-import tech.beshu.ror.accesscontrol.matchers.IndicesMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.utils.MatcherWithWildcardsScala
 
 trait AllClusterIndices extends BaseIndicesProcessor {
   this: IndicesRule =>
@@ -64,7 +64,7 @@ trait AllClusterIndices extends BaseIndicesProcessor {
                                   requestedIndices: UniqueNonEmptyList[ClusterIndexName.Local]): Task[ProcessResult[ClusterIndexName]] = {
     implicit val indicesManager: LocalIndicesManager = new LocalIndicesManager(
       requestContext,
-      IndicesMatcher.create(allAllowedIndices)
+      MatcherWithWildcardsScala.create(allAllowedIndices)
     )
     logger.debug(s"[${requestContext.id.show}] Checking local indices (allowed: [${allAllowedIndices.map(_.show).mkString(",")}], requested: [${requestedIndices.map(_.show).mkString(",")}])")
     canPass(requestContext, requestedIndices)
@@ -86,7 +86,7 @@ trait AllClusterIndices extends BaseIndicesProcessor {
     } else {
       implicit val indicesManager: RemoteIndicesManager = new RemoteIndicesManager(
         requestContext,
-        IndicesMatcher.create(allAllowedIndices)
+        MatcherWithWildcardsScala.create(allAllowedIndices)
       )
       logger.debug(s"[${requestContext.id.show}] Checking remote indices (allowed: [${allAllowedIndices.map(_.show).mkString(",")}], requested: [${requestedIndices.map(_.show).mkString(",")}])")
       canPass(requestContext, requestedIndices)

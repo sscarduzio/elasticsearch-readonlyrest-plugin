@@ -21,7 +21,7 @@ import cats.implicits._
 import cats.{Eq, Show}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.Constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
+import tech.beshu.ror.constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
@@ -157,7 +157,7 @@ object Block {
                                               localUsersSupport: LocalUsersSupport[T],
                                               impersonationWarnings: ImpersonationWarningSupport[T])
   object RuleDefinition {
-    def create[T <: Rule : VariableUsage : LocalUsersSupport : ImpersonationWarningSupport](rule: T) = {
+    def create[T <: Rule : VariableUsage : LocalUsersSupport : ImpersonationWarningSupport](rule: T): RuleDefinition[T] = {
       new RuleDefinition(
         rule,
         implicitly[VariableUsage[T]],

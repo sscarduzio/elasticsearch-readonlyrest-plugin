@@ -28,8 +28,9 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, Template, TemplateNamePattern}
-import tech.beshu.ror.accesscontrol.matchers.{MatcherWithWildcardsScalaAdapter, UniqueIdentifierGenerator}
+import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.utils.MatcherWithWildcardsScala
 import tech.beshu.ror.utils.ScalaOps._
 
 private[indices] trait AllTemplateIndices
@@ -108,7 +109,7 @@ private[indices] trait AllTemplateIndices
 
   private[indices] def filterTemplates[T <: Template](allowedNamePatterns: Set[TemplateNamePattern],
                                                       requestedTemplates: Set[T]): Set[T] = {
-    val matcher = MatcherWithWildcardsScalaAdapter.create(allowedNamePatterns)
+    val matcher = MatcherWithWildcardsScala.create(allowedNamePatterns)
     val templateByName: Map[TemplateNamePattern, Set[T]] = requestedTemplates.groupBy(t => TemplateNamePattern(t.name.value))
     val filteredTemplateNames = matcher.filter(templateByName.keys.toSet)
     templateByName.view.filterKeys(filteredTemplateNames.contains).values.toSet.flatten

@@ -17,9 +17,12 @@
 package tech.beshu.ror.accesscontrol.matchers
 
 import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
+import tech.beshu.ror.utils.MatcherWithWildcardsScala
 
+// todo: what to do with this?
 class TemplateNamePatternMatcher(templateNames: Set[TemplateNamePattern]) {
-  val availableTemplatesMatcher: Matcher[TemplateNamePattern] = MatcherWithWildcardsScalaAdapter[TemplateNamePattern](templateNames)
+  val availableTemplatesMatcher: Matcher[TemplateNamePattern] =
+    MatcherWithWildcardsScala.create[TemplateNamePattern](templateNames)
 
   def `match`(value: TemplateName): Boolean =
     TemplateNamePattern.fromString(value.value.value) match {

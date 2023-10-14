@@ -24,9 +24,8 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.utils.Matchable
+import tech.beshu.ror.utils.{Matchable, MatcherWithWildcardsScala}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 sealed trait LoggedUser {
@@ -42,7 +41,8 @@ object LoggedUser {
 object User {
   final case class Id(value: NonEmptyString)
   object Id {
-    implicit val matchable: Matchable[Id] = Matchable.matchable(_.value.value)
+    implicit def matchable(implicit caseSensitivity: CaseSensitivity): Matchable[Id] =
+      Matchable.matchable(_.value.value, caseSensitivity)
     implicit def eq(implicit caseSensitivity: CaseSensitivity): Eq[Id] =
       caseSensitivity match {
         case CaseSensitivity.Enabled => Eq.by(_.value.value)
@@ -50,15 +50,15 @@ object User {
       }
   }
 
-  final case class UserIdPattern(override val value: GlobPattern)
+  final case class UserIdPattern(override val value: NonEmptyString)
     extends Pattern[Id](value) {
 
-    def containsWildcard: Boolean = value.pattern.contains("*")
+    def containsWildcard: Boolean = value.contains("*")
   }
 }
 
 // todo: do we need it?
-abstract class Pattern[T](val value: GlobPattern)
+abstract class Pattern[T](val value: NonEmptyString)
 
 final case class UserIdPatterns(patterns: UniqueNonEmptyList[User.UserIdPattern])
 
@@ -73,7 +73,7 @@ object GroupLike {
   final case class GroupNamePattern private(value: NonEmptyString)
     extends GroupLike {
 
-    private[GroupLike] lazy val matcher = MatcherWithWildcardsScalaAdapter.create[GroupLike](Set(this))
+    private[GroupLike] lazy val matcher = new MatcherWithWildcardsScala[GroupLike](Set(this))
   }
 
   object GroupNamePattern {
@@ -104,7 +104,7 @@ object GroupLike {
 }
 
 final case class PermittedGroups(groups: UniqueNonEmptyList[_ <: GroupLike]) {
-  private[PermittedGroups] lazy val matcher = MatcherWithWildcardsScalaAdapter.create[GroupLike](groups)
+  private[PermittedGroups] lazy val matcher = new MatcherWithWildcardsScala[GroupLike](groups)
 }
 object PermittedGroups {
 

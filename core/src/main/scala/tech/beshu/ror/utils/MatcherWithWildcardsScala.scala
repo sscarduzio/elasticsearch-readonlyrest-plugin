@@ -20,19 +20,45 @@ import cats.Show
 import com.hrakaroo.glob.{GlobPattern => Glob}
 import tech.beshu.ror.accesscontrol.domain.GlobPattern
 import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
+import tech.beshu.ror.accesscontrol.matchers.Matcher
 
-class MatcherWithWildcardsScala[T : Matchable](val globPatterns: Iterable[GlobPattern]) {
+import scala.language.implicitConversions
 
-  private val globs = globPatterns.map(p =>
-    Glob.compile(p.pattern.value, '*', '?', globPatternFlags(p))
-  )
+class MatcherWithWildcardsScala[T : Matchable](val values: Iterable[T])
+ extends Matcher[T] {
 
-  def filter[S <: T](values: Set[S]): Set[S] = {
-    values.filter(`match`)
+  override val globPatterns: Iterable[GlobPattern] = {
+    val matchable = implicitly[Matchable[T]]
+    values.map(matchable.toGlobPattern)
   }
 
-  def `match`(value: T): Boolean = {
+  private val globs = globPatterns.map { p =>
+    Glob.compile(p.pattern, '*', '?', globPatternFlags(p))
+  }
+
+  override def `match`[B <: T](value: B): Boolean = {
     globs.exists(_.matches(Matchable[T].show(value)))
+  }
+
+  override def filter[B <: T](items: Iterable[B]): Set[B] = {
+    items.toSet.filter(`match`)
+  }
+
+  // todo: do we need it?
+  override def filter[B: Conversion](items: Iterable[B]): Set[B] = {
+    val bToAConversion = implicitly[Conversion[B]]
+    items
+      .flatMap {
+        case b if `match`(bToAConversion(b)) => Some(b)
+        case _ => None
+      }
+      .toSet
+  }
+
+  // todo: do we need it?
+  override def contains(str: String): Boolean = {
+    val matchable = implicitly[Matchable[T]]
+    values.map(matchable.show).exists(_ == str)
   }
 
   private def globPatternFlags(p: GlobPattern) = {
@@ -43,11 +69,22 @@ class MatcherWithWildcardsScala[T : Matchable](val globPatterns: Iterable[GlobPa
   }
 }
 
-trait Matchable[T] extends Show[T]
+object MatcherWithWildcardsScala {
+  def create[T : Matchable](values: Iterable[T]): MatcherWithWildcardsScala[T] =
+    new MatcherWithWildcardsScala[T](values)
+}
+
+trait Matchable[T] extends Show[T] {
+  implicit def toGlobPattern(value: T): GlobPattern
+}
 object Matchable {
 
   def apply[A](implicit instance: Matchable[A]): Matchable[A] = instance
 
-  def matchable[A](f: A => String): Matchable[A] = f(_)
+  def matchable[A](f: A => String,
+                   caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled): Matchable[A] = new Matchable[A] {
+    override def show(t: A): String = f(t)
+    override implicit def toGlobPattern(value: A): GlobPattern = GlobPattern(f(value), caseSensitivity)
+  }
 
 }

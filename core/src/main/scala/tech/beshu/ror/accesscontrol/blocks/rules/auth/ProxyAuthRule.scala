@@ -34,17 +34,17 @@ import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.utils.MatcherWithWildcardsScala
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final class ProxyAuthRule(val settings: Settings,
-                          override val userIdCaseSensitivity: CaseSensitivity,
+                          override implicit val userIdCaseSensitivity: CaseSensitivity,
                           override val impersonation: Impersonation)
   extends BaseAuthenticationRule
     with Logging {
 
-  private val userMatcher = MatcherWithWildcardsScalaAdapter[User.Id](settings.userIds.toSet)
+  private val userMatcher = MatcherWithWildcardsScala.create[User.Id](settings.userIds.toSet)
 
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.Available(settings.userIds.toSet)
 

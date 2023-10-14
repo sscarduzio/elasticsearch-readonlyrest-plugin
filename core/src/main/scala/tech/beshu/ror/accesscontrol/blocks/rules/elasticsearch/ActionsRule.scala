@@ -25,15 +25,16 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, Ru
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Action
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
+import tech.beshu.ror.accesscontrol.matchers.Matcher
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.utils.MatcherWithWildcardsScala
 
 class ActionsRule(val settings: Settings)
   extends RegularRule with Logging {
 
   override val name: Rule.Name = ActionsRule.Name.name
 
-  private val matcher: MatcherWithWildcardsScalaAdapter[Action] = MatcherWithWildcardsScalaAdapter[Action](settings.actions.toSortedSet)
+  private val matcher: Matcher[Action] = MatcherWithWildcardsScala.create[Action](settings.actions.toSortedSet)
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     val requestContext = blockContext.requestContext

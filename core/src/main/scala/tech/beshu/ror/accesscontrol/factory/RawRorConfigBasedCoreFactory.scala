@@ -404,7 +404,7 @@ class RawRorConfigBasedCoreFactory()
         if (userIdPattern.containsWildcard) {
           LocalUsers(users = Set.empty, unknownUsers = unknownUsersForWildcardPattern)
         } else {
-          LocalUsers(users = Set(User.Id(userIdPattern.value.pattern)), unknownUsers = false)
+          LocalUsers(users = Set(User.Id(userIdPattern.value)), unknownUsers = false)
         }
       }
       .toList

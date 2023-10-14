@@ -19,9 +19,9 @@ package tech.beshu.ror.utils;
 
 import com.google.common.collect.Sets;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 public class ZeroKnowledgeMatchFilter {
 
@@ -33,7 +33,7 @@ public class ZeroKnowledgeMatchFilter {
    * @param indicesWriter function to write indices in request.
    * @return can be allowed
    */
-  static public boolean alterIndicesIfNecessaryAndCheck(Set<String> indices, StringMatcherWithWildcards matcher, Consumer<Set<String>> indicesWriter) {
+  static public boolean alterIndicesIfNecessaryAndCheck(Set<String> indices, JavaStringMatcher matcher, Consumer<Set<String>> indicesWriter) {
     Set<String> modifiedIndices = alterIndicesIfNecessary(indices, matcher);
     if (modifiedIndices != null) {
       if (modifiedIndices.isEmpty()) {
@@ -44,7 +44,7 @@ public class ZeroKnowledgeMatchFilter {
     return true;
   }
 
-  static public Set<String> alterIndicesIfNecessary(Set<String> indices, StringMatcherWithWildcards matcher) {
+  static public Set<String> alterIndicesIfNecessary(Set<String> indices, JavaStringMatcher matcher) {
 
     boolean shouldReplace = false;
 
@@ -60,12 +60,12 @@ public class ZeroKnowledgeMatchFilter {
     if (indices.contains("*")) {
 
       if (indices.size() == 1) {
-        return matcher.getMatchers().stream().collect(Collectors.toSet());
+        return new HashSet<>(matcher.getMatchers());
       }
       else {
         shouldReplace = true;
         indices.remove("*");
-        indices.addAll(matcher.getMatchers().stream().collect(Collectors.toSet()));
+        indices.addAll(new HashSet<>(matcher.getMatchers()));
       }
     }
 
@@ -76,7 +76,7 @@ public class ZeroKnowledgeMatchFilter {
         continue;
       }
 
-      StringMatcherWithWildcards revMatcher = new StringMatcherWithWildcards(Sets.newHashSet(i));
+      JavaStringMatcher revMatcher = new JavaStringMatcher(Sets.newHashSet(i));
       Set<String> matched = revMatcher.filter(matcher.getMatchers());
 
       if (!matched.isEmpty()) {

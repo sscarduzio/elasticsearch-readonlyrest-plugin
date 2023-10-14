@@ -18,7 +18,8 @@ package tech.beshu.ror.accesscontrol.matchers
 
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeDataStreamsFilterScalaAdapter.CheckResult
-import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
+import tech.beshu.ror.utils.{JavaStringMatcher, ZeroKnowledgeIndexFilter}
+
 import scala.jdk.CollectionConverters._
 
 class ZeroKnowledgeDataStreamsFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter)  {
@@ -31,7 +32,7 @@ class ZeroKnowledgeDataStreamsFilterScalaAdapter(underlying: ZeroKnowledgeIndexF
           case DataStreamName.Full(v) => v.value
         }
         .asJava,
-      Matcher.asMatcherWithWildcards(matcher),
+      new JavaStringMatcher(matcher),
       processedDataStreams.addAll _
     )
     if (result) CheckResult.Ok(processedDataStreams.asScala.flatMap(DataStreamName.fromString).toSet)

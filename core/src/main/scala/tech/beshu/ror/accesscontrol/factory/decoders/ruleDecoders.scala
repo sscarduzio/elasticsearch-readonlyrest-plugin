@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana._
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
-import tech.beshu.ror.accesscontrol.domain.UserIdPatterns
+import tech.beshu.ror.accesscontrol.domain.{GlobPattern, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
@@ -176,13 +176,14 @@ object ruleDecoders {
 
   def withUserIdParamsCheck[R <: Rule](decoder: RuleDecoder[R],
                                        userIdPatterns: UserIdPatterns,
+                                       globalSettings: GlobalSettings,
                                        errorCreator: Message => DecodingFailure): Decoder[RuleDecoder.Result[R]] = {
     decoder.flatMap { result =>
       result.rule.rule match {
         case _: Rule.RegularRule => Decoder.const(result)
         case _: Rule.AuthorizationRule => Decoder.const(result)
         case rule: AuthenticationRule =>
-          checkUsersEligibility(rule, userIdPatterns) match {
+          checkUsersEligibility(rule, userIdPatterns, globalSettings) match {
             case Right(_) => Decoder.const(result)
             case Left(msg) => Decoder.failed(errorCreator(Message(msg)))
           }
@@ -190,9 +191,12 @@ object ruleDecoders {
     }
   }
 
-  private def checkUsersEligibility(rule: AuthenticationRule, userIdPatterns: UserIdPatterns) = {
+  private def checkUsersEligibility(rule: AuthenticationRule,
+                                    userIdPatterns: UserIdPatterns,
+                                    globalSettings: GlobalSettings) = {
     rule.eligibleUsers match {
       case EligibleUsersSupport.Available(users) =>
+        implicit val caseSensitivity: GlobPattern.CaseSensitivity = globalSettings.userIdCaseSensitivity
         val matcher = new GenericPatternMatcher(userIdPatterns.patterns.toList)
         if (users.exists(matcher.`match`)) {
           Right(())

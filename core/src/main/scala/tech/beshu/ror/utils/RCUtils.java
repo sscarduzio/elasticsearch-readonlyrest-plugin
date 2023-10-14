@@ -33,7 +33,7 @@ public class RCUtils {
 
   private static final Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
 
-  private static StringMatcherWithWildcards readRequestMatcher = new StringMatcherWithWildcards(Sets.newHashSet(
+  private static JavaStringMatcher readRequestMatcher = new JavaStringMatcher(Sets.newHashSet(
       "cluster:monitor/*",
       "cluster:*get*",
       "cluster:*search*",

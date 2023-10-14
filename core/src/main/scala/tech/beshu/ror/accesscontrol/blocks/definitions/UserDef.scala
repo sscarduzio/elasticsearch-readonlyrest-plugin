@@ -24,7 +24,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationR
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.{GroupLike, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
-import tech.beshu.ror.accesscontrol.matchers.{Matcher, MatcherWithWildcardsScalaAdapter}
+import tech.beshu.ror.accesscontrol.matchers.Matcher
+import tech.beshu.ror.utils.MatcherWithWildcardsScala
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.UUID
@@ -79,8 +80,7 @@ object UserDef {
     final case class Advanced(mappings: UniqueNonEmptyList[Mapping]) extends GroupMappings
     object Advanced {
       final case class Mapping(local: GroupName, externalGroupPatters: UniqueNonEmptyList[GroupLike]) {
-        val externalGroupPattersMatcher: Matcher[GroupLike] =
-          MatcherWithWildcardsScalaAdapter.create(externalGroupPatters)
+        val externalGroupPattersMatcher: Matcher[GroupLike] = new MatcherWithWildcardsScala[GroupLike](externalGroupPatters)
       }
     }
   }

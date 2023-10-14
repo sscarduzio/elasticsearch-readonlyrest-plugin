@@ -47,7 +47,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.Transport
 import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
-import tech.beshu.ror.Constants
+import tech.beshu.ror.constants
 import tech.beshu.ror.boot.EsInitListener
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.configuration.EnvironmentConfig
@@ -88,7 +88,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   LogPluginBuildInfoMessage()
   EsPatchVerifier.verify(s)
 
-  Constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toList.asJava)
+  constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toList.asJava)
   // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor
   // flag check, which is also done by Netty. So, we need to set it manually before ES and Finch, otherwise we will
   // experience 'java.lang.IllegalStateException: availableProcessors is already set to [x], rejecting [x]' exception
@@ -145,7 +145,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   override def getTaskHeaders: util.Collection[String] = {
-    List(Constants.FIELDS_TRANSIENT).asJava
+    List(constants.FIELDS_TRANSIENT).asJava
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {

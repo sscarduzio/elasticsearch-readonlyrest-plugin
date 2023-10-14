@@ -20,6 +20,7 @@ import cats.implicits._
 import com.google.common.base.Strings
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 
+// todo: what's this?
 class ScalaMatcherWithWildcards[PATTERN: StringTNaturalTransformation](patterns: Set[PATTERN]) {
 
   private val nt = implicitly[StringTNaturalTransformation[PATTERN]]

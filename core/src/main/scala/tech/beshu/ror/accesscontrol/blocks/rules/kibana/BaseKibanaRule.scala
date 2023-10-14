@@ -21,7 +21,6 @@ import cats.data.ReaderT
 import cats.implicits._
 import eu.timepit.refined.auto._
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.BaseKibanaRule.Settings
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
@@ -29,8 +28,9 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local.devNullKibana
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName._
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.matchers.{DataStreamMatcher, IndicesMatcher, MatcherWithWildcardsScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.constants
+import tech.beshu.ror.utils.MatcherWithWildcardsScala
 
 import java.util.regex.Pattern
 import scala.util.Try
@@ -250,17 +250,21 @@ object BaseKibanaRule {
   abstract class Settings(val access: KibanaAccess,
                           val rorIndex: RorConfigurationIndex)
   private object Matchers {
-    val roMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.RO_ACTIONS)
-    val rwMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.RW_ACTIONS)
-    val adminMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.ADMIN_ACTIONS)
-    val clusterMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.CLUSTER_ACTIONS)
-    val nonStrictActions = MatcherWithWildcardsScalaAdapter[Action](Set(
+    val roMatcher = MatcherWithWildcardsScala.create(constants.roActionPatterns)
+    val rwMatcher = MatcherWithWildcardsScala.create(constants.rwActionPatterns)
+    val adminMatcher = MatcherWithWildcardsScala.create(constants.adminActionPatterns)
+    val clusterMatcher = MatcherWithWildcardsScala.create(constants.clusterActionPatterns)
+    val nonStrictActions = MatcherWithWildcardsScala.create(Set(
       Action("indices:data/write/*"), Action("indices:admin/template/put")
     ))
-    val indicesWriteAction = MatcherWithWildcardsScalaAdapter[Action](Set(Action("indices:data/write/*")))
+    val indicesWriteAction = MatcherWithWildcardsScala.create(Set(Action("indices:data/write/*")))
 
-    val kibanaSampleDataIndexMatcher = IndicesMatcher.create[ClusterIndexName](Set(Local(IndexName.Pattern(GlobPattern("kibana_sample_data_*")))))
-    val kibanaSampleDataStreamMatcher = DataStreamMatcher.create[DataStreamName](Set(DataStreamName.Pattern(GlobPattern("kibana_sample_data_*"))))
+    val kibanaSampleDataIndexMatcher = MatcherWithWildcardsScala.create[ClusterIndexName](
+      Set(Local(IndexName.Pattern("kibana_sample_data_*")))
+    )
+    val kibanaSampleDataStreamMatcher = MatcherWithWildcardsScala.create[DataStreamName](
+      Set(DataStreamName.Pattern("kibana_sample_data_*"))
+    )
   }
 
   type ProcessingContext = ReaderT[Id, (RequestContext, KibanaIndexName), Boolean]

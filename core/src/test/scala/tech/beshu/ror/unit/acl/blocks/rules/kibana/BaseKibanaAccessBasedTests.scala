@@ -21,7 +21,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.Constants.{ADMIN_ACTIONS, CLUSTER_ACTIONS, RO_ACTIONS, RW_ACTIONS}
+import tech.beshu.ror.constants.{ADMIN_ACTIONS, CLUSTER_ACTIONS, RO_ACTIONS, RW_ACTIONS}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{DataStreamRequestBlockContext, GeneralIndexRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata

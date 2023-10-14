@@ -25,11 +25,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, Ru
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.{LoggedUser, User}
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.utils.MatcherWithWildcardsScala
 
-class UsersRule(val settings: Settings)
+class UsersRule(val settings: Settings,
+                implicit val userIdCaseSensitivity: CaseSensitivity)
   extends RegularRule {
 
   override val name: Rule.Name = UsersRule.Name.name
@@ -44,7 +46,7 @@ class UsersRule(val settings: Settings)
   private def matchUser[B <: BlockContext](user: LoggedUser, blockContext: B): RuleResult[B] = {
     val resolvedIds = resolveAll(settings.userIds.toNonEmptyList, blockContext).toSet
     RuleResult.resultBasedOnCondition(blockContext) {
-      MatcherWithWildcardsScalaAdapter[User.Id](resolvedIds).`match`(user.id)
+      MatcherWithWildcardsScala.create[User.Id](resolvedIds).`match`(user.id)
     }
   }
 }

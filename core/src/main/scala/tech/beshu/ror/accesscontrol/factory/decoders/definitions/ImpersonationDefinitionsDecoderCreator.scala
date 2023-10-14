@@ -73,7 +73,7 @@ class ImpersonationDefinitionsDecoderCreator(globalSettings: GlobalSettings,
 
     UniqueNonEmptyList.fromSortedSet(exactImpersonators.intersect(exactImpersonatedUsers)) match {
       case Some(duplicatedUsers) =>
-        val users = duplicatedUsers.map(_.value.pattern.value).mkString(",")
+        val users = duplicatedUsers.map(_.value.value).mkString(",")
         Left(decodingFailure(
           Message(s"Each of the given users [$users] should be either impersonator or a user to be impersonated")
         ))
@@ -97,7 +97,7 @@ class ImpersonationDefinitionsDecoderCreator(globalSettings: GlobalSettings,
           ) match {
           case Some(decoder) =>
             ruleDecoders
-              .withUserIdParamsCheck(decoder, userIdPatterns, decodingFailure)
+              .withUserIdParamsCheck(decoder, userIdPatterns, globalSettings, decodingFailure)
               .map(_.rule.rule)
               .apply(cursor)
           case None =>

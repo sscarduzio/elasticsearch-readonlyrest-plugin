@@ -16,20 +16,17 @@
  */
 package tech.beshu.ror.accesscontrol.matchers
 
-import cats.Show
-import cats.implicits._
-import tech.beshu.ror.utils.{Matchable, MatcherWithWildcardsScala}
+import tech.beshu.ror.accesscontrol.domain.GlobPattern
 
-import scala.jdk.CollectionConverters._
-
+// todo: rename
 trait Matcher[A] {
   type Conversion[B] = Function1[B, A]
 
-  def underlying: MatcherWithWildcardsScala[A]
+  def globPatterns: Iterable[GlobPattern]
 
-  def filter[B <: A](items: Set[B]): Set[B]
+  def filter[B <: A](items: Iterable[B]): Set[B]
 
-  def filter[B: Conversion](items: Set[B]): Set[B]
+  def filter[B: Conversion](items: Iterable[B]): Set[B]
 
   def `match`[B <: A](value: B): Boolean
 
@@ -42,44 +39,42 @@ object Matcher {
   }
 }
 
-class MatcherWithWildcardsScalaAdapter[A](override val underlying: MatcherWithWildcardsScala[A])
-  extends Matcher[A] {
+// todo: remove
+//class MatcherWithWildcardsScalaAdapter[A](override val underlying: MatcherWithWildcardsScala[A])
+//  extends Matcher[A] {
+//
+//  override def filter[B <: A](items: Set[B]): Set[B] =
+//    underlying.filter(items)
+//
+//  override def filter[B: Conversion](items: Set[B]): Set[B] = {
 
-  override def filter[B <: A](items: Set[B]): Set[B] = {
-    underlying.filter(items)
-  }
-
-  override def filter[B: Conversion](items: Set[B]): Set[B] = {
-    val bToAConversion = implicitly[Conversion[B]]
-    items.flatMap {
-      case b if `match`(bToAConversion(b)) => Some(b)
-      case _ => None
-    }
-  }
-
-  override def `match`[B <: A](value: B): Boolean = {
-    underlying.`match`(value)
-  }
-
-  override def contains(str: String): Boolean =
-    underlying.globPatterns.exists(_.pattern.value == str)
-
-}
-
-object MatcherWithWildcardsScalaAdapter {
-
-  def create[A](items: Iterable[A]): Matcher[A] =
-    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcardsScala(items.map(Show[T].show)))
-
-  def apply[A : Matchable](patterns: Set[A]): MatcherWithWildcardsScalaAdapter[A] =
-    fromJavaSetString(patterns.map(_.show).asJava)
-
-  def fromJavaSetString[A](patterns: java.util.Set[String]): MatcherWithWildcardsScalaAdapter[A] =
-    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcardsScala[A](patterns.asScala))
-
-  def fromSetString[A](patterns: Set[String]): MatcherWithWildcardsScalaAdapter[A] =
-    fromJavaSetString(patterns.asJava)
-
-  def isMatched(pattern: String, value: String): Boolean =
-    new StringMatcherWithWildcards(List(pattern).asJava).`match`(value)
-}
+//  }
+//
+//  override def `match`[B <: A](value: B): Boolean =
+//    underlying.`match`(value)
+//
+//  override def contains(str: String): Boolean =
+//    underlying.globPatterns.exists(_.pattern.value == str)
+//
+//}
+//
+//object MatcherWithWildcardsScalaAdapter {
+//
+//  // todo: remove
+////  def create[A](items: Iterable[A]): Matcher[A] =
+////    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcardsScala(items.map(Show[T].show)))
+//
+//  def apply[A : Matchable](patterns: Set[A]): MatcherWithWildcardsScalaAdapter[A] =
+//    fromJavaSetString(patterns.map(_.show).asJava)
+//
+//  // todo: remove
+//  def fromJavaSetString[A](patterns: java.util.Set[String]): MatcherWithWildcardsScalaAdapter[A] =
+//    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcardsScala[A](patterns.asScala))
+//
+//  def fromSetString[A](patterns: Set[String]): MatcherWithWildcardsScalaAdapter[A] =
+//    fromJavaSetString(patterns.asJava)
+//
+//  // todo: remove
+////  def isMatched(pattern: String, value: String): Boolean =
+////    new StringMatcherWithWildcards(List(pattern).asJava).`match`(value)
+//}

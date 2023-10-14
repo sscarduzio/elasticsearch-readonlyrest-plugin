@@ -20,7 +20,7 @@ import com.google.common.collect.Sets
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRemoteIndexFilterScalaAdapter.CheckResult
-import tech.beshu.ror.accesscontrol.matchers.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeRemoteIndexFilterScalaAdapter}
+import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRemoteIndexFilterScalaAdapter
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import eu.timepit.refined.auto._
 import tech.beshu.ror.utils.TestsUtils._

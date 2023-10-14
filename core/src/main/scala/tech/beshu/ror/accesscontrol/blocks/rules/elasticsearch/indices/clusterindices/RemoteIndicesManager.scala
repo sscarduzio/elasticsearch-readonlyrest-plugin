@@ -22,11 +22,11 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices.BaseIndicesProcessor.IndicesManager
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.{Remote => RemoteIndexName}
 import tech.beshu.ror.accesscontrol.domain.{FullRemoteIndexWithAliases, IndexAttribute}
-import tech.beshu.ror.accesscontrol.matchers.IndicesMatcher
+import tech.beshu.ror.accesscontrol.matchers.Matcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class RemoteIndicesManager(requestContext: RequestContext,
-                           override val matcher: IndicesMatcher[RemoteIndexName])
+                           override val matcher: Matcher[RemoteIndexName])
   extends IndicesManager[RemoteIndexName] {
 
   override def allIndicesAndAliases: Task[Set[RemoteIndexName]] =

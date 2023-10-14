@@ -19,10 +19,9 @@ package tech.beshu.ror.accesscontrol.domain
 import cats.Eq
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.Constants
+import tech.beshu.ror.constants
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.accesscontrol.matchers.{IndicesNamesMatcher, MatcherWithWildcardsScalaAdapter}
-import tech.beshu.ror.utils.Matchable
+import tech.beshu.ror.utils.{Matchable, MatcherWithWildcardsScala}
 import tech.beshu.ror.utils.ScalaOps._
 
 import java.time.{Instant, ZoneId}
@@ -33,7 +32,7 @@ import scala.util.{Failure, Random, Success, Try}
 sealed trait IndexName
 object IndexName {
 
-  val wildcard: IndexName.Pattern = IndexName.Pattern(GlobPattern.wildcard)
+  val wildcard: IndexName.Pattern = IndexName.Pattern("*")
 
   final case class Full(name: NonEmptyString)
     extends IndexName
@@ -42,7 +41,7 @@ object IndexName {
       NonEmptyString.unapply(value).map(Full.apply)
   }
 
-  final case class Pattern private(name: GlobPattern)
+  final case class Pattern private(name: NonEmptyString)
     extends IndexName
   object Pattern {
     def fromString(value: String): Option[Pattern] =
@@ -50,7 +49,7 @@ object IndexName {
         .unapply(value)
         .flatMap {
           case str if str.value == "_all" => Some(IndexName.wildcard)
-          case str if str.contains("*") => Some(IndexName.Pattern(GlobPattern(NonEmptyString.unsafeFrom(str))))
+          case str if str.contains("*") => Some(IndexName.Pattern(NonEmptyString.unsafeFrom(str)))
           case _ => None
         }
   }
@@ -60,7 +59,7 @@ object IndexName {
 
   implicit val matchableIndexName: Matchable[IndexName] = Matchable.matchable{
     case IndexName.Full(name) => name
-    case IndexName.Pattern(name) => name.pattern
+    case IndexName.Pattern(namePattern) => namePattern
   }
 }
 
@@ -109,7 +108,7 @@ object KibanaIndexName {
 }
 
 sealed trait ClusterIndexName {
-  private [domain] lazy val matcher = MatcherWithWildcardsScalaAdapter.create(this :: Nil)
+  private [domain] lazy val matcher = MatcherWithWildcardsScala.create[ClusterIndexName](this :: Nil)
 }
 object ClusterIndexName {
 
@@ -146,11 +145,11 @@ object ClusterIndexName {
 
       }
 
-      final case class Pattern private(value: GlobPattern) extends ClusterName
+      final case class Pattern private(value: NonEmptyString) extends ClusterName
       object Pattern {
         def fromString(value: String): Option[Pattern] =
           NonEmptyString.unapply(value).flatMap {
-            case str if str.contains("*") => Some(ClusterName.Pattern(GlobPattern(NonEmptyString.unsafeFrom(str))))
+            case str if str.contains("*") => Some(ClusterName.Pattern(NonEmptyString.unsafeFrom(str)))
             case _ => None
           }
       }
@@ -159,14 +158,14 @@ object ClusterIndexName {
         Pattern.fromString(value) orElse Full.fromString(value)
       }
 
-      val wildcard: ClusterName.Pattern = Pattern(GlobPattern.wildcard)
+      val wildcard: ClusterName.Pattern = Pattern("*")
 
       implicit val matchableClusterName: Matchable[ClusterName] = Matchable.matchable(_.stringify)
 
       implicit class Stringify(val clusterName: ClusterName) extends AnyVal {
         def stringify: String = clusterName match {
-          case Full(value) => value
-          case Pattern(value) => value.pattern
+          case Full(name) => name
+          case Pattern(namePattern) => namePattern
         }
       }
     }
@@ -211,35 +210,35 @@ object ClusterIndexName {
     def randomNonexistentIndex(): ClusterIndexName = base match {
       case Local(IndexName.Full(name)) =>
         Local.randomNonexistentIndex(name)
-      case Local(IndexName.Pattern(name)) =>
-        Local.randomNonexistentIndex(name.pattern)
+      case Local(IndexName.Pattern(namePattern)) =>
+        Local.randomNonexistentIndex(namePattern)
       case Remote(IndexName.Full(name), clusterName) =>
         Local.randomNonexistentIndex(s"${clusterName.stringify}_$name")
-      case Remote(IndexName.Pattern(name), clusterName) =>
-        Local.randomNonexistentIndex(s"${clusterName.stringify}_$name")
+      case Remote(IndexName.Pattern(namePattern), clusterName) =>
+        Local.randomNonexistentIndex(s"${clusterName.stringify}_$namePattern")
     }
   }
 
   implicit class Stringify(val indexName: ClusterIndexName) extends AnyVal {
     def stringify: String = indexName match {
       case Local(IndexName.Full(name)) => name
-      case Local(IndexName.Pattern(name)) => name.pattern
+      case Local(IndexName.Pattern(namePattern)) => namePattern
       case Remote(IndexName.Full(name), cluster) => s"${cluster.stringify}:$name"
-      case Remote(IndexName.Pattern(name), cluster) => s"${cluster.stringify}:$name"
+      case Remote(IndexName.Pattern(namePattern), cluster) => s"${cluster.stringify}:$namePattern"
     }
 
     def nonEmptyStringify: NonEmptyString = indexName match {
       case Local(IndexName.Full(name)) => name
-      case Local(IndexName.Pattern(name)) => name.pattern
+      case Local(IndexName.Pattern(namePattern)) => namePattern
       case Remote(IndexName.Full(name), cluster) => NonEmptyString.unsafeFrom(s"${cluster.stringify}:$name")
-      case Remote(IndexName.Pattern(name), cluster) => NonEmptyString.unsafeFrom(s"${cluster.stringify}:$name")
+      case Remote(IndexName.Pattern(namePattern), cluster) => NonEmptyString.unsafeFrom(s"${cluster.stringify}:$namePattern")
     }
   }
 
   implicit class OnlyIndexName(val remoteIndexName: ClusterIndexName.Remote) extends AnyVal {
     def onlyIndexName: NonEmptyString = remoteIndexName match {
       case Remote(IndexName.Full(name), _) => name
-      case Remote(IndexName.Pattern(name), _) => name.pattern
+      case Remote(IndexName.Pattern(namePattern), _) => namePattern
     }
   }
 
@@ -296,12 +295,12 @@ object ClusterIndexName {
       index match {
         case ClusterIndexName.Local(IndexName.Full(name)) if !doesItLookLikeABackingIndex(name) =>
           ClusterIndexName.Local(backingIndexWildcardFromString(name))
-        case ClusterIndexName.Local(IndexName.Pattern(name)) if !doesItLookLikeABackingIndex(name.pattern) =>
-          ClusterIndexName.Local(backingIndexWildcardFromString(name.pattern))
+        case ClusterIndexName.Local(IndexName.Pattern(namePattern)) if !doesItLookLikeABackingIndex(namePattern) =>
+          ClusterIndexName.Local(backingIndexWildcardFromString(namePattern))
         case ClusterIndexName.Remote(IndexName.Full(name), cluster) if !doesItLookLikeABackingIndex(name) =>
           ClusterIndexName.Remote(backingIndexWildcardFromString(name), cluster)
-        case ClusterIndexName.Remote(IndexName.Pattern(name), cluster) if !doesItLookLikeABackingIndex(name.pattern) =>
-          ClusterIndexName.Remote(backingIndexWildcardFromString(name.pattern), cluster)
+        case ClusterIndexName.Remote(IndexName.Pattern(namePattern), cluster) if !doesItLookLikeABackingIndex(namePattern) =>
+          ClusterIndexName.Remote(backingIndexWildcardFromString(namePattern), cluster)
         case index =>
           index
       }
@@ -312,18 +311,18 @@ object ClusterIndexName {
     }
 
     private def backingIndexWildcardNameFrom(nameStr: NonEmptyString) = {
-      IndexName.Pattern(GlobPattern(NonEmptyString.unsafeFrom(s".ds-$nameStr-*.*.*-*")))
+      IndexName.Pattern(NonEmptyString.unsafeFrom(s".ds-$nameStr-*.*.*-*"))
     }
 
     private def legacyBackingIndexWildcardNameFrom(nameStr: NonEmptyString) = {
-      IndexName.Pattern(GlobPattern(NonEmptyString.unsafeFrom(s".ds-$nameStr-*")))
+      IndexName.Pattern(NonEmptyString.unsafeFrom(s".ds-$nameStr-*"))
     }
   }
 
 }
 
 final case class IndexPattern(value: ClusterIndexName) {
-  private lazy val matcher = MatcherWithWildcardsScalaAdapter.create(value :: Nil)
+  private lazy val matcher = MatcherWithWildcardsScala.create(value :: Nil)
 
   def isAllowedBy(index: ClusterIndexName): Boolean = {
     matcher.`match`(index) || index.matches(value)
@@ -350,13 +349,13 @@ final case class AliasPlaceholder private(alias: ClusterIndexName) extends AnyVa
       ClusterIndexName.Local(IndexName.Full(NonEmptyString.unsafeFrom(replaced)))
     case ClusterIndexName.Local(IndexName.Pattern(_)) =>
       val replaced = alias.stringify.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)
-      ClusterIndexName.Local(IndexName.Pattern(GlobPattern(NonEmptyString.unsafeFrom(replaced))))
+      ClusterIndexName.Local(IndexName.Pattern(NonEmptyString.unsafeFrom(replaced)))
     case i@ClusterIndexName.Remote(IndexName.Full(_), clusterName) =>
       val replaced = i.onlyIndexName.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)
       ClusterIndexName.Remote(IndexName.Full(NonEmptyString.unsafeFrom(replaced)), clusterName)
     case i@ClusterIndexName.Remote(IndexName.Pattern(_), clusterName) =>
       val replaced = i.onlyIndexName.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value)
-      ClusterIndexName.Remote(IndexName.Pattern(GlobPattern(NonEmptyString.unsafeFrom(replaced))), clusterName)
+      ClusterIndexName.Remote(IndexName.Pattern(NonEmptyString.unsafeFrom(replaced)), clusterName)
   }
 }
 object AliasPlaceholder {
@@ -368,7 +367,7 @@ object AliasPlaceholder {
       Some(AliasPlaceholder(alias))
     case ClusterIndexName.Local(IndexName.Full(_)) =>
       None
-    case ClusterIndexName.Local(IndexName.Pattern(name)) if name.pattern.contains(placeholder) =>
+    case ClusterIndexName.Local(IndexName.Pattern(namePattern)) if namePattern.contains(placeholder) =>
       Some(AliasPlaceholder(alias))
     case ClusterIndexName.Local(IndexName.Pattern(_)) =>
       None
@@ -376,7 +375,7 @@ object AliasPlaceholder {
       Some(AliasPlaceholder(alias))
     case ClusterIndexName.Remote(IndexName.Full(_), _) =>
       None
-    case ClusterIndexName.Remote(IndexName.Pattern(name), _) if name.pattern.contains(placeholder) =>
+    case ClusterIndexName.Remote(IndexName.Pattern(namePattern), _) if namePattern.contains(placeholder) =>
       Some(AliasPlaceholder(alias))
     case ClusterIndexName.Remote(IndexName.Pattern(_), _) =>
       None
@@ -429,7 +428,7 @@ final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
         IndexName
           .fromString(rawPattern)
           .exists { i =>
-            IndicesNamesMatcher
+            MatcherWithWildcardsScala
               .create(Set(index))
               .`match`(i)
           }
@@ -437,7 +436,7 @@ final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
   }
 }
 object RorAuditIndexTemplate {
-  val default: RorAuditIndexTemplate = from(Constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).toOption.get
+  val default: RorAuditIndexTemplate = from(constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).toOption.get
 
   def apply(pattern: String): Either[CreationError, RorAuditIndexTemplate] = from(pattern)
 

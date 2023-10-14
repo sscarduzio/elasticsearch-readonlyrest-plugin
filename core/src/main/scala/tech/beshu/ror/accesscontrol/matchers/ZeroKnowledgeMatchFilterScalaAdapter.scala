@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.matchers
 
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult
-import tech.beshu.ror.utils.ZeroKnowledgeMatchFilter
+import tech.beshu.ror.utils.{JavaStringMatcher, ZeroKnowledgeMatchFilter}
 
 import scala.jdk.CollectionConverters._
 
@@ -27,7 +27,7 @@ class ZeroKnowledgeMatchFilterScalaAdapter {
   def alterIndicesIfNecessary(indices: Set[ClusterIndexName], matcher: Matcher[ClusterIndexName]): AlterResult[ClusterIndexName] = {
     Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
       indices.map(_.stringify).asJava,
-      Matcher.asMatcherWithWildcards(matcher)
+      new JavaStringMatcher(matcher)
     )) match {
       case Some(alteredIndices) => AlterResult.Altered(alteredIndices.asScala.flatMap(ClusterIndexName.fromString).toSet)
       case None => AlterResult.NotAltered
@@ -42,7 +42,7 @@ class ZeroKnowledgeMatchFilterScalaAdapter {
           case RepositoryName.Full(v) => v.value
         }
         .asJava,
-      Matcher.asMatcherWithWildcards(matcher)
+      new JavaStringMatcher(matcher)
     )) match {
       case Some(alteredRepositories) => AlterResult.Altered(alteredRepositories.asScala.flatMap(RepositoryName.from).toSet)
       case None => AlterResult.NotAltered
@@ -57,7 +57,7 @@ class ZeroKnowledgeMatchFilterScalaAdapter {
           case SnapshotName.Full(v) => v.value
         }
         .asJava,
-      Matcher.asMatcherWithWildcards(matcher)
+      new JavaStringMatcher(matcher)
     )) match {
       case Some(alteredSnapshots) => AlterResult.Altered(alteredSnapshots.asScala.flatMap(SnapshotName.from).toSet)
       case None => AlterResult.NotAltered

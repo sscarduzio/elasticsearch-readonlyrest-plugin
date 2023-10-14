@@ -21,7 +21,7 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest._
-import tech.beshu.ror.Constants
+import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, RRTestConfigRequest, RRTestConfigResponse}
 import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
@@ -29,10 +29,10 @@ import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 class RestRRTestConfigAction(settings: Settings, controller: RestController)
   extends BaseRestHandler(settings) with RestHandler {
 
-  register("GET", Constants.PROVIDE_TEST_CONFIG_PATH)
-  register("POST", Constants.UPDATE_TEST_CONFIG_PATH)
-  register("DELETE", Constants.DELETE_TEST_CONFIG_PATH)
-  register("GET", Constants.PROVIDE_LOCAL_USERS_PATH)
+  register("GET", constants.PROVIDE_TEST_CONFIG_PATH)
+  register("POST", constants.UPDATE_TEST_CONFIG_PATH)
+  register("DELETE", constants.DELETE_TEST_CONFIG_PATH)
+  register("GET", constants.PROVIDE_LOCAL_USERS_PATH)
 
   override val getName: String = "ror-test-config-handler"
 

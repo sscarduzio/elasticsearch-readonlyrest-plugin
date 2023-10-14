@@ -28,8 +28,9 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.SnapshotName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult.{Altered, NotAltered}
-import tech.beshu.ror.accesscontrol.matchers.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeMatchFilterScalaAdapter}
+import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeMatchFilterScalaAdapter
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.utils.MatcherWithWildcardsScala
 
 class SnapshotsRule(val settings: Settings)
   extends RegularRule {
@@ -59,7 +60,7 @@ class SnapshotsRule(val settings: Settings)
     } else {
       zeroKnowledgeMatchFilter.alterSnapshotsIfNecessary(
         blockContext.snapshots,
-        MatcherWithWildcardsScalaAdapter[SnapshotName](allowedSnapshots)
+        MatcherWithWildcardsScala.create(allowedSnapshots)
       ) match {
         case NotAltered =>
           Fulfilled(blockContext)

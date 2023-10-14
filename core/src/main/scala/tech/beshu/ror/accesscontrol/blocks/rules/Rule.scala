@@ -106,7 +106,7 @@ object Rule {
     this: AuthenticationImpersonationSupport =>
 
     def eligibleUsers: AuthenticationRule.EligibleUsersSupport
-    def userIdCaseSensitivity: CaseSensitivity
+    implicit def userIdCaseSensitivity: CaseSensitivity
 
     override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
       authenticate(blockContext)
