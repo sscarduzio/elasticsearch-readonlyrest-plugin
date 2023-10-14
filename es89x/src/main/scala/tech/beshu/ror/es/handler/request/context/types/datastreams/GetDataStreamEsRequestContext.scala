@@ -30,6 +30,7 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
+import tech.beshu.ror.utils.MatcherWithWildcardsScala
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.jdk.CollectionConverters._

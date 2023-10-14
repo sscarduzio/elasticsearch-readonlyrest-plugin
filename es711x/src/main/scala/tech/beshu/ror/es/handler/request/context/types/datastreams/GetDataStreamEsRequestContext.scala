@@ -29,6 +29,7 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.{ClassCanonicalName, MatchResult, ReflectionBasedDataStreamsEsContextCreator, tryUpdateDataStreams}
 import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
+import tech.beshu.ror.utils.MatcherWithWildcardsScala
 import tech.beshu.ror.utils.ReflecUtils.{invokeMethod, setField}
 import tech.beshu.ror.utils.ScalaOps._
 
