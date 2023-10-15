@@ -22,12 +22,11 @@ import tech.beshu.ror.utils.{Matchable, MatcherWithWildcardsScala}
 // todo: to remove?
 class GenericPatternMatcher[T : Matchable](patterns: Iterable[Pattern[T]]) {
 
-  private val underlyingMatcher: Matcher[String] = {
-    MatcherWithWildcardsScala.create[String](patterns.map(_.value.value)) // todo: probably a problem with ignored case sensitivity
+  private val underlyingMatcher: Matcher[T] = {
+    MatcherWithWildcardsScala.create[T](patterns.map(_.value))
   }
 
   def `match`(value: T): Boolean = {
-    val stringValue = implicitly[Matchable[T]].show(value)
-    underlyingMatcher.`match`(stringValue)
+    underlyingMatcher.`match`(value)
   }
 }

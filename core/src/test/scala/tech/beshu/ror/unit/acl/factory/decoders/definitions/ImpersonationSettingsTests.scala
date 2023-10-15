@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{AuthKeyRule, AuthKeySha1Rule}
 import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{RorConfigurationIndex, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.{RorConfigurationIndex, User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
@@ -65,8 +65,8 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
             assertion = { definitions =>
               definitions.items should have size 1
               val impersonator = definitions.items.head
-              impersonator.impersonatorUsernames should be(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("admin"))))
-              impersonator.impersonatedUsers should be(ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("*")))))
+              impersonator.impersonatorUsernames should be(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("admin")))))
+              impersonator.impersonatedUsers should be(ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("*"))))))
               impersonator.authenticationRule shouldBe a[AuthKeyRule]
             }
           )
@@ -88,13 +88,15 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
             definitions.items should have size 2
 
             val impersonator1 = definitions.items.head
-            impersonator1.impersonatorUsernames should be(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("admin"))))
-            impersonator1.impersonatedUsers should be(ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("*")))))
+            impersonator1.impersonatorUsernames should be(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("admin")))))
+            impersonator1.impersonatedUsers should be(ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("*"))))))
             impersonator1.authenticationRule shouldBe a[AuthKeySha1Rule]
 
             val impersonator2 = definitions.items.tail.head
-            impersonator2.impersonatorUsernames should be(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("admin2"))))
-            impersonator2.impersonatedUsers should be(ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("user1"), UserIdPattern("user2")))))
+            impersonator2.impersonatorUsernames should be(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("admin2")))))
+            impersonator2.impersonatedUsers should be(ImpersonatedUsers(UserIdPatterns(
+              UniqueNonEmptyList.of(UserIdPattern(User.Id("user1")), UserIdPattern(User.Id("user2")))
+            )))
             impersonator2.authenticationRule shouldBe a[AuthKeyRule]
           }
         )

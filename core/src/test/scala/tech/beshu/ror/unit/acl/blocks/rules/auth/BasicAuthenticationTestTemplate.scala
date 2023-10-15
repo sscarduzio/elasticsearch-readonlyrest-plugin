@@ -50,14 +50,14 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
   private lazy val ruleWithImpersonation = ruleCreator(Impersonation.Enabled(ImpersonationSettings(
     impersonators = List(
       ImpersonatorDef(
-        usernames = UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("admin"))),
+        usernames = UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("admin")))),
         authenticationRule = adminAuthenticationRule(Credentials(User.Id("admin"), PlainTextSecret("admin"))),
-        users = ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("logstash"))))
+        users = ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("logstash")))))
       ),
       ImpersonatorDef(
-        usernames = UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("admin2"))),
+        usernames = UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("admin2")))),
         authenticationRule = adminAuthenticationRule(Credentials(User.Id("admin2"), PlainTextSecret("admin2"))),
-        users = ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("test"))))
+        users = ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("test")))))
       )
     ),
     mocksProvider = NoOpMocksProvider

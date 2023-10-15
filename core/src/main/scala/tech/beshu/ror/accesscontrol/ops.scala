@@ -100,6 +100,7 @@ object orders {
     case Address.Ip(value) => value.toString()
     case Address.Name(value) => value.toString
   }
+  implicit val userIdOrder: Order[User.Id] = Order.by(_.value.value) // todo: case sensitiveness?
   implicit val idPatternOrder: Order[UserIdPattern] = Order.by(_.value)
   implicit val methodOrder: Order[Method] = Order.by(_.m)
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
@@ -153,10 +154,10 @@ object orders {
 object show {
   trait LogsShowInstances {
     implicit val nonEmptyStringShow: Show[NonEmptyString] = Show.show(_.value)
-    implicit val patternShow: Show[Pattern[_]] = Show.show(_.value.value)
+    implicit def patternShow[T : Show]: Show[Pattern[T]] = Show.show(_.value.show) // todo: remove?
     implicit val userIdShow: Show[User.Id] = Show.show(_.value.value)
     implicit val userIdPatternsShow: Show[UserIdPatterns] = Show.show(_.patterns.toList.map(_.value.value).mkString_(","))
-    implicit val idPatternShow: Show[User.UserIdPattern] = patternShow.contramap(identity[Pattern[User.Id]])
+    implicit val idPatternShow: Show[User.UserIdPattern] = Show.show(_.value.show)
     implicit val loggedUserShow: Show[LoggedUser] = Show.show(_.id.value.value)
     implicit val typeShow: Show[Type] = Show.show(_.value)
     implicit val actionShow: Show[Action] = Show.show(_.value)

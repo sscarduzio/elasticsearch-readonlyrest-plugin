@@ -50,15 +50,15 @@ object User {
       }
   }
 
-  final case class UserIdPattern(override val value: NonEmptyString)
+  final case class UserIdPattern(override val value: Id)
     extends Pattern[Id](value) {
 
-    def containsWildcard: Boolean = value.contains("*")
+    def containsWildcard: Boolean = value.value.contains("*")
   }
 }
 
 // todo: do we need it?
-abstract class Pattern[T](val value: NonEmptyString)
+sealed abstract class Pattern[T](val value: T)
 
 final case class UserIdPatterns(patterns: UniqueNonEmptyList[User.UserIdPattern])
 

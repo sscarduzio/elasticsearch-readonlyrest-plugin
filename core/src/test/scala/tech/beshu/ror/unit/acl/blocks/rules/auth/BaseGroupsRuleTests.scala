@@ -562,7 +562,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
   def userIdPatterns(id: String, ids: String*): UserIdPatterns = {
     UserIdPatterns(
       UniqueNonEmptyList.unsafeFromIterable(
-        (id :: ids.toList).map(str => UserIdPattern(NonEmptyString.unsafeFrom(str)))
+        (id :: ids.toList).map(str => UserIdPattern(User.Id(NonEmptyString.unsafeFrom(str))))
       )
     )
   }

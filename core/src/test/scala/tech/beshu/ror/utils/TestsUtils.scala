@@ -146,13 +146,13 @@ object TestsUtils {
                           impersonatorCredentials: Credentials,
                           impersonatedUsersIdPatterns: NonEmptyList[NonEmptyString]): ImpersonatorDef = {
     ImpersonatorDef(
-      UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(userIdPattern))),
+      UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id(userIdPattern)))),
       new AuthKeyRule(
         BasicAuthenticationRule.Settings(impersonatorCredentials),
         CaseSensitivity.Enabled,
         Impersonation.Disabled
       ),
-      ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.fromNonEmptyList(impersonatedUsersIdPatterns.map(UserIdPattern))))
+      ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.fromNonEmptyList(impersonatedUsersIdPatterns.map(User.Id.apply).map(UserIdPattern.apply))))
     )
   }
 

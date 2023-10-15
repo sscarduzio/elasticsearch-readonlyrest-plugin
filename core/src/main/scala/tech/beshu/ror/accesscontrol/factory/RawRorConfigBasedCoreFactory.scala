@@ -38,7 +38,7 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
-import tech.beshu.ror.accesscontrol.domain.{Header, LocalUsers, RorConfigurationIndex, User, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.{Header, LocalUsers, RorConfigurationIndex, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.{Attributes, CoreCreationError}
@@ -404,7 +404,7 @@ class RawRorConfigBasedCoreFactory()
         if (userIdPattern.containsWildcard) {
           LocalUsers(users = Set.empty, unknownUsers = unknownUsersForWildcardPattern)
         } else {
-          LocalUsers(users = Set(User.Id(userIdPattern.value)), unknownUsers = false)
+          LocalUsers(users = Set(userIdPattern.value), unknownUsers = false)
         }
       }
       .toList

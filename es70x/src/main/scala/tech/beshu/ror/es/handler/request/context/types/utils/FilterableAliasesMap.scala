@@ -41,6 +41,7 @@ class FilterableAliasesMap(val value: AliasesMap) extends AnyVal {
   private def filter(responseIndicesNadAliases: List[(String, java.util.List[AliasMetaData])],
                      allowedAliases: NonEmptyList[ClusterIndexName]) = {
     implicit val conversion = Conversion.from[AliasMetaData, String](_.alias())
+implicit val matchable: Matchable[String] = Matchable.caseSensitiveStringMatchable
     val matcher = MatcherWithWildcardsScala.create(allowedAliases.toList.map(_.stringify))
     responseIndicesNadAliases
       .map { case (indexName, aliasesList) =>

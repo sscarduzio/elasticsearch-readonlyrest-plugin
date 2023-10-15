@@ -73,7 +73,7 @@ class ImpersonationDefinitionsDecoderCreator(globalSettings: GlobalSettings,
 
     UniqueNonEmptyList.fromSortedSet(exactImpersonators.intersect(exactImpersonatedUsers)) match {
       case Some(duplicatedUsers) =>
-        val users = duplicatedUsers.map(_.value.value).mkString(",")
+        val users = duplicatedUsers.map(_.value.value.value).mkString(",")
         Left(decodingFailure(
           Message(s"Each of the given users [$users] should be either impersonator or a user to be impersonated")
         ))
