@@ -17,8 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders
 
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
-import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError

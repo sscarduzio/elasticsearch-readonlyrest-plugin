@@ -32,9 +32,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain.{Credentials, Header, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, Header, PlainTextSecret, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 

@@ -30,7 +30,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, RuleName, RuleR
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._

@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
-import tech.beshu.ror.utils.MatcherWithWildcardsScala
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -100,7 +100,7 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
 
   private def updateGetSnapshotResponse(response: GetSnapshotsResponse,
                                         allAllowedIndices: Set[ClusterIndexName]): GetSnapshotsResponse = {
-    val matcher = MatcherWithWildcardsScala.create(allAllowedIndices)
+    val matcher = PatternsMatcher.create(allAllowedIndices)
     response
       .getSnapshots.asSafeList
       .foreach { snapshot =>

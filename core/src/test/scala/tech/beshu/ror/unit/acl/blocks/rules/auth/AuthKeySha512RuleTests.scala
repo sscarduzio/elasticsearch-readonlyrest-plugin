@@ -21,8 +21,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedC
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeySha512Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
-import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
 
 class AuthKeySha512RuleTests extends BasicAuthenticationTestTemplate(supportingImpersonation = false) {
 

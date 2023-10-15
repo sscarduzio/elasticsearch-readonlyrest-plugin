@@ -18,9 +18,8 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleName}
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, PermittedGroups}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic, PermittedGroups}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final class GroupsAndRule(override val settings: BaseGroupsRule.Settings,

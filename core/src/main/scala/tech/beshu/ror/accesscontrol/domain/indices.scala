@@ -21,7 +21,7 @@ import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.constants
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.utils.{Matchable, MatcherWithWildcardsScala}
+import tech.beshu.ror.accesscontrol.matchers.{Matchable, PatternsMatcher}
 import tech.beshu.ror.utils.ScalaOps._
 
 import java.time.{Instant, ZoneId}
@@ -108,7 +108,7 @@ object KibanaIndexName {
 }
 
 sealed trait ClusterIndexName {
-  private [domain] lazy val matcher = MatcherWithWildcardsScala.create[ClusterIndexName](this :: Nil)
+  private [domain] lazy val matcher = PatternsMatcher.create(this :: Nil)
 }
 object ClusterIndexName {
 
@@ -322,7 +322,7 @@ object ClusterIndexName {
 }
 
 final case class IndexPattern(value: ClusterIndexName) {
-  private lazy val matcher = MatcherWithWildcardsScala.create(value :: Nil)
+  private lazy val matcher = PatternsMatcher.create(value :: Nil)
 
   def isAllowedBy(index: ClusterIndexName): Boolean = {
     matcher.`match`(index) || index.matches(value)
@@ -428,7 +428,7 @@ final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
         IndexName
           .fromString(rawPattern)
           .exists { i =>
-            MatcherWithWildcardsScala
+            PatternsMatcher
               .create(Set(index))
               .`match`(i)
           }

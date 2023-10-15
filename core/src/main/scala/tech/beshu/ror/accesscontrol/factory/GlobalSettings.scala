@@ -16,8 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.factory
 
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
-import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, RorConfigurationIndex}
 
 final case class GlobalSettings(showBasicAuthPrompt: Boolean,
                                 forbiddenRequestMessage: String,

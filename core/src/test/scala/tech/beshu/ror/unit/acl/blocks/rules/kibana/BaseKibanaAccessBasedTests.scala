@@ -43,26 +43,30 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
 
   s"A '${RuleName[RULE].name.value}' rule" when {
     "All and any actions are passed when Unrestricted access" in {
-      val anyActions = Set(Action("xyz")) ++ adminActionPatterns ++ rwActionPatterns ++ roActionPatterns ++ clusterActionPatterns
-      anyActions.foreach { action =>
+      val anyActions = Set("xyz") ++
+        adminActionPatternsMatcher.patterns ++
+        rwActionPatternsMatcher.patterns ++
+        roActionPatternsMatcher.patterns ++
+        clusterActionPatternsMatcher.patterns
+      anyActions.map(Action.apply).foreach { action =>
         assertMatchRuleUsingIndicesRequest(settingsOf(Unrestricted), action)()
       }
     }
     "RO action is passed" in {
-      roActionPatterns.foreach { action =>
+      roActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
         assertMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action)()
         assertMatchRuleUsingIndicesRequest(settingsOf(RO), action)()
         assertMatchRuleUsingIndicesRequest(settingsOf(RW), action)()
       }
     }
     "CLUSTER action is passed" in {
-      clusterActionPatterns.foreach { action =>
+      clusterActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
         assertMatchRuleUsingIndicesRequest(settingsOf(RO), action)()
         assertMatchRuleUsingIndicesRequest(settingsOf(RW), action)()
       }
     }
     "RW action is passed" in {
-      rwActionPatterns.foreach { action =>
+      rwActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
           assertNotMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action, requestedIndices = Set(clusterIndexName(".kibana")))
           assertNotMatchRuleUsingIndicesRequest(settingsOf(RO), action, requestedIndices = Set(clusterIndexName(".kibana")))
           assertMatchRuleUsingIndicesRequest(settingsOf(RW), action, requestedIndices = Set(clusterIndexName(".kibana"))) {
@@ -75,35 +79,35 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
         }
     }
     "RO action is passed with other indices" in {
-      roActionPatterns.foreach { action =>
+      roActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
         assertMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action, requestedIndices = Set(clusterIndexName("xxx")))()
         assertMatchRuleUsingIndicesRequest(settingsOf(RO), action, requestedIndices = Set(clusterIndexName("xxx")))()
         assertMatchRuleUsingIndicesRequest(settingsOf(RW), action, requestedIndices = Set(clusterIndexName("xxx")))()
       }
     }
     "RW action is passed with other indices" in {
-      rwActionPatterns.foreach { action =>
+      rwActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
           assertNotMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action, requestedIndices = Set(clusterIndexName("xxx")))
           assertNotMatchRuleUsingIndicesRequest(settingsOf(RO), action, requestedIndices = Set(clusterIndexName("xxx")))
           assertNotMatchRuleUsingIndicesRequest(settingsOf(RW), action, requestedIndices = Set(clusterIndexName("xxx")))
         }
     }
     "RO action is passed with mixed indices" in {
-      roActionPatterns.foreach { action =>
+      roActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
         assertMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action, requestedIndices = Set(clusterIndexName("xxx"), clusterIndexName(".kibana")))()
         assertMatchRuleUsingIndicesRequest(settingsOf(RO), action, requestedIndices = Set(clusterIndexName("xxx"), clusterIndexName(".kibana")))()
         assertMatchRuleUsingIndicesRequest(settingsOf(RW), action, requestedIndices = Set(clusterIndexName("xxx"), clusterIndexName(".kibana")))()
       }
     }
     "RW action is passed with mixed indices" in {
-      rwActionPatterns.foreach { action =>
+      rwActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
           assertNotMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action, requestedIndices = Set(clusterIndexName("xxx"), clusterIndexName(".kibana")))
           assertNotMatchRuleUsingIndicesRequest(settingsOf(RO), action, requestedIndices = Set(clusterIndexName("xxx"), clusterIndexName(".kibana")))
           assertNotMatchRuleUsingIndicesRequest(settingsOf(RW), action, requestedIndices = Set(clusterIndexName("xxx"), clusterIndexName(".kibana")))
         }
     }
     "RW action is passed with custom kibana index" in {
-      rwActionPatterns.foreach { action =>
+      rwActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
           val customKibanaIndex = kibanaIndexName(".custom_kibana")
           assertNotMatchRuleUsingIndicesRequest(
             settingsOf(ROStrict, Some(customKibanaIndex)),

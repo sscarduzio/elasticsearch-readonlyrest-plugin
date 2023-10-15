@@ -28,8 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthenticationRule.Set
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseBasicAuthAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
-import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, User}
 
 final class LdapAuthenticationRule(val settings: Settings,
                                    override implicit val userIdCaseSensitivity: CaseSensitivity,

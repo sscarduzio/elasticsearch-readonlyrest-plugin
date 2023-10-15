@@ -27,10 +27,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, LoggedUser, PermittedGroups, User}
-import tech.beshu.ror.utils.MatcherWithWildcardsScala
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic, LoggedUser, PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings,
@@ -38,7 +37,7 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
                                 override val impersonation: Impersonation)
   extends BaseAuthorizationRule {
 
-  private val userMatcher = MatcherWithWildcardsScala.create[User.Id](settings.users.toSet)
+  private val userMatcher = PatternsMatcher.create[User.Id](settings.users.toSet)
 
   override val name: Rule.Name = ExternalAuthorizationRule.Name.name
 

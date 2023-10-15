@@ -16,21 +16,28 @@
  */
 package tech.beshu.ror.accesscontrol.matchers
 
-import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
+import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
 
-class TemplateNamePatternMatcher(templateNames: Set[TemplateNamePattern]) {
+trait PatternsMatcher[A] {
+  type Conversion[B] = Function1[B, A]
 
-  private val availableTemplatesMatcher: PatternsMatcher[TemplateNamePattern] = PatternsMatcher.create(templateNames)
+  def caseSensitivity: CaseSensitivity
+  def patterns: Iterable[String]
 
-  def `match`(value: TemplateName): Boolean =
-    TemplateNamePattern.fromString(value.value.value) match {
-      case Some(t) => availableTemplatesMatcher.`match`(t)
-      case None => false
-    }
+  def `match`[B <: A](value: B): Boolean
+
+  def filter[B <: A](items: Iterable[B]): Set[B]
+
+  def filter[B: Conversion](items: Iterable[B]): Set[B]
+
+  def contains(str: String): Boolean
 }
+object PatternsMatcher {
 
-object TemplateNamePatternMatcher {
-  def create(templateNames: Set[TemplateNamePattern]): TemplateNamePatternMatcher = {
-    new TemplateNamePatternMatcher(templateNames)
+  object Conversion {
+    def from[B, A](func: B => A): PatternsMatcher[A]#Conversion[B] = (a: B) => func(a)
   }
+
+  def create[T : Matchable](values: Iterable[T]): PatternsMatcher[T] =
+    new GlobPatternsMatcher[T](values)
 }

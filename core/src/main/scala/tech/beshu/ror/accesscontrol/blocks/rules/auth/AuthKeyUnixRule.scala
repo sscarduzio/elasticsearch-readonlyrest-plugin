@@ -29,8 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyUnixRule.UnixHashed
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
-import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, User}
 
 import java.util.regex.Pattern
 

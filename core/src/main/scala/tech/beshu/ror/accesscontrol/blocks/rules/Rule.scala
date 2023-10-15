@@ -25,8 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationSupport, AuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
-import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
 
 sealed trait Rule {
   def name: Rule.Name

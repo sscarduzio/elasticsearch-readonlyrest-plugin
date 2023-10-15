@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.matchers
 
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRemoteIndexFilterScalaAdapter.CheckResult
-import tech.beshu.ror.utils.{JavaStringMatcher, MatcherWithWildcardsScala, ZeroKnowledgeIndexFilter}
+import tech.beshu.ror.utils.{JavaStringMatcher, ZeroKnowledgeIndexFilter}
 
 import scala.jdk.CollectionConverters._
 
@@ -26,7 +26,7 @@ class ZeroKnowledgeRemoteIndexFilterScalaAdapter {
 
   private val underlying = new ZeroKnowledgeIndexFilter(true)
 
-  def check(indices: Set[ClusterIndexName.Remote], matcher: MatcherWithWildcardsScala[ClusterIndexName.Remote]): CheckResult = {
+  def check(indices: Set[ClusterIndexName.Remote], matcher: PatternsMatcher[ClusterIndexName.Remote]): CheckResult = {
     val processedIndices: java.util.Set[String] = scala.collection.mutable.Set.empty[String].asJava
     val result = underlying.alterIndicesIfNecessaryAndCheck(
       indices.map(_.stringify).asJava,

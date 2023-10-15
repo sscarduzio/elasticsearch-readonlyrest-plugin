@@ -26,10 +26,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleRe
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings, SimpleAuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain.{LoggedUser, PermittedGroups}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, LoggedUser, PermittedGroups}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.annotation.nowarn

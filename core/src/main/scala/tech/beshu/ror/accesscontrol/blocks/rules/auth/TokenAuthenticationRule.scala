@@ -30,9 +30,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthenticationRul
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{Header, Token, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Header, Token, User}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 final class TokenAuthenticationRule(val settings: Settings,

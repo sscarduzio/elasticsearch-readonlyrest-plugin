@@ -29,10 +29,10 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeDataStreamsFilterScalaAdapter.CheckResult
-import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeDataStreamsFilterScalaAdapter
+import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeDataStreamsFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.utils.{MatcherWithWildcardsScala, ZeroKnowledgeIndexFilter}
+import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 class DataStreamsRule(val settings: Settings)
   extends RegularRule
@@ -72,7 +72,7 @@ class DataStreamsRule(val settings: Settings)
     } else {
       zeroKnowledgeMatchFilter.check(
         dataStreamsToCheck,
-        MatcherWithWildcardsScala.create(allowedDataStreams)
+        PatternsMatcher.create(allowedDataStreams)
       ) match {
         case CheckResult.Ok(processedDataStreams) if requestContext.isReadOnlyRequest =>
           Right(processedDataStreams)

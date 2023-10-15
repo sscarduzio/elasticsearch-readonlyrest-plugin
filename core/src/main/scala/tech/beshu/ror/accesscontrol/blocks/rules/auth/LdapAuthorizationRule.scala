@@ -28,9 +28,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthorizationRule.Sett
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, LoggedUser, PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic, LoggedUser, PermittedGroups, User}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 class LdapAuthorizationRule(val settings: Settings,

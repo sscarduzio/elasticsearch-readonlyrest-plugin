@@ -27,8 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseBasicAuthAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
-import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, User}
 
 final class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.Settings,
                                        override implicit val userIdCaseSensitivity: CaseSensitivity,

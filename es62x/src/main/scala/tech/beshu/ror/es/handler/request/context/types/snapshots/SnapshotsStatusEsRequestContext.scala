@@ -24,7 +24,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
-import tech.beshu.ror.utils.MatcherWithWildcardsScala
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
@@ -69,8 +69,8 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
 
   private def filterOutNotAllowedSnapshotsAndRepositories(response: SnapshotsStatusResponse,
                                                           blockContext: SnapshotRequestBlockContext): SnapshotsStatusResponse = {
-    val allowedRepositoriesMatcher = MatcherWithWildcardsScala.create(blockContext.repositories)
-    val allowedSnapshotsMatcher = MatcherWithWildcardsScala.create(blockContext.snapshots)
+    val allowedRepositoriesMatcher = PatternsMatcher.create(blockContext.repositories)
+    val allowedSnapshotsMatcher = PatternsMatcher.create(blockContext.snapshots)
 
     val allowedSnapshotStatuses = response
       .getSnapshots.asSafeList
@@ -112,7 +112,7 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
 
   private def fullNamedSnapshotsFrom(snapshots: Iterable[SnapshotName]): Set[SnapshotName.Full] = {
     val allFullNameSnapshots: Set[SnapshotName.Full] = allSnapshots.values.toSet.flatten
-    MatcherWithWildcardsScala
+    PatternsMatcher
       .create(snapshots)
       .filter(allFullNameSnapshots)
   }
@@ -132,7 +132,7 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
 
   private def fullNamedRepositoriesFrom(repositories: Iterable[RepositoryName]): Set[RepositoryName.Full] = {
     val allFullNameRepositories: Set[RepositoryName.Full] = allSnapshots.keys.toSet
-    MatcherWithWildcardsScala
+    PatternsMatcher
       .create(repositories)
       .filter(allFullNameRepositories)
   }

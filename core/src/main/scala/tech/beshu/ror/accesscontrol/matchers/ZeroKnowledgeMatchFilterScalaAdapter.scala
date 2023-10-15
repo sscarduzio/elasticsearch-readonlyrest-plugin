@@ -24,7 +24,7 @@ import scala.jdk.CollectionConverters._
 
 class ZeroKnowledgeMatchFilterScalaAdapter {
 
-  def alterIndicesIfNecessary(indices: Set[ClusterIndexName], matcher: Matcher[ClusterIndexName]): AlterResult[ClusterIndexName] = {
+  def alterIndicesIfNecessary(indices: Set[ClusterIndexName], matcher: PatternsMatcher[ClusterIndexName]): AlterResult[ClusterIndexName] = {
     Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
       indices.map(_.stringify).asJava,
       new JavaStringMatcher(matcher)
@@ -34,7 +34,7 @@ class ZeroKnowledgeMatchFilterScalaAdapter {
     }
   }
 
-  def alterRepositoriesIfNecessary(repositories: Set[RepositoryName], matcher: Matcher[RepositoryName]): AlterResult[RepositoryName] = {
+  def alterRepositoriesIfNecessary(repositories: Set[RepositoryName], matcher: PatternsMatcher[RepositoryName]): AlterResult[RepositoryName] = {
     Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
       repositories
         .collect {
@@ -49,7 +49,7 @@ class ZeroKnowledgeMatchFilterScalaAdapter {
     }
   }
 
-  def alterSnapshotsIfNecessary(snapshots: Set[SnapshotName], matcher: Matcher[SnapshotName]): AlterResult[SnapshotName] = {
+  def alterSnapshotsIfNecessary(snapshots: Set[SnapshotName], matcher: PatternsMatcher[SnapshotName]): AlterResult[SnapshotName] = {
     Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
       snapshots
         .collect {

@@ -33,7 +33,6 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings

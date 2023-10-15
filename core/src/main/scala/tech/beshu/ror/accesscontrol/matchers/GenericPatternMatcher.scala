@@ -17,14 +17,11 @@
 package tech.beshu.ror.accesscontrol.matchers
 
 import tech.beshu.ror.accesscontrol.domain.Pattern
-import tech.beshu.ror.utils.{Matchable, MatcherWithWildcardsScala}
 
-// todo: to remove?
+// todo: to remove? when Pattern is removed
 class GenericPatternMatcher[T : Matchable](patterns: Iterable[Pattern[T]]) {
 
-  private val underlyingMatcher: Matcher[T] = {
-    MatcherWithWildcardsScala.create[T](patterns.map(_.value))
-  }
+  private val underlyingMatcher: PatternsMatcher[T] = PatternsMatcher.create[T](patterns.map(_.value))
 
   def `match`(value: T): Boolean = {
     underlyingMatcher.`match`(value)

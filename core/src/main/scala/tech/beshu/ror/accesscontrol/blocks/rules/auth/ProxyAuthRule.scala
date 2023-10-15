@@ -30,12 +30,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthenticationRul
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.accesscontrol.domain.{Header, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Header, User}
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.utils.MatcherWithWildcardsScala
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final class ProxyAuthRule(val settings: Settings,
@@ -44,7 +43,7 @@ final class ProxyAuthRule(val settings: Settings,
   extends BaseAuthenticationRule
     with Logging {
 
-  private val userMatcher = MatcherWithWildcardsScala.create[User.Id](settings.userIds.toSet)
+  private val userMatcher = PatternsMatcher.create(settings.userIds.toSet)
 
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.Available(settings.userIds.toSet)
 

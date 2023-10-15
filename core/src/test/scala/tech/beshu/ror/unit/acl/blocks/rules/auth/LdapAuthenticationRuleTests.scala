@@ -31,11 +31,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.{ImpersonationNotAllowed, ImpersonationNotSupported}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser._
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, PlainTextSecret, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 

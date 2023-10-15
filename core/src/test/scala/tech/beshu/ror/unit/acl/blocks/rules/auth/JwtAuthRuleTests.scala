@@ -37,7 +37,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule.Groups
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt => _, _}

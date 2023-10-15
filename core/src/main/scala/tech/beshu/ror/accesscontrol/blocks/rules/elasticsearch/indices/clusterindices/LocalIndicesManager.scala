@@ -22,11 +22,11 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices.BaseIndicesProcessor.IndicesManager
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.{Local => LocalIndexName}
 import tech.beshu.ror.accesscontrol.domain.IndexAttribute
-import tech.beshu.ror.accesscontrol.matchers.Matcher
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class LocalIndicesManager(requestContext: RequestContext,
-                          override val matcher: Matcher[LocalIndexName])
+                          override val matcher: PatternsMatcher[LocalIndexName])
   extends IndicesManager[LocalIndexName] {
 
   override def allIndicesAndAliases: Task[Set[LocalIndexName]] = Task.delay {

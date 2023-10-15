@@ -21,28 +21,8 @@ import com.google.common.collect.Sets;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.function.Consumer;
 
 public class ZeroKnowledgeMatchFilter {
-
-  /**
-   * Transform the indices list of an incoming request at best effort, without knowing the complete list of available indices and aliases.
-   *
-   * @param indices       indices in the request.
-   * @param matcher       indices rules matcher.
-   * @param indicesWriter function to write indices in request.
-   * @return can be allowed
-   */
-  static public boolean alterIndicesIfNecessaryAndCheck(Set<String> indices, JavaStringMatcher matcher, Consumer<Set<String>> indicesWriter) {
-    Set<String> modifiedIndices = alterIndicesIfNecessary(indices, matcher);
-    if (modifiedIndices != null) {
-      if (modifiedIndices.isEmpty()) {
-        return false;
-      }
-      indicesWriter.accept(modifiedIndices);
-    }
-    return true;
-  }
 
   static public Set<String> alterIndicesIfNecessary(Set<String> indices, JavaStringMatcher matcher) {
 
@@ -60,12 +40,12 @@ public class ZeroKnowledgeMatchFilter {
     if (indices.contains("*")) {
 
       if (indices.size() == 1) {
-        return new HashSet<>(matcher.getMatchers());
+        return new HashSet<>(matcher.getPatterns());
       }
       else {
         shouldReplace = true;
         indices.remove("*");
-        indices.addAll(new HashSet<>(matcher.getMatchers()));
+        indices.addAll(new HashSet<>(matcher.getPatterns()));
       }
     }
 
@@ -76,8 +56,8 @@ public class ZeroKnowledgeMatchFilter {
         continue;
       }
 
-      JavaStringMatcher revMatcher = new JavaStringMatcher(Sets.newHashSet(i));
-      Set<String> matched = revMatcher.filter(matcher.getMatchers());
+      JavaStringMatcher revMatcher = new JavaStringMatcher(Sets.newHashSet(i), matcher.getCaseSensitivity());
+      Set<String> matched = revMatcher.filter(matcher.getPatterns());
 
       if (!matched.isEmpty()) {
         newIndices.addAll(matched);

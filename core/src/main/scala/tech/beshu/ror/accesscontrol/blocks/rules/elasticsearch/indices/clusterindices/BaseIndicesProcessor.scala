@@ -26,10 +26,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.Ca
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.IndicesCheckContinuation.{continue, stop}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.{CanPass, CheckContinuation}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
-import tech.beshu.ror.accesscontrol.matchers.Matcher
+import tech.beshu.ror.accesscontrol.matchers.{Matchable, PatternsMatcher}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.{Matchable, MatcherWithWildcardsScala}
 
 trait BaseIndicesProcessor {
   this: Logging =>
@@ -140,7 +139,7 @@ trait BaseIndicesProcessor {
       .allIndices
       .map { allIndices =>
         val requestedIndicesNames = indices
-        val requestedIndices = MatcherWithWildcardsScala.create(requestedIndicesNames).filter(allIndices)
+        val requestedIndices = PatternsMatcher.create(requestedIndicesNames).filter(allIndices)
 
         indicesManager.matcher.filter(requestedIndices)
       }
@@ -164,7 +163,7 @@ trait BaseIndicesProcessor {
       .allAliases
       .map { allAliases =>
         val requestedAliasesNames = indices
-        val requestedAliases = MatcherWithWildcardsScala.create(requestedAliasesNames).filter(allAliases)
+        val requestedAliases = PatternsMatcher.create(requestedAliasesNames).filter(allAliases)
 
         indicesManager.matcher.filter(requestedAliases)
       }
@@ -177,7 +176,7 @@ trait BaseIndicesProcessor {
       aliasesPerIndex <- indicesManager.indicesPerAliasMap
     } yield {
       val requestedAliasesNames = indices
-      val requestedAliases = MatcherWithWildcardsScala.create(requestedAliasesNames).filter(allAliases)
+      val requestedAliases = PatternsMatcher.create(requestedAliasesNames).filter(allAliases)
 
       val indicesOfRequestedAliases = requestedAliases.flatMap(aliasesPerIndex.getOrElse(_, Set.empty))
       indicesManager.matcher.filter(indicesOfRequestedAliases)
@@ -191,7 +190,7 @@ trait BaseIndicesProcessor {
       aliasesPerDataStream <- indicesManager.dataStreamsPerAliasMap
     } yield {
       val requestedAliasesNames = indices
-      val requestedAliases = MatcherWithWildcardsScala.create(requestedAliasesNames).filter(allAliases)
+      val requestedAliases = PatternsMatcher.create(requestedAliasesNames).filter(allAliases)
       val dataStreamsOfRequestedAliases = requestedAliases.flatMap(aliasesPerDataStream.getOrElse(_, Set.empty))
       indicesManager.matcher.filter(dataStreamsOfRequestedAliases)
     }
@@ -204,7 +203,7 @@ trait BaseIndicesProcessor {
       backingIndicesPerDataStream <- indicesManager.indicesPerDataStreamMap
     } yield {
       val requestedDataStreamsNames = indices
-      val requestedDataStreams = MatcherWithWildcardsScala.create(requestedDataStreamsNames).filter(allDataStreams)
+      val requestedDataStreams = PatternsMatcher.create(requestedDataStreamsNames).filter(allDataStreams)
       val indicesOfRequestedDataStream = requestedDataStreams.flatMap(backingIndicesPerDataStream.getOrElse(_, Set.empty))
       indicesManager.matcher.filter(indicesOfRequestedDataStream)
     }
@@ -223,7 +222,7 @@ trait BaseIndicesProcessor {
       .allDataStreams
       .map { allDataStreams =>
         val requestedDataStreamsNames = indices
-        val requestedDataStreams = MatcherWithWildcardsScala.create(requestedDataStreamsNames).filter(allDataStreams)
+        val requestedDataStreams = PatternsMatcher.create(requestedDataStreamsNames).filter(allDataStreams)
         indicesManager.matcher.filter(requestedDataStreams)
       }
   }
@@ -293,6 +292,6 @@ object BaseIndicesProcessor {
 
     def indicesPerDataStreamMap: Task[Map[T, Set[T]]]
 
-    def matcher: Matcher[T]
+    def matcher: PatternsMatcher[T]
   }
 }

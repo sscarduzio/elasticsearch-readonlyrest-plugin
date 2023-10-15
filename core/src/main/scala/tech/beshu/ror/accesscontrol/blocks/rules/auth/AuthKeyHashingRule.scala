@@ -31,7 +31,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedC
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.utils.Hasher
 

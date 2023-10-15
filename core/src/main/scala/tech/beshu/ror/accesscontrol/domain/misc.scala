@@ -22,30 +22,19 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.utils.js.JsCompiler
 
 import java.util.regex
 import scala.util.{Failure, Success, Try}
 
-// todo: move?
-final case class GlobPattern(pattern: String, caseSensitivity: CaseSensitivity)
-object GlobPattern {
-
-  val wildcard: GlobPattern = GlobPattern("*", CaseSensitivity.Enabled)
-
-  sealed trait CaseSensitivity
-  object CaseSensitivity {
-    case object Enabled extends CaseSensitivity
-    case object Disabled extends CaseSensitivity
-
-    // in order to call from java
-    def enabled: Enabled.type = Enabled
-    def disabled: Disabled.type = Disabled
-  }
+sealed trait CaseSensitivity
+object CaseSensitivity {
+  case object Enabled extends CaseSensitivity
+  case object Disabled extends CaseSensitivity
 
   // in order to call from java
-  def caseSensitivity: CaseSensitivity.type = CaseSensitivity
+  def enabled: Enabled.type = Enabled
+  def disabled: Disabled.type = Disabled
 }
 
 final case class RorAuditLoggerName(value: NonEmptyString)

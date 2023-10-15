@@ -18,6 +18,7 @@
 package tech.beshu.ror.utils;
 
 import com.google.common.collect.Sets;
+import tech.beshu.ror.accesscontrol.domain.CaseSensitivity;
 
 import java.util.Set;
 import java.util.function.Consumer;
@@ -67,15 +68,15 @@ public class ZeroKnowledgeIndexFilter {
 
     if (indices.contains("*")) {
       if (!remoteClusterAware) {
-        return matcher.getMatchers();
+        return matcher.getPatterns();
       }
       if (indices.size() == 1) {
-        return matcher.getMatchers().stream().filter(m -> !m.contains(":")).collect(Collectors.toSet());
+        return matcher.getPatterns().stream().filter(m -> !m.contains(":")).collect(Collectors.toSet());
       }
       else {
         shouldReplace = true;
         indices.remove("*");
-        indices.addAll(matcher.getMatchers().stream().filter(m -> !m.contains(":")).collect(Collectors.toSet()));
+        indices.addAll(matcher.getPatterns().stream().filter(m -> !m.contains(":")).collect(Collectors.toSet()));
       }
     }
 
@@ -86,8 +87,8 @@ public class ZeroKnowledgeIndexFilter {
         continue;
       }
 
-      JavaStringMatcher revMatcher = new JavaStringMatcher(Sets.newHashSet(i));
-      Set<String> matched = revMatcher.filter(matcher.getMatchers());
+      JavaStringMatcher revMatcher = new JavaStringMatcher(Sets.newHashSet(i), matcher.getCaseSensitivity());
+      Set<String> matched = revMatcher.filter(matcher.getPatterns());
 
       if (!matched.isEmpty()) {
         newIndices.addAll(matched);

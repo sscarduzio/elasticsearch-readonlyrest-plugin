@@ -28,9 +28,9 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local.devNullKibana
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName._
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.constants
-import tech.beshu.ror.utils.MatcherWithWildcardsScala
+import tech.beshu.ror.constants._
 
 import java.util.regex.Pattern
 import scala.util.Try
@@ -197,25 +197,25 @@ abstract class BaseKibanaRule(val settings: Settings) extends Logging {
   }
 
   private def isRoAction = ProcessingContext.create { (requestContext, _) =>
-    val result = Matchers.roMatcher.`match`(requestContext.action)
+    val result = roActionPatternsMatcher.`match`(requestContext.action)
     logger.debug(s"[${requestContext.id.show}] Is RO action? $result")
     result
   }
 
   private def isClusterAction = ProcessingContext.create { (requestContext, _) =>
-    val result = Matchers.clusterMatcher.`match`(requestContext.action)
+    val result = clusterActionPatternsMatcher.`match`(requestContext.action)
     logger.debug(s"[${requestContext.id.show}] Is Cluster action? $result")
     result
   }
 
   private def isRwAction = ProcessingContext.create { (requestContext, _) =>
-    val result = Matchers.rwMatcher.`match`(requestContext.action)
+    val result = rwActionPatternsMatcher.`match`(requestContext.action)
     logger.debug(s"[${requestContext.id.show}] Is RW action? $result")
     result
   }
 
   private def isAdminAction = ProcessingContext.create { (requestContext, _) =>
-    val result = Matchers.adminMatcher.`match`(requestContext.action)
+    val result = adminActionPatternsMatcher.`match`(requestContext.action)
     logger.debug(s"[${requestContext.id.show}] Is Admin action? $result")
     result
   }
@@ -250,19 +250,15 @@ object BaseKibanaRule {
   abstract class Settings(val access: KibanaAccess,
                           val rorIndex: RorConfigurationIndex)
   private object Matchers {
-    val roMatcher = MatcherWithWildcardsScala.create(constants.roActionPatterns)
-    val rwMatcher = MatcherWithWildcardsScala.create(constants.rwActionPatterns)
-    val adminMatcher = MatcherWithWildcardsScala.create(constants.adminActionPatterns)
-    val clusterMatcher = MatcherWithWildcardsScala.create(constants.clusterActionPatterns)
-    val nonStrictActions = MatcherWithWildcardsScala.create(Set(
+    val nonStrictActions = PatternsMatcher.create(Set(
       Action("indices:data/write/*"), Action("indices:admin/template/put")
     ))
-    val indicesWriteAction = MatcherWithWildcardsScala.create(Set(Action("indices:data/write/*")))
+    val indicesWriteAction = PatternsMatcher.create(Set(Action("indices:data/write/*")))
 
-    val kibanaSampleDataIndexMatcher = MatcherWithWildcardsScala.create[ClusterIndexName](
+    val kibanaSampleDataIndexMatcher = PatternsMatcher.create[ClusterIndexName](
       Set(Local(IndexName.Pattern("kibana_sample_data_*")))
     )
-    val kibanaSampleDataStreamMatcher = MatcherWithWildcardsScala.create[DataStreamName](
+    val kibanaSampleDataStreamMatcher = PatternsMatcher.create[DataStreamName](
       Set(DataStreamName.Pattern("kibana_sample_data_*"))
     )
   }

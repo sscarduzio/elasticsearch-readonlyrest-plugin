@@ -25,12 +25,11 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName}
-import tech.beshu.ror.accesscontrol.matchers.Matcher
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
-import tech.beshu.ror.utils.MatcherWithWildcardsScala
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.jdk.CollectionConverters._
@@ -74,7 +73,7 @@ class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
 
   private def updateGetDataStreamResponse(response: GetDataStreamAction.Response,
                                           allAllowedIndices: Iterable[ClusterIndexName]): GetDataStreamAction.Response = {
-    val allowedIndicesMatcher = MatcherWithWildcardsScala.create(allAllowedIndices)
+    val allowedIndicesMatcher = PatternsMatcher.create(allAllowedIndices)
     val filteredStreams =
       response
         .getDataStreams.asSafeList
@@ -84,7 +83,7 @@ class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
     new GetDataStreamAction.Response(filteredStreams.asJava)
   }
 
-  private def backingIndiesMatchesAllowedIndices(info: Response.DataStreamInfo, allowedIndicesMatcher: Matcher[ClusterIndexName]) = {
+  private def backingIndiesMatchesAllowedIndices(info: Response.DataStreamInfo, allowedIndicesMatcher: PatternsMatcher[ClusterIndexName]) = {
     val dataStreamIndices: Set[ClusterIndexName] = indicesFrom(info).keySet
     val allowedBackingIndices = allowedIndicesMatcher.filter(dataStreamIndices)
     dataStreamIndices.diff(allowedBackingIndices).isEmpty

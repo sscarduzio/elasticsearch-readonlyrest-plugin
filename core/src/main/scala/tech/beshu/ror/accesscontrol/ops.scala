@@ -154,7 +154,7 @@ object orders {
 object show {
   trait LogsShowInstances {
     implicit val nonEmptyStringShow: Show[NonEmptyString] = Show.show(_.value)
-    implicit def patternShow[T : Show]: Show[Pattern[T]] = Show.show(_.value.show) // todo: remove?
+    implicit def patternShow[T : Show]: Show[Pattern[T]] = Show.show(_.value.show)
     implicit val userIdShow: Show[User.Id] = Show.show(_.value.value)
     implicit val userIdPatternsShow: Show[UserIdPatterns] = Show.show(_.patterns.toList.map(_.value.value).mkString_(","))
     implicit val idPatternShow: Show[User.UserIdPattern] = Show.show(_.value.show)

@@ -35,7 +35,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedC
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{AuthKeyRule, AuthKeySha1Rule}
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
@@ -215,7 +214,7 @@ class ImpersonationRuleDecoratorTests
   private def userIdPatterns(id: String, ids: String*) = {
     UserIdPatterns(
       UniqueNonEmptyList.unsafeFromIterable(
-        (id :: ids.toList).map(str => UserIdPattern(NonEmptyString.unsafeFrom(str)))
+        (id :: ids.toList).map(str => UserIdPattern(User.Id(NonEmptyString.unsafeFrom(str))))
       )
     )
   }

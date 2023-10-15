@@ -20,8 +20,7 @@ import eu.timepit.refined.auto._
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyUnixRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
-import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
 
 class AuthKeyUnixRuleTests extends BasicAuthenticationTestTemplate(supportingImpersonation = true) {
 

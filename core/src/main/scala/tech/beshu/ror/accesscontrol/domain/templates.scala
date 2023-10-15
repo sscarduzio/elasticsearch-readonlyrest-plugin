@@ -21,8 +21,7 @@ import eu.timepit.refined.auto._
 import cats.Eq
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.matchers.{TemplateNamePatternMatcher, UniqueIdentifierGenerator}
-import tech.beshu.ror.utils.Matchable
+import tech.beshu.ror.accesscontrol.matchers.{Matchable, TemplateNamePatternMatcher, UniqueIdentifierGenerator}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 sealed trait Template {

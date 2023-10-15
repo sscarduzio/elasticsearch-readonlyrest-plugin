@@ -24,7 +24,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroup
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.{Settings => GroupsRuleSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsOrRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.utils.TestsUtils._

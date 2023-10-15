@@ -31,9 +31,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.mocks.MockRequestContext
 

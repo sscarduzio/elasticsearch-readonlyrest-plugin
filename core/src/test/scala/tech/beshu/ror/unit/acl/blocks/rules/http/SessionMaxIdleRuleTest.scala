@@ -29,9 +29,8 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule.Settings
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{Header, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Header, User}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.providers.UuidProvider
 import tech.beshu.ror.unit.acl.blocks.rules.http.SessionMaxIdleRuleTest.{fixedClock, fixedUuidProvider, rorSessionCookie, someday}

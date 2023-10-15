@@ -23,13 +23,12 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName}
-import tech.beshu.ror.accesscontrol.matchers.Matcher
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.{ClassCanonicalName, MatchResult, ReflectionBasedDataStreamsEsContextCreator, tryUpdateDataStreams}
 import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
-import tech.beshu.ror.utils.MatcherWithWildcardsScala
 import tech.beshu.ror.utils.ReflecUtils.{invokeMethod, setField}
 import tech.beshu.ror.utils.ScalaOps._
 
@@ -88,7 +87,7 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
 
   private def updateActionResponse(response: ActionResponse,
                                    allAllowedIndices: Iterable[ClusterIndexName]): ActionResponse = {
-    val allowedIndicesMatcher = MatcherWithWildcardsScala.create(allAllowedIndices)
+    val allowedIndicesMatcher = PatternsMatcher.create(allAllowedIndices)
     val filteredDataStreams =
       invokeMethod(response, response.getClass, "getDataStreams")
         .asInstanceOf[java.util.List[Object]]
@@ -101,7 +100,7 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
     response
   }
 
-  private def backingIndiesMatchesAllowedIndices(info: Object, allowedIndicesMatcher: Matcher[ClusterIndexName]): Boolean = {
+  private def backingIndiesMatchesAllowedIndices(info: Object, allowedIndicesMatcher: PatternsMatcher[ClusterIndexName]): Boolean = {
     val dataStreamIndices = indicesFromDataStreamInfo(info).get
     val allowedBackingIndices = allowedIndicesMatcher.filter(dataStreamIndices)
     dataStreamIndices.diff(allowedBackingIndices).isEmpty

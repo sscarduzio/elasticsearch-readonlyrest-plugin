@@ -22,10 +22,9 @@ import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.matchers.{Matchable, PatternsMatcher}
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.utils.{Matchable, MatcherWithWildcardsScala}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 sealed trait LoggedUser {
@@ -73,7 +72,7 @@ object GroupLike {
   final case class GroupNamePattern private(value: NonEmptyString)
     extends GroupLike {
 
-    private[GroupLike] lazy val matcher = new MatcherWithWildcardsScala[GroupLike](Set(this))
+    private[GroupLike] lazy val matcher = PatternsMatcher.create[GroupLike](Set(this))
   }
 
   object GroupNamePattern {
@@ -104,7 +103,7 @@ object GroupLike {
 }
 
 final case class PermittedGroups(groups: UniqueNonEmptyList[_ <: GroupLike]) {
-  private[PermittedGroups] lazy val matcher = new MatcherWithWildcardsScala[GroupLike](groups)
+  private[PermittedGroups] lazy val matcher = PatternsMatcher.create[GroupLike](groups)
 }
 object PermittedGroups {
 

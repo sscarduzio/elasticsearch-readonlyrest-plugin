@@ -1,36 +1,56 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
 package tech.beshu.ror.utils;
 
 import com.google.common.collect.Sets;
 import scala.jdk.CollectionConverters;
-import tech.beshu.ror.accesscontrol.domain.GlobPattern;
-import tech.beshu.ror.accesscontrol.domain.GlobPattern$;
-import tech.beshu.ror.accesscontrol.matchers.Matcher;
+import tech.beshu.ror.accesscontrol.domain.CaseSensitivity;
+import tech.beshu.ror.accesscontrol.matchers.Matchable$;
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher;
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher$;
 
 import java.util.Set;
 
 public class JavaStringMatcher {
 
-  private final Matcher<String> underlyingMatcher;
+  private final PatternsMatcher<String> underlyingMatcher;
 
-  public JavaStringMatcher(Iterable<String> patterns) {
-    Matchable<String> matchable = Matchable$.MODULE$.matchable(s -> s, GlobPattern$.MODULE$.caseSensitivity().enabled()); // todo: really?
-    this.underlyingMatcher = MatcherWithWildcardsScala$.MODULE$.create(
-        CollectionConverters.IterableHasAsScala(patterns).asScala(), matchable
+  public JavaStringMatcher(Iterable<String> patterns, CaseSensitivity caseSensitivity) {
+    this.underlyingMatcher = PatternsMatcher$.MODULE$.create(
+        CollectionConverters.IterableHasAsScala(patterns).asScala(),
+        Matchable$.MODULE$.matchable(s -> s, caseSensitivity)
     );
   }
 
-  public JavaStringMatcher(Matcher<?> matcher) {
-    Matchable<String> matchable = Matchable$.MODULE$.matchable(s -> s, GlobPattern$.MODULE$.caseSensitivity().enabled()); // todo: really?
-    this.underlyingMatcher = MatcherWithWildcardsScala$.MODULE$.<String>create(
-        matcher.globPatterns().map(GlobPattern::pattern),
-        matchable
+  public JavaStringMatcher(PatternsMatcher<?> matcher) {
+    this.underlyingMatcher = PatternsMatcher$.MODULE$.create(
+        matcher.patterns(),
+        Matchable$.MODULE$.matchable(s -> s, matcher.caseSensitivity())
     );
   }
 
-  public Set<String> getMatchers() {
+  public Set<String> getPatterns() {
     return Sets.newHashSet(
-        CollectionConverters.IterableHasAsJava(underlyingMatcher.globPatterns().map(GlobPattern::pattern)).asJava()
+        CollectionConverters.IterableHasAsJava(underlyingMatcher.patterns()).asJava()
     );
+  }
+
+  public CaseSensitivity getCaseSensitivity() {
+    return underlyingMatcher.caseSensitivity();
   }
 
   public boolean match(String haystack) {

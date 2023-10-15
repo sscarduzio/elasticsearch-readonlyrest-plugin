@@ -23,9 +23,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ProxyAuth}
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{AuthKeyRule, AuthKeySha1Rule}
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{RorConfigurationIndex, User, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, RorConfigurationIndex, User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError

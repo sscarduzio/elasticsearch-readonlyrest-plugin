@@ -25,8 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.GlobPattern.CaseSensitivity
-import tech.beshu.ror.accesscontrol.domain.LoggedUser
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, LoggedUser}
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie.{ExtractingError, toSessionHeader}
 import tech.beshu.ror.providers.UuidProvider
