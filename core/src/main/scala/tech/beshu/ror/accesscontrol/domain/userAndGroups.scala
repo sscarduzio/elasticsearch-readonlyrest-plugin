@@ -56,7 +56,6 @@ object User {
   }
 }
 
-// todo: do we need it?
 sealed abstract class Pattern[T](val value: T)
 
 final case class UserIdPatterns(patterns: UniqueNonEmptyList[User.UserIdPattern])

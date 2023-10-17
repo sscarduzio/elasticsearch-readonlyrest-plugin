@@ -56,7 +56,7 @@ private[matchers] class GlobPatternsMatcher[T: Matchable](val values: Iterable[T
   }
 
   private def globPatternFlags(caseSensitivity: CaseSensitivity) = {
-    // todo: handle escapes?
+    // todo: in the future we can handle escapes too
     caseSensitivity match {
       case CaseSensitivity.Enabled => 0
       case CaseSensitivity.Disabled => GlobPattern.CASE_INSENSITIVE

@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.matchers
 
 import tech.beshu.ror.accesscontrol.domain.Pattern
 
-// todo: to remove? when Pattern is removed
 class GenericPatternMatcher[T : Matchable](patterns: Iterable[Pattern[T]]) {
 
   private val underlyingMatcher: PatternsMatcher[T] = PatternsMatcher.create[T](patterns.map(_.value))

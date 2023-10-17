@@ -54,7 +54,6 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMetho
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{Blacklist, Whitelist}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
-import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.KibanaUserDataRuleTogetherWith
@@ -100,8 +99,6 @@ object orders {
     case Address.Ip(value) => value.toString()
     case Address.Name(value) => value.toString
   }
-  implicit val userIdOrder: Order[User.Id] = Order.by(_.value.value) // todo: case sensitiveness?
-  implicit val idPatternOrder: Order[UserIdPattern] = Order.by(_.value)
   implicit val methodOrder: Order[Method] = Order.by(_.m)
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
   implicit val kibanaAppOrder: Order[KibanaApp] = Order.by {
