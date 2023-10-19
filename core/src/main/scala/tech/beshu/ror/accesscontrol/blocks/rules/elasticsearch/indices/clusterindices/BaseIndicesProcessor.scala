@@ -61,7 +61,7 @@ trait BaseIndicesProcessor {
       .map { allIndicesAndAliasesAndDataStreams =>
         logger.debug(s"[${requestId.show}] ... indices, aliases and data streams: [${allIndicesAndAliasesAndDataStreams.map(_.show).mkString(",")}]")
         if (indices.exists(_.allIndicesRequested)) {
-          val allowedIndices = indicesManager.matcher.filter(allIndicesAndAliasesAndDataStreams)
+          val allowedIndices = indicesManager.allowedIndicesMatcher.filter(allIndicesAndAliasesAndDataStreams)
           stop(
             if (allowedIndices.nonEmpty) {
               logger.debug(s"[${requestId.show}] ... matched [indices: ${indices.map(_.show).mkString(",")}]. Stop")
@@ -85,14 +85,14 @@ trait BaseIndicesProcessor {
     Task.now {
       indices.toList match {
         case index :: Nil if !index.hasWildcard =>
-          if (indicesManager.matcher.`match`(index)) {
+          if (indicesManager.allowedIndicesMatcher.`match`(index)) {
             logger.debug(s"[${requestId.show}] ... matched [indices: ${index.show}]. Stop")
             stop(CanPass.Yes(Set(index)))
           } else {
             logger.debug(s"[${requestId.show}] ... not matched. Continue")
             continue
           }
-        case _ if indices.forall(i => !i.hasWildcard) && indicesManager.matcher.filter(indices.toSet) === indices.toSet =>
+        case _ if indices.forall(i => !i.hasWildcard) && indicesManager.allowedIndicesMatcher.filter(indices.toSet) === indices.toSet =>
           logger.debug(s"[${requestId.show}] ... matched [indices: ${indices.map(_.show).mkString(",")}]. Stop")
           stop(CanPass.Yes(indices.toSet))
         case _ =>
@@ -141,7 +141,7 @@ trait BaseIndicesProcessor {
         val requestedIndicesNames = indices
         val requestedIndices = PatternsMatcher.create(requestedIndicesNames).filter(allIndices)
 
-        indicesManager.matcher.filter(requestedIndices)
+        indicesManager.allowedIndicesMatcher.filter(requestedIndices)
       }
   }
 
@@ -165,7 +165,7 @@ trait BaseIndicesProcessor {
         val requestedAliasesNames = indices
         val requestedAliases = PatternsMatcher.create(requestedAliasesNames).filter(allAliases)
 
-        indicesManager.matcher.filter(requestedAliases)
+        indicesManager.allowedIndicesMatcher.filter(requestedAliases)
       }
   }
 
@@ -179,7 +179,7 @@ trait BaseIndicesProcessor {
       val requestedAliases = PatternsMatcher.create(requestedAliasesNames).filter(allAliases)
 
       val indicesOfRequestedAliases = requestedAliases.flatMap(aliasesPerIndex.getOrElse(_, Set.empty))
-      indicesManager.matcher.filter(indicesOfRequestedAliases)
+      indicesManager.allowedIndicesMatcher.filter(indicesOfRequestedAliases)
     }
   }
 
@@ -192,7 +192,7 @@ trait BaseIndicesProcessor {
       val requestedAliasesNames = indices
       val requestedAliases = PatternsMatcher.create(requestedAliasesNames).filter(allAliases)
       val dataStreamsOfRequestedAliases = requestedAliases.flatMap(aliasesPerDataStream.getOrElse(_, Set.empty))
-      indicesManager.matcher.filter(dataStreamsOfRequestedAliases)
+      indicesManager.allowedIndicesMatcher.filter(dataStreamsOfRequestedAliases)
     }
   }
 
@@ -205,7 +205,7 @@ trait BaseIndicesProcessor {
       val requestedDataStreamsNames = indices
       val requestedDataStreams = PatternsMatcher.create(requestedDataStreamsNames).filter(allDataStreams)
       val indicesOfRequestedDataStream = requestedDataStreams.flatMap(backingIndicesPerDataStream.getOrElse(_, Set.empty))
-      indicesManager.matcher.filter(indicesOfRequestedDataStream)
+      indicesManager.allowedIndicesMatcher.filter(indicesOfRequestedDataStream)
     }
   }
 
@@ -223,7 +223,7 @@ trait BaseIndicesProcessor {
       .map { allDataStreams =>
         val requestedDataStreamsNames = indices
         val requestedDataStreams = PatternsMatcher.create(requestedDataStreamsNames).filter(allDataStreams)
-        indicesManager.matcher.filter(requestedDataStreams)
+        indicesManager.allowedIndicesMatcher.filter(requestedDataStreams)
       }
   }
 
@@ -242,14 +242,14 @@ trait BaseIndicesProcessor {
     logger.debug(s"[${requestId.show}] Checking - write request ...")
     // Write requests
     logger.debug(s"[${requestId.show}] Stage 7")
-    if (indices.isEmpty && indicesManager.matcher.contains("<no-index>")) {
+    if (indices.isEmpty && indicesManager.allowedIndicesMatcher.contains("<no-index>")) {
       logger.debug(s"[${requestId.show}] ... matched [indices: ${indices.map(_.show).mkString(",")}]. Stop")
       stop(CanPass.Yes(indices.toSet))
     } else {
       // Reject write if at least one requested index is not allowed by the rule conf
       logger.debug(s"[${requestId.show}] Stage 8")
       stop {
-        indices.find(index => !indicesManager.matcher.`match`(index)) match {
+        indices.find(index => !indicesManager.allowedIndicesMatcher.`match`(index)) match {
           case Some(_) =>
             logger.debug(s"[${requestId.show}] ... not matched. Stop")
             CanPass.No()
@@ -292,6 +292,6 @@ object BaseIndicesProcessor {
 
     def indicesPerDataStreamMap: Task[Map[T, Set[T]]]
 
-    def matcher: PatternsMatcher[T]
+    def allowedIndicesMatcher: PatternsMatcher[T]
   }
 }

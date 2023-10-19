@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class RemoteIndicesManager(requestContext: RequestContext,
-                           override val matcher: PatternsMatcher[RemoteIndexName])
+                           override val allowedIndicesMatcher: PatternsMatcher[RemoteIndexName])
   extends IndicesManager[RemoteIndexName] {
 
   override def allIndicesAndAliases: Task[Set[RemoteIndexName]] =

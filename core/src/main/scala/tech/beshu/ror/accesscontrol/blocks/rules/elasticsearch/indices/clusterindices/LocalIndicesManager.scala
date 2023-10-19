@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class LocalIndicesManager(requestContext: RequestContext,
-                          override val matcher: PatternsMatcher[LocalIndexName])
+                          override val allowedIndicesMatcher: PatternsMatcher[LocalIndexName])
   extends IndicesManager[LocalIndexName] {
 
   override def allIndicesAndAliases: Task[Set[LocalIndexName]] = Task.delay {
