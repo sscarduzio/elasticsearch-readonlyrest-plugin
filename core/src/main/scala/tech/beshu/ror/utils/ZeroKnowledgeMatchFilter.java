@@ -24,7 +24,7 @@ import java.util.Set;
 
 public class ZeroKnowledgeMatchFilter {
 
-  static public Set<String> alterIndicesIfNecessary(Set<String> indices, JavaStringMatcher matcher) {
+  static public Set<String> alterIndicesIfNecessary(Set<String> indices, StringPatternsMatcherJava matcher) {
 
     boolean shouldReplace = false;
 
@@ -56,7 +56,7 @@ public class ZeroKnowledgeMatchFilter {
         continue;
       }
 
-      JavaStringMatcher revMatcher = new JavaStringMatcher(Sets.newHashSet(i), matcher.getCaseSensitivity());
+      StringPatternsMatcherJava revMatcher = new StringPatternsMatcherJava(Sets.newHashSet(i), matcher.getCaseSensitivity());
       Set<String> matched = revMatcher.filter(matcher.getPatterns());
 
       if (!matched.isEmpty()) {

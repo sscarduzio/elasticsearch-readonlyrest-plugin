@@ -19,24 +19,24 @@ package tech.beshu.ror.utils;
 import com.google.common.collect.Sets;
 import scala.jdk.CollectionConverters;
 import tech.beshu.ror.accesscontrol.domain.CaseSensitivity;
-import tech.beshu.ror.accesscontrol.matchers.Matchable$;
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable$;
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher;
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher$;
 
 import java.util.Set;
 
-public class JavaStringMatcher {
+public class StringPatternsMatcherJava {
 
   private final PatternsMatcher<String> underlyingMatcher;
 
-  public JavaStringMatcher(Iterable<String> patterns, CaseSensitivity caseSensitivity) {
+  public StringPatternsMatcherJava(Iterable<String> patterns, CaseSensitivity caseSensitivity) {
     this.underlyingMatcher = PatternsMatcher$.MODULE$.create(
         CollectionConverters.IterableHasAsScala(patterns).asScala(),
         Matchable$.MODULE$.matchable(s -> s, caseSensitivity)
     );
   }
 
-  public JavaStringMatcher(PatternsMatcher<?> matcher) {
+  public StringPatternsMatcherJava(PatternsMatcher<?> matcher) {
     this.underlyingMatcher = PatternsMatcher$.MODULE$.create(
         matcher.patterns(),
         Matchable$.MODULE$.matchable(s -> s, matcher.caseSensitivity())

@@ -18,7 +18,6 @@
 package tech.beshu.ror.utils;
 
 import com.google.common.collect.Sets;
-import tech.beshu.ror.accesscontrol.domain.CaseSensitivity;
 
 import java.util.Set;
 import java.util.function.Consumer;
@@ -40,7 +39,7 @@ public class ZeroKnowledgeIndexFilter {
    * @param indicesWriter function to write indices in request.
    * @return can be allowed
    */
-  public boolean alterIndicesIfNecessaryAndCheck(Set<String> indices, JavaStringMatcher matcher, Consumer<Set<String>> indicesWriter) {
+  public boolean alterIndicesIfNecessaryAndCheck(Set<String> indices, StringPatternsMatcherJava matcher, Consumer<Set<String>> indicesWriter) {
     Set<String> modifiedIndices = alterIndicesIfNecessary(indices, matcher);
     if (modifiedIndices != null) {
       if (modifiedIndices.isEmpty()) {
@@ -53,7 +52,7 @@ public class ZeroKnowledgeIndexFilter {
     return true;
   }
 
-  private Set<String> alterIndicesIfNecessary(Set<String> indices, JavaStringMatcher matcher) {
+  private Set<String> alterIndicesIfNecessary(Set<String> indices, StringPatternsMatcherJava matcher) {
 
     boolean shouldReplace = false;
 
@@ -87,7 +86,7 @@ public class ZeroKnowledgeIndexFilter {
         continue;
       }
 
-      JavaStringMatcher revMatcher = new JavaStringMatcher(Sets.newHashSet(i), matcher.getCaseSensitivity());
+      StringPatternsMatcherJava revMatcher = new StringPatternsMatcherJava(Sets.newHashSet(i), matcher.getCaseSensitivity());
       Set<String> matched = revMatcher.filter(matcher.getPatterns());
 
       if (!matched.isEmpty()) {

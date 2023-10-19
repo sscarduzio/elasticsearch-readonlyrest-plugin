@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.matchers
 
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRepositoryFilterScalaAdapter.CheckResult
-import tech.beshu.ror.utils.{JavaStringMatcher, ZeroKnowledgeIndexFilter}
+import tech.beshu.ror.utils.{StringPatternsMatcherJava, ZeroKnowledgeIndexFilter}
 
 import scala.jdk.CollectionConverters._
 
@@ -33,7 +33,7 @@ class ZeroKnowledgeRepositoryFilterScalaAdapter(underlying: ZeroKnowledgeIndexFi
           case RepositoryName.Full(v) => v.value
         }
         .asJava,
-      new JavaStringMatcher(matcher),
+      new StringPatternsMatcherJava(matcher),
       processedRepositories.addAll _
     )
     if(result) CheckResult.Ok(processedRepositories.asScala.flatMap(RepositoryName.from).toSet)
