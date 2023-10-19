@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.matchers
 
 import tech.beshu.ror.accesscontrol.domain.Pattern
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 
 class GenericPatternMatcher[T : Matchable](patterns: Iterable[Pattern[T]]) {
 

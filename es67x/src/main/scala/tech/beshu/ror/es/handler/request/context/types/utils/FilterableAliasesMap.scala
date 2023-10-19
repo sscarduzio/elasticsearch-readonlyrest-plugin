@@ -20,8 +20,8 @@ import cats.data.NonEmptyList
 import org.elasticsearch.cluster.metadata.AliasMetaData
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
-import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Conversion
-import tech.beshu.ror.accesscontrol.matchers.{Matchable, PatternsMatcher}
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.{Conversion, Matchable}
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap.AliasesMap
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.ImmutableOpenMapOps

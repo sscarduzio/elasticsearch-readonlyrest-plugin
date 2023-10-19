@@ -23,7 +23,8 @@ import org.scalactic.anyvals.{NonEmptyString, PosInt}
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
-import tech.beshu.ror.accesscontrol.matchers.{Matchable, PatternsMatcher}
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.utils.MatcherWithWildcardsScalaTest._
 
 class MatcherWithWildcardsScalaTest
@@ -34,6 +35,7 @@ class MatcherWithWildcardsScalaTest
 
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(minSuccessful = 1000, workers = PosInt.ensuringValid(Runtime.getRuntime.availableProcessors()))
+
   private val caseSensitiveStringMatchable: Matchable[String] = Matchable.matchable(identity, CaseSensitivity.Enabled)
   private val caseInsensitiveStringMatchable: Matchable[String] =  Matchable.matchable(identity, CaseSensitivity.Disabled)
 

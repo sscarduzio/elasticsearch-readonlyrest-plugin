@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.accesscontrol.matchers
 
-import cats.Show
 import com.hrakaroo.glob.GlobPattern
 import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 
 private[matchers] class GlobPatternsMatcher[T: Matchable](val values: Iterable[T])
   extends PatternsMatcher[T] {
@@ -63,22 +63,4 @@ private[matchers] class GlobPatternsMatcher[T: Matchable](val values: Iterable[T
     }
   }
 
-}
-
-trait Matchable[T] extends Show[T] {
-  def caseSensitivity: CaseSensitivity
-}
-object Matchable {
-
-  def apply[A](implicit instance: Matchable[A]): Matchable[A] = instance
-
-  def matchable[A](f: A => String,
-                   aCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled): Matchable[A] = new Matchable[A] {
-    override def show(t: A): String = f(t)
-
-    override def caseSensitivity: CaseSensitivity = aCaseSensitivity
-  }
-
-  val caseSensitiveStringMatchable: Matchable[String] = Matchable.matchable(identity, CaseSensitivity.Enabled)
-  val caseInsensitiveStringMatchable: Matchable[String] = Matchable.matchable(identity, CaseSensitivity.Disabled)
 }
