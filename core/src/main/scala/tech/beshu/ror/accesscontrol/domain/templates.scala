@@ -21,8 +21,8 @@ import eu.timepit.refined.auto._
 import cats.Eq
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.accesscontrol.matchers.{TemplateNamePatternMatcher, UniqueIdentifierGenerator}
-import tech.beshu.ror.utils.CaseMappingEquality
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 sealed trait Template {
@@ -106,8 +106,7 @@ final case class TemplateNamePattern(value: NonEmptyString) {
 
 }
 object TemplateNamePattern {
-  implicit val caseMappingEqualityTemplateNamePattern: CaseMappingEquality[TemplateNamePattern] =
-    CaseMappingEquality.instance(_.value.value, identity)
+  implicit val matchableTemplateNamePattern: Matchable[TemplateNamePattern] = Matchable.matchable(_.value.value)
   val wildcard: TemplateNamePattern = TemplateNamePattern("*")
 
   def fromString(value: String): Option[TemplateNamePattern] = {

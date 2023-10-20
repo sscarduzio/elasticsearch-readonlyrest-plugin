@@ -39,10 +39,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impers
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.accesscontrol.domain.{GroupLike, GroupsLogic, LoggedUser, PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupLike, GroupsLogic, LoggedUser, PermittedGroups, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration._
@@ -441,7 +440,7 @@ class ExternalAuthorizationRuleTests
                          loggedUser: Option[LoggedUser],
                          preferredGroup: Option[GroupName],
                          assertionType: AssertionType): Unit = {
-    val rule = new ExternalAuthorizationRule(settings, impersonation, UserIdEq.caseSensitive)
+    val rule = new ExternalAuthorizationRule(settings, CaseSensitivity.Enabled, impersonation)
     val requestContext = MockRequestContext.indices.copy(
       headers = preferredGroup.map(_.toCurrentGroupHeader).toSet
     )

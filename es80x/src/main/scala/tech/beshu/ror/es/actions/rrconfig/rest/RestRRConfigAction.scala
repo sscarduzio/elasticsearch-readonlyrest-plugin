@@ -27,7 +27,7 @@ import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
 import org.elasticsearch.rest.RestRequest.Method.GET
 import org.elasticsearch.rest._
-import tech.beshu.ror.Constants
+import tech.beshu.ror.constants
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.NodeId
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfigRequest, Timeout}
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, RRConfigsRequest}
@@ -39,7 +39,7 @@ class RestRRConfigAction(nodesInCluster: Supplier[DiscoveryNodes])
   extends BaseRestHandler {
 
   override def routes(): util.List[Route] = List(
-    new Route(GET, Constants.MANAGE_ROR_CONFIG_PATH),
+    new Route(GET, constants.MANAGE_ROR_CONFIG_PATH),
   ).asJava
 
   override val getName: String = "ror-config-handler"

@@ -20,7 +20,8 @@ import cats.implicits._
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 
 private[http] abstract class BaseHeaderRule
   extends RegularRule with Logging {
@@ -37,7 +38,10 @@ private[http] abstract class BaseHeaderRule
 
   private def matches(pattern: Header, header: Header) = {
     if (pattern.name === header.name) {
-      MatcherWithWildcardsScalaAdapter.isMatched(pattern.value.value, header.value.value)
+      implicit val matchable: Matchable[String] = Matchable.caseSensitiveStringMatchable
+      PatternsMatcher
+        .create(pattern.value.value :: Nil)
+        .`match`(header.value.value)
     } else {
       false
     }

@@ -38,7 +38,6 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, Imper
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration._
@@ -449,8 +448,8 @@ class LdapAuthRuleTests
                          headers: Set[Header],
                          assertionType: AssertionType): Unit = {
     val rule = new LdapAuthRule(
-      authentication = new LdapAuthenticationRule(authenticationSettings, impersonation, UserIdEq.caseSensitive),
-      authorization = new LdapAuthorizationRule(authorizationSettings, impersonation, UserIdEq.caseSensitive)
+      authentication = new LdapAuthenticationRule(authenticationSettings, CaseSensitivity.Enabled, impersonation),
+      authorization = new LdapAuthorizationRule(authorizationSettings, CaseSensitivity.Enabled, impersonation)
     )
     val requestContext = MockRequestContext.indices.copy(headers = headers)
     val blockContext = GeneralIndexRequestBlockContext(

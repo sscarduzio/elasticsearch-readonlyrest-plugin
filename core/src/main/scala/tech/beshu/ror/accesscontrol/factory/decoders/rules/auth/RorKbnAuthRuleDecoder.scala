@@ -22,8 +22,8 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule.Groups
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, PermittedGroups}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
-                            implicit val caseMappingEquality: UserIdCaseMappingEquality)
+                            globalSettings: GlobalSettings)
   extends RuleBaseDecoderWithoutAssociatedFields[RorKbnAuthRule] {
 
   override protected def decoder: Decoder[RuleDefinition[RorKbnAuthRule]] = {
@@ -47,7 +47,7 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
         }
       }
       .map { settings =>
-        RuleDefinition.create(new RorKbnAuthRule(settings, caseMappingEquality))
+        RuleDefinition.create(new RorKbnAuthRule(settings, globalSettings.userIdCaseSensitivity))
       }
       .decoder
   }

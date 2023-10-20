@@ -22,7 +22,7 @@ import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
 import tech.beshu.ror.api.ConfigApi
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.{Constants, RequestId}
+import tech.beshu.ror.{constants, RequestId}
 
 class RRAdminRequest(adminApiRequest: ConfigApi.ConfigRequest,
                      esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
@@ -37,13 +37,13 @@ object RRAdminRequest {
 
   def createFrom(request: RestRequest): RRAdminRequest = {
     val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
-      case (Constants.FORCE_RELOAD_CONFIG_PATH, POST) =>
+      case (constants.FORCE_RELOAD_CONFIG_PATH, POST) =>
         ConfigApi.ConfigRequest.Type.ForceReload
-      case (Constants.PROVIDE_FILE_CONFIG_PATH, GET) =>
+      case (constants.PROVIDE_FILE_CONFIG_PATH, GET) =>
         ConfigApi.ConfigRequest.Type.ProvideFileConfig
-      case (Constants.PROVIDE_INDEX_CONFIG_PATH, GET) =>
+      case (constants.PROVIDE_INDEX_CONFIG_PATH, GET) =>
         ConfigApi.ConfigRequest.Type.ProvideIndexConfig
-      case (Constants.UPDATE_INDEX_CONFIG_PATH, POST) =>
+      case (constants.UPDATE_INDEX_CONFIG_PATH, POST) =>
         ConfigApi.ConfigRequest.Type.UpdateIndexConfig
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")

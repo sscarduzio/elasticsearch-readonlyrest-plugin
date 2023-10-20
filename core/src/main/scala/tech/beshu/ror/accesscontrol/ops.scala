@@ -54,7 +54,6 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMetho
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{Blacklist, Whitelist}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
-import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.KibanaUserDataRuleTogetherWith
@@ -100,7 +99,6 @@ object orders {
     case Address.Ip(value) => value.toString()
     case Address.Name(value) => value.toString
   }
-  implicit val idPatternOrder: Order[UserIdPattern] = Order.by(_.value)
   implicit val methodOrder: Order[Method] = Order.by(_.m)
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
   implicit val kibanaAppOrder: Order[KibanaApp] = Order.by {
@@ -153,10 +151,10 @@ object orders {
 object show {
   trait LogsShowInstances {
     implicit val nonEmptyStringShow: Show[NonEmptyString] = Show.show(_.value)
-    implicit val patternShow: Show[Pattern[_]] = Show.show(_.value.value)
+    implicit def patternShow[T : Show]: Show[Pattern[T]] = Show.show(_.value.show)
     implicit val userIdShow: Show[User.Id] = Show.show(_.value.value)
     implicit val userIdPatternsShow: Show[UserIdPatterns] = Show.show(_.patterns.toList.map(_.value.value).mkString_(","))
-    implicit val idPatternShow: Show[User.UserIdPattern] = patternShow.contramap(identity[Pattern[User.Id]])
+    implicit val idPatternShow: Show[User.UserIdPattern] = Show.show(_.value.show)
     implicit val loggedUserShow: Show[LoggedUser] = Show.show(_.id.value.value)
     implicit val typeShow: Show[Type] = Show.show(_.value)
     implicit val actionShow: Show[Action] = Show.show(_.value)
@@ -186,10 +184,12 @@ object show {
     }
     implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
     implicit val clusterIndexNameShow: Show[ClusterIndexName] = Show.show(_.stringify)
+    implicit val localClusterIndexNameShow: Show[ClusterIndexName.Local] = Show.show(_.stringify)
+    implicit val remoteClusterIndexNameShow: Show[ClusterIndexName.Remote] = Show.show(_.stringify)
     implicit val clusterNameFullShow: Show[ClusterName.Full] = Show.show(_.value.value)
     implicit val indexNameShow: Show[IndexName] = Show.show {
       case f@IndexName.Full(_) => f.show
-      case IndexName.Wildcard(name) => name.value
+      case IndexName.Pattern(namePattern) => namePattern.value
     }
     implicit val kibanaIndexNameShow: Show[KibanaIndexName] = Show.show(_.underlying.show)
     implicit val fullIndexNameShow: Show[IndexName.Full] = Show.show(_.name.value)

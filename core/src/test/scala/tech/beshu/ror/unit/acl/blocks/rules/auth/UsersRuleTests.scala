@@ -32,14 +32,13 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.UserIdEq
 
 class UsersRuleTests extends AnyWordSpec with MockFactory {
 
-  private implicit val defaultUserIdOrder: Order[Id] = UserIdEq.caseSensitive.toOrder
+  private implicit val defaultUserIdOrder: Order[Id] = Order.by(_.value.value)
 
   "An UsersRule" should {
     "match" when {
@@ -85,7 +84,7 @@ class UsersRuleTests extends AnyWordSpec with MockFactory {
     assertRule(configuredIds, loggedUser, isMatched = false)
 
   private def assertRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[DirectlyLoggedUser], isMatched: Boolean) = {
-    val rule = new UsersRule(UsersRule.Settings(configuredIds), UserIdEq.caseSensitive)
+    val rule = new UsersRule(UsersRule.Settings(configuredIds), CaseSensitivity.Enabled)
     val requestContext = MockRequestContext.metadata
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext,

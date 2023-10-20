@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService._
 
@@ -50,7 +50,7 @@ trait RorClusterService {
 
   def expandLocalIndices(indices: Set[ClusterIndexName]): Set[ClusterIndexName] = {
     val all: Set[ClusterIndexName] = allIndicesAndAliases.flatMap(_.all)
-    MatcherWithWildcardsScalaAdapter.create(indices).filter(all)
+    PatternsMatcher.create(indices).filter(all)
   }
 }
 

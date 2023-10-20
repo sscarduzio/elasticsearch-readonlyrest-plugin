@@ -24,7 +24,7 @@ import org.apache.lucene.index.DirectoryReader
 import org.elasticsearch.common.CheckedFunction
 import org.elasticsearch.common.util.concurrent.ThreadContext
 import org.elasticsearch.index.IndexService
-import tech.beshu.ror.Constants
+import tech.beshu.ror.constants
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsFromHeaderValue
 
 import java.io.IOException
@@ -45,7 +45,7 @@ object RoleIndexSearcherWrapper extends Logging {
 
       private def prepareDocumentFieldReader(threadContext: ThreadContext): StateT[Try, DirectoryReader, DirectoryReader] = {
         StateT { reader =>
-          Option(threadContext.getHeader(Constants.FIELDS_TRANSIENT)) match {
+          Option(threadContext.getHeader(constants.FIELDS_TRANSIENT)) match {
             case Some(fieldsHeader) =>
               fieldsFromHeaderValue(fieldsHeader)
                 .flatMap { fields =>
@@ -54,7 +54,7 @@ object RoleIndexSearcherWrapper extends Logging {
                 }
                 .map(r => (r, r))
             case None =>
-              logger.debug(s"FLS: ${Constants.FIELDS_TRANSIENT} not found in threadContext")
+              logger.debug(s"FLS: ${constants.FIELDS_TRANSIENT} not found in threadContext")
               Success((reader, reader))
           }
         }
@@ -72,7 +72,7 @@ object RoleIndexSearcherWrapper extends Logging {
           fields <- transientFieldsFromHeaderValue.fromRawValue(nel) match {
             case result@Success(_) => result
             case Failure(ex) =>
-              logger.debug(s"FLS: Cannot decode fields from ${Constants.FIELDS_TRANSIENT} header value", ex)
+              logger.debug(s"FLS: Cannot decode fields from ${constants.FIELDS_TRANSIENT} header value", ex)
               failure
           }
         } yield fields

@@ -27,7 +27,7 @@ import org.elasticsearch.common.bytes.{BytesArray, BytesReference}
 import org.elasticsearch.common.lucene.index.SequentialStoredFieldsLeafReader
 import org.elasticsearch.common.xcontent.XContentHelper
 import org.elasticsearch.xcontent.{XContentBuilder, XContentType}
-import tech.beshu.ror.Constants
+import tech.beshu.ror.constants
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.es.dlsfls.RorDocumentFieldDirectoryReader.RorDocumentFieldDirectorySubReader
 import tech.beshu.ror.es.utils.XContentBuilderOps._
@@ -51,7 +51,7 @@ private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fie
       val remainingFields = fInfos.asScala.filter(f => policy.canKeep(f.name)).toSet
       new FieldInfos(remainingFields.toArray)
     }
-    logger.debug(s"always allow: ${Constants.FIELDS_ALWAYS_ALLOW.asScala.mkString(",")}")
+    logger.debug(s"always allow: ${constants.FIELDS_ALWAYS_ALLOW.mkString(",")}")
     logger.debug(s"original fields were: ${fInfos.asScala.map(_.name).mkString(",")}")
     logger.debug(s"new fields are: ${newInfos.asScala.map(_.name).mkString(",")}")
     newInfos

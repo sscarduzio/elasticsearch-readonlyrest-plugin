@@ -26,7 +26,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.DocumentField
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
-import tech.beshu.ror.utils.CaseMappingEquality
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.util.Random
@@ -123,7 +123,7 @@ object Action {
   }
 
   implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
-  implicit val caseMappingEqualityAction: CaseMappingEquality[Action] = CaseMappingEquality.instance(_.value, identity)
+  implicit val matchableAction: Matchable[Action] = Matchable.matchable(_.value)
 }
 
 final case class DocumentId(value: String) extends AnyVal
@@ -151,22 +151,19 @@ object RepositoryName {
   }
 
   def toString(snapshotName: RepositoryName): String = snapshotName match {
-    case Full(value) => value.value
-    case Pattern(value) => value.value
+    case Full(name) => name.value
+    case Pattern(namePattern) => namePattern.value
     case All => "_all"
     case Wildcard => "*"
   }
 
   implicit val eqRepository: Eq[RepositoryName] = Eq.fromUniversalEquals
-  implicit val caseMappingEqualityRepositoryName: CaseMappingEquality[RepositoryName] = CaseMappingEquality.instance(
-    {
-      case Full(value) => value.value
-      case Pattern(value) => value.value
-      case All => "*"
-      case Wildcard => "*"
-    },
-    identity
-  )
+  implicit val matchableRepositoryName: Matchable[RepositoryName] = Matchable.matchable {
+    case Full(name) => name.value
+    case Pattern(namePattern) => namePattern.value
+    case All => "*"
+    case Wildcard => "*"
+  }
 }
 
 sealed trait SnapshotName
@@ -190,22 +187,19 @@ object SnapshotName {
   }
 
   def toString(snapshotName: SnapshotName): String = snapshotName match {
-    case Full(value) => value.value
-    case Pattern(value) => value.value
+    case Full(name) => name.value
+    case Pattern(namePattern) => namePattern.value
     case All => "_all"
     case Wildcard => "*"
   }
 
   implicit val eqSnapshotName: Eq[SnapshotName] = Eq.fromUniversalEquals
-  implicit val caseMappingEqualitySnapshotName: CaseMappingEquality[SnapshotName] = CaseMappingEquality.instance(
-    {
-      case Full(value) => value.value
-      case Pattern(value) => value.value
-      case All => "*"
-      case Wildcard => "*"
-    },
-    identity
-  )
+  implicit val matchableSnapshotName: Matchable[SnapshotName] = Matchable.matchable {
+    case Full(name) => name.value
+    case Pattern(namePattern) => namePattern.value
+    case All => "*"
+    case Wildcard => "*"
+  }
 }
 
 sealed trait DataStreamName
@@ -235,22 +229,19 @@ object DataStreamName {
   }
 
   def toString(dataStreamName: DataStreamName): String = dataStreamName match {
-    case Full(value) => value.value
-    case Pattern(value) => value.value
+    case Full(name) => name.value
+    case Pattern(namePattern) => namePattern.value
     case All => "_all"
     case Wildcard => "*"
   }
 
   implicit val eqDataStreamName: Eq[DataStreamName] = Eq.fromUniversalEquals
-  implicit val caseMappingEqualityDataStreamName: CaseMappingEquality[DataStreamName] = CaseMappingEquality.instance(
-    {
-      case Full(value) => value.value
-      case Pattern(value) => value.value
-      case All => "*"
-      case Wildcard => "*"
-    },
-    identity
-  )
+  implicit val matchableDataStreamName: Matchable[DataStreamName] = Matchable.matchable {
+    case Full(name) => name.value
+    case Pattern(namePattern) => namePattern.value
+    case All => "*"
+    case Wildcard => "*"
+  }
 
   final case class FullLocalDataStreamWithAliases(dataStreamName: DataStreamName.Full,
                                                   aliasesNames: Set[DataStreamName.Full],

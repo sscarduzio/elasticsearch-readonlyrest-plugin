@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.http
 
-import cats.Eq
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
@@ -26,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.{LoggedUser, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, LoggedUser}
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie.{ExtractingError, toSessionHeader}
 import tech.beshu.ror.providers.UuidProvider
@@ -34,10 +33,10 @@ import tech.beshu.ror.providers.UuidProvider
 import java.time.{Clock, Instant}
 import scala.concurrent.duration.FiniteDuration
 
-final class SessionMaxIdleRule(val settings: Settings)
+final class SessionMaxIdleRule(val settings: Settings,
+                               implicit val caseSensitivity: CaseSensitivity)
                               (implicit clock: Clock,
-                               uuidProvider: UuidProvider,
-                               userIdEq: Eq[User.Id])
+                               uuidProvider: UuidProvider)
   extends RegularRule with Logging {
 
   override val name: Rule.Name = SessionMaxIdleRule.Name.name

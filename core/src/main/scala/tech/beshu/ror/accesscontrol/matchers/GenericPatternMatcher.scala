@@ -17,20 +17,13 @@
 package tech.beshu.ror.accesscontrol.matchers
 
 import tech.beshu.ror.accesscontrol.domain.Pattern
-import tech.beshu.ror.utils.CaseMappingEquality
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 
-class GenericPatternMatcher[T : CaseMappingEquality](patterns: Iterable[Pattern[T]]) {
-  
-  private val underlyingMatcher: Matcher[String] = {
-    implicit val extractedStringCaseMappingEquality: CaseMappingEquality[String] = CaseMappingEquality.instance(
-      identity,
-      implicitly[CaseMappingEquality[T]].mapCases
-    )
-    MatcherWithWildcardsScalaAdapter[String](patterns.map(_.value.value).toSet)
-  }
+class GenericPatternMatcher[T : Matchable](patterns: Iterable[Pattern[T]]) {
+
+  private val underlyingMatcher: PatternsMatcher[T] = PatternsMatcher.create[T](patterns.map(_.value))
 
   def `match`(value: T): Boolean = {
-    val stringValue = implicitly[CaseMappingEquality[T]].show(value)
-    underlyingMatcher.`match`(stringValue)
+    underlyingMatcher.`match`(value)
   }
 }

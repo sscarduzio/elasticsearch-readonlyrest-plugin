@@ -28,7 +28,7 @@ import org.elasticsearch.rest.RestRequest.Method.POST
 import org.elasticsearch.rest._
 import org.json.JSONObject
 import squants.information.{Bytes, Information}
-import tech.beshu.ror.Constants
+import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, RRAuditEventRequest}
 
 import scala.jdk.CollectionConverters._
@@ -39,7 +39,7 @@ class RestRRAuditEventAction()
   extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(
-    new Route(POST, Constants.AUDIT_EVENT_COLLECTOR_PATH)
+    new Route(POST, constants.AUDIT_EVENT_COLLECTOR_PATH)
   ).asJava
 
   override val getName: String = "ror-audit-event-collector-handler"
@@ -64,9 +64,9 @@ class RestRRAuditEventAction()
 
   private def validateContentSize(request: RestRequest) = {
     Either.cond(
-      request.content().length() <= Constants.MAX_AUDIT_EVENT_REQUEST_CONTENT_IN_BYTES,
+      request.content().length() <= constants.MAX_AUDIT_EVENT_REQUEST_CONTENT_IN_BYTES,
       (),
-      new AuditEventRequestPayloadTooLarge(Bytes(Constants.MAX_AUDIT_EVENT_REQUEST_CONTENT_IN_BYTES.toInt))
+      new AuditEventRequestPayloadTooLarge(Bytes(constants.MAX_AUDIT_EVENT_REQUEST_CONTENT_IN_BYTES.toInt))
     )
   }
 

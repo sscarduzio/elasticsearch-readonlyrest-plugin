@@ -27,8 +27,8 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
-import tech.beshu.ror.accesscontrol.domain.GroupsLogic
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -48,7 +48,7 @@ import scala.reflect.ClassTag
 class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                     impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                     mocksProvider: MocksProvider,
-                                    caseMappingEquality: UserIdCaseMappingEquality)
+                                    globalSettings: GlobalSettings)
   extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthenticationRule] {
 
   override protected def decoder: Decoder[RuleDefinition[LdapAuthenticationRule]] = {
@@ -68,8 +68,8 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .map(service => RuleDefinition.create(
         new LdapAuthenticationRule(
           LdapAuthenticationRule.Settings(service),
+          globalSettings.userIdCaseSensitivity,
           impersonatorsDef.toImpersonation(mocksProvider),
-          caseMappingEquality
         )
       ))
       .decoder
@@ -97,13 +97,17 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
 class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                    impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                    mocksProvider: MocksProvider,
-                                   caseMappingEquality: UserIdCaseMappingEquality)
+                                   globalSettings: GlobalSettings)
   extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthorizationRule] {
 
   override protected def decoder: Decoder[RuleDefinition[LdapAuthorizationRule]] = {
     settingsDecoder(ldapDefinitions)
       .map(settings => RuleDefinition.create(
-        new LdapAuthorizationRule(settings, impersonatorsDef.toImpersonation(mocksProvider), caseMappingEquality)
+        new LdapAuthorizationRule(
+          settings,
+          globalSettings.userIdCaseSensitivity,
+          impersonatorsDef.toImpersonation(mocksProvider)
+        )
       ))
   }
 
@@ -151,18 +155,18 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
 class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
                           impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                           mocksProvider: MocksProvider,
-                          caseMappingEquality: UserIdCaseMappingEquality)
+                          globalSettings: GlobalSettings)
   extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthRule] {
 
   override protected def decoder: Decoder[RuleDefinition[LdapAuthRule]] = {
-    instance(ldapDefinitions, impersonatorsDef, mocksProvider, caseMappingEquality)
+    instance(ldapDefinitions, globalSettings.userIdCaseSensitivity, impersonatorsDef, mocksProvider)
       .map(RuleDefinition.create(_))
   }
 
   private def instance(ldapDefinitions: Definitions[LdapService],
+                       userIdCaseSensitivity: CaseSensitivity,
                        impersonatorsDef: Option[Definitions[ImpersonatorDef]],
-                       mocksProvider: MocksProvider,
-                       caseMappingEquality: UserIdCaseMappingEquality): Decoder[LdapAuthRule] =
+                       mocksProvider: MocksProvider): Decoder[LdapAuthRule] =
     Decoder
       .instance { c =>
         for {
@@ -180,9 +184,9 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
         case (_, _, Some(_), Some(_)) =>
           Left(RulesLevelCreationError(Message(errorMsgOnlyOneGroupsList(LdapAuthRule.Name))))
         case (name, ttl, Some(groupsOr), None) =>
-          createLdapAuthRule(name, ttl, groupsOr, ldapDefinitions, impersonatorsDef, mocksProvider, caseMappingEquality)
+          createLdapAuthRule(name, ttl, groupsOr, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
         case (name, ttl, None, Some(groupsAnd)) =>
-          createLdapAuthRule(name, ttl, groupsAnd, ldapDefinitions, impersonatorsDef, mocksProvider, caseMappingEquality)
+          createLdapAuthRule(name, ttl, groupsAnd, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity)
       }
       .decoder
 
@@ -191,7 +195,7 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                  groupsLogic: GroupsLogic, ldapDefinitions: Definitions[LdapService],
                                  impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                  mocksProvider: MocksProvider,
-                                 caseMappingEquality: UserIdCaseMappingEquality) = {
+                                 userIdCaseSensitivity: CaseSensitivity) = {
     findLdapService[LdapAuthService, LdapAuthRule](ldapDefinitions.items, name)
       .map(svc => {
         ttl match {
@@ -204,13 +208,13 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
         new LdapAuthRule(
           new LdapAuthenticationRule(
             LdapAuthenticationRule.Settings(ldapService),
-            impersonatorsDef.toImpersonation(mocksProvider),
-            caseMappingEquality
+            userIdCaseSensitivity,
+            impersonatorsDef.toImpersonation(mocksProvider)
           ),
           new LdapAuthorizationRule(
             LdapAuthorizationRule.Settings(ldapService, groupsLogic),
-            impersonatorsDef.toImpersonation(mocksProvider),
-            caseMappingEquality
+            userIdCaseSensitivity,
+            impersonatorsDef.toImpersonation(mocksProvider)
           )
         )
       })

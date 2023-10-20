@@ -36,7 +36,7 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpd
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
-import tech.beshu.ror.accesscontrol.factory.GlobalSettings.{FlsEngine, UsernameCaseMapping}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -64,7 +64,7 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
               forbiddenRequestMessage = "Forbidden",
               flsEngine = FlsEngine.default,
               configurationIndex = RorConfigurationIndex(IndexName.Full(".readonlyrest")),
-              usernameCaseMapping = UsernameCaseMapping.CaseSensitive
+              userIdCaseSensitivity = CaseSensitivity.Enabled
             ),
             Set.empty
           )

@@ -44,7 +44,6 @@ import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.DurationOps._
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -613,7 +612,7 @@ class JwtAuthRuleTests
                          tokenHeader: Header,
                          preferredGroup: Option[GroupName],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
-    val rule = new JwtAuthRule(JwtAuthRule.Settings(configuredJwtDef, configuredGroups), UserIdEq.caseSensitive)
+    val rule = new JwtAuthRule(JwtAuthRule.Settings(configuredJwtDef, configuredGroups), CaseSensitivity.Enabled)
     val requestContext = MockRequestContext.indices.copy(
       headers = Set(tokenHeader) ++ preferredGroup.map(_.toCurrentGroupHeader).toSet
     )
