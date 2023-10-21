@@ -102,7 +102,8 @@ class IndicesRule(override val settings: Settings,
                 processIndices(
                   blockContext.requestContext,
                   resolvedAllowedIndices,
-                  indices
+                  indices,
+                  blockContext.userMetadata.kibanaIndex
                 ) map {
                   case ProcessResult.Ok(narrowedIndices) => Right(currentList :+ Indices.Found(narrowedIndices))
                   case ProcessResult.Failed(Some(Cause.IndexNotFound)) => Right(currentList :+ Indices.NotFound)
@@ -129,8 +130,8 @@ class IndicesRule(override val settings: Settings,
     } else {
       val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
       for {
-        indicesResult <- processIndices(blockContext.requestContext, resolvedAllowedIndices, blockContext.indices)
-        aliasesResult <- processIndices(blockContext.requestContext, resolvedAllowedIndices, blockContext.aliases)
+        indicesResult <- processIndices(blockContext.requestContext, resolvedAllowedIndices, blockContext.indices, blockContext.userMetadata.kibanaIndex)
+        aliasesResult <- processIndices(blockContext.requestContext, resolvedAllowedIndices, blockContext.aliases, blockContext.userMetadata.kibanaIndex)
       } yield {
         (indicesResult, aliasesResult) match {
           case (ProcessResult.Ok(indices), ProcessResult.Ok(aliases)) =>

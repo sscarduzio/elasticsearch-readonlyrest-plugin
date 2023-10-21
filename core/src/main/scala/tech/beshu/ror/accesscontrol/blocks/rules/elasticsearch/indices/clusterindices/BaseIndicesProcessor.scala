@@ -58,24 +58,24 @@ trait BaseIndicesProcessor {
 
   private def allKibanaRelatedIndicesMatched[T <: ClusterIndexName : Matchable](requestedIndices: UniqueNonEmptyList[T],
                                                                                 determinedKibanaIndex: Option[KibanaIndexName])
-                                                                               (implicit requestId: RequestContext.Id,
-                                                                                indicesManager: IndicesManager[T]): Task[CheckContinuation[Set[T]]] = Task.delay {
-    determinedKibanaIndex match {
-      case Some(kibanaIndexName) =>
-        import KibanaIndexName._
-        logger.debug(s"[${requestId.show}] Checking - all requested indices relate to Kibana indices ...")
-        val allKibanaRelatedIndices = requestedIndices.forall(_.isRelatedToKibanaIndex(kibanaIndexName))
-        if (allKibanaRelatedIndices) {
-          logger.debug(s"[${requestId.show}] ... matched [indices: ${requestedIndices.map(_.show).mkString(",")}]. Stop")
-          stop(CanPass.Yes(requestedIndices))
-        } else {
-          logger.debug(s"[${requestId.show}] ... not matched. Continue")
+                                                                               (implicit requestId: RequestContext.Id): Task[CheckContinuation[Set[T]]] =
+    Task.delay {
+      determinedKibanaIndex match {
+        case Some(kibanaIndexName) =>
+          import KibanaIndexName._
+          logger.debug(s"[${requestId.show}] Checking - all requested indices relate to Kibana indices ...")
+          val allKibanaRelatedIndices = requestedIndices.forall(_.isRelatedToKibanaIndex(kibanaIndexName))
+          if (allKibanaRelatedIndices) {
+            logger.debug(s"[${requestId.show}] ... matched [indices: ${requestedIndices.map(_.show).mkString(",")}]. Stop")
+            stop(CanPass.Yes(requestedIndices.toSet))
+          } else {
+            logger.debug(s"[${requestId.show}] ... not matched. Continue")
+            continue[Set[T]]
+          }
+        case None =>
           continue[Set[T]]
-        }
-      case None =>
-        continue[Set[T]]
+      }
     }
-  }
 
   private def noneOrAllIndicesMatched[T <: ClusterIndexName : Matchable](requestedIndices: UniqueNonEmptyList[T])
                                                                         (implicit requestId: RequestContext.Id,
