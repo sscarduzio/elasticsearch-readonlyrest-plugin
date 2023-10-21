@@ -76,7 +76,7 @@ class IndicesRule(override val settings: Settings,
       Task.now(Fulfilled(blockContext))
     } else {
       val allAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
-      processIndices(blockContext.requestContext, allAllowedIndices, blockContext.indices)
+      processIndices(blockContext.requestContext, allAllowedIndices, blockContext.indices, blockContext.userMetadata.kibanaIndex)
         .map {
           case ProcessResult.Ok(filteredIndices) =>
             Fulfilled(blockContext.withIndices(filteredIndices, allAllowedIndices))

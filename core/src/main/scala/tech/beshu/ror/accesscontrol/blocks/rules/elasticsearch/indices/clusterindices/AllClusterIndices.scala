@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRu
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule.ProcessResult
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass.No.Reason
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -35,7 +35,8 @@ trait AllClusterIndices extends BaseIndicesProcessor {
 
   protected def processIndices(requestContext: RequestContext,
                                allAllowedIndices: Set[ClusterIndexName],
-                               requestedIndices: Set[ClusterIndexName]): Task[ProcessResult[ClusterIndexName]] = {
+                               requestedIndices: Set[ClusterIndexName],
+                               kibanaIndex: Option[KibanaIndexName]): Task[ProcessResult[ClusterIndexName]] = {
     val (allAllowedRemoteIndices, allAllowedLocalIndices) = splitIntoRemoteAndLocalIndices(allAllowedIndices)
     val (requestedRemoteIndices, requestedLocalIndices) = splitIntoRemoteAndLocalIndices(requestedIndices)
 
