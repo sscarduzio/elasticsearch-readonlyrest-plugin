@@ -21,6 +21,7 @@ import cats.data.NonEmptySet
 import eu.timepit.refined.auto._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
+import tech.beshu.ror.accesscontrol.domain.KibanaIndexName
 import tech.beshu.ror.accesscontrol.orders.indexOrder
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -210,6 +211,28 @@ trait IndicesRuleLocalIndexTests {
           allowed = Indices.Found(Set(clusterIndexName("test1"))) :: Nil
         )
       }
+      "kibana-related index in requested" when {
+        "there is full name kibana index passed" in {
+          assertMatchRuleForIndexRequest(
+            configured = NonEmptySet.of(indexNameVar("odd:test1*"), indexNameVar("local*")),
+            requestIndices = Set(clusterIndexName(".custom_kibana_7.9.0")),
+            modifyBlockContext = bc => bc.copy(
+              userMetadata = bc.userMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".custom_kibana")))
+            ),
+            found = Set(clusterIndexName(".custom_kibana_7.9.0"))
+          )
+        }
+        "there are full name kibana indices passed" in {
+          assertMatchRuleForIndexRequest(
+            configured = NonEmptySet.of(indexNameVar("odd:test1*"), indexNameVar("local*")),
+            requestIndices = Set(clusterIndexName(".custom_kibana_8.10.4"), clusterIndexName(".custom_kibana_task_manager_8.10.4")),
+            modifyBlockContext = bc => bc.copy(
+              userMetadata = bc.userMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".custom_kibana")))
+            ),
+            found = Set(clusterIndexName(".custom_kibana_8.10.4"), clusterIndexName(".custom_kibana_task_manager_8.10.4"))
+          )
+        }
+      }
     }
     "not match" when {
       "no index passed, one is configured, no real indices" in {
@@ -307,7 +330,15 @@ trait IndicesRuleLocalIndexTests {
           )
         )
       }
+      "there is only one kibana-related index" in {
+        assertNotMatchRuleForIndexRequest(
+          configured = NonEmptySet.of(indexNameVar("test12")),
+          requestIndices = Set(clusterIndexName(".kibana_8.10.4"), clusterIndexName("test-index1")),
+          modifyBlockContext = bc => bc.copy(
+            userMetadata = bc.userMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".kibana")))
+          ),
+        )
+      }
     }
-
   }
 }
