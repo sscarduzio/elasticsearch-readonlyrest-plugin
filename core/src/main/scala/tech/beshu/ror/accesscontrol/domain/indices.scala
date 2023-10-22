@@ -69,6 +69,7 @@ object KibanaIndexName {
 
   private val kibanaRelatedIndicesSuffixRegexes = Vector(
     """^_\d+\.\d+\.\d+$""".r, // eg. .kibana_8.0.0
+    """^_\d+\.\d+\.\d+_\d+$""".r, // eg. .kibana_8.0.0_001
     """^_alerting_cases$""".r, // eg. .kibana_alerting_cases
     """^_alerting_cases_\d+\.\d+\.\d+$""".r, // eg. .kibana_alerting_cases_8.8.0
     """^_analytics$""".r, // eg. .kibana_analytics

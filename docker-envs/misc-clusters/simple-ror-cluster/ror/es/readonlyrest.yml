@@ -34,4 +34,4 @@ readonlyrest:
     - name: "User 1"
       type: allow
       auth_key: "user1:test"
-      indices: [".kibana*", "kibana*"]
+      indices: ["test*"]
