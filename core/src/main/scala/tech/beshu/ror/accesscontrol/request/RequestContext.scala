@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWi
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -93,7 +94,8 @@ trait RequestContext extends Logging {
   lazy val componentTemplates: Set[Template.ComponentTemplate] =
     allTemplates.collect { case t: Template.ComponentTemplate => t }
 
-  def isReadOnlyRequest: Boolean
+  lazy val isReadOnlyRequest: Boolean =
+    RequestContext.readActionPatternsMatcher.`match`(action)
 
   def isCompositeRequest: Boolean
 
@@ -170,6 +172,32 @@ object RequestContext extends Logging {
          | HIS:${history.map(h => historyShow(headerShow).show(h)).mkString(", ")},
          | }""".oneLiner
     }
+
+  val readActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
+    Set(
+      "cluster:monitor/*",
+      "cluster:*get*",
+      "cluster:*search*",
+      "cluster:admin/*/get",
+      "cluster:admin/*/status",
+      "indices:admin/*/explain",
+      "indices:admin/aliases/exists",
+      "indices:admin/aliases/get",
+      "indices:admin/exists*",
+      "indices:admin/get*",
+      "indices:admin/mappings/fields/get*",
+      "indices:admin/mappings/get*",
+      "indices:admin/refresh*",
+      "indices:admin/types/exists",
+      "indices:admin/validate/*",
+      "indices:admin/template/get",
+      "indices:data/read/*",
+      "indices:monitor/*",
+      "indices:admin/xpack/rollup/search",
+      "indices:admin/resolve/index",
+      "indices:admin/index_template/get"
+    ).map(Action.apply)
+  }
 }
 
 class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
