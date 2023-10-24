@@ -30,11 +30,12 @@ import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWi
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.mocks.MockRequestContext.defaultAction
+import tech.beshu.ror.mocks.MockRequestContext.roAction
 
 object MockRequestContext {
 
-  val defaultAction: Action = Action("default-action")
+  val roAction: Action = Action("indices:admin/get")
+  val rwAction: Action = Action("indices:data/write/index")
   val adminAction: Action = Action("cluster:internal_ror/user_metadata/get")
 
   def indices(implicit clock: Clock = Clock.systemUTC()): MockGeneralIndexRequestContext =
@@ -66,13 +67,13 @@ object MockRequestContext {
     MockTemplateRequestContext(clock.instant(), templateOperation = templateOperation)
 
   def readOnly[BC <: BlockContext](blockContextCreator: RequestContext => BC): MockSimpleRequestContext[BC] =
-    MockSimpleRequestContext(blockContextCreator, isReadOnly = true, customAction = defaultAction)
+    MockSimpleRequestContext(blockContextCreator, customAction = roAction)
 
   def readOnlyAdmin[BC <: BlockContext](blockContextCreator: RequestContext => BC): MockSimpleRequestContext[BC] =
-    MockSimpleRequestContext(blockContextCreator, isReadOnly = true, customAction = adminAction)
+    MockSimpleRequestContext(blockContextCreator, customAction = adminAction)
 
   def notReadOnly[BC <: BlockContext](blockContextCreator: RequestContext => BC): MockSimpleRequestContext[BC] =
-    MockSimpleRequestContext(blockContextCreator, isReadOnly = false, customAction = defaultAction)
+    MockSimpleRequestContext(blockContextCreator, customAction = rwAction)
 
 }
 
@@ -80,7 +81,7 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val taskId: Long = 0L,
                                                 override val id: RequestContext.Id = RequestContext.Id("mock"),
                                                 override val `type`: Type = Type("default-type"),
-                                                override val action: Action = defaultAction,
+                                                override val action: Action = roAction,
                                                 override val headers: Set[Header] = Set.empty,
                                                 override val remoteAddress: Option[Address] = Address.from("localhost"),
                                                 override val localAddress: Address = Address.from("localhost").get,
@@ -96,7 +97,6 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val allTemplates: Set[Template] = Set.empty,
                                                 override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                                 override val isCompositeRequest: Boolean = false,
-                                                override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
                                                 filteredIndices: Set[ClusterIndexName],
                                                 allAllowedIndices: Set[ClusterIndexName])
@@ -112,7 +112,7 @@ final case class MockFilterableMultiRequestContext(override val timestamp: Insta
                                                    override val taskId: Long = 0L,
                                                    override val id: RequestContext.Id = RequestContext.Id("mock"),
                                                    override val `type`: Type = Type("default-type"),
-                                                   override val action: Action = defaultAction,
+                                                   override val action: Action = roAction,
                                                    override val headers: Set[Header] = Set.empty,
                                                    override val remoteAddress: Option[Address] = Address.from("localhost"),
                                                    override val localAddress: Address = Address.from("localhost").get,
@@ -128,7 +128,6 @@ final case class MockFilterableMultiRequestContext(override val timestamp: Insta
                                                    override val allTemplates: Set[Template] = Set.empty,
                                                    override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                                    override val isCompositeRequest: Boolean = false,
-                                                   override val isReadOnlyRequest: Boolean = true,
                                                    override val isAllowedForDLS: Boolean = false,
                                                    indexPacks: List[Indices],
                                                    filter: Option[Filter],
@@ -147,7 +146,7 @@ final case class MockGeneralNonIndexRequestContext(override val timestamp: Insta
                                                    override val taskId: Long = 0L,
                                                    override val id: RequestContext.Id = RequestContext.Id("mock"),
                                                    override val `type`: Type = Type("default-type"),
-                                                   override val action: Action = defaultAction,
+                                                   override val action: Action = roAction,
                                                    override val headers: Set[Header] = Set.empty,
                                                    override val remoteAddress: Option[Address] = Address.from("localhost"),
                                                    override val localAddress: Address = Address.from("localhost").get,
@@ -163,7 +162,6 @@ final case class MockGeneralNonIndexRequestContext(override val timestamp: Insta
                                                    override val allTemplates: Set[Template] = Set.empty,
                                                    override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                                    override val isCompositeRequest: Boolean = false,
-                                                   override val isReadOnlyRequest: Boolean = true,
                                                    override val isAllowedForDLS: Boolean = true)
   extends RequestContext {
 
@@ -178,7 +176,7 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
                                           override val taskId: Long = 0L,
                                           override val id: RequestContext.Id = RequestContext.Id("mock"),
                                           override val `type`: Type = Type("default-type"),
-                                          override val action: Action = defaultAction,
+                                          override val action: Action = roAction,
                                           override val headers: Set[Header] = Set.empty,
                                           override val remoteAddress: Option[Address] = Address.from("localhost"),
                                           override val localAddress: Address = Address.from("localhost").get,
@@ -194,7 +192,6 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
                                           override val allTemplates: Set[Template] = Set.empty,
                                           override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                           override val isCompositeRequest: Boolean = false,
-                                          override val isReadOnlyRequest: Boolean = true,
                                           override val isAllowedForDLS: Boolean = true,
                                           indices: Set[ClusterIndexName],
                                           allAllowedIndices: Set[ClusterIndexName])
@@ -226,7 +223,6 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant,
                                                 override val allTemplates: Set[Template] = Set.empty,
                                                 override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                                 override val isCompositeRequest: Boolean = false,
-                                                override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
                                                 repositories: Set[RepositoryName])
   extends RequestContext {
@@ -241,7 +237,7 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant,
                                              override val taskId: Long = 0L,
                                              override val id: RequestContext.Id = RequestContext.Id("mock"),
                                              override val `type`: Type = Type("default-type"),
-                                             override val action: Action = defaultAction,
+                                             override val action: Action = roAction,
                                              override val headers: Set[Header] = Set.empty,
                                              override val remoteAddress: Option[Address] = Address.from("localhost"),
                                              override val localAddress: Address = Address.from("localhost").get,
@@ -257,7 +253,6 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant,
                                              override val allTemplates: Set[Template] = Set.empty,
                                              override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                              override val isCompositeRequest: Boolean = false,
-                                             override val isReadOnlyRequest: Boolean = true,
                                              override val isAllowedForDLS: Boolean = true,
                                              snapshots: Set[SnapshotName])
   extends RequestContext {
@@ -272,7 +267,7 @@ final case class MockDataStreamsRequestContext(override val timestamp: Instant,
                                                override val taskId: Long = 0L,
                                                override val id: RequestContext.Id = RequestContext.Id("mock"),
                                                override val `type`: Type = Type("default-type"),
-                                               override val action: Action = defaultAction,
+                                               override val action: Action = roAction,
                                                override val headers: Set[Header] = Set.empty,
                                                override val remoteAddress: Option[Address] = Address.from("localhost"),
                                                override val localAddress: Address = Address.from("localhost").get,
@@ -288,7 +283,6 @@ final case class MockDataStreamsRequestContext(override val timestamp: Instant,
                                                override val allTemplates: Set[Template] = Set.empty,
                                                override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                                override val isCompositeRequest: Boolean = false,
-                                               override val isReadOnlyRequest: Boolean = true,
                                                override val isAllowedForDLS: Boolean = true,
                                                dataStreams: Set[DataStreamName])
   extends RequestContext {
@@ -303,7 +297,7 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val taskId: Long = 0L,
                                                 override val id: RequestContext.Id = RequestContext.Id("mock"),
                                                 override val `type`: Type = Type("default-type"),
-                                                override val action: Action = defaultAction,
+                                                override val action: Action = roAction,
                                                 override val headers: Set[Header] = Set.empty,
                                                 override val remoteAddress: Option[Address] = Address.from("localhost"),
                                                 override val localAddress: Address = Address.from("localhost").get,
@@ -319,7 +313,6 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val allTemplates: Set[Template] = Set.empty,
                                                 override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                                 override val isCompositeRequest: Boolean = false,
-                                                override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true)
   extends RequestContext {
   override type BLOCK_CONTEXT = CurrentUserMetadataRequestBlockContext
@@ -349,7 +342,6 @@ final case class MockTemplateRequestContext(override val timestamp: Instant,
                                             override val allTemplates: Set[Template] = Set.empty,
                                             override val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = Map.empty,
                                             override val isCompositeRequest: Boolean = false,
-                                            override val isReadOnlyRequest: Boolean = true,
                                             override val isAllowedForDLS: Boolean = true,
                                             templateOperation: TemplateOperation)
   extends RequestContext {
@@ -364,7 +356,7 @@ abstract class MockSimpleRequestContext[BC <: BlockContext](override val timesta
                                                             override val taskId: Long = 0L,
                                                             override val id: RequestContext.Id = RequestContext.Id("mock"),
                                                             override val `type`: Type = Type("default-type"),
-                                                            override val action: Action = defaultAction,
+                                                            override val action: Action = roAction,
                                                             override val headers: Set[Header] = Set.empty,
                                                             override val remoteAddress: Option[Address] = Address.from("localhost"),
                                                             override val localAddress: Address = Address.from("localhost").get,
@@ -387,10 +379,8 @@ abstract class MockSimpleRequestContext[BC <: BlockContext](override val timesta
 
 object MockSimpleRequestContext {
   def apply[BC <: BlockContext](blockContextCreator: RequestContext => BC,
-                                isReadOnly: Boolean,
                                 customAction: Action): MockSimpleRequestContext[BC] = new MockSimpleRequestContext[BC] {
     override val initialBlockContext: BC = blockContextCreator(this)
-    override val isReadOnlyRequest: Boolean = isReadOnly
     override val action: Action = customAction
   }
 }

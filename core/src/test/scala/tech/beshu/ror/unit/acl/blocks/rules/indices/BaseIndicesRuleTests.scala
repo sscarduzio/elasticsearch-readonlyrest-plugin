@@ -72,7 +72,6 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with MockF
       .copy(
         filteredIndices = requestIndices,
         action = Action("indices:data/read/search"),
-        isReadOnlyRequest = true,
         allIndicesAndAliases = Set(
           fullLocalIndexWithAliases(fullIndexName("test1")),
           fullLocalIndexWithAliases(fullIndexName("test2")),
@@ -138,7 +137,6 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with MockF
       .copy(
         indexPacks = indexPacks,
         action = Action("indices:data/read/mget"),
-        isReadOnlyRequest = true,
         method = Method("POST"),
         allIndicesAndAliases = Set(
           fullLocalIndexWithAliases(fullIndexName("test1"), Set.empty),

@@ -180,6 +180,7 @@ object RequestContext extends Logging {
       "cluster:*search*",
       "cluster:admin/*/get",
       "cluster:admin/*/status",
+      "indices:admin/*/get",
       "indices:admin/*/explain",
       "indices:admin/aliases/exists",
       "indices:admin/aliases/get",
