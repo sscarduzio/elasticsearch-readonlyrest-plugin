@@ -244,7 +244,6 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           uriPath = UriPath("/.kibana_admins/_create/index-pattern:3b2fa1b0-bcb2-11eb-a20e-8daf1d07a2b2"),
           method = Method("PUT"),
           action = Action("indices:data/write/index"),
-          isReadOnlyRequest = false,
           filteredIndices = Set(clusterIndexName(".kibana_admins"))
         )
 

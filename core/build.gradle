@@ -100,6 +100,7 @@ dependencies {
     api group: 'commons-codec',             name: 'commons-codec',                          version: '1.15'
     api group: 'org.typelevel',             name: 'cats-free_2.13',                         version: '2.1.1'
     api group: 'com.softwaremill.sttp',     name: 'core_2.13',                              version: '1.7.2'
+    api group: 'com.beachape',              name: 'enumeratum_2.13',                        version: '1.7.3'
     api group: 'com.hrakaroo',              name: 'glob',                                   version: '0.9.0'
     api group: 'com.comcast',               name: 'ip4s-core_2.13',                         version: '1.4.1'
     api group: 'org.typelevel',             name: 'jawn-parser_2.13',                       version: '1.4.0'

@@ -20,6 +20,7 @@ import cats.Eq
 import cats.data.NonEmptyList
 import cats.implicits._
 import cats.kernel.Monoid
+import enumeratum._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto.autoUnwrap
 import eu.timepit.refined.types.string.NonEmptyString
@@ -42,20 +43,31 @@ object Action {
     val monitorStateAction: Action = EsAction("cluster:monitor/state")
   }
 
-  abstract sealed class RorAction(override val value: String) extends Action
-  object RorAction {
-    case object RorUserMetadataAction extends RorAction("cluster:internal_ror/user_metadata/get")
-    case object RorConfigAction extends RorAction("cluster:internal_ror/config/manage")
-    case object RorTestConfigAction extends RorAction("cluster:internal_ror/testconfig/manage")
-    case object RorAuthMockAction extends RorAction("cluster:internal_ror/authmock/manage")
-    case object RorAuditEventAction extends RorAction("cluster:internal_ror/audit_event/put")
-    case object RorOldConfigAction extends RorAction("cluster:internal_ror/config/refreshsettings")
+  abstract sealed class RorAction(override val value: String) extends Action with EnumEntry
+  object RorAction extends Enum[RorAction] {
+
+    abstract sealed class RoRorAction(override val value: String) extends RorAction(value)
+    abstract sealed class RwRorAction(override val value: String) extends RorAction(value)
+    abstract sealed class AdminRorAction(override val value: String) extends RorAction(value)
+
+    case object RorUserMetadataAction extends RoRorAction("cluster:internal_ror/user_metadata/get")
+    case object RorConfigAction extends AdminRorAction("cluster:internal_ror/config/manage")
+    case object RorTestConfigAction extends AdminRorAction("cluster:internal_ror/testconfig/manage")
+    case object RorAuthMockAction extends AdminRorAction("cluster:internal_ror/authmock/manage")
+    case object RorAuditEventAction extends RwRorAction("cluster:internal_ror/audit_event/put")
+    case object RorOldConfigAction extends AdminRorAction("cluster:internal_ror/config/refreshsettings")
 
     def fromString(value: String): Option[Action] = {
       rorActionFrom(value)
         .orElse(rorActionByOutdatedName.get(value))
         .orElse(patternMatchingOutdatedRorActionName(value))
     }
+
+    override val values: IndexedSeq[RorAction] = findValues
+
+    val readOnlyActions: Set[RoRorAction] = values.collect { case action: RoRorAction => action }.toSet
+    val writeActions: Set[RwRorAction] = values.collect { case action: RwRorAction => action }.toSet
+    val adminActions: Set[AdminRorAction] = values.collect { case action: AdminRorAction => action }.toSet
 
     private def rorActionFrom(value: String): Option[RorAction] = value match {
       case RorUserMetadataAction.`value` => RorUserMetadataAction.some

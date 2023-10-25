@@ -86,7 +86,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
              |  "correlation_id":"${captureCorrelationId(jsonString)}",
              |  "processingMillis":${captureProcessingMillis(jsonString)},
              |  "xff":"192.168.0.1",
-             |  "action":"default-action",
+             |  "action":"indices:admin/get",
              |  "block":"default",
              |  "id":"mock",
              |  "content_len":0
@@ -123,7 +123,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
              |  "correlation_id":"${captureCorrelationId(jsonString)}",
              |  "processingMillis":${captureProcessingMillis(jsonString)},
              |  "xff":"192.168.0.1",
-             |  "action":"default-action",
+             |  "action":"indices:admin/get",
              |  "block":"default",
              |  "id":"mock",
              |  "content_len":0

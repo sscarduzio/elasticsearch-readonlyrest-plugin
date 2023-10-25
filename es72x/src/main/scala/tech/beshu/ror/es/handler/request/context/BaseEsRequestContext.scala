@@ -27,7 +27,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.constants.readActionPatternsMatcher
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.RestRequestOps._
@@ -113,8 +112,6 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
   override lazy val allTemplates: Set[Template] = clusterService.allTemplates
 
   override lazy val allSnapshots: Map[RepositoryName.Full, Set[SnapshotName.Full]] = clusterService.allSnapshots
-
-  override lazy val isReadOnlyRequest: Boolean = readActionPatternsMatcher.`match`(action)
 
   override lazy val isCompositeRequest: Boolean = esContext.actionRequest.isInstanceOf[CompositeIndicesRequest]
 

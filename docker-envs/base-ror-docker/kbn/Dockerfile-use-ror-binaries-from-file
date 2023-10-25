@@ -13,8 +13,9 @@ COPY $ROR_FILE /tmp/ror.zip
 
 ENV ROR_ACTIVATION_KEY=$ROR_ACTIVATION_KEY
 
-RUN /tmp/install-ror.sh
-
 USER root
+
+RUN /tmp/install-ror.sh
 RUN chown -R kibana:kibana /usr/share/kibana/config
+
 USER kibana
