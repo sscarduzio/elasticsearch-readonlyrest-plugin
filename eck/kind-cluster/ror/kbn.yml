@@ -10,6 +10,7 @@ spec:
     name: quickstart
   config:
     readonlyrest_kbn.cookiePass: "12345678901234567890123456789012345678901234567890"
+    readonlyrest_kbn.logLevel: "trace"
   podTemplate:
     spec:
       containers:
