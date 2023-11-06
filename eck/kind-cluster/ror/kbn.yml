@@ -3,11 +3,13 @@ kind: Kibana
 metadata:
   name: quickstart
 spec:
-  version: 8.8.2
-  image: coutopl/kbn_8.8.2_ror_1.49.1
+  version: 7.17.13
+  image: coutopl/kbn_7.17.13_ror_1.53.0-pre3
   count: 1
   elasticsearchRef:
     name: quickstart
+  config:
+    readonlyrest_kbn.cookiePass: "12345678901234567890123456789012345678901234567890"
   podTemplate:
     spec:
       containers:
