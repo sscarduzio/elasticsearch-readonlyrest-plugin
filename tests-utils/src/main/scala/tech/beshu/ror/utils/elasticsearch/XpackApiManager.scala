@@ -79,6 +79,9 @@ class XpackApiManager(client: RestClient,
     call(createRollupSearchRequest(rollupIndex), new JsonResponse(_))
   }
 
+  def hasPrivileges(clusterPrivilege: String, clusterPrivileges: String*): JsonResponse = {
+    call(createHasPrivilegesRequest(clusterPrivilege :: clusterPrivileges.toList), new JsonResponse(_))
+  }
 
   private def createRollupRequest(jobId: String,
                                   indexPattern: String,
@@ -197,6 +200,20 @@ class XpackApiManager(client: RestClient,
          |      }
          |    }
          |  }
+         |}
+       """.stripMargin))
+    request
+  }
+
+  private def createHasPrivilegesRequest(clusterPrivileges: Iterable[String]) = {
+    val request = new HttpGetWithEntity(client.from("/_security/user/_has_privileges"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""
+         |{
+         |  "cluster": [ ${clusterPrivileges.map(p => s"\"$p\"").mkString(",")} ],
+         |  "index": [],
+         |  "application": []
          |}
        """.stripMargin))
     request

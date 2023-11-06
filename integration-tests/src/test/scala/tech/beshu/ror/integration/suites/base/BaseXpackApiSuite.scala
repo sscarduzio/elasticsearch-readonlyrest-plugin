@@ -936,6 +936,29 @@ trait BaseXpackApiSuite
       }
     }
   }
+
+  "Security API" when {
+    "_has_privileges endpoint is called" should {
+      "return ROR artificial user" in {
+        val response = adminXpackApiManager.hasPrivileges("monitor")
+
+        response should have statusCode 200
+        response.responseJson should be(ujson.read(
+          s"""
+             |{
+             |  "username": "ROR",
+             |  "has_all_requested": true,
+             |  "cluster": {
+             |    "monitor": true
+             |  },
+             |  "index": {},
+             |  "application": {}
+             |}
+             |""".stripMargin
+        ))
+      }
+    }
+  }
 }
 
 object BaseXpackApiSuite {
