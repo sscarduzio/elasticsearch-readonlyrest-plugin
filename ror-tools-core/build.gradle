@@ -61,9 +61,13 @@ dependencies {
     api group: 'com.lihaoyi',                   name: 'os-lib_2.13',                      version: '0.8.1'
 }
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+}
+
 compileScala {
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
     options.compilerArgs.addAll(
             "-unchecked",
             "-Ywarn-macros:after",

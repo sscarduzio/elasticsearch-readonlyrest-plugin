@@ -43,21 +43,17 @@ dependencyCheck {
     suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
 }
 
-compileJava {
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
-}
-
-compileScala {
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
 }
 
 crossBuild {
     scalaVersionsCatalog = [
             '2.11': '2.11.12',
             '2.12': '2.12.17',
-            '2.13': '2.13.11'
+            '2.13': '2.13.12'
     ]
 
     builds {
@@ -71,8 +67,8 @@ dependencies {
     implementation                 group: 'org.json',           name: 'json',                version: '20230227'
     crossBuildV211Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.11.12'
     crossBuildV212Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.12.17'
-    crossBuildV213Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.13.11'
-    compileOnly                    group: 'org.scala-lang',     name: 'scala-library',       version: '2.13.11'
+    crossBuildV213Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.13.12'
+    compileOnly                    group: 'org.scala-lang',     name: 'scala-library',       version: '2.13.12'
 }
 
 test {
