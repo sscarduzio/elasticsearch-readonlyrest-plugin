@@ -33,7 +33,7 @@ abstract class RorPluginSecurityPolicyFileUpdater {
     val tmp = new File(policyFile.getPath + ".tmp") // Temporary File
     Using(new PrintWriter(tmp)) { writer =>
       Using(Source.fromFile(policyFile)) { source =>
-        source.getLines
+        source.getLines()
           .zipWithIndex
           .flatMap {
             case (line, 1) => List(permission, line)

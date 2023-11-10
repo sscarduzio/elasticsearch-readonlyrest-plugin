@@ -20,10 +20,11 @@ plugins {
 }
 
 def pluginFullName = pluginName + '-' + version
+def projectJavaLanguageVersion = JavaLanguageVersion.of(17)
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = projectJavaLanguageVersion
     }
 }
 
@@ -64,6 +65,9 @@ tasks.register('jarHellCheck', JavaExec) {
     outputs.upToDateWhen { false }
     mainClass.set("org.elasticsearch.jdk.JarHell")
     classpath = project.sourceSets.main.compileClasspath.filter { it.exists() }
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = projectJavaLanguageVersion
+    }
 }
 
 tasks.register('resolvePluginDescriptorTemplate', Copy) {

@@ -20,24 +20,24 @@ plugins {
 }
 
 def pluginFullName = pluginName + '-' + version
+def projectJavaLanguageVersion = JavaLanguageVersion.of(21)
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = projectJavaLanguageVersion
     }
 }
 
 dependencies {
-    implementation  project(path: ':core')
-    implementation  project(path: ':ror-tools', configuration: 'shadow')
-    implementation  project(path: ':ror-tools-core')
-    implementation  group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: esVersion
-    implementation  group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-client',              version: esVersion
-    implementation  group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.13'
-    implementation  group: 'org.apache.logging.log4j',          name: 'log4j-core',                             version: '2.11.1'
-    compileOnly     group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
-    // if you don't have this dependency in local maven, please run publishToMavenLocal task first
-    compileOnly     group: 'org.elasticsearch.plugin',          name: 'transport-netty4',                       version: esVersion
+    implementation project(path: ':core')
+    implementation project(path: ':ror-tools', configuration: 'shadow')
+    implementation project(path: ':ror-tools-core')
+    implementation group: 'org.elasticsearch', name: 'elasticsearch', version: esVersion
+    implementation group: 'org.elasticsearch.client', name: 'elasticsearch-rest-client', version: esVersion
+    implementation group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.13'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.11.1'
+    compileOnly group: 'org.locationtech.spatial4j', name: 'spatial4j', version: '0.7'
+    compileOnly group: 'org.elasticsearch.plugin', name: 'transport-netty4', version: esVersion
 }
 
 configurations {
@@ -64,6 +64,9 @@ tasks.register('jarHellCheck', JavaExec) {
     outputs.upToDateWhen { false }
     mainClass.set("org.elasticsearch.jdk.JarHell")
     classpath = project.sourceSets.main.compileClasspath.filter { it.exists() }
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = projectJavaLanguageVersion
+    }
 }
 
 tasks.register('resolvePluginDescriptorTemplate', Copy) {
@@ -84,10 +87,9 @@ tasks.register('ror', Zip) {
     dependsOn(cleanOldData, jarHellCheck, toJar, resolvePluginDescriptorTemplate)
     outputs.upToDateWhen { false }
     archivesBaseName = pluginName
-    into('.')
-            {
-                from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && !x.name.contains('jts') }
-                from 'build/libs/' + pluginFullName + '.jar'
-                from 'build/tmp/' + pluginFullName
-            }
+    into('.') {
+        from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && !x.name.contains('jts') }
+        from 'build/libs/' + pluginFullName + '.jar'
+        from 'build/tmp/' + pluginFullName
+    }
 }

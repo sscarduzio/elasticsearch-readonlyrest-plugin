@@ -20,10 +20,11 @@ plugins {
 }
 
 def pluginFullName = pluginName + '-' + version
+def projectJavaLanguageVersion = JavaLanguageVersion.of(8)
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(8)
+        languageVersion = projectJavaLanguageVersion
     }
 }
 
