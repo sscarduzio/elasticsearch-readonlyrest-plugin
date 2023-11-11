@@ -143,11 +143,16 @@ stages:
               ROR_TASK: integration_es81x
             IT_es80x:
               ROR_TASK: integration_es80x
+
       - job:
         condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
         container: openjdk:21-jdk
         timeoutInMinutes: 120
         steps:
+          - script: |
+              /tmp/docker exec -t -u 0 ci-container \
+              sh -c "microdnf install sudo"
+            displayName: 'Install Sudo in container #HACK - See https://github.com/microsoft/azure-pipelines-agent/issues/2043'
           - checkout: self
             fetchDepth: 1
             clean: false
@@ -350,11 +355,6 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
-
-          - script: |
-              /tmp/docker exec -t -u 0 ci-container \
-              sh -c "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confold" -y install sudo"
-            displayName: 'Install Sudo in container #HACK - See https://github.com/microsoft/azure-pipelines-agent/issues/2043'
 
           - script: |
               /tmp/docker exec -t -u 0 ci-container \
