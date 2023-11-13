@@ -1,22 +1,14 @@
-#!/bin/bash
+#!/bin/bash -ex
 
 if [[ $# -eq 0 ]] ; then
     echo "Please pass to the script an ES version you'd like to build ROR for"
     exit 1
 fi
 
-version() {
-  echo "$@" | awk -F. '{ printf("%d%03d%03d\n", $1,$2,$3); }';
-}
-export -f version
+cd "$(dirname "$0")"
 
-vergte() {
-  [ $(version $1) -ge $(version $2) ]
-}
-export -f vergte
-
-mkdir -p builds
-rm -r builds/*
+mkdir -p ../builds
+rm -r ../builds/* || true
 
 for arg in "$@"; do
   ES_VERSION=$arg
@@ -25,7 +17,8 @@ for arg in "$@"; do
     grep -Ei '^es[0-9]+x$' | \
     sed "s/^es\([0-9]\)\([0-9]*\)x$/\1.\2.0 $ES_VERSION es\1\2x/" | \
     sort -Vr | \
-    awk '{ if (system("vergte " $2 " " $1) == 0) { print $3 } }' | \
+    awk '{ print (system("bash -c \"pwd\"")) }' | \
+    awk '{ if (system("bash -c \"pwd && . /ror/bin/test.sh && vergte \"" $2 " " $1) == 0) { print $3 } }' | \
     head -1)
 
   echo "Building ROR for ES_VERSION: $ES_VERSION (using ES_MODULE: $ES_MODULE):"
