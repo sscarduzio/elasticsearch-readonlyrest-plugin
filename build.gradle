@@ -1,12 +1,9 @@
-import beshu.tech.ror.gradle.RorBuilderRunner
+import beshu.tech.ror.gradle.RorTaskFinder
 
 plugins { id 'base' }
 
-tasks.register("buildRorPlugin", beshu.tech.ror.gradle.RorBuilderRunner) {
-    doFirst {
-        rootProject.setProperty("esVersion", "8.1.0")
-    }
-    finalizedBy it.getRorTask()
+tasks.register("buildRorPlugin", RorTaskFinder) {
+    dependsOn it.findRorTaskForEsVersion()
 }
 
 

@@ -72,7 +72,7 @@ trait EsContainerCreator {
     )
 
     EsContainerWithRorAndXpackSecurity.create(
-      esVersion = project.getESVersion,
+      esVersion = project.getModuleESVersion,
       esConfig = Elasticsearch.Config(
         clusterName = nodeSettings.clusterName,
         nodeName = nodeSettings.nodeName,
@@ -105,7 +105,7 @@ trait EsContainerCreator {
     )
 
     EsContainerWithRorSecurity.create(
-      esVersion = project.getESVersion,
+      esVersion = project.getModuleESVersion,
       esConfig = Elasticsearch.Config(
         clusterName = nodeSettings.clusterName,
         nodeName = nodeSettings.nodeName,
@@ -130,7 +130,7 @@ trait EsContainerCreator {
                                          attributes: XpackSecurityPlugin.Config.Attributes,
                                          startedClusterDependencies: StartedClusterDependencies) = {
     EsContainerWithXpackSecurity.create(
-      esVersion = project.getESVersion,
+      esVersion = project.getModuleESVersion,
       esConfig = Elasticsearch.Config(
         clusterName = nodeSettings.clusterName,
         nodeName = nodeSettings.nodeName,
@@ -150,7 +150,7 @@ trait EsContainerCreator {
                                               nodeDataInitializer: ElasticsearchNodeDataInitializer,
                                               startedClusterDependencies: StartedClusterDependencies) = {
     EsContainerWithNoSecurity.create(
-      esVersion = project.getESVersion,
+      esVersion = project.getModuleESVersion,
       esConfig = Elasticsearch.Config(
         clusterName = nodeSettings.clusterName,
         nodeName = nodeSettings.nodeName,

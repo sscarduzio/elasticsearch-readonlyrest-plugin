@@ -67,12 +67,12 @@ class RorPluginGradleProject(val moduleName: String) {
     else Some(plugin)
   }
 
-  def getESVersion: String = esProjectProperties.getProperty("esVersion")
+  def getModuleESVersion: String = esProjectProperties.getProperty("latestSupportedEsVersion")
 
   private def esProject(esProjectName: String) = new JFile(RorPluginGradleProject.getRootProject, esProjectName)
 
   private def pluginName =
-    s"${rootProjectProperties.getProperty("pluginName")}-${rootProjectProperties.getProperty("pluginVersion")}_es$getESVersion.zip"
+    s"${rootProjectProperties.getProperty("pluginName")}-${rootProjectProperties.getProperty("pluginVersion")}_es$getModuleESVersion.zip"
 
   private def runTask(task: String): Unit = {
     val connector = GradleConnector.newConnector.forProjectDirectory(RorPluginGradleProject.getRootProject)

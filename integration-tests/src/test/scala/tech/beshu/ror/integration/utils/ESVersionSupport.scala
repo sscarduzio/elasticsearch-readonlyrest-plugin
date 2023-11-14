@@ -73,5 +73,5 @@ sealed trait ESVersionSupport extends EsModulePatterns {
 
   private final class ExcludeESModule(value: String) extends Tag(s"tech.beshu.tags.ExcludeESModule.$value")
 
-  lazy val esVersionUsed: String = RorPluginGradleProject.fromSystemProperty.getESVersion
+  lazy val esVersionUsed: String = RorPluginGradleProject.fromSystemProperty.getModuleESVersion
 }
