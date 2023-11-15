@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
-import cats.Eq
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -32,13 +31,12 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Imperso
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{Header, Token, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Header, Token, User}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 final class TokenAuthenticationRule(val settings: Settings,
-                                    override val impersonation: Impersonation,
-                                    override val caseMappingEquality: UserIdCaseMappingEquality)
+                                    override implicit val userIdCaseSensitivity: CaseSensitivity,
+                                    override val impersonation: Impersonation)
   extends BaseAuthenticationRule
     with Logging {
 
@@ -47,8 +45,7 @@ final class TokenAuthenticationRule(val settings: Settings,
   override val eligibleUsers: AuthenticationRule.EligibleUsersSupport = EligibleUsersSupport.Available(Set(settings.user))
 
   override def exists(user: User.Id, mocksProvider: MocksProvider)
-                     (implicit requestId: RequestId,
-                      eq: Eq[User.Id]): Task[UserExistence] = Task.now {
+                     (implicit requestId: RequestId): Task[UserExistence] = Task.now {
     if (user === settings.user) UserExistence.Exists
     else UserExistence.NotExist
   }

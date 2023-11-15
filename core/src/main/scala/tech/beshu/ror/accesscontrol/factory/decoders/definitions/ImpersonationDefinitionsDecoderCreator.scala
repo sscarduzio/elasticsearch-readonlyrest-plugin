@@ -24,9 +24,9 @@ import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain.UserIdPatterns
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
@@ -36,7 +36,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.{ACursorOps, DecoderHelpers, 
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class ImpersonationDefinitionsDecoderCreator(caseMappingEquality: UserIdCaseMappingEquality,
+class ImpersonationDefinitionsDecoderCreator(globalSettings: GlobalSettings,
                                              authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
                                              authProxyDefinitions: Definitions[ProxyAuth],
                                              ldapDefinitions: Definitions[LdapService],
@@ -73,7 +73,7 @@ class ImpersonationDefinitionsDecoderCreator(caseMappingEquality: UserIdCaseMapp
 
     UniqueNonEmptyList.fromSortedSet(exactImpersonators.intersect(exactImpersonatedUsers)) match {
       case Some(duplicatedUsers) =>
-        val users = duplicatedUsers.map(_.value.value).mkString(",")
+        val users = duplicatedUsers.map(_.value.value.value).mkString(",")
         Left(decodingFailure(
           Message(s"Each of the given users [$users] should be either impersonator or a user to be impersonated")
         ))
@@ -93,11 +93,11 @@ class ImpersonationDefinitionsDecoderCreator(caseMappingEquality: UserIdCaseMapp
             ldapDefinitions,
             impersonatorsDefinitions = None,
             mocksProvider,
-            caseMappingEquality
+            globalSettings
           ) match {
           case Some(decoder) =>
             ruleDecoders
-              .withUserIdParamsCheck(decoder, userIdPatterns, decodingFailure)
+              .withUserIdParamsCheck(decoder, userIdPatterns, globalSettings, decodingFailure)
               .map(_.rule.rule)
               .apply(cursor)
           case None =>

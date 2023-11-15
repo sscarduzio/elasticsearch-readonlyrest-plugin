@@ -32,7 +32,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Authen
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
@@ -44,7 +43,7 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 import scala.util.Try
 
 final class JwtAuthRule(val settings: JwtAuthRule.Settings,
-                        implicit override val caseMappingEquality: UserIdCaseMappingEquality)
+                        override val userIdCaseSensitivity: CaseSensitivity)
   extends AuthRule
     with AuthenticationImpersonationCustomSupport
     with AuthorizationImpersonationCustomSupport

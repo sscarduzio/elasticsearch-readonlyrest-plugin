@@ -16,20 +16,18 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.utils
 
-import com.google.common.collect.Sets
+import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeRemoteIndexFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRemoteIndexFilterScalaAdapter.CheckResult
-import tech.beshu.ror.accesscontrol.matchers.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeRemoteIndexFilterScalaAdapter}
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
-import eu.timepit.refined.auto._
 import tech.beshu.ror.utils.TestsUtils._
 
 class ZeroKnowledgeRemoteIndexFilterScalaAdapterTests extends AnyWordSpec {
 
   "ZeroKnowledgeIndexFilter check" when {
     "one element is passed" in {
-      val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[ClusterIndexName.Remote](Sets.newHashSet("*:a*"))
+      val matcher = PatternsMatcher.create(remoteIndexName("*:a*") :: Nil)
 
       val res1 = new ZeroKnowledgeRemoteIndexFilterScalaAdapter()
         .check(Set(remoteIndexName("*:*")), matcher)
@@ -40,14 +38,14 @@ class ZeroKnowledgeRemoteIndexFilterScalaAdapterTests extends AnyWordSpec {
       res2 should be(CheckResult.Failed)
     }
     "two elements are passed" in {
-      val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[ClusterIndexName.Remote](Sets.newHashSet("r:a1*"))
+      val matcher = PatternsMatcher.create(remoteIndexName("r:a1*") :: Nil)
 
       val res1 = new ZeroKnowledgeRemoteIndexFilterScalaAdapter()
         .check(Set(remoteIndexName("r:a*")), matcher)
       res1 should be(CheckResult.Ok(Set(remoteIndexName("r:a1*"))))
     }
     "two patterns in matcher" in {
-      val matcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[ClusterIndexName.Remote](Sets.newHashSet("b:*", "c:a*"))
+      val matcher = PatternsMatcher.create(remoteIndexName("b:*") :: remoteIndexName("c:a*") :: Nil)
 
       val res1 = new ZeroKnowledgeRemoteIndexFilterScalaAdapter()
         .check(Set(remoteIndexName("b:*")), matcher)

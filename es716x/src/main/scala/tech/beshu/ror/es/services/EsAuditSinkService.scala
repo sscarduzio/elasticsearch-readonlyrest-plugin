@@ -25,7 +25,7 @@ import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue}
 import org.elasticsearch.core.TimeValue
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.xcontent.XContentType
-import tech.beshu.ror.Constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_SINK_MAX_RETRIES, AUDIT_SINK_MAX_SECONDS}
+import tech.beshu.ror.constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_SINK_MAX_RETRIES, AUDIT_SINK_MAX_SECONDS}
 import tech.beshu.ror.es.AuditSinkService
 
 @Inject

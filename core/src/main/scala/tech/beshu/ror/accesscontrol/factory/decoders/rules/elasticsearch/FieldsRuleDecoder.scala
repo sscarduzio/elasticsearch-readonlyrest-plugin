@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.elasticsearch
 
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
@@ -27,8 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-
-import scala.jdk.CollectionConverters._
+import tech.beshu.ror.constants
 
 class FieldsRuleDecoder(flsEngine: FlsEngine,
                         variableCreator: RuntimeResolvableVariableCreator)
@@ -50,7 +48,7 @@ private object FieldsRuleDecoderHelper extends FieldsRuleLikeDecoderHelperBase {
     for {
       configuredFields <- configuredFieldsDecoder
       accessMode <- accessModeDecoder[AccessMode](configuredFields)
-      documentFields <- documentFieldsDecoder[DocumentField](configuredFields, Constants.FIELDS_ALWAYS_ALLOW.asScala.map(NonEmptyString.unsafeFrom).toSet)
+      documentFields <- documentFieldsDecoder[DocumentField](configuredFields, constants.FIELDS_ALWAYS_ALLOW.map(NonEmptyString.unsafeFrom).toSet)
     } yield RuleDefinition.create(new FieldsRule(FieldsRule.Settings(documentFields, accessMode, flsEngine)))
   }
 

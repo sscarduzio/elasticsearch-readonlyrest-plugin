@@ -134,7 +134,7 @@ object common extends Logging {
     DecoderHelpers.decodeStringLikeNonEmpty.map(User.Id.apply)
 
   implicit val idPatternDecoder: Decoder[UserIdPattern] =
-    DecoderHelpers.decodeStringLikeNonEmpty.map(UserIdPattern.apply)
+    DecoderHelpers.decodeStringLikeNonEmpty.map(User.Id.apply).map(UserIdPattern.apply)
 
   implicit val groupNamesUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[GroupName]] =
     SyncDecoderCreator

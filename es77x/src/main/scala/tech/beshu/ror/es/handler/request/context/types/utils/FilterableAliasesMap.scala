@@ -20,17 +20,18 @@ import cats.data.NonEmptyList
 import org.elasticsearch.cluster.metadata.AliasMetaData
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
-import tech.beshu.ror.accesscontrol.matchers.Matcher.Conversion
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.{Conversion, Matchable}
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap.AliasesMap
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.ImmutableOpenMapOps
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.{CaseMappingEquality, StringCaseMapping}
 
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 
 class FilterableAliasesMap(val value: AliasesMap) extends AnyVal {
+
+  import FilterableAliasesMap._
 
   def filterOutNotAllowedAliases(allowedAliases: NonEmptyList[ClusterIndexName]): AliasesMap = {
     ImmutableOpenMapOps.from {
@@ -40,9 +41,7 @@ class FilterableAliasesMap(val value: AliasesMap) extends AnyVal {
 
   private def filter(responseIndicesNadAliases: List[(String, java.util.List[AliasMetaData])],
                      allowedAliases: NonEmptyList[ClusterIndexName]) = {
-    implicit val mapping: CaseMappingEquality[String] = StringCaseMapping.caseSensitiveEquality
-    implicit val conversion = Conversion.from[AliasMetaData, String](_.alias())
-    val matcher = MatcherWithWildcardsScalaAdapter.create(allowedAliases.toList.map(_.stringify))
+    val matcher = PatternsMatcher.create(allowedAliases.toList.map(_.stringify))
     responseIndicesNadAliases
       .map { case (indexName, aliasesList) =>
         val filteredAliases = matcher.filter(aliasesList.asSafeList.toSet)
@@ -53,6 +52,9 @@ class FilterableAliasesMap(val value: AliasesMap) extends AnyVal {
 }
 
 object FilterableAliasesMap {
+  private implicit val conversion: PatternsMatcher[String]#Conversion[AliasMetaData] = Conversion.from(_.alias())
+  private implicit val matchable: Matchable[String] = Matchable.caseSensitiveStringMatchable
+
   type AliasesMap = ImmutableOpenMap[String, java.util.List[AliasMetaData]]
 
   implicit def toFilterableAliasesMap(map: AliasesMap): FilterableAliasesMap = new FilterableAliasesMap(map)

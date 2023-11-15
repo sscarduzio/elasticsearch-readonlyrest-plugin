@@ -46,13 +46,11 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVa
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration._
@@ -64,7 +62,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
   implicit val variableCreator: RuntimeResolvableVariableCreator =
     new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
 
-  def createRule(settings: GroupsRulesSettings, caseSensitivity: UserIdCaseMappingEquality): BaseGroupsRule
+  def createRule(settings: GroupsRulesSettings, caseSensitivity: CaseSensitivity): BaseGroupsRule
 
   // Common tests
 
@@ -300,7 +298,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                 ),
                 loggedUser = None,
                 preferredGroup = None,
-                caseSensitivity = false
+                caseSensitivity = CaseSensitivity.Disabled
               )(
                 blockContextAssertion = defaultOutputBlockContextAssertion(
                   user = User.Id("User1"),
@@ -347,7 +345,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                 ),
                 loggedUser = None,
                 preferredGroup = None,
-                caseSensitivity = false
+                caseSensitivity = CaseSensitivity.Disabled
               )(
                 blockContextAssertion = defaultOutputBlockContextAssertion(
                   user = User.Id("User1"),
@@ -521,25 +519,22 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
   def assertMatchRule(settings: GroupsRulesSettings,
                       loggedUser: Option[User.Id],
                       preferredGroup: Option[GroupName],
-                      caseSensitivity: Boolean = true)
+                      caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled)
                      (blockContextAssertion: BlockContext => Unit): Unit =
     assertRule(settings, loggedUser, preferredGroup, Some(blockContextAssertion), caseSensitivity)
 
   def assertNotMatchRule(settings: GroupsRulesSettings,
                          loggedUser: Option[User.Id],
                          preferredGroup: Option[GroupName],
-                         caseSensitivity: Boolean = true): Unit =
+                         caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled): Unit =
     assertRule(settings, loggedUser, preferredGroup, blockContextAssertion = None, caseSensitivity)
 
   def assertRule(settings: GroupsRulesSettings,
                  loggedUser: Option[User.Id],
                  preferredGroup: Option[GroupName],
                  blockContextAssertion: Option[BlockContext => Unit],
-                 caseSensitivity: Boolean): Unit = {
-    val rule = createRule(
-      settings,
-      if (caseSensitivity) UserIdEq.caseSensitive else UserIdEq.caseInsensitive
-    )
+                 caseSensitivity: CaseSensitivity): Unit = {
+    val rule = createRule(settings, caseSensitivity)
     val requestContext = MockRequestContext.metadata.copy(
       headers = preferredGroup.map(_.toCurrentGroupHeader).toSet
     )
@@ -566,7 +561,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
   def userIdPatterns(id: String, ids: String*): UserIdPatterns = {
     UserIdPatterns(
       UniqueNonEmptyList.unsafeFromIterable(
-        (id :: ids.toList).map(str => UserIdPattern(NonEmptyString.unsafeFrom(str)))
+        (id :: ids.toList).map(str => UserIdPattern(User.Id(NonEmptyString.unsafeFrom(str))))
       )
     )
   }
@@ -594,7 +589,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
 
     def matching(user: User.Id): AuthenticationRule = new AuthenticationRule with AuthenticationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
-      override val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
+      override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
       override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
@@ -603,7 +598,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
 
     val rejecting: AuthenticationRule = new AuthenticationRule with AuthenticationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-rejecting")
-      override val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
+      override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
       override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
@@ -612,8 +607,8 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
 
     val throwing: AuthenticationRule = new AuthenticationRule with AuthenticationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-throwing")
+      override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
-      override val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
 
       override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
         Task.raiseError(new Exception("Sth went wrong"))
@@ -647,7 +642,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
 
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
-      override val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
+      override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
 
       override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
         Task.now(Fulfilled(blockContext.withUserMetadata(
@@ -664,7 +659,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
       override val name: Rule.Name = Rule.Name("dummy-rejecting")
 
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
-      override val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
+      override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
 
       override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
         Task.now(Rejected())

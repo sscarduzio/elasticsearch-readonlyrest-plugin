@@ -22,7 +22,7 @@ import cats.implicits._
 import cats.data.NonEmptyList
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.Constants
+import tech.beshu.ror.constants
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.utils.ScalaOps._
@@ -206,8 +206,8 @@ final case class UriPath private(value: NonEmptyString) {
       "^/(\\w|\\*)*/_alias/(\\w|\\*)*(|/)$".r.findFirstMatchIn(value.value).isDefined
 }
 object UriPath {
-  val currentUserMetadataPath = UriPath(NonEmptyString.unsafeFrom(Constants.CURRENT_USER_METADATA_PATH))
-  val auditEventPath = UriPath(NonEmptyString.unsafeFrom(Constants.AUDIT_EVENT_COLLECTOR_PATH))
+  val currentUserMetadataPath = UriPath(NonEmptyString.unsafeFrom(constants.CURRENT_USER_METADATA_PATH))
+  val auditEventPath = UriPath(NonEmptyString.unsafeFrom(constants.AUDIT_EVENT_COLLECTOR_PATH))
   val slashPath = UriPath("/")
 
   implicit val eqUriPath: Eq[UriPath] = Eq.fromUniversalEquals

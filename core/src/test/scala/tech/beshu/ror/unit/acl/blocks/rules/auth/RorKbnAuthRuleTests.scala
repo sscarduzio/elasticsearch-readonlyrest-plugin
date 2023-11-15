@@ -38,7 +38,6 @@ import tech.beshu.ror.accesscontrol.domain.{Jwt => _, _}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -438,7 +437,7 @@ class RorKbnAuthRuleTests
                          tokenHeader: Header,
                          preferredGroup: Option[GroupName],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
-    val rule = new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, configuredGroups), UserIdEq.caseSensitive)
+    val rule = new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, configuredGroups), CaseSensitivity.Enabled)
     val requestContext = MockRequestContext.indices.copy(
       headers = Set(tokenHeader) ++ preferredGroup.map(_.toCurrentGroupHeader).toSet
     )

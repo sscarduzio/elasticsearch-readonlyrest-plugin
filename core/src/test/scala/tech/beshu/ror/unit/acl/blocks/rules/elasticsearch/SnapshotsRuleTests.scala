@@ -42,7 +42,7 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside {
       "allowed snapshots set contains *" in {
         assertMatchRule(
           configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName.Wildcard.nel)),
-          requestAction = Action("cluster:admin/snapshot/resolve"),
+          requestAction = Action("cluster:admin/snapshot/get"),
           requestSnapshots = Set(SnapshotName.from("snapshot1").get)
         ) {
           blockContext => blockContext.snapshots should be (Set(SnapshotName.from("snapshot1").get))
@@ -51,7 +51,7 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside {
       "allowed snapshots set contains _all" in {
         assertMatchRule(
           configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName.All.nel)),
-          requestAction = Action("cluster:admin/snapshot/resolve"),
+          requestAction = Action("cluster:admin/snapshot/get"),
           requestSnapshots = Set(SnapshotName.from("snapshot1").get)
         ) {
           blockContext => blockContext.snapshots should be (Set(SnapshotName.from("snapshot1").get))
@@ -60,9 +60,8 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside {
       "readonly request with configured simple snapshot" in {
         assertMatchRule(
           configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName.from("public-asd").get.nel)),
-          requestAction = Action("cluster:admin/snapshot/resolve"),
-          requestSnapshots = Set(SnapshotName.from("public-asd").get),
-          readonlyRequest = true
+          requestAction = Action("cluster:admin/snapshot/get"),
+          requestSnapshots = Set(SnapshotName.from("public-asd").get)
         ) {
           blockContext => blockContext.snapshots should be (Set(SnapshotName.from("public-asd").get))
         }
@@ -70,9 +69,8 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside {
       "readonly request with configured snapshot with wildcard" in {
         assertMatchRule(
           configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName.from("public-*").get.nel)),
-          requestAction = Action("cluster:admin/snapshot/resolve"),
-          requestSnapshots = Set(SnapshotName.from("public-asd").get),
-          readonlyRequest = true
+          requestAction = Action("cluster:admin/snapshot/get"),
+          requestSnapshots = Set(SnapshotName.from("public-asd").get)
         ) {
           blockContext => blockContext.snapshots should be (Set(SnapshotName.from("public-asd").get))
         }
@@ -80,7 +78,7 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside {
       "write request with configured simple snapshot" in {
         assertMatchRule(
           configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName.from("public-asd").get.nel)),
-          requestAction = Action("cluster:admin/snapshot/resolve"),
+          requestAction = Action("cluster:admin/snapshot/create"),
           requestSnapshots = Set(SnapshotName.from("public-asd").get)
         ) {
           blockContext => blockContext.snapshots should be (Set(SnapshotName.from("public-asd").get))
@@ -89,7 +87,7 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside {
       "write request with configured snapshot with wildcard" in {
         assertMatchRule(
           configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName.from("public-*").get.nel)),
-          requestAction = Action("cluster:admin/snapshot/resolve"),
+          requestAction = Action("cluster:admin/snapshot/create"),
           requestSnapshots = Set(SnapshotName.from("public-asd").get)
         ) {
           blockContext => blockContext.snapshots should be (Set(SnapshotName.from("public-asd").get))
@@ -101,9 +99,8 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside {
             AlreadyResolved(SnapshotName.from("public-*").get.nel),
             AlreadyResolved(SnapshotName.from("n").get.nel)
           ),
-          requestAction = Action("cluster:admin/snapshot/resolve"),
-          requestSnapshots = Set(SnapshotName.from("public-asd").get, SnapshotName.from("q").get),
-          readonlyRequest = true
+          requestAction = Action("cluster:admin/snapshot/get"),
+          requestSnapshots = Set(SnapshotName.from("public-asd").get, SnapshotName.from("q").get)
         ) {
           blockContext => blockContext.snapshots should be (Set(SnapshotName.from("public-asd").get))
         }
@@ -113,15 +110,14 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside {
       "request is read only" in {
         assertNotMatchRule(
           configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName.from("x-*").get.nel)),
-          requestAction = Action("cluster:admin/snapshot/resolve"),
-          requestSnapshots = Set(SnapshotName.from("public-asd").get),
-          readonlyRequest = true
+          requestAction = Action("cluster:admin/snapshot/get"),
+          requestSnapshots = Set(SnapshotName.from("public-asd").get)
         )
       }
       "write request with no match" in {
         assertNotMatchRule(
           configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName.from("public-*").get.nel)),
-          requestAction = Action("cluster:admin/snapshot/resolve"),
+          requestAction = Action("cluster:admin/snapshot/create"),
           requestSnapshots = Set(SnapshotName.from("x_public-asd").get)
         )
       }
@@ -131,23 +127,22 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside {
             AlreadyResolved(SnapshotName.from("public-*").get.nel),
             AlreadyResolved(SnapshotName.from("n").get.nel)
           ),
-          requestAction = Action("cluster:admin/snapshot/resolve"),
+          requestAction = Action("cluster:admin/snapshot/create"),
           requestSnapshots = Set(SnapshotName.from("public-asd").get, SnapshotName.from("q").get)
         )
       }
       "write request forbid" in {
         assertNotMatchRule(
           configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName.from("x-*").get.nel)),
-          requestAction = Action("cluster:admin/snapshot/resolve"),
+          requestAction = Action("cluster:admin/snapshot/create"),
           requestSnapshots = Set(SnapshotName.from("public-asd").get, SnapshotName.from("q").get)
         )
       }
       "read request forbid" in {
         assertNotMatchRule(
           configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName.from("x-*").get.nel)),
-          requestAction = Action("cluster:admin/snapshot/resolve"),
-          requestSnapshots = Set(SnapshotName.from("public-asd").get, SnapshotName.from("q").get),
-          readonlyRequest = true
+          requestAction = Action("cluster:admin/snapshot/get"),
+          requestSnapshots = Set(SnapshotName.from("public-asd").get, SnapshotName.from("q").get)
         )
       }
     }
@@ -155,27 +150,23 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside {
 
   private def assertMatchRule(configuredSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]],
                               requestAction: Action,
-                              requestSnapshots: Set[SnapshotName],
-                              readonlyRequest: Boolean = false)
+                              requestSnapshots: Set[SnapshotName])
                              (blockContextAssertion: SnapshotRequestBlockContext => Unit): Unit =
-    assertRule(configuredSnapshots, requestAction, requestSnapshots, readonlyRequest, Some(blockContextAssertion))
+    assertRule(configuredSnapshots, requestAction, requestSnapshots, Some(blockContextAssertion))
 
   private def assertNotMatchRule(configuredSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]],
                                  requestAction: Action,
-                                 requestSnapshots: Set[SnapshotName],
-                                 readonlyRequest: Boolean = false): Unit =
-    assertRule(configuredSnapshots, requestAction, requestSnapshots, readonlyRequest, blockContextAssertion = None)
+                                 requestSnapshots: Set[SnapshotName]): Unit =
+    assertRule(configuredSnapshots, requestAction, requestSnapshots, blockContextAssertion = None)
 
   private def assertRule(configuredSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]],
                          requestAction: Action,
                          requestSnapshots: Set[SnapshotName],
-                         readonlyRequest: Boolean,
                          blockContextAssertion: Option[SnapshotRequestBlockContext => Unit]) = {
     val rule = new SnapshotsRule(SnapshotsRule.Settings(configuredSnapshots))
     val requestContext = MockRequestContext.snapshots.copy(
       snapshots = requestSnapshots,
-      action = requestAction,
-      isReadOnlyRequest = readonlyRequest
+      action = requestAction
     )
     val blockContext = SnapshotRequestBlockContext(
       requestContext, UserMetadata.empty, Set.empty, List.empty, requestSnapshots, Set.empty, Set.empty, Set.empty

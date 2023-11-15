@@ -16,16 +16,15 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders
 
-import cats.Eq
 import cats.implicits._
 import io.circe.{Decoder, DecodingFailure}
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.auth._
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch._
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices._
 import tech.beshu.ror.accesscontrol.blocks.rules.http._
@@ -33,8 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana._
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{User, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
@@ -53,8 +51,7 @@ object ruleDecoders {
   def ruleDecoderBy(name: Rule.Name,
                     definitions: DefinitionsPack,
                     globalSettings: GlobalSettings,
-                    mocksProvider: MocksProvider,
-                    caseMappingEquality: UserIdCaseMappingEquality)
+                    mocksProvider: MocksProvider)
                    (implicit environmentConfig: EnvironmentConfig): Option[RuleDecoder[Rule]] = {
     val variableCreator = new RuntimeResolvableVariableCreator(
       TransformationCompiler.withAliases(
@@ -62,7 +59,7 @@ object ruleDecoders {
         definitions.variableTransformationAliases.items.map(_.alias)
       )
     )
-    val userIdEq: Eq[User.Id] = caseMappingEquality.toOrder
+
     val optionalRuleDecoder = name match {
       case ActionsRule.Name.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.Name.name => Some(ApiKeysRuleDecoder)
@@ -70,9 +67,9 @@ object ruleDecoders {
       case FieldsRule.Name.name => Some(new FieldsRuleDecoder(globalSettings.flsEngine, variableCreator))
       case ResponseFieldsRule.Name.name => Some(new ResponseFieldsRuleDecoder(variableCreator))
       case FilterRule.Name.name => Some(new FilterRuleDecoder(variableCreator))
-      case GroupsOrRule.Name.name => Some(new GroupsOrRuleDecoder(definitions.users, caseMappingEquality, variableCreator)(GroupsOrRule.Name))
-      case GroupsOrRule.DeprecatedName.name => Some(new GroupsOrRuleDecoder(definitions.users, caseMappingEquality, variableCreator)(GroupsOrRule.DeprecatedName))
-      case GroupsAndRule.Name.name => Some(new GroupsAndRuleDecoder(definitions.users, caseMappingEquality, variableCreator))
+      case GroupsOrRule.Name.name => Some(new GroupsOrRuleDecoder(definitions.users, globalSettings, variableCreator)(GroupsOrRule.Name))
+      case GroupsOrRule.DeprecatedName.name => Some(new GroupsOrRuleDecoder(definitions.users, globalSettings, variableCreator)(GroupsOrRule.DeprecatedName))
+      case GroupsAndRule.Name.name => Some(new GroupsAndRuleDecoder(definitions.users, globalSettings, variableCreator))
       case HeadersAndRule.Name.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.Name))
       case HeadersAndRule.DeprecatedName.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.DeprecatedName))
       case HeadersOrRule.Name.name => Some(HeadersOrRuleDecoder)
@@ -87,10 +84,10 @@ object ruleDecoders {
       case MaxBodyLengthRule.Name.name => Some(MaxBodyLengthRuleDecoder)
       case MethodsRule.Name.name => Some(MethodsRuleDecoder)
       case RepositoriesRule.Name.name => Some(new RepositoriesRuleDecoder(variableCreator))
-      case SessionMaxIdleRule.Name.name => Some(new SessionMaxIdleRuleDecoder()(environmentConfig.clock, environmentConfig.uuidProvider, userIdEq))
+      case SessionMaxIdleRule.Name.name => Some(new SessionMaxIdleRuleDecoder(globalSettings)(environmentConfig.clock, environmentConfig.uuidProvider))
       case SnapshotsRule.Name.name => Some(new SnapshotsRuleDecoder(variableCreator))
       case UriRegexRule.Name.name => Some(new UriRegexRuleDecoder(variableCreator))
-      case UsersRule.Name.name => Some(new UsersRuleDecoder()(caseMappingEquality, variableCreator))
+      case UsersRule.Name.name => Some(new UsersRuleDecoder(globalSettings, variableCreator))
       case XForwardedForRule.Name.name => Some(new XForwardedForRuleDecoder(variableCreator))
       case _ => usersDefinitionsAllowedRulesDecoderBy(
         name,
@@ -102,7 +99,7 @@ object ruleDecoders {
         definitions.ldaps,
         Some(definitions.impersonators),
         mocksProvider,
-        caseMappingEquality
+        globalSettings
       )
     }
     optionalRuleDecoder.map(_.asInstanceOf[RuleDecoder[Rule]])
@@ -117,18 +114,18 @@ object ruleDecoders {
                                             ldapServiceDefinitions: Definitions[LdapService],
                                             impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                                             mocksProvider: MocksProvider,
-                                            caseMappingEquality: UserIdCaseMappingEquality): Option[RuleDecoder[Rule]] = {
+                                            globalSettings: GlobalSettings): Option[RuleDecoder[Rule]] = {
     val optionalRuleDecoder = name match {
       case ExternalAuthorizationRule.Name.name =>
-        Some(new ExternalAuthorizationRuleDecoder(authorizationServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+        Some(new ExternalAuthorizationRuleDecoder(authorizationServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case JwtAuthRule.Name.name =>
-        Some(new JwtAuthRuleDecoder(jwtDefinitions, caseMappingEquality))
+        Some(new JwtAuthRuleDecoder(jwtDefinitions, globalSettings))
       case LdapAuthorizationRule.Name.name =>
-        Some(new LdapAuthorizationRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+        Some(new LdapAuthorizationRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case LdapAuthRule.Name.name =>
-        Some(new LdapAuthRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+        Some(new LdapAuthRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case RorKbnAuthRule.Name.name =>
-        Some(new RorKbnAuthRuleDecoder(rorKbnDefinitions, caseMappingEquality))
+        Some(new RorKbnAuthRuleDecoder(rorKbnDefinitions, globalSettings))
       case _ =>
         authenticationRuleDecoderBy(
           name,
@@ -137,7 +134,7 @@ object ruleDecoders {
           ldapServiceDefinitions,
           impersonatorsDefinitions,
           mocksProvider,
-          caseMappingEquality
+          globalSettings
         )
     }
     optionalRuleDecoder.map(_.asInstanceOf[RuleDecoder[Rule]])
@@ -149,28 +146,28 @@ object ruleDecoders {
                                   ldapServiceDefinitions: Definitions[LdapService],
                                   impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                                   mocksProvider: MocksProvider,
-                                  caseMappingEquality: UserIdCaseMappingEquality): Option[RuleDecoder[AuthenticationRule]] = {
+                                  globalSettings: GlobalSettings): Option[RuleDecoder[AuthenticationRule]] = {
     val optionalRuleDecoder = name match {
       case AuthKeyRule.Name.name =>
-        Some(new AuthKeyRuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+        Some(new AuthKeyRuleDecoder(impersonatorsDefinitions, mocksProvider, globalSettings))
       case AuthKeySha1Rule.Name.name =>
-        Some(new AuthKeySha1RuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+        Some(new AuthKeySha1RuleDecoder(impersonatorsDefinitions, mocksProvider, globalSettings))
       case AuthKeySha256Rule.Name.name =>
-        Some(new AuthKeySha256RuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+        Some(new AuthKeySha256RuleDecoder(impersonatorsDefinitions, mocksProvider, globalSettings))
       case AuthKeySha512Rule.Name.name =>
-        Some(new AuthKeySha512RuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+        Some(new AuthKeySha512RuleDecoder(impersonatorsDefinitions, mocksProvider, globalSettings))
       case AuthKeyPBKDF2WithHmacSHA512Rule.Name.name =>
-        Some(new AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+        Some(new AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDefinitions, mocksProvider, globalSettings))
       case AuthKeyUnixRule.Name.name =>
-        Some(new AuthKeyUnixRuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+        Some(new AuthKeyUnixRuleDecoder(impersonatorsDefinitions, mocksProvider, globalSettings))
       case ExternalAuthenticationRule.Name.name =>
-        Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+        Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case LdapAuthenticationRule.Name.name =>
-        Some(new LdapAuthenticationRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+        Some(new LdapAuthenticationRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case ProxyAuthRule.Name.name =>
-        Some(new ProxyAuthRuleDecoder(authProxyDefinitions, impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+        Some(new ProxyAuthRuleDecoder(authProxyDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case TokenAuthenticationRule.Name.name =>
-        Some(new TokenAuthenticationRuleDecoder(impersonatorsDefinitions, mocksProvider, caseMappingEquality))
+        Some(new TokenAuthenticationRuleDecoder(impersonatorsDefinitions, mocksProvider, globalSettings))
       case _ => None
     }
     optionalRuleDecoder
@@ -179,13 +176,14 @@ object ruleDecoders {
 
   def withUserIdParamsCheck[R <: Rule](decoder: RuleDecoder[R],
                                        userIdPatterns: UserIdPatterns,
+                                       globalSettings: GlobalSettings,
                                        errorCreator: Message => DecodingFailure): Decoder[RuleDecoder.Result[R]] = {
     decoder.flatMap { result =>
       result.rule.rule match {
         case _: Rule.RegularRule => Decoder.const(result)
         case _: Rule.AuthorizationRule => Decoder.const(result)
         case rule: AuthenticationRule =>
-          checkUsersEligibility(rule, userIdPatterns) match {
+          checkUsersEligibility(rule, userIdPatterns, globalSettings) match {
             case Right(_) => Decoder.const(result)
             case Left(msg) => Decoder.failed(errorCreator(Message(msg)))
           }
@@ -193,10 +191,12 @@ object ruleDecoders {
     }
   }
 
-  private def checkUsersEligibility(rule: AuthenticationRule, userIdPatterns: UserIdPatterns) = {
+  private def checkUsersEligibility(rule: AuthenticationRule,
+                                    userIdPatterns: UserIdPatterns,
+                                    globalSettings: GlobalSettings) = {
     rule.eligibleUsers match {
       case EligibleUsersSupport.Available(users) =>
-        implicit val _userIdCaseMappingEquality = rule.caseMappingEquality
+        implicit val userIdCaseSensitivity: CaseSensitivity = globalSettings.userIdCaseSensitivity
         val matcher = new GenericPatternMatcher(userIdPatterns.patterns.toList)
         if (users.exists(matcher.`match`)) {
           Right(())

@@ -25,8 +25,8 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthorizationServiceDecorator, ExternalAuthorizationService, ImpersonatorDef}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthorizationRule
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, User}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -44,13 +44,17 @@ import scala.concurrent.duration.FiniteDuration
 class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[ExternalAuthorizationService],
                                        impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                        mocksProvider: MocksProvider,
-                                       implicit val caseMappingEquality: UserIdCaseMappingEquality)
+                                       globalSettings: GlobalSettings)
   extends RuleBaseDecoderWithoutAssociatedFields[ExternalAuthorizationRule] {
 
   override protected def decoder: Decoder[RuleDefinition[ExternalAuthorizationRule]] = {
     settingsDecoder
       .map(settings => RuleDefinition.create(
-        new ExternalAuthorizationRule(settings, impersonatorsDef.toImpersonation(mocksProvider), caseMappingEquality)
+        new ExternalAuthorizationRule(
+          settings,
+          globalSettings.userIdCaseSensitivity,
+          impersonatorsDef.toImpersonation(mocksProvider)
+        )
       ))
   }
 

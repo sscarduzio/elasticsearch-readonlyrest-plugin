@@ -25,8 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationSupport, AuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
 
 sealed trait Rule {
   def name: Rule.Name
@@ -106,7 +105,7 @@ object Rule {
     this: AuthenticationImpersonationSupport =>
 
     def eligibleUsers: AuthenticationRule.EligibleUsersSupport
-    def caseMappingEquality: UserIdCaseMappingEquality
+    implicit def userIdCaseSensitivity: CaseSensitivity
 
     override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
       authenticate(blockContext)

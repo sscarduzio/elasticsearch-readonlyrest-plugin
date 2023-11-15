@@ -22,8 +22,8 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule.Groups
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, PermittedGroups}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
-                         implicit val caseMappingEquality: UserIdCaseMappingEquality)
+                         globalSettings: GlobalSettings)
   extends RuleBaseDecoderWithoutAssociatedFields[JwtAuthRule] {
 
   override protected def decoder: Decoder[RuleDefinition[JwtAuthRule]] = {
@@ -47,7 +47,7 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
         }
       }
       .map { settings =>
-        RuleDefinition.create(new JwtAuthRule(settings, caseMappingEquality))
+        RuleDefinition.create(new JwtAuthRule(settings, globalSettings.userIdCaseSensitivity))
       }
       .decoder
   }

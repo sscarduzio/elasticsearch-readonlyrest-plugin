@@ -16,17 +16,17 @@
  */
 package tech.beshu.ror.accesscontrol.domain
 
-import cats.implicits._
 import cats.Eq
+import cats.implicits._
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
-import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.utils.CaseMappingEquality
-import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
+import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 sealed trait LoggedUser {
   def id: User.Id
@@ -41,17 +41,23 @@ object LoggedUser {
 object User {
   final case class Id(value: NonEmptyString)
   object Id {
-    type UserIdCaseMappingEquality = CaseMappingEquality[User.Id]
+    implicit def matchable(implicit caseSensitivity: CaseSensitivity): Matchable[Id] =
+      Matchable.matchable(_.value.value, caseSensitivity)
+    implicit def eq(implicit caseSensitivity: CaseSensitivity): Eq[Id] =
+      caseSensitivity match {
+        case CaseSensitivity.Enabled => Eq.by(_.value.value)
+        case CaseSensitivity.Disabled => Eq.by(_.value.value.toLowerCase)
+      }
   }
 
-  final case class UserIdPattern(override val value: NonEmptyString)
+  final case class UserIdPattern(override val value: Id)
     extends Pattern[Id](value) {
 
     def containsWildcard: Boolean = value.value.contains("*")
   }
 }
 
-abstract class Pattern[T](val value: NonEmptyString)
+sealed abstract class Pattern[T](val value: T)
 
 final case class UserIdPatterns(patterns: UniqueNonEmptyList[User.UserIdPattern])
 
@@ -66,11 +72,11 @@ object GroupLike {
   final case class GroupNamePattern private(value: NonEmptyString)
     extends GroupLike {
 
-    private[GroupLike] lazy val matcher = MatcherWithWildcardsScalaAdapter.create[GroupLike](Set(this))
+    private[GroupLike] lazy val matcher = PatternsMatcher.create[GroupLike](Set(this))
   }
+
   object GroupNamePattern {
-    implicit val caseMappingEquality: CaseMappingEquality[GroupNamePattern] =
-      CaseMappingEquality.instance(_.value.value, identity)
+    implicit val matchable: Matchable[GroupNamePattern] = Matchable.matchable(_.value.value)
   }
 
   def from(value: NonEmptyString): GroupLike =
@@ -81,14 +87,10 @@ object GroupLike {
     case GroupName(value) => value.value
     case GroupNamePattern(value) => value.value
   }
-  implicit val caseMappingEquality: CaseMappingEquality[GroupLike] =
-    CaseMappingEquality.instance(
-      {
-        case GroupName(value) => value.value
-        case GroupNamePattern(value) => value.value
-      },
-      identity
-    )
+  implicit val matchable: Matchable[GroupLike] = Matchable.matchable{
+    case GroupName(value) => value.value
+    case GroupNamePattern(value) => value.value
+  }
 
   implicit class GroupsLikeMatcher(val groupLike: GroupLike) extends AnyVal {
     def matches(groupName: GroupName): Boolean = {
@@ -101,7 +103,7 @@ object GroupLike {
 }
 
 final case class PermittedGroups(groups: UniqueNonEmptyList[_ <: GroupLike]) {
-  private[PermittedGroups] lazy val matcher = MatcherWithWildcardsScalaAdapter.create[GroupLike](groups)
+  private[PermittedGroups] lazy val matcher = PatternsMatcher.create[GroupLike](groups)
 }
 object PermittedGroups {
 

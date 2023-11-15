@@ -19,7 +19,8 @@ package tech.beshu.ror.accesscontrol.matchers
 import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
 
 class TemplateNamePatternMatcher(templateNames: Set[TemplateNamePattern]) {
-  val availableTemplatesMatcher: Matcher[TemplateNamePattern] = MatcherWithWildcardsScalaAdapter[TemplateNamePattern](templateNames)
+
+  private val availableTemplatesMatcher: PatternsMatcher[TemplateNamePattern] = PatternsMatcher.create(templateNames)
 
   def `match`(value: TemplateName): Boolean =
     TemplateNamePattern.fromString(value.value.value) match {

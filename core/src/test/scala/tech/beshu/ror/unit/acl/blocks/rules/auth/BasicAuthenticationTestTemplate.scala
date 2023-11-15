@@ -33,10 +33,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.{Id, UserIdPattern}
-import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, PlainTextSecret, User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, impersonationHeader}
-import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
@@ -50,14 +49,14 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
   private lazy val ruleWithImpersonation = ruleCreator(Impersonation.Enabled(ImpersonationSettings(
     impersonators = List(
       ImpersonatorDef(
-        usernames = UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("admin"))),
+        usernames = UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("admin")))),
         authenticationRule = adminAuthenticationRule(Credentials(User.Id("admin"), PlainTextSecret("admin"))),
-        users = ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("logstash"))))
+        users = ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("logstash")))))
       ),
       ImpersonatorDef(
-        usernames = UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("admin2"))),
+        usernames = UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("admin2")))),
         authenticationRule = adminAuthenticationRule(Credentials(User.Id("admin2"), PlainTextSecret("admin2"))),
-        users = ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern("test"))))
+        users = ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("test")))))
       )
     ),
     mocksProvider = NoOpMocksProvider
@@ -170,7 +169,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
 
   private def adminAuthenticationRule(credentials: Credentials) = new AuthKeyRule(
     BasicAuthenticationRule.Settings(credentials),
-    Impersonation.Disabled,
-    UserIdEq.caseSensitive
+    CaseSensitivity.Enabled,
+    Impersonation.Disabled
   )
 }

@@ -44,7 +44,7 @@ import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestReq
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.Transport
 import org.elasticsearch.transport.netty4.Netty4Utils
-import tech.beshu.ror.Constants
+import tech.beshu.ror.constants
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.configuration.{RorSsl, EnvironmentConfig}
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
@@ -84,7 +84,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   LogPluginBuildInfoMessage()
 
-  Constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toList.asJava)
+  constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toSet)
   // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor
   // flag check, which is also done by Netty. So, we need to set it manually before ES and Finch, otherwise we will
   // experience 'java.lang.IllegalStateException: availableProcessors is already set to [x], rejecting [x]' exception

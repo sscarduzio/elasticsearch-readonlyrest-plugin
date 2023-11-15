@@ -61,9 +61,8 @@ class DataStreamsRuleTests extends AnyWordSpec with Inside {
       "readonly request with configured simple data stream" in {
         assertMatchRule(
           configuredDataStreams = NonEmptySet.one(AlreadyResolved(DataStreamName.fromString("public-asd").get.nel)),
-          requestAction = Action("indices:admin/data_stream/get"),
-          requestDataStreams = Set(DataStreamName.fromString("public-asd").get),
-          readonlyRequest = true
+          requestAction = Action("indices:admin/data_stream/create"),
+          requestDataStreams = Set(DataStreamName.fromString("public-asd").get)
         ) {
           blockContext => blockContext.dataStreams should be(Set(DataStreamName.fromString("public-asd").get))
         }
@@ -72,8 +71,7 @@ class DataStreamsRuleTests extends AnyWordSpec with Inside {
         assertMatchRule(
           configuredDataStreams = NonEmptySet.one(AlreadyResolved(DataStreamName.fromString("public-*").get.nel)),
           requestAction = Action("indices:admin/data_stream/get"),
-          requestDataStreams = Set(DataStreamName.fromString("public-asd").get),
-          readonlyRequest = true
+          requestDataStreams = Set(DataStreamName.fromString("public-asd").get)
         ) {
           blockContext => blockContext.dataStreams should be(Set(DataStreamName.fromString("public-asd").get))
         }
@@ -81,7 +79,7 @@ class DataStreamsRuleTests extends AnyWordSpec with Inside {
       "write request with configured simple data stream" in {
         assertMatchRule(
           configuredDataStreams = NonEmptySet.one(AlreadyResolved(DataStreamName.fromString("public-asd").get.nel)),
-          requestAction = Action("indices:admin/data_stream/get"),
+          requestAction = Action("indices:admin/data_stream/create"),
           requestDataStreams = Set(DataStreamName.fromString("public-asd").get)
         ) {
           blockContext => blockContext.dataStreams should be(Set(DataStreamName.fromString("public-asd").get))
@@ -90,7 +88,7 @@ class DataStreamsRuleTests extends AnyWordSpec with Inside {
       "write request with configured data stream with wildcard" in {
         assertMatchRule(
           configuredDataStreams = NonEmptySet.one(AlreadyResolved(DataStreamName.fromString("public-*").get.nel)),
-          requestAction = Action("indices:admin/data_stream/get"),
+          requestAction = Action("indices:admin/data_stream/create"),
           requestDataStreams = Set(DataStreamName.fromString("public-asd").get)
         ) {
           blockContext => blockContext.dataStreams should be(Set(DataStreamName.fromString("public-asd").get))
@@ -103,8 +101,7 @@ class DataStreamsRuleTests extends AnyWordSpec with Inside {
             AlreadyResolved(DataStreamName.fromString("n").get.nel)
           ),
           requestAction = Action("indices:admin/data_stream/get"),
-          requestDataStreams = Set(DataStreamName.fromString("public-asd").get, DataStreamName.fromString("q").get),
-          readonlyRequest = true
+          requestDataStreams = Set(DataStreamName.fromString("public-asd").get, DataStreamName.fromString("q").get)
         ) {
           blockContext => blockContext.dataStreams should be(Set(DataStreamName.fromString("public-asd").get))
         }
@@ -115,14 +112,13 @@ class DataStreamsRuleTests extends AnyWordSpec with Inside {
         assertNotMatchRule(
           configuredDataStreams = NonEmptySet.one(AlreadyResolved(DataStreamName.fromString("x-*").get.nel)),
           requestAction = Action("indices:admin/data_stream/get"),
-          requestDataStreams = Set(DataStreamName.fromString("public-asd").get),
-          readonlyRequest = true
+          requestDataStreams = Set(DataStreamName.fromString("public-asd").get)
         )
       }
       "write request with no match" in {
         assertNotMatchRule(
           configuredDataStreams = NonEmptySet.one(AlreadyResolved(DataStreamName.fromString("public-*").get.nel)),
-          requestAction = Action("indices:admin/data_stream/get"),
+          requestAction = Action("indices:admin/data_stream/create"),
           requestDataStreams = Set(DataStreamName.fromString("x_public-asd").get)
         )
       }
@@ -132,14 +128,14 @@ class DataStreamsRuleTests extends AnyWordSpec with Inside {
             AlreadyResolved(DataStreamName.fromString("public-*").get.nel),
             AlreadyResolved(DataStreamName.fromString("n").get.nel)
           ),
-          requestAction = Action("indices:admin/data_stream/get"),
+          requestAction = Action("indices:admin/data_stream/create"),
           requestDataStreams = Set(DataStreamName.fromString("public-asd").get, DataStreamName.fromString("q").get)
         )
       }
       "write request forbid" in {
         assertNotMatchRule(
           configuredDataStreams = NonEmptySet.one(AlreadyResolved(DataStreamName.fromString("x-*").get.nel)),
-          requestAction = Action("indices:admin/data_stream/get"),
+          requestAction = Action("indices:admin/data_stream/create"),
           requestDataStreams = Set(DataStreamName.fromString("public-asd").get, DataStreamName.fromString("q").get)
         )
       }
@@ -147,8 +143,7 @@ class DataStreamsRuleTests extends AnyWordSpec with Inside {
         assertNotMatchRule(
           configuredDataStreams = NonEmptySet.one(AlreadyResolved(DataStreamName.fromString("x-*").get.nel)),
           requestAction = Action("indices:admin/data_stream/get"),
-          requestDataStreams = Set(DataStreamName.fromString("public-asd").get, DataStreamName.fromString("q").get),
-          readonlyRequest = true
+          requestDataStreams = Set(DataStreamName.fromString("public-asd").get, DataStreamName.fromString("q").get)
         )
       }
     }
@@ -156,27 +151,23 @@ class DataStreamsRuleTests extends AnyWordSpec with Inside {
 
   private def assertMatchRule(configuredDataStreams: NonEmptySet[RuntimeMultiResolvableVariable[DataStreamName]],
                               requestAction: Action,
-                              requestDataStreams: Set[DataStreamName],
-                              readonlyRequest: Boolean = false)
+                              requestDataStreams: Set[DataStreamName])
                              (blockContextAssertion: DataStreamRequestBlockContext => Unit): Unit =
-    assertRule(configuredDataStreams, requestAction, requestDataStreams, readonlyRequest, Some(blockContextAssertion))
+    assertRule(configuredDataStreams, requestAction, requestDataStreams, Some(blockContextAssertion))
 
   private def assertNotMatchRule(configuredDataStreams: NonEmptySet[RuntimeMultiResolvableVariable[DataStreamName]],
                                  requestAction: Action,
-                                 requestDataStreams: Set[DataStreamName],
-                                 readonlyRequest: Boolean = false): Unit =
-    assertRule(configuredDataStreams, requestAction, requestDataStreams, readonlyRequest, blockContextAssertion = None)
+                                 requestDataStreams: Set[DataStreamName]): Unit =
+    assertRule(configuredDataStreams, requestAction, requestDataStreams, blockContextAssertion = None)
 
   private def assertRule(configuredDataStreams: NonEmptySet[RuntimeMultiResolvableVariable[DataStreamName]],
                          requestAction: Action,
                          requestDataStreams: Set[DataStreamName],
-                         readonlyRequest: Boolean,
                          blockContextAssertion: Option[DataStreamRequestBlockContext => Unit]) = {
     val rule = new DataStreamsRule(DataStreamsRule.Settings(configuredDataStreams))
     val requestContext = MockRequestContext.dataStreams.copy(
       dataStreams = requestDataStreams,
-      action = requestAction,
-      isReadOnlyRequest = readonlyRequest
+      action = requestAction
     )
     val blockContext = DataStreamRequestBlockContext(
       requestContext, UserMetadata.empty, Set.empty, List.empty, requestDataStreams, BackingIndices.IndicesNotInvolved

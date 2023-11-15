@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders
 
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
@@ -33,7 +33,7 @@ object GlobalStaticSettingsDecoder {
           basicAuthPrompt <- c.downField("prompt_for_basic_auth").as[Option[Boolean]]
           forbiddenMessage <- c.downField("response_if_req_forbidden").as[Option[String]]
           flsEngine <- c.downField("fls_engine").as[GlobalSettings.FlsEngine](flsEngineDecoder)
-          caseMapping <- c.downField("username_case_sensitivity").as[GlobalSettings.UsernameCaseMapping]
+          caseMapping <- c.downField("username_case_sensitivity").as[CaseSensitivity]
         } yield new GlobalSettings(
           basicAuthPrompt.getOrElse(true),
           forbiddenMessage.getOrElse(GlobalSettings.defaultForbiddenRequestMessage),
@@ -53,12 +53,12 @@ object GlobalStaticSettingsDecoder {
       .decoder
   }
 
-  implicit private val usernameCaseMappingDecoder: Decoder[GlobalSettings.UsernameCaseMapping] = {
+  implicit private val usernameCaseMappingDecoder: Decoder[CaseSensitivity] = {
     Decoder.decodeOption[String]
       .toSyncDecoder
-      .emap[GlobalSettings.UsernameCaseMapping] {
-        case Some("case_insensitive") => Right(GlobalSettings.UsernameCaseMapping.CaseInsensitive)
-        case Some("case_sensitive") | None => Right(GlobalSettings.UsernameCaseMapping.CaseSensitive)
+      .emap[CaseSensitivity] {
+        case Some("case_insensitive") => Right(CaseSensitivity.Disabled)
+        case Some("case_sensitive") | None => Right(CaseSensitivity.Enabled)
         case Some(other) => Left(s"Unknown username case mapping: '$other'. Supported: 'case_insensitive', 'case_sensitive'(default).")
       }
       .decoder

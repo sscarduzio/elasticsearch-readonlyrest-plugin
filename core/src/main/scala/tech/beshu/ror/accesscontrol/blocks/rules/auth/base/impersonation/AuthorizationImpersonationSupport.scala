@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation
 
-import cats.Eq
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthorizationRule
@@ -34,8 +33,7 @@ private[rules] trait SimpleAuthorizationImpersonationSupport extends Authorizati
 
   protected def mockedGroupsOf(user: User.Id,
                                mocksProvider: MocksProvider)
-                              (implicit requestId: RequestId,
-                               eq: Eq[User.Id]): Groups
+                              (implicit requestId: RequestId): Groups
 }
 object SimpleAuthorizationImpersonationSupport {
   sealed trait Groups

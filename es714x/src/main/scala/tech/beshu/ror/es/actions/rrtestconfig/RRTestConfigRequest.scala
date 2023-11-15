@@ -22,7 +22,7 @@ import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST}
 import tech.beshu.ror.api.{RorApiRequest, TestConfigApi}
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.{Constants, RequestId}
+import tech.beshu.ror.{constants, RequestId}
 
 class RRTestConfigRequest(testConfigApiRequest: TestConfigApi.TestConfigRequest,
                           esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
@@ -39,13 +39,13 @@ object RRTestConfigRequest {
 
   def createFrom(request: RestRequest): RRTestConfigRequest = {
     val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
-      case (Constants.PROVIDE_TEST_CONFIG_PATH, GET) =>
+      case (constants.PROVIDE_TEST_CONFIG_PATH, GET) =>
         TestConfigApi.TestConfigRequest.Type.ProvideTestConfig
-      case (Constants.DELETE_TEST_CONFIG_PATH, DELETE) =>
+      case (constants.DELETE_TEST_CONFIG_PATH, DELETE) =>
         TestConfigApi.TestConfigRequest.Type.InvalidateTestConfig
-      case (Constants.UPDATE_TEST_CONFIG_PATH, POST) =>
+      case (constants.UPDATE_TEST_CONFIG_PATH, POST) =>
         TestConfigApi.TestConfigRequest.Type.UpdateTestConfig
-      case (Constants.PROVIDE_LOCAL_USERS_PATH, GET) =>
+      case (constants.PROVIDE_LOCAL_USERS_PATH, GET) =>
         TestConfigApi.TestConfigRequest.Type.ProvideLocalUsers
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
