@@ -1,4 +1,4 @@
-FROM ubuntu:23.10
+FROM openjdk:21-jdk
 
 COPY ./ /ror
 WORKDIR /ror

@@ -48,6 +48,7 @@ stages:
     dependsOn: [ ] # run in parallel
     jobs:
       - job:
+        container: openjdk:21-jdk
         steps:
           - checkout: self
             fetchDepth: 1
@@ -64,6 +65,7 @@ stages:
   - stage: TEST
     jobs:
       - job:
+        container: openjdk:21-jdk
         timeoutInMinutes: 20
         steps:
           - checkout: self
@@ -143,7 +145,6 @@ stages:
               ROR_TASK: integration_es81x
             IT_es80x:
               ROR_TASK: integration_es80x
-
       - job:
         condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
         container: openjdk:21-jdk
@@ -182,6 +183,7 @@ stages:
               ROR_TASK: integration_es80x
       - job:
         condition: or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true))
+        container: openjdk:21-jdk
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -247,6 +249,7 @@ stages:
               ROR_TASK: integration_es60x
       - job:
         condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        container: openjdk:21-jdk
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -315,6 +318,7 @@ stages:
               ROR_TASK: package_es8xx
       - job:
         timeoutInMinutes: 60
+        container: openjdk:21-jdk
         steps:
           - checkout: self
             fetchDepth: 1
@@ -388,8 +392,8 @@ stages:
           matrix:
             PKG_es8xx:
               ROR_TASK: package_es8xx
-
       - job:
+        container: openjdk:21-jdk
         steps:
           - checkout: self
             fetchDepth: 1
@@ -426,6 +430,7 @@ stages:
     condition: and(succeeded('TEST'), ne(variables.isMaster, true))
     jobs:
       - job:
+        container: openjdk:21-jdk
         steps:
           - checkout: self
             fetchDepth: 1
@@ -443,6 +448,7 @@ stages:
     condition: and(succeeded('TEST'), eq(variables.isMaster, true))
     jobs:
       - job:
+        container: openjdk:21-jdk
         steps:
           - checkout: self
             fetchDepth: 1
