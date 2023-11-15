@@ -4,7 +4,7 @@ metadata:
   name: quickstart
 spec:
   version: 7.17.13
-  image: coutopl/kbn_7.17.13_ror_1.53.0-pre3
+  image: coutopl/kbn_7.17.13_ror_1.53.0-pre9
   count: 1
   elasticsearchRef:
     name: quickstart
