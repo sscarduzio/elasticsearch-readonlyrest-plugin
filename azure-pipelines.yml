@@ -95,6 +95,7 @@ stages:
               ROR_TASK: core_tests
       - job:
         condition: or(eq(variables.isEpic, true), eq(variables.isDevelop, true), eq(variables.isMaster, true))
+        container: maven:3.8.1-openjdk-17-slim
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -142,6 +143,7 @@ stages:
               ROR_TASK: integration_es80x
       - job:
         condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
+        container: maven:3.8.1-openjdk-17-slim
         timeoutInMinutes: 120
         steps:
           - checkout: self
@@ -281,6 +283,7 @@ stages:
     jobs:
       - job:
         timeoutInMinutes: 60
+        container: maven:3.8.1-openjdk-17-slim
         steps:
           - checkout: self
             fetchDepth: 1
@@ -337,6 +340,7 @@ stages:
     jobs:
       - job:
         container:
+          image: maven:3.8.1-openjdk-17-slim
           options:  "--name ci-container -v /usr/bin/docker:/tmp/docker:ro"
 
         steps:
