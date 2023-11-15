@@ -147,7 +147,6 @@ stages:
               ROR_TASK: integration_es80x
       - job:
         condition: and(ne(variables.isEpic, true), ne(variables.isDevelop, true), ne(variables.isMaster, true))
-        container: openjdk:21-jdk
         timeoutInMinutes: 120
         steps:
           - script: |
