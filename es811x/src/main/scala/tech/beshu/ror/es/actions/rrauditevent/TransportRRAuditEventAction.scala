@@ -20,7 +20,6 @@ import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.tasks.Task
-import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 
 import java.util.concurrent.Executor
@@ -37,9 +36,8 @@ class TransportRRAuditEventAction(transportService: TransportService,
   @Inject
   def this(transportService: TransportService,
            actionFilters: ActionFilters,
-           threadPool: ThreadPool) = {
-    this(transportService, actionFilters, threadPool.executor(ThreadPool.Names.GENERIC), ())
-  }
+           executor: Executor) =
+    this(transportService, actionFilters, executor, ())
 
   override def doExecute(task: Task, request: RRAuditEventRequest,
                          listener: ActionListener[RRAuditEventResponse]): Unit = {

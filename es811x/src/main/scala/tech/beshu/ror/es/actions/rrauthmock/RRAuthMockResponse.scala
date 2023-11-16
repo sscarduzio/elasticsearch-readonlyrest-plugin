@@ -18,13 +18,13 @@ package tech.beshu.ror.es.actions.rrauthmock
 
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
+import tech.beshu.ror.es.utils.StatusToXContentObject
 import org.elasticsearch.rest.RestStatus
 import org.elasticsearch.xcontent.{ToXContent, XContentBuilder}
 import tech.beshu.ror.api.AuthMockApi
 import tech.beshu.ror.api.AuthMockApi.AuthMockResponse.{Failure, ProvideAuthMock, UpdateAuthMock}
 import tech.beshu.ror.api.AuthMockApi.AuthMockService.{ExternalAuthenticationService, ExternalAuthorizationService, LdapAuthorizationService, MockMode}
 import tech.beshu.ror.api.AuthMockApi.{AuthMockResponse, AuthMockService}
-import tech.beshu.ror.es.utils.StatusToXContentObject
 
 import scala.jdk.CollectionConverters._
 

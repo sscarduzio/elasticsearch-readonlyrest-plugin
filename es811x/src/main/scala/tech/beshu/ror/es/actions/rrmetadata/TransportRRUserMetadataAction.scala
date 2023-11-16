@@ -20,9 +20,7 @@ import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.tasks.Task
-import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
-import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataActionType.exceptionReader
 
 import java.util.concurrent.Executor
 import scala.annotation.nowarn
@@ -32,15 +30,14 @@ class TransportRRUserMetadataAction(transportService: TransportService,
                                     executor: Executor,
                                     @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends HandledTransportAction[RRUserMetadataRequest, RRUserMetadataResponse](
-    RRUserMetadataActionType.name, transportService, actionFilters, exceptionReader[RRUserMetadataRequest], executor
+    RRUserMetadataActionType.name, transportService, actionFilters, RRUserMetadataActionType.exceptionReader[RRUserMetadataRequest], executor
   ) {
 
   @Inject
   def this(transportService: TransportService,
            actionFilters: ActionFilters,
-           threadPool: ThreadPool) = {
-    this(transportService, actionFilters, threadPool.executor(ThreadPool.Names.GENERIC), ())
-  }
+           executor: Executor) =
+    this(transportService, actionFilters, executor, ())
 
   override def doExecute(task: Task, request: RRUserMetadataRequest, listener: ActionListener[RRUserMetadataResponse]): Unit = {
     // nothing to do here

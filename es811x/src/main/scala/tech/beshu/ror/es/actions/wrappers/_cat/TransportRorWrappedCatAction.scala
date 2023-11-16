@@ -20,9 +20,7 @@ import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.tasks.Task
-import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
-import tech.beshu.ror.es.actions.wrappers._cat.RorWrappedCatActionType.exceptionReader
 
 import java.util.concurrent.Executor
 import scala.annotation.nowarn
@@ -32,15 +30,14 @@ class TransportRorWrappedCatAction(transportService: TransportService,
                                    executor: Executor,
                                    @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends HandledTransportAction[RorWrappedCatRequest, RorWrappedCatResponse](
-    RorWrappedCatActionType.name, transportService, actionFilters, exceptionReader[RorWrappedCatRequest], executor
+    RorWrappedCatActionType.name, transportService, actionFilters, RorWrappedCatActionType.exceptionReader[RorWrappedCatRequest], executor
   ) {
 
   @Inject
   def this(transportService: TransportService,
            actionFilters: ActionFilters,
-           threadPool: ThreadPool) = {
-    this(transportService, actionFilters, threadPool.executor(ThreadPool.Names.GENERIC), ())
-  }
+           executor: Executor) =
+    this(transportService, actionFilters, executor, ())
 
   override def doExecute(task: Task, request: RorWrappedCatRequest,
                          listener: ActionListener[RorWrappedCatResponse]): Unit = {

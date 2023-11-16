@@ -20,9 +20,7 @@ import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.tasks.Task
-import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
-import tech.beshu.ror.es.actions.rrtestconfig.RRTestConfigActionType.exceptionReader
 
 import java.util.concurrent.Executor
 import scala.annotation.nowarn
@@ -32,15 +30,14 @@ class TransportRRTestConfigAction(transportService: TransportService,
                                   executor: Executor,
                                   @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends HandledTransportAction[RRTestConfigRequest, RRTestConfigResponse](
-    RRTestConfigActionType.name, transportService, actionFilters, exceptionReader[RRTestConfigRequest], executor
+    RRTestConfigActionType.name, transportService, actionFilters, RRTestConfigActionType.exceptionReader[RRTestConfigRequest], executor
   ) {
 
   @Inject
   def this(transportService: TransportService,
            actionFilters: ActionFilters,
-           threadPool: ThreadPool) = {
-    this(transportService, actionFilters, threadPool.executor(ThreadPool.Names.GENERIC), ())
-  }
+           executor: Executor) =
+    this(transportService, actionFilters, executor, ())
 
   private val handler = new RRTestConfigActionHandler()
 
