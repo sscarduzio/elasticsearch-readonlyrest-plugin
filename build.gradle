@@ -1,4 +1,4 @@
-import beshu.tech.ror.gradle.RorTaskFinder
+import tech.beshu.ror.gradle.RorTaskFinder
 
 plugins { id 'base' }
 

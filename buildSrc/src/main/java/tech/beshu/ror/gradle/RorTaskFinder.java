@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package beshu.tech.ror.gradle;
+package tech.beshu.ror.gradle;
 
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
@@ -26,15 +26,18 @@ import org.gradle.util.internal.VersionNumber;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 
 public class RorTaskFinder extends DefaultTask {
 
   private final static VersionNumber oldestEsVersionSupported = VersionNumber.parse("6.0.0");
 
+  @TaskAction
+  public void runRorPluginBuilder() {
+  }
+
   public Task findRorTaskForEsVersion() {
-    Project esModule = findEsModule();
+    Project esModule = findEsModuleForEsVersionToBuild();
     return (Task) esModule
         .getTasksByName("ror", false)
         .stream()
@@ -42,11 +45,7 @@ public class RorTaskFinder extends DefaultTask {
         .orElseThrow(() -> new IllegalArgumentException(String.format("Cannot find 'ror' task in %s module!", esModule.getName())));
   }
 
-  @TaskAction
-  public void runRorPluginBuilder() {
-  }
-
-  public Project findEsModule() {
+  private Project findEsModuleForEsVersionToBuild() {
     VersionNumber esVersionToBuild = getEsVersionToBuild();
     Optional<Project> foundEsModule = findEsModuleFor(esVersionToBuild);
     if (foundEsModule.isPresent()) {
@@ -64,21 +63,8 @@ public class RorTaskFinder extends DefaultTask {
     return versionNumberFrom(esVersion);
   }
 
-  private List<Project> getEsModules() {
-    return (List<Project>) getProject()
-        .getChildProjects()
-        .values()
-        .stream()
-        .filter(this::isEsModule)
-        .collect(Collectors.toList());
-  }
-
-  private boolean isEsModule(Project module) {
-    return module.getName().matches("^es\\d+x$");
-  }
-
   private Optional<Project> findEsModuleFor(VersionNumber esVersion) {
-    List<Project> esModules = getEsModules();
+    List<Project> esModules = getAllEsModules();
     esModules.sort(new NewestEsVersionComparator());
 
     for (int i = 0; i < esModules.size(); i++) {
@@ -92,6 +78,19 @@ public class RorTaskFinder extends DefaultTask {
     }
 
     return Optional.empty();
+  }
+
+  private List<Project> getAllEsModules() {
+    return (List<Project>) getProject()
+        .getChildProjects()
+        .values()
+        .stream()
+        .filter(this::isEsModule)
+        .collect(Collectors.toList());
+  }
+
+  private boolean isEsModule(Project module) {
+    return module.getName().matches("^es\\d+x$");
   }
 
   private boolean isOlderOrEqual(VersionNumber esVersion1, VersionNumber esVersion2) {
