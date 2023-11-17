@@ -20,6 +20,7 @@ import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.tasks.Task
+import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 
 import java.util.concurrent.Executor
@@ -36,8 +37,8 @@ class TransportRRUserMetadataAction(transportService: TransportService,
   @Inject
   def this(transportService: TransportService,
            actionFilters: ActionFilters,
-           executor: Executor) =
-    this(transportService, actionFilters, executor, ())
+           threadPool: ThreadPool) =
+    this(transportService, actionFilters, threadPool.executor(ThreadPool.Names.GENERIC), ())
 
   override def doExecute(task: Task, request: RRUserMetadataRequest, listener: ActionListener[RRUserMetadataResponse]): Unit = {
     // nothing to do here
