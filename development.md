@@ -41,18 +41,18 @@ Currently eshome support debugging only es8x modules.
 ## Building plugin using Gradle for concrete ES version:
 
 ### Using Gradle
-* `./gradlew clean [ROR_ES_MODULE]:ror '-PesVersion=[ES_VERSION]'` 
-* eg. `./gradlew clean es70x:ror '-PesVersion=7.2.0'`
+* `./gradlew clean buildRorPlugin '-PesVersion=[ES_VERSION]'` 
+* eg. `./gradlew clean buildRorPlugin '-PesVersion=7.2.0'`
 * ROR plugin binaries can be found in `es70x/build/distributions/`
 
 **⚠️Required tools:**
-* OpenJDK 17
-* Gradle 7.6.2
+* OpenJDK 21
+* Gradle 8.4
 
 ### Using Docker
-* `cd docker-envs/build-ror-in-docker && /build.sh [ES_VERSION]`
-* eg. `cd docker-envs/build-ror-in-docker && /build.sh 8.2.2`
-* ROR plugin bunaries can be found in `docker-envs/build-ror-in-docker/builds`
+* `./docker-envs/build-ror-in-docker/build.sh [ES_VERSION_1] [ES_VERSION_1] ... [ES_VERSION_N]`
+* eg. `./docker-envs/build-ror-in-docker/build.sh 8.2.0 8.2.1`
+* ROR plugin binaries can be found in `docker-envs/build-ror-in-docker/builds`
 
 **⚠️Required tools:**
 * Docker

@@ -65,9 +65,13 @@ dependencies {
     implementation group: 'com.github.scopt',              name: 'scopt_2.13',                       version: '4.0.1'
 }
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+}
+
 compileScala {
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
     options.compilerArgs.addAll(
             "-unchecked",
             "-Ywarn-macros:after",

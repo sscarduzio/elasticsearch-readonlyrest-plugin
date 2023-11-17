@@ -61,26 +61,10 @@ dependencyCheck {
     suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
 }
 
-compileScala {
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
-}
-
-test {
-    testLogging {
-        showStandardStreams = true
-        exceptionFormat = 'full'
-        events "standardOut", "started", "passed", "skipped", "failed"
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
     }
-}
-
-configurations {
-    scalaCompilerPlugin {
-        transitive = false
-    }
-    all*.exclude group: 'org.hdrhistogram', module: 'HdrHistogram'
-    all*.exclude group: 'org.scala-lang',   module: 'scala-compiler'
-    all*.exclude group: 'dom4j',            module: 'dom4j'
 }
 
 dependencies {
@@ -158,6 +142,23 @@ dependencies {
     }
 }
 
+configurations {
+    scalaCompilerPlugin {
+        transitive = false
+    }
+    all*.exclude group: 'org.hdrhistogram', module: 'HdrHistogram'
+    all*.exclude group: 'org.scala-lang',   module: 'scala-compiler'
+    all*.exclude group: 'dom4j',            module: 'dom4j'
+}
+
+test {
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+        events "standardOut", "started", "passed", "skipped", "failed"
+    }
+}
+
 tasks.withType(ScalaCompile).configureEach {
     // Map plugin jars to -Xplugin parameter
     List<String> parameters =
@@ -175,6 +176,8 @@ tasks.withType(ScalaCompile).configureEach {
             "-Ywarn-unused",
             "-Wunused:-nowarn"
     ]
+
+    parameters -= ["-target:8"]
 
 
     // Finally set the additionalParameters
