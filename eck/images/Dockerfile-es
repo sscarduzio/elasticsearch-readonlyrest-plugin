@@ -2,4 +2,4 @@ FROM docker.elastic.co/elasticsearch/elasticsearch:8.10.4
 RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch "https://api.beshu.tech/download/es?esVersion=8.10.4&pluginVersion=1.52.0&email=eck-example%40readonlyrest.com"
 USER root
 RUN /usr/share/elasticsearch/jdk/bin/java -jar /usr/share/elasticsearch/plugins/readonlyrest/ror-tools.jar patch
-USER elasticsearch
+USER 1000

@@ -10,6 +10,8 @@ spec:
     count: 2
     podTemplate:
       spec:
+        securityContext:
+          runAsUser: 1000
         containers:
         - name: elasticsearch
           resources:
