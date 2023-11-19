@@ -79,8 +79,8 @@ object UserDef {
     final case class Simple(localGroups: UniqueNonEmptyList[Group]) extends GroupMappings
     final case class Advanced(mappings: UniqueNonEmptyList[Mapping]) extends GroupMappings
     object Advanced {
-      final case class Mapping(local: Group, externalGroupPatters: UniqueNonEmptyList[GroupIdLike]) {
-        val externalGroupIdPatternsMatcher: PatternsMatcher[GroupIdLike] = PatternsMatcher.create(externalGroupPatters.toSet)
+      final case class Mapping(local: Group, externalGroupPatterns: UniqueNonEmptyList[GroupIdLike]) {
+        val externalGroupIdPatternsMatcher: PatternsMatcher[GroupIdLike] = PatternsMatcher.create(externalGroupPatterns.toSet)
       }
     }
   }
