@@ -113,7 +113,7 @@ private class Parser private(tokens: NonEmptyList[Token]) {
 
   // todo improvement - stack safety
   private def parseInfix(expression: Expression, expressionPrecedence: Int): Either[ParsingError, Expression] = {
-    if (expressionPrecedence < precedence) { //todo mkp
+    if (expressionPrecedence < precedence) {
       for {
         token <- consumeToken.toRight(ParsingError("Could not parse expression"))
         parselet <- infixParseletFor(token).toRight(ParsingError(s"Could not parse expression '${token.show}'"))

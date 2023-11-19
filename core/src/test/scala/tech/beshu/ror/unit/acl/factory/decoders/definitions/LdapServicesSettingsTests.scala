@@ -23,7 +23,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.{UnboundidLdapAuthorizationService, UnboundidLdapConnectionPoolProvider, UserGroupsSearchFilterConfig}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{ComposedLdapAuthService, _}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder
@@ -34,7 +34,7 @@ import tech.beshu.ror.utils.containers.LdapWithDnsContainer
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import org.joor.Reflect.on
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupNameAttribute, GroupSearchFilter, NestedGroupsConfig, UniqueMemberAttribute}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupIdAttribute, GroupSearchFilter, NestedGroupsConfig, UniqueMemberAttribute}
 
 class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider)
   extends BaseDecoderTest(LdapServicesDecoder.ldapServicesDefinitionsDecoder(ldapConnectionPoolProvider))
@@ -427,7 +427,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                 Dn("ou=Groups,dc=example,dc=com"),
                 GroupSearchFilter("(objectClass=*)"),
                 UniqueMemberAttribute("uniqueMember"),
-                GroupNameAttribute("cn")
+                GroupIdAttribute("cn")
               )))
             }
           )
@@ -463,7 +463,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
                 Dn("ou=Groups,dc=example,dc=com"),
                 GroupSearchFilter("(objectClass=*)"),
                 UniqueMemberAttribute("uniqueMember"),
-                GroupNameAttribute("cn")
+                GroupIdAttribute("cn")
               )))
             }
           )

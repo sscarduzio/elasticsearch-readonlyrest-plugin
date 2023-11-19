@@ -26,7 +26,6 @@ import tech.beshu.ror.api.AuthMockApi.AuthMockResponse.{Failure, ProvideAuthMock
 import tech.beshu.ror.api.AuthMockApi.AuthMockService.{ExternalAuthenticationService, ExternalAuthorizationService, LdapAuthorizationService, MockMode}
 import tech.beshu.ror.api.AuthMockApi.{AuthMockResponse, AuthMockService}
 
-import scala.jdk.CollectionConverters._
 
 class RRAuthMockResponse(response: AuthMockApi.AuthMockResponse)
   extends ActionResponse with StatusToXContentObject {
@@ -110,7 +109,16 @@ class RRAuthMockResponse(response: AuthMockApi.AuthMockResponse)
       configuredMock.users.foreach { user =>
         builder.startObject()
         builder.field("name", user.name.value)
-        builder.field("groups", user.groups.map(_.value).asJava)
+        builder.startArray("groups")
+        user.groups.foreach { group =>
+          builder.startObject()
+          builder.field("id", group.id.value)
+          group.name.foreach { groupName =>
+            builder.field("name", groupName.value)
+          }
+          builder.endObject()
+        }
+        builder.endArray()
         builder.endObject()
       }
       builder.endArray()
@@ -141,7 +149,16 @@ class RRAuthMockResponse(response: AuthMockApi.AuthMockResponse)
       configuredMock.users.foreach { user =>
         builder.startObject()
         builder.field("name", user.name.value)
-        builder.field("groups", user.groups.map(_.value).asJava)
+        builder.startArray("groups")
+        user.groups.foreach { group =>
+          builder.startObject()
+          builder.field("id", group.id.value)
+          group.name.foreach { groupName =>
+            builder.field("name", groupName.value)
+          }
+          builder.endObject()
+        }
+        builder.endArray()
         builder.endObject()
       }
       builder.endArray()

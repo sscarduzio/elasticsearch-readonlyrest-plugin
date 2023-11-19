@@ -27,8 +27,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationService, LdapService, LdapUser}
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.utils.LoggerOps.toLoggerOps
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -46,30 +46,34 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
     .nestedGroupsConfig
     .map(new UnboundidLdapNestedGroupsService(connectionPool, _, serviceTimeout))
 
-  override def groupsOf(id: User.Id): Task[UniqueList[GroupName]] = {
+  override def groupsOf(id: User.Id): Task[UniqueList[Group]] = {
     ldapUserBy(id)
       .flatMap {
         case Some(user) =>
           groupsSearchFilter.mode match {
-            case defaultSearchGroupMode: DefaultGroupSearch => groupsFrom(defaultSearchGroupMode, user)
-            case groupsFromUserAttribute: GroupsFromUserEntry => groupsFrom(groupsFromUserAttribute, user)
+            case defaultSearchGroupMode: DefaultGroupSearch => groupsFrom(defaultSearchGroupMode, user).map(asGroups)
+            case groupsFromUserAttribute: GroupsFromUserEntry => groupsFrom(groupsFromUserAttribute, user).map(asGroups)
           }
         case None =>
           Task.now(UniqueList.empty)
       }
   }
 
-  private def groupsFrom(mode: DefaultGroupSearch, user: LdapUser): Task[UniqueList[GroupName]] = {
+  private def asGroups(groupIds: UniqueList[GroupId]) = {
+    UniqueList.fromIterable(groupIds.toList.map(Group.from))
+  }
+
+  private def groupsFrom(mode: DefaultGroupSearch, user: LdapUser): Task[UniqueList[GroupId]] = {
     connectionPool
       .process(searchUserGroupsLdapRequest(_, mode, user), serviceTimeout)
       .flatMap {
         case Right(results) =>
           Task {
-            results.flatMap(_.toLdapGroup(mode.groupNameAttribute)).toSet
+            results.flatMap(_.toLdapGroup(mode.groupIdAttribute)).toSet
           } flatMap { mainGroups =>
             enrichWithNestedGroupsIfNecessary(mainGroups)
           } map { allGroups =>
-            UniqueList.fromIterable(allGroups.map(_.name))
+            UniqueList.fromIterable(allGroups.map(_.id))
           }
         case Left(errorResult) =>
           logger.error(s"LDAP getting user groups returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
@@ -80,7 +84,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
       }
   }
 
-  private def groupsFrom(mode: GroupsFromUserEntry, user: LdapUser): Task[UniqueList[GroupName]] = {
+  private def groupsFrom(mode: GroupsFromUserEntry, user: LdapUser): Task[UniqueList[GroupId]] = {
     connectionPool
       .process(searchUserGroupsLdapRequest(_, mode, user), serviceTimeout)
       .flatMap {
@@ -90,7 +94,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
           } flatMap { mainGroups =>
             enrichWithNestedGroupsIfNecessary(mainGroups)
           } map { allGroups =>
-            UniqueList.fromIterable(allGroups.map(_.name))
+            UniqueList.fromIterable(allGroups.map(_.id))
           }
         case Left(errorResult) =>
           logger.error(s"LDAP getting user groups returned error [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
@@ -107,7 +111,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
     val baseDn = mode.searchGroupBaseDN.value.value
     val scope = SearchScope.SUB
     val searchFilter = searchUserGroupsLdapFilerFrom(mode, user)
-    val attribute = mode.groupNameAttribute.value.value
+    val attribute = mode.groupIdAttribute.value.value
     logger.debug(s"LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: $attribute]")
     new SearchRequest(listener, baseDn, scope, searchFilter, attribute)
   }

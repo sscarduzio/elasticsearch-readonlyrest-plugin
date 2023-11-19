@@ -28,8 +28,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService => AuthenticationService, ExternalAuthorizationService => AuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, User}
 import tech.beshu.ror.api.AuthMockApi.AuthMockResponse.{Failure, ProvideAuthMock, UpdateAuthMock}
 import tech.beshu.ror.api.AuthMockApi.AuthMockService._
 import tech.beshu.ror.boot.RorInstance.{IndexConfigUpdateError, TestConfig}
@@ -208,7 +208,8 @@ object AuthMockApi {
   sealed trait AuthMockService
   object AuthMockService {
     final case class MockUser(name: NonEmptyString)
-    final case class MockUserWithGroups(name: NonEmptyString, groups: List[NonEmptyString])
+    final case class MockUserWithGroups(name: NonEmptyString, groups: List[MockGroup])
+    final case class MockGroup(id: NonEmptyString, name: Option[NonEmptyString])
 
     sealed trait MockMode[+T]
     object MockMode {
@@ -261,7 +262,12 @@ object AuthMockApi {
     implicit class MockUserOps(val mock: MockUserWithGroups) extends AnyVal {
       def domainUserId: User.Id = User.Id(mock.name)
 
-      def domainGroups: Set[GroupName] = mock.groups.map(GroupName.apply).toSet
+      def domainGroups: Set[Group] = mock.groups.map(toDomainGroup).toSet
+
+      private def toDomainGroup(mockGroup: MockGroup) = {
+        val id = GroupId(mockGroup.id)
+        Group(id, mockGroup.name.map(GroupName.apply).getOrElse(GroupName.from(id)))
+      }
     }
 
     def toAuthMockService(serviceId: LdapService#Id,
@@ -270,7 +276,7 @@ object AuthMockApi {
         maybeMock
           .map {
             _.users
-              .map(user => MockUserWithGroups(user.id.value, user.groups.map(_.value).toList))
+              .map(user => MockUserWithGroups(user.id.value, user.groups.map(toMockGroup).toList))
               .toList
           }
           .map(AuthMockService.LdapAuthorizationService.Mock.apply)
@@ -286,7 +292,7 @@ object AuthMockApi {
         maybeMock
           .map {
             _.users
-              .map(user => MockUserWithGroups(user.id.value, user.groups.map(_.value).toList))
+              .map(user => MockUserWithGroups(user.id.value, user.groups.map(toMockGroup).toList))
               .toList
           }
           .map(AuthMockService.ExternalAuthorizationService.Mock.apply)
@@ -338,6 +344,8 @@ object AuthMockApi {
       }
     }
 
+    private def toMockGroup(group: Group): MockGroup = MockGroup(id = group.id.value, name = Some(group.name.value))
+
     private def toLdapMock(user: MockUserWithGroups) = {
       MocksProvider.LdapServiceMock.LdapUserMock(id = user.domainUserId, groups = user.domainGroups)
     }
@@ -353,6 +361,7 @@ object AuthMockApi {
     object decoders {
       implicit val nonEmptyStringDecoder: Decoder[NonEmptyString] = Decoder.decodeString.emap(NonEmptyString.from)
       implicit val mockUserDecoder: Decoder[MockUser] = Decoder.forProduct1("name")(MockUser.apply)
+      implicit val mockGroupDecoder: Decoder[MockGroup] = Decoder.forProduct2("id", "name")(MockGroup.apply)
       implicit val mockServiceUserDecoder: Decoder[MockUserWithGroups] =
         Decoder.forProduct2("name", "groups")(MockUserWithGroups.apply)
 

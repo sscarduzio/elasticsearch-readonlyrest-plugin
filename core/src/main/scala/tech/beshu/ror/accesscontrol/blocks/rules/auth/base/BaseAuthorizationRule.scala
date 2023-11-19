@@ -26,9 +26,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleRe
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings, SimpleAuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, LoggedUser, PermittedGroups}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, LoggedUser, PermittedGroups}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.annotation.nowarn
@@ -39,11 +38,11 @@ private[auth] trait BaseAuthorizationRule
 
   protected def userIdCaseSensitivity: CaseSensitivity
 
-  protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[GroupName]): Option[UniqueNonEmptyList[GroupName]]
+  protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]]
 
   protected def groupsPermittedByRule: PermittedGroups
 
-  protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[GroupName]]
+  protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[Group]]
 
   protected def loggedUserPreconditionCheck(@nowarn("cat=unused") user: LoggedUser): Either[Unit, Unit] = Right(())
 
@@ -97,7 +96,7 @@ private[auth] trait BaseAuthorizationRule
 
   private def authorizeLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                            user: LoggedUser,
-                                                                           userGroupsProvider: (B, LoggedUser) => Task[UniqueList[GroupName]]): Task[RuleResult[B]] = {
+                                                                           userGroupsProvider: (B, LoggedUser) => Task[UniqueList[Group]]): Task[RuleResult[B]] = {
     if (blockContext.isCurrentGroupEligible(groupsPermittedByRule)) {
       userGroupsProvider(blockContext, user)
         .map(uniqueList => UniqueNonEmptyList.fromIterable(uniqueList.toSet))

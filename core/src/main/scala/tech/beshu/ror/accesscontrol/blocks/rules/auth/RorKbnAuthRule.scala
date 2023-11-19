@@ -29,7 +29,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, RuleName, RuleR
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule.{Groups, Settings}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
@@ -130,7 +129,7 @@ final class RorKbnAuthRule(val settings: Settings,
   }
 
   private def handleGroupsClaimSearchResult[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                                     result: ClaimSearchResult[UniqueList[GroupName]]) = {
+                                                                                     result: ClaimSearchResult[UniqueList[Group]]) = {
     (result, settings.permittedGroups) match {
       case (NotFound, Groups.Defined(_)) =>
         Left(())
@@ -140,7 +139,7 @@ final class RorKbnAuthRule(val settings: Settings,
         UniqueNonEmptyList.fromIterable(groups) match {
           case Some(nonEmptyGroups) =>
             groupsLogic.availableGroupsFrom(nonEmptyGroups) match {
-              case Some(matchedGroups) if blockContext.isCurrentGroupEligible(PermittedGroups(matchedGroups)) =>
+              case Some(matchedGroups) if blockContext.isCurrentGroupEligible(PermittedGroups.from(matchedGroups)) =>
                 Right(blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups)))
               case Some(_) | None =>
                 Left(())
@@ -152,7 +151,7 @@ final class RorKbnAuthRule(val settings: Settings,
         UniqueNonEmptyList.fromIterable(groups) match {
           case None =>
             Right(blockContext)
-          case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(PermittedGroups(nonEmptyGroups)) =>
+          case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(PermittedGroups.from(nonEmptyGroups)) =>
             Right(blockContext)
           case Some(_) =>
             Left(())

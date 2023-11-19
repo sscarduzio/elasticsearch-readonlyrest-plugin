@@ -30,8 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationR
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.{PermittedGroups, ResolvablePermittedGroups, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, PermittedGroups, ResolvablePermittedGroups, User}
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -42,8 +41,8 @@ abstract class BaseGroupsRule(val settings: Settings)
     with AuthorizationImpersonationCustomSupport
     with Logging {
 
-  protected def calculateAllowedGroupsForUser(userGroups: UniqueNonEmptyList[GroupName],
-                                              permittedGroups: PermittedGroups): Option[UniqueNonEmptyList[GroupName]]
+  protected def calculateAllowedGroupsForUser(userGroups: UniqueNonEmptyList[Group],
+                                              permittedGroups: PermittedGroups): Option[UniqueNonEmptyList[Group]]
 
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
@@ -143,7 +142,7 @@ abstract class BaseGroupsRule(val settings: Settings)
   private def authenticate[B <: BlockContext : BlockContextUpdater](auth: AuthenticationRule,
                                                                     blockContext: B,
                                                                     allowedUserMatcher: GenericPatternMatcher[User.Id],
-                                                                    availableGroups: UniqueNonEmptyList[GroupName],
+                                                                    availableGroups: UniqueNonEmptyList[Group],
                                                                     mode: Mode) = {
     checkRule(auth, blockContext, allowedUserMatcher, mode)
       .map {
@@ -169,7 +168,7 @@ abstract class BaseGroupsRule(val settings: Settings)
                                                                                 groupMappings: GroupMappings,
                                                                                 blockContext: B,
                                                                                 allowedUserMatcher: GenericPatternMatcher[User.Id],
-                                                                                availableGroups: UniqueNonEmptyList[GroupName],
+                                                                                availableGroups: UniqueNonEmptyList[Group],
                                                                                 mode: Mode) = {
     checkRule(auth, blockContext, allowedUserMatcher, mode)
       .map {
@@ -194,7 +193,7 @@ abstract class BaseGroupsRule(val settings: Settings)
                                                                                 groupMappings: GroupMappings,
                                                                                 blockContext: B,
                                                                                 allowedUserMatcher: GenericPatternMatcher[User.Id],
-                                                                                availableGroups: UniqueNonEmptyList[GroupName],
+                                                                                availableGroups: UniqueNonEmptyList[Group],
                                                                                 mode: Mode): Task[Option[B]] = {
     checkRule(authnRule, blockContext, allowedUserMatcher, mode)
       .flatMap {
@@ -227,7 +226,7 @@ abstract class BaseGroupsRule(val settings: Settings)
 
   private def updateBlockContextWithLoggedUserAndAllowedGroups[B <: BlockContext : BlockContextUpdater](sourceBlockContext: B,
                                                                                                         destinationBlockContext: B,
-                                                                                                        potentiallyAvailableGroups: UniqueNonEmptyList[GroupName],
+                                                                                                        potentiallyAvailableGroups: UniqueNonEmptyList[Group],
                                                                                                         groupMappings: GroupMappings) = {
     val externalAvailableGroups = sourceBlockContext.userMetadata.availableGroups
     for {
@@ -263,16 +262,19 @@ abstract class BaseGroupsRule(val settings: Settings)
   }
 
   private def mapExternalGroupsToLocalGroups(groupMappings: GroupMappings,
-                                             externalGroup: UniqueList[GroupName]) = {
+                                             externalGroup: UniqueList[Group]) = {
     groupMappings match {
-      case GroupMappings.Simple(localGroups) => Some(localGroups)
+      case GroupMappings.Simple(localGroups) => UniqueNonEmptyList.fromIterable(localGroups.map(_.id))
       case GroupMappings.Advanced(mappings) => UniqueNonEmptyList.fromIterable {
         externalGroup
+          .toList
           .flatMap { externalGroup =>
             mappings
-              .filter(m => m.externalGroupPattersMatcher.`match`(externalGroup))
+              .toList
+              .filter(m => m.externalGroupIdPatternsMatcher.`match`(externalGroup.id))
               .map(_.local)
           }
+          .map(_.id)
       }
     }
   }

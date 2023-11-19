@@ -22,7 +22,7 @@ import cats.implicits._
 import tech.beshu.ror.accesscontrol.domain.Json._
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
-import tech.beshu.ror.accesscontrol.domain.{CorrelationId, KibanaAccess, KibanaApp}
+import tech.beshu.ror.accesscontrol.domain.{CorrelationId, Group, KibanaAccess, KibanaApp}
 
 import scala.jdk.CollectionConverters._
 
@@ -30,10 +30,10 @@ sealed trait MetadataValue
 
 object MetadataValue {
 
-  final case class MetadataObject(value: Any) extends MetadataValue
-  final case class MetadataString(value: String) extends MetadataValue
-  final case class MetadataList(value: NonEmptyList[String]) extends MetadataValue
-  final case class MetadataListOfMaps(value: NonEmptyList[Map[String, String]]) extends MetadataValue
+  private final case class MetadataObject(value: Any) extends MetadataValue
+  private final case class MetadataString(value: String) extends MetadataValue
+  private final case class MetadataList(value: NonEmptyList[String]) extends MetadataValue
+  private final case class MetadataListOfMaps(value: NonEmptyList[Map[String, String]]) extends MetadataValue
 
   def read(userMetadata: UserMetadata,
            correlationId: CorrelationId): Map[String, MetadataValue] = {
@@ -121,7 +121,7 @@ object MetadataValue {
   private def availableGroups(userMetadata: UserMetadata) = {
     NonEmptyList
       .fromList(userMetadata.availableGroups.toList)
-      .map(groups => ("x-ror-available-groups", MetadataList(groups.map(_.value.value))))
+      .map(groups => ("x-ror-available-groups", MetadataListOfMaps(groups.map(serializeGroup))))
       .toMap
   }
 
@@ -134,12 +134,18 @@ object MetadataValue {
   }
 
   private def currentGroup(userMetadata: UserMetadata) = {
-    userMetadata.currentGroup.map(g => ("x-ror-current-group", MetadataString(g.value.value))).toMap
+    userMetadata
+      .findCurrentGroup
+      .map(serializeGroup)
+      .map(group => ("x-ror-current-group", MetadataObject(group.asJava)))
+      .toMap
   }
 
   private def loggedUser(userMetadata: UserMetadata) = {
     userMetadata.loggedUser.map(u => ("x-ror-username", MetadataString(u.id.value.value))).toMap
   }
+
+  private def serializeGroup(group: Group) = Map("id" -> group.id.value.value, "name" -> group.name.value.value)
 
   private implicit val kibanaAccessShow: Show[KibanaAccess] = Show {
     case KibanaAccess.RO => "ro"

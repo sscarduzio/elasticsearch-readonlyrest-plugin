@@ -37,7 +37,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule.Groups
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt => _, _}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
@@ -197,12 +197,12 @@ class JwtAuthRuleTests
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("groups")))
           ),
           tokenHeader = bearerHeader(jwt),
-          preferredGroup = Some(GroupName("group1"))
+          preferredGroupId = Some(GroupId("group1"))
         ) {
           blockContext => assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
             jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            currentGroup = Some(GroupName("group1"))
+            currentGroup = Some(GroupId("group1"))
           )(blockContext)
         }
       }
@@ -287,15 +287,15 @@ class JwtAuthRuleTests
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("groups")))
           ),
           configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroups(
-            UniqueNonEmptyList.of(GroupName("group3"), GroupName("group2"))
+            UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2"))
           ))),
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext => assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
             jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            currentGroup = Some(GroupName("group2")),
-            availableGroups = UniqueList.of(GroupName("group2"))
+            currentGroup = Some(GroupId("group2")),
+            availableGroups = UniqueList.of(group("group2"))
           )(blockContext)
         }
       }
@@ -314,15 +314,15 @@ class JwtAuthRuleTests
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("groups")))
           ),
           configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroups(
-            UniqueNonEmptyList.of(GroupName("group3"), GroupLike.from("*2"))
+            UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("*2"))
           ))),
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext => assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
             jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            currentGroup = Some(GroupName("group2")),
-            availableGroups = UniqueList.of(GroupName("group2"))
+            currentGroup = Some(GroupId("group2")),
+            availableGroups = UniqueList.of(group("group2"))
           )(blockContext)
         }
       }
@@ -341,15 +341,15 @@ class JwtAuthRuleTests
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("groups")))
           ),
           configuredGroups = Groups.Defined(GroupsLogic.And(PermittedGroups(
-            UniqueNonEmptyList.of(GroupName("group1"), GroupName("group2"))
+            UniqueNonEmptyList.of(GroupId("group1"), GroupId("group2"))
           ))),
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext => assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
             jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            currentGroup = Some(GroupName("group1")),
-            availableGroups = UniqueList.of(GroupName("group1"), GroupName("group2"))
+            currentGroup = Some(GroupId("group1")),
+            availableGroups = UniqueList.of(group("group1"), group("group2"))
           )(blockContext)
         }
       }
@@ -368,15 +368,15 @@ class JwtAuthRuleTests
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("groups")))
           ),
           configuredGroups = Groups.Defined(GroupsLogic.And(PermittedGroups(
-            UniqueNonEmptyList.of(GroupLike.from("*1"), GroupLike.from("*2"))
+            UniqueNonEmptyList.of(GroupIdLike.from("*1"), GroupIdLike.from("*2"))
           ))),
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext => assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
             jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            currentGroup = Some(GroupName("group1")),
-            availableGroups = UniqueList.of(GroupName("group1"), GroupName("group2"))
+            currentGroup = Some(GroupId("group1")),
+            availableGroups = UniqueList.of(group("group1"), group("group2"))
           )(blockContext)
         }
       }
@@ -507,7 +507,7 @@ class JwtAuthRuleTests
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("tech.beshu.groups.subgroups")))
           ),
           configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroups(
-            UniqueNonEmptyList.of(GroupName("group1"))
+            UniqueNonEmptyList.of(GroupId("group1"))
           ))),
           tokenHeader = bearerHeader(jwt)
         )
@@ -527,7 +527,7 @@ class JwtAuthRuleTests
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("groups")))
           ),
           configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroups(
-            UniqueNonEmptyList.of(GroupName("group3"), GroupName("group4"))
+            UniqueNonEmptyList.of(GroupId("group3"), GroupId("group4"))
           ))),
           tokenHeader = bearerHeader(jwt)
         )
@@ -547,7 +547,7 @@ class JwtAuthRuleTests
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("groups")))
           ),
           configuredGroups = Groups.Defined(GroupsLogic.And(PermittedGroups(
-            UniqueNonEmptyList.of(GroupName("group2"), GroupName("group3"))
+            UniqueNonEmptyList.of(GroupId("group2"), GroupId("group3"))
           ))),
           tokenHeader = bearerHeader(jwt)
         )
@@ -567,7 +567,7 @@ class JwtAuthRuleTests
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("groups")))
           ),
           tokenHeader = bearerHeader(jwt),
-          preferredGroup = Some(GroupName("group3"))
+          preferredGroupId = Some(GroupId("group3"))
         )
       }
       "preferred group is not on the permitted groups list" in {
@@ -585,10 +585,10 @@ class JwtAuthRuleTests
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("groups")))
           ),
           configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroups(
-            UniqueNonEmptyList.of(GroupName("group2"))
+            UniqueNonEmptyList.of(GroupId("group2"))
           ))),
           tokenHeader = bearerHeader(jwt),
-          preferredGroup = Some(GroupName("group3"))
+          preferredGroupId = Some(GroupId("group3"))
         )
       }
     }
@@ -597,20 +597,20 @@ class JwtAuthRuleTests
   private def assertMatchRule(configuredJwtDef: JwtDef,
                               configuredGroups: Groups = Groups.NotDefined,
                               tokenHeader: Header,
-                              preferredGroup: Option[GroupName] = None)
+                              preferredGroupId: Option[GroupId] = None)
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroup, Some(blockContextAssertion))
+    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, Some(blockContextAssertion))
 
   private def assertNotMatchRule(configuredJwtDef: JwtDef,
                                  configuredGroups: Groups = Groups.NotDefined,
                                  tokenHeader: Header,
-                                 preferredGroup: Option[GroupName] = None): Unit =
-    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroup, blockContextAssertion = None)
+                                 preferredGroupId: Option[GroupId] = None): Unit =
+    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, blockContextAssertion = None)
 
   private def assertRule(configuredJwtDef: JwtDef,
                          configuredGroups: Groups,
                          tokenHeader: Header,
-                         preferredGroup: Option[GroupName],
+                         preferredGroup: Option[GroupId],
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new JwtAuthRule(JwtAuthRule.Settings(configuredJwtDef, configuredGroups), CaseSensitivity.Enabled)
     val requestContext = MockRequestContext.indices.copy(

@@ -162,7 +162,7 @@ class LdapAuthRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Non empty list of group names or/and patters is required")))
+            errors.head should be(RulesLevelCreationError(Message("Non empty list of group ids or/and patters is required")))
           }
         )
       }

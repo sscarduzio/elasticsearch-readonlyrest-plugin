@@ -20,8 +20,7 @@ import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 private[rules] trait AuthorizationImpersonationSupport extends ImpersonationSupport
@@ -38,7 +37,7 @@ private[rules] trait SimpleAuthorizationImpersonationSupport extends Authorizati
 object SimpleAuthorizationImpersonationSupport {
   sealed trait Groups
   object Groups {
-    final case class Present(groups: UniqueList[GroupName]) extends Groups
+    final case class Present(groups: UniqueList[Group]) extends Groups
     case object CannotCheck extends Groups
   }
 }

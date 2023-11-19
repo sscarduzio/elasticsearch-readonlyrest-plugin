@@ -44,7 +44,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
@@ -73,7 +73,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
+                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupIdLike.from)).toOption.get
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
@@ -81,72 +81,72 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
               ))
             ),
             loggedUser = None,
-            preferredGroup = None
+            preferredGroupId = None
           )
         }
         "resolved groups don't contain preferred group" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
-              permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupLike.from("g1").nel))),
+              permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupIdLike.from("g1").nel))),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
                 mode = WithoutGroupsMapping(authenticationRule.rejecting, groups("g1"))
               ))
             ),
             loggedUser = None,
-            preferredGroup = Some(GroupName("g2"))
+            preferredGroupId = Some(GroupId("g2"))
           )
         }
         "there is no user definition for given logged user" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
-              permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("g1").nel))),
+              permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
                 mode = WithoutGroupsMapping(authenticationRule.rejecting, groups("g1"))
               ))
             ),
             loggedUser = Some(User.Id("user2")),
-            preferredGroup = None
+            preferredGroupId = None
           )
         }
         "there is no matching auth rule for given user" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
-              permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("g1").nel))),
+              permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
                 mode = WithoutGroupsMapping(authenticationRule.rejecting, groups("g1"))
               ))
             ),
             loggedUser = Some(User.Id("user1")),
-            preferredGroup = None
+            preferredGroupId = None
           )
         }
         "case sensitivity is configured, but authentication rule authenticates user with name with a capital letter at the beginning" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
-              permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("g1").nel))),
+              permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("u*"),
                 mode = WithoutGroupsMapping(authenticationRule.matching(User.Id("User1")), groups("g1"))
               ))
             ),
             loggedUser = None,
-            preferredGroup = None
+            preferredGroupId = None
           )
         }
         "one auth rule available is throwing an exception" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
-              permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("g1").nel))),
+              permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
                 mode = WithoutGroupsMapping(authenticationRule.throwing, groups("g1"))
               ))
             ),
             loggedUser = Some(User.Id("user1")),
-            preferredGroup = None
+            preferredGroupId = None
           )
         }
       }
@@ -155,7 +155,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
+                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupIdLike.from)).toOption.get
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
@@ -163,14 +163,14 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
               ))
             ),
             loggedUser = None,
-            preferredGroup = None
+            preferredGroupId = None
           )
         }
         "user cannot be authorized by authentication with authorization rule" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
+                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupIdLike.from)).toOption.get
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
@@ -184,76 +184,76 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
               ))
             ),
             loggedUser = None,
-            preferredGroup = None
+            preferredGroupId = None
           )
         }
         "user cannot be authorized by authentication with authorization rule (simple groups mapping matching fails)" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
+                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupIdLike.from)).toOption.get
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
                 mode = WithGroupsMapping(
                   SeparateRules(
                     authenticationRule.matching(User.Id("user1")),
-                    authorizationRule.matching(NonEmptyList.of(GroupName("remote_group1")))
+                    authorizationRule.matching(NonEmptyList.of(group("remote_group1")))
                   ),
                   noGroupMappingFrom("group_user1")
                 )
               ))
             ),
             loggedUser = None,
-            preferredGroup = None
+            preferredGroupId = None
           )
         }
         "user cannot be authorized by authentication with authorization rule (advanced groups mapping matching fails)" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
+                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupIdLike.from)).toOption.get
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
                 mode = WithGroupsMapping(
                   SeparateRules(
                     authenticationRule.matching(User.Id("user1")),
-                    authorizationRule.matching(NonEmptyList.of(GroupName("remote_group2")))
+                    authorizationRule.matching(NonEmptyList.of(group("remote_group2")))
                   ),
                   groupMapping(
-                    Mapping(GroupName("group_user1"), UniqueNonEmptyList.of(GroupLike.from("remote_group_1"))),
-                    Mapping(GroupName("group_user2"), UniqueNonEmptyList.of(GroupLike.from("remote_group_2")))
+                    Mapping(group("group_user1"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group_1"))),
+                    Mapping(group("group_user2"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group_2")))
                   )
                 )
               ))
             ),
             loggedUser = None,
-            preferredGroup = None
+            preferredGroupId = None
           )
         }
         "user cannot be authorized by authentication with authorization rule (advanced groups mapping with wildcard matching fails)" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupLike.from)).toOption.get
+                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupIdLike.from)).toOption.get
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
                 mode = WithGroupsMapping(
                   SeparateRules(
                     authenticationRule.matching(User.Id("user1")),
-                    authorizationRule.matching(NonEmptyList.of(GroupName("remote_group2")))
+                    authorizationRule.matching(NonEmptyList.of(group("remote_group2")))
                   ),
                   groupMapping(
-                    Mapping(GroupName("group_user1"), UniqueNonEmptyList.of(GroupLike.from("*1"))),
-                    Mapping(GroupName("group_user2"), UniqueNonEmptyList.of(GroupLike.from("*2")))
+                    Mapping(group("group_user1"), UniqueNonEmptyList.of(GroupIdLike.from("*1"))),
+                    Mapping(group("group_user2"), UniqueNonEmptyList.of(GroupIdLike.from("*2")))
                   )
                 )
               ))
             ),
             loggedUser = None,
-            preferredGroup = None
+            preferredGroupId = None
           )
         }
       }
@@ -265,7 +265,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
             "authentication rule also matches and case sensitivity is configured" in {
               assertMatchRule(
                 settings = GroupsRulesSettings(
-                  permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("g1").nel))),
+                  permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
                   usersDefinitions = NonEmptyList.of(UserDef(
                     usernames = userIdPatterns("user1"),
                     mode = WithoutGroupsMapping(
@@ -275,19 +275,19 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                   ))
                 ),
                 loggedUser = None,
-                preferredGroup = None
+                preferredGroupId = None
               )(
                 blockContextAssertion = defaultOutputBlockContextAssertion(
                   user = User.Id("user1"),
-                  group = GroupName("g1"),
-                  availableGroups = UniqueList.of(GroupName("g1"))
+                  group = GroupId("g1"),
+                  availableGroups = UniqueList.of(group("g1"))
                 )
               )
             }
             "authentication rule also matches and case insensitivity is configured" in {
               assertMatchRule(
                 settings = GroupsRulesSettings(
-                  permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("g1").nel))),
+                  permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
                   usersDefinitions = NonEmptyList.of(UserDef(
                     usernames = userIdPatterns("user1"),
                     mode = WithoutGroupsMapping(
@@ -297,13 +297,13 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                   ))
                 ),
                 loggedUser = None,
-                preferredGroup = None,
+                preferredGroupId = None,
                 caseSensitivity = CaseSensitivity.Disabled
               )(
                 blockContextAssertion = defaultOutputBlockContextAssertion(
                   user = User.Id("User1"),
-                  group = GroupName("g1"),
-                  availableGroups = UniqueList.of(GroupName("g1"))
+                  group = GroupId("g1"),
+                  availableGroups = UniqueList.of(group("g1"))
                 )
               )
             }
@@ -312,7 +312,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
             "authentication rule also matches and and case sensitivity is configured" in {
               assertMatchRule(
                 settings = GroupsRulesSettings(
-                  permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("g1").nel))),
+                  permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
                   usersDefinitions = NonEmptyList.of(UserDef(
                     usernames = userIdPatterns("u*"),
                     mode = WithoutGroupsMapping(
@@ -322,19 +322,19 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                   ))
                 ),
                 loggedUser = None,
-                preferredGroup = None
+                preferredGroupId = None
               )(
                 blockContextAssertion = defaultOutputBlockContextAssertion(
                   user = User.Id("user1"),
-                  group = GroupName("g1"),
-                  availableGroups = UniqueList.of(GroupName("g1"))
+                  group = GroupId("g1"),
+                  availableGroups = UniqueList.of(group("g1"))
                 )
               )
             }
             "authentication rule also matches and and case insensitivity is configured" in {
               assertMatchRule(
                 settings = GroupsRulesSettings(
-                  permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("g1").nel))),
+                  permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
                   usersDefinitions = NonEmptyList.of(UserDef(
                     usernames = userIdPatterns("u*"),
                     mode = WithoutGroupsMapping(
@@ -344,13 +344,13 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                   ))
                 ),
                 loggedUser = None,
-                preferredGroup = None,
+                preferredGroupId = None,
                 caseSensitivity = CaseSensitivity.Disabled
               )(
                 blockContextAssertion = defaultOutputBlockContextAssertion(
                   user = User.Id("User1"),
-                  group = GroupName("g1"),
-                  availableGroups = UniqueList.of(GroupName("g1"))
+                  group = GroupId("g1"),
+                  availableGroups = UniqueList.of(group("g1"))
                 )
               )
             }
@@ -361,7 +361,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
             "authentication rule also matches and preferred group is used" in {
               assertMatchRule(
                 settings = GroupsRulesSettings(
-                  permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("g1").nel))),
+                  permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
                   usersDefinitions = NonEmptyList.of(
                     UserDef(
                       usernames = userIdPatterns("user2"),
@@ -380,12 +380,12 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                   )
                 ),
                 loggedUser = None,
-                preferredGroup = Some(GroupName("g1"))
+                preferredGroupId = Some(GroupId("g1"))
               )(
                 blockContextAssertion = defaultOutputBlockContextAssertion(
                   user = User.Id("user1"),
-                  group = GroupName("g1"),
-                  availableGroups = UniqueList.of(GroupName("g1"))
+                  group = GroupId("g1"),
+                  availableGroups = UniqueList.of(group("g1"))
                 )
               )
             }
@@ -397,7 +397,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
           "user can be matched and user can be authorized in external system and locally (simple groups mapping)" in {
             assertMatchRule(
               settings = GroupsRulesSettings(
-                permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("g1").nel))),
+                permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
                 usersDefinitions = NonEmptyList.of(
                   UserDef(
                     usernames = userIdPatterns("user2"),
@@ -406,26 +406,26 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                   UserDef(
                     usernames = userIdPatterns("user1"),
                     mode = WithGroupsMapping(
-                      SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(GroupName("remote_group")))),
+                      SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(group("remote_group")))),
                       noGroupMappingFrom("g1")
                     )
                   )
                 )
               ),
               loggedUser = None,
-              preferredGroup = None
+              preferredGroupId = None
             )(
               blockContextAssertion = defaultOutputBlockContextAssertion(
                 user = User.Id("user1"),
-                group = GroupName("g1"),
-                availableGroups = UniqueList.of(GroupName("g1"))
+                group = GroupId("g1"),
+                availableGroups = UniqueList.of(group("g1"))
               )
             )
           }
           "user can be matched and user can be authorized in external system and locally (advanced groups mapping)" in {
             assertMatchRule(
               settings = GroupsRulesSettings(
-                permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("g1").nel))),
+                permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
                 usersDefinitions = NonEmptyList.of(
                   UserDef(
                     usernames = userIdPatterns("user2"),
@@ -434,26 +434,26 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                   UserDef(
                     usernames = userIdPatterns("user1"),
                     mode = WithGroupsMapping(
-                      SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(GroupName("remote_group")))),
-                      groupMapping(Mapping(GroupName("g1"), UniqueNonEmptyList.of(GroupLike.from("remote_group"))))
+                      SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(group("remote_group")))),
+                      groupMapping(Mapping(group("g1"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group"))))
                     )
                   )
                 )
               ),
               loggedUser = None,
-              preferredGroup = None
+              preferredGroupId = None
             )(
               blockContextAssertion = defaultOutputBlockContextAssertion(
                 user = User.Id("user1"),
-                group = GroupName("g1"),
-                availableGroups = UniqueList.of(GroupName("g1"))
+                group = GroupId("g1"),
+                availableGroups = UniqueList.of(group("g1"))
               )
             )
           }
           "user can be matched and user can be authorized in external system and locally (advanced groups mapping with wildcard)" in {
             assertMatchRule(
               settings = GroupsRulesSettings(
-                permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("g1").nel))),
+                permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
                 usersDefinitions = NonEmptyList.of(
                   UserDef(
                     usernames = userIdPatterns("user2"),
@@ -462,19 +462,19 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                   UserDef(
                     usernames = userIdPatterns("user1"),
                     mode = WithGroupsMapping(
-                      SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(GroupName("remote_group_1")))),
-                      groupMapping(Mapping(GroupName("g1"), UniqueNonEmptyList.of(GroupLike.from("*1"))))
+                      SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(group("remote_group_1")))),
+                      groupMapping(Mapping(group("g1"), UniqueNonEmptyList.of(GroupIdLike.from("*1"))))
                     )
                   )
                 )
               ),
               loggedUser = None,
-              preferredGroup = None
+              preferredGroupId = None
             )(
               blockContextAssertion = defaultOutputBlockContextAssertion(
                 user = User.Id("user1"),
-                group = GroupName("g1"),
-                availableGroups = UniqueList.of(GroupName("g1"))
+                group = GroupId("g1"),
+                availableGroups = UniqueList.of(group("g1"))
               )
             )
           }
@@ -483,7 +483,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
           "user can be matched and user can be authorized in external system and locally" in {
             assertMatchRule(
               settings = GroupsRulesSettings(
-                permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("g1").nel))),
+                permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
                 usersDefinitions = NonEmptyList.of(
                   UserDef(
                     usernames = userIdPatterns("user2"),
@@ -494,7 +494,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                     mode = WithGroupsMapping(
                       SeparateRules(
                         authenticationRule.matching(User.Id("user1")),
-                        authorizationRule.matching(NonEmptyList.of(GroupName("remote_group")))
+                        authorizationRule.matching(NonEmptyList.of(group("remote_group")))
                       ),
                       noGroupMappingFrom("g1")
                     )
@@ -502,12 +502,12 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                 )
               ),
               loggedUser = None,
-              preferredGroup = None
+              preferredGroupId = None
             )(
               blockContextAssertion = defaultOutputBlockContextAssertion(
                 user = User.Id("user1"),
-                group = GroupName("g1"),
-                availableGroups = UniqueList.of(GroupName("g1"))
+                group = GroupId("g1"),
+                availableGroups = UniqueList.of(group("g1"))
               )
             )
           }
@@ -518,25 +518,25 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
 
   def assertMatchRule(settings: GroupsRulesSettings,
                       loggedUser: Option[User.Id],
-                      preferredGroup: Option[GroupName],
+                      preferredGroupId: Option[GroupId],
                       caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled)
                      (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(settings, loggedUser, preferredGroup, Some(blockContextAssertion), caseSensitivity)
+    assertRule(settings, loggedUser, preferredGroupId, Some(blockContextAssertion), caseSensitivity)
 
   def assertNotMatchRule(settings: GroupsRulesSettings,
                          loggedUser: Option[User.Id],
-                         preferredGroup: Option[GroupName],
+                         preferredGroupId: Option[GroupId],
                          caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled): Unit =
-    assertRule(settings, loggedUser, preferredGroup, blockContextAssertion = None, caseSensitivity)
+    assertRule(settings, loggedUser, preferredGroupId, blockContextAssertion = None, caseSensitivity)
 
   def assertRule(settings: GroupsRulesSettings,
                  loggedUser: Option[User.Id],
-                 preferredGroup: Option[GroupName],
+                 preferredGroupId: Option[GroupId],
                  blockContextAssertion: Option[BlockContext => Unit],
                  caseSensitivity: CaseSensitivity): Unit = {
     val rule = createRule(settings, caseSensitivity)
     val requestContext = MockRequestContext.metadata.copy(
-      headers = preferredGroup.map(_.toCurrentGroupHeader).toSet
+      headers = preferredGroupId.map(_.toCurrentGroupHeader).toSet
     )
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext,
@@ -566,13 +566,13 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
     )
   }
 
-  def groups(g1: NonEmptyString, gs: NonEmptyString*): UniqueNonEmptyList[GroupName] = {
-    UniqueNonEmptyList.of(GroupName(g1), gs.map(GroupName.apply): _*)
+  def groups(g1: NonEmptyString, gs: NonEmptyString*): UniqueNonEmptyList[Group] = {
+    UniqueNonEmptyList.of(group(g1), gs.map(group): _*)
   }
 
-  def defaultOutputBlockContextAssertion(user: User.Id, 
-                                         group: GroupName,
-                                         availableGroups: UniqueList[GroupName]): BlockContext => Unit =
+  def defaultOutputBlockContextAssertion(user: User.Id,
+                                         group: GroupId,
+                                         availableGroups: UniqueList[Group]): BlockContext => Unit =
     (blockContext: BlockContext) => {
       assertBlockContext(
         loggedUser = Some(DirectlyLoggedUser(user)),
@@ -618,7 +618,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
 
   object authorizationRule {
 
-    def matching(groups: NonEmptyList[GroupName]): AuthorizationRule = new AuthorizationRule with AuthorizationImpersonationCustomSupport {
+    def matching(groups: NonEmptyList[Group]): AuthorizationRule = new AuthorizationRule with AuthorizationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
 
       override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
@@ -638,7 +638,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
 
   object authRule {
 
-    def matching(user: User.Id, groups: NonEmptyList[GroupName]): AuthRule = new AuthRule with AuthenticationRule with AuthorizationRule with AuthorizationImpersonationCustomSupport with AuthenticationImpersonationCustomSupport {
+    def matching(user: User.Id, groups: NonEmptyList[Group]): AuthRule = new AuthRule with AuthenticationRule with AuthorizationRule with AuthorizationImpersonationCustomSupport with AuthenticationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
 
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable

@@ -31,10 +31,10 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepre
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{Address, ClusterIndexName, GroupLike, GroupsLogic, Header, KibanaAccess, KibanaApp, KibanaIndexName, PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.domain.{Address, ClusterIndexName, GroupIdLike, GroupsLogic, Header, KibanaAccess, KibanaApp, KibanaIndexName, PermittedGroups, User}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -124,11 +124,11 @@ object common extends Logging {
       }
       .decoder
 
-  implicit val groupLikeDecoder: Decoder[GroupLike] =
-    DecoderHelpers.decodeStringLikeNonEmpty.map(GroupLike.from)
+  implicit val groupIdLikeDecoder: Decoder[GroupIdLike] =
+    DecoderHelpers.decodeStringLikeNonEmpty.map(GroupIdLike.from)
 
-  implicit val groupNameDecoder: Decoder[GroupName] =
-    DecoderHelpers.decodeStringLikeNonEmpty.map(GroupName.apply)
+  implicit val groupIdDecoder: Decoder[GroupId] =
+    DecoderHelpers.decodeStringLikeNonEmpty.map(GroupId.apply)
 
   implicit val userIdDecoder: Decoder[User.Id] =
     DecoderHelpers.decodeStringLikeNonEmpty.map(User.Id.apply)
@@ -136,20 +136,20 @@ object common extends Logging {
   implicit val idPatternDecoder: Decoder[UserIdPattern] =
     DecoderHelpers.decodeStringLikeNonEmpty.map(User.Id.apply).map(UserIdPattern.apply)
 
-  implicit val groupNamesUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[GroupName]] =
+  implicit val groupIdsUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[GroupId]] =
     SyncDecoderCreator
-      .from(DecoderHelpers.decoderStringLikeOrUniqueNonEmptyList[GroupName])
-      .withError(ValueLevelCreationError(Message("Non empty list of group names is required")))
+      .from(DecoderHelpers.decoderStringLikeOrUniqueNonEmptyList[GroupId])
+      .withError(ValueLevelCreationError(Message("Non empty list of group ids is required")))
       .decoder
 
-  implicit val groupLikesUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[GroupLike]] =
+  implicit val groupIdLikesUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[GroupIdLike]] =
     SyncDecoderCreator
-      .from(DecoderHelpers.decoderStringLikeOrUniqueNonEmptyList[GroupLike])
-      .withError(ValueLevelCreationError(Message("Non empty list of group names or/and patters is required")))
+      .from(DecoderHelpers.decoderStringLikeOrUniqueNonEmptyList[GroupIdLike])
+      .withError(ValueLevelCreationError(Message("Non empty list of group ids or/and patters is required")))
       .decoder
 
   implicit val permittedGroupsDecoder: Decoder[PermittedGroups] =
-    groupLikesUniqueNonEmptyListDecoder.map(PermittedGroups.apply)
+    groupIdLikesUniqueNonEmptyListDecoder.map(PermittedGroups.apply)
 
   implicit val usersUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[User.Id]] =
     DecoderHelpers
@@ -178,10 +178,10 @@ object common extends Logging {
       }
       .decoder
 
-  implicit val groupConvertible: Convertible[GroupLike] = new Convertible[GroupLike] {
-    override def convert: String => Either[ConvertError, GroupLike] = str => {
+  implicit val groupConvertible: Convertible[GroupIdLike] = new Convertible[GroupIdLike] {
+    override def convert: String => Either[ConvertError, GroupIdLike] = str => {
       NonEmptyString.from(str) match {
-        case Right(nonEmptyResolvedValue) => Right(GroupLike.from(nonEmptyResolvedValue))
+        case Right(nonEmptyResolvedValue) => Right(GroupIdLike.from(nonEmptyResolvedValue))
         case Left(_) => Left(ConvertError("Group cannot be empty"))
       }
     }
