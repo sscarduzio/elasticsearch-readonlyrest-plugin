@@ -603,7 +603,7 @@ components:
 
     GroupId:
       type: string
-      description: It's a group id that the user belongs to
+      description: It's a group ID that the user belongs to
 
     Group:
       type: object
@@ -615,7 +615,7 @@ components:
           $ref: '#/components/schemas/GroupId'
         name:
           type: string
-          description: It's a group name used in tenancy selector in ROR Kibana
+          description: It's a human-readable group name used in tenancy selector in ROR Kibana
 
     KibanaAllowedApiPath:
       type: object
@@ -1149,13 +1149,13 @@ components:
       oneOf:
         - $ref: '#/components/schemas/LdapAuthorizationService'
         - $ref: '#/components/schemas/ExternalAuthenticationService'
-        - $ref: '#/components/schemas/ExternalAuthortizationService'
+        - $ref: '#/components/schemas/ExternalAuthorizationService'
       discriminator:
         propertyName: type
         mapping:
           LDAP: '#/components/schemas/LdapAuthorizationService'
           EXT_AUTHN: '#/components/schemas/ExternalAuthenticationService'
-          EXT_AUTHZ: '#/components/schemas/ExternalAuthortizationService'
+          EXT_AUTHZ: '#/components/schemas/ExternalAuthorizationService'
 
     LdapAuthorizationService:
       type: object
@@ -1217,7 +1217,7 @@ components:
           items:
             $ref: '#/components/schemas/MockServiceUsers'
 
-    ExternalAuthortizationService:
+    ExternalAuthorizationService:
       type: object
       required:
         - type
@@ -1284,10 +1284,10 @@ components:
       properties:
         id:
           type: string
-          description: It's a group id that the user belongs to
+          description: It's a group ID that the user belongs to
         name:
           type: string
-          description: It's a group name used in the tenancy selector in ROR Kibana. If not defined, the group id is used as the group name
+          description: It's a human-readable group name used in the tenancy selector in ROR Kibana. If not defined, the group ID is used as the group name
       example:
         - id: DeveloperGroup
           name: Developer
@@ -1319,7 +1319,7 @@ components:
       name: X-ROR-Current-Group
       in: header
       required: false
-      description: The selected user's group id in the tenancy selector
+      description: The selected user's group ID in the tenancy selector
       schema:
         $ref: '#/components/schemas/GroupId'
 
@@ -1585,21 +1585,26 @@ components:
               users:
                 - name: JohnDoe
                   groups:
-                    - Developer
-                    - DevOps
+                    - id: DeveloperGroup
+                      name: Developer
+                    - id: DevOpsGroup
+                      name: DevOps
                 - name: RobertSmith
                   groups:
-                    - Manager
+                    - id: ManagerGroup
+                      name: Manager
           - type: LDAP
             name: LDAP 2
             mock:
               users:
                 - name: JohnDoe
                   groups:
-                    - DevOps
+                    - id: DevOpsGroup
+                      name: DevOps
                 - name: JudyBrown
                   groups:
-                    - Customer
+                    - id: CustomerGroup
+                      name: Customer
           - type: EXT_AUTHN
             name: ACME1 External Authentication Service
             mock:
@@ -1613,10 +1618,12 @@ components:
               users:
                 - name: JaimeRhynes
                   groups:
-                    - Customer
+                    - id: CustomerGroup
+                      name: Customer
                 - name: Martian
                   groups:
-                    - Visitor
+                    - id: VisitorGroup
+                      name: Visitor
 
     AllTypesOfAuthServicesConfiguredRequestExample:
       summary: Three types of currently mockable Auth Services are configured
@@ -1628,21 +1635,26 @@ components:
               users:
                 - name: JohnDoe
                   groups:
-                    - Developer
-                    - DevOps
+                    - id: DeveloperGroup
+                      name: Developer
+                    - id: DevOpsGroup
+                      name: DevOps
                 - name: RobertSmith
                   groups:
-                    - Manager
+                    - id: ManagerGroup
+                      name: Manager
           - type: LDAP
             name: LDAP 2
             mock:
               users:
                 - name: JohnDoe
                   groups:
-                    - DevOps
+                    - id: DevOpsGroup
+                      name: DevOps
                 - name: JudyBrown
                   groups:
-                    - Customer
+                    - id: CustomerGroup
+                      name: Customer
           - type: EXT_AUTHN
             name: ACME1 External Authentication Service
             mock:
@@ -1656,10 +1668,12 @@ components:
               users:
                 - name: JaimeRhynes
                   groups:
-                    - Customer
+                    - id: CustomerGroup
+                      name: Customer
                 - name: Martian
                   groups:
-                    - Visitor
+                    - id: VisitorGroup
+                      name: Visitor
 
     NoAuthServiceConfiguredResponseExample:
       summary: Three types of currently mockable Auth Services are not configured yet
@@ -1707,21 +1721,26 @@ components:
               users:
                 - name: JohnDoe
                   groups:
-                    - Developer
-                    - DevOps
+                    - id: DeveloperGroup
+                      name: Developer
+                    - id: DevOpsGroup
+                      name: DevOps
                 - name: RobertSmith
                   groups:
-                    - Manager
+                    - id: ManagerGroup
+                      name: Manager
           - type: LDAP
             name: LDAP 2
             mock:
               users:
                 - name: JohnDoe
                   groups:
-                    - DevOps
+                    - id: DevOpsGroup
+                      name: DevOps
                 - name: JudyBrown
                   groups:
-                    - Customer
+                    - id: CustomerGroup
+                      name: Customer
           - type: EXT_AUTHN
             name: ACME1 External Authentication Service
             mock: NOT_CONFIGURED
@@ -1739,21 +1758,26 @@ components:
               users:
                 - name: JohnDoe
                   groups:
-                    - Developer
-                    - DevOps
+                    - id: DeveloperGroup
+                      name: Developer
+                    - id: DevOpsGroup
+                      name: DevOps
                 - name: RobertSmith
                   groups:
-                    - Manager
+                    - id: ManagerGroup
+                      name: Manager
           - type: LDAP
             name: LDAP 2
             mock:
               users:
                 - name: JohnDoe
                   groups:
-                    - DevOps
+                    - id: DevOpsGroup
+                      name: DevOps
                 - name: JudyBrown
                   groups:
-                    - Customer
+                    - id: CustomerGroup
+                      name: Customer
           - type: EXT_AUTHN
             name: ACME1 External Authentication Service
             mock: NOT_CONFIGURED
