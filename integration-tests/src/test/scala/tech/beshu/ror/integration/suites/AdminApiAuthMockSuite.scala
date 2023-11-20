@@ -1310,8 +1310,10 @@ class AdminApiAuthMockSuite
          |}
          |""".stripMargin
     )
+    val documentType = "settings"
     val documentManager = new DocumentManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
-    documentManager.createDoc(readonlyrestIndexName, testSettingsEsDocumentId, testSettingsJson).isSuccess should be(true)
+    val createDocResponse = documentManager.createDoc(readonlyrestIndexName, documentType, testSettingsEsDocumentId, testSettingsJson)
+    createDocResponse.isSuccess should be(true)
   }
 
   private def assertAuthMocksInIndex(expectedMocks: Value) = {
