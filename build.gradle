@@ -1,0 +1,9 @@
+import tech.beshu.ror.gradle.RorTaskFinder
+
+plugins { id 'base' }
+
+tasks.register("buildRorPlugin", RorTaskFinder) {
+    dependsOn it.findRorTaskForEsVersion()
+}
+
+

@@ -24,6 +24,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationSe
 import tech.beshu.ror.accesscontrol.domain.LocalUsers
 import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
 
+import scala.annotation.unused
+
 final case class RorConfig(services: RorConfig.Services,
                            localUsers: LocalUsers,
                            impersonationWarningsReader: ImpersonationWarningsReader,
@@ -46,7 +48,7 @@ object RorConfig {
 
   object NoOpImpersonationWarningsReader extends ImpersonationWarningsReader {
     override def read()
-                     (implicit requestId: RequestId): List[ImpersonationWarning] = List.empty
+                     (implicit @unused requestId: RequestId): List[ImpersonationWarning] = List.empty
   }
 
 }

@@ -18,6 +18,9 @@
 pluginManagement {
     includeBuild('build-base')
 }
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.7.0'
+}
 
 rootProject.name = 'readonlyrest'
 include 'ror-shadowed-libs'
@@ -52,6 +55,7 @@ include 'es87x'
 include 'es88x'
 include 'es89x'
 include 'es810x'
+include 'es811x'
 include 'ror-tools-core'
 include 'ror-tools'
 include 'tests-utils'

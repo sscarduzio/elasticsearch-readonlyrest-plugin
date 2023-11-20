@@ -166,8 +166,8 @@ class Elasticsearch(esVersion: String,
   private def baseJavaOptsBuilder = {
     EsJavaOptsBuilder
       .empty
-      .add("-Xms1g")
-      .add("-Xmx1g")
+      .add("-Xms512m")
+      .add("-Xmx512m")
       .add("-Djava.security.egd=file:/dev/./urandoms")
       .add("-Xdebug", s"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${xDebugAddressBasedOn(esVersion)}")
   }

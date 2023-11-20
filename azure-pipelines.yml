@@ -56,7 +56,7 @@ stages:
           - script: |
               echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
               echo "[CVE] executing ROR_TASK=$ROR_TASK"
-              bin/build.sh
+              bin/run-pipeline.sh
             continueOnError: true
             env:
               ROR_TASK: cve_check
@@ -76,7 +76,7 @@ stages:
               export aws_secret_access_key=$var_aws_secret_access_key 
               
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              bin/build.sh
+              bin/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -108,7 +108,7 @@ stages:
               export aws_secret_access_key=$var_aws_secret_access_key 
               
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              bin/build.sh
+              bin/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -121,6 +121,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            IT_es811x:
+              ROR_TASK: integration_es811x
             IT_es810x:
               ROR_TASK: integration_es810x
             IT_es89x:
@@ -156,7 +158,7 @@ stages:
               export aws_secret_access_key=$var_aws_secret_access_key 
               
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              bin/build.sh
+              bin/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -169,8 +171,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            IT_es810x:
-              ROR_TASK: integration_es810x
+            IT_es811x:
+              ROR_TASK: integration_es811x
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
@@ -187,7 +189,7 @@ stages:
               export aws_secret_access_key=$var_aws_secret_access_key 
               
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              bin/build.sh
+              bin/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -252,7 +254,7 @@ stages:
               export aws_secret_access_key=$var_aws_secret_access_key 
               
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              bin/build.sh
+              bin/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -296,7 +298,7 @@ stages:
               export aws_secret_access_key=$var_aws_secret_access_key
               
               echo "[BLD_TEST] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Creating deliverables" && bin/build.sh
+              echo ">>> ($ROR_TASK) Creating deliverables" && bin/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -320,7 +322,7 @@ stages:
               export aws_secret_access_key=$var_aws_secret_access_key
               
               echo "[BLD_TEST] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Creating deliverables" && bin/build.sh
+              echo ">>> ($ROR_TASK) Creating deliverables" && bin/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -354,11 +356,6 @@ stages:
               sh -c "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confold" -y install sudo"
             displayName: 'Install Sudo in container #HACK - See https://github.com/microsoft/azure-pipelines-agent/issues/2043'
 
-          - script: |
-              /tmp/docker exec -t -u 0 ci-container \
-              sh -c "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confold" -y install sudo"
-            displayName: 'Install Sudo in container #HACK - See https://github.com/microsoft/azure-pipelines-agent/issues/2043'
-
           - task: Bash@3
             inputs:
               targetType: 'inline'
@@ -375,7 +372,7 @@ stages:
                 export aws_secret_access_key=$var_aws_secret_access_key
                 
                 echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
-                echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/build.sh
+                echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/run-pipeline.sh
                 echo ">>> ($ROR_TASK) Git tag and upload to S3" && ci/ci-deploy.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
@@ -386,7 +383,6 @@ stages:
           matrix:
             PKG_es8xx:
               ROR_TASK: package_es8xx
-
       - job:
         steps:
           - checkout: self
@@ -404,7 +400,7 @@ stages:
               echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
               
               echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/build.sh
+              echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/run-pipeline.sh
               echo ">>> ($ROR_TASK) Tag and upload to S3" && ci/ci-deploy.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
@@ -431,7 +427,7 @@ stages:
             persistCredentials: true
           - script: |
               echo "[MVN_COMPILE] executing ROR_TASK = $ROR_TASK"
-              bin/build.sh
+              bin/run-pipeline.sh
             env:
               ROR_TASK: audit_compile
 
@@ -485,7 +481,7 @@ stages:
               export MAVEN_STAGING_PROFILE_ID=$VAR_MAVEN_STAGING_PROFILE_ID
               export GPG_KEY_ID=$VAR_GPG_KEY_ID
               export GPG_PASSPHRASE=$VAR_GPG_PASSPHRASE
-              echo ">>> ($ROR_TASK) Publishing artifacts" && bin/build.sh
+              echo ">>> ($ROR_TASK) Publishing artifacts" && bin/run-pipeline.sh
             env:
               ROR_TASK: publish_artifacts
               VAR_MAVEN_REPO_PASSWORD: $(MAVEN_REPO_PASSWORD)

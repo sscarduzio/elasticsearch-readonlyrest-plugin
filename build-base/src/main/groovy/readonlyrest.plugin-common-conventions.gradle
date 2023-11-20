@@ -20,10 +20,10 @@ plugins {
 }
 
 project.ext {
+    pluginName = rootProject.properties['pluginName']
     publishedPluginVersion = rootProject.properties['pluginVersion']
     pluginVersion = rootProject.properties['pluginVersion']
-    esVersion = project.properties['esVersion']
-    pluginName = rootProject.properties['pluginName']
+    esVersion = project.hasProperty('esVersion') ? project.property('esVersion') : project.property('latestSupportedEsVersion')
     s3BucketName = System.env.BUCKET ?: "readonlyrest-data"
 }
 
@@ -78,14 +78,6 @@ tasks.withType(ScalaCompile).configureEach {
 tasks.withType(Zip).configureEach { task ->
     task.doLast {
         ant.checksum file: it.archivePath, algorithm: 'sha1'
-    }
-}
-
-tasks.register('configureEsVersion') {
-    doLast {
-        if (project.hasProperty('esVersion')) {
-            esVersion = project.properties['esVersion']
-        }
     }
 }
 
