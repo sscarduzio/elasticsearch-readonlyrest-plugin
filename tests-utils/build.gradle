@@ -10,9 +10,10 @@ repositories {
     maven { url 'https://jitpack.io' }
 }
 
-compileScala {
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
 }
 
 configurations {
@@ -50,7 +51,7 @@ dependencies {
     api group: 'org.apache.commons',             name: 'commons-lang3',                     version: '3.9'
     api group: 'commons-lang',                   name: 'commons-lang',                      version: '2.6'
     api group: 'net.jodah',                      name: 'failsafe',                          version: '2.0.1'
-    api group: 'org.gradle',                     name: 'gradle-tooling-api',                version: '4.10.2'
+    api group: 'org.gradle',                     name: 'gradle-tooling-api',                version: '7.4.2'
     api group: 'com.google.code.gson',           name: 'gson',                              version: '2.9.0'
     api group: 'com.google.guava',               name: 'guava',                             version: '21.0'
     api group: 'org.apache.httpcomponents',      name: 'httpclient',                        version: '4.5.13'

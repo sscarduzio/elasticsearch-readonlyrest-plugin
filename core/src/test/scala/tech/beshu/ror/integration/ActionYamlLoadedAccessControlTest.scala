@@ -94,7 +94,7 @@ class ActionYamlLoadedAccessControlTest extends AnyWordSpec with BaseYamlLoadedA
       }
       "not allow to proceed" when {
         "the action is not on the configured list" in {
-          val request = MockRequestContext.metadata.copy(action = MockRequestContext.defaultAction)
+          val request = MockRequestContext.metadata.copy(action = MockRequestContext.roAction)
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           inside(result.result) { case ForbiddenByMismatched(_) => }
         }

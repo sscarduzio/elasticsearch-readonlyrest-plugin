@@ -38,9 +38,7 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{Header, LocalUsers, RorConfigurationIndex, User, UserIdPatterns}
-import tech.beshu.ror.accesscontrol.factory.GlobalSettings.UsernameCaseMapping
+import tech.beshu.ror.accesscontrol.domain.{Header, LocalUsers, RorConfigurationIndex, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.{Attributes, CoreCreationError}
@@ -58,7 +56,6 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.Transformati
 import tech.beshu.ror.configuration.RorConfig.ImpersonationWarningsReader
 import tech.beshu.ror.configuration.{RawRorConfig, RorConfig, EnvironmentConfig}
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.yaml.YamlOps
 
 final case class Core(accessControl: AccessControl,
@@ -192,12 +189,11 @@ class RawRorConfigBasedCoreFactory()
                                         definitions: DefinitionsPack,
                                         globalSettings: GlobalSettings,
                                         mocksProvider: MocksProvider): State[ACursor, RuleDecodingResult] = {
-    val caseMappingEquality: UserIdCaseMappingEquality = createUserMappingEquality(globalSettings)
     State(cursor => {
       if (!cursor.keys.toList.flatten.contains(name)) {
         (cursor, RuleDecodingResult.Skipped)
       } else {
-        ruleDecoderBy(Rule.Name(name), definitions, globalSettings, mocksProvider, caseMappingEquality) match {
+        ruleDecoderBy(Rule.Name(name), definitions, globalSettings, mocksProvider) match {
           case Some(decoder) =>
             decoder.tryDecode(cursor) match {
               case Right(RuleDecoder.Result(rule, unconsumedCursor)) =>
@@ -210,13 +206,6 @@ class RawRorConfigBasedCoreFactory()
         }
       }
     })
-  }
-
-  private def createUserMappingEquality(globalSettings: GlobalSettings) = {
-    globalSettings.usernameCaseMapping match {
-      case UsernameCaseMapping.CaseSensitive => UserIdEq.caseSensitive
-      case UsernameCaseMapping.CaseInsensitive => UserIdEq.caseInsensitive
-    }
   }
 
   private def blockDecoder(definitions: DefinitionsPack,
@@ -286,7 +275,6 @@ class RawRorConfigBasedCoreFactory()
                           ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                           globalSettings: GlobalSettings,
                           mocksProvider: MocksProvider): AsyncDecoder[Core] = {
-    val caseMappingEquality: UserIdCaseMappingEquality = createUserMappingEquality(globalSettings)
     AsyncDecoderCreator.instance[Core] { c =>
       val decoder = for {
         dynamicVariableTransformationAliases <-
@@ -305,7 +293,7 @@ class RawRorConfigBasedCoreFactory()
         ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder(ldapConnectionPoolProvider)
         rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance(variableCreator))
         impersonationDefinitionsDecoderCreator = new ImpersonationDefinitionsDecoderCreator(
-          caseMappingEquality, authenticationServices, authProxies, ldapServices, mocksProvider
+          globalSettings, authenticationServices, authProxies, ldapServices, mocksProvider
         )
         impersonationDefs <- AsyncDecoderCreator.from(impersonationDefinitionsDecoderCreator.create)
         userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(
@@ -317,7 +305,7 @@ class RawRorConfigBasedCoreFactory()
           ldapServices,
           Some(impersonationDefs),
           mocksProvider,
-          caseMappingEquality
+          globalSettings
         ))
         obfuscatedHeaders <- AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
         blocksNel <- {
@@ -416,7 +404,7 @@ class RawRorConfigBasedCoreFactory()
         if (userIdPattern.containsWildcard) {
           LocalUsers(users = Set.empty, unknownUsers = unknownUsersForWildcardPattern)
         } else {
-          LocalUsers(users = Set(User.Id(userIdPattern.value)), unknownUsers = false)
+          LocalUsers(users = Set(userIdPattern.value), unknownUsers = false)
         }
       }
       .toList

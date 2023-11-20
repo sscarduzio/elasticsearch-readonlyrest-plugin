@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
-import cats.Eq
 import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.RequestId
@@ -29,17 +28,16 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, LoggedUser, PermittedGroups, User}
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic, LoggedUser, PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings,
-                                override val impersonation: Impersonation,
-                                implicit val caseMappingEquality: UserIdCaseMappingEquality)
+                                override implicit val userIdCaseSensitivity: CaseSensitivity,
+                                override val impersonation: Impersonation)
   extends BaseAuthorizationRule {
 
-  private val userMatcher = MatcherWithWildcardsScalaAdapter[User.Id](settings.users.toSet)
+  private val userMatcher = PatternsMatcher.create[User.Id](settings.users.toSet)
 
   override val name: Rule.Name = ExternalAuthorizationRule.Name.name
 
@@ -54,7 +52,7 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
     settings.service.grantsFor(user.id)
 
   override protected def mockedGroupsOf(user: User.Id, mocksProvider: MocksProvider)
-                                       (implicit requestId: RequestId, eq: Eq[User.Id]): Groups = {
+                                       (implicit requestId: RequestId): Groups = {
     mocksProvider
       .externalAuthorizationServiceWith(settings.service.id)
       .map { mock =>

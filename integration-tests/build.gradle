@@ -10,9 +10,10 @@ repositories {
     maven { url 'https://artifacts.elastic.co/maven' }
 }
 
-compileScala {
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
 }
 
 configurations {
@@ -20,7 +21,6 @@ configurations {
         transitive = false
     }
 }
-
 
 tasks.withType(ScalaCompile).configureEach {
     // Map plugin jars to -Xplugin parameter
@@ -43,7 +43,6 @@ tasks.withType(ScalaCompile).configureEach {
     // Finally set the additionalParameters
     scalaCompileOptions.additionalParameters = parameters
 }
-
 
 test {
     systemProperty "project.dir", rootProject.projectDir

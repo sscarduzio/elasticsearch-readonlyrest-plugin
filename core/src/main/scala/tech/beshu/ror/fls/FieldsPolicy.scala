@@ -18,7 +18,7 @@ package tech.beshu.ror.fls
 
 import java.util.regex.Pattern
 
-import tech.beshu.ror.Constants
+import tech.beshu.ror.constants
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 
@@ -27,7 +27,7 @@ class FieldsPolicy(fieldsRestrictions: FieldsRestrictions) {
   private val enhancedFields = fieldsRestrictions.documentFields.toList.map(new FieldsPolicy.EnhancedDocumentField(_))
 
   def canKeep(field: String): Boolean = {
-    Constants.FIELDS_ALWAYS_ALLOW.contains(field) || {
+    constants.FIELDS_ALWAYS_ALLOW.contains(field) || {
       fieldsRestrictions.mode match {
         case AccessMode.Whitelist =>
           enhancedFields.exists(f => whitelistMatch(f, field))

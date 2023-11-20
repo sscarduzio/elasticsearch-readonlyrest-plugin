@@ -14,12 +14,6 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-buildscript {
-    ext {
-        esVersion = project.properties['esVersion'] ?: "unknown"
-    }
-}
-
 plugins {
     id "readonlyrest.base-common-conventions"
 
@@ -61,9 +55,13 @@ dependencies {
     api group: 'com.lihaoyi',                   name: 'os-lib_2.13',                      version: '0.8.1'
 }
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+}
+
 compileScala {
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
     options.compilerArgs.addAll(
             "-unchecked",
             "-Ywarn-macros:after",

@@ -21,14 +21,14 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.action.RestToXContentListener
 import org.elasticsearch.rest._
-import tech.beshu.ror.Constants
+import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, RRUserMetadataRequest, RRUserMetadataResponse}
 
 @Inject
 class RestRRUserMetadataAction(controller: RestController)
   extends BaseRestHandler with RestHandler {
 
-  register("GET", Constants.CURRENT_USER_METADATA_PATH)
+  register("GET", constants.CURRENT_USER_METADATA_PATH)
 
   override val getName: String = "ror-user-metadata-handler"
 

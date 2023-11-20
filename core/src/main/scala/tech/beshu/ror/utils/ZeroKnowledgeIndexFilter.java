@@ -39,7 +39,7 @@ public class ZeroKnowledgeIndexFilter {
    * @param indicesWriter function to write indices in request.
    * @return can be allowed
    */
-  public boolean alterIndicesIfNecessaryAndCheck(Set<String> indices, StringMatcherWithWildcards matcher, Consumer<Set<String>> indicesWriter) {
+  public boolean alterIndicesIfNecessaryAndCheck(Set<String> indices, StringPatternsMatcherJava matcher, Consumer<Set<String>> indicesWriter) {
     Set<String> modifiedIndices = alterIndicesIfNecessary(indices, matcher);
     if (modifiedIndices != null) {
       if (modifiedIndices.isEmpty()) {
@@ -52,7 +52,7 @@ public class ZeroKnowledgeIndexFilter {
     return true;
   }
 
-  private Set<String> alterIndicesIfNecessary(Set<String> indices, StringMatcherWithWildcards matcher) {
+  private Set<String> alterIndicesIfNecessary(Set<String> indices, StringPatternsMatcherJava matcher) {
 
     boolean shouldReplace = false;
 
@@ -67,15 +67,15 @@ public class ZeroKnowledgeIndexFilter {
 
     if (indices.contains("*")) {
       if (!remoteClusterAware) {
-        return matcher.getMatchers();
+        return matcher.getPatterns();
       }
       if (indices.size() == 1) {
-        return matcher.getMatchers().stream().filter(m -> !m.contains(":")).collect(Collectors.toSet());
+        return matcher.getPatterns().stream().filter(m -> !m.contains(":")).collect(Collectors.toSet());
       }
       else {
         shouldReplace = true;
         indices.remove("*");
-        indices.addAll(matcher.getMatchers().stream().filter(m -> !m.contains(":")).collect(Collectors.toSet()));
+        indices.addAll(matcher.getPatterns().stream().filter(m -> !m.contains(":")).collect(Collectors.toSet()));
       }
     }
 
@@ -86,8 +86,8 @@ public class ZeroKnowledgeIndexFilter {
         continue;
       }
 
-      StringMatcherWithWildcards revMatcher = new StringMatcherWithWildcards(Sets.newHashSet(i));
-      Set<String> matched = revMatcher.filter(matcher.getMatchers());
+      StringPatternsMatcherJava revMatcher = new StringPatternsMatcherJava(Sets.newHashSet(i), matcher.getCaseSensitivity());
+      Set<String> matched = revMatcher.filter(matcher.getPatterns());
 
       if (!matched.isEmpty()) {
         newIndices.addAll(matched);

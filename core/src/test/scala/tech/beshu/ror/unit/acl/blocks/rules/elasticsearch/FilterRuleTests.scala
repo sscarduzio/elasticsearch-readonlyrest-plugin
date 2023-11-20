@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{Filter, User}
+import tech.beshu.ror.accesscontrol.domain.{Action, Filter, User}
 import tech.beshu.ror.mocks.MockRequestContext
 
 class FilterRuleTests extends AnyWordSpec with MockFactory {
@@ -43,7 +43,7 @@ class FilterRuleTests extends AnyWordSpec with MockFactory {
         "search request block context is used" in {
           val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
           val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
-          val requestContext = MockRequestContext.indices.copy(isReadOnlyRequest = false)
+          val requestContext = MockRequestContext.indices.copy(action = Action("indices:data/write/index"))
           val blockContext = FilterableRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
 
           rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
@@ -61,7 +61,7 @@ class FilterRuleTests extends AnyWordSpec with MockFactory {
         "multi search request block context is used" in {
           val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
           val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
-          val requestContext = MockRequestContext.indices.copy(isReadOnlyRequest = false)
+          val requestContext = MockRequestContext.indices.copy(action = Action("indices:data/write/index"))
           val blockContext = FilterableMultiRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, List.empty, None)
 
           rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
@@ -79,7 +79,7 @@ class FilterRuleTests extends AnyWordSpec with MockFactory {
       "filter value can be resolved" in {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
-        val requestContext = MockRequestContext.indices.copy(isReadOnlyRequest = false)
+        val requestContext = MockRequestContext.indices.copy(action = Action("indices:data/write/index"))
         val blockContext = FilterableRequestBlockContext(
           requestContext = requestContext,
           userMetadata = UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(User.Id("bob"))),
@@ -107,7 +107,7 @@ class FilterRuleTests extends AnyWordSpec with MockFactory {
       "filter value cannot be resolved" in {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
-        val requestContext = MockRequestContext.indices.copy(isReadOnlyRequest = false)
+        val requestContext = MockRequestContext.indices.copy(action = Action("indices:data/write/index"))
         val blockContext = FilterableRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
 
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())

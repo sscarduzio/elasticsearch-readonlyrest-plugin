@@ -19,18 +19,14 @@ package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 import cats.Id
 import cats.data.ReaderT
 import cats.implicits._
-import eu.timepit.refined.auto._
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.BaseKibanaRule.Settings
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
-import tech.beshu.ror.accesscontrol.domain.KibanaIndexName._
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers._
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local.devNullKibana
-import tech.beshu.ror.accesscontrol.domain.IndexName.Wildcard
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
+import tech.beshu.ror.accesscontrol.domain.KibanaIndexName._
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.matchers.{DataStreamMatcher, IndicesMatcher, MatcherWithWildcardsScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 import java.util.regex.Pattern
@@ -180,7 +176,7 @@ abstract class BaseKibanaRule(val settings: Settings) extends Logging {
   private def isRelatedToKibanaSampleDataIndex = ProcessingContext.create { (requestContext, _) =>
     val result = requestContext.initialBlockContext.indices.toList match {
       case Nil => false
-      case head :: Nil => Matchers.kibanaSampleDataIndexMatcher.`match`(head)
+      case head :: Nil => kibanaSampleDataIndexMatcher.`match`(head)
       case _ => false
     }
     logger.debug(s"[${requestContext.id.show}] Is related to Kibana sample data index? $result")
@@ -190,7 +186,7 @@ abstract class BaseKibanaRule(val settings: Settings) extends Logging {
   private def isRelatedToKibanaSampleDataStream = ProcessingContext.create { (requestContext, _) =>
     val result = requestContext.initialBlockContext.dataStreams.toList match {
       case Nil => false
-      case head :: Nil => Matchers.kibanaSampleDataStreamMatcher.`match`(head)
+      case head :: Nil => kibanaSampleDataStreamMatcher.`match`(head)
       case _ => false
     }
     logger.debug(s"[${requestContext.id.show}] Is related to Kibana sample data index? $result")
@@ -198,37 +194,37 @@ abstract class BaseKibanaRule(val settings: Settings) extends Logging {
   }
 
   private def isRoAction = ProcessingContext.create { (requestContext, _) =>
-    val result = Matchers.roMatcher.`match`(requestContext.action)
+    val result = roActionPatternsMatcher.`match`(requestContext.action)
     logger.debug(s"[${requestContext.id.show}] Is RO action? $result")
     result
   }
 
   private def isClusterAction = ProcessingContext.create { (requestContext, _) =>
-    val result = Matchers.clusterMatcher.`match`(requestContext.action)
+    val result = clusterActionPatternsMatcher.`match`(requestContext.action)
     logger.debug(s"[${requestContext.id.show}] Is Cluster action? $result")
     result
   }
 
   private def isRwAction = ProcessingContext.create { (requestContext, _) =>
-    val result = Matchers.rwMatcher.`match`(requestContext.action)
+    val result = rwActionPatternsMatcher.`match`(requestContext.action)
     logger.debug(s"[${requestContext.id.show}] Is RW action? $result")
     result
   }
 
   private def isAdminAction = ProcessingContext.create { (requestContext, _) =>
-    val result = Matchers.adminMatcher.`match`(requestContext.action)
+    val result = adminActionPatternsMatcher.`match`(requestContext.action)
     logger.debug(s"[${requestContext.id.show}] Is Admin action? $result")
     result
   }
 
   private def isNonStrictAction = ProcessingContext.create { (requestContext, _) =>
-    val result = Matchers.nonStrictActions.`match`(requestContext.action)
+    val result = nonStrictActions.`match`(requestContext.action)
     logger.debug(s"[${requestContext.id.show}] Is non strict action? $result")
     result
   }
 
   private def isIndicesWriteAction = ProcessingContext.create { (requestContext, _) =>
-    val result = Matchers.indicesWriteAction.`match`(requestContext.action)
+    val result = indicesWriteAction.`match`(requestContext.action)
     logger.debug(s"[${requestContext.id.show}] Is indices write action? $result")
     result
   }
@@ -250,19 +246,6 @@ object BaseKibanaRule {
 
   abstract class Settings(val access: KibanaAccess,
                           val rorIndex: RorConfigurationIndex)
-  private object Matchers {
-    val roMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.RO_ACTIONS)
-    val rwMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.RW_ACTIONS)
-    val adminMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.ADMIN_ACTIONS)
-    val clusterMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.CLUSTER_ACTIONS)
-    val nonStrictActions = MatcherWithWildcardsScalaAdapter[Action](Set(
-      Action("indices:data/write/*"), Action("indices:admin/template/put")
-    ))
-    val indicesWriteAction = MatcherWithWildcardsScalaAdapter[Action](Set(Action("indices:data/write/*")))
-
-    val kibanaSampleDataIndexMatcher = IndicesMatcher.create[ClusterIndexName](Set(Local(Wildcard("kibana_sample_data_*"))))
-    val kibanaSampleDataStreamMatcher = DataStreamMatcher.create[DataStreamName](Set(DataStreamName.Pattern("kibana_sample_data_*")))
-  }
 
   type ProcessingContext = ReaderT[Id, (RequestContext, KibanaIndexName), Boolean]
   object ProcessingContext {

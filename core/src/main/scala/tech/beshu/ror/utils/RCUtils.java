@@ -17,8 +17,6 @@
 
 package tech.beshu.ror.utils;
 
-import com.google.common.collect.Sets;
-
 import java.util.regex.Pattern;
 
 /**
@@ -32,34 +30,6 @@ public class RCUtils {
   public static final String LOCALHOST = "127.0.0.1";
 
   private static final Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
-
-  private static StringMatcherWithWildcards readRequestMatcher = new StringMatcherWithWildcards(Sets.newHashSet(
-      "cluster:monitor/*",
-      "cluster:*get*",
-      "cluster:*search*",
-      "cluster:admin/*/get",
-      "cluster:admin/*/status",
-      "indices:admin/*/explain",
-      "indices:admin/aliases/exists",
-      "indices:admin/aliases/get",
-      "indices:admin/exists*",
-      "indices:admin/get*",
-      "indices:admin/mappings/fields/get*",
-      "indices:admin/mappings/get*",
-      "indices:admin/refresh*",
-      "indices:admin/types/exists",
-      "indices:admin/validate/*",
-      "indices:admin/template/get",
-      "indices:data/read/*",
-      "indices:monitor/*",
-      "indices:admin/xpack/rollup/search",
-      "indices:admin/resolve/index",
-      "indices:admin/index_template/get"
-  ));
-
-  public static boolean isReadRequest(String action) {
-    return readRequestMatcher.match(action);
-  }
 
   public static boolean isLocalHost(String remoteHost) {
     return localhostRe.matcher(remoteHost).find();

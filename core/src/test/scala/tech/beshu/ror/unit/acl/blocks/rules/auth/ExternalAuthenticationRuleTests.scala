@@ -37,10 +37,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, PlainTextSecret, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, impersonationHeader, impersonatorDefFrom, mocksProviderForExternalAuthnServiceFrom}
-import tech.beshu.ror.utils.UserIdEq
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -60,8 +59,8 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
         val rule = new ExternalAuthenticationRule(
           Settings(externalAuthenticationService),
-          Impersonation.Disabled,
-          UserIdEq.caseSensitive
+          CaseSensitivity.Enabled,
+          Impersonation.Disabled
         )
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
           GeneralNonIndexRequestBlockContext(
@@ -88,6 +87,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
             val rule = new ExternalAuthenticationRule(
               Settings(externalAuthenticationService),
+              CaseSensitivity.Enabled,
               Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
@@ -97,8 +97,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 mocksProvider = mocksProviderForExternalAuthnServiceFrom(Map(
                   ExternalAuthenticationService.Name("service1") -> Set(User.Id("user1"))
                 ))
-              )),
-              UserIdEq.caseSensitive
+              ))
             )
             rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
               GeneralNonIndexRequestBlockContext(
@@ -125,8 +124,8 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
         val rule = new ExternalAuthenticationRule(
           Settings(externalAuthenticationService),
+          CaseSensitivity.Enabled,
           Impersonation.Disabled,
-          UserIdEq.caseSensitive
         )
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
@@ -140,6 +139,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
             val rule = new ExternalAuthenticationRule(
               Settings(mock[ExternalAuthenticationService]),
+              CaseSensitivity.Enabled,
               Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
@@ -149,8 +149,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 mocksProvider = mocksProviderForExternalAuthnServiceFrom(Map(
                   ExternalAuthenticationService.Name("service1") -> Set(User.Id("user1"))
                 ))
-              )),
-              UserIdEq.caseSensitive
+              ))
             )
 
             rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected(ImpersonationNotAllowed))
@@ -163,6 +162,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
             val rule = new ExternalAuthenticationRule(
               Settings(mock[ExternalAuthenticationService]),
+              CaseSensitivity.Enabled,
               Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
@@ -172,8 +172,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 mocksProvider = mocksProviderForExternalAuthnServiceFrom(Map(
                   ExternalAuthenticationService.Name("service1") -> Set(User.Id("user1"))
                 ))
-              )),
-              UserIdEq.caseSensitive
+              ))
             )
 
             rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected(ImpersonationNotAllowed))
@@ -191,6 +190,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
             val rule = new ExternalAuthenticationRule(
               Settings(externalAuthenticationService),
+              CaseSensitivity.Enabled,
               Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
@@ -200,8 +200,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 mocksProvider = mocksProviderForExternalAuthnServiceFrom(Map(
                   ExternalAuthenticationService.Name("service1") -> Set(User.Id("user2"))
                 ))
-              )),
-              UserIdEq.caseSensitive
+              ))
             )
 
             rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
@@ -219,6 +218,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
             val rule = new ExternalAuthenticationRule(
               Settings(externalAuthenticationService),
+              CaseSensitivity.Enabled,
               Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List(impersonatorDefFrom(
                   userIdPattern = "*",
@@ -226,8 +226,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                   impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = NoOpMocksProvider
-              )),
-              UserIdEq.caseSensitive
+              ))
             )
 
             rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected(ImpersonationNotSupported))
@@ -247,8 +246,8 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
             val rule = new ExternalAuthenticationRule(
               Settings(externalAuthenticationService),
-              Impersonation.Disabled,
-              UserIdEq.caseSensitive
+              CaseSensitivity.Enabled,
+              Impersonation.Disabled
             )
 
             rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())

@@ -21,8 +21,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedC
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeySha256Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
-import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.utils.UserIdEq
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
 
 class AuthKeySha256RuleTests extends BasicAuthenticationTestTemplate(supportingImpersonation = false) {
 
@@ -33,8 +32,8 @@ class AuthKeySha256RuleTests extends BasicAuthenticationTestTemplate(supportingI
       BasicAuthenticationRule.Settings(
         HashedUserAndPassword("280ac6f756a64a80143447c980289e7e4c6918b92588c8095c7c3f049a13fbf9")
       ),
-      impersonation,
-      UserIdEq.caseSensitive
+      CaseSensitivity.Enabled,
+      impersonation
     )
 }
 
@@ -47,7 +46,7 @@ class AuthKeySha256RuleAltSyntaxTests extends BasicAuthenticationTestTemplate(su
       BasicAuthenticationRule.Settings(
         HashedOnlyPassword(User.Id("logstash"), "76cd2c0d589e224531fc6af2c5850e3c9b2aca6902d813ce598833c7c1b28bee")
       ),
-      impersonation,
-      UserIdEq.caseSensitive
+      CaseSensitivity.Enabled,
+      impersonation
     )
 }

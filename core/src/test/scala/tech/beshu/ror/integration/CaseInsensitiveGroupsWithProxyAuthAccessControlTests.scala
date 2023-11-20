@@ -58,7 +58,7 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
   "An ACL" when {
     "user are case insensitive" should {
       "allow to proceed" when {
-        "user i user1" in {
+        "user is user1" in {
           val request = MockRequestContext.indices.copy(
             headers = Set(header("X-Auth-Token", "user1-proxy-id")),
             filteredIndices = Set(clusterIndexName("g12_index")),
@@ -74,7 +74,7 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
             blockContext.userMetadata.availableGroups should be(UniqueList.of(GroupName("group1")))
           }
         }
-        "user i User1" in {
+        "user is User1" in {
           val request = MockRequestContext.indices.copy(
             headers = Set(header("X-Auth-Token", "User1-proxy-id")),
             filteredIndices = Set(clusterIndexName("g12_index")),

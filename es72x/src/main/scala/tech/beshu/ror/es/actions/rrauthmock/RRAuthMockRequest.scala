@@ -22,7 +22,7 @@ import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
 import tech.beshu.ror.api.AuthMockApi
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.{Constants, RequestId}
+import tech.beshu.ror.{constants, RequestId}
 
 class RRAuthMockRequest(authMockApiRequest: AuthMockApi.AuthMockRequest,
                         esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
@@ -41,9 +41,9 @@ object RRAuthMockRequest {
 
   def createFrom(request: RestRequest): RRAuthMockRequest = {
     val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
-      case (Constants.PROVIDE_AUTH_MOCK_PATH, GET) =>
+      case (constants.PROVIDE_AUTH_MOCK_PATH, GET) =>
         AuthMockApi.AuthMockRequest.Type.ProvideAuthMock
-      case (Constants.CONFIGURE_AUTH_MOCK_PATH, POST) =>
+      case (constants.CONFIGURE_AUTH_MOCK_PATH, POST) =>
         AuthMockApi.AuthMockRequest.Type.UpdateAuthMock
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")

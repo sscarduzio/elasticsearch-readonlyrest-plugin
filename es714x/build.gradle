@@ -20,21 +20,24 @@ plugins {
 }
 
 def pluginFullName = pluginName + '-' + version
+def projectJavaLanguageVersion = JavaLanguageVersion.of(8)
+def moduleEsVersion = project.property('esVersion') != null ? project.property('esVersion') : project.property('latestSupportedEsVersion')
 
-compileScala {
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
+java {
+    toolchain {
+        languageVersion = projectJavaLanguageVersion
+    }
 }
 
 dependencies {
     implementation  project(path: ':core')
     implementation  project(path: ':ror-tools', configuration: 'shadow')
     implementation  project(path: ':ror-tools-core')
-    implementation  group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: esVersion
-    implementation  group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-high-level-client',   version: esVersion
+    implementation  group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: moduleEsVersion
+    implementation  group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-high-level-client',   version: moduleEsVersion
     implementation  group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.13'
     compileOnly     group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
-    implementation  group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: esVersion
+    implementation  group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: moduleEsVersion
 }
 
 configurations {
@@ -61,10 +64,13 @@ tasks.register('jarHellCheck', JavaExec) {
     outputs.upToDateWhen { false }
     mainClass.set("org.elasticsearch.jdk.JarHell")
     classpath = project.sourceSets.main.compileClasspath.filter { it.exists() }
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = projectJavaLanguageVersion
+    }
 }
 
 tasks.register('resolvePluginDescriptorTemplate', Copy) {
-    dependsOn configureEsVersion
+    
     outputs.upToDateWhen { false }
     from './plugin-metadata'
     into 'build/tmp/' + pluginFullName
@@ -72,7 +78,7 @@ tasks.register('resolvePluginDescriptorTemplate', Copy) {
             'descriptor': [
                     'name'         : pluginName,
                     'pluginVersion': project.properties['pluginVersion'],
-                    'esVersion'    : project.properties['esVersion']
+                    'esVersion'    : moduleEsVersion
             ]
     ])
 }

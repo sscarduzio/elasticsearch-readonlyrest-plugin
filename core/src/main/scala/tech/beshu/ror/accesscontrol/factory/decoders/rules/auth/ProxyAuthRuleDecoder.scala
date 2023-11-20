@@ -21,8 +21,8 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, ProxyAuth}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ProxyAuthRule
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common.userIdDecoder
@@ -37,7 +37,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth],
                            impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                            mocksProvider: MocksProvider,
-                           implicit val caseMappingEquality: UserIdCaseMappingEquality)
+                           globalSettings: GlobalSettings)
   extends RuleBaseDecoderWithoutAssociatedFields[ProxyAuthRule] {
 
   override protected def decoder: Decoder[RuleDefinition[ProxyAuthRule]] = {
@@ -46,8 +46,8 @@ class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth],
       .map(settings => RuleDefinition.create(
         new ProxyAuthRule(
           settings,
-          impersonatorsDef.toImpersonation(mocksProvider),
-          caseMappingEquality
+          globalSettings.userIdCaseSensitivity,
+          impersonatorsDef.toImpersonation(mocksProvider)
         )
       ))
   }

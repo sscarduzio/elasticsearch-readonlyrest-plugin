@@ -27,6 +27,16 @@ import tech.beshu.ror.utils.js.JsCompiler
 import java.util.regex
 import scala.util.{Failure, Success, Try}
 
+sealed trait CaseSensitivity
+object CaseSensitivity {
+  case object Enabled extends CaseSensitivity
+  case object Disabled extends CaseSensitivity
+
+  // in order to call from java
+  def enabled: Enabled.type = Enabled
+  def disabled: Disabled.type = Disabled
+}
+
 final case class RorAuditLoggerName(value: NonEmptyString)
 object RorAuditLoggerName {
   val default: RorAuditLoggerName = RorAuditLoggerName("readonlyrest_audit")

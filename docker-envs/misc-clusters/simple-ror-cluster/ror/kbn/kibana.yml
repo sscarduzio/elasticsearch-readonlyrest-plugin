@@ -1,8 +1,7 @@
 server.name: kibana-ror
 server.host: 0.0.0.0
-elasticsearch.hosts: [ "${ES_API_URL}" ]
-monitoring.ui.container.elasticsearch.enabled: true
 
+elasticsearch.hosts: [ "${ES_API_URL}" ]
 elasticsearch.username: admin
 elasticsearch.password: container
 
@@ -11,3 +10,7 @@ elasticsearch.ssl.keystore.password: "test"
 elasticsearch.ssl.truststore.path: "/usr/share/kibana/config/elastic-certificates.p12"
 elasticsearch.ssl.truststore.password: "test"
 elasticsearch.ssl.verificationMode: none
+
+readonlyrest_kbn.cookiePass: "12345678901234567890123456789012345678901234567890123456789012345678901234567890"
+
+monitoring.ui.container.elasticsearch.enabled: true

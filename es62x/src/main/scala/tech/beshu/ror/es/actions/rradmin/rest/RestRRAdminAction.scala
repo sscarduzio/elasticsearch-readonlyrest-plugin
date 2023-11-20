@@ -21,7 +21,7 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest._
-import tech.beshu.ror.Constants
+import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, RRAdminRequest, RRAdminResponse}
 import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
@@ -29,10 +29,10 @@ import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 class RestRRAdminAction(settings: Settings, controller: RestController)
   extends BaseRestHandler(settings) with RestHandler {
 
-  register("POST", Constants.FORCE_RELOAD_CONFIG_PATH)
-  register("GET", Constants.PROVIDE_INDEX_CONFIG_PATH)
-  register("POST", Constants.UPDATE_INDEX_CONFIG_PATH)
-  register("GET", Constants.PROVIDE_FILE_CONFIG_PATH)
+  register("POST", constants.FORCE_RELOAD_CONFIG_PATH)
+  register("GET", constants.PROVIDE_INDEX_CONFIG_PATH)
+  register("POST", constants.UPDATE_INDEX_CONFIG_PATH)
+  register("GET", constants.PROVIDE_FILE_CONFIG_PATH)
 
   override val getName: String = "ror-admin-handler"
 
