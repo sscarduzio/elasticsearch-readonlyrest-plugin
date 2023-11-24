@@ -268,6 +268,7 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
     #es717x
+    ./gradlew --stacktrace buildRorPlugin '-PesVersion=7.17.15'
     ./gradlew --stacktrace buildRorPlugin '-PesVersion=7.17.14'
     ./gradlew --stacktrace buildRorPlugin '-PesVersion=7.17.13'
 
@@ -441,8 +442,7 @@ if [[ $ROR_TASK == "publish_artifacts" ]] && [[ $TRAVIS_BRANCH == "master" ]] ; 
 
     if [[ $CURRENT_PLUGIN_VER == $PUBLISHED_PLUGIN_VER ]]; then
       echo ">>> Publishing audit module artifacts to sonatype repo"
-      ./gradlew audit:publishToSonatype
-      ./gradlew audit:closeAndReleaseRepository
+      ./gradlew publish closeAndReleaseSonatypeStagingRepository
     else
       echo ">>> Skipping publishing audit module artifacts"
     fi
