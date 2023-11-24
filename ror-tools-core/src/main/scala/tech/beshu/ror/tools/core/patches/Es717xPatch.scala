@@ -19,9 +19,7 @@ package tech.beshu.ror.tools.core.patches
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.EsUtil.readonlyrestPluginPath
-import tech.beshu.ror.tools.core.utils.asm.DeactivateAuthenticationServiceInHttpTransport
-import tech.beshu.ror.tools.core.utils.asm.DeactivateSecurityActionFilter
-import tech.beshu.ror.tools.core.utils.asm.DeactivateSecurityServerTransportInterceptor
+import tech.beshu.ror.tools.core.utils.asm.{DeactivateAuthenticationServiceInHttpTransport, DeactivateSecurityActionFilter, DeactivateSecurityServerTransportInterceptor, MockAuthorizationInfoInAuthorizationService}
 
 import scala.language.postfixOps
 import scala.util.Try
@@ -60,6 +58,7 @@ private[patches] class Es717xPatch(esDirectory: EsDirectory,
     DeactivateSecurityActionFilter(xpackSecurityJarPath toIO)
     DeactivateSecurityServerTransportInterceptor(xpackSecurityJarPath toIO)
     DeactivateAuthenticationServiceInHttpTransport(xpackSecurityJarPath toIO)
+    MockAuthorizationInfoInAuthorizationService(xpackSecurityJarPath toIO)
   }
 
   private def copyJarsToBackupFolder() = Try {

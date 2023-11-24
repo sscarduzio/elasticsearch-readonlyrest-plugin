@@ -77,6 +77,7 @@ private[patches] class Es80xPatch(esDirectory: EsDirectory,
         AddCreateClassLoaderPermission(rorSecurityPolicyPath toIO)
         ModifyPolicyUtilClass(elasticsearchJarPath toIO)
         DeactivateSecurityActionFilter(xpackSecurityJarPath toIO)
+        MockAuthorizationInfoInAuthorizationService(xpackSecurityJarPath toIO)
       case None =>
         new IllegalStateException(s"ReadonlyREST plugin cannot be patched due to not found transport netty4 jar")
     }

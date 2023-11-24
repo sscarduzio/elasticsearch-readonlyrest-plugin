@@ -57,6 +57,7 @@ private[patches] class Es70xPatch(esDirectory: EsDirectory,
   override def execute(): Unit = {
     DeactivateSecurityActionFilter(xpackSecurityJarPath toIO)
     DeactivateSecurityServerTransportInterceptor(xpackSecurityJarPath toIO)
+    MockAuthorizationInfoInAuthorizationService(xpackSecurityJarPath toIO)
   }
 
   private def copyJarsToBackupFolder() = Try {
