@@ -442,8 +442,7 @@ if [[ $ROR_TASK == "publish_artifacts" ]] && [[ $TRAVIS_BRANCH == "master" ]] ; 
 
     if [[ $CURRENT_PLUGIN_VER == $PUBLISHED_PLUGIN_VER ]]; then
       echo ">>> Publishing audit module artifacts to sonatype repo"
-      ./gradlew publish
-      ./gradlew closeAndReleaseSonatypeStagingRepository
+      ./gradlew publish closeAndReleaseSonatypeStagingRepository
     else
       echo ">>> Skipping publishing audit module artifacts"
     fi
