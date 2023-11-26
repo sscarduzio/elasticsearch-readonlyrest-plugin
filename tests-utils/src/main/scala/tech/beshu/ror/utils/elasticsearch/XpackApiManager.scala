@@ -213,7 +213,13 @@ class XpackApiManager(client: RestClient,
          |{
          |  "cluster": [ ${clusterPrivileges.map(p => s"\"$p\"").mkString(",")} ],
          |  "index": [],
-         |  "application": []
+         |  "application": [
+         |    {
+         |      "application": "kibana-.kibana",
+         |      "resources":["space:default"],
+         |      "privileges":["version:7.17.13","login:"]
+         |    }
+         |  ]
          |}
        """.stripMargin))
     request

@@ -949,7 +949,7 @@ trait BaseXpackApiSuite
              |  "username": "ROR",
              |  "has_all_requested": true,
              |  "cluster": {
-             |    "monitor": false
+             |    "monitor": true
              |  },
              |  "index": {},
              |  "application": {}

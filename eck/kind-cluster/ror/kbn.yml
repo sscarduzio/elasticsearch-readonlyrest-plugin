@@ -3,14 +3,14 @@ kind: Kibana
 metadata:
   name: quickstart
 spec:
-  version: 7.17.13
-  image: coutopl/kbn_7.17.13_ror_1.53.0
+  version: 8.7.1
+  image: coutopl/kbn_8.7.1_ror_1.53.0
   count: 1
   elasticsearchRef:
     name: quickstart
   config:
     readonlyrest_kbn.cookiePass: "12345678901234567890123456789012345678901234567890"
-#    readonlyrest_kbn.logLevel: "trace"
+    readonlyrest_kbn.logLevel: "trace"
   podTemplate:
     spec:
       securityContext:
