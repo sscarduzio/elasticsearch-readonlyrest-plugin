@@ -7,7 +7,7 @@ spec:
   image: coutopl/es_8.7.1_ror_1.54.0-pre1
   nodeSets:
   - name: default
-    count: 2
+    count: 1
     podTemplate:
       spec:
         securityContext:
