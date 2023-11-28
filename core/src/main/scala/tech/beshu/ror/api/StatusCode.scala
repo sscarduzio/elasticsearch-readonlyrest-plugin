@@ -14,11 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
+package tech.beshu.ror.api
 
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
-import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-
-private [implementations] object domain {
-  case class LdapGroup(id: GroupId, dn: Dn)
+sealed abstract class StatusCode(val code: Int)
+object StatusCode {
+  case object Ok extends StatusCode(200)
+  case object BadRequest extends StatusCode(400)
 }

@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedC
 import tech.beshu.ror.accesscontrol.blocks.rules.auth._
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
@@ -70,12 +70,12 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |
                    |""".stripMargin,
               assertion = rule => {
-                val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("group1").nel)))
-                rule.settings.permittedGroups should be(groups)
+                val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel)))
+                rule.settings.permittedGroupIds should be(groups)
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")))))
-                  localGroups should be(UniqueNonEmptyList.of(GroupName("group1"), GroupName("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(group("group1"), group("group3")))
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
@@ -102,12 +102,12 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |
                    |""".stripMargin,
               assertion = rule => {
-                val permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("group1").nel)))
-                rule.settings.permittedGroups should be(permittedGroups)
+                val permittedGroups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel)))
+                rule.settings.permittedGroupIds should be(permittedGroups)
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("car*")))))
-                  localGroups should be(UniqueNonEmptyList.of(GroupName("group1"), GroupName("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(group("group1"), group("group3")))
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
@@ -134,12 +134,12 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |
                    |""".stripMargin,
               assertion = rule => {
-                val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(AlreadyResolved(GroupName("group1").nel)))
-                rule.settings.permittedGroups should be(groups)
+                val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel)))
+                rule.settings.permittedGroupIds should be(groups)
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")), User.UserIdPattern(User.Id("ca*")))))
-                  localGroups should be(UniqueNonEmptyList.of(GroupName("group1"), GroupName("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(group("group1"), group("group3")))
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
@@ -150,7 +150,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
           }
         }
         "several groups are defined" when {
-          "no variables are used in group names" in {
+          "no variables are used in group ids" in {
             assertDecodingSuccess(
               yaml =
                 s"""
@@ -172,16 +172,16 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |
                    |""".stripMargin,
               assertion = rule => {
-                val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                  AlreadyResolved(GroupName("group1").nel),
-                  AlreadyResolved(GroupName("group2").nel)
+                val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
+                  AlreadyResolved(GroupId("group1").nel),
+                  AlreadyResolved(GroupId("group2").nel)
                 ))
-                rule.settings.permittedGroups should be(groups)
+                rule.settings.permittedGroupIds should be(groups)
                 rule.settings.usersDefinitions.length should be(2)
                 val sortedUserDefinitions = rule.settings.usersDefinitions
                 inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")))))
-                  localGroups should be(UniqueNonEmptyList.of(GroupName("group1"), GroupName("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(group("group1"), group("group3")))
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
@@ -189,7 +189,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                 }
                 inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("morgan")))))
-                  localGroups should be(UniqueNonEmptyList.of(GroupName("group2"), GroupName("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(group("group2"), group("group3")))
                   authRule shouldBe an[AuthKeySha1Rule]
                   authRule.asInstanceOf[AuthKeySha1Rule].settings should be {
                     BasicAuthenticationRule.Settings(HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a"))
@@ -198,7 +198,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
               }
             )
           }
-          "a variable in used in one group name" in {
+          "a variable in used in one group id" in {
             assertDecodingSuccess(
               yaml =
                 s"""
@@ -216,14 +216,14 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |
                    |""".stripMargin,
               assertion = rule => {
-                rule.settings.permittedGroups.permittedGroups.size shouldBe 2
-                rule.settings.permittedGroups.permittedGroups.head should be(AlreadyResolved(GroupName("group1").nel))
-                rule.settings.permittedGroups.permittedGroups.tail.head shouldBe a[ToBeResolved[_]]
+                rule.settings.permittedGroupIds.permittedGroupIds.size shouldBe 2
+                rule.settings.permittedGroupIds.permittedGroupIds.head should be(AlreadyResolved(GroupId("group1").nel))
+                rule.settings.permittedGroupIds.permittedGroupIds.tail.head shouldBe a[ToBeResolved[_]]
 
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")))))
-                  localGroups should be(UniqueNonEmptyList.of(GroupName("group1"), GroupName("group3")))
+                  localGroups should be(UniqueNonEmptyList.of(group("group1"), group("group3")))
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
@@ -275,16 +275,16 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |
                  |""".stripMargin,
             assertion = rule => {
-              val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                AlreadyResolved(GroupLike.from("group1*").nel),
-                AlreadyResolved(GroupName("group2").nel)
+              val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
+                AlreadyResolved(GroupIdLike.from("group1*").nel),
+                AlreadyResolved(GroupId("group2").nel)
               ))
-              rule.settings.permittedGroups should be(groups)
+              rule.settings.permittedGroupIds should be(groups)
               rule.settings.usersDefinitions.length should be(2)
               val sortedUserDefinitions = rule.settings.usersDefinitions
               inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SeparateRules(rule1, rule2), groupMappings)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")))))
-                groupMappings should be(GroupMappings.Simple(UniqueNonEmptyList.of(GroupName("group1"))))
+                groupMappings should be(GroupMappings.Simple(UniqueNonEmptyList.of(group("group1"))))
 
                 rule1 shouldBe an[AuthKeyRule]
                 rule1.asInstanceOf[AuthKeyRule].settings should be {
@@ -292,12 +292,12 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                 }
                 rule2 shouldBe an[ExternalAuthorizationRule]
                 rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
-                  GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupName("group3"))))
+                  GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
                 )
               }
               inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(rule1, localGroups)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("morgan")))))
-                localGroups should be(UniqueNonEmptyList.of(GroupName("group2"), GroupName("group3")))
+                localGroups should be(UniqueNonEmptyList.of(group("group2"), group("group3")))
                 rule1 shouldBe an[AuthKeySha1Rule]
                 rule1.asInstanceOf[AuthKeySha1Rule].settings should be {
                   BasicAuthenticationRule.Settings(HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a"))
@@ -338,21 +338,21 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |
                  |""".stripMargin,
             assertion = rule => {
-              val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                AlreadyResolved(GroupName("group1").nel),
-                AlreadyResolved(GroupName("group2").nel)
+              val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
+                AlreadyResolved(GroupId("group1").nel),
+                AlreadyResolved(GroupId("group2").nel)
               ))
-              rule.settings.permittedGroups should be(groups)
+              rule.settings.permittedGroupIds should be(groups)
               rule.settings.usersDefinitions.length should be(2)
               val sortedUserDefinitions = rule.settings.usersDefinitions
               inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SingleRule(rule1), groupMappings)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")))))
-                groupMappings should be(GroupMappings.Simple(UniqueNonEmptyList.of(GroupName("group1"))))
+                groupMappings should be(GroupMappings.Simple(UniqueNonEmptyList.of(group("group1"))))
                 rule1 shouldBe an[LdapAuthRule]
               }
               inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(rule1, localGroups)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("morgan")))))
-                localGroups should be(UniqueNonEmptyList.of(GroupName("group2"), GroupName("group3")))
+                localGroups should be(UniqueNonEmptyList.of(group("group2"), group("group3")))
                 rule1 shouldBe an[AuthKeySha1Rule]
                 rule1.asInstanceOf[AuthKeySha1Rule].settings should be {
                   BasicAuthenticationRule.Settings(HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a"))
@@ -399,18 +399,18 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |
                  |""".stripMargin,
             assertion = rule => {
-              val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-                AlreadyResolved(GroupName("group1").nel),
-                AlreadyResolved(GroupName("group3").nel)
+              val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
+                AlreadyResolved(GroupId("group1").nel),
+                AlreadyResolved(GroupId("group3").nel)
               ))
-              rule.settings.permittedGroups should be(groups)
+              rule.settings.permittedGroupIds should be(groups)
               rule.settings.usersDefinitions.length should be(1)
               val sortedUserDefinitions = rule.settings.usersDefinitions
               inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SeparateRules(rule1, rule2), groupMappings)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")))))
                 groupMappings should be(GroupMappings.Advanced(UniqueNonEmptyList.of(
-                  Mapping(GroupName("group1"), UniqueNonEmptyList.of(GroupName("ldap_group3"))),
-                  Mapping(GroupName("group2"), UniqueNonEmptyList.of(GroupName("ldap_group4")))
+                  Mapping(group("group1"), UniqueNonEmptyList.of(GroupId("ldap_group3"))),
+                  Mapping(group("group2"), UniqueNonEmptyList.of(GroupId("ldap_group4")))
                 )))
 
                 rule1 shouldBe an[AuthKeyRule]
@@ -419,7 +419,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                 }
                 rule2 shouldBe an[ExternalAuthorizationRule]
                 rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
-                  GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupName("ldap_group3"), GroupName("ldap_group4"))))
+                  GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("ldap_group3"), GroupId("ldap_group4"))))
                 )
               }
             }
@@ -448,15 +448,15 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |
                |""".stripMargin,
           assertion = rule => {
-            val groups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-              AlreadyResolved(GroupName("group1").nel)
+            val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
+              AlreadyResolved(GroupId("group1").nel)
             ))
-            rule.settings.permittedGroups should be(groups)
+            rule.settings.permittedGroupIds should be(groups)
             rule.settings.usersDefinitions.length should be(2)
             val sortedUserDefinitions = rule.settings.usersDefinitions
             inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(r, localGroups)) =>
               patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("*")))))
-              localGroups should be(UniqueNonEmptyList.of(GroupName("group1"), GroupName("group3")))
+              localGroups should be(UniqueNonEmptyList.of(group("group1"), group("group3")))
               r shouldBe an[AuthKeyRule]
               r.asInstanceOf[AuthKeyRule].settings should be {
                 BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
@@ -464,7 +464,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
             }
             inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(r, localGroups)) =>
               patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("*")))))
-              localGroups should be(UniqueNonEmptyList.of(GroupName("group2"), GroupName("group3")))
+              localGroups should be(UniqueNonEmptyList.of(group("group2"), group("group3")))
               r shouldBe an[AuthKeyRule]
               r.asInstanceOf[AuthKeyRule].settings should be {
                 BasicAuthenticationRule.Settings(Credentials(User.Id("morgan"), PlainTextSecret("pass")))
@@ -606,7 +606,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of group names is required")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of group IDs is required")))
           }
         )
       }
@@ -629,7 +629,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of group names is required")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of group IDs is required")))
           }
         )
       }

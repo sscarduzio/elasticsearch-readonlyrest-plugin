@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsAnd
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
-import tech.beshu.ror.accesscontrol.domain.{GroupLike, ResolvablePermittedGroups}
+import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, ResolvablePermittedGroupIds}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -67,7 +67,7 @@ abstract class BaseGroupsRuleDecoder[R <: BaseGroupsRule : VariableUsage : Local
 
   override protected def decoder: Decoder[RuleDefinition[R]] = {
     DecoderHelpers
-      .decoderStringLikeOrUniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupLike]]
+      .decoderStringLikeOrUniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .emapE { groups =>
@@ -75,7 +75,7 @@ abstract class BaseGroupsRuleDecoder[R <: BaseGroupsRule : VariableUsage : Local
           case Some(userDefs) =>
             Right(RuleDefinition.create(
               createRule(
-                BaseGroupsRule.Settings(ResolvablePermittedGroups(groups), userDefs)
+                BaseGroupsRule.Settings(ResolvablePermittedGroupIds(groups), userDefs)
               )
             ))
           case None =>

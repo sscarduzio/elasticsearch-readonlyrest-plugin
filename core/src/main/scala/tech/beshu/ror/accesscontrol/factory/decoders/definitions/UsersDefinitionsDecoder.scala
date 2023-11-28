@@ -27,9 +27,9 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.GroupsOrRule
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{GroupLike, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
@@ -94,8 +94,8 @@ object UsersDefinitionsDecoder {
         c.keys.map(_.toList) match {
           case Some(key :: Nil) =>
             for {
-              localGroup <- Decoder[GroupName].tryDecode(HCursor.fromJson(Json.fromString(key)))
-              externalGroups <- c.downField(key).as[UniqueNonEmptyList[GroupLike]]
+              localGroup <- Decoder[GroupId].tryDecode(HCursor.fromJson(Json.fromString(key))).map(Group.from)
+              externalGroups <- c.downField(key).as[UniqueNonEmptyList[GroupIdLike]]
             } yield {
               GroupMappings.Advanced.Mapping(localGroup, externalGroups)
             }
@@ -107,7 +107,9 @@ object UsersDefinitionsDecoder {
       }
 
   private val simpleGroupMappingsDecoder: Decoder[GroupMappings] =
-    groupNamesUniqueNonEmptyListDecoder.map(GroupMappings.Simple.apply)
+    groupIdsUniqueNonEmptyListDecoder.map(
+      groupIds => UniqueNonEmptyList.unsafeFromIterable(groupIds.toList.map(Group.from))
+    ).map(GroupMappings.Simple.apply)
 
   private val advancedGroupMappingsDecoder: Decoder[GroupMappings] =
     Decoder[List[GroupMappings.Advanced.Mapping]]
@@ -200,7 +202,9 @@ object UsersDefinitionsDecoder {
     case r: AuthRule =>
       Decoder[GroupMappings].map(UserDef.Mode.WithGroupsMapping(Auth.SingleRule(r), _))
     case r: AuthenticationRule =>
-      Decoder[UniqueNonEmptyList[GroupName]].map(UserDef.Mode.WithoutGroupsMapping(r, _))
+      Decoder[UniqueNonEmptyList[GroupId]]
+        .map(groupIds => UniqueNonEmptyList.unsafeFromIterable(groupIds.toList.map(Group.from)))
+        .map(UserDef.Mode.WithoutGroupsMapping(r, _))
     case other =>
       failed(DefinitionsLevelCreationError(Message(s"Cannot use '${other.name.show}' rule in users definition section")))
   }

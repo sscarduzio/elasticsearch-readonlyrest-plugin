@@ -35,8 +35,8 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthentic
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.{RorConfigurationIndex, User}
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RorConfigurationIndex, User}
 import tech.beshu.ror.configuration.TestRorConfig.Present
 import tech.beshu.ror.configuration.index.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
 import tech.beshu.ror.configuration.index.IndexTestConfigManager.Const
@@ -157,11 +157,31 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
     implicit val nonEmptyStringCodec: Codec[NonEmptyString] =
       Codec.from(Decoder.decodeString.emap(NonEmptyString.from), Encoder.encodeString.contramap(_.value))
     implicit val userIdCodec: Codec[User.Id] = io.circe.generic.extras.semiauto.deriveUnwrappedCodec
-    implicit val groupCodec: Codec[GroupName] = io.circe.generic.extras.semiauto.deriveUnwrappedCodec
+    implicit val groupIdCodec: Codec[GroupId] =
+      Codec.from(
+        nonEmptyStringCodec.map(GroupId.apply),
+        nonEmptyStringCodec.contramap(_.value)
+      )
 
+    implicit val groupCodec: Codec[Group] = {
+      implicit val groupNameCodec: Codec[GroupName] = Codec.from(
+        nonEmptyStringCodec.map(GroupName.apply),
+        nonEmptyStringCodec.contramap(_.value)
+      )
+      Codec.forProduct2("id", "name")(Group.apply)(group => (group.id, group.name))
+    }
     implicit val ldapServiceMock: Codec[LdapServiceMock] = {
-      implicit val userMock: Codec[LdapUserMock] =
-        Codec.forProduct2("id", "groups")(LdapUserMock.apply)(e => (e.id, e.groups))
+      implicit val userMock: Codec[LdapUserMock] = {
+        // "groups" left for backward compatibility
+        val encoder: Encoder[LdapUserMock] = Encoder.forProduct3("id", "groups", "userGroups")(
+          userMock => (userMock.id, userMock.groups.map(_.id), userMock.groups)
+        )
+        val deprecatedFormatDecoder = Decoder.forProduct2("id", "groups")((id: User.Id, groupIds: List[GroupId]) =>
+          LdapUserMock(id, groupIds.toSet.map(Group.from))
+        )
+        val decoder: Decoder[LdapUserMock] = Decoder.forProduct2("id", "userGroups")(LdapUserMock.apply)
+        Codec.from(decoder.or(deprecatedFormatDecoder), encoder)
+      }
       Codec.forProduct1("users")(LdapServiceMock.apply)(_.users)
     }
 
@@ -172,8 +192,17 @@ final class IndexTestConfigManager(indexJsonContentService: IndexJsonContentServ
     }
 
     implicit val extAuthorizationMock: Codec[ExternalAuthorizationServiceMock] = {
-      implicit val userMock: Codec[ExternalAuthorizationServiceUserMock] =
-        Codec.forProduct2("id", "groups")(ExternalAuthorizationServiceUserMock.apply)(e => (e.id, e.groups))
+      implicit val userMock: Codec[ExternalAuthorizationServiceUserMock] = {
+        // "groups" left for backward compatibility
+        val encoder = Encoder.forProduct3("id", "groups", "userGroups")(
+          (userMock: ExternalAuthorizationServiceUserMock) => (userMock.id, userMock.groups.map(_.id), userMock.groups)
+        )
+        val deprecatedFormatDecoder = Decoder.forProduct2("id", "groups")((id: User.Id, groupIds: List[GroupId]) =>
+          ExternalAuthorizationServiceUserMock(id, groupIds.toSet.map(Group.from))
+        )
+        val decoder = Decoder.forProduct2("id", "userGroups")(ExternalAuthorizationServiceUserMock.apply)
+        Codec.from(decoder.or(deprecatedFormatDecoder), encoder)
+      }
       Codec.forProduct1("users")(ExternalAuthorizationServiceMock.apply)(_.users)
     }
 

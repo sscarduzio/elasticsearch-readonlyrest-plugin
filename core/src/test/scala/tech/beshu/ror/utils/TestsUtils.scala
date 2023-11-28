@@ -41,7 +41,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRu
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, definitions}
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
@@ -104,6 +104,8 @@ object TestsUtils {
     }
   }
 
+  def group(str: NonEmptyString): Group = Group.from(GroupId(str))
+
   def clusterIndexName(str: NonEmptyString): ClusterIndexName = ClusterIndexName.unsafeFromString(str.value)
 
   def localIndexName(str: NonEmptyString): ClusterIndexName.Local = ClusterIndexName.Local.fromString(str.value.value).get
@@ -155,7 +157,7 @@ object TestsUtils {
     )
   }
 
-  def mocksProviderForLdapFrom(map: Map[LdapService.Name, Map[User.Id, Set[GroupName]]]): MocksProvider = {
+  def mocksProviderForLdapFrom(map: Map[LdapService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
     new MocksProvider {
       override def ldapServiceWith(id: LdapService.Name)
                                   (implicit context: RequestId): Option[LdapServiceMock] = {
@@ -191,7 +193,7 @@ object TestsUtils {
     }
   }
 
-  def mocksProviderForExternalAuthzServiceFrom(map: Map[definitions.ExternalAuthorizationService.Name, Map[User.Id, Set[GroupName]]]): MocksProvider = {
+  def mocksProviderForExternalAuthzServiceFrom(map: Map[definitions.ExternalAuthorizationService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
     new MocksProvider {
       override def ldapServiceWith(id: LdapService.Name)(implicit context: RequestId): Option[LdapServiceMock] = None
 
@@ -215,7 +217,7 @@ object TestsUtils {
                            current: BlockContext): Unit = {
       assertBlockContext(
         loggedUser = expected.userMetadata.loggedUser,
-        currentGroup = expected.userMetadata.currentGroup,
+        currentGroup = expected.userMetadata.currentGroupId,
         availableGroups = expected.userMetadata.availableGroups,
         kibanaIndex = expected.userMetadata.kibanaIndex,
         kibanaTemplateIndex = expected.userMetadata.kibanaTemplateIndex,
@@ -232,8 +234,8 @@ object TestsUtils {
     }
 
     def assertBlockContext(loggedUser: Option[LoggedUser] = None,
-                           currentGroup: Option[GroupName] = None,
-                           availableGroups: UniqueList[GroupName] = UniqueList.empty,
+                           currentGroup: Option[GroupId] = None,
+                           availableGroups: UniqueList[Group] = UniqueList.empty,
                            kibanaIndex: Option[KibanaIndexName] = None,
                            kibanaTemplateIndex: Option[KibanaIndexName] = None,
                            hiddenKibanaApps: Set[KibanaApp] = Set.empty,
@@ -250,7 +252,7 @@ object TestsUtils {
                           (blockContext: BlockContext): Unit = {
       blockContext.userMetadata.loggedUser should be(loggedUser)
       blockContext.userMetadata.availableGroups should contain allElementsOf availableGroups
-      blockContext.userMetadata.currentGroup should be(currentGroup)
+      blockContext.userMetadata.currentGroupId should be(currentGroup)
       blockContext.userMetadata.kibanaIndex should be(kibanaIndex)
       blockContext.userMetadata.kibanaTemplateIndex should be(kibanaTemplateIndex)
       blockContext.userMetadata.hiddenKibanaApps should be(hiddenKibanaApps)
@@ -316,12 +318,12 @@ object TestsUtils {
     }
   }
 
-  implicit class CurrentGroupToHeader(val group: GroupName) extends AnyVal {
+  implicit class CurrentGroupToHeader(val group: GroupId) extends AnyVal {
     def toCurrentGroupHeader: Header = currentGroupHeader(group.value.value)
   }
 
   def noGroupMappingFrom(value: String): GroupMappings =
-    GroupMappings.Simple(UniqueNonEmptyList.of(GroupName(NonEmptyString.unsafeFrom(value))))
+    GroupMappings.Simple(UniqueNonEmptyList.of(group(NonEmptyString.unsafeFrom(value))))
 
   def groupMapping(mapping: Mapping, mappings: Mapping*): GroupMappings =
     GroupMappings.Advanced(UniqueNonEmptyList.of(mapping, mappings: _*))
