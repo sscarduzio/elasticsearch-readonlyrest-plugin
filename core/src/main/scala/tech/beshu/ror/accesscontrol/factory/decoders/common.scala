@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolv
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{Address, ClusterIndexName, GroupIdLike, GroupsLogic, Header, KibanaAccess, KibanaApp, KibanaIndexName, PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.domain.{Address, ClusterIndexName, GroupIdLike, GroupsLogic, Header, KibanaAccess, KibanaApp, KibanaIndexName, PermittedGroupIds, User}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -139,17 +139,17 @@ object common extends Logging {
   implicit val groupIdsUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[GroupId]] =
     SyncDecoderCreator
       .from(DecoderHelpers.decoderStringLikeOrUniqueNonEmptyList[GroupId])
-      .withError(ValueLevelCreationError(Message("Non empty list of group ids is required")))
+      .withError(ValueLevelCreationError(Message("Non empty list of group IDs is required")))
       .decoder
 
   implicit val groupIdLikesUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[GroupIdLike]] =
     SyncDecoderCreator
       .from(DecoderHelpers.decoderStringLikeOrUniqueNonEmptyList[GroupIdLike])
-      .withError(ValueLevelCreationError(Message("Non empty list of group ids or/and patters is required")))
+      .withError(ValueLevelCreationError(Message("Non empty list of group IDs or/and patters is required")))
       .decoder
 
-  implicit val permittedGroupsDecoder: Decoder[PermittedGroups] =
-    groupIdLikesUniqueNonEmptyListDecoder.map(PermittedGroups.apply)
+  implicit val permittedGroupIdsDecoder: Decoder[PermittedGroupIds] =
+    groupIdLikesUniqueNonEmptyListDecoder.map(PermittedGroupIds.apply)
 
   implicit val usersUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[User.Id]] =
     DecoderHelpers
@@ -178,11 +178,11 @@ object common extends Logging {
       }
       .decoder
 
-  implicit val groupConvertible: Convertible[GroupIdLike] = new Convertible[GroupIdLike] {
+  implicit val groupIdConvertible: Convertible[GroupIdLike] = new Convertible[GroupIdLike] {
     override def convert: String => Either[ConvertError, GroupIdLike] = str => {
       NonEmptyString.from(str) match {
         case Right(nonEmptyResolvedValue) => Right(GroupIdLike.from(nonEmptyResolvedValue))
-        case Left(_) => Left(ConvertError("Group cannot be empty"))
+        case Left(_) => Left(ConvertError("Group ID cannot be empty"))
       }
     }
   }
@@ -319,10 +319,10 @@ object common extends Logging {
       .decoder
 
   implicit val groupsLogicAndDecoder: Decoder[GroupsLogic.And] =
-    permittedGroupsDecoder.map(GroupsLogic.And.apply)
+    permittedGroupIdsDecoder.map(GroupsLogic.And.apply)
 
   implicit val groupsLogicOrDecoder: Decoder[GroupsLogic.Or] =
-    permittedGroupsDecoder.map(GroupsLogic.Or.apply)
+    permittedGroupIdsDecoder.map(GroupsLogic.Or.apply)
 
   implicit def resolvableJsonRepresentationDecoder(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[ResolvableJsonRepresentation] =
     Decoder

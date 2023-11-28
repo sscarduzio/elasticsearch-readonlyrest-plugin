@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthorizationRule.Settings
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.{GroupId, GroupIdPattern}
-import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupsLogic, PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupsLogic, PermittedGroupIds, User}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
@@ -68,9 +68,9 @@ class ExternalAuthorizationRuleSettingsTests
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[HttpExternalAuthorizationService]
               permittedGroupsLogic should be(
-                GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
+                GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
               )
-              permittedGroupsLogic.permittedGroups.groups.head shouldBe a[GroupIdPattern]
+              permittedGroupsLogic.permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
               users should be(UniqueNonEmptyList.of(User.Id("user1")))
             }
           }
@@ -111,7 +111,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.id should be(ExternalAuthorizationService.Name("GroupsService2"))
               service shouldBe a[HttpExternalAuthorizationService]
               permittedGroupsLogic should be(
-                GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupId("group3"))))
+                GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
               )
               users should be(UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2")))
             }
@@ -149,7 +149,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
               permittedGroupsLogic should be(
-                GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupId("group3"))))
+                GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
               )
               users should be(UniqueNonEmptyList.of(User.Id("user1")))
             }
@@ -184,7 +184,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[HttpExternalAuthorizationService]
               permittedGroupsLogic should be(
-                GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupId("group3"))))
+                GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
               )
               users should be(UniqueNonEmptyList.of(User.Id("*")))
             }
@@ -224,10 +224,10 @@ class ExternalAuthorizationRuleSettingsTests
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
               permittedGroupsLogic should be(GroupsLogic.Or(
-                PermittedGroups(UniqueNonEmptyList.of(GroupIdLike.from("g*"), GroupIdLike.from("r1")))
+                PermittedGroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"), GroupIdLike.from("r1")))
               ))
-              permittedGroupsLogic.permittedGroups.groups.head shouldBe a[GroupIdPattern]
-              permittedGroupsLogic.permittedGroups.groups.tail.head shouldBe a[GroupId]
+              permittedGroupsLogic.permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
+              permittedGroupsLogic.permittedGroupIds.groupIds.tail.head shouldBe a[GroupId]
               users should be(UniqueNonEmptyList.of(User.Id("*")))
             }
           }
@@ -270,7 +270,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
               permittedGroupsLogic should be(
-                GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupId("group3"))))
+                GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
               )
               users should be(UniqueNonEmptyList.of(User.Id("*")))
             }

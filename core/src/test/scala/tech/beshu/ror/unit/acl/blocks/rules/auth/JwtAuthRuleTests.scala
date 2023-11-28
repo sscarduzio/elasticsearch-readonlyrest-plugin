@@ -286,7 +286,7 @@ class JwtAuthRuleTests
             userClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("groups")))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroups(
+          configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -313,7 +313,7 @@ class JwtAuthRuleTests
             userClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("groups")))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroups(
+          configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("*2"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -340,7 +340,7 @@ class JwtAuthRuleTests
             userClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("groups")))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.And(PermittedGroups(
+          configuredGroups = Groups.Defined(GroupsLogic.And(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group1"), GroupId("group2"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -367,7 +367,7 @@ class JwtAuthRuleTests
             userClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("groups")))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.And(PermittedGroups(
+          configuredGroups = Groups.Defined(GroupsLogic.And(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupIdLike.from("*1"), GroupIdLike.from("*2"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -506,7 +506,7 @@ class JwtAuthRuleTests
             userClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("tech.beshu.groups.subgroups")))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroups(
+          configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group1"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -526,7 +526,7 @@ class JwtAuthRuleTests
             userClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("groups")))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroups(
+          configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupId("group4"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -546,7 +546,7 @@ class JwtAuthRuleTests
             userClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("groups")))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.And(PermittedGroups(
+          configuredGroups = Groups.Defined(GroupsLogic.And(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group2"), GroupId("group3"))
           ))),
           tokenHeader = bearerHeader(jwt)
@@ -584,7 +584,7 @@ class JwtAuthRuleTests
             userClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(domain.Jwt.ClaimName(JsonPath.compile("groups")))
           ),
-          configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroups(
+          configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group2"))
           ))),
           tokenHeader = bearerHeader(jwt),

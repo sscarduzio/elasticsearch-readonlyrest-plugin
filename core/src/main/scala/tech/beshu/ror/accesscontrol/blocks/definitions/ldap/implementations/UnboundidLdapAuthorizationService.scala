@@ -51,19 +51,17 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
       .flatMap {
         case Some(user) =>
           groupsSearchFilter.mode match {
-            case defaultSearchGroupMode: DefaultGroupSearch => groupsFrom(defaultSearchGroupMode, user).map(asGroups)
-            case groupsFromUserAttribute: GroupsFromUserEntry => groupsFrom(groupsFromUserAttribute, user).map(asGroups)
+            case defaultSearchGroupMode: DefaultGroupSearch =>
+              groupsFrom(defaultSearchGroupMode, user)
+            case groupsFromUserAttribute: GroupsFromUserEntry =>
+              groupsFrom(groupsFromUserAttribute, user)
           }
         case None =>
           Task.now(UniqueList.empty)
       }
   }
 
-  private def asGroups(groupIds: UniqueList[GroupId]) = {
-    UniqueList.fromIterable(groupIds.toList.map(Group.from))
-  }
-
-  private def groupsFrom(mode: DefaultGroupSearch, user: LdapUser): Task[UniqueList[GroupId]] = {
+  private def groupsFrom(mode: DefaultGroupSearch, user: LdapUser): Task[UniqueList[Group]] = {
     connectionPool
       .process(searchUserGroupsLdapRequest(_, mode, user), serviceTimeout)
       .flatMap {
@@ -79,12 +77,13 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
           logger.error(s"LDAP getting user groups returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
+      .map(asGroups)
       .onError { case ex =>
         Task(logger.errorEx(s"LDAP getting user groups returned error", ex))
       }
   }
 
-  private def groupsFrom(mode: GroupsFromUserEntry, user: LdapUser): Task[UniqueList[GroupId]] = {
+  private def groupsFrom(mode: GroupsFromUserEntry, user: LdapUser): Task[UniqueList[Group]] = {
     connectionPool
       .process(searchUserGroupsLdapRequest(_, mode, user), serviceTimeout)
       .flatMap {
@@ -100,6 +99,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
           logger.error(s"LDAP getting user groups returned error [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
+      .map(asGroups)
       .onError { case ex =>
         Task(logger.errorEx(s"LDAP getting user groups returned error", ex))
       }
@@ -139,6 +139,10 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
       case Some(service) => service.fetchNestedGroupsOf(mainGroups).map(_ ++ mainGroups)
       case None => Task.delay(mainGroups)
     }
+  }
+
+  private def asGroups(groupIds: UniqueList[GroupId]) = {
+    UniqueList.fromIterable(groupIds.toList.map(Group.from))
   }
 }
 

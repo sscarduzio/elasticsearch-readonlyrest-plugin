@@ -61,14 +61,14 @@ sealed abstract class Pattern[T](val value: T)
 
 final case class UserIdPatterns(patterns: UniqueNonEmptyList[User.UserIdPattern])
 
-final case class GroupName(value: NonEmptyString)
-object GroupName {
-  def from(id: GroupId): GroupName = GroupName(id.value)
-}
-
 final case class Group(id: GroupId, name: GroupName)
 object Group {
   def from(id: GroupId): Group = Group(id, GroupName.from(id))
+}
+
+final case class GroupName(value: NonEmptyString)
+object GroupName {
+  def from(id: GroupId): GroupName = GroupName(id.value)
 }
 
 sealed trait GroupIdLike
@@ -112,20 +112,20 @@ object GroupIdLike {
   }
 }
 
-final case class PermittedGroups(groups: UniqueNonEmptyList[_ <: GroupIdLike]) {
-  private[PermittedGroups] lazy val matcher = PatternsMatcher.create[GroupIdLike](groups)
+final case class PermittedGroupIds(groupIds: UniqueNonEmptyList[_ <: GroupIdLike]) {
+  private[PermittedGroupIds] lazy val matcher = PatternsMatcher.create[GroupIdLike](groupIds)
 }
-object PermittedGroups {
+object PermittedGroupIds {
 
-  def from(groups: UniqueNonEmptyList[Group]): PermittedGroups = {
-    PermittedGroups(UniqueNonEmptyList.unsafeFromIterable(groups.toList.map(_.id)))
+  def from(groups: UniqueNonEmptyList[Group]): PermittedGroupIds = {
+    PermittedGroupIds(UniqueNonEmptyList.unsafeFromIterable(groups.toList.map(_.id)))
   }
 
-  implicit class PermittedGroupsMatcher(val permittedGroups: PermittedGroups) extends AnyVal {
+  implicit class PermittedGroupIdsMatcher(val permittedGroupIds: PermittedGroupIds) extends AnyVal {
 
     def filterOnlyPermitted(groupsToCheck: Iterable[Group]): UniqueList[Group] = {
-      val (permitted, _) = permittedGroups
-        .groups.toList.widen[GroupIdLike]
+      val (permitted, _) = permittedGroupIds
+        .groupIds.toList.widen[GroupIdLike]
         .foldLeft((Iterable.empty[Group], groupsToCheck)) {
           case ((alreadyPermittedGroups, groupsToCheckLeft), permittedGroupIdLike: GroupIdLike) =>
             val (matched, notMatched) = groupsToCheckLeft.partition(permittedGroupIdLike.matches)
@@ -135,26 +135,26 @@ object PermittedGroups {
     }
 
     def matches(groupId: GroupId): Boolean = {
-      permittedGroups.matcher.`match`(groupId)
+      permittedGroupIds.matcher.`match`(groupId)
     }
   }
 }
 
-final case class ResolvablePermittedGroups(permittedGroups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]) {
-  def resolveGroups[B <: BlockContext](blockContext: B): Option[PermittedGroups] = {
+final case class ResolvablePermittedGroupIds(permittedGroupIds: UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]) {
+  def resolveGroupIds[B <: BlockContext](blockContext: B): Option[PermittedGroupIds] = {
     UniqueNonEmptyList
-      .fromIterable(resolveAll(permittedGroups.toNonEmptyList, blockContext))
-      .map(PermittedGroups.apply)
+      .fromIterable(resolveAll(permittedGroupIds.toNonEmptyList, blockContext))
+      .map(PermittedGroupIds.apply)
   }
 }
 
 sealed trait GroupsLogic {
-  val permittedGroups: PermittedGroups
+  val permittedGroupIds: PermittedGroupIds
 }
 
 object GroupsLogic {
-  final case class Or(override val permittedGroups: PermittedGroups) extends GroupsLogic
-  final case class And(override val permittedGroups: PermittedGroups) extends GroupsLogic
+  final case class Or(override val permittedGroupIds: PermittedGroupIds) extends GroupsLogic
+  final case class And(override val permittedGroupIds: PermittedGroupIds) extends GroupsLogic
 
   implicit class GroupsLogicExecutor(val groupsLogic: GroupsLogic) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
@@ -171,8 +171,8 @@ object GroupsLogic {
       val userGroupsMatchedSoFar = Vector.empty[Group]
       val (isThereNotPermittedGroup, matchedUserGroups) =
         groupsLogic
-          .permittedGroups
-          .groups.toList.widen[GroupIdLike]
+          .permittedGroupIds
+          .groupIds.toList.widen[GroupIdLike]
           .foldLeft((atLeastPermittedGroupNotMatched, userGroupsMatchedSoFar)) {
             case ((false, userGroupsMatchedSoFar), permittedGroup: GroupIdLike) =>
               val matchedUserGroups = userGroups.toList.filter(userGroup => permittedGroup.matches(userGroup))
@@ -190,7 +190,7 @@ object GroupsLogic {
 
   implicit class GroupsLogicOrExecutor(val groupsLogic: GroupsLogic.Or) extends AnyVal {
     def availableGroupsFrom(userGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
-      val someMatchedUserGroups = groupsLogic.permittedGroups.filterOnlyPermitted(userGroups)
+      val someMatchedUserGroups = groupsLogic.permittedGroupIds.filterOnlyPermitted(userGroups)
       UniqueNonEmptyList.fromIterable(someMatchedUserGroups)
     }
   }

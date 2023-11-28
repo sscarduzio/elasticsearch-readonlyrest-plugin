@@ -39,7 +39,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impers
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, GroupIdLike, GroupsLogic, LoggedUser, PermittedGroups, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, GroupIdLike, GroupsLogic, LoggedUser, PermittedGroupIds, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -65,7 +65,7 @@ class ExternalAuthorizationRuleTests
               assertMatchRule(
                 settings = ExternalAuthorizationRule.Settings(
                   service = service,
-                  permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                  permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
                     UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                   )),
                   users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
@@ -89,7 +89,7 @@ class ExternalAuthorizationRuleTests
               assertMatchRule(
                 settings = ExternalAuthorizationRule.Settings(
                   service = service,
-                  permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                  permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
                     UniqueNonEmptyList.of(GroupId("g1"), GroupIdLike.from("*2"))
                   )),
                   users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
@@ -115,7 +115,7 @@ class ExternalAuthorizationRuleTests
               assertMatchRule(
                 settings = ExternalAuthorizationRule.Settings(
                   service = service,
-                  permittedGroupsLogic = GroupsLogic.And(PermittedGroups(
+                  permittedGroupsLogic = GroupsLogic.And(PermittedGroupIds(
                     UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                   )),
                   users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
@@ -139,7 +139,7 @@ class ExternalAuthorizationRuleTests
               assertMatchRule(
                 settings = ExternalAuthorizationRule.Settings(
                   service = service,
-                  permittedGroupsLogic = GroupsLogic.And(PermittedGroups(
+                  permittedGroupsLogic = GroupsLogic.And(PermittedGroupIds(
                     UniqueNonEmptyList.of(GroupId("g1"), GroupIdLike.from("*2"))
                   )),
                   users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
@@ -165,7 +165,7 @@ class ExternalAuthorizationRuleTests
           assertMatchRule(
             settings = ExternalAuthorizationRule.Settings(
               service = service,
-              permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+              permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
                 UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
               )),
               users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
@@ -189,7 +189,7 @@ class ExternalAuthorizationRuleTests
           assertMatchRule(
             settings = ExternalAuthorizationRule.Settings(
               service = service,
-              permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+              permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
                 UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
               )),
               users = UniqueNonEmptyList.of(User.Id("*"))
@@ -214,7 +214,7 @@ class ExternalAuthorizationRuleTests
             assertMatchRule(
               settings = ExternalAuthorizationRule.Settings(
                 service = service,
-                permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 )),
                 users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
@@ -244,7 +244,7 @@ class ExternalAuthorizationRuleTests
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
             service = mock[ExternalAuthorizationService],
-            permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+            permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             )),
             users = UniqueNonEmptyList.of(User.Id("user1"))
@@ -257,7 +257,7 @@ class ExternalAuthorizationRuleTests
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
             service = mock[ExternalAuthorizationService],
-            permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+            permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             )),
             users = UniqueNonEmptyList.of(User.Id("user1"))
@@ -275,7 +275,7 @@ class ExternalAuthorizationRuleTests
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
             service = service,
-            permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+            permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             )),
             users = UniqueNonEmptyList.of(User.Id("*"))
@@ -293,7 +293,7 @@ class ExternalAuthorizationRuleTests
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
             service = service,
-            permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+            permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             )),
             users = UniqueNonEmptyList.of(User.Id("*"))
@@ -311,7 +311,7 @@ class ExternalAuthorizationRuleTests
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
             service = service,
-            permittedGroupsLogic = GroupsLogic.And(PermittedGroups(
+            permittedGroupsLogic = GroupsLogic.And(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupIdLike.from("*2"))
             )),
             users = UniqueNonEmptyList.of(User.Id("*"))
@@ -324,7 +324,7 @@ class ExternalAuthorizationRuleTests
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
             service = mock[ExternalAuthorizationService],
-            permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+            permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             )),
             users = UniqueNonEmptyList.of(User.Id("*"))
@@ -341,7 +341,7 @@ class ExternalAuthorizationRuleTests
             assertNotMatchRule(
               settings = ExternalAuthorizationRule.Settings(
                 service = service,
-                permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 )),
                 users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
@@ -363,7 +363,7 @@ class ExternalAuthorizationRuleTests
             assertNotMatchRule(
               settings = ExternalAuthorizationRule.Settings(
                 service = service,
-                permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 )),
                 users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
@@ -385,7 +385,7 @@ class ExternalAuthorizationRuleTests
             assertNotMatchRule(
               settings = ExternalAuthorizationRule.Settings(
                 service = service,
-                permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 )),
                 users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))
@@ -405,7 +405,7 @@ class ExternalAuthorizationRuleTests
             assertNotMatchRule(
               settings = ExternalAuthorizationRule.Settings(
                 service = mock[ExternalAuthorizationService],
-                permittedGroupsLogic = GroupsLogic.Or(PermittedGroups(
+                permittedGroupsLogic = GroupsLogic.Or(PermittedGroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 )),
                 users = UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2"))

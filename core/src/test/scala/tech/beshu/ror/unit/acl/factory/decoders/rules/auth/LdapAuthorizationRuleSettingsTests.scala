@@ -21,7 +21,7 @@ import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.{GroupId, GroupIdPattern}
-import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupsLogic, PermittedGroups}
+import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupsLogic, PermittedGroupIds}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
@@ -59,7 +59,7 @@ class LdapAuthorizationRuleSettingsTests
           assertion = rule => {
             rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
             rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapServiceDecorator]
-            rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupId("group3")))))
+            rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3")))))
           }
         )
       }
@@ -89,8 +89,8 @@ class LdapAuthorizationRuleSettingsTests
           assertion = rule => {
             rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
             rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapServiceDecorator]
-            rule.settings.permittedGroupsLogic should be (GroupsLogic.And(PermittedGroups(UniqueNonEmptyList.of(GroupIdLike.from("g*")))))
-            rule.settings.permittedGroupsLogic.permittedGroups.groups.head shouldBe a[GroupIdPattern]
+            rule.settings.permittedGroupsLogic should be (GroupsLogic.And(PermittedGroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*")))))
+            rule.settings.permittedGroupsLogic.permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
           }
         )
       }
@@ -120,7 +120,7 @@ class LdapAuthorizationRuleSettingsTests
           assertion = rule => {
             rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
             rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CircuitBreakerLdapServiceDecorator]
-            rule.settings.permittedGroupsLogic should be (GroupsLogic.Or(PermittedGroups(
+            rule.settings.permittedGroupsLogic should be (GroupsLogic.Or(PermittedGroupIds(
               UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("group4*"))
             )))
           }
@@ -153,7 +153,7 @@ class LdapAuthorizationRuleSettingsTests
           assertion = rule => {
             rule.settings.ldap shouldBe a[LoggableLdapAuthorizationServiceDecorator]
             rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a[CacheableLdapAuthorizationServiceDecorator]
-            rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroups(UniqueNonEmptyList.of(GroupId("group3")))))
+            rule.settings.permittedGroupsLogic should be(GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3")))))
           }
         )
       }
@@ -243,7 +243,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Non empty list of group ids or/and patters is required")))
+            errors.head should be(RulesLevelCreationError(Message("Non empty list of group IDs or/and patters is required")))
           }
         )
       }

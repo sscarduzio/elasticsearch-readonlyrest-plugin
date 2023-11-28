@@ -65,7 +65,7 @@ final class RorKbnAuthRule(val settings: Settings,
       settings.permittedGroups match {
         case Groups.NotDefined =>
           authorizeUsingJwtToken(blockContext)
-        case Groups.Defined(groupsLogic) if blockContext.isCurrentGroupEligible(groupsLogic.permittedGroups) =>
+        case Groups.Defined(groupsLogic) if blockContext.isCurrentGroupEligible(groupsLogic.permittedGroupIds) =>
           authorizeUsingJwtToken(blockContext)
         case Groups.Defined(_) =>
           RuleResult.Rejected()
@@ -139,7 +139,7 @@ final class RorKbnAuthRule(val settings: Settings,
         UniqueNonEmptyList.fromIterable(groups) match {
           case Some(nonEmptyGroups) =>
             groupsLogic.availableGroupsFrom(nonEmptyGroups) match {
-              case Some(matchedGroups) if blockContext.isCurrentGroupEligible(PermittedGroups.from(matchedGroups)) =>
+              case Some(matchedGroups) if blockContext.isCurrentGroupEligible(PermittedGroupIds.from(matchedGroups)) =>
                 Right(blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups)))
               case Some(_) | None =>
                 Left(())
@@ -151,7 +151,7 @@ final class RorKbnAuthRule(val settings: Settings,
         UniqueNonEmptyList.fromIterable(groups) match {
           case None =>
             Right(blockContext)
-          case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(PermittedGroups.from(nonEmptyGroups)) =>
+          case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(PermittedGroupIds.from(nonEmptyGroups)) =>
             Right(blockContext)
           case Some(_) =>
             Left(())

@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleA
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings, SimpleAuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, LoggedUser, PermittedGroups}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, LoggedUser, PermittedGroupIds}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.annotation.nowarn
@@ -40,7 +40,7 @@ private[auth] trait BaseAuthorizationRule
 
   protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]]
 
-  protected def groupsPermittedByRule: PermittedGroups
+  protected def groupsPermittedByRule: PermittedGroupIds
 
   protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[Group]]
 
