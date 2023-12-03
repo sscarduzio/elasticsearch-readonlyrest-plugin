@@ -81,8 +81,20 @@ class LocalGroupsSuite
     response.responseJson should be(ujson.read(
       s"""{
          |  "x-ror-username": "user",
-         |  "x-ror-current-group": "a_testgroup",
-         |  "x-ror-available-groups": [ "a_testgroup", "foogroup" ],
+         |  "x-ror-current-group": {
+         |    "id": "a_testgroup",
+         |    "name": "a_testgroup"
+         |  },
+         |  "x-ror-available-groups": [
+         |    {
+         |      "id": "a_testgroup",
+         |      "name": "a_testgroup"
+         |    },
+         |    {
+         |      "id": "foogroup",
+         |      "name": "foogroup"
+         |    }
+         |  ],
          |  "x-ror-correlation-id": "$correlationId",
          |  "x-ror-kibana_index": ".kibana_user",
          |  "x-ror-kibana-hidden-apps": [ "timelion" ],
@@ -94,14 +106,26 @@ class LocalGroupsSuite
     val userMetadataManager = new RorApiManager(basicAuthClient("user", "passwd"), esVersionUsed)
 
     val correlationId = UUID.randomUUID().toString
-    val response = userMetadataManager.fetchMetadata(preferredGroup = Some("foogroup"), correlationId = Some(correlationId))
+    val response = userMetadataManager.fetchMetadata(preferredGroupId = Some("foogroup"), correlationId = Some(correlationId))
 
     response should have statusCode 200
     response.responseJson should be(ujson.read(
       s"""{
          |  "x-ror-username": "user",
-         |  "x-ror-current-group": "foogroup",
-         |  "x-ror-available-groups": [ "a_testgroup", "foogroup" ],
+         |  "x-ror-current-group": {
+         |    "id": "foogroup",
+         |    "name": "foogroup"
+         |  },
+         |  "x-ror-available-groups": [
+         |    {
+         |      "id": "a_testgroup",
+         |      "name": "a_testgroup"
+         |    },
+         |    {
+         |      "id": "foogroup",
+         |      "name": "foogroup"
+         |    }
+         |  ],
          |  "x-ror-correlation-id": "$correlationId",
          |  "x-ror-kibana_index": ".kibana_foogroup",
          |  "x-ror-kibana-hidden-apps": [ "foo:app" ],

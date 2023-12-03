@@ -36,7 +36,6 @@ import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.{IndexName, User}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -453,7 +452,7 @@ class ReadonlyRestStartingTests
               )
 
               rorInstance.mocksProvider.ldapServiceWith(LdapService.Name("ldap1"))(newRequestId()) should be(Some(
-                LdapServiceMock(Set(LdapServiceMock.LdapUserMock(User.Id("Tom"), Set(GroupName("group1"), GroupName("group2")))))
+                LdapServiceMock(Set(LdapServiceMock.LdapUserMock(User.Id("Tom"), Set(group("group1"), group("group2")))))
               ))
               rorInstance.mocksProvider.ldapServiceWith(LdapService.Name("ldap2"))(newRequestId()) should be(None)
 
@@ -469,7 +468,7 @@ class ReadonlyRestStartingTests
                 ExternalAuthorizationServiceMock(Set(
                   ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock(
                     id = User.Id("Bruce"),
-                    groups = Set(GroupName("group3"), GroupName("group4"))
+                    groups = Set(group("group3"), group("group4"))
                   )
                 ))
               ))

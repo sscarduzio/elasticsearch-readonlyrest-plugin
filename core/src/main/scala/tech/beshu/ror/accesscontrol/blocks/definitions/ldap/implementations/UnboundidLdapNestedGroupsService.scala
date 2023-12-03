@@ -54,14 +54,14 @@ private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: 
       .flatMap {
         case Right(results) =>
           Task.delay {
-            results.flatMap(_.toLdapGroup(config.groupNameAttribute)).toSet
+            results.flatMap(_.toLdapGroup(config.groupIdAttribute)).toSet
           }
         case Left(errorResult) =>
-          logger.error(s"LDAP getting groups of [${group.name.show}] group returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
+          logger.error(s"LDAP getting groups of [${group.id.show}] group returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .onError { case ex =>
-        Task(logger.errorEx(s"LDAP getting groups of [${group.name.show}] group returned error", ex))
+        Task(logger.errorEx(s"LDAP getting groups of [${group.id.show}] group returned error", ex))
       }
   }
 
@@ -70,7 +70,7 @@ private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: 
     val baseDn = config.searchGroupBaseDN.value.value
     val scope = SearchScope.SUB
     val searchFilter = searchFilterFrom(config.groupSearchFilter, config.memberAttribute, ldapGroup)
-    val attribute = config.groupNameAttribute.value.value
+    val attribute = config.groupIdAttribute.value.value
     logger.debug(s"LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: $attribute]")
     new SearchRequest(listener, baseDn, scope, searchFilter, attribute)
   }

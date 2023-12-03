@@ -17,15 +17,15 @@
 package tech.beshu.ror.accesscontrol.blocks.metadata
 
 import cats.implicits._
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.JsonRepresentation
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 final case class UserMetadata private(loggedUser: Option[LoggedUser],
-                                      currentGroup: Option[GroupName],
-                                      availableGroups: UniqueList[GroupName],
+                                      currentGroupId: Option[GroupId],
+                                      availableGroups: UniqueList[Group],
                                       kibanaIndex: Option[KibanaIndexName],
                                       kibanaTemplateIndex: Option[KibanaIndexName],
                                       hiddenKibanaApps: Set[KibanaApp],
@@ -35,19 +35,26 @@ final case class UserMetadata private(loggedUser: Option[LoggedUser],
                                       userOrigin: Option[UserOrigin],
                                       jwtToken: Option[Jwt.Payload]) {
 
+  def findCurrentGroup: Option[Group] = {
+    currentGroupId
+      .flatMap(groupId =>
+        availableGroups.find(_.id == groupId)
+      )
+  }
   def withLoggedUser(user: LoggedUser): UserMetadata = this.copy(loggedUser = Some(user))
-  def withCurrentGroup(group: GroupName): UserMetadata = this.copy(currentGroup = Some(group))
-  def addAvailableGroup(group: GroupName): UserMetadata = addAvailableGroups(UniqueNonEmptyList.of(group))
-  def addAvailableGroups(groups: UniqueNonEmptyList[GroupName]): UserMetadata = {
+  def withCurrentGroup(group: Group): UserMetadata = withCurrentGroupId(group.id)
+  def withCurrentGroupId(groupId: GroupId): UserMetadata = this.copy(currentGroupId = Some(groupId))
+  def addAvailableGroup(group: Group): UserMetadata = addAvailableGroups(UniqueNonEmptyList.of(group))
+  def addAvailableGroups(groups: UniqueNonEmptyList[Group]): UserMetadata = {
     val newAvailableGroups = this.availableGroups.mergeWith(groups.toUniqueList)
     this.copy(
       availableGroups = newAvailableGroups,
-      currentGroup = this.currentGroup.orElse(newAvailableGroups.headOption)
+      currentGroupId = this.currentGroupId.orElse(newAvailableGroups.headOption.map(_.id))
     )
   }
-  def withAvailableGroups(groups: UniqueList[GroupName]): UserMetadata = this.copy(
+  def withAvailableGroups(groups: UniqueList[Group]): UserMetadata = this.copy(
     availableGroups = groups,
-    currentGroup = this.currentGroup.orElse(groups.headOption)
+    currentGroupId = this.currentGroupId.orElse(groups.headOption.map(_.id))
   )
   def withKibanaIndex(index: KibanaIndexName): UserMetadata = this.copy(kibanaIndex = Some(index))
   def withKibanaTemplateIndex(index: KibanaIndexName): UserMetadata = this.copy(kibanaTemplateIndex = Some(index))
@@ -60,7 +67,7 @@ final case class UserMetadata private(loggedUser: Option[LoggedUser],
   def withKibanaMetadata(json: JsonRepresentation): UserMetadata = this.copy(kibanaMetadata = Some(json))
   def withUserOrigin(origin: UserOrigin): UserMetadata = this.copy(userOrigin = Some(origin))
   def withJwtToken(token: Jwt.Payload): UserMetadata = this.copy(jwtToken = Some(token))
-  def clearCurrentGroup: UserMetadata = this.copy(currentGroup = None)
+  def clearCurrentGroup: UserMetadata = this.copy(currentGroupId = None)
 }
 
 object UserMetadata {
@@ -69,13 +76,13 @@ object UserMetadata {
       .headers
       .find(_.name === Header.Name.currentGroup) match {
       case None => UserMetadata.empty
-      case Some(Header(_, value)) => UserMetadata.empty.withCurrentGroup(GroupName(value))
+      case Some(Header(_, value)) => UserMetadata.empty.withCurrentGroupId(GroupId(value))
     }
   }
 
   def empty: UserMetadata = new UserMetadata(
     loggedUser = None,
-    currentGroup = None,
+    currentGroupId = None,
     availableGroups = UniqueList.empty,
     kibanaIndex = None,
     kibanaTemplateIndex = None,

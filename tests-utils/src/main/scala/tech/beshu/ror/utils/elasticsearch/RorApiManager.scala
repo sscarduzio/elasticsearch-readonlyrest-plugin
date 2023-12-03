@@ -35,9 +35,9 @@ class RorApiManager(client: RestClient,
 
   private lazy val documentManager = new DocumentManager(client, esVersion)
 
-  def fetchMetadata(preferredGroup: Option[String] = None,
+  def fetchMetadata(preferredGroupId: Option[String] = None,
                     correlationId: Option[String] = None): JsonResponse = {
-    call(createUserMetadataRequest(preferredGroup, correlationId), new JsonResponse(_))
+    call(createUserMetadataRequest(preferredGroupId, correlationId), new JsonResponse(_))
   }
 
   def sendAuditEvent(payload: JSON): JsonResponse = {
@@ -115,10 +115,10 @@ class RorApiManager(client: RestClient,
     )
   }
 
-  private def createUserMetadataRequest(preferredGroup: Option[String],
+  private def createUserMetadataRequest(preferredGroupId: Option[String],
                                         correlationId: Option[String]) = {
     val request = new HttpGet(client.from("/_readonlyrest/metadata/current_user"))
-    preferredGroup.foreach(request.addHeader("x-ror-current-group", _))
+    preferredGroupId.foreach(request.addHeader("x-ror-current-group", _))
     correlationId.foreach(request.addHeader("x-ror-correlation-id", _))
     request
   }

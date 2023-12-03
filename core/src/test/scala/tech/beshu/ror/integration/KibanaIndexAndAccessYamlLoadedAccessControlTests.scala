@@ -26,7 +26,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
@@ -152,8 +152,8 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
               loggedUser = Some(DirectlyLoggedUser(User.Id("testuser_ro_master_rw_custom"))),
               kibanaIndex = Some(kibanaIndexName(".kibana_ror_custom")),
               kibanaAccess = Some(KibanaAccess.RW),
-              currentGroup = Some(GroupName("RW_ror_custom")),
-              availableGroups = UniqueList.of(GroupName("RW_ror_custom")),
+              currentGroup = Some(GroupId("RW_ror_custom")),
+              availableGroups = UniqueList.of(group("RW_ror_custom")),
             ) {
               blockContext
             }
@@ -197,8 +197,8 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           block.name should be(Block.Name("Read-Write access with RoR custom kibana index"))
           assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("testuser_ro_master_rw_custom"))),
-            currentGroup = Some(GroupName("RW_ror_custom")),
-            availableGroups = UniqueList.of(GroupName("RW_ror_custom")),
+            currentGroup = Some(GroupId("RW_ror_custom")),
+            availableGroups = UniqueList.of(group("RW_ror_custom")),
             kibanaIndex = Some(kibanaIndexName(".kibana_ror_custom")),
             kibanaAccess = Some(KibanaAccess.RW),
             indices = Set(clusterIndexName(".kibana_ror_custom")),
@@ -219,8 +219,8 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
         inside(loginResult.result) { case UserMetadataRequestResult.Allow(metadata, _) =>
           metadata should be(UserMetadata(
             loggedUser = Some(DirectlyLoggedUser(User.Id("admin"))),
-            currentGroup = Some(GroupName("Administrators")),
-            availableGroups = UniqueList.of(GroupName("Administrators"), GroupName("Infosec")),
+            currentGroupId = Some(GroupId("Administrators")),
+            availableGroups = UniqueList.of(group("Administrators"), group("Infosec")),
             kibanaIndex = Some(kibanaIndexName(".kibana_admins")),
             kibanaTemplateIndex = None,
             hiddenKibanaApps = Set(
@@ -253,8 +253,8 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           block.name should be(Block.Name("ADMIN_GRP"))
           assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("admin"))),
-            currentGroup = Some(GroupName("Administrators")),
-            availableGroups = UniqueList.of(GroupName("Administrators")),
+            currentGroup = Some(GroupId("Administrators")),
+            availableGroups = UniqueList.of(group("Administrators")),
             kibanaIndex = Some(kibanaIndexName(".kibana_admins")),
             kibanaAccess = Some(KibanaAccess.Admin),
             indices = Set(clusterIndexName(".kibana_admins")),

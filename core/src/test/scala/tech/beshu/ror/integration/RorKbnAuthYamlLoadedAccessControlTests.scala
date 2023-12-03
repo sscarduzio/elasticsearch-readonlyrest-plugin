@@ -27,7 +27,6 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt, User}
 import tech.beshu.ror.mocks.MockRequestContext
@@ -124,12 +123,12 @@ class RorKbnAuthYamlLoadedAccessControlTests
             .signWith(Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes))
             .setSubject("test")
             .setClaims(claims)
-          val preferredGroup = GroupName("mapped_viewer_group")
+          val preferredGroup = group("mapped_viewer_group")
           val index = clusterIndexName("index2")
           val request = MockRequestContext.indices.copy(
             filteredIndices = Set(index),
             allAllowedIndices = Set(index),
-            headers = Set(bearerHeader(jwtBuilder), preferredGroup.toCurrentGroupHeader)
+            headers = Set(bearerHeader(jwtBuilder), preferredGroup.id.toCurrentGroupHeader)
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -139,7 +138,7 @@ class RorKbnAuthYamlLoadedAccessControlTests
             block.name should be(Block.Name("Valid JWT token is present with a third key + role"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
-              currentGroup = Some(preferredGroup),
+              currentGroup = Some(preferredGroup.id),
               availableGroups = UniqueList.of(preferredGroup),
               indices = Set(index)
             ) {

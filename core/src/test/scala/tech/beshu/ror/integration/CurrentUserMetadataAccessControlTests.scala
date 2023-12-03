@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause
 import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause.OperationNotAllowed
 import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
@@ -224,8 +224,8 @@ class CurrentUserMetadataAccessControlTests
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user1"))))
-            userMetadata.currentGroup should be (Some(GroupName("group3")))
-            userMetadata.availableGroups.toSet should be (Set(GroupName("group3"), GroupName("group1")))
+            userMetadata.currentGroupId should be (Some(GroupId("group3")))
+            userMetadata.availableGroups.toSet should be (Set(group("group3"), group("group1")))
             userMetadata.kibanaIndex should be (None)
             userMetadata.hiddenKibanaApps should be (Set.empty)
             userMetadata.allowedKibanaApiPaths should be (Set.empty)
@@ -240,8 +240,8 @@ class CurrentUserMetadataAccessControlTests
           val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
           inside(loginResponse.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4"))))
-            userMetadata.currentGroup should be (Some(GroupName("group6")))
-            userMetadata.availableGroups.toSet should be (Set(GroupName("group5"), GroupName("group6")))
+            userMetadata.currentGroupId should be (Some(GroupId("group6")))
+            userMetadata.availableGroups.toSet should be (Set(group("group5"), group("group6")))
             userMetadata.kibanaIndex should be (Some(kibanaIndexName("user4_group6_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set.empty)
             userMetadata.allowedKibanaApiPaths should be (Set.empty)
@@ -255,8 +255,8 @@ class CurrentUserMetadataAccessControlTests
           val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
           inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4"))))
-            userMetadata.currentGroup should be (Some(GroupName("group5")))
-            userMetadata.availableGroups.toSet should be (Set(GroupName("group5"), GroupName("group6")))
+            userMetadata.currentGroupId should be (Some(GroupId("group5")))
+            userMetadata.availableGroups.toSet should be (Set(group("group5"), group("group6")))
             userMetadata.kibanaIndex should be (Some(kibanaIndexName("user4_group5_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set.empty)
             userMetadata.allowedKibanaApiPaths should be (Set.empty)
@@ -269,8 +269,8 @@ class CurrentUserMetadataAccessControlTests
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2"))))
-            userMetadata.currentGroup should be (Some(GroupName("group2")))
-            userMetadata.availableGroups.toSet should be (Set(GroupName("group2")))
+            userMetadata.currentGroupId should be (Some(GroupId("group2")))
+            userMetadata.availableGroups.toSet should be (Set(group("group2")))
             userMetadata.kibanaIndex should be (Some(kibanaIndexName("user2_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set(FullNameKibanaApp("user2_app1"), FullNameKibanaApp("user2_app2")))
             userMetadata.allowedKibanaApiPaths should be (Set(
@@ -286,7 +286,7 @@ class CurrentUserMetadataAccessControlTests
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user3"))))
-            userMetadata.currentGroup should be (None)
+            userMetadata.currentGroupId should be (None)
             userMetadata.availableGroups.toSet should be (UniqueList.empty)
             userMetadata.kibanaIndex should be (Some(kibanaIndexName("user3_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set(FullNameKibanaApp("user3_app1"), FullNameKibanaApp("user3_app2")))
@@ -302,7 +302,7 @@ class CurrentUserMetadataAccessControlTests
 
             inside(result1.result) { case Allow(userMetadata, _) =>
               userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user5"))))
-              userMetadata.availableGroups.toSet should be (Set(GroupName("service1_group1"), GroupName("service1_group2")))
+              userMetadata.availableGroups.toSet should be (Set(group("service1_group1"), group("service1_group2")))
             }
 
             val request2 = MockRequestContext.metadata.copy(
@@ -312,7 +312,7 @@ class CurrentUserMetadataAccessControlTests
 
             inside(result2.result) { case Allow(userMetadata, _) =>
               userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user5"))))
-              userMetadata.availableGroups.toSet should be (Set(GroupName("service1_group1"), GroupName("service1_group2")))
+              userMetadata.availableGroups.toSet should be (Set(group("service1_group1"), group("service1_group2")))
             }
           }
           "the service is LDAP" in {
@@ -321,7 +321,7 @@ class CurrentUserMetadataAccessControlTests
 
             inside(result1.result) { case Allow(userMetadata, _) =>
               userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user6"))))
-              userMetadata.availableGroups.toSet should be (Set(GroupName("ldap2_group1"), GroupName("ldap2_group2")))
+              userMetadata.availableGroups.toSet should be (Set(group("ldap2_group1"), group("ldap2_group2")))
             }
 
             val request2 = MockRequestContext.metadata.copy(
@@ -331,7 +331,7 @@ class CurrentUserMetadataAccessControlTests
 
             inside(result2.result) { case Allow(userMetadata, _) =>
               userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user6"))))
-              userMetadata.availableGroups.toSet should be (Set(GroupName("ldap2_group1"), GroupName("ldap2_group2")))
+              userMetadata.availableGroups.toSet should be (Set(group("ldap2_group1"), group("ldap2_group2")))
             }
           }
         }
