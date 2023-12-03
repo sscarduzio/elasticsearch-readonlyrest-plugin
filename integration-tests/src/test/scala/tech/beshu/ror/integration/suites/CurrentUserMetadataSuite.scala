@@ -46,16 +46,8 @@ class CurrentUserMetadataSuite
           result.responseJson should be(ujson.read(
             s"""{
                |  "x-ror-username": "user1",
-               |  "x-ror-current-group": {
-               |    "id": "group1",
-               |    "name": "group1"
-               |  },
-               |  "x-ror-available-groups": [
-               |    {
-               |      "id": "group1",
-               |      "name": "group1"
-               |    }
-               |  ],
+               |  "x-ror-current-group": "group1",
+               |  "x-ror-available-groups": [ "group1" ],
                |  "x-ror-correlation-id": "$correlationId"
                |}""".stripMargin))
         }
@@ -72,20 +64,8 @@ class CurrentUserMetadataSuite
           result.responseJson should be(ujson.read(
             s"""{
                |  "x-ror-username": "user4",
-               |  "x-ror-current-group": {
-               |    "id": "group6",
-               |    "name": "group6"
-               |  },
-               |  "x-ror-available-groups": [
-               |    {
-               |      "id": "group5",
-               |      "name": "group5"
-               |    },
-               |    {
-               |      "id": "group6",
-               |      "name": "group6"
-               |    }
-               |  ],
+               |  "x-ror-current-group": "group6",
+               |  "x-ror-available-groups": [ "group5", "group6" ],
                |  "x-ror-correlation-id": "$correlationId",
                |  "x-ror-kibana_index": "user4_group6_kibana_index",
                |  "x-ror-kibana_template_index": "user4_group6_kibana_template_index",
@@ -102,16 +82,8 @@ class CurrentUserMetadataSuite
           result.responseJson should be(ujson.read(
             s"""{
                |  "x-ror-username": "user2",
-               |  "x-ror-current-group": {
-               |    "id": "group2",
-               |    "name": "group2"
-               |  },
-               |  "x-ror-available-groups": [
-               |    {
-               |      "id": "group2",
-               |      "name": "group2"
-               |    }
-               |  ],
+               |  "x-ror-current-group": "group2",
+               |  "x-ror-available-groups": [ "group2" ],
                |  "x-ror-correlation-id": "$correlationId",
                |  "x-ror-kibana_index": "user2_kibana_index",
                |  "x-ror-kibana_access": "ro",

@@ -248,23 +248,14 @@ class AdminApiAuthMockSuite
              |        {
              |          "name": "JohnDoe",
              |          "groups": [
-             |            {
-             |              "id": "DeveloperGroup",
-             |              "name": "Developer"
-             |            },
-             |            {
-             |              "id": "DevOpsGroup",
-             |              "name": "DevOps"
-             |            }
+             |            "Developer",
+             |            "DevOps"
              |          ]
              |        },
              |        {
              |          "name": "RobertSmith",
              |          "groups": [
-             |            {
-             |              "id": "ManagerGroup",
-             |              "name": "Manager"
-             |            }
+             |            "Manager"
              |          ]
              |        }
              |      ]
@@ -278,19 +269,13 @@ class AdminApiAuthMockSuite
              |        {
              |          "name": "JohnDoe",
              |          "groups": [
-             |            {
-             |              "id": "DevOpsGroup",
-             |              "name": "DevOps"
-             |            }
+             |            "DevOps"
              |          ]
              |        },
              |        {
              |          "name": "JudyBrown",
              |          "groups": [
-             |            {
-             |              "id": "CustomerGroup",
-             |              "name": "Customer"
-             |            }
+             |            "Customer"
              |          ]
              |        }
              |      ]
@@ -332,16 +317,16 @@ class AdminApiAuthMockSuite
              |        {
              |          "id": "JohnDoe",
              |          "groups": [
-             |            "DeveloperGroup",
-             |            "DevOpsGroup"
+             |            "Developer",
+             |            "DevOps"
              |          ],
              |          "userGroups": [
              |            {
-             |              "id": "DeveloperGroup",
+             |              "id": "Developer",
              |              "name": "Developer"
              |            },
              |            {
-             |              "id": "DevOpsGroup",
+             |              "id": "DevOps",
              |              "name": "DevOps"
              |            }
              |          ]
@@ -349,11 +334,11 @@ class AdminApiAuthMockSuite
              |        {
              |          "id": "RobertSmith",
              |          "groups": [
-             |            "ManagerGroup"
+             |            "Manager"
              |          ],
              |          "userGroups": [
              |            {
-             |              "id": "ManagerGroup",
+             |              "id": "Manager",
              |              "name": "Manager"
              |            }
              |          ]
@@ -365,11 +350,11 @@ class AdminApiAuthMockSuite
              |        {
              |          "id": "JohnDoe",
              |          "groups": [
-             |            "DevOpsGroup"
+             |            "DevOps"
              |          ],
              |          "userGroups": [
              |            {
-             |              "id": "DevOpsGroup",
+             |              "id": "DevOps",
              |              "name": "DevOps"
              |            }
              |          ]
@@ -377,11 +362,11 @@ class AdminApiAuthMockSuite
              |        {
              |          "id": "JudyBrown",
              |          "groups": [
-             |            "CustomerGroup"
+             |            "Customer"
              |          ],
              |          "userGroups": [
              |            {
-             |              "id": "CustomerGroup",
+             |              "id": "Customer",
              |              "name": "Customer"
              |            }
              |          ]
@@ -418,23 +403,14 @@ class AdminApiAuthMockSuite
              |        {
              |          "name": "JohnDoe",
              |          "groups": [
-             |            {
-             |              "id": "DeveloperGroup",
-             |              "name": "Developer"
-             |            },
-             |            {
-             |              "id": "DevOpsGroup",
-             |              "name": "DevOps"
-             |            }
+             |            "Developer",
+             |            "DevOps"
              |          ]
              |        },
              |        {
              |          "name": "RobertSmith",
              |          "groups": [
-             |            {
-             |              "id": "ManagerGroup",
-             |              "name": "Manager"
-             |            }
+             |            "Manager"
              |          ]
              |        }
              |      ]
@@ -448,19 +424,13 @@ class AdminApiAuthMockSuite
              |        {
              |          "name": "JohnDoe",
              |          "groups": [
-             |            {
-             |              "id": "DevOpsGroup",
-             |              "name": "DevOps"
-             |            }
+             |            "DevOps"
              |          ]
              |        },
              |        {
              |          "name": "JudyBrown",
              |          "groups": [
-             |            {
-             |              "id": "CustomerGroup",
-             |              "name": "Customer"
-             |            }
+             |            "Customer"
              |          ]
              |        }
              |      ]
@@ -499,10 +469,7 @@ class AdminApiAuthMockSuite
              |        {
              |          "name": "JaimeRhynes",
              |          "groups": [
-             |            {
-             |              "id": "CustomerGroup",
-             |              "name": "Customer"
-             |            }
+             |            "Customer"
              |          ]
              |        }
              |      ]
@@ -516,10 +483,7 @@ class AdminApiAuthMockSuite
              |        {
              |          "name": "Martian",
              |          "groups": [
-             |            {
-             |              "id": "VisitorGroup",
-             |              "name": "Visitor"
-             |            }
+             |            "Visitor"
              |          ]
              |        }
              |      ]
@@ -542,16 +506,16 @@ class AdminApiAuthMockSuite
              |        {
              |          "id": "JohnDoe",
              |          "groups": [
-             |            "DeveloperGroup",
-             |            "DevOpsGroup"
+             |            "Developer",
+             |            "DevOps"
              |          ],
              |          "userGroups": [
              |            {
-             |              "id": "DeveloperGroup",
+             |              "id": "Developer",
              |              "name": "Developer"
              |            },
              |            {
-             |              "id": "DevOpsGroup",
+             |              "id": "DevOps",
              |              "name": "DevOps"
              |            }
              |          ]
@@ -559,11 +523,11 @@ class AdminApiAuthMockSuite
              |        {
              |          "id": "RobertSmith",
              |          "groups": [
-             |            "ManagerGroup"
+             |            "Manager"
              |          ],
              |          "userGroups": [
              |            {
-             |              "id": "ManagerGroup",
+             |              "id": "Manager",
              |              "name": "Manager"
              |            }
              |          ]
@@ -575,11 +539,11 @@ class AdminApiAuthMockSuite
              |        {
              |          "id": "JohnDoe",
              |          "groups": [
-             |            "DevOpsGroup"
+             |            "DevOps"
              |          ],
              |          "userGroups": [
              |            {
-             |              "id": "DevOpsGroup",
+             |              "id": "DevOps",
              |              "name": "DevOps"
              |            }
              |          ]
@@ -587,11 +551,11 @@ class AdminApiAuthMockSuite
              |        {
              |          "id": "JudyBrown",
              |          "groups": [
-             |            "CustomerGroup"
+             |            "Customer"
              |          ],
              |          "userGroups": [
              |            {
-             |              "id": "CustomerGroup",
+             |              "id": "Customer",
              |              "name": "Customer"
              |            }
              |          ]
@@ -624,11 +588,11 @@ class AdminApiAuthMockSuite
              |        {
              |          "id": "JaimeRhynes",
              |          "groups": [
-             |            "CustomerGroup"
+             |            "Customer"
              |          ],
              |          "userGroups": [
              |            {
-             |              "id": "CustomerGroup",
+             |              "id": "Customer",
              |              "name": "Customer"
              |            }
              |          ]
@@ -640,11 +604,11 @@ class AdminApiAuthMockSuite
              |        {
              |          "id": "Martian",
              |          "groups": [
-             |            "VisitorGroup"
+             |            "Visitor"
              |          ],
              |          "userGroups": [
              |            {
-             |              "id": "VisitorGroup",
+             |              "id": "Visitor",
              |              "name": "Visitor"
              |            }
              |          ]
@@ -781,23 +745,14 @@ class AdminApiAuthMockSuite
              |        {
              |          "name": "JohnDoe",
              |          "groups": [
-             |            {
-             |              "id": "DeveloperGroup",
-             |              "name": "DeveloperGroup"
-             |            },
-             |            {
-             |              "id": "DevOpsGroup",
-             |              "name": "DevOpsGroup"
-             |            }
+             |            "DeveloperGroup",
+             |            "DevOpsGroup"
              |          ]
              |        },
              |        {
              |          "name": "RobertSmith",
              |          "groups": [
-             |            {
-             |              "id": "ManagerGroup",
-             |              "name": "ManagerGroup"
-             |            }
+             |            "ManagerGroup"
              |          ]
              |        }
              |      ]
@@ -811,19 +766,13 @@ class AdminApiAuthMockSuite
              |        {
              |          "name": "JohnDoe",
              |          "groups": [
-             |            {
-             |              "id": "DevOpsGroup",
-             |              "name": "DevOpsGroup"
-             |            }
+             |            "DevOpsGroup"
              |          ]
              |        },
              |        {
              |          "name": "JudyBrown",
              |          "groups": [
-             |            {
-             |              "id": "CustomerGroup",
-             |              "name": "CustomerGroup"
-             |            }
+             |            "CustomerGroup"
              |          ]
              |        }
              |      ]
@@ -862,10 +811,7 @@ class AdminApiAuthMockSuite
              |        {
              |          "name": "JaimeRhynes",
              |          "groups": [
-             |            {
-             |              "id": "CustomerGroup",
-             |              "name": "CustomerGroup"
-             |            }
+             |            "CustomerGroup"
              |          ]
              |        }
              |      ]
@@ -879,10 +825,7 @@ class AdminApiAuthMockSuite
              |        {
              |          "name": "Martian",
              |          "groups": [
-             |            {
-             |              "id": "VisitorGroup",
-             |              "name": "VisitorGroup"
-             |            }
+                          "VisitorGroup"
              |          ]
              |        }
              |      ]
@@ -919,23 +862,14 @@ class AdminApiAuthMockSuite
                  |        {
                  |          "name": "JohnDoe",
                  |          "groups": [
-                 |            {
-                 |              "id": "DeveloperGroup",
-                 |              "name": "Developer"
-                 |            },
-                 |            {
-                 |              "id": "DevOpsGroup",
-                 |              "name": "DevOps"
-                 |            }
+                 |            "Developer",
+                 |            "DevOps"
                  |          ]
                  |        },
                  |        {
                  |          "name": "RobertSmith",
                  |          "groups": [
-                 |            {
-                 |              "id": "ManagerGroup",
-                 |              "name": "Manager"
-                 |            }
+                 |            "Manager"
                  |          ]
                  |        }
                  |      ]
@@ -949,18 +883,13 @@ class AdminApiAuthMockSuite
                  |        {
                  |          "name": "JohnDoe",
                  |          "groups": [
-                 |            {
-                 |              "id": "DevOpsGroup",
-                 |              "name": "DevOps"
-                 |            }
+                 |            "DevOps"
                  |          ]
                  |        },
                  |        {
                  |          "name": "JudyBrown",
                  |          "groups": [
-                 |            {
-                 |              "id": "CustomerGroup"
-                 |            }
+                 |            "Customer"
                  |          ]
                  |        }
                  |      ]
@@ -999,10 +928,7 @@ class AdminApiAuthMockSuite
                  |        {
                  |          "name": "JaimeRhynes",
                  |          "groups": [
-                 |            {
-                 |              "id": "CustomerGroup",
-                 |              "name": "Customer"
-                 |            }
+                 |            "Customer"
                  |          ]
                  |        }
                  |      ]
@@ -1016,10 +942,7 @@ class AdminApiAuthMockSuite
                  |        {
                  |          "name": "Martian",
                  |          "groups": [
-                 |            {
-                 |              "id": "VisitorGroup",
-                 |              "name": "Visitor"
-                 |            }
+                 |            "Visitor"
                  |          ]
                  |        }
                  |      ]
@@ -1048,23 +971,14 @@ class AdminApiAuthMockSuite
                  |        {
                  |          "name": "JohnDoe",
                  |          "groups": [
-                 |            {
-                 |              "id": "DeveloperGroup",
-                 |              "name": "Developer"
-                 |            },
-                 |            {
-                 |              "id": "DevOpsGroup",
-                 |              "name": "DevOps"
-                 |            }
+                 |            "Developer",
+                 |            "DevOps"
                  |          ]
                  |        },
                  |        {
                  |          "name": "RobertSmith",
                  |          "groups": [
-                 |            {
-                 |              "id": "ManagerGroup",
-                 |              "name": "Manager"
-                 |            }
+                 |            "Manager"
                  |          ]
                  |        }
                  |      ]

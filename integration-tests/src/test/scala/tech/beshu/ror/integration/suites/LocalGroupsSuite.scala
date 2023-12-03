@@ -81,20 +81,8 @@ class LocalGroupsSuite
     response.responseJson should be(ujson.read(
       s"""{
          |  "x-ror-username": "user",
-         |  "x-ror-current-group": {
-         |    "id": "a_testgroup",
-         |    "name": "a_testgroup"
-         |  },
-         |  "x-ror-available-groups": [
-         |    {
-         |      "id": "a_testgroup",
-         |      "name": "a_testgroup"
-         |    },
-         |    {
-         |      "id": "foogroup",
-         |      "name": "foogroup"
-         |    }
-         |  ],
+         |  "x-ror-current-group": "a_testgroup",
+         |  "x-ror-available-groups": [ "a_testgroup", "foogroup" ],
          |  "x-ror-correlation-id": "$correlationId",
          |  "x-ror-kibana_index": ".kibana_user",
          |  "x-ror-kibana-hidden-apps": [ "timelion" ],
@@ -112,20 +100,8 @@ class LocalGroupsSuite
     response.responseJson should be(ujson.read(
       s"""{
          |  "x-ror-username": "user",
-         |  "x-ror-current-group": {
-         |    "id": "foogroup",
-         |    "name": "foogroup"
-         |  },
-         |  "x-ror-available-groups": [
-         |    {
-         |      "id": "a_testgroup",
-         |      "name": "a_testgroup"
-         |    },
-         |    {
-         |      "id": "foogroup",
-         |      "name": "foogroup"
-         |    }
-         |  ],
+         |  "x-ror-current-group": "foogroup",
+         |  "x-ror-available-groups": [ "a_testgroup", "foogroup" ],
          |  "x-ror-correlation-id": "$correlationId",
          |  "x-ror-kibana_index": ".kibana_foogroup",
          |  "x-ror-kibana-hidden-apps": [ "foo:app" ],
