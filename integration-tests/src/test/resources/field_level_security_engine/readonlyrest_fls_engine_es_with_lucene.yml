@@ -9,6 +9,10 @@ readonlyrest:
       auth_key: admin:container
       verbosity: error
 
-    - name: user
-      auth_key: "user:pass"
-      fields: ["_source","allowedField"]
+    - name: user1
+      auth_key: "user1:pass"
+      fields: ["_source", "allowedField"]
+
+    - name: user2
+      auth_key: "user2:pass"
+      fields: ["~notAllowedField"]

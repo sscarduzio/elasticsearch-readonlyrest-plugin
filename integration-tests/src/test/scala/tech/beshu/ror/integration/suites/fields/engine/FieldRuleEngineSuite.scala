@@ -24,6 +24,9 @@ import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClus
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
+import scala.concurrent.duration._
+
+import scala.language.postfixOps
 
 trait FieldRuleEngineSuite
   extends AnyWordSpec
@@ -37,13 +40,14 @@ trait FieldRuleEngineSuite
     FieldRuleEngineSuite.nodeDataInitializer()
   }
 
-  private lazy val searchManager = new SearchManager(basicAuthClient("user", "pass"))
+  private lazy val user1SearchManager = new SearchManager(basicAuthClient("user1", "pass"))
+  private lazy val user2SearchManager = new SearchManager(basicAuthClient("user2", "pass"))
 
   "Search request with field rule defined" when {
     "specific FLS engine is used" should {
       "match and return filtered document source" when {
         "modifiable at ES level query using not allowed field is passed in request" in {
-          val result = searchManager.search(
+          val result = user1SearchManager.search(
             "test-index",
             ujson.read(
               """
@@ -63,7 +67,7 @@ trait FieldRuleEngineSuite
       }
       "handle unmodifiable at ES level query" when {
         "using not allowed field is passed in request" in {
-          val result = searchManager.search(
+          val result = user1SearchManager.search(
             "test-index",
             ujson.read(
               """
@@ -81,7 +85,7 @@ trait FieldRuleEngineSuite
         }
       }
       "properly handle forbidden field in the aggregate" in {
-        val result = searchManager.search(
+        val result = user1SearchManager.search(
           "test-index",
           ujson.read(
             s"""
@@ -114,6 +118,55 @@ trait FieldRuleEngineSuite
     }
   }
 
+  "Scroll search" should {
+    "properly handle allowed fields" in {
+      val result1 = user1SearchManager.searchScroll(
+        size = 3,
+        scroll = 1 minute,
+        "test-index"
+      )
+      result1 should have statusCode 200
+      result1.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
+        ujson.read(s"""{"allowedField": "allowed:1"}"""),
+        ujson.read(s"""{"allowedField": "allowed:2"}"""),
+        ujson.read(s"""{"allowedField": "allowed:3"}"""),
+      )
+
+      val result2 = user1SearchManager.searchScroll(result1.scrollId)
+      result2 should have statusCode 200
+      result2.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
+        ujson.read(s"""{"allowedField": "allowed:4"}"""),
+        ujson.read(s"""{"allowedField": "allowed:5"}"""),
+      )
+
+      val result3 = user1SearchManager.searchScroll(result1.scrollId)
+      result3 should have statusCode 404
+    }
+    "properly handle forbidden fields" in {
+      val result1 = user2SearchManager.searchScroll(
+        size = 3,
+        scroll = 1 minute,
+        "test-index"
+      )
+      result1 should have statusCode 200
+      result1.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
+        ujson.read(s"""{"allowedField": "allowed:1", "forbiddenField":1}"""),
+        ujson.read(s"""{"allowedField": "allowed:2", "forbiddenField":2}"""),
+        ujson.read(s"""{"allowedField": "allowed:3", "forbiddenField":3}"""),
+      )
+
+      val result2 = user2SearchManager.searchScroll(result1.scrollId)
+      result2 should have statusCode 200
+      result2.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
+        ujson.read(s"""{"allowedField": "allowed:4", "forbiddenField":4}"""),
+        ujson.read(s"""{"allowedField": "allowed:5", "forbiddenField":5}"""),
+      )
+
+      val result3 = user2SearchManager.searchScroll(result1.scrollId)
+      result3 should have statusCode 404
+    }
+  }
+
   protected def unmodifiableQueryAssertion(searchResult: SearchManager.SearchResult): Unit
 }
 
@@ -121,18 +174,17 @@ object FieldRuleEngineSuite {
 
   def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
-    val document =
-      """
+    def createDocument(id: Int) = ujson.read {
+      s"""
         |{
-        | "allowedField": "allowedFieldValue",
-        | "notAllowedField": 1,
-        | "forbiddenField": 1
+        | "allowedField": "allowed:$id",
+        | "notAllowedField": $id,
+        | "forbiddenField": $id
         |}""".stripMargin
+      }
 
-    documentManager.createDoc("test-index", 1, ujson.read(document)).force()
-    documentManager.createDoc("test-index", 2, ujson.read(document)).force()
-    documentManager.createDoc("test-index", 3, ujson.read(document)).force()
-    documentManager.createDoc("test-index", 4, ujson.read(document)).force()
-    documentManager.createDoc("test-index", 5, ujson.read(document)).force()
+    (1 to 5).foreach { idx =>
+      documentManager.createDoc("test-index", idx, createDocument(idx)).force()
+    }
   }
 }
