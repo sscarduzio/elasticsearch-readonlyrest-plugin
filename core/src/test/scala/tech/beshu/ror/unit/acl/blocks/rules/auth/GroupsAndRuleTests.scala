@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroup
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.BaseGroupsRule.{Settings => GroupsRulesSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{BaseGroupsRule, GroupsAndRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -39,9 +39,9 @@ class GroupsAndRuleTests extends BaseGroupsRuleTests {
     "not match" when {
       "user has not all groups" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-            AlreadyResolved(GroupName("g1").nel),
-            AlreadyResolved(GroupName("g2").nel),
+          permittedGroupIds = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
+            AlreadyResolved(GroupId("g1").nel),
+            AlreadyResolved(GroupId("g2").nel),
           )),
           usersDefinitions = NonEmptyList.of(UserDef(
             usernames = userIdPatterns("user1"),
@@ -56,7 +56,7 @@ class GroupsAndRuleTests extends BaseGroupsRuleTests {
           settings = ruleSettings,
           loggedUser = usr,
           caseSensitivity = CaseSensitivity.Disabled,
-          preferredGroup = None
+          preferredGroupId = None
         )
       }
     }
@@ -64,9 +64,9 @@ class GroupsAndRuleTests extends BaseGroupsRuleTests {
     "match" when {
       "user has exactly all groups" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-            AlreadyResolved(GroupName("g1").nel),
-            AlreadyResolved(GroupName("g2").nel),
+          permittedGroupIds = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
+            AlreadyResolved(GroupId("g1").nel),
+            AlreadyResolved(GroupId("g2").nel),
           )),
           usersDefinitions = NonEmptyList.of(UserDef(
             usernames = userIdPatterns("user1"),
@@ -81,20 +81,20 @@ class GroupsAndRuleTests extends BaseGroupsRuleTests {
           settings = ruleSettings,
           loggedUser = usr,
           caseSensitivity = CaseSensitivity.Disabled,
-          preferredGroup = None
+          preferredGroupId = None
         )(
           blockContextAssertion = defaultOutputBlockContextAssertion(
             user = User.Id("user1"),
-            group = GroupName("g1"),
-            availableGroups = UniqueList.of(GroupName("g1"), GroupName("g2"))
+            group = GroupId("g1"),
+            availableGroups = UniqueList.of(group("g1"), group("g2"))
           )
         )
       }
       "user has an excess of all required groups" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroups = ResolvablePermittedGroups(UniqueNonEmptyList.of(
-            AlreadyResolved(GroupName("g1").nel),
-            AlreadyResolved(GroupName("g2").nel),
+          permittedGroupIds = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
+            AlreadyResolved(GroupId("g1").nel),
+            AlreadyResolved(GroupId("g2").nel),
           )),
           usersDefinitions = NonEmptyList.of(UserDef(
             usernames = userIdPatterns("user1"),
@@ -109,12 +109,12 @@ class GroupsAndRuleTests extends BaseGroupsRuleTests {
           settings = ruleSettings,
           loggedUser = usr,
           caseSensitivity = CaseSensitivity.Disabled,
-          preferredGroup = None
+          preferredGroupId = None
         )(
           blockContextAssertion = defaultOutputBlockContextAssertion(
             user = User.Id("user1"),
-            group = GroupName("g1"),
-            availableGroups = UniqueList.of(GroupName("g1"), GroupName("g2"))
+            group = GroupId("g1"),
+            availableGroups = UniqueList.of(group("g1"), group("g2"))
           )
         )
       }

@@ -56,7 +56,7 @@ class CurrentUserMetadataSuite
 
           val correlationId = UUID.randomUUID().toString
           val result = user1MetadataManager.fetchMetadata(
-            preferredGroup = Some("group6"),
+            preferredGroupId = Some("group6"),
             correlationId = Some(correlationId)
           )
 
@@ -138,14 +138,14 @@ class CurrentUserMetadataSuite
         "current group is set but it doesn't exist on available groups list" in {
           val user4MetadataManager = new RorApiManager(basicAuthClient("user4", "pass"), esVersionUsed)
 
-          val result = user4MetadataManager.fetchMetadata(preferredGroup = Some("group7"))
+          val result = user4MetadataManager.fetchMetadata(preferredGroupId = Some("group7"))
 
           result should have statusCode 401
         }
         "block with no available groups collected is matched and current group is set" in {
           val user3MetadataManager = new RorApiManager(basicAuthClient("user3", "pass"), esVersionUsed)
 
-          val result = user3MetadataManager.fetchMetadata(preferredGroup = Some("group7"))
+          val result = user3MetadataManager.fetchMetadata(preferredGroupId = Some("group7"))
 
           result should have statusCode 401
         }

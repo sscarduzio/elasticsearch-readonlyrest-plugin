@@ -141,7 +141,7 @@ object SingleExtractable {
     override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] = withTransformation(transformation) {
       blockContext
         .userMetadata
-        .currentGroup
+        .currentGroupId
         .map(_.value.value) match {
         case Some(value) => Right(value)
         case None => Left(ExtractError(s"There was no current group for request: ${blockContext.requestContext.id.show}"))
@@ -152,7 +152,7 @@ object SingleExtractable {
   final class AvailableGroupsVar(transformation: Option[Function]) extends SingleExtractable with VariableType.AvailableGroups {
 
     override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] = withTransformation(transformation) {
-      Right(blockContext.userMetadata.availableGroups.toList.map(v => s""""${v.value.value}"""").mkString(","))
+      Right(blockContext.userMetadata.availableGroups.toList.map(v => s""""${v.id.value.value}"""").mkString(","))
     }
   }
 
@@ -240,7 +240,7 @@ object MultiExtractable {
             blockContext
               .userMetadata
               .availableGroups
-              .map(_.value.value)
+              .map(_.id.value.value)
               .toList
           )
           .toRight(ExtractError(s"There were no groups for request: ${blockContext.requestContext.id.show}"))
