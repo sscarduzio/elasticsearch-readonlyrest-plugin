@@ -8,6 +8,10 @@ O. Requirements:
 
 `./eck-ror-bootstrap.sh`
 
+Then you log to Kibana `https://localhost:15601` using given credentials:
+* `admin:admin` (admin user)
+* `user1:test` (RO user)
+
 2. Cleaning after playing with the PoC:
 
 `./eck-ror-cleanup.sh`
