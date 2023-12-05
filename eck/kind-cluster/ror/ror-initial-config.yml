@@ -4,19 +4,18 @@ data:
      readonlyrest:
        access_control_rules:
        
-       - name: "::KIBANA-SRV::"
-         #verbosity: error
-         auth_key: kibana:kibana
-
        - name: "Bearer token"
-         headers: ["Authorization:Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}"]
+         verbosity: error
+         token_authentication:
+           token: "Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}" 
+           username: service_account
      
        - name: "PROBE"
-         #verbosity: error
+         verbosity: error
          auth_key: "elastic-internal-probe:${INTERNAL_PROBE_PASS}"
 
        - name: "ELASTIC-INTERNAL"
-         #verbosity: error
+         verbosity: error
          auth_key: "elastic-internal:${INTERNAL_USR_PASS}"
 
        - name: "CONTAINER ADMIN - file"
