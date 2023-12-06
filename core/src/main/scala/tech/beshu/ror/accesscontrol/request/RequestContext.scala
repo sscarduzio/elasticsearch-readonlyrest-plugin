@@ -29,7 +29,7 @@ import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
@@ -148,8 +148,8 @@ object RequestContext extends Logging {
       }
 
       def stringifyUserGroup = {
-        userMetadata.currentGroup match {
-          case Some(group) => group.show
+        userMetadata.currentGroupId match {
+          case Some(groupId) => groupId.show
           case None => "<N/A>"
         }
       }
@@ -259,7 +259,7 @@ object RequestContextOps {
 
   sealed trait RequestGroup
   object RequestGroup {
-    final case class AGroup(userGroup: GroupName) extends RequestGroup
+    final case class AGroup(userGroup: GroupId) extends RequestGroup
     case object `N/A` extends RequestGroup
 
     implicit val show: Show[RequestGroup] = Show.show {
@@ -268,7 +268,7 @@ object RequestContextOps {
     }
 
     implicit class ToOption(val requestGroup: RequestGroup) extends AnyVal {
-      def toOption: Option[GroupName] = requestGroup match {
+      def toOption: Option[GroupId] = requestGroup match {
         case AGroup(userGroup) => Some(userGroup)
         case `N/A` => None
       }

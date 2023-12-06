@@ -28,11 +28,11 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupNameAttribute, GroupSearchFilter, GroupsFromUserAttribute, GroupsFromUserEntry, NestedGroupsConfig, UniqueMemberAttribute}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupIdAttribute, GroupSearchFilter, GroupsFromUserAttribute, GroupsFromUserEntry, NestedGroupsConfig, UniqueMemberAttribute}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.utils.SingletonLdapContainers
+import tech.beshu.ror.utils.TestsUtils.group
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration._
@@ -60,7 +60,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
         "user has groups" in {
           eventually {
             godAndRegionsLdapAuthorizationService.groupsOf(User.Id("jesus")).runSyncUnsafe() should contain only(
-              GroupName("europe"), GroupName("north america"), GroupName("south america"), GroupName("africa")
+              group("europe"), group("north america"), group("south america"), group("africa")
             )
           }
         }
@@ -68,19 +68,19 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
       "resolve nested groups properly" in {
         eventually {
           usersAndRolesLdapAuthorizationService.groupsOf(User.Id("userSpeaker")).runSyncUnsafe() should be {
-            UniqueList.of(GroupName("developers"), GroupName("speakers"))
+            UniqueList.of(group("developers"), group("speakers"))
           }
         }
       }
       "returns empty set of groups" when {
         "user has no groups" in {
           eventually {
-            godAndRegionsLdapAuthorizationService.groupsOf(User.Id("spaghetti")).runSyncUnsafe() should be (UniqueList.empty[GroupName])
+            godAndRegionsLdapAuthorizationService.groupsOf(User.Id("spaghetti")).runSyncUnsafe() should be (UniqueList.empty[Group])
           }
         }
         "there is no user with given name" in {
           eventually {
-            godAndRegionsLdapAuthorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[GroupName])
+            godAndRegionsLdapAuthorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[Group])
           }
         }
       }
@@ -113,7 +113,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
           GroupsFromUserEntry(
             Dn("ou=Regions,dc=example,dc=com"),
             GroupSearchFilter("(objectClass=*)"),
-            GroupNameAttribute("cn"),
+            GroupIdAttribute("cn"),
             GroupsFromUserAttribute("title"),
           ),
           nestedGroupsConfig = None
@@ -149,7 +149,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
           GroupsFromUserEntry(
             Dn("ou=Roles,dc=example,dc=com"),
             GroupSearchFilter("(objectClass=*)"),
-            GroupNameAttribute("cn"),
+            GroupIdAttribute("cn"),
             GroupsFromUserAttribute("memberOf"),
           ),
           Some(NestedGroupsConfig(
@@ -157,7 +157,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
             Dn("ou=Roles,dc=example,dc=com"),
             GroupSearchFilter("(objectClass=*)"),
             UniqueMemberAttribute("uniqueMember"),
-            GroupNameAttribute("cn"),
+            GroupIdAttribute("cn"),
           ))
         )
       )

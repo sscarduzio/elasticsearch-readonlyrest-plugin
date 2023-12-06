@@ -28,8 +28,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService => AuthenticationService, ExternalAuthorizationService => AuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.api.AuthMockApi.AuthMockResponse.{Failure, ProvideAuthMock, UpdateAuthMock}
 import tech.beshu.ror.api.AuthMockApi.AuthMockService._
 import tech.beshu.ror.boot.RorInstance.{IndexConfigUpdateError, TestConfig}
@@ -261,7 +261,12 @@ object AuthMockApi {
     implicit class MockUserOps(val mock: MockUserWithGroups) extends AnyVal {
       def domainUserId: User.Id = User.Id(mock.name)
 
-      def domainGroups: Set[GroupName] = mock.groups.map(GroupName.apply).toSet
+      def domainGroups: Set[Group] = mock.groups.map(toDomainGroup).toSet
+
+      private def toDomainGroup(groupId: NonEmptyString) = {
+        val id = GroupId(groupId)
+        Group.from(id)
+      }
     }
 
     def toAuthMockService(serviceId: LdapService#Id,
@@ -270,7 +275,7 @@ object AuthMockApi {
         maybeMock
           .map {
             _.users
-              .map(user => MockUserWithGroups(user.id.value, user.groups.map(_.value).toList))
+              .map(user => MockUserWithGroups(user.id.value, user.groups.map(_.id.value).toList))
               .toList
           }
           .map(AuthMockService.LdapAuthorizationService.Mock.apply)
@@ -286,7 +291,7 @@ object AuthMockApi {
         maybeMock
           .map {
             _.users
-              .map(user => MockUserWithGroups(user.id.value, user.groups.map(_.value).toList))
+              .map(user => MockUserWithGroups(user.id.value, user.groups.map(_.id.value).toList))
               .toList
           }
           .map(AuthMockService.ExternalAuthorizationService.Mock.apply)

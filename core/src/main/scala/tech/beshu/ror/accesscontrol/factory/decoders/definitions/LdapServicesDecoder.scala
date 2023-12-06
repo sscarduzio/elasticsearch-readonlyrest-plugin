@@ -179,13 +179,13 @@ object LdapServicesDecoder {
       for {
         searchGroupBaseDn <- c.downField("search_groups_base_DN").as[Dn]
         groupSearchFilter <- c.downField("group_search_filter").as[Option[GroupSearchFilter]]
-        groupNameAttribute <- c.downField("group_name_attribute").as[Option[GroupNameAttribute]]
+        groupIdAttribute <- c.downField("group_name_attribute").as[Option[GroupIdAttribute]]
         uniqueMemberAttribute <- c.downField("unique_member_attribute").as[Option[UniqueMemberAttribute]]
         groupAttributeIsDN <- c.downField("group_attribute_is_dn").as[Option[Boolean]]
       } yield DefaultGroupSearch(
         searchGroupBaseDn,
         groupSearchFilter.getOrElse(GroupSearchFilter.default),
-        groupNameAttribute.getOrElse(GroupNameAttribute.default),
+        groupIdAttribute.getOrElse(GroupIdAttribute.default),
         uniqueMemberAttribute.getOrElse(UniqueMemberAttribute.default),
         groupAttributeIsDN.getOrElse(true)
       )
@@ -196,12 +196,12 @@ object LdapServicesDecoder {
       for {
         searchGroupBaseDn <- c.downField("search_groups_base_DN").as[Dn]
         groupSearchFilter <- c.downField("group_search_filter").as[Option[GroupSearchFilter]]
-        groupNameAttribute <- c.downField("group_name_attribute").as[Option[GroupNameAttribute]]
+        groupIdAttribute <- c.downField("group_name_attribute").as[Option[GroupIdAttribute]]
         groupsFromUserAttribute <- c.downField("groups_from_user_attribute").as[Option[GroupsFromUserAttribute]]
       } yield GroupsFromUserEntry(
         searchGroupBaseDn,
         groupSearchFilter.getOrElse(GroupSearchFilter.default),
-        groupNameAttribute.getOrElse(GroupNameAttribute.default),
+        groupIdAttribute.getOrElse(GroupIdAttribute.default),
         groupsFromUserAttribute.getOrElse(GroupsFromUserAttribute.default)
       )
     }
@@ -370,8 +370,8 @@ object LdapServicesDecoder {
   private implicit lazy val groupSearchFilterDecoder: Decoder[GroupSearchFilter] =
     DecoderHelpers.decodeStringLikeNonEmpty.map(GroupSearchFilter.apply)
 
-  private implicit lazy val groupNameAttributeDecoder: Decoder[GroupNameAttribute] =
-    DecoderHelpers.decodeStringLikeNonEmpty.map(GroupNameAttribute.apply)
+  private implicit lazy val groupIdAttributeDecoder: Decoder[GroupIdAttribute] =
+    DecoderHelpers.decodeStringLikeNonEmpty.map(GroupIdAttribute.apply)
 
   private implicit lazy val uniqueMemberAttributeDecoder: Decoder[UniqueMemberAttribute] =
     DecoderHelpers.decodeStringLikeNonEmpty.map(UniqueMemberAttribute.apply)
@@ -381,7 +381,7 @@ object LdapServicesDecoder {
 
   private def nestedGroupsConfigDecoder(searchMode: UserGroupsSearchMode) = {
     searchMode match {
-      case DefaultGroupSearch(searchGroupBaseDN, groupSearchFilter, groupNameAttribute, uniqueMemberAttribute, _) =>
+      case DefaultGroupSearch(searchGroupBaseDN, groupSearchFilter, groupIdAttribute, uniqueMemberAttribute, _) =>
         Decoder.instance { c =>
           for {
             nestedGroupsDepthOpt <- c.downField("nested_groups_depth").as[Option[Int Refined Positive]]
@@ -391,11 +391,11 @@ object LdapServicesDecoder {
               searchGroupBaseDN,
               groupSearchFilter,
               uniqueMemberAttribute,
-              groupNameAttribute
+              groupIdAttribute
             ))
           }
         }
-      case GroupsFromUserEntry(searchGroupBaseDN, groupSearchFilter, groupNameAttribute, _) =>
+      case GroupsFromUserEntry(searchGroupBaseDN, groupSearchFilter, groupIdAttribute, _) =>
         Decoder.instance { c =>
           for {
             nestedGroupsDepthOpt <- c.downField("nested_groups_depth").as[Option[Int Refined Positive]]
@@ -406,7 +406,7 @@ object LdapServicesDecoder {
               searchGroupBaseDN,
               groupSearchFilter,
               uniqueMemberAttribute.getOrElse(UniqueMemberAttribute.default),
-              groupNameAttribute
+              groupIdAttribute
             ))
           }
         }

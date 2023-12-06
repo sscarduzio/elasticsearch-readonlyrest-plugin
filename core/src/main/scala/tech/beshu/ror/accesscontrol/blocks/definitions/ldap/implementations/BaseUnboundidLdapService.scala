@@ -84,14 +84,14 @@ object UserGroupsSearchFilterConfig {
 
     final case class DefaultGroupSearch(searchGroupBaseDN: Dn,
                                         groupSearchFilter: GroupSearchFilter,
-                                        groupNameAttribute: GroupNameAttribute,
+                                        groupIdAttribute: GroupIdAttribute,
                                         uniqueMemberAttribute: UniqueMemberAttribute,
                                         groupAttributeIsDN: Boolean)
       extends UserGroupsSearchMode
 
     final case class GroupsFromUserEntry(searchGroupBaseDN: Dn,
                                          groupSearchFilter: GroupSearchFilter,
-                                         groupNameAttribute: GroupNameAttribute,
+                                         groupIdAttribute: GroupIdAttribute,
                                          groupsFromUserAttribute: GroupsFromUserAttribute)
       extends UserGroupsSearchMode
 
@@ -99,9 +99,9 @@ object UserGroupsSearchFilterConfig {
     object GroupSearchFilter {
       val default: GroupSearchFilter = GroupSearchFilter("(objectClass=*)")
     }
-    final case class GroupNameAttribute(value: NonEmptyString)
-    object GroupNameAttribute {
-      val default: GroupNameAttribute = GroupNameAttribute("cn")
+    final case class GroupIdAttribute(value: NonEmptyString)
+    object GroupIdAttribute {
+      val default: GroupIdAttribute = GroupIdAttribute("cn")
     }
     final case class UniqueMemberAttribute(value: NonEmptyString)
     object UniqueMemberAttribute {
@@ -116,6 +116,6 @@ object UserGroupsSearchFilterConfig {
                                         searchGroupBaseDN: Dn,
                                         groupSearchFilter: GroupSearchFilter,
                                         memberAttribute: UniqueMemberAttribute,
-                                        groupNameAttribute: GroupNameAttribute)
+                                        groupIdAttribute: GroupIdAttribute)
   }
 }
