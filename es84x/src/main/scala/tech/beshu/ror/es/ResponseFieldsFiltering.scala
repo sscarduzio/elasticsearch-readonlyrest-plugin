@@ -67,6 +67,7 @@ trait ResponseFieldsFiltering {
         .withRegistry(NamedXContentRegistry.EMPTY),
       response.content().streamInput()
     )
+
     val contentBuilder = XContentBuilder.builder(xContent.`type`(), includes.asJava, excludes.asJava)
     contentBuilder.copyCurrentStructure(parser)
     contentBuilder.flush()

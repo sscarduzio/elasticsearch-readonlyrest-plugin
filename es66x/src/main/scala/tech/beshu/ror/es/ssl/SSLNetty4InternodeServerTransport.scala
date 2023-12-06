@@ -53,7 +53,10 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
       super.initChannel(ch)
 
       ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter {
-        override def connect(ctx: ChannelHandlerContext, remoteAddress: SocketAddress, localAddress: SocketAddress, promise: ChannelPromise): Unit = {
+        override def connect(ctx: ChannelHandlerContext,
+                             remoteAddress: SocketAddress,
+                             localAddress: SocketAddress,
+                             promise: ChannelPromise): Unit = {
           val sslEngine = SSLCertHelper.prepareSSLEngine(
             sslContext = clientSslCtx,
             channelHandlerContext = ctx,

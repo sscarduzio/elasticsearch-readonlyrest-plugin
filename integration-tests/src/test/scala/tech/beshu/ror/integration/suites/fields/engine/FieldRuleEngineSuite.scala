@@ -40,8 +40,8 @@ trait FieldRuleEngineSuite
     FieldRuleEngineSuite.nodeDataInitializer()
   }
 
-  private lazy val user1SearchManager = new SearchManager(basicAuthClient("user1", "pass"))
-  private lazy val user2SearchManager = new SearchManager(basicAuthClient("user2", "pass"))
+  protected lazy val user1SearchManager = new SearchManager(basicAuthClient("user1", "pass"))
+  protected lazy val user2SearchManager = new SearchManager(basicAuthClient("user2", "pass"))
 
   "Search request with field rule defined" when {
     "specific FLS engine is used" should {
@@ -120,54 +120,62 @@ trait FieldRuleEngineSuite
 
   "Scroll search" should {
     "properly handle allowed fields" in {
-      val result1 = user1SearchManager.searchScroll(
+      val result = user1SearchManager.searchScroll(
         size = 3,
         scroll = 1 minute,
         "test-index"
       )
-      result1 should have statusCode 200
-      result1.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
-        ujson.read(s"""{"allowedField": "allowed:1"}"""),
-        ujson.read(s"""{"allowedField": "allowed:2"}"""),
-        ujson.read(s"""{"allowedField": "allowed:3"}"""),
-      )
-
-      val result2 = user1SearchManager.searchScroll(result1.scrollId)
-      result2 should have statusCode 200
-      result2.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
-        ujson.read(s"""{"allowedField": "allowed:4"}"""),
-        ujson.read(s"""{"allowedField": "allowed:5"}"""),
-      )
-
-      val result3 = user1SearchManager.searchScroll(result1.scrollId)
-      result3 should have statusCode 404
+      scrollSearchShouldProperlyHandleAllowedFields(result)
     }
     "properly handle forbidden fields" in {
-      val result1 = user2SearchManager.searchScroll(
+      val result = user2SearchManager.searchScroll(
         size = 3,
         scroll = 1 minute,
         "test-index"
       )
-      result1 should have statusCode 200
-      result1.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
-        ujson.read(s"""{"allowedField": "allowed:1", "forbiddenField":1}"""),
-        ujson.read(s"""{"allowedField": "allowed:2", "forbiddenField":2}"""),
-        ujson.read(s"""{"allowedField": "allowed:3", "forbiddenField":3}"""),
-      )
-
-      val result2 = user2SearchManager.searchScroll(result1.scrollId)
-      result2 should have statusCode 200
-      result2.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
-        ujson.read(s"""{"allowedField": "allowed:4", "forbiddenField":4}"""),
-        ujson.read(s"""{"allowedField": "allowed:5", "forbiddenField":5}"""),
-      )
-
-      val result3 = user2SearchManager.searchScroll(result1.scrollId)
-      result3 should have statusCode 404
+      scrollSearchShouldProperlyHandleForbiddenFields(result)
     }
   }
 
   protected def unmodifiableQueryAssertion(searchResult: SearchManager.SearchResult): Unit
+
+  protected def scrollSearchShouldProperlyHandleAllowedFields(searchResult: SearchManager.SearchResult): Unit = {
+    searchResult should have statusCode 200
+    searchResult.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
+      ujson.read(s"""{"allowedField": "allowed:1"}"""),
+      ujson.read(s"""{"allowedField": "allowed:2"}"""),
+      ujson.read(s"""{"allowedField": "allowed:3"}"""),
+    )
+
+    val result2 = user1SearchManager.searchScroll(searchResult.scrollId)
+    result2 should have statusCode 200
+    result2.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
+      ujson.read(s"""{"allowedField": "allowed:4"}"""),
+      ujson.read(s"""{"allowedField": "allowed:5"}"""),
+    )
+
+    val result3 = user1SearchManager.searchScroll(searchResult.scrollId)
+    result3 should have statusCode 404
+  }
+
+  protected def scrollSearchShouldProperlyHandleForbiddenFields(searchResult: SearchManager.SearchResult): Unit = {
+    searchResult should have statusCode 200
+    searchResult.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
+      ujson.read(s"""{"allowedField": "allowed:1", "forbiddenField":1}"""),
+      ujson.read(s"""{"allowedField": "allowed:2", "forbiddenField":2}"""),
+      ujson.read(s"""{"allowedField": "allowed:3", "forbiddenField":3}"""),
+    )
+
+    val result2 = user2SearchManager.searchScroll(searchResult.scrollId)
+    result2 should have statusCode 200
+    result2.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
+      ujson.read(s"""{"allowedField": "allowed:4", "forbiddenField":4}"""),
+      ujson.read(s"""{"allowedField": "allowed:5", "forbiddenField":5}"""),
+    )
+
+    val result3 = user2SearchManager.searchScroll(searchResult.scrollId)
+    result3 should have statusCode 404
+  }
 }
 
 object FieldRuleEngineSuite {

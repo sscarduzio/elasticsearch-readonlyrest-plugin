@@ -44,5 +44,4 @@ public class RRConfigsResponse extends BaseNodesResponse<RRConfig> {
     protected void writeNodesTo(StreamOutput out, List<RRConfig> nodes) throws IOException {
         out.writeList(nodes);
     }
-
 }
