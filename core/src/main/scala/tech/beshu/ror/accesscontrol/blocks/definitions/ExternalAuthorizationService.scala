@@ -37,8 +37,8 @@ import tech.beshu.ror.accesscontrol.utils.CacheableAction
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import scala.jdk.CollectionConverters._
 import scala.concurrent.duration.FiniteDuration
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 trait ExternalAuthorizationService extends Item {
@@ -62,7 +62,7 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
                                        uri: Uri,
                                        method: SupportedHttpMethod,
                                        tokenName: AuthTokenName,
-                                       groupsJsonPath: JsonPath,
+                                       groupsConfig: GroupsConfig,
                                        authTokenSendMethod: AuthTokenSendMethod,
                                        defaultHeaders: Set[Header],
                                        defaultQueryParams: Set[QueryParam],
@@ -98,25 +98,6 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
     }
   }
 
-  private def groupsFromResponseBody(body: String): UniqueList[Group] = {
-    val groupsFromPath =
-      Try(groupsJsonPath.read[java.util.List[String]](body))
-        .map(
-          _.asScala
-            .flatMap(NonEmptyString.from(_).toOption)
-            .map(GroupId.apply)
-            .map(Group.from)
-        )
-    groupsFromPath match {
-      case Success(groups) =>
-        logger.debug(s"Groups returned by groups provider '${id.show}': ${groups.map(_.show).mkString(",")}")
-        UniqueList.fromIterable(groups)
-      case Failure(ex) =>
-        logger.debug(s"Group based authorization response exception - provider '${id.show}'", ex)
-        UniqueList.empty
-    }
-  }
-
   private def queryParams(userId: User.Id): Map[String, String] = {
     defaultQueryParams.map(p => (autoUnwrap(p.name), autoUnwrap(p.value))).toMap ++
       (authTokenSendMethod match {
@@ -132,6 +113,80 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
         case UsingQueryParam => Map.empty
       })
   }
+
+  private def groupsFromResponseBody(body: String): UniqueList[Group] = {
+    val groupsFromBody = groupsFrom(body)
+    groupsFromBody match {
+      case Success(groups) =>
+        logger.debug(s"Groups returned by groups provider '${id.show}': ${groups.map(_.show).mkString(",")}")
+        UniqueList.fromIterable(groups)
+      case Failure(ex) =>
+        logger.debug(s"Group based authorization response exception - provider '${id.show}'", ex)
+        UniqueList.empty
+    }
+  }
+
+  private def groupsFrom(body: String) = {
+    for {
+      rawGroupIds <- groupIdsFrom(body)
+      groups <- groupsFrom(body, rawGroupIds)
+    } yield groups
+  }
+
+  private def groupIdsFrom(body: String) = {
+    readInJsonPath[java.util.List[String]](body, groupsConfig.idsConfig.jsonPath)
+      .map {
+        _.asScala.toList
+      }
+  }
+
+  private def groupsFrom(body: String, rawGroupIds: List[String]): Try[List[Group]] = {
+    groupsConfig.namesConfig match {
+      case Some(namesConfig) =>
+        groupNamesFrom(body, namesConfig)
+          .flatMap {
+            case rawGroupNames if rawGroupNames.size == rawGroupIds.size =>
+              Success(formGroups(groupIdsWithNames = rawGroupIds.zip(rawGroupNames)))
+            case rawGroupNames =>
+              Failure(new IllegalArgumentException(
+                s"Group names array extracted from the response at json path ${namesConfig.jsonPath.getPath} has different size [size=${rawGroupNames.size}] than " +
+                  s"the group IDs array extracted from the response at json path ${groupsConfig.idsConfig.jsonPath.getPath} [size=${rawGroupIds.size}]"
+              ))
+          }
+      case None =>
+        Success(
+          rawGroupIds
+            .flatMap(toGroupId)
+            .map(Group.from)
+        )
+    }
+  }
+
+  private def groupNamesFrom(body: String, namesConfig: GroupsConfig.GroupNamesConfig): Try[List[String]] = {
+    readInJsonPath[java.util.List[String]](body, namesConfig.jsonPath)
+      .map {
+        _.asScala.toList
+      }
+  }
+
+  private def formGroups(groupIdsWithNames: List[(String, String)]) = {
+    groupIdsWithNames.flatMap { case (groupId, groupName) =>
+      toGroupId(groupId)
+        .map(id => Group(id, toGroupName(value = groupName, fallback = GroupName.from(id))))
+    }
+  }
+
+  private def toGroupId(value: String): Option[GroupId] = NonEmptyString.unapply(value).map(GroupId.apply)
+
+  private def toGroupName(value: String, fallback: GroupName) =
+    NonEmptyString
+      .unapply(value)
+      .map(GroupName.apply)
+      .getOrElse(fallback)
+
+  private def readInJsonPath[A](body: String, jsonPath: JsonPath) = {
+    Try(jsonPath.read[A](body))
+  }
 }
 
 object HttpExternalAuthorizationService {
@@ -142,6 +197,12 @@ object HttpExternalAuthorizationService {
   object AuthTokenSendMethod {
     case object UsingHeader extends AuthTokenSendMethod
     case object UsingQueryParam extends AuthTokenSendMethod
+  }
+
+  final case class GroupsConfig(idsConfig: GroupsConfig.GroupIdsConfig, namesConfig: Option[GroupsConfig.GroupNamesConfig])
+  object GroupsConfig {
+    final case class GroupIdsConfig(jsonPath: JsonPath)
+    final case class GroupNamesConfig(jsonPath: JsonPath)
   }
 
   sealed trait SupportedHttpMethod

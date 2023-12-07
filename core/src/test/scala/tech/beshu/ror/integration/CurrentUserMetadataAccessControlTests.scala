@@ -173,13 +173,15 @@ class CurrentUserMetadataAccessControlTests
       |    groups_endpoint: "http://${wiremock.getWireMockHost}:${wiremock.getWireMockPort}/groups"
       |    auth_token_name: "user"
       |    auth_token_passed_as: QUERY_PARAM
-      |    response_groups_json_path: "$$..groups[?(@.name)].name"
+      |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
+      |    response_group_names_json_path: "$$..groups[?(@.name)].name"
       |
       |  - name: Service2
       |    groups_endpoint: "http://${wiremock.getWireMockHost}:${wiremock.getWireMockPort}/groups"
       |    auth_token_name: "user"
       |    auth_token_passed_as: QUERY_PARAM
-      |    response_groups_json_path: "$$..groups[?(@.name)].name"
+      |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
+      |    response_group_names_json_path: "$$..groups[?(@.name)].name"
       |
       |  ldaps:
       |  - name: Ldap1
@@ -302,7 +304,7 @@ class CurrentUserMetadataAccessControlTests
 
             inside(result1.result) { case Allow(userMetadata, _) =>
               userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user5"))))
-              userMetadata.availableGroups.toSet should be (Set(group("service1_group1"), group("service1_group2")))
+              userMetadata.availableGroups.toSet should be (Set(group("service1_group1", "Group 1"), group("service1_group2", "Group 2")))
             }
 
             val request2 = MockRequestContext.metadata.copy(
@@ -312,7 +314,7 @@ class CurrentUserMetadataAccessControlTests
 
             inside(result2.result) { case Allow(userMetadata, _) =>
               userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user5"))))
-              userMetadata.availableGroups.toSet should be (Set(group("service1_group1"), group("service1_group2")))
+              userMetadata.availableGroups.toSet should be (Set(group("service1_group1", "Group 1"), group("service1_group2", "Group 2")))
             }
           }
           "the service is LDAP" in {

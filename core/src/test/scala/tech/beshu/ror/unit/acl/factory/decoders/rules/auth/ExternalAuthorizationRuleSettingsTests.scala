@@ -59,7 +59,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
@@ -97,13 +97,13 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |
               |  - name: GroupsService2
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user2"
               |    auth_token_passed_as: HEADER
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
@@ -140,7 +140,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
@@ -176,7 +176,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
@@ -187,6 +187,44 @@ class ExternalAuthorizationRuleSettingsTests
                 GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("group3"))))
               )
               users should be(UniqueNonEmptyList.of(User.Id("*")))
+            }
+          }
+        )
+      }
+      "old format of group ids json path property is used" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+              |    groups_provider_authorization:
+              |      user_groups_provider: "GroupsService1"
+              |      groups: ["g*"]
+              |      users: user1
+              |
+              |  user_groups_providers:
+              |
+              |  - name: GroupsService1
+              |    groups_endpoint: "http://localhost:8080/groups"
+              |    auth_token_name: "user"
+              |    auth_token_passed_as: QUERY_PARAM
+              |    response_groups_json_path: "$..groups[?(@.id)].id"
+              |
+              |""".stripMargin,
+          httpClientsFactory = mockedHttpClientsFactory,
+          assertion = rule => {
+            inside(rule.settings) { case Settings(service, permittedGroupsLogic, users) =>
+              service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
+              service shouldBe a[HttpExternalAuthorizationService]
+              permittedGroupsLogic should be(
+                GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupIdLike.from("g*"))))
+              )
+              permittedGroupsLogic.permittedGroupIds.permittedGroupIds.groupIds.head shouldBe a[GroupIdPattern]
+              users should be(UniqueNonEmptyList.of(User.Id("user1")))
             }
           }
         )
@@ -211,7 +249,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: HEADER
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |    http_method: POST
               |    default_query_parameters: query1:value1,query2:value2
               |    default_headers: header1:hValue1, header2:hValue2
@@ -253,7 +291,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: HEADER
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |    http_method: POST
               |    default_query_parameters: query1:value1,query2:value2
               |    default_headers: header1:hValue1, header2:hValue2
@@ -298,7 +336,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
@@ -333,7 +371,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
@@ -365,7 +403,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
@@ -417,7 +455,7 @@ class ExternalAuthorizationRuleSettingsTests
               |  - groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
@@ -427,7 +465,7 @@ class ExternalAuthorizationRuleSettingsTests
               """- groups_endpoint: "http://localhost:8080/groups"
                 |  auth_token_name: "user"
                 |  auth_token_passed_as: "QUERY_PARAM"
-                |  response_groups_json_path: "$..groups[?(@.name)].name"
+                |  response_group_ids_json_path: "$..groups[?(@.id)].id"
                 |""".stripMargin
             )))
           }
@@ -453,13 +491,13 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |
               |  - name: GroupsService1
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user2"
               |    auth_token_passed_as: HEADER
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
@@ -489,7 +527,7 @@ class ExternalAuthorizationRuleSettingsTests
               |  - name: GroupsService1
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
@@ -499,7 +537,7 @@ class ExternalAuthorizationRuleSettingsTests
               """- name: "GroupsService1"
                 |  auth_token_name: "user"
                 |  auth_token_passed_as: "QUERY_PARAM"
-                |  response_groups_json_path: "$..groups[?(@.name)].name"
+                |  response_group_ids_json_path: "$..groups[?(@.id)].id"
                 |""".stripMargin
             )))
           }
@@ -525,7 +563,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://malformed@{user}:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
@@ -553,7 +591,7 @@ class ExternalAuthorizationRuleSettingsTests
               |  - name: GroupsService1
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
@@ -562,7 +600,7 @@ class ExternalAuthorizationRuleSettingsTests
               """- name: "GroupsService1"
                 |  groups_endpoint: "http://localhost:8080/groups"
                 |  auth_token_name: "user"
-                |  response_groups_json_path: "$..groups[?(@.name)].name"
+                |  response_group_ids_json_path: "$..groups[?(@.id)].id"
                 |""".stripMargin
             )))
           }
@@ -588,7 +626,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user2"
               |    auth_token_passed_as: BODY
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
@@ -621,17 +659,13 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
-              """- name: "GroupsService1"
-                |  groups_endpoint: "http://localhost:8080/groups"
-                |  auth_token_name: "user"
-                |  auth_token_passed_as: "QUERY_PARAM"
-                |""".stripMargin
+            errors.head should be(DefinitionsLevelCreationError(Message(
+              "External authorization service 'GroupsService1' configuration is missing the 'response_group_ids_json_path' attribute"
             )))
           }
         )
       }
-      "authorization service groups JSON path is malformed" in {
+      "authorization service group ids JSON path is malformed" in {
         assertDecodingFailure(
           yaml =
             """
@@ -651,12 +685,74 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?.name)].name_malformed"
+              |    response_group_ids_json_path: "$..groups[?.id)].id_malformed"
+              |""".stripMargin,
+          httpClientsFactory = mockedHttpClientsFactory,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message("Cannot compile '$..groups[?.id)].id_malformed' to JSON path")))
+          }
+        )
+      }
+      "authorization service group names JSON path is malformed" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    groups_provider_authorization:
+              |      user_groups_provider: GroupsService1
+              |      groups: ["group3"]
+              |      users: ["user1", "user2"]
+              |
+              |  user_groups_providers:
+              |
+              |  - name: GroupsService1
+              |    groups_endpoint: "http://localhost:8080/groups"
+              |    auth_token_name: "user"
+              |    auth_token_passed_as: QUERY_PARAM
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
+              |    response_group_names_json_path: "$..groups[?.name)].name_malformed"
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message("Cannot compile '$..groups[?.name)].name_malformed' to JSON path")))
+          }
+        )
+      }
+      "authorization service group ids JSON path is defined in the old and new syntax at once" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    groups_provider_authorization:
+              |      user_groups_provider: GroupsService1
+              |      groups: ["group3"]
+              |      users: ["user1", "user2"]
+              |
+              |  user_groups_providers:
+              |
+              |  - name: GroupsService1
+              |    groups_endpoint: "http://localhost:8080/groups"
+              |    auth_token_name: "user"
+              |    auth_token_passed_as: QUERY_PARAM
+              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
+              |""".stripMargin,
+          httpClientsFactory = mockedHttpClientsFactory,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message(
+              "External authorization service 'GroupsService1' configuration cannot have the 'response_groups_json_path' and 'response_group_ids_json_path' attributes defined at the same time"
+            )))
           }
         )
       }
@@ -679,7 +775,7 @@ class ExternalAuthorizationRuleSettingsTests
               |  - name: GroupsService1
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
@@ -688,7 +784,7 @@ class ExternalAuthorizationRuleSettingsTests
               """- name: "GroupsService1"
                 |  groups_endpoint: "http://localhost:8080/groups"
                 |  auth_token_passed_as: "QUERY_PARAM"
-                |  response_groups_json_path: "$..groups[?(@.name)].name"
+                |  response_group_ids_json_path: "$..groups[?(@.id)].id"
                 |""".stripMargin
             )))
           }
@@ -714,7 +810,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: ""
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
@@ -746,7 +842,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |    cache_ttl_in_sec: hundred
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
@@ -776,7 +872,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |    cache_ttl_in_sec: -120
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
@@ -806,7 +902,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |    http_method: DELETE
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
@@ -836,7 +932,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |    default_query_parameters: "query:;query1:12345"
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
@@ -866,7 +962,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |    default_headers: "header1:;header2:12345"
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
@@ -896,7 +992,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |    validate: true
               |    http_connection_settings:
               |      validate: false
@@ -928,7 +1024,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |    http_connection_settings:
               |      connection_timeout_in_sec: -10
               |""".stripMargin,
@@ -959,7 +1055,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |    http_connection_settings:
               |      connection_request_timeout_in_sec: -10
               |""".stripMargin,
@@ -990,7 +1086,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    groups_endpoint: "http://localhost:8080/groups"
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$..groups[?(@.name)].name"
+              |    response_group_ids_json_path: "$..groups[?(@.id)].id"
               |    http_connection_settings:
               |      connection_pool_size: -10
               |""".stripMargin,

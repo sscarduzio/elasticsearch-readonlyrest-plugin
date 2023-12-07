@@ -106,6 +106,8 @@ object TestsUtils {
 
   def group(str: NonEmptyString): Group = Group.from(GroupId(str))
 
+  def group(id: NonEmptyString, name: NonEmptyString): Group = Group(GroupId(id), GroupName(name))
+
   def clusterIndexName(str: NonEmptyString): ClusterIndexName = ClusterIndexName.unsafeFromString(str.value)
 
   def localIndexName(str: NonEmptyString): ClusterIndexName.Local = ClusterIndexName.Local.fromString(str.value.value).get

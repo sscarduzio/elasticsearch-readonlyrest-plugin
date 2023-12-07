@@ -271,7 +271,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |    groups_endpoint: "http://localhost:8080/groups"
                  |    auth_token_name: "user"
                  |    auth_token_passed_as: QUERY_PARAM
-                 |    response_groups_json_path: "$$..groups[?(@.name)].name"
+                 |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
                  |
                  |""".stripMargin,
             assertion = rule => {
@@ -395,7 +395,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |    groups_endpoint: "http://localhost:8080/groups"
                  |    auth_token_name: "user"
                  |    auth_token_passed_as: QUERY_PARAM
-                 |    response_groups_json_path: "$$..groups[?(@.name)].name"
+                 |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
                  |
                  |""".stripMargin,
             assertion = rule => {
@@ -696,7 +696,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |    groups_endpoint: "http://localhost:8080/groups"
                |    auth_token_name: "user"
                |    auth_token_passed_as: QUERY_PARAM
-               |    response_groups_json_path: "$$..groups[?(@.name)].name"
+               |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
                |
                |""".stripMargin,
           assertion = errors => {
@@ -780,7 +780,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |    groups_endpoint: "http://localhost:8080/groups"
                |    auth_token_name: "user"
                |    auth_token_passed_as: QUERY_PARAM
-               |    response_groups_json_path: "$$..groups[?(@.name)].name"
+               |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
                |
                |""".stripMargin,
           assertion = errors => {

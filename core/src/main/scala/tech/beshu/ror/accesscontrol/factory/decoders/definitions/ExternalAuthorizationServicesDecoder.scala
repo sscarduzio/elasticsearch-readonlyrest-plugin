@@ -25,11 +25,11 @@ import io.circe.Decoder
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.SupportedHttpMethod.Get
-import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.{AuthTokenName, AuthTokenSendMethod, QueryParam, SupportedHttpMethod}
+import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.{AuthTokenName, AuthTokenSendMethod, GroupsConfig, QueryParam, SupportedHttpMethod}
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, Reason}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common.decoderTupleListDecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
@@ -88,38 +88,51 @@ object ExternalAuthorizationServicesDecoder extends Logging {
           authTokenName <- c.downField("auth_token_name").as[AuthTokenName]
           sendUsing <- c.downField("auth_token_passed_as").as[AuthTokenSendMethod]
           httpMethod <- c.downField("http_method").as[Option[SupportedHttpMethod]]
-          groupsJsonPath <- c.downField("response_groups_json_path").as[JsonPath]
+          groupIdsConfig <- c.downField("response_group_ids_json_path").as[Option[JsonPath]]
+            .map(_.map(GroupsConfig.GroupIdsConfig.apply))
+          groupIdsDeprecatedConfig <- c.downField("response_groups_json_path").as[Option[JsonPath]]
+            .map(_.map(GroupsConfig.GroupIdsConfig.apply))
+          groupNamesConfig <-
+            c.downField("response_group_names_json_path").as[Option[JsonPath]]
+              .map(_.map(GroupsConfig.GroupNamesConfig.apply))
           defaultQueryParams <- c.downField("default_query_parameters").as[Option[Set[QueryParam]]]
           defaultHeaders <- c.downField("default_headers").as[Option[Set[Header]]]
           cacheTtl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
           validate <- c.downField("validate").as[Option[Boolean]]
           httpClientConfig <- c.downField("http_connection_settings").as[Option[HttpClientsFactory.Config]]
-        } yield (name, url, authTokenName, sendUsing, httpMethod, groupsJsonPath, defaultQueryParams, defaultHeaders, cacheTtl, validate, httpClientConfig)
+        } yield (name, url, authTokenName, sendUsing, httpMethod, groupIdsConfig, groupIdsDeprecatedConfig, groupNamesConfig, defaultQueryParams, defaultHeaders, cacheTtl, validate, httpClientConfig)
       }
-      .emapE { case (name, url, authTokenName, sendUsing, httpMethod, groupsJsonPath, defaultQueryParams, defaultHeaders, cacheTtl, validateOpt, httpClientConfigOpt) =>
-        val httpClientConfig = (validateOpt, httpClientConfigOpt) match {
-          case (Some(_), Some(_)) =>
-            Left(CoreCreationError.RulesLevelCreationError(Message("If 'http_connection_settings' are used, 'validate' should be placed in that section")))
-          case (Some(validate), None) =>
-            Right(HttpClientsFactory.Config.default.copy(validate = validate))
-          case (None, Some(config)) =>
-            Right(config)
-          case (None, None) =>
-            Right(HttpClientsFactory.Config.default)
-        }
-        httpClientConfig.map { config =>
-          val httpClient = httpClientFactory.create(config)
+      .emapE { case (name, url, authTokenName, sendUsing, httpMethod, groupIdsConfig, groupIdsDeprecatedConfig, groupNames, defaultQueryParams, defaultHeaders, cacheTtl, validateOpt, httpClientConfigOpt) =>
+        for {
+          groupsConfig <- (groupIdsConfig, groupIdsDeprecatedConfig) match {
+            case (Some(newConfig), None) => Right(GroupsConfig(newConfig, groupNames))
+            case (None, Some(deprecatedConfig)) => Right(GroupsConfig(deprecatedConfig, None))
+            case (None, None) => Left(DefinitionsLevelCreationError(Reason.Message(s"External authorization service '${name.value.value}' configuration is missing the 'response_group_ids_json_path' attribute")))
+            case (Some(_), Some(_)) => Left(DefinitionsLevelCreationError(Reason.Message(s"External authorization service '${name.value.value}' configuration cannot have the 'response_groups_json_path' and 'response_group_ids_json_path' attributes defined at the same time")))
+          }
+          httpClientConfig <- (validateOpt, httpClientConfigOpt) match {
+            case (Some(_), Some(_)) =>
+              Left(CoreCreationError.RulesLevelCreationError(Message("If 'http_connection_settings' are used, 'validate' should be placed in that section")))
+            case (Some(validate), None) =>
+              Right(HttpClientsFactory.Config.default.copy(validate = validate))
+            case (None, Some(config)) =>
+              Right(config)
+            case (None, None) =>
+              Right(HttpClientsFactory.Config.default)
+          }
+        } yield {
+          val httpClient = httpClientFactory.create(httpClientConfig)
           val externalAuthService: ExternalAuthorizationService =
             new HttpExternalAuthorizationService(
               name,
               url,
               httpMethod.getOrElse(defaults.httpMethod),
               authTokenName,
-              groupsJsonPath,
+              groupsConfig,
               sendUsing,
               defaultHeaders.getOrElse(Set.empty),
               defaultQueryParams.getOrElse(Set.empty),
-              config.requestTimeout,
+              httpClientConfig.requestTimeout,
               httpClient
             )
           cacheTtl.foldLeft(externalAuthService) {
