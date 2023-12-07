@@ -17,8 +17,6 @@ readonlyrest:
 
   enable: true
 
-  fls_engine: "lucene"
-
   access_control_rules:
 
     # ES containter initializer need this rule to configure ES instance after startup
@@ -36,21 +34,4 @@ readonlyrest:
     - name: "User 1"
       type: allow
       auth_key: "user1:test"
-      indices: ["test*"]
-
-    - name: "User 2"
-      type: allow
-      auth_key: "user2:test"
-      indices: ["example"]
-      fields: ["~price"]
-
-    - name: "::RW_USER (filter read requests)::"
-      auth_key: user3:pass
-      indices: ["r*"]  # <-- DO NOT FILTER THE .kibana INDEX!
-      filter: '{"query_string":{"query":"DestCountry:FR"}}'
-
-    - name: "::RW_USER (allow remaining requests)::"
-      auth_key: user3:pass
-      kibana:
-        access: rw
-      indices: ["r*"]
+      indices: ["example*"]
