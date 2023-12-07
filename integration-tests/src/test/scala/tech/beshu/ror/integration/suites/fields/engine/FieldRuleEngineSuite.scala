@@ -40,8 +40,8 @@ trait FieldRuleEngineSuite
     FieldRuleEngineSuite.nodeDataInitializer()
   }
 
-  protected lazy val user1SearchManager = new SearchManager(basicAuthClient("user1", "pass"))
-  protected lazy val user2SearchManager = new SearchManager(basicAuthClient("user2", "pass"))
+  protected lazy val user1SearchManager = new SearchManager(basicAuthClient("user1", "pass"), esVersionUsed)
+  protected lazy val user2SearchManager = new SearchManager(basicAuthClient("user2", "pass"), esVersionUsed)
 
   "Search request with field rule defined" when {
     "specific FLS engine is used" should {

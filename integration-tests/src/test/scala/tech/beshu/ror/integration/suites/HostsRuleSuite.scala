@@ -36,7 +36,7 @@ class HostsRuleSuite
 
   override def nodeDataInitializer = Some(HostsRuleSuite.nodeDataInitializer())
 
-  private lazy val searchManager = new SearchManager(basicAuthClient("blabla", "kibana"))
+  private lazy val searchManager = new SearchManager(basicAuthClient("blabla", "kibana"), esVersionUsed)
 
   "testGet" in {
     val response = searchManager.search()

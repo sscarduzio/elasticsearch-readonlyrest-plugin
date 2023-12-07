@@ -39,7 +39,7 @@ class FiltersDocLevelSecuritySuite
 
   "testDirectSingleIdxa" in {
     val searchManager = new SearchManager(
-      adminClient,
+      adminClient, esVersionUsed,
       Map("x-api-key" -> "g")
     )
     val response = searchManager.search("testfiltera")
@@ -55,7 +55,7 @@ class FiltersDocLevelSecuritySuite
 
   "testHeaderReplacement" in {
     val searchManager = new SearchManager(
-      adminClient,
+      adminClient, esVersionUsed,
       Map("x-api-key" -> "put-the-header", "x-randomheader" -> "value")
     )
     val response = searchManager.search("testfiltera")
@@ -71,7 +71,7 @@ class FiltersDocLevelSecuritySuite
 
   "testStar" in {
     val searchManager = new SearchManager(
-      adminClient,
+      adminClient, esVersionUsed,
       Map("x-api-key" -> "star")
     )
     val response = searchManager.search("testfiltera")
@@ -87,7 +87,7 @@ class FiltersDocLevelSecuritySuite
 
   "testDirectMultipleIdxbandc" in {
     val searchManager = new SearchManager(
-      adminClient,
+      adminClient, esVersionUsed,
       Map("x-api-key" -> "g")
     )
     val response = searchManager.search("testfilterbandc")
@@ -103,7 +103,7 @@ class FiltersDocLevelSecuritySuite
 
   "testDirectSingleIdxd" in {
     val searchManager = new SearchManager(
-      adminClient,
+      adminClient, esVersionUsed,
       Map("x-api-key" -> "g")
     )
     val response = searchManager.search("testfilterd")
@@ -124,14 +124,14 @@ class FiltersDocLevelSecuritySuite
 
   "tesANoCache" in {
     val searchManager = new SearchManager(
-      adminClient,
+      adminClient, esVersionUsed,
       Map("x-api-key" -> "a_nofilter")
     )
     val firstResponse = searchManager.search("testfiltera")
     firstResponse should have statusCode 200
 
     val searchManager2 = new SearchManager(
-      adminClient,
+      adminClient, esVersionUsed,
       Map("x-api-key" -> "g")
     )
 

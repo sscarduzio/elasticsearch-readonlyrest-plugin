@@ -46,8 +46,8 @@ class DuplicatedResponseHeadersIssueSuite
   )
 
   "everySearchCallForEachUserShouldReturnTheSameResult" in {
-    val freddieSearchManager = new SearchManager(basicAuthClient("freddie", "freddie"))
-    val brianSearchManager = new SearchManager(basicAuthClient("brian", "brian"))
+    val freddieSearchManager = new SearchManager(basicAuthClient("freddie", "freddie"), esVersionUsed)
+    val brianSearchManager = new SearchManager(basicAuthClient("brian", "brian"), esVersionUsed)
 
     val b1 = searchCall(brianSearchManager)
     val f1 = searchCall(freddieSearchManager)

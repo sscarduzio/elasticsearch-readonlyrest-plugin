@@ -54,7 +54,7 @@ class MSearchTEST2Suite
   override def nodeDataInitializer = Some(MSearchTEST2Suite.nodeDataInitializer())
 
   "test274_2" in {
-    val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"))
+    val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"), esVersionUsed)
 
     val response = searchManager.mSearchUnsafe(msearchBodyNoMatch: _*)
 
@@ -64,7 +64,7 @@ class MSearchTEST2Suite
   }
 
   "test274_2_broken" in {
-    val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"))
+    val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"), esVersionUsed)
 
     val response = searchManager.mSearchUnsafe(msearchBroken: _*)
 
@@ -74,7 +74,7 @@ class MSearchTEST2Suite
   }
 
   "test274_2_empty_index" in {
-    val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"))
+    val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"), esVersionUsed)
 
     val response = searchManager.mSearchUnsafe(msearchBodyEmptyIndex: _*)
 
@@ -84,7 +84,7 @@ class MSearchTEST2Suite
   }
 
   "test274_2_combo" in {
-    val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"))
+    val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"), esVersionUsed)
 
     val response = searchManager.mSearchUnsafe(msearchBodyCombo: _*)
 

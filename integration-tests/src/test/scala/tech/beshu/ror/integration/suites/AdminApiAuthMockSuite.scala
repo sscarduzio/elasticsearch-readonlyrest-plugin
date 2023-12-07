@@ -1231,7 +1231,7 @@ class AdminApiAuthMockSuite
   }
 
   private def assertAuthMocksInIndex(expectedMocks: Value) = {
-    val adminSearchManager = new SearchManager(clients.head.basicAuthClient("admin", "container"))
+    val adminSearchManager = new SearchManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
     val indexSearchResponse = adminSearchManager.search(readonlyrestIndexName)
     indexSearchResponse should have statusCode 200
     val indexSearchHits = indexSearchResponse.responseJson("hits")("hits").arr.toList
