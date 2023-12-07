@@ -23,9 +23,9 @@ import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterProvider}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
-import scala.concurrent.duration._
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
 trait FieldRuleEngineSuite
@@ -155,7 +155,12 @@ trait FieldRuleEngineSuite
     )
 
     val result3 = user1SearchManager.searchScroll(searchResult.scrollId)
-    result3 should have statusCode 404
+    if(Version.greaterOrEqualThan(esVersionUsed, 7, 0, 0)) {
+      result3 should have statusCode 404
+    } else {
+      result3 should have statusCode 200
+      result3.searchHits shouldBe (List.empty)
+    }
   }
 
   protected def scrollSearchShouldProperlyHandleForbiddenFields(searchResult: SearchManager.SearchResult): Unit = {
@@ -174,7 +179,12 @@ trait FieldRuleEngineSuite
     )
 
     val result3 = user2SearchManager.searchScroll(searchResult.scrollId)
-    result3 should have statusCode 404
+    if(Version.greaterOrEqualThan(esVersionUsed, 7, 0, 0)) {
+      result3 should have statusCode 404
+    } else {
+      result3 should have statusCode 200
+      result3.searchHits shouldBe (List.empty)
+    }
   }
 }
 

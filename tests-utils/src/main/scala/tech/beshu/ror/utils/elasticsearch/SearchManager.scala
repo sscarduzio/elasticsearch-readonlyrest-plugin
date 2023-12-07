@@ -111,19 +111,31 @@ class SearchManager(client: RestClient,
   private def createSearchRequest(@nowarn("cat=unused") indexNames: List[String] = Nil,
                                   customSize: Option[Int] = None,
                                   scroll: Option[FiniteDuration] = None) = {
-    new HttpPost(client.from(
-      indexNames match {
-        case Nil => "/_search"
-        case names => s"/${names.mkString(",")}/_search"
-      },
-      Map(
-        "size" -> (customSize match {
-          case Some(value) => s"$value"
-          case None => "100"
-        })
-      ) ++
-        scroll.map { d => "scroll" -> s"${d.toMillis}ms" }.toMap
-    ))
+    val queryParams = Map(
+      "size" -> (customSize match {
+        case Some(value) => s"$value"
+        case None => "100"
+      })
+    ) ++ scroll.map { d => "scroll" -> s"${d.toMillis}ms" }.toMap
+    val path = indexNames match {
+      case Nil => "/_search"
+      case names => s"/${names.mkString(",")}/_search"
+    }
+    val request = new HttpPost(client.from(path, queryParams))
+
+    scroll match {
+      case Some(_) =>
+        request.addHeader("Content-Type", "application/json")
+        request.setEntity(new StringEntity(
+          s"""
+             |{
+             |  "sort": ["_id"]
+             |}
+             |""".stripMargin))
+      case None =>
+    }
+
+    request
   }
 
   private def createScrollRequest(scrollId: String) = {
