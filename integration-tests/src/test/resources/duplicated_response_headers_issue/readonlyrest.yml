@@ -88,6 +88,7 @@ readonlyrest:
       auth_token_name: "token"
       auth_token_passed_as: QUERY_PARAM                        # HEADER OR QUERY_PARAM
       response_group_ids_json_path: "$..groups[?(@.id)].id"    # see: <https://github.com/json-path/JsonPath>
+      response_group_names_json_path: "$..groups[?(@.name)].name"
       cache_ttl_in_sec: 1
       http_connection_settings:
         connection_timeout_in_sec: 5                           # default 2
