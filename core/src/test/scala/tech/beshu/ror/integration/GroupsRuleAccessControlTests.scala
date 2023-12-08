@@ -137,7 +137,7 @@ class GroupsRuleAccessControlTests
         inside (result.result) {
           case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2"))))
-            blockContext.userMetadata.availableGroups should be (UniqueList.of(group("group3"), group("group4")))
+            blockContext.userMetadata.availableGroups should be (UniqueList.of(groupFromId("group3"), groupFromId("group4")))
         }
       }
     }
@@ -153,7 +153,7 @@ class GroupsRuleAccessControlTests
           result.history should have size 2
           inside(result.result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(group("group1")))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(groupFromId("group1")))
           }
         }
       }
@@ -187,7 +187,7 @@ class GroupsRuleAccessControlTests
           result.history should have size 4
           inside(result.result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user3"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(group("group5")))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(groupFromId("group5")))
           }
         }
       }
@@ -207,7 +207,7 @@ class GroupsRuleAccessControlTests
           result.history should have size 5
           inside(result.result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("morgan"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(group("admin")))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(groupFromId("admin")))
           }
         }
       }

@@ -82,7 +82,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                   impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = mocksProviderForLdapFrom(Map(
-                  LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(group("g1")))
+                  LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(groupFromId("g1")))
                 ))
               ))
             )
@@ -158,7 +158,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                   impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = mocksProviderForLdapFrom(Map(
-                  LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(group("g1")))
+                  LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(groupFromId("g1")))
                 ))
               ))
             )
@@ -182,7 +182,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                   impersonatedUsersIdPatterns = NonEmptyList.of("user2")
                 )),
                 mocksProvider = mocksProviderForLdapFrom(Map(
-                  LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(group("g1")))
+                  LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(groupFromId("g1")))
                 ))
               ))
             )
@@ -207,7 +207,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                   impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = mocksProviderForLdapFrom(Map(
-                  LdapService.Name("ldap1") -> Map(User.Id("user2") -> Set(group("g1")))
+                  LdapService.Name("ldap1") -> Map(User.Id("user2") -> Set(groupFromId("g1")))
                 ))
               ))
             )

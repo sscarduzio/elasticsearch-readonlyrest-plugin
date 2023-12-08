@@ -295,7 +295,7 @@ class JwtAuthRuleTests
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
             jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
             currentGroup = Some(GroupId("group2")),
-            availableGroups = UniqueList.of(group("group2"))
+            availableGroups = UniqueList.of(groupFromId("group2"))
           )(blockContext)
         }
       }
@@ -322,7 +322,7 @@ class JwtAuthRuleTests
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
             jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
             currentGroup = Some(GroupId("group2")),
-            availableGroups = UniqueList.of(group("group2"))
+            availableGroups = UniqueList.of(groupFromId("group2"))
           )(blockContext)
         }
       }
@@ -349,7 +349,7 @@ class JwtAuthRuleTests
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
             jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
             currentGroup = Some(GroupId("group1")),
-            availableGroups = UniqueList.of(group("group1"), group("group2"))
+            availableGroups = UniqueList.of(groupFromId("group1"), groupFromId("group2"))
           )(blockContext)
         }
       }
@@ -376,7 +376,7 @@ class JwtAuthRuleTests
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
             jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
             currentGroup = Some(GroupId("group1")),
-            availableGroups = UniqueList.of(group("group1"), group("group2"))
+            availableGroups = UniqueList.of(groupFromId("group1"), groupFromId("group2"))
           )(blockContext)
         }
       }

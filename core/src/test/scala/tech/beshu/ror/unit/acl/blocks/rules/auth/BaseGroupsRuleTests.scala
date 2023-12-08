@@ -198,7 +198,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                 mode = WithGroupsMapping(
                   SeparateRules(
                     authenticationRule.matching(User.Id("user1")),
-                    authorizationRule.matching(NonEmptyList.of(group("remote_group1")))
+                    authorizationRule.matching(NonEmptyList.of(groupFromId("remote_group1")))
                   ),
                   noGroupMappingFrom("group_user1")
                 )
@@ -219,11 +219,11 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                 mode = WithGroupsMapping(
                   SeparateRules(
                     authenticationRule.matching(User.Id("user1")),
-                    authorizationRule.matching(NonEmptyList.of(group("remote_group2")))
+                    authorizationRule.matching(NonEmptyList.of(groupFromId("remote_group2")))
                   ),
                   groupMapping(
-                    Mapping(group("group_user1"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group_1"))),
-                    Mapping(group("group_user2"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group_2")))
+                    Mapping(groupFromId("group_user1"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group_1"))),
+                    Mapping(groupFromId("group_user2"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group_2")))
                   )
                 )
               ))
@@ -243,11 +243,11 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                 mode = WithGroupsMapping(
                   SeparateRules(
                     authenticationRule.matching(User.Id("user1")),
-                    authorizationRule.matching(NonEmptyList.of(group("remote_group2")))
+                    authorizationRule.matching(NonEmptyList.of(groupFromId("remote_group2")))
                   ),
                   groupMapping(
-                    Mapping(group("group_user1"), UniqueNonEmptyList.of(GroupIdLike.from("*1"))),
-                    Mapping(group("group_user2"), UniqueNonEmptyList.of(GroupIdLike.from("*2")))
+                    Mapping(groupFromId("group_user1"), UniqueNonEmptyList.of(GroupIdLike.from("*1"))),
+                    Mapping(groupFromId("group_user2"), UniqueNonEmptyList.of(GroupIdLike.from("*2")))
                   )
                 )
               ))
@@ -280,7 +280,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                 blockContextAssertion = defaultOutputBlockContextAssertion(
                   user = User.Id("user1"),
                   group = GroupId("g1"),
-                  availableGroups = UniqueList.of(group("g1"))
+                  availableGroups = UniqueList.of(groupFromId("g1"))
                 )
               )
             }
@@ -303,7 +303,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                 blockContextAssertion = defaultOutputBlockContextAssertion(
                   user = User.Id("User1"),
                   group = GroupId("g1"),
-                  availableGroups = UniqueList.of(group("g1"))
+                  availableGroups = UniqueList.of(groupFromId("g1"))
                 )
               )
             }
@@ -327,7 +327,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                 blockContextAssertion = defaultOutputBlockContextAssertion(
                   user = User.Id("user1"),
                   group = GroupId("g1"),
-                  availableGroups = UniqueList.of(group("g1"))
+                  availableGroups = UniqueList.of(groupFromId("g1"))
                 )
               )
             }
@@ -350,7 +350,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                 blockContextAssertion = defaultOutputBlockContextAssertion(
                   user = User.Id("User1"),
                   group = GroupId("g1"),
-                  availableGroups = UniqueList.of(group("g1"))
+                  availableGroups = UniqueList.of(groupFromId("g1"))
                 )
               )
             }
@@ -385,7 +385,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                 blockContextAssertion = defaultOutputBlockContextAssertion(
                   user = User.Id("user1"),
                   group = GroupId("g1"),
-                  availableGroups = UniqueList.of(group("g1"))
+                  availableGroups = UniqueList.of(groupFromId("g1"))
                 )
               )
             }
@@ -406,7 +406,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                   UserDef(
                     usernames = userIdPatterns("user1"),
                     mode = WithGroupsMapping(
-                      SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(group("remote_group")))),
+                      SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(groupFromId("remote_group")))),
                       noGroupMappingFrom("g1")
                     )
                   )
@@ -418,7 +418,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
               blockContextAssertion = defaultOutputBlockContextAssertion(
                 user = User.Id("user1"),
                 group = GroupId("g1"),
-                availableGroups = UniqueList.of(group("g1"))
+                availableGroups = UniqueList.of(groupFromId("g1"))
               )
             )
           }
@@ -434,8 +434,8 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                   UserDef(
                     usernames = userIdPatterns("user1"),
                     mode = WithGroupsMapping(
-                      SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(group("remote_group")))),
-                      groupMapping(Mapping(group("g1"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group"))))
+                      SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(groupFromId("remote_group")))),
+                      groupMapping(Mapping(groupFromId("g1"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group"))))
                     )
                   )
                 )
@@ -446,7 +446,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
               blockContextAssertion = defaultOutputBlockContextAssertion(
                 user = User.Id("user1"),
                 group = GroupId("g1"),
-                availableGroups = UniqueList.of(group("g1"))
+                availableGroups = UniqueList.of(groupFromId("g1"))
               )
             )
           }
@@ -462,8 +462,8 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                   UserDef(
                     usernames = userIdPatterns("user1"),
                     mode = WithGroupsMapping(
-                      SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(group("remote_group_1")))),
-                      groupMapping(Mapping(group("g1"), UniqueNonEmptyList.of(GroupIdLike.from("*1"))))
+                      SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(groupFromId("remote_group_1")))),
+                      groupMapping(Mapping(groupFromId("g1"), UniqueNonEmptyList.of(GroupIdLike.from("*1"))))
                     )
                   )
                 )
@@ -474,7 +474,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
               blockContextAssertion = defaultOutputBlockContextAssertion(
                 user = User.Id("user1"),
                 group = GroupId("g1"),
-                availableGroups = UniqueList.of(group("g1"))
+                availableGroups = UniqueList.of(groupFromId("g1"))
               )
             )
           }
@@ -494,7 +494,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
                     mode = WithGroupsMapping(
                       SeparateRules(
                         authenticationRule.matching(User.Id("user1")),
-                        authorizationRule.matching(NonEmptyList.of(group("remote_group")))
+                        authorizationRule.matching(NonEmptyList.of(groupFromId("remote_group")))
                       ),
                       noGroupMappingFrom("g1")
                     )
@@ -507,7 +507,7 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
               blockContextAssertion = defaultOutputBlockContextAssertion(
                 user = User.Id("user1"),
                 group = GroupId("g1"),
-                availableGroups = UniqueList.of(group("g1"))
+                availableGroups = UniqueList.of(groupFromId("g1"))
               )
             )
           }
@@ -566,8 +566,8 @@ trait BaseGroupsRuleTests extends AnyWordSpecLike with Inside with BlockContextA
     )
   }
 
-  def groups(g1: NonEmptyString, gs: NonEmptyString*): UniqueNonEmptyList[Group] = {
-    UniqueNonEmptyList.of(group(g1), gs.map(group): _*)
+  def groups(g1: String, gs: String*): UniqueNonEmptyList[Group] = {
+    UniqueNonEmptyList.of(groupFromId(g1), gs.map(groupFromId): _*)
   }
 
   def defaultOutputBlockContextAssertion(user: User.Id,

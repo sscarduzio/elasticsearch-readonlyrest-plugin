@@ -60,7 +60,7 @@ class GroupsOrRuleTests extends BaseGroupsRuleTests {
         )(defaultOutputBlockContextAssertion(
           user = User.Id("user1"),
           group = GroupId("g1"),
-          availableGroups = UniqueList.of(group("g1"))
+          availableGroups = UniqueList.of(groupFromId("g1"))
         ))
       }
     }
@@ -90,7 +90,7 @@ class GroupsOrRuleTests extends BaseGroupsRuleTests {
           blockContextAssertion = defaultOutputBlockContextAssertion(
             user = User.Id("user1"),
             group = GroupId("g1"),
-            availableGroups = UniqueList.of(group("g1"), group("g2"))
+            availableGroups = UniqueList.of(groupFromId("g1"), groupFromId("g2"))
           )
         )
       }

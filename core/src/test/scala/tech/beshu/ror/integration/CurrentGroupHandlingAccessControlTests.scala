@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, bearerHeader, currentGroupHeader, group}
+import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, bearerHeader, currentGroupHeader, groupFromId}
 import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -134,7 +134,7 @@ class CurrentGroupHandlingAccessControlTests
         inside(loginResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user1"))))
           userMetadata.currentGroupId should be (Some(GroupId("group2")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+          userMetadata.availableGroups should be (UniqueList.of(groupFromId("group2"), groupFromId("group3")))
         }
 
         val switchTenancyRequest = MockRequestContext.metadata.copy(
@@ -144,7 +144,7 @@ class CurrentGroupHandlingAccessControlTests
         inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user1"))))
           userMetadata.currentGroupId should be (Some(GroupId("group3")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+          userMetadata.availableGroups should be (UniqueList.of(groupFromId("group2"), groupFromId("group3")))
         }
       }
       "groups rule with ror_kbn_auth is used (with local groups mapping)" in {
@@ -160,7 +160,7 @@ class CurrentGroupHandlingAccessControlTests
         inside(loginResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2"))))
           userMetadata.currentGroupId should be (Some(GroupId("group2")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+          userMetadata.availableGroups should be (UniqueList.of(groupFromId("group2"), groupFromId("group3")))
         }
 
         val switchTenancyRequest = MockRequestContext.metadata.copy(
@@ -170,7 +170,7 @@ class CurrentGroupHandlingAccessControlTests
         inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2"))))
           userMetadata.currentGroupId should be (Some(GroupId("group3")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+          userMetadata.availableGroups should be (UniqueList.of(groupFromId("group2"), groupFromId("group3")))
         }
       }
       "groups rule with ror_kbn_auth is used (without local groups mapping)" in {
@@ -186,7 +186,7 @@ class CurrentGroupHandlingAccessControlTests
         inside(loginResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user3"))))
           userMetadata.currentGroupId should be (Some(GroupId("group2")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+          userMetadata.availableGroups should be (UniqueList.of(groupFromId("group2"), groupFromId("group3")))
         }
 
         val switchTenancyRequest = MockRequestContext.metadata.copy(
@@ -196,7 +196,7 @@ class CurrentGroupHandlingAccessControlTests
         inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user3"))))
           userMetadata.currentGroupId should be (Some(GroupId("group3")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+          userMetadata.availableGroups should be (UniqueList.of(groupFromId("group2"), groupFromId("group3")))
         }
       }
       "ror_kbn_auth is used" in {
@@ -212,7 +212,7 @@ class CurrentGroupHandlingAccessControlTests
         inside(loginResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4"))))
           userMetadata.currentGroupId should be (Some(GroupId("group2")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+          userMetadata.availableGroups should be (UniqueList.of(groupFromId("group2"), groupFromId("group3")))
         }
 
         val switchTenancyRequest = MockRequestContext.metadata.copy(
@@ -222,7 +222,7 @@ class CurrentGroupHandlingAccessControlTests
         inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4"))))
           userMetadata.currentGroupId should be (Some(GroupId("group3")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+          userMetadata.availableGroups should be (UniqueList.of(groupFromId("group2"), groupFromId("group3")))
         }
       }
       "groups rule with jwt_auth is used (with local groups mapping)" in {
@@ -238,7 +238,7 @@ class CurrentGroupHandlingAccessControlTests
         inside(loginResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user5"))))
           userMetadata.currentGroupId should be (Some(GroupId("group2")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+          userMetadata.availableGroups should be (UniqueList.of(groupFromId("group2"), groupFromId("group3")))
         }
 
         val switchTenancyRequest = MockRequestContext.metadata.copy(
@@ -248,7 +248,7 @@ class CurrentGroupHandlingAccessControlTests
         inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user5"))))
           userMetadata.currentGroupId should be (Some(GroupId("group3")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+          userMetadata.availableGroups should be (UniqueList.of(groupFromId("group2"), groupFromId("group3")))
         }
       }
       "groups rule with jwt_auth is used (without local groups mapping)" in {
@@ -264,7 +264,7 @@ class CurrentGroupHandlingAccessControlTests
         inside(loginResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user6"))))
           userMetadata.currentGroupId should be (Some(GroupId("group2")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+          userMetadata.availableGroups should be (UniqueList.of(groupFromId("group2"), groupFromId("group3")))
         }
 
         val switchTenancyRequest = MockRequestContext.metadata.copy(
@@ -274,7 +274,7 @@ class CurrentGroupHandlingAccessControlTests
         inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user6"))))
           userMetadata.currentGroupId should be (Some(GroupId("group3")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+          userMetadata.availableGroups should be (UniqueList.of(groupFromId("group2"), groupFromId("group3")))
         }
       }
       "jwt_auth is used" in {
@@ -290,7 +290,7 @@ class CurrentGroupHandlingAccessControlTests
         inside(loginResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user7"))))
           userMetadata.currentGroupId should be (Some(GroupId("group2")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+          userMetadata.availableGroups should be (UniqueList.of(groupFromId("group2"), groupFromId("group3")))
         }
 
         val switchTenancyRequest = MockRequestContext.metadata.copy(
@@ -300,7 +300,7 @@ class CurrentGroupHandlingAccessControlTests
         inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
           userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user7"))))
           userMetadata.currentGroupId should be (Some(GroupId("group3")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+          userMetadata.availableGroups should be (UniqueList.of(groupFromId("group2"), groupFromId("group3")))
         }
       }
     }

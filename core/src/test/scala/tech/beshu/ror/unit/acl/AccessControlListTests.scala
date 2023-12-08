@@ -47,13 +47,13 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
     "metadata request is called" should {
       "go through all blocks and collect metadata response content" in {
         val blocks = NonEmptyList.of(
-          mockBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b4", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+          mockBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(groupFromId("logserver"), groupFromId("ext-onlio"), groupFromId("admins"), groupFromId("ext-odp"), groupFromId("ext-enex"), groupFromId("dohled-nd-pce"), groupFromId("helpdesk")))),
+          mockBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(groupFromId("logserver"), groupFromId("ext-onlio"), groupFromId("admins"), groupFromId("ext-odp"), groupFromId("ext-enex"), groupFromId("dohled-nd-pce"), groupFromId("helpdesk")))),
+          mockBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(groupFromId("logserver"), groupFromId("ext-onlio"), groupFromId("admins"), groupFromId("ext-odp"), groupFromId("ext-enex"), groupFromId("dohled-nd-pce"), groupFromId("helpdesk")))),
+          mockBlock("b4", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(groupFromId("logserver"), groupFromId("ext-onlio"), groupFromId("admins"), groupFromId("ext-odp"), groupFromId("ext-enex"), groupFromId("dohled-nd-pce"), groupFromId("helpdesk")))),
+          mockBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(groupFromId("logserver"), groupFromId("ext-onlio"), groupFromId("admins"), groupFromId("ext-odp"), groupFromId("ext-enex"), groupFromId("dohled-nd-pce"), groupFromId("helpdesk")))),
+          mockBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(groupFromId("logserver"), groupFromId("ext-onlio"), groupFromId("admins"), groupFromId("ext-odp"), groupFromId("ext-enex"), groupFromId("dohled-nd-pce"), groupFromId("helpdesk")))),
+          mockBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(groupFromId("logserver"), groupFromId("ext-onlio"), groupFromId("admins"), groupFromId("ext-odp"), groupFromId("ext-enex"), groupFromId("dohled-nd-pce"), groupFromId("helpdesk")))),
         )
         val acl = new AccessControlList(
           blocks,
@@ -76,7 +76,7 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
 
         inside(userMetadataRequestResult) {
           case Allow(userMetadata, _) =>
-            userMetadata.availableGroups shouldBe UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk"))
+            userMetadata.availableGroups shouldBe UniqueList.of(groupFromId("logserver"), groupFromId("ext-onlio"), groupFromId("admins"), groupFromId("ext-odp"), groupFromId("ext-enex"), groupFromId("dohled-nd-pce"), groupFromId("helpdesk"))
             userMetadata.currentGroupId shouldBe Some(GroupId("admins"))
         }
       }

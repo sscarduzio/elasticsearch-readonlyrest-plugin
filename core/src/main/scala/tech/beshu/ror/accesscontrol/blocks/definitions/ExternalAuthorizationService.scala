@@ -126,7 +126,7 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
     }
   }
 
-  private def groupsFrom(body: String) = {
+  private def groupsFrom(body: String): Try[List[Group]] = {
     for {
       rawGroupIds <- groupIdsFrom(body)
       groups <- groupsFrom(body, rawGroupIds)

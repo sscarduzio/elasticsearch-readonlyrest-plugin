@@ -153,7 +153,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
               kibanaIndex = Some(kibanaIndexName(".kibana_ror_custom")),
               kibanaAccess = Some(KibanaAccess.RW),
               currentGroup = Some(GroupId("RW_ror_custom")),
-              availableGroups = UniqueList.of(group("RW_ror_custom")),
+              availableGroups = UniqueList.of(groupFromId("RW_ror_custom")),
             ) {
               blockContext
             }
@@ -198,7 +198,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("testuser_ro_master_rw_custom"))),
             currentGroup = Some(GroupId("RW_ror_custom")),
-            availableGroups = UniqueList.of(group("RW_ror_custom")),
+            availableGroups = UniqueList.of(groupFromId("RW_ror_custom")),
             kibanaIndex = Some(kibanaIndexName(".kibana_ror_custom")),
             kibanaAccess = Some(KibanaAccess.RW),
             indices = Set(clusterIndexName(".kibana_ror_custom")),
@@ -220,7 +220,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           metadata should be(UserMetadata(
             loggedUser = Some(DirectlyLoggedUser(User.Id("admin"))),
             currentGroupId = Some(GroupId("Administrators")),
-            availableGroups = UniqueList.of(group("Administrators"), group("Infosec")),
+            availableGroups = UniqueList.of(groupFromId("Administrators"), groupFromId("Infosec")),
             kibanaIndex = Some(kibanaIndexName(".kibana_admins")),
             kibanaTemplateIndex = None,
             hiddenKibanaApps = Set(
@@ -254,7 +254,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("admin"))),
             currentGroup = Some(GroupId("Administrators")),
-            availableGroups = UniqueList.of(group("Administrators")),
+            availableGroups = UniqueList.of(groupFromId("Administrators")),
             kibanaIndex = Some(kibanaIndexName(".kibana_admins")),
             kibanaAccess = Some(KibanaAccess.Admin),
             indices = Set(clusterIndexName(".kibana_admins")),

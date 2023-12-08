@@ -21,7 +21,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupsLogic, PermittedGroupIds}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.TestsUtils.group
+import tech.beshu.ror.utils.TestsUtils._
 
 class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
 
@@ -32,10 +32,10 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
           GroupIdLike.from("a*"), GroupIdLike.from("b*")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
-          group("abc"), group("bca"), group("cab"), group("cba")
+          groupFromId("abc"), groupFromId("bca"), groupFromId("cab"), groupFromId("cba")
         ))
         result should be(Some(UniqueNonEmptyList.of(
-          group("abc"), group("bca")
+          groupFromId("abc"), groupFromId("bca")
         )))
       }
       "permitted groups are full groups names" in {
@@ -43,10 +43,10 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
           GroupIdLike.from("abc"), GroupIdLike.from("cba")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
-          group("abc"), group("bca"), group("cab"), group("cba")
+          groupFromId("abc"), groupFromId("bca"), groupFromId("cab"), groupFromId("cba")
         ))
         result should be(Some(UniqueNonEmptyList.of(
-          group("abc"), group("cba")
+          groupFromId("abc"), groupFromId("cba")
         )))
       }
       "permitted groups are mix of group patterns and full group id" in {
@@ -54,10 +54,10 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
           GroupIdLike.from("c*"), GroupIdLike.from("abc")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
-          group("abc"), group("bca"), group("cab"), group("cba")
+          groupFromId("abc"), groupFromId("bca"), groupFromId("cab"), groupFromId("cba")
         ))
         result should be(Some(UniqueNonEmptyList.of(
-          group("cab"), group("cba"), group("abc")
+          groupFromId("cab"), groupFromId("cba"), groupFromId("abc")
         )))
       }
       "there is one permitted group that doesn't match any of the user groups" in {
@@ -65,7 +65,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
           GroupIdLike.from("d*"), GroupIdLike.from("b*"), GroupIdLike.from("c*"), GroupIdLike.from("abc")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
-          group("abc"), group("bca"), group("cab"), group("cba")
+          groupFromId("abc"), groupFromId("bca"), groupFromId("cab"), groupFromId("cba")
         ))
         result should be(None)
       }
@@ -79,10 +79,10 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
           GroupIdLike.from("a*"), GroupIdLike.from("b*")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
-          group("abc"), group("cab"), group("cba")
+          groupFromId("abc"), groupFromId("cab"), groupFromId("cba")
         ))
         result should be(Some(UniqueNonEmptyList.of(
-          group("abc")
+          groupFromId("abc")
         )))
       }
       "permitted groups are full groups names" in {
@@ -90,10 +90,10 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
           GroupIdLike.from("abc"), GroupIdLike.from("cba")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
-          group("bca"), group("cab"), group("cba")
+          groupFromId("bca"), groupFromId("cab"), groupFromId("cba")
         ))
         result should be(Some(UniqueNonEmptyList.of(
-          group("cba")
+          groupFromId("cba")
         )))
       }
       "permitted groups are mix of group patterns and full group ids" in {
@@ -101,10 +101,10 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
           GroupIdLike.from("c*"), GroupIdLike.from("abc")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
-          group("abc"), group("bca"), group("cab")
+          groupFromId("abc"), groupFromId("bca"), groupFromId("cab")
         ))
         result should be(Some(UniqueNonEmptyList.of(
-          group("cab"), group("abc")
+          groupFromId("cab"), groupFromId("abc")
         )))
       }
       "there is none of permitted group that match any of the user groups" in {
@@ -112,7 +112,7 @@ class GroupsLogicExecutorTests extends AnyWordSpec with Matchers {
           GroupIdLike.from("d*"), GroupIdLike.from("e*"), GroupIdLike.from("abcde")
         )))
         val result = and.availableGroupsFrom(UniqueNonEmptyList.of(
-          group("abc"), group("bca"), group("cab"), group("cba")
+          groupFromId("abc"), groupFromId("bca"), groupFromId("cab"), groupFromId("cba")
         ))
         result should be(None)
       }
