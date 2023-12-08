@@ -48,9 +48,9 @@ trait BaseXpackApiSuite
   )
 
   private lazy val adminXpackApiManager = new XpackApiManager(adminClient, esVersionUsed)
-  private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"))
-  private lazy val dev2SearchManager = new SearchManager(basicAuthClient("dev2", "test"))
-  private lazy val dev3SearchManager = new SearchManager(basicAuthClient("dev3", "test"))
+  private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"), esVersionUsed)
+  private lazy val dev2SearchManager = new SearchManager(basicAuthClient("dev2", "test"), esVersionUsed)
+  private lazy val dev3SearchManager = new SearchManager(basicAuthClient("dev3", "test"), esVersionUsed)
   private lazy val dev3XpackApiManager = new XpackApiManager(basicAuthClient("dev3", "test"), esVersionUsed)
   private lazy val dev4XpackApiManager = new XpackApiManager(basicAuthClient("dev4", "test"), esVersionUsed)
   private lazy val dev5XpackApiManager = new XpackApiManager(basicAuthClient("dev5", "test"), esVersionUsed)
@@ -99,7 +99,7 @@ trait BaseXpackApiSuite
   "Mustache lang" when {
     "search template is used" should {
       "return only indices which user has an access to" in {
-        val searchManager = new SearchManager(basicAuthClient("dev1", "test"))
+        val searchManager = new SearchManager(basicAuthClient("dev1", "test"), esVersionUsed)
         val result = searchManager.searchTemplate(
           index = "test1_index*",
           query = ujson.read(
@@ -118,7 +118,7 @@ trait BaseXpackApiSuite
         result.searchHits.map(_("_source")) should be(List(ujson.read("""{"hello":"world"}""")))
       }
       "return empty response for dev3" in {
-        val searchManager = new SearchManager(basicAuthClient("dev3", "test"))
+        val searchManager = new SearchManager(basicAuthClient("dev3", "test"), esVersionUsed)
         val result = searchManager.searchTemplate(
           index = "test1_index*",
           query = ujson.read(
@@ -137,7 +137,7 @@ trait BaseXpackApiSuite
         result.searchHits.map(_("_source")) should be(List.empty)
       }
       "return filtered documents" in {
-        val searchManager = new SearchManager(basicAuthClient("dev7", "test"))
+        val searchManager = new SearchManager(basicAuthClient("dev7", "test"), esVersionUsed)
         val result = searchManager.searchTemplate(
           index = "test7_index",
           query = ujson.read(
@@ -172,7 +172,7 @@ trait BaseXpackApiSuite
     }
     "multisearch template is used" should {
       "return only indices which user has an access to" in {
-        val searchManager = new SearchManager(basicAuthClient("dev1", "test"))
+        val searchManager = new SearchManager(basicAuthClient("dev1", "test"), esVersionUsed)
         val result = searchManager.mSearchTemplate(
           ujson.read("""{"index":"test1_index*"}"""),
           ujson.read(
@@ -193,7 +193,7 @@ trait BaseXpackApiSuite
         firstQueryResponse("hits")("hits").arr.map(_("_source")) should be(List(ujson.read("""{"hello":"world"}""")))
       }
       "return empty response for dev3" in {
-        val searchManager = new SearchManager(basicAuthClient("dev3", "test"))
+        val searchManager = new SearchManager(basicAuthClient("dev3", "test"), esVersionUsed)
         val result = searchManager.mSearchTemplate(
           ujson.read("""{"index":"test1_index*"}"""),
           ujson.read(
@@ -214,7 +214,7 @@ trait BaseXpackApiSuite
         firstQueryResponse("hits")("hits").arr.map(_("_source")) should be(List.empty)
       }
       "return filtered documents" in {
-        val searchManager = new SearchManager(basicAuthClient("dev7", "test"))
+        val searchManager = new SearchManager(basicAuthClient("dev7", "test"), esVersionUsed)
         val result = searchManager.mSearchTemplate(
           ujson.read("""{"index":"test7_index"}"""),
           ujson.read(
@@ -251,7 +251,7 @@ trait BaseXpackApiSuite
     }
     "render template is used" should {
       "be allowed to be used for dev1" in {
-        val searchManager = new SearchManager(basicAuthClient("dev1", "test"))
+        val searchManager = new SearchManager(basicAuthClient("dev1", "test"), esVersionUsed)
 
         val result = searchManager.renderTemplate(
           s"""

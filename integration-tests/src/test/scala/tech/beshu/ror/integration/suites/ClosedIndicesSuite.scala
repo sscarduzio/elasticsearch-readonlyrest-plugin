@@ -48,7 +48,7 @@ class ClosedIndicesSuite
     }
   }
 
-  private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"))
+  private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"), esVersionUsed)
   private lazy val dev1IndexManager = new IndexManager(basicAuthClient("dev1", "test"), esVersionUsed)
 
   "A search request" should {

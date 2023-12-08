@@ -22,7 +22,6 @@ import org.elasticsearch.common.collect.ImmutableOpenMap
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.{Conversion, Matchable}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap.AliasesMap
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.ImmutableOpenMapOps
 import tech.beshu.ror.utils.ScalaOps._

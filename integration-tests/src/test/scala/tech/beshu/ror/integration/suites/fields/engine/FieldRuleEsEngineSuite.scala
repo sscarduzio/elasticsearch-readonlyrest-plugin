@@ -28,4 +28,12 @@ class FieldRuleEsEngineSuite
   override protected def unmodifiableQueryAssertion(result: SearchManager.SearchResult): Unit = {
     result should have statusCode 401
   }
+
+  override protected def scrollSearchShouldProperlyHandleAllowedFields(result: SearchManager.SearchResult): Unit = {
+    result should have statusCode 401
+  }
+
+  override protected def scrollSearchShouldProperlyHandleForbiddenFields(result: SearchManager.SearchResult): Unit = {
+    result should have statusCode 401
+  }
 }

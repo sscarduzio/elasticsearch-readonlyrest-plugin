@@ -34,15 +34,4 @@ readonlyrest:
     - name: "User 1"
       type: allow
       auth_key: "user1:test"
-      indices: ["test*"]
-
-    - name: "::RW_USER (filter read requests)::"
-      auth_key: user3:pass
-      indices: ["r*"]  # <-- DO NOT FILTER THE .kibana INDEX!
-      filter: '{"query_string":{"query":"DestCountry:FR"}}'
-
-    - name: "::RW_USER (allow remaining requests)::"
-      auth_key: user3:pass
-      kibana:
-        access: rw
-      indices: ["r*"]
+      indices: ["example*"]

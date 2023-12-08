@@ -21,6 +21,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicInt
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
@@ -34,7 +35,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-class RorStartingSuite extends AnyWordSpec {
+class RorStartingSuite extends AnyWordSpec with ESVersionSupportForAnyWordSpecLike {
 
   import RorStartingSuite._
 
@@ -89,7 +90,7 @@ class RorStartingSuite extends AnyWordSpec {
   }
 
   private def searchTest(client: RestClient, searchAttemptsCount: Int): Task[Seq[TestResponse]] = {
-    searchAndWait(new SearchManager(client), searchAttemptsCount).map(_.distinct)
+    searchAndWait(new SearchManager(client, esVersionUsed), searchAttemptsCount).map(_.distinct)
   }
 
   private def searchAndWait(manager: SearchManager, attemptLeft: Int): Task[List[TestResponse]] = {

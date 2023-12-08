@@ -45,7 +45,7 @@ class FieldRuleSearchApiSourceFilteringSuite
   override protected def fetchDocument(client: RestClient,
                                        index: String,
                                        clientSourceParams: Option[FieldRuleSourceFilteringSuite.ClientSourceOptions]): SearchResult = {
-    val searchManager = new SearchManager(client)
+    val searchManager = new SearchManager(client, esVersionUsed)
 
     val query = clientSourceParams match {
       case Some(DoNotFetchSource) => """{ "_source": false }"""
@@ -62,7 +62,7 @@ class FieldRuleSearchApiSourceFilteringSuite
   }
 
   "docvalue with not-allowed field in search request is used" in {
-    val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
+    val searchManager = new SearchManager(basicAuthClient("user1", "pass"), esVersionUsed)
 
     val query = ujson.read(
       """
@@ -87,7 +87,7 @@ class FieldRuleSearchApiSourceFilteringSuite
 
   "Fields rule should work in case of many docs" when {
     "blacklist mode is used" in {
-      val searchManager = new SearchManager(basicAuthClient("user5", "pass"))
+      val searchManager = new SearchManager(basicAuthClient("user5", "pass"), esVersionUsed)
 
       val result = searchManager.search("manydocs", ujson.read("""{"query": {"match_all": {}}}"""))
 
@@ -96,7 +96,7 @@ class FieldRuleSearchApiSourceFilteringSuite
       distinctDocs should be(Set(ujson.read("""{"user2":"b"}""")))
     }
     "whitelist mode is used" in {
-      val searchManager = new SearchManager(basicAuthClient("user6", "pass"))
+      val searchManager = new SearchManager(basicAuthClient("user6", "pass"), esVersionUsed)
 
       val result = searchManager.search("manydocs", ujson.read("""{"query": {"match_all": {}}}"""))
 

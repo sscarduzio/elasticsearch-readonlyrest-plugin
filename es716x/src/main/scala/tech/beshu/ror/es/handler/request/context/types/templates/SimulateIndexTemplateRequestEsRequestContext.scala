@@ -75,7 +75,7 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
 object SimulateIndexTemplateRequestEsRequestContext {
 
   private[templates] def filterAliasesAndIndexPatternsIn(response: SimulateIndexTemplateResponse,
-                                                     allowedIndices: List[ClusterIndexName]): SimulateIndexTemplateResponse = {
+                                                         allowedIndices: List[ClusterIndexName]): SimulateIndexTemplateResponse = {
     val tunedResponse = new TunedSimulateIndexTemplateResponse(response)
     val filterResponse = filterIndexTemplate(allowedIndices) andThen filterOverlappingTemplates(allowedIndices)
     filterResponse(tunedResponse).underlying

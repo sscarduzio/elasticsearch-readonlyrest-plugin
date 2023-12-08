@@ -26,7 +26,7 @@ import org.elasticsearch.search.aggregations.support.ValuesSourceAggregationBuil
 import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{NotUsingFields, UsedField, UsingFields}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CannotExtractFields, NotUsingFields, UsedField, UsingFields}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -104,11 +104,23 @@ object SearchRequestOps extends Logging {
     }
 
     def checkFieldsUsage(): RequestFieldsUsage = {
+      checkFieldsUsageBaseOnScrollExistence()
+        .getOrElse(checkFieldsUsageBaseOnRequestSource())
+    }
+
+    private def checkFieldsUsageBaseOnScrollExistence() = {
+      // we have to use Lucene when scroll is used
+      Option(request.scroll()).map(_ => CannotExtractFields)
+    }
+
+    private def checkFieldsUsageBaseOnRequestSource() = {
       Option(request.source()) match {
         case Some(source) if source.hasScriptFields =>
-          RequestFieldsUsage.CannotExtractFields
-        case Some(_) | None =>
-          checkFieldsUsageInRequest()
+          CannotExtractFields
+        case Some(source) =>
+          source.fieldsUsageInAggregations |+| source.fieldsUsageInQuery
+        case None =>
+          NotUsingFields
       }
     }
 
@@ -122,15 +134,6 @@ object SearchRequestOps extends Logging {
               .modifyNotAllowedFieldsInQuery(notAllowedFields)
               .modifyNotAllowedFieldsInAggregations(notAllowedFields)
           )
-      }
-    }
-
-    private def checkFieldsUsageInRequest(): RequestFieldsUsage = {
-      Option(request.source()) match {
-        case None =>
-          NotUsingFields
-        case Some(source) =>
-          source.fieldsUsageInAggregations |+| source.fieldsUsageInQuery
       }
     }
 
@@ -202,8 +205,8 @@ object SearchRequestOps extends Logging {
                 .map(UsedField.apply)
                 .toList
             }
-          .map(UsingFields.apply)
-          .getOrElse(NotUsingFields)
+            .map(UsingFields.apply)
+            .getOrElse(NotUsingFields)
       }
     }
   }

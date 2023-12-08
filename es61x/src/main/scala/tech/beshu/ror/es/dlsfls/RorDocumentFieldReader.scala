@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.dlsfls
 
+import java.util.{Iterator => JavaIterator}
 import com.google.common.collect.Iterators
 import org.apache.logging.log4j.scala.Logging
 import org.apache.lucene.index.StoredFieldVisitor.Status
@@ -24,13 +25,12 @@ import org.apache.lucene.util.Bits
 import org.elasticsearch.ExceptionsHelper
 import org.elasticsearch.common.bytes.{BytesArray, BytesReference}
 import org.elasticsearch.common.xcontent.{XContentBuilder, XContentHelper, XContentType}
-import tech.beshu.ror.constants
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
+import tech.beshu.ror.constants
 import tech.beshu.ror.es.dlsfls.RorDocumentFieldDirectoryReader.RorDocumentFieldDirectorySubReader
 import tech.beshu.ror.es.utils.XContentBuilderOps.toXContentBuilderOps
 import tech.beshu.ror.fls.{FieldsPolicy, JsonPolicyBasedFilterer}
 
-import java.util.{Iterator => JavaIterator}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 

@@ -83,7 +83,6 @@ class FieldsRule(val settings: Settings)
   private def processBlockContextUsingDefinedFLSMode[B <: BlockContext : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B,
                                                                                                                              resolvedFields: UniqueNonEmptyList[DocumentField]): RuleResult[B] = {
     val fieldsRestrictions = FieldsRestrictions(resolvedFields, settings.accessMode)
-
     settings.flsEngine match {
       case FlsEngine.Lucene =>
         fulfillRuleWithResolvedStrategy(blockContext, fieldsRestrictions, resolvedStrategy = FlsAtLuceneLevelApproach)
