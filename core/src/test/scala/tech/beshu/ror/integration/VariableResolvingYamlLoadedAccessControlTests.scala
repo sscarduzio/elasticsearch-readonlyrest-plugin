@@ -191,7 +191,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("g3")),
-              availableGroups = UniqueList.of(groupFromId("g3"))
+              availableGroups = UniqueList.of(group("g3"))
             ) {
               blockContext
             }
@@ -209,7 +209,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("g3")),
-              availableGroups = UniqueList.of(groupFromId("g3"))
+              availableGroups = UniqueList.of(group("g3"))
             ) {
               blockContext
             }
@@ -227,7 +227,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
               currentGroup = Some(GroupId("gs2")),
-              availableGroups = UniqueList.of(groupFromId("gs2"))
+              availableGroups = UniqueList.of(group("gs2"))
             ) {
               blockContext
             }
@@ -245,7 +245,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("gs1")),
-              availableGroups = UniqueList.of(groupFromId("gs1"))
+              availableGroups = UniqueList.of(group("gs1"))
             ) {
               blockContext
             }
@@ -348,7 +348,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                 .from(request)
                 .withLoggedUser(DirectlyLoggedUser(User.Id("cartman")))
                 .withCurrentGroupId(GroupId("g1"))
-                .withAvailableGroups(UniqueList.of(groupFromId("g1"), groupFromId("g3")))
+                .withAvailableGroups(UniqueList.of(group("g1"), group("g3")))
             )
             blockContext.filteredIndices should be(Set(clusterIndexName("test-g1"), clusterIndexName("test-g3")))
             blockContext.responseHeaders should be(Set.empty)

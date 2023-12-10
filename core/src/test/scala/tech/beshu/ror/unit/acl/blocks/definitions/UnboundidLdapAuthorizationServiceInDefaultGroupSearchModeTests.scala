@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.User
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.utils.SingletonLdapContainers
-import tech.beshu.ror.utils.TestsUtils.groupFromId
+import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration._
@@ -60,7 +60,7 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
         "user has groups" in {
           eventually {
             peopleAndGroupsLdapAuthorizationService.groupsOf(User.Id("morgan")).runSyncUnsafe() should be {
-              UniqueList.of(groupFromId("groupAll"), groupFromId("group3"), groupFromId("group2"))
+              UniqueList.of(group("groupAll"), group("group3"), group("group2"))
             }
           }
         }
@@ -68,7 +68,7 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
       "resolve nested groups properly" in {
         eventually {
           usersAndRolesLdapAuthorizationService.groupsOf(User.Id("userSpeaker")).runSyncUnsafe() should be {
-            UniqueList.of(groupFromId("developers"), groupFromId("speakers"))
+            UniqueList.of(group("developers"), group("speakers"))
           }
         }
       }

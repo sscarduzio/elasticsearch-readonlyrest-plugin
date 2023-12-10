@@ -160,7 +160,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
       "current group variable is used and some groups has been added as available" in {
         val variable = forceCreateSingleVariable("@{acl:current_group}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            _.withAvailableGroups(UniqueList.of(groupFromId("g1"), groupFromId("g2")))
+            _.withAvailableGroups(UniqueList.of(group("g1"), group("g2")))
           ))
         variable shouldBe Right("g1")
       }
@@ -173,14 +173,14 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
       "current group multivariable is used and some groups has been added as available" in {
         val variable = forceCreateMultiVariable("@explode{acl:current_group}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            _.withAvailableGroups(UniqueList.of(groupFromId("g1,g2"), groupFromId("g3")))
+            _.withAvailableGroups(UniqueList.of(group("g1,g2"), group("g3")))
           ))
         variable shouldBe Right(NonEmptyList.of("g1,g2"))
       }
       "current group multivariable with transformation is used and some groups has been added as available" in {
         val variable = forceCreateMultiVariable("""@explode{acl:current_group}#{replace_all("g","group")}""")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            _.withAvailableGroups(UniqueList.of(groupFromId("g1,g2"), groupFromId("g3")))
+            _.withAvailableGroups(UniqueList.of(group("g1,g2"), group("g3")))
           ))
         variable shouldBe Right(NonEmptyList.of("group1,group2"))
       }
@@ -199,21 +199,21 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
       "available groups multivariable is used and explode" in {
         val variable = forceCreateMultiVariable("@explode{acl:available_groups}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            _.withAvailableGroups(UniqueList.of(groupFromId("g1"), groupFromId("g2")))
+            _.withAvailableGroups(UniqueList.of(group("g1"), group("g2")))
           ))
         variable shouldBe Right(NonEmptyList.of("g1", "g2"))
       }
       "available groups multivariable with transformation is used and explode" in {
         val variable = forceCreateMultiVariable("""@explode{acl:available_groups}#{replace_all("g","group").to_uppercase}""")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            _.withAvailableGroups(UniqueList.of(groupFromId("g1"), groupFromId("g2")))
+            _.withAvailableGroups(UniqueList.of(group("g1"), group("g2")))
           ))
         variable shouldBe Right(NonEmptyList.of("GROUP1", "GROUP2"))
       }
       "available groups variable is used without explode" in {
         val variable = forceCreateSingleVariable("@{acl:available_groups}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            _.withAvailableGroups(UniqueList.of(groupFromId("g1"), groupFromId("g2")))
+            _.withAvailableGroups(UniqueList.of(group("g1"), group("g2")))
           ))
         variable shouldBe Right(""""g1","g2"""")
       }

@@ -123,7 +123,7 @@ class RorKbnAuthYamlLoadedAccessControlTests
             .signWith(Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes))
             .setSubject("test")
             .setClaims(claims)
-          val preferredGroup = groupFromId("mapped_viewer_group")
+          val preferredGroup = group("mapped_viewer_group")
           val index = clusterIndexName("index2")
           val request = MockRequestContext.indices.copy(
             filteredIndices = Set(index),

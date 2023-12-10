@@ -133,7 +133,7 @@ class RorKbnAuthRuleTests
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("group2")),
-              availableGroups = UniqueList.of(groupFromId("group2")),
+              availableGroups = UniqueList.of(group("group2")),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
             )(blockContext)
         }
@@ -161,7 +161,7 @@ class RorKbnAuthRuleTests
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("group2")),
-              availableGroups = UniqueList.of(groupFromId("group2")),
+              availableGroups = UniqueList.of(group("group2")),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
             )(blockContext)
         }
@@ -189,7 +189,7 @@ class RorKbnAuthRuleTests
               assertBlockContext(
                 loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 currentGroup = Some(GroupId("group2")),
-                availableGroups = UniqueList.of(groupFromId("group2")),
+                availableGroups = UniqueList.of(group("group2")),
                 jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
               )(blockContext)
           }
@@ -216,7 +216,7 @@ class RorKbnAuthRuleTests
               assertBlockContext(
                 loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 currentGroup = Some(GroupId("group2")),
-                availableGroups = UniqueList.of(groupFromId("group2")),
+                availableGroups = UniqueList.of(group("group2")),
                 jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
               )(blockContext)
           }
@@ -245,7 +245,7 @@ class RorKbnAuthRuleTests
               assertBlockContext(
                 loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 currentGroup = Some(GroupId("group3")),
-                availableGroups = UniqueList.of(groupFromId("group3"), groupFromId("group2")),
+                availableGroups = UniqueList.of(group("group3"), group("group2")),
                 jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
               )(blockContext)
           }
@@ -272,7 +272,7 @@ class RorKbnAuthRuleTests
               assertBlockContext(
                 loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 currentGroup = Some(GroupId("group3")),
-                availableGroups = UniqueList.of(groupFromId("group3"), groupFromId("group2")),
+                availableGroups = UniqueList.of(group("group3"), group("group2")),
                 jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
               )(blockContext)
           }

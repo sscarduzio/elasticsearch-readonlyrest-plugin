@@ -452,7 +452,7 @@ class ReadonlyRestStartingTests
               )
 
               rorInstance.mocksProvider.ldapServiceWith(LdapService.Name("ldap1"))(newRequestId()) should be(Some(
-                LdapServiceMock(Set(LdapServiceMock.LdapUserMock(User.Id("Tom"), Set(groupFromId("group1"), groupFromId("group2")))))
+                LdapServiceMock(Set(LdapServiceMock.LdapUserMock(User.Id("Tom"), Set(group("group1"), group("group2")))))
               ))
               rorInstance.mocksProvider.ldapServiceWith(LdapService.Name("ldap2"))(newRequestId()) should be(None)
 
@@ -468,7 +468,7 @@ class ReadonlyRestStartingTests
                 ExternalAuthorizationServiceMock(Set(
                   ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock(
                     id = User.Id("Bruce"),
-                    groups = Set(groupFromId("group3"), groupFromId("group4"))
+                    groups = Set(group("group3"), group("group4"))
                   )
                 ))
               ))

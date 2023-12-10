@@ -104,9 +104,9 @@ object TestsUtils {
     }
   }
 
-  def groupFromId(str: String): Group = Group.from(GroupId(NonEmptyString.unsafeFrom(str)))
+  def group(str: String): Group = Group.from(GroupId(NonEmptyString.unsafeFrom(str)))
 
-  def groupFrom(id: String, name: String): Group = Group(GroupId(NonEmptyString.unsafeFrom(id)), GroupName(NonEmptyString.unsafeFrom(name)))
+  def group(id: String, name: String): Group = Group(GroupId(NonEmptyString.unsafeFrom(id)), GroupName(NonEmptyString.unsafeFrom(name)))
 
   def clusterIndexName(str: NonEmptyString): ClusterIndexName = ClusterIndexName.unsafeFromString(str.value)
 
@@ -325,7 +325,7 @@ object TestsUtils {
   }
 
   def noGroupMappingFrom(value: String): GroupMappings =
-    GroupMappings.Simple(UniqueNonEmptyList.of(groupFromId(value)))
+    GroupMappings.Simple(UniqueNonEmptyList.of(group(value)))
 
   def groupMapping(mapping: Mapping, mappings: Mapping*): GroupMappings =
     GroupMappings.Advanced(UniqueNonEmptyList.of(mapping, mappings: _*))

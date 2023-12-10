@@ -70,7 +70,7 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
           result.history should have size 1
           inside(result.result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(groupFromId("group1")))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(group("group1")))
           }
         }
         "user is User1" in {
@@ -86,7 +86,7 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
           result.history should have size 1
           inside(result.result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("User1-proxy-id"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(groupFromId("group1")))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(group("group1")))
           }
         }
       }
