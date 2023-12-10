@@ -60,7 +60,7 @@ trait BaseAdminApiSuite
   private lazy val ror1WithIndexConfigAdminActionManager = new RorApiManager(clients.head.adminClient, esVersionUsed)
   private lazy val rorWithNoIndexConfigAdminActionManager = new RorApiManager(clients.last.adminClient, esVersionUsed)
 
-  private lazy val adminSearchManager = new SearchManager(clients.head.basicAuthClient("admin", "container"))
+  private lazy val adminSearchManager = new SearchManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
   private lazy val adminIndexManager = new IndexManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
   private val testConfigEsDocumentId = "2"
   protected val settingsReloadInterval: FiniteDuration = 2 seconds
@@ -166,10 +166,10 @@ trait BaseAdminApiSuite
             assertSettingsInIndex(getResourceContent(rorSettingsResource))
           }
 
-          val dev1Ror1stInstanceSearchManager = new SearchManager(clients.head.basicAuthClient("dev1", "test"))
-          val dev2Ror1stInstanceSearchManager = new SearchManager(clients.head.basicAuthClient("dev2", "test"))
-          val dev1Ror2ndInstanceSearchManager = new SearchManager(clients.tail.head.basicAuthClient("dev1", "test"))
-          val dev2Ror2ndInstanceSearchManager = new SearchManager(clients.tail.head.basicAuthClient("dev2", "test"))
+          val dev1Ror1stInstanceSearchManager = new SearchManager(clients.head.basicAuthClient("dev1", "test"), esVersionUsed)
+          val dev2Ror1stInstanceSearchManager = new SearchManager(clients.head.basicAuthClient("dev2", "test"), esVersionUsed)
+          val dev1Ror2ndInstanceSearchManager = new SearchManager(clients.tail.head.basicAuthClient("dev1", "test"), esVersionUsed)
+          val dev2Ror2ndInstanceSearchManager = new SearchManager(clients.tail.head.basicAuthClient("dev2", "test"), esVersionUsed)
 
           // before first reload no user can access indices
           val dev1ror1Results = dev1Ror1stInstanceSearchManager.search("test1_index")
@@ -374,14 +374,14 @@ trait BaseAdminApiSuite
 
           val dev1SearchManagers = testClients.map { client =>
             new SearchManager(
-              client.basicAuthClient("admin1", "pass"),
+              client.basicAuthClient("admin1", "pass"), esVersionUsed,
               Map("x-ror-impersonating" -> "dev1")
             )
           }
 
           val dev2SearchManagers = testClients.map { client =>
             new SearchManager(
-              client.basicAuthClient("admin1", "pass"),
+              client.basicAuthClient("admin1", "pass"), esVersionUsed,
               Map("x-ror-impersonating" -> "dev2")
             )
           }
@@ -433,14 +433,14 @@ trait BaseAdminApiSuite
 
           val dev1SearchManagers = testClients.map { client =>
             new SearchManager(
-              client.basicAuthClient("admin1", "pass"),
+              client.basicAuthClient("admin1", "pass"), esVersionUsed,
               Map("x-ror-impersonating" -> "dev1")
             )
           }
 
           val dev2SearchManagers = testClients.map { client =>
             new SearchManager(
-              client.basicAuthClient("admin1", "pass"),
+              client.basicAuthClient("admin1", "pass"), esVersionUsed,
               Map("x-ror-impersonating" -> "dev2")
             )
           }
@@ -504,7 +504,7 @@ trait BaseAdminApiSuite
 
           val dev1SearchManagers = testClients.map { client =>
             new SearchManager(
-              client.basicAuthClient("admin1", "pass"),
+              client.basicAuthClient("admin1", "pass"), esVersionUsed,
               Map("x-ror-impersonating" -> "dev1")
             )
           }
@@ -567,14 +567,14 @@ trait BaseAdminApiSuite
 
         val dev1SearchManagers = testClients.map { client =>
           new SearchManager(
-            client.basicAuthClient("admin1", "pass"),
+            client.basicAuthClient("admin1", "pass"), esVersionUsed,
             Map("x-ror-impersonating" -> "dev1")
           )
         }
 
         val dev2SearchManagers = testClients.map { client =>
           new SearchManager(
-            client.basicAuthClient("admin1", "pass"),
+            client.basicAuthClient("admin1", "pass"), esVersionUsed,
             Map("x-ror-impersonating" -> "dev2")
           )
         }
@@ -648,14 +648,14 @@ trait BaseAdminApiSuite
 
           val dev1SearchManagers = testClients.map { client =>
             new SearchManager(
-              client.basicAuthClient("admin1", "pass"),
+              client.basicAuthClient("admin1", "pass"), esVersionUsed,
               Map("x-ror-impersonating" -> "dev1")
             )
           }
 
           val dev2SearchManagers = testClients.map { client =>
             new SearchManager(
-              client.basicAuthClient("admin1", "pass"),
+              client.basicAuthClient("admin1", "pass"), esVersionUsed,
               Map("x-ror-impersonating" -> "dev2")
             )
           }
@@ -875,14 +875,14 @@ trait BaseAdminApiSuite
 
         val dev1SearchManagers = testClients.map { client =>
           new SearchManager(
-            client.basicAuthClient("admin1", "pass"),
+            client.basicAuthClient("admin1", "pass"), esVersionUsed,
             Map("x-ror-impersonating" -> "dev1")
           )
         }
 
         val dev2SearchManagers = testClients.map { client =>
           new SearchManager(
-            client.basicAuthClient("admin1", "pass"),
+            client.basicAuthClient("admin1", "pass"), esVersionUsed,
             Map("x-ror-impersonating" -> "dev2")
           )
         }

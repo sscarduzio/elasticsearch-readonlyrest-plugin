@@ -64,7 +64,7 @@ class DynamicVariablesSuite
     )
   }
 
-  private lazy val searchManager = new SearchManager(basicAuthClient("simone", "dev"))
+  private lazy val searchManager = new SearchManager(basicAuthClient("simone", "dev"), esVersionUsed)
 
   "A search request" should {
     "be allowed with username as suffix" in {

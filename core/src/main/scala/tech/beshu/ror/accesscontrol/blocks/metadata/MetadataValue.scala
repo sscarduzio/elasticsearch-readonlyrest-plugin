@@ -30,10 +30,10 @@ sealed trait MetadataValue
 
 object MetadataValue {
 
-  final case class MetadataObject(value: Any) extends MetadataValue
-  final case class MetadataString(value: String) extends MetadataValue
-  final case class MetadataList(value: NonEmptyList[String]) extends MetadataValue
-  final case class MetadataListOfMaps(value: NonEmptyList[Map[String, String]]) extends MetadataValue
+  private final case class MetadataObject(value: Any) extends MetadataValue
+  private final case class MetadataString(value: String) extends MetadataValue
+  private final case class MetadataList(value: NonEmptyList[String]) extends MetadataValue
+  private final case class MetadataListOfMaps(value: NonEmptyList[Map[String, String]]) extends MetadataValue
 
   def read(userMetadata: UserMetadata,
            correlationId: CorrelationId): Map[String, MetadataValue] = {
@@ -121,7 +121,7 @@ object MetadataValue {
   private def availableGroups(userMetadata: UserMetadata) = {
     NonEmptyList
       .fromList(userMetadata.availableGroups.toList)
-      .map(groups => ("x-ror-available-groups", MetadataList(groups.map(_.value.value))))
+      .map(groups => ("x-ror-available-groups", MetadataList(groups.map(_.id.value.value))))
       .toMap
   }
 
@@ -134,7 +134,7 @@ object MetadataValue {
   }
 
   private def currentGroup(userMetadata: UserMetadata) = {
-    userMetadata.currentGroup.map(g => ("x-ror-current-group", MetadataString(g.value.value))).toMap
+    userMetadata.currentGroupId.map(g => ("x-ror-current-group", MetadataString(g.value.value))).toMap
   }
 
   private def loggedUser(userMetadata: UserMetadata) = {

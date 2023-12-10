@@ -85,10 +85,10 @@ object DocumentApiOps {
             case getResult: GetResult => getResult
           }
           .map { getResult =>
-            val originalNonMetatadataFields = FieldsFiltering.NonMetadataDocumentFields(getResult.getDocumentFields.asScala.toMap)
+            val originalNonMetadataFields = FieldsFiltering.NonMetadataDocumentFields(getResult.getDocumentFields.asScala.toMap)
             val originalMetadataFields = FieldsFiltering.MetadataDocumentFields(getResult.getMetadataFields.asScala.toMap)
 
-            val filteredNonMetadataFields = FieldsFiltering.filterNonMetadataDocumentFields(originalNonMetatadataFields, fieldsRestrictions)
+            val filteredNonMetadataFields = FieldsFiltering.filterNonMetadataDocumentFields(originalNonMetadataFields, fieldsRestrictions)
             FieldsFiltering.NewFilteredDocumentFields(filteredNonMetadataFields, originalMetadataFields)
           }
           .getOrElse(throw new IllegalStateException("Could not access get result in get response."))

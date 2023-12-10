@@ -41,13 +41,13 @@ class SearchApiSuite
 
   override def nodeDataInitializer = Some(SearchApiSuite.nodeDataInitializer())
 
-  private lazy val user1SearchManager = new SearchManager(basicAuthClient("user1", "test"))
+  private lazy val user1SearchManager = new SearchManager(basicAuthClient("user1", "test"), esVersionUsed)
 
-  private lazy val restrictedDevSearchManager = new SearchManager(basicAuthClient("restricted", "dev"))
-  private lazy val unrestrictedDevSearchManager = new SearchManager(basicAuthClient("unrestricted", "dev"))
+  private lazy val restrictedDevSearchManager = new SearchManager(basicAuthClient("restricted", "dev"), esVersionUsed)
+  private lazy val unrestrictedDevSearchManager = new SearchManager(basicAuthClient("unrestricted", "dev"), esVersionUsed)
   private lazy val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
   private lazy val perfmonIndexManager = new IndexManager(basicAuthClient("perfmon", "dev"), esVersionUsed)
-  private lazy val vietMyanSearchManager = new SearchManager(basicAuthClient("VIET_MYAN", "dev"))
+  private lazy val vietMyanSearchManager = new SearchManager(basicAuthClient("VIET_MYAN", "dev"), esVersionUsed)
 
   "_search" should {
     "be allowed" when {

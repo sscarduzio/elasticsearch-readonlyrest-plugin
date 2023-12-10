@@ -34,7 +34,7 @@ class FieldRuleMSearchApiSourceFilteringSuite
   override protected def fetchDocument(client: RestClient,
                                        index: String,
                                        clientSourceParams: Option[FieldRuleSourceFilteringSuite.ClientSourceOptions]): MSearchResult = {
-    val searchManager = new SearchManager(client)
+    val searchManager = new SearchManager(client, esVersionUsed)
 
     val query = clientSourceParams match {
       case Some(DoNotFetchSource) => """{ "_source": false }"""
@@ -52,7 +52,7 @@ class FieldRuleMSearchApiSourceFilteringSuite
   }
 
   "docvalue with not-allowed field in search request is used" in {
-    val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
+    val searchManager = new SearchManager(basicAuthClient("user1", "pass"), esVersionUsed)
 
     val query = """{"docvalue_fields": ["counter"]}"""
 

@@ -22,6 +22,7 @@ import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.elasticsearch.SearchManager.{AsyncSearchResult, FieldCapsResult, MSearchResult, SearchResult}
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
+import tech.beshu.ror.utils.misc.Version
 import ujson.Value
 
 import scala.annotation.nowarn
@@ -29,6 +30,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 
 class SearchManager(client: RestClient,
+                    esVersion: String,
                     override val additionalHeaders: Map[String, String] = Map.empty)
   extends BaseManager(client) {
 
@@ -111,19 +113,31 @@ class SearchManager(client: RestClient,
   private def createSearchRequest(@nowarn("cat=unused") indexNames: List[String] = Nil,
                                   customSize: Option[Int] = None,
                                   scroll: Option[FiniteDuration] = None) = {
-    new HttpPost(client.from(
-      indexNames match {
-        case Nil => "/_search"
-        case names => s"/${names.mkString(",")}/_search"
-      },
-      Map(
-        "size" -> (customSize match {
-          case Some(value) => s"$value"
-          case None => "100"
-        })
-      ) ++
-        scroll.map { d => "scroll" -> s"${d.toMillis}ms" }.toMap
-    ))
+    val queryParams = Map(
+      "size" -> (customSize match {
+        case Some(value) => s"$value"
+        case None => "100"
+      })
+    ) ++ scroll.map { d => "scroll" -> s"${d.toMillis}ms" }.toMap
+    val path = indexNames match {
+      case Nil => "/_search"
+      case names => s"/${names.mkString(",")}/_search"
+    }
+    val request = new HttpPost(client.from(path, queryParams))
+
+    scroll match {
+      case Some(_) if Version.lowerThan(esVersion, 7, 0, 0) =>
+        request.addHeader("Content-Type", "application/json")
+        request.setEntity(new StringEntity(
+          s"""
+             |{
+             |  "sort": ["_id"]
+             |}
+             |""".stripMargin))
+      case Some(_) | None =>
+    }
+
+    request
   }
 
   private def createScrollRequest(scrollId: String) = {

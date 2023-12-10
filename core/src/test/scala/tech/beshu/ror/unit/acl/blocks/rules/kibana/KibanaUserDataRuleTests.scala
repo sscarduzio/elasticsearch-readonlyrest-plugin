@@ -40,7 +40,7 @@ import scala.language.postfixOps
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 
 import scala.util.{Failure, Success, Try}
@@ -66,7 +66,7 @@ class KibanaUserDataRuleTests
           UserMetadata
             .empty
             .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1")))
-            .withCurrentGroup(GroupName("mygroup"))
+            .withCurrentGroupId(GroupId("mygroup"))
             .withKibanaAccess(KibanaAccess.Unrestricted)
             .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
             .withKibanaTemplateIndex(kibanaTemplateIndex)
@@ -90,7 +90,7 @@ class KibanaUserDataRuleTests
           UserMetadata
             .empty
             .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1")))
-            .withCurrentGroup(GroupName("mygroup"))
+            .withCurrentGroupId(GroupId("mygroup"))
             .withKibanaAccess(KibanaAccess.Unrestricted)
             .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
             .withHiddenKibanaApps(apps)
@@ -127,7 +127,7 @@ class KibanaUserDataRuleTests
           UserMetadata
             .empty
             .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1")))
-            .withCurrentGroup(GroupName("mygroup"))
+            .withCurrentGroupId(GroupId("mygroup"))
             .withKibanaAccess(KibanaAccess.Unrestricted)
             .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
             .withAllowedKibanaApiPaths(paths)
@@ -169,7 +169,7 @@ class KibanaUserDataRuleTests
           UserMetadata
             .empty
             .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1")))
-            .withCurrentGroup(GroupName("mygroup"))
+            .withCurrentGroupId(GroupId("mygroup"))
             .withKibanaAccess(KibanaAccess.Unrestricted)
             .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
             .withKibanaMetadata(

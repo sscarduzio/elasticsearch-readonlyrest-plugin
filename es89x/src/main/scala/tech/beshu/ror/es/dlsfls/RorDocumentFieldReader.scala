@@ -30,7 +30,7 @@ import org.elasticsearch.xcontent.{XContentBuilder, XContentType}
 import tech.beshu.ror.constants
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.es.dlsfls.RorDocumentFieldDirectoryReader.RorDocumentFieldDirectorySubReader
-import tech.beshu.ror.es.utils.XContentBuilderOps.toXContentBuilderOps
+import tech.beshu.ror.es.utils.XContentBuilderOps._
 import tech.beshu.ror.fls.{FieldsPolicy, JsonPolicyBasedFilterer}
 
 import java.io.ByteArrayOutputStream

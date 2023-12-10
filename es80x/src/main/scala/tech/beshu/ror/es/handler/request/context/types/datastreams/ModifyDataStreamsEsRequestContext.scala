@@ -18,6 +18,7 @@ package tech.beshu.ror.es.handler.request.context.types.datastreams
 
 import org.elasticsearch.action.datastreams.ModifyDataStreamsAction
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain
@@ -45,7 +46,7 @@ class ModifyDataStreamsEsRequestContext(actionRequest: ModifyDataStreamsAction.R
     request.getActions.asSafeList.map(_.getDataStream).flatMap(DataStreamName.fromString).toSet
   }
 
-  override def modifyRequest(blockContext: DataStreamRequestBlockContext): ModificationResult = {
+  override def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
     ModificationResult.Modified // data stream and indices already processed by ACL
   }
 }

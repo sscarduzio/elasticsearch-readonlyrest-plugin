@@ -23,8 +23,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMeth
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, JwtDef}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule.Groups
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, GroupLike, GroupsLogic, Header, PermittedGroups}
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, GroupIdLike, GroupsLogic, Header, PermittedGroupIds}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
@@ -129,8 +129,8 @@ class JwtAuthRuleSettingsTests
               rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
               rule.settings.jwt.userClaim should be(None)
               rule.settings.jwt.groupsClaim should be(None)
-              rule.settings.permittedGroups should be(Groups.Defined(GroupsLogic.Or(PermittedGroups(
-                UniqueNonEmptyList.of(GroupLike.from("group1*"), GroupName("group2"))
+              rule.settings.permittedGroups should be(Groups.Defined(GroupsLogic.Or(PermittedGroupIds(
+                UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
               ))))
             }
           )
@@ -163,8 +163,8 @@ class JwtAuthRuleSettingsTests
               rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
               rule.settings.jwt.userClaim should be(None)
               rule.settings.jwt.groupsClaim should be(None)
-              rule.settings.permittedGroups should be(Groups.Defined(GroupsLogic.And(PermittedGroups(
-                UniqueNonEmptyList.of(GroupLike.from("group1*"), GroupName("group2"))
+              rule.settings.permittedGroups should be(Groups.Defined(GroupsLogic.And(PermittedGroupIds(
+                UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
               ))))
             }
           )

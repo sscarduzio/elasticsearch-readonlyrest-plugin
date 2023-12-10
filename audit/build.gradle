@@ -127,7 +127,6 @@ tasks.register('javadocJar', Jar) {
 }
 
 group = 'tech.beshu.ror'
-archivesBaseName = 'audit'
 version = pluginVersion
 
 publishing {
@@ -151,45 +150,15 @@ publishing {
             pom ror_pom
         }
     }
-    repositories {
-        maven {
-            name 'deploy'
-            url 'https://oss.sonatype.org/service/local/staging/deploy/maven2/'
-            credentials {
-                username = System.getenv('MAVEN_REPO_USER')
-                password = System.getenv('MAVEN_REPO_PASSWORD')
-            }
-        }
-    }
 }
 
 signing {
     sign(publishing.publications)
 }
 
-//region Fix Gradle warning about signing tasks using publishing task outputs without explicit dependencies
+// Fix Gradle warning about signing tasks using publishing task outputs without explicit dependencies
 // https://github.com/gradle/gradle/issues/26091
 tasks.withType(AbstractPublishToMaven.class).configureEach {
     def signingTasks = tasks.withType(Sign.class)
     mustRunAfter(signingTasks)
-}
-
-nexusPublishing {
-    packageGroup = "tech.beshu"
-
-    repositories {
-        sonatype {
-            stagingProfileId = System.getenv('MAVEN_STAGING_PROFILE_ID')
-            username = System.getenv('MAVEN_REPO_USER')
-            password = System.getenv('MAVEN_REPO_PASSWORD')
-        }
-    }
-
-    clientTimeout = Duration.ofSeconds(120)
-    connectTimeout = Duration.ofSeconds(60)
-
-    transitionCheckOptions {
-        maxRetries.set(50)
-        delayBetween.set(java.time.Duration.ofMillis(10000))
-    }
 }

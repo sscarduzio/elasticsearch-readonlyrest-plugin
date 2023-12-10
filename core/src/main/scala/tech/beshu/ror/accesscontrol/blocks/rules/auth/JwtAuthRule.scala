@@ -30,7 +30,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, RuleName, RuleR
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -71,7 +70,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
         settings.permittedGroups match {
           case Groups.NotDefined =>
             authorizeUsingJwtToken(blockContext)
-          case Groups.Defined(groupsLogic) if blockContext.isCurrentGroupEligible(groupsLogic.permittedGroups) =>
+          case Groups.Defined(groupsLogic) if blockContext.isCurrentGroupEligible(groupsLogic.permittedGroupIds) =>
             authorizeUsingJwtToken(blockContext)
           case Groups.Defined(_) =>
             Task.now(RuleResult.Rejected())
@@ -124,7 +123,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
   }
 
   private def logClaimSearchResults(user: Option[ClaimSearchResult[User.Id]],
-                                    groups: Option[ClaimSearchResult[UniqueList[GroupName]]]): Unit = {
+                                    groups: Option[ClaimSearchResult[UniqueList[Group]]]): Unit = {
     (settings.jwt.userClaim, user) match {
       case (Some(userClaim), Some(u)) =>
         logger.debug(s"JWT resolved user for claim ${userClaim.name.getPath}: ${u.show}")
@@ -193,7 +192,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
   }
 
   private def handleGroupsClaimSearchResult[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                                     result: Option[ClaimSearchResult[UniqueList[GroupName]]]) = {
+                                                                                     result: Option[ClaimSearchResult[UniqueList[Group]]]) = {
     (result, settings.permittedGroups) match {
       case (None, Groups.Defined(_)) =>
         Left(())
@@ -222,9 +221,9 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
   }
 
   private def checkIfCanContinueWithGroups[B <: BlockContext](blockContext: B,
-                                                              groups: UniqueList[GroupName]) = {
-    UniqueNonEmptyList.fromIterable(groups) match {
-      case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(PermittedGroups(nonEmptyGroups)) =>
+                                                              groups: UniqueList[Group]) = {
+    UniqueNonEmptyList.fromIterable(groups.toList.map(_.id)) match {
+      case Some(nonEmptyGroups) if blockContext.isCurrentGroupEligible(PermittedGroupIds(nonEmptyGroups)) =>
         Right(blockContext)
       case Some(_) | None =>
         Left(())
