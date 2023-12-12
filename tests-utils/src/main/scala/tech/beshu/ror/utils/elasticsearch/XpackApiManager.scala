@@ -79,8 +79,10 @@ class XpackApiManager(client: RestClient,
     call(createRollupSearchRequest(rollupIndex), new JsonResponse(_))
   }
 
-  def hasPrivileges(clusterPrivilege: String, clusterPrivileges: String*): JsonResponse = {
-    call(createHasPrivilegesRequest(clusterPrivilege :: clusterPrivileges.toList), new JsonResponse(_))
+  def hasPrivileges(clusterPrivileges: Iterable[String] = List.empty,
+                    indexPrivileges: Iterable[JSON] = List.empty,
+                    applicationPrivileges: Iterable[JSON] = List.empty): JsonResponse = {
+    call(createHasPrivilegesRequest(clusterPrivileges, indexPrivileges, applicationPrivileges), new JsonResponse(_))
   }
 
   private def createRollupRequest(jobId: String,
@@ -205,21 +207,17 @@ class XpackApiManager(client: RestClient,
     request
   }
 
-  private def createHasPrivilegesRequest(clusterPrivileges: Iterable[String]) = {
+  private def createHasPrivilegesRequest(clusterPrivileges: Iterable[String],
+                                         indexPrivileges: Iterable[JSON],
+                                         applicationPrivileges: Iterable[JSON]) = {
     val request = new HttpGetWithEntity(client.from("/_security/user/_has_privileges"))
     request.setHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(
       s"""
          |{
          |  "cluster": [ ${clusterPrivileges.map(p => s"\"$p\"").mkString(",")} ],
-         |  "index": [],
-         |  "application": [
-         |    {
-         |      "application": "kibana-.kibana",
-         |      "resources":["space:default"],
-         |      "privileges":["version:7.17.13","login:"]
-         |    }
-         |  ]
+         |  "index": [ ${indexPrivileges.map(ujson.write(_)).mkString(",")} ],
+         |  "application": [ ${applicationPrivileges.map(ujson.write(_)).mkString(",")} ]
          |}
        """.stripMargin))
     request

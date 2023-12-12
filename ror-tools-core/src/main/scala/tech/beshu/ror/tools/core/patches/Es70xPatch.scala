@@ -33,6 +33,10 @@ private[patches] class Es70xPatch(esDirectory: EsDirectory,
   private val readonlyRestPluginPath = readonlyrestPluginPath(esDirectory.path)
   private val rorBackupFolderPath = readonlyRestPluginPath / "patch_backup"
 
+  private val xpackCoreJar = s"x-pack-core-${esVersion.render}.jar"
+  private val xpackCoreJarPath = modulesPath / "x-pack-core" / xpackCoreJar
+  private val xpackCoreRorBackupPath = rorBackupFolderPath / xpackCoreJar
+
   private val xpackSecurityJar = s"x-pack-security-${esVersion.render}.jar"
   private val xpackSecurityJarPath = modulesPath / "x-pack-security" / xpackSecurityJar
   private val xpackSecurityRorBackupPath = rorBackupFolderPath / xpackSecurityJar
@@ -58,6 +62,8 @@ private[patches] class Es70xPatch(esDirectory: EsDirectory,
     DeactivateSecurityActionFilter(xpackSecurityJarPath toIO)
     DeactivateSecurityServerTransportInterceptor(xpackSecurityJarPath toIO)
     MockAuthorizationInfoInAuthorizationService(xpackSecurityJarPath toIO)
+    AlwaysGrantApplicationPermission(xpackCoreJarPath toIO)
+    GetAuthenticationFromHeaderWhenMissingInTransient(xpackCoreJarPath toIO)
   }
 
   private def copyJarsToBackupFolder() = Try {
