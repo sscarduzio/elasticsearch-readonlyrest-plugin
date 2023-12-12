@@ -191,7 +191,7 @@ class ExternalAuthorizationRuleSettingsTests
           }
         )
       }
-      "old format of group ids json path property is used" in {
+      "old format of group IDs json path property is used" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -250,6 +250,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    auth_token_name: "user"
               |    auth_token_passed_as: HEADER
               |    response_group_ids_json_path: "$..groups[?(@.id)].id"
+              |    response_group_names_json_path: "$..groups[?(@.name)].name"
               |    http_method: POST
               |    default_query_parameters: query1:value1,query2:value2
               |    default_headers: header1:hValue1, header2:hValue2
@@ -292,6 +293,7 @@ class ExternalAuthorizationRuleSettingsTests
               |    auth_token_name: "user"
               |    auth_token_passed_as: HEADER
               |    response_group_ids_json_path: "$..groups[?(@.id)].id"
+              |    response_group_names_json_path: "$..groups[?(@.name)].name"
               |    http_method: POST
               |    default_query_parameters: query1:value1,query2:value2
               |    default_headers: header1:hValue1, header2:hValue2
@@ -665,7 +667,7 @@ class ExternalAuthorizationRuleSettingsTests
           }
         )
       }
-      "authorization service group ids JSON path is malformed" in {
+      "authorization service group IDs JSON path is malformed" in {
         assertDecodingFailure(
           yaml =
             """
@@ -691,6 +693,34 @@ class ExternalAuthorizationRuleSettingsTests
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message("Cannot compile '$..groups[?.id)].id_malformed' to JSON path")))
+          }
+        )
+      }
+      "authorization service group IDs JSON path is not defined" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    groups_provider_authorization:
+              |      user_groups_provider: GroupsService1
+              |      groups: ["group3"]
+              |      users: ["user1", "user2"]
+              |
+              |  user_groups_providers:
+              |
+              |  - name: GroupsService1
+              |    groups_endpoint: "http://localhost:8080/groups"
+              |    auth_token_name: "user"
+              |    auth_token_passed_as: QUERY_PARAM
+              |""".stripMargin,
+          httpClientsFactory = mockedHttpClientsFactory,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message("External authorization service 'GroupsService1' configuration is missing the 'response_group_ids_json_path' attribute")))
           }
         )
       }
@@ -724,7 +754,7 @@ class ExternalAuthorizationRuleSettingsTests
           }
         )
       }
-      "authorization service group ids JSON path is defined in the old and new syntax at once" in {
+      "authorization service group IDs JSON path is defined in the old and new syntax at once" in {
         assertDecodingFailure(
           yaml =
             """
