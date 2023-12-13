@@ -56,8 +56,6 @@ object MockAuthorizationInfoDuringRetrievingUserPrivilegesInAuthorizationService
       name match {
         case "retrieveUserPrivileges" =>
           new RetrieveUserPrivilegesUsingMockAuthorizationInfo(super.visitMethod(access, name, descriptor, signature, exceptions))
-        case "getAuthorizationInfoFromContext" =>
-          new GetAuthorizationInfoReturningMockAuthorizationInfo(super.visitMethod(access, name, descriptor, signature, exceptions))
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
@@ -65,12 +63,6 @@ object MockAuthorizationInfoDuringRetrievingUserPrivilegesInAuthorizationService
   }
 
   private class RetrieveUserPrivilegesUsingMockAuthorizationInfo(underlying: MethodVisitor)
-    extends MethodReturningMockAuthorizationInfo(underlying)
-
-  private class GetAuthorizationInfoReturningMockAuthorizationInfo(underlying: MethodVisitor)
-    extends MethodReturningMockAuthorizationInfo(underlying)
-
-  private abstract class MethodReturningMockAuthorizationInfo(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
