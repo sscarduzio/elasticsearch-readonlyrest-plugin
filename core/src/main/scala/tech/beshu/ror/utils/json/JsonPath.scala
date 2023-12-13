@@ -25,11 +25,11 @@ import scala.util.{Failure, Try}
 final case class JsonPath private(rawPath: String) {
   private val path: JaywayJsonPath = JsonPath.compile(rawPath)
 
-  def read[A](json: String): Try[A] = tryParse(path.read[A](json))
+  def read[A](json: String): Try[A] = tryRead(path.read[A](json))
 
-  def read[A](obj: Object): Try[A] = tryParse(path.read[A](obj))
+  def read[A](obj: Object): Try[A] = tryRead(path.read[A](obj))
 
-  private def tryParse[A](value: => A): Try[A] =
+  private def tryRead[A](value: => A): Try[A] =
     Try(value)
       .recoverWith {
         case cause: Throwable => Failure(UnableToReadInputAtJsonPath(cause))
