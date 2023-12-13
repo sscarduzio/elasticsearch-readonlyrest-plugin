@@ -22,8 +22,7 @@ import com.softwaremill.sttp.Uri
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.SupportedHttpMethod.Get
-import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService._
+import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config._
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
@@ -32,7 +31,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCre
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
-import tech.beshu.ror.com.jayway.jsonpath.JsonPath
+import tech.beshu.ror.utils.json.JsonPath
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -66,14 +65,16 @@ object ExternalAuthorizationServicesDecoder {
           val externalAuthService: ExternalAuthorizationService =
             new HttpExternalAuthorizationService(
               id = name,
-              uri = url,
-              method = httpMethod.getOrElse(defaults.httpMethod),
-              tokenName = authTokenName,
-              groupsConfig = groupsConfig,
-              authTokenSendMethod = sendUsing,
-              defaultHeaders = defaultHeaders.getOrElse(defaults.headers),
-              defaultQueryParams = defaultQueryParams.getOrElse(defaults.queryParams),
               serviceTimeout = httpClientConfig.requestTimeout,
+              config = HttpExternalAuthorizationService.Config(
+                uri = url,
+                method = httpMethod.getOrElse(defaults.httpMethod),
+                tokenName = authTokenName,
+                groupsConfig = groupsConfig,
+                authTokenSendMethod = sendUsing,
+                defaultHeaders = defaultHeaders.getOrElse(defaults.headers),
+                defaultQueryParams = defaultQueryParams.getOrElse(defaults.queryParams)
+              ),
               httpClient = httpClient
             )
           cacheTtl.foldLeft(externalAuthService) {
@@ -118,7 +119,7 @@ object ExternalAuthorizationServicesDecoder {
       .emapE[AuthTokenSendMethod] {
         case "HEADER" => Right(AuthTokenSendMethod.UsingHeader)
         case "QUERY_PARAM" => Right(AuthTokenSendMethod.UsingQueryParam)
-        case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown value '$unknown' of 'auth_token_passed_as' attribute")))
+        case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown value '$unknown' of 'auth_token_passed_as' attribute. Supported: 'HEADER', 'QUERY_PARAM'")))
       }
       .decoder
 
@@ -127,8 +128,8 @@ object ExternalAuthorizationServicesDecoder {
       .from(Decoder.decodeString)
       .emapE[SupportedHttpMethod] {
         case "POST" | "post" => Right(SupportedHttpMethod.Post)
-        case "GET" | "resolve" => Right(Get)
-        case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown value '$unknown' of 'http_method' attribute")))
+        case "GET" | "get" => Right(SupportedHttpMethod.Get)
+        case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown value '$unknown' of 'http_method' attribute. Supported: 'GET', 'POST'")))
       }
       .decoder
 
@@ -164,7 +165,7 @@ object ExternalAuthorizationServicesDecoder {
   private final case class ValidatedHttpClientConfig(config: HttpClientsFactory.Config)
 
   private object defaults {
-    val httpMethod: SupportedHttpMethod = Get
+    val httpMethod: SupportedHttpMethod = SupportedHttpMethod.Get
     val headers: Set[Header] = Set.empty
     val queryParams: Set[QueryParam] = Set.empty
   }

@@ -293,7 +293,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
               }
             )
           ))
-        variable shouldBe Left(CannotExtractValue("Cannot find value string or collection of strings in path '$['tech']['beshu']' of JWT Token"))
+        variable shouldBe Left(CannotExtractValue("Cannot find value string or collection of strings in path 'tech.beshu' of JWT Token"))
       }
     }
     "have not been able to be created" when {
