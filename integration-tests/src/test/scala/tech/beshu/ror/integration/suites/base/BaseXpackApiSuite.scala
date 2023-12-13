@@ -47,7 +47,7 @@ trait BaseXpackApiSuite
     )
   )
 
-  private lazy val adminXpackApiManager = new XpackApiManager(adminClient, esVersionUsed)
+  protected lazy val adminXpackApiManager = new XpackApiManager(adminClient, esVersionUsed)
   private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"), esVersionUsed)
   private lazy val dev2SearchManager = new SearchManager(basicAuthClient("dev2", "test"), esVersionUsed)
   private lazy val dev3SearchManager = new SearchManager(basicAuthClient("dev3", "test"), esVersionUsed)
@@ -937,45 +937,6 @@ trait BaseXpackApiSuite
     }
   }
 
-  "Security API" when {
-    "_has_privileges endpoint is called" should {
-      "return ROR artificial user" excludeES (allEs6x) in {
-        val response = adminXpackApiManager.hasPrivileges(
-          clusterPrivileges = "monitor" :: Nil,
-          applicationPrivileges = ujson.read(
-            s"""
-               |{
-               |  "application": "kibana",
-               |  "resources":["space:default"],
-               |  "privileges":["version:$esVersionUsed","login:"]
-               |}
-               |""".stripMargin
-          ) :: Nil
-        )
-        response should have statusCode 200
-        response.responseJson should be(ujson.read(
-          s"""
-             |{
-             |  "username": "ROR",
-             |  "has_all_requested": true,
-             |  "cluster": {
-             |    "monitor": true
-             |  },
-             |  "index": {},
-             |  "application":{
-             |    "kibana":{
-             |      "space:default":{
-             |        "login:":true,
-             |        "version:$esVersionUsed":true
-             |      }
-             |    }
-             |  }
-             |}
-             |""".stripMargin
-        ))
-      }
-    }
-  }
 }
 
 object BaseXpackApiSuite {
