@@ -18,7 +18,7 @@ package tech.beshu.ror.tools
 
 import scopt.OParser
 import tech.beshu.ror.tools.core.actions._
-import tech.beshu.ror.tools.core.patches.EsPatch
+import tech.beshu.ror.tools.core.patches.base.EsPatch
 import tech.beshu.ror.tools.core.utils.{EsDirectory, RorToolsException}
 
 import scala.util.Try

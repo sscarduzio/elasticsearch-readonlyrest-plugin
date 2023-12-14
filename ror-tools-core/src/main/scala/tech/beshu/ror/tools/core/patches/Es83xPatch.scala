@@ -17,97 +17,31 @@
 package tech.beshu.ror.tools.core.patches
 
 import just.semver.SemVer
-import tech.beshu.ror.tools.core.utils.{AddCreateClassLoaderPermission, EsDirectory}
-import tech.beshu.ror.tools.core.utils.EsUtil.{findTransportNetty4JarIn, readonlyrestPluginPath}
-import tech.beshu.ror.tools.core.utils.asm._
+import tech.beshu.ror.tools.core.patches.base.TransportNetty4AwareEsPatch
+import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
+import tech.beshu.ror.tools.core.patches.internal.filePatchers._
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars._
+import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddCreateClassLoaderPermission
 
 import scala.language.postfixOps
-import scala.util.Try
 
-private[patches] class Es83xPatch(esDirectory: EsDirectory,
-                                  esVersion: SemVer)
-  extends EsPatch {
-
-  private val libPath = esDirectory.path / "lib"
-  private val modulesPath = esDirectory.path / "modules"
-
-  private val readonlyRestPluginPath = readonlyrestPluginPath(esDirectory.path)
-  private val rorBackupFolderPath = readonlyRestPluginPath / "patch_backup"
-
-  private val elasticsearchJar = s"elasticsearch-${esVersion.render}.jar"
-  private val elasticsearchJarPath = libPath / elasticsearchJar
-  private val elasticsearchJarRorBackupPath = rorBackupFolderPath / elasticsearchJar
-
-  private val rorSecurityPolicy = s"plugin-security.policy"
-  private val rorSecurityPolicyPath = readonlyRestPluginPath / rorSecurityPolicy
-  private val rorSecurityPolicyBackupPath = rorBackupFolderPath / rorSecurityPolicy
-
-  private val xpackCoreJar = s"x-pack-core-${esVersion.render}.jar"
-  private val xpackCoreJarPath = modulesPath / "x-pack-core" / xpackCoreJar
-  private val xpackCoreRorBackupPath = rorBackupFolderPath / xpackCoreJar
-
-  private val xpackSecurityJar = s"x-pack-security-${esVersion.render}.jar"
-  private val xpackSecurityJarPath = modulesPath / "x-pack-security" / xpackSecurityJar
-  private val xpackSecurityRorBackupPath = rorBackupFolderPath / xpackSecurityJar
-
-  private val transportNetty4ModulePath = esDirectory.path / "modules" / "transport-netty4"
-
-  override def isPatched: Boolean = {
-    doesBackupFolderExist && isTransportNetty4PresentInRorPluginPath
-  }
-
-  override def backup(): Unit = {
-    copyJarsToBackupFolder()
-      .recoverWith { case ex =>
-        os.remove.all(target = rorBackupFolderPath)
-        throw ex
-      }
-  }
-
-  override def restore(): Unit = {
-    findTransportNetty4JarIn(readonlyRestPluginPath).foreach {
-      os.remove
-    }
-    os.copy(from = xpackSecurityRorBackupPath, to = xpackSecurityJarPath, replaceExisting = true)
-    os.copy(from = xpackCoreRorBackupPath, to = xpackCoreJarPath, replaceExisting = true)
-    os.copy(from = elasticsearchJarRorBackupPath, to = elasticsearchJarPath, replaceExisting = true)
-    os.copy(from = rorSecurityPolicyBackupPath, to = rorSecurityPolicyPath, replaceExisting = true)
-    os.remove.all(target = rorBackupFolderPath)
-  }
-
-  override def execute(): Unit = {
-    findTransportNetty4JarIn(transportNetty4ModulePath) match {
-      case Some(jar) =>
-        os.copy(from = jar, to = readonlyRestPluginPath / jar.last)
-        OpenModule(xpackCoreJarPath toIO)
-        OpenModule(xpackSecurityJarPath toIO)
-        OpenModule(elasticsearchJarPath toIO)
-        ModifyPolicyUtilClass(elasticsearchJarPath toIO)
-        DeactivateSecurityActionFilter(xpackSecurityJarPath toIO)
-        AddCreateClassLoaderPermission(rorSecurityPolicyPath toIO)
-        AlwaysGrantApplicationPermission(xpackCoreJarPath toIO)
-        MockAuthorizationInfoInSecurityContext(xpackCoreJarPath toIO)
-        MockAuthorizationInfoDuringRetrievingUserPrivilegesInAuthorizationService(xpackSecurityJarPath toIO)
-      case None =>
-        new IllegalStateException(s"ReadonlyREST plugin cannot be patched due to not found transport netty4 jar")
-    }
-  }
-
-  private def copyJarsToBackupFolder() = Try {
-    os.makeDir.all(path = rorBackupFolderPath)
-    os.copy(from = elasticsearchJarPath, to = elasticsearchJarRorBackupPath)
-    os.copy(from = xpackCoreJarPath, to = xpackCoreRorBackupPath)
-    os.copy(from = xpackSecurityJarPath, to = xpackSecurityRorBackupPath)
-    os.copy(from = rorSecurityPolicyPath, to = rorSecurityPolicyBackupPath)
-  }
-
-  private def doesBackupFolderExist = {
-    os.exists(rorBackupFolderPath)
-  }
-
-  private def isTransportNetty4PresentInRorPluginPath = {
-    findTransportNetty4JarIn(readonlyRestPluginPath).isDefined
-  }
-
-}
-
+private[patches] class Es83xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
+  extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
+    new ElasticsearchJarPatchCreator(
+      OpenModule,
+      ModifyPolicyUtilClass
+    ),
+    new RorSecurityPolicyPatchCreator(
+      AddCreateClassLoaderPermission
+    ),
+    new XPackCoreJarPatchCreator(
+      OpenModule,
+      AlwaysGrantApplicationPermission,
+      MockAuthorizationInfoInSecurityContext
+    ),
+    new XPackSecurityJarPatchCreator(
+      OpenModule,
+      DeactivateSecurityActionFilter,
+      MockAuthorizationInfoDuringRetrievingUserPrivilegesInAuthorizationService
+    )
+  )

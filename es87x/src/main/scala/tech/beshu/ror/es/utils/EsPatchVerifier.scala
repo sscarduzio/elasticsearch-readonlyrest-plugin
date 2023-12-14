@@ -18,7 +18,7 @@ package tech.beshu.ror.es.utils
 
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.settings.Settings
-import tech.beshu.ror.tools.core.patches.EsPatch
+import tech.beshu.ror.tools.core.patches.base.EsPatch
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import scala.util.Try

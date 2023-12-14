@@ -14,14 +14,17 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.utils.asm
+package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 
+import just.semver.SemVer
 import org.objectweb.asm._
+import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
+import tech.beshu.ror.tools.core.utils.EsUtil.{es800, es830}
 
 import java.io.{File, InputStream}
 import java.nio.file.Files
 
-object MockAuthorizationInfoInAuthorizationService extends BytecodeJarModifier {
+private [patches] class MockAuthorizationInfoInAuthorizationService(esVersion: SemVer) extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     val originalFileOwner = Files.getOwner(jar.toPath)
@@ -55,14 +58,21 @@ object MockAuthorizationInfoInAuthorizationService extends BytecodeJarModifier {
                              exceptions: Array[String]): MethodVisitor = {
       name match {
         case "getAuthorizationInfoFromContext" =>
-          new GetAuthorizationInfoFromContextReturningMockAuthorizationInfoV2(super.visitMethod(access, name, descriptor, signature, exceptions))
+          esVersion match {
+            case v if v >= es830 => // no modifications
+              super.visitMethod(access, name, descriptor, signature, exceptions)
+            case v if v >= es800 =>
+              new GetAuthorizationInfoFromContextReturningMockAuthorizationInfoForEs80to83(super.visitMethod(access, name, descriptor, signature, exceptions))
+            case v =>
+              new GetAuthorizationInfoFromContextReturningMockAuthorizationInfoForES7(super.visitMethod(access, name, descriptor, signature, exceptions))
+          }
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
   }
 
-  private class GetAuthorizationInfoFromContextReturningMockAuthorizationInfo(underlying: MethodVisitor)
+  private class GetAuthorizationInfoFromContextReturningMockAuthorizationInfoForES7(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
@@ -121,8 +131,7 @@ object MockAuthorizationInfoInAuthorizationService extends BytecodeJarModifier {
     }
   }
 
-  // todo: fixme
-  private class GetAuthorizationInfoFromContextReturningMockAuthorizationInfoV2(underlying: MethodVisitor)
+  private class GetAuthorizationInfoFromContextReturningMockAuthorizationInfoForEs80to83(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {

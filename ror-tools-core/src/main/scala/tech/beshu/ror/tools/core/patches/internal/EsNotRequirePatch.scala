@@ -14,20 +14,20 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.patches
+package tech.beshu.ror.tools.core.patches.internal
 
 import just.semver.SemVer
-import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
-import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
-import tech.beshu.ror.tools.core.patches.internal.filePatchers.XPackSecurityJarPatchCreator
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.{DeactivateSecurityActionFilter, DeactivateSecurityServerTransportInterceptor}
+import tech.beshu.ror.tools.core.patches.base.EsPatch
+import tech.beshu.ror.tools.core.utils.RorToolsException.EsPatchingNotRequired
 
-import scala.language.postfixOps
+private[patches] class EsNotRequirePatch(esVersion: SemVer)
+  extends EsPatch {
 
-private[patches] class Es63xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
-  extends SimpleEsPatch(rorPluginDirectory, esVersion,
-    new XPackSecurityJarPatchCreator(
-      DeactivateSecurityActionFilter,
-      DeactivateSecurityServerTransportInterceptor
-    )
-  )
+  override def isPatched: Boolean = throw new EsPatchingNotRequired(esVersion)
+
+  override def backup(): Unit = throw new EsPatchingNotRequired(esVersion)
+
+  override def restore(): Unit = throw new EsPatchingNotRequired(esVersion)
+
+  override def execute(): Unit = throw new EsPatchingNotRequired(esVersion)
+}

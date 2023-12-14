@@ -14,14 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.utils.asm
+package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 
 import org.objectweb.asm._
+import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.{File, InputStream}
 import java.nio.file.Files
 
-object GetAuthenticationFromHeaderWhenMissingInTransient extends BytecodeJarModifier {
+private [patches] object GetAuthenticationFromHeaderWhenMissingInTransient extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     val originalFileOwner = Files.getOwner(jar.toPath)
@@ -100,13 +101,13 @@ object GetAuthenticationFromHeaderWhenMissingInTransient extends BytecodeJarModi
       underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/xpack/core/security/authc/Authentication", "deserializeHeaderAndPutInContext", "(Ljava/lang/String;Lorg/elasticsearch/common/util/concurrent/ThreadContext;)Lorg/elasticsearch/xpack/core/security/authc/Authentication;", false)
       underlying.visitJumpInsn(Opcodes.GOTO, label1)
       underlying.visitLabel(label8)
-      underlying.visitFrame(Opcodes.F_APPEND,2, Array("org/elasticsearch/xpack/core/security/authc/Authentication", "java/lang/String"), 0, null)
+      underlying.visitFrame(Opcodes.F_APPEND, 2, Array("org/elasticsearch/xpack/core/security/authc/Authentication", "java/lang/String"), 0, null)
       underlying.visitInsn(Opcodes.ACONST_NULL)
       underlying.visitLabel(label1)
       underlying.visitFrame(Opcodes.F_SAME1, 0, null, 1, Array("org/elasticsearch/xpack/core/security/authc/Authentication"))
       underlying.visitInsn(Opcodes.ARETURN)
       underlying.visitLabel(label3)
-      underlying.visitFrame(Opcodes.F_CHOP,1, null, 0, null)
+      underlying.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
       underlying.visitVarInsn(Opcodes.ALOAD, 1)
       underlying.visitLabel(label4)
       underlying.visitInsn(Opcodes.ARETURN)

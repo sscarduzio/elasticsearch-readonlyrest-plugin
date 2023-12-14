@@ -14,31 +14,32 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.utils.asm
+package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 
 import org.objectweb.asm._
+import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.{File, InputStream}
 import java.nio.file.Files
 
-object AlwaysGrantApplicationPermission extends BytecodeJarModifier {
+private [patches] object DeactivateSecurityActionFilter extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     val originalFileOwner = Files.getOwner(jar.toPath)
     val modifiedSecurityClass = loadAndProcessFileFromJar(
       jar = jar,
-      classFileName = "org/elasticsearch/xpack/core/security/authz/permission/ApplicationPermission",
-      processFileContent = doAlwaysGrantApplicationPermission
+      classFileName = "org/elasticsearch/xpack/security/Security",
+      processFileContent = doDeactivateXpackSecurityFilter
     )
     updateFileInJar(
       jar = jar,
-      destinationPathSting = "org/elasticsearch/xpack/core/security/authz/permission/ApplicationPermission.class",
+      destinationPathSting = "/org/elasticsearch/xpack/security/Security.class",
       newContent = modifiedSecurityClass
     )
     Files.setOwner(jar.toPath, originalFileOwner)
   }
 
-  private def doAlwaysGrantApplicationPermission(moduleInputStream: InputStream) = {
+  private def doDeactivateXpackSecurityFilter(moduleInputStream: InputStream) = {
     val reader = new ClassReader(moduleInputStream)
     val writer = new ClassWriter(reader, 0)
     reader.accept(new EsClassVisitor(writer), 0)
@@ -54,30 +55,51 @@ object AlwaysGrantApplicationPermission extends BytecodeJarModifier {
                              signature: String,
                              exceptions: Array[String]): MethodVisitor = {
       name match {
-        case "grants" =>
-          new GrantsMethodReturningTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
+        case "getActionFilters" =>
+          new GetActionFiltersMethodReturningEmptyList(
+            super.visitMethod(access, name, descriptor, signature, exceptions)
+          )
+        case "onIndexModule" =>
+          // removing the onIndexModule method
+          null
+        case "getRequestCacheKeyDifferentiator" =>
+          new GetRequestCacheKeyDifferentiatorReturningNull(
+            super.visitMethod(access, name, descriptor, signature, exceptions)
+          )
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
   }
 
-  private class GrantsMethodReturningTrue(underlying: MethodVisitor)
+  private class GetActionFiltersMethodReturningEmptyList(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
-      val label0 = new Label
-      underlying.visitLabel(label0)
-      underlying.visitInsn(Opcodes.ICONST_1)
-      underlying.visitInsn(Opcodes.IRETURN)
-      val label1 = new Label
-      underlying.visitLabel(label1)
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/core/security/authz/permission/ApplicationPermission;", null, label0, label1, 0)
-      underlying.visitLocalVariable("other", "Lorg/elasticsearch/xpack/core/security/authz/privilege/ApplicationPrivilege;", null, label0, label1, 1)
-      underlying.visitLocalVariable("resource", "Ljava/lang/String;", null, label0, label1, 2)
-      underlying.visitMaxs(1, 3)
+      underlying.visitMethodInsn(
+        Opcodes.INVOKESTATIC,
+        "java/util/Collections",
+        "emptyList",
+        "()Ljava/util/List;",
+        false
+      )
+      underlying.visitInsn(Opcodes.ARETURN)
+      underlying.visitMaxs(1, 1)
       underlying.visitEnd()
     }
   }
+
+  private class GetRequestCacheKeyDifferentiatorReturningNull(underlying: MethodVisitor)
+    extends MethodVisitor(Opcodes.ASM9) {
+
+    override def visitCode(): Unit = {
+      underlying.visitCode()
+      underlying.visitInsn(Opcodes.ACONST_NULL)
+      underlying.visitInsn(Opcodes.ARETURN)
+      underlying.visitMaxs(1, 1)
+      underlying.visitEnd()
+    }
+  }
+
 }
