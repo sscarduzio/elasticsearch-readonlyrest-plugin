@@ -43,10 +43,10 @@ import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
-import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.js.JsCompiler
+import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.net.URI
@@ -282,7 +282,7 @@ object common extends Logging {
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .emapE[JsonPath] { jsonPathStr =>
-        Try(JsonPath.compile(jsonPathStr))
+        JsonPath(jsonPathStr)
           .toEither
           .left
           .map { ex =>

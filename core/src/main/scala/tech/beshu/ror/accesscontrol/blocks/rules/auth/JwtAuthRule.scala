@@ -126,12 +126,12 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
                                     groups: Option[ClaimSearchResult[UniqueList[Group]]]): Unit = {
     (settings.jwt.userClaim, user) match {
       case (Some(userClaim), Some(u)) =>
-        logger.debug(s"JWT resolved user for claim ${userClaim.name.getPath}: ${u.show}")
+        logger.debug(s"JWT resolved user for claim ${userClaim.name.rawPath}: ${u.show}")
       case _ =>
     }
     (settings.jwt.groupsClaim, groups) match {
       case (Some(groupsClaim), Some(g)) =>
-        logger.debug(s"JWT resolved groups for claim ${groupsClaim.name.getPath}: ${g.show}")
+        logger.debug(s"JWT resolved groups for claim ${groupsClaim.name.rawPath}: ${g.show}")
       case _ =>
     }
   }

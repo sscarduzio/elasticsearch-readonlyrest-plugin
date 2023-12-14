@@ -51,7 +51,8 @@ class CurrentUserMetadataAccessControlTests
 
   private val wiremock = new WireMockScalaAdapter(WireMockContainer.create(
     "/current_user_metadata_access_control_tests/wiremock_service1_user5.json",
-    "/current_user_metadata_access_control_tests/wiremock_service2_user6.json"
+    "/current_user_metadata_access_control_tests/wiremock_service2_user6.json",
+    "/current_user_metadata_access_control_tests/wiremock_service3_user7.json",
   ))
   private val ldap1 = LdapContainer.create("LDAP1",
     "current_user_metadata_access_control_tests/ldap_ldap1_user5.ldif"
@@ -153,6 +154,12 @@ class CurrentUserMetadataAccessControlTests
       |      user_groups_provider: "Service2"
       |      groups: ["service2_group2"]
       |
+      |  - name: "SERVICE3 user7"
+      |    proxy_auth: "user7"
+      |    groups_provider_authorization:
+      |      user_groups_provider: "Service3"
+      |      groups: ["service3_group1"]
+      |
       |  users:
       |
       |  - username: user1
@@ -180,6 +187,13 @@ class CurrentUserMetadataAccessControlTests
       |    auth_token_name: "user"
       |    auth_token_passed_as: QUERY_PARAM
       |    response_groups_json_path: "$$..groups[?(@.name)].name"
+      |
+      |  - name: Service3
+      |    groups_endpoint: "http://${wiremock.getWireMockHost}:${wiremock.getWireMockPort}/groups"
+      |    auth_token_name: "user"
+      |    auth_token_passed_as: QUERY_PARAM
+      |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
+      |    response_group_names_json_path: "$$..groups[?(@.name)].name"
       |
       |  ldaps:
       |  - name: Ldap1
@@ -313,6 +327,16 @@ class CurrentUserMetadataAccessControlTests
             inside(result2.result) { case Allow(userMetadata, _) =>
               userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user5"))))
               userMetadata.availableGroups.toSet should be (Set(group("service1_group1"), group("service1_group2")))
+            }
+
+            val request3 = MockRequestContext.metadata.copy(
+              headers = Set(header("X-Forwarded-User", "user7"), currentGroupHeader("service3_group1"))
+            )
+            val result3 = acl.handleMetadataRequest(request3).runSyncUnsafe()
+
+            inside(result3.result) { case Allow(userMetadata, _) =>
+              userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user7"))))
+              userMetadata.availableGroups.toSet should be(Set(group("service3_group1", "Group 1")))
             }
           }
           "the service is LDAP" in {

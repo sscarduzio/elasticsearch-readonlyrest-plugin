@@ -6,7 +6,7 @@
   "response": {
     "status": 200,
     "jsonBody": {
-      "groups":[{ "name": "011" }]
+      "groups":[{ "id": "011", "name": "Developers" }]
     }
   }
 }

@@ -419,7 +419,8 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
               definitions.items should have size 1
               val ldapService = definitions.items.head
               ldapService shouldBe a[CircuitBreakerLdapServiceDecorator]
-              ldapService.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
+              ldapService.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe
+                CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
               ldapService.id should be(LdapService.Name("ldap1"))
 
               getLdapAuthorizationGroupsSearchFilterConfig(ldapService) should be(Some(NestedGroupsConfig(

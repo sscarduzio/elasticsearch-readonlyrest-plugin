@@ -30,7 +30,6 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
-import scala.util.Try
 
 class ClaimsOps(val claims: Claims) extends Logging {
 
@@ -43,7 +42,7 @@ class ClaimsOps(val claims: Claims) extends Logging {
   }
 
   def userIdClaim(claimName: Jwt.ClaimName): ClaimSearchResult[User.Id] = {
-    Try(claimName.name.read[Any](claims))
+    claimName.name.read[Any](claims)
       .map {
         case value: String =>
           NonEmptyString.from(value) match {
@@ -56,7 +55,7 @@ class ClaimsOps(val claims: Claims) extends Logging {
   }
 
   def groupsClaim(claimName: Jwt.ClaimName): ClaimSearchResult[UniqueList[Group]] = {
-    Try(claimName.name.read[Any](claims))
+    claimName.name.read[Any](claims)
       .map {
         case value: String =>
           Found(UniqueList.fromIterable((value :: Nil).flatMap(toGroup)))
@@ -78,7 +77,7 @@ class ClaimsOps(val claims: Claims) extends Logging {
   }
 
   def customClaim(claimName: Jwt.ClaimName): ClaimSearchResult[CustomClaimValue] = {
-    Try(claimName.name.read[Any](claims))
+    claimName.name.read[Any](claims)
       .map {
         case value: String =>
           Found(CustomClaimValue.SingleValue(value))
