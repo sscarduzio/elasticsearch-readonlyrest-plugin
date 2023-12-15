@@ -25,7 +25,7 @@ private [patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
   private val path: Path = readonlyrestPluginPath(esDirectory.path)
   private val backupFolderPath: Path = path / "patch_backup"
 
-  val securityPolicyPath: Path = path / s"plugin-security.policy"
+  val securityPolicyPath: Path = path / "plugin-security.policy"
 
   def doesBackupFolderExist: Boolean = {
     os.exists(backupFolderPath)
