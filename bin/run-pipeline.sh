@@ -200,8 +200,10 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es8xx" ]]; then
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
     #es811x
-    ./gradlew --stacktrace buildRorPlugin '-PesVersion=8.11.0'
+    ./gradlew --stacktrace buildRorPlugin '-PesVersion=8.11.3'
+    ./gradlew --stacktrace buildRorPlugin '-PesVersion=8.11.2'
     ./gradlew --stacktrace buildRorPlugin '-PesVersion=8.11.1'
+    ./gradlew --stacktrace buildRorPlugin '-PesVersion=8.11.0'
 
     #es810x
     ./gradlew --stacktrace buildRorPlugin '-PesVersion=8.10.4'
@@ -268,6 +270,7 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
     #es717x
+    ./gradlew --stacktrace buildRorPlugin '-PesVersion=7.17.16'
     ./gradlew --stacktrace buildRorPlugin '-PesVersion=7.17.15'
     ./gradlew --stacktrace buildRorPlugin '-PesVersion=7.17.14'
     ./gradlew --stacktrace buildRorPlugin '-PesVersion=7.17.13'

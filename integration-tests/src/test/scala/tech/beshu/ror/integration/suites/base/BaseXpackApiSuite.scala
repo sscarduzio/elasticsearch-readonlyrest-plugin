@@ -47,7 +47,7 @@ trait BaseXpackApiSuite
     )
   )
 
-  private lazy val adminXpackApiManager = new XpackApiManager(adminClient, esVersionUsed)
+  protected lazy val adminXpackApiManager = new XpackApiManager(adminClient, esVersionUsed)
   private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"), esVersionUsed)
   private lazy val dev2SearchManager = new SearchManager(basicAuthClient("dev2", "test"), esVersionUsed)
   private lazy val dev3SearchManager = new SearchManager(basicAuthClient("dev3", "test"), esVersionUsed)
@@ -114,8 +114,8 @@ trait BaseXpackApiSuite
         )
 
         result should have statusCode 200
-        result.searchHits.map(_("_index").str).distinct should be(List("test1_index_a"))
-        result.searchHits.map(_("_source")) should be(List(ujson.read("""{"hello":"world"}""")))
+        result.searchHits.map(_ ("_index").str).distinct should be(List("test1_index_a"))
+        result.searchHits.map(_ ("_source")) should be(List(ujson.read("""{"hello":"world"}""")))
       }
       "return empty response for dev3" in {
         val searchManager = new SearchManager(basicAuthClient("dev3", "test"), esVersionUsed)
@@ -133,8 +133,8 @@ trait BaseXpackApiSuite
         )
 
         result should have statusCode 200
-        result.searchHits.map(_("_index").str).distinct should be(List.empty)
-        result.searchHits.map(_("_source")) should be(List.empty)
+        result.searchHits.map(_ ("_index").str).distinct should be(List.empty)
+        result.searchHits.map(_ ("_source")) should be(List.empty)
       }
       "return filtered documents" in {
         val searchManager = new SearchManager(basicAuthClient("dev7", "test"), esVersionUsed)
@@ -166,8 +166,8 @@ trait BaseXpackApiSuite
         )
 
         result should have statusCode 200
-        result.searchHits.map(_("_index").str).distinct should be(List("test7_index"))
-        result.searchHits.map(_("_source")) should be(List(ujson.read("""{"content":{ "app": "a1" }}""")))
+        result.searchHits.map(_ ("_index").str).distinct should be(List("test7_index"))
+        result.searchHits.map(_ ("_source")) should be(List(ujson.read("""{"content":{ "app": "a1" }}""")))
       }
     }
     "multisearch template is used" should {
@@ -189,8 +189,8 @@ trait BaseXpackApiSuite
         result should have statusCode 200
         result.responseJson("responses").arr.size should be(1)
         val firstQueryResponse = result.responseJson("responses")(0)
-        firstQueryResponse("hits")("hits").arr.map(_("_index").str).distinct should be(List("test1_index_a"))
-        firstQueryResponse("hits")("hits").arr.map(_("_source")) should be(List(ujson.read("""{"hello":"world"}""")))
+        firstQueryResponse("hits")("hits").arr.map(_ ("_index").str).distinct should be(List("test1_index_a"))
+        firstQueryResponse("hits")("hits").arr.map(_ ("_source")) should be(List(ujson.read("""{"hello":"world"}""")))
       }
       "return empty response for dev3" in {
         val searchManager = new SearchManager(basicAuthClient("dev3", "test"), esVersionUsed)
@@ -210,8 +210,8 @@ trait BaseXpackApiSuite
         result should have statusCode 200
         result.responseJson("responses").arr.size should be(1)
         val firstQueryResponse = result.responseJson("responses")(0)
-        firstQueryResponse("hits")("hits").arr.map(_("_index").str).distinct should be(List.empty)
-        firstQueryResponse("hits")("hits").arr.map(_("_source")) should be(List.empty)
+        firstQueryResponse("hits")("hits").arr.map(_ ("_index").str).distinct should be(List.empty)
+        firstQueryResponse("hits")("hits").arr.map(_ ("_source")) should be(List.empty)
       }
       "return filtered documents" in {
         val searchManager = new SearchManager(basicAuthClient("dev7", "test"), esVersionUsed)
@@ -245,8 +245,8 @@ trait BaseXpackApiSuite
         result should have statusCode 200
         result.responseJson("responses").arr.size should be(1)
         val firstQueryResponse = result.responseJson("responses")(0)
-        firstQueryResponse("hits")("hits").arr.map(_("_index").str).distinct should be(List("test7_index"))
-        firstQueryResponse("hits")("hits").arr.map(_("_source")) should be(List(ujson.read("""{"content":{ "app": "a1" }}""")))
+        firstQueryResponse("hits")("hits").arr.map(_ ("_index").str).distinct should be(List("test7_index"))
+        firstQueryResponse("hits")("hits").arr.map(_ ("_source")) should be(List(ujson.read("""{"content":{ "app": "a1" }}""")))
       }
     }
     "render template is used" should {
@@ -320,7 +320,7 @@ trait BaseXpackApiSuite
 
           result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
-          jobs.map(_("job_id").str) should contain(jobName)
+          jobs.map(_ ("job_id").str) should contain(jobName)
         }
         "user has access to requested indices" excludeES (allEs6xBelowEs63x) in {
           val jobName1 = NextRollupJobName.get
@@ -332,7 +332,7 @@ trait BaseXpackApiSuite
 
           result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
-          jobs.map(_("job_id").str) should contain(jobName1)
+          jobs.map(_ ("job_id").str) should contain(jobName1)
           jobs.foreach { job =>
             job("rollup_index").str should startWith("rollup_test4")
             job("index_pattern").str should startWith("test4")
@@ -351,7 +351,7 @@ trait BaseXpackApiSuite
           result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
           jobs should have size 1
-          jobs.map(_("job_id").str) should contain(jobName2)
+          jobs.map(_ ("job_id").str) should contain(jobName2)
           jobs.foreach { job =>
             job("rollup_index").str should startWith("rollup_test4")
             job("index_pattern").str should startWith("test4")
@@ -370,7 +370,7 @@ trait BaseXpackApiSuite
           result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
           jobs should have size 2
-          jobs.map(_("job_id").str) should contain(jobName2)
+          jobs.map(_ ("job_id").str) should contain(jobName2)
           jobs.foreach { job =>
             job("rollup_index").str should startWith("rollup_test4")
             job("index_pattern").str should startWith("test4")
@@ -410,7 +410,7 @@ trait BaseXpackApiSuite
 
           result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
-          jobs.map(_("job_id").str) should contain(jobName)
+          jobs.map(_ ("job_id").str) should contain(jobName)
         }
         "user has access to requested indices" excludeES (allEs6xBelowEs63x) in {
           val jobName1 = NextRollupJobName.get
@@ -422,7 +422,7 @@ trait BaseXpackApiSuite
 
           result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
-          jobs.map(_("job_id").str) should contain(jobName1)
+          jobs.map(_ ("job_id").str) should contain(jobName1)
           jobs.foreach { job =>
             job("rollup_index").str should startWith("rollup_test5")
             job("index_pattern").str should startWith("test5")
@@ -438,7 +438,7 @@ trait BaseXpackApiSuite
 
           result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
-          jobs.map(_("job_id").str) should contain(jobName1)
+          jobs.map(_ ("job_id").str) should contain(jobName1)
           jobs.foreach { job =>
             job("rollup_index").str should startWith("rollup_test5")
             job("index_pattern").str should startWith("test5")
@@ -454,7 +454,7 @@ trait BaseXpackApiSuite
 
           result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
-          jobs.map(_("job_id").str) should contain(jobName1)
+          jobs.map(_ ("job_id").str) should contain(jobName1)
           jobs.foreach { job =>
             job("rollup_index").str should startWith("rollup_test5")
             job("index_pattern").str should startWith("test5")
@@ -936,6 +936,7 @@ trait BaseXpackApiSuite
       }
     }
   }
+
 }
 
 object BaseXpackApiSuite {
