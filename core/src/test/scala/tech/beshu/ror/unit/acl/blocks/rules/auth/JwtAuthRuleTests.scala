@@ -30,7 +30,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.Name
-import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod
+import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -65,7 +65,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(secret.getEncoded),
             userClaim = None,
-            groupsClaim = None
+            groupsConfig = None
           ),
           tokenHeader = bearerHeader(jwt)
         ) {
@@ -83,7 +83,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Rsa(pub),
             userClaim = None,
-            groupsClaim = None
+            groupsConfig = None
           ),
           tokenHeader = bearerHeader(jwt)
         ) {
@@ -100,7 +100,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.NoCheck(authService(jwt.stringify(), authenticated = true)),
             userClaim = None,
-            groupsClaim = None
+            groupsConfig = None
           ),
           tokenHeader = bearerHeader(jwt)
         ) {
@@ -118,7 +118,7 @@ class JwtAuthRuleTests
           AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
           SignatureCheckMethod.NoCheck(authService),
           userClaim = None,
-          groupsClaim = None
+          groupsConfig = None
         )
         def checkValidToken = assertMatchRule(
           configuredJwtDef = jwtDef,
@@ -149,7 +149,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsClaim = None
+            groupsConfig = None,
           ),
           tokenHeader = bearerHeader(jwt)
         ) {
@@ -171,7 +171,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups")))
+            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
           tokenHeader = bearerHeader(jwt)
         ) {
@@ -193,7 +193,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups")))
+            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
           tokenHeader = bearerHeader(jwt),
           preferredGroupId = Some(GroupId("group1"))
@@ -217,7 +217,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("https://{domain}/claims/roles")))
+            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("https://{domain}/claims/roles")), None))
           ),
           tokenHeader = bearerHeader(jwt)
         ) {
@@ -238,7 +238,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups")))
+            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
           configuredGroups = Groups.NotDefined,
           tokenHeader = bearerHeader(jwt)
@@ -261,7 +261,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("tech.beshu.groups")))
+            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("tech.beshu.groups")), None))
           ),
           tokenHeader = bearerHeader(jwt)
         ) {
@@ -283,7 +283,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups")))
+            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
           configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2"))
@@ -310,7 +310,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups")))
+            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
           configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("*2"))
@@ -337,7 +337,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups")))
+            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
           configuredGroups = Groups.Defined(GroupsLogic.And(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group1"), GroupId("group2"))
@@ -364,7 +364,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups")))
+            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
           configuredGroups = Groups.Defined(GroupsLogic.And(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupIdLike.from("*1"), GroupIdLike.from("*2"))
@@ -388,7 +388,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name("x-jwt-custom-header"), "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = None,
-            groupsClaim = None
+            groupsConfig = None
           ),
           tokenHeader = bearerHeader("x-jwt-custom-header", jwt)
         ) {
@@ -406,7 +406,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name("x-jwt-custom-header"), "MyPrefix "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = None,
-            groupsClaim = None
+            groupsConfig = None
           ),
           tokenHeader = new Header(
             Header.Name("x-jwt-custom-header"),
@@ -430,7 +430,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key1.getEncoded),
             userClaim = None,
-            groupsClaim = None
+            groupsConfig = None
           ),
           tokenHeader = bearerHeader(jwt2)
         )
@@ -445,7 +445,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Rsa(pub),
             userClaim = None,
-            groupsClaim = None
+            groupsConfig = None
           ),
           tokenHeader = bearerHeader(jwt)
         )
@@ -458,7 +458,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.NoCheck(authService(jwt.stringify(), authenticated = false)),
             userClaim = None,
-            groupsClaim = None
+            groupsConfig = None
           ),
           tokenHeader = bearerHeader(jwt)
         )
@@ -472,7 +472,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsClaim = None
+            groupsConfig = None
           ),
           tokenHeader = bearerHeader(jwt)
         )
@@ -486,7 +486,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups")))
+            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
           tokenHeader = bearerHeader(jwt)
         )
@@ -503,7 +503,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("tech.beshu.groups.subgroups")))
+            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("tech.beshu.groups.subgroups")), None))
           ),
           configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group1"))
@@ -523,7 +523,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups")))
+            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
           configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupId("group4"))
@@ -543,7 +543,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups")))
+            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
           configuredGroups = Groups.Defined(GroupsLogic.And(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group2"), GroupId("group3"))
@@ -563,7 +563,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups")))
+            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
           tokenHeader = bearerHeader(jwt),
           preferredGroupId = Some(GroupId("group3"))
@@ -581,7 +581,7 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups")))
+            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
           ),
           configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group2"))

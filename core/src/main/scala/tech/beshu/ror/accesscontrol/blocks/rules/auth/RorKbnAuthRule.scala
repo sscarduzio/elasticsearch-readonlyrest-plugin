@@ -107,7 +107,7 @@ final class RorKbnAuthRule(val settings: Settings,
         (
           tokenPayload,
           tokenPayload.claims.userIdClaim(RorKbnAuthRule.userClaimName),
-          tokenPayload.claims.groupsClaim(RorKbnAuthRule.groupsClaimName),
+          tokenPayload.claims.groupsClaim(RorKbnAuthRule.groupsClaimName, None),
           tokenPayload.claims.headerNameClaim(Header.Name.xUserOrigin)
         )
       }

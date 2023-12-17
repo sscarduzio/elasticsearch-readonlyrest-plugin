@@ -16,20 +16,21 @@
  */
 package tech.beshu.ror.accesscontrol.utils
 
-import cats.implicits._
 import cats.Show
 import cats.data.NonEmptyList
+import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.{Group, Header, Jwt, User}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult._
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.{ClaimSearchResult, CustomClaimValue}
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
+import scala.util.{Success, Try}
 
 class ClaimsOps(val claims: Claims) extends Logging {
 
@@ -39,41 +40,6 @@ class ClaimsOps(val claims: Claims) extends Logging {
       case Some(headerValue) => Found(new Header(name, headerValue))
       case None => NotFound
     }
-  }
-
-  def userIdClaim(claimName: Jwt.ClaimName): ClaimSearchResult[User.Id] = {
-    claimName.name.read[Any](claims)
-      .map {
-        case value: String =>
-          NonEmptyString.from(value) match {
-            case Left(_) => NotFound
-            case Right(userStr) => Found(User.Id(userStr))
-          }
-        case _ => NotFound
-      }
-      .fold(_ => NotFound, identity)
-  }
-
-  def groupsClaim(claimName: Jwt.ClaimName): ClaimSearchResult[UniqueList[Group]] = {
-    claimName.name.read[Any](claims)
-      .map {
-        case value: String =>
-          Found(UniqueList.fromIterable((value :: Nil).flatMap(toGroup)))
-        case collection: java.util.Collection[_] =>
-          Found {
-            UniqueList.fromIterable {
-              collection.asScala
-                .collect {
-                  case value: String => value
-                  case value: Long => value.toString
-                }
-                .flatMap(toGroup)
-            }
-          }
-        case _ =>
-          NotFound
-      }
-      .fold(_ => NotFound, identity)
   }
 
   def customClaim(claimName: Jwt.ClaimName): ClaimSearchResult[CustomClaimValue] = {
@@ -98,8 +64,96 @@ class ClaimsOps(val claims: Claims) extends Logging {
       .fold(_ => NotFound, identity)
   }
 
-  private def toGroup(value: String) = {
-    NonEmptyString.unapply(value).map(GroupId.apply).map(Group.from)
+  def userIdClaim(claimName: Jwt.ClaimName): ClaimSearchResult[User.Id] = {
+    claimName.name.read[Any](claims)
+      .map {
+        case value: String =>
+          NonEmptyString.from(value) match {
+            case Left(_) => NotFound
+            case Right(userStr) => Found(User.Id(userStr))
+          }
+        case _ => NotFound
+      }
+      .fold(_ => NotFound, identity)
+  }
+
+  def groupsClaim(groupIdsClaimName: Jwt.ClaimName,
+                  groupNamesClaimName: Option[Jwt.ClaimName]): ClaimSearchResult[UniqueList[Group]] = {
+
+    (for {
+      groupIds <- readGroupIds(groupIdsClaimName)
+      groupNames <- readGroupNames(groupNamesClaimName)
+      searchResult = groupIds match {
+        case Found(ids) => ClaimSearchResult.Found {
+          groupNames match {
+            case Found(names) if names.size == ids.size =>
+              val idsWithNames = ids.zip(names)
+              createGroupsFrom(idsWithNames = idsWithNames)
+            case Found(_) | ClaimSearchResult.NotFound =>
+              createGroupsFromIds(ids)
+          }
+        }
+        case ClaimSearchResult.NotFound =>
+          ClaimSearchResult.NotFound
+      }
+    } yield searchResult)
+      .fold(_ => NotFound, identity)
+  }
+
+  private def readGroupIds(claimName: Jwt.ClaimName) = {
+    readStringLikeOrIterable(claimName)
+  }
+
+  private def readGroupNames(claimName: Option[Jwt.ClaimName]) = {
+    claimName match {
+      case Some(groupNamesClaimName) =>
+        readStringLikeOrIterable(groupNamesClaimName)
+          .recover {
+            case _: Throwable => NotFound
+          }
+      case None =>
+        Success(ClaimSearchResult.NotFound)
+    }
+  }
+
+  private def readStringLikeOrIterable(claimName: Jwt.ClaimName): Try[ClaimSearchResult[Iterable[Any]]] = {
+    claimName.name.read[Any](claims)
+      .map {
+        case value: String =>
+          Found(List(value))
+        case collection: java.util.Collection[_] =>
+          Found(collection.asScala)
+        case _ =>
+          NotFound
+      }
+  }
+
+  private def createGroupsFromIds(ids: Iterable[Any]): UniqueList[Group] = UniqueList.fromIterable {
+    ids
+      .flatMap(nonEmptyStringFrom)
+      .map(GroupId.apply)
+      .map(Group.from)
+  }
+
+  private def createGroupsFrom(idsWithNames: Iterable[(Any, Any)]): UniqueList[Group] = UniqueList.fromIterable {
+    idsWithNames
+      .flatMap { case (id, name) =>
+        nonEmptyStringFrom(id)
+          .map(GroupId.apply)
+          .map { groupId =>
+            val groupName =
+              nonEmptyStringFrom(name)
+                .map(GroupName.apply)
+                .getOrElse(GroupName.from(groupId))
+            Group(groupId, groupName)
+          }
+      }
+  }
+
+  private val nonEmptyStringFrom: Any => Option[NonEmptyString] = {
+    case value: String => NonEmptyString.unapply(value)
+    case value: Long => NonEmptyString.unapply(value.toString)
+    case _ => None
   }
 }
 

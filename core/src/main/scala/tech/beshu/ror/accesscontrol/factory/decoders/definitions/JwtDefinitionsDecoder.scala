@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import io.circe.{Decoder, HCursor, Json}
 import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, Header, Jwt}
-import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{Name, SignatureCheckMethod}
+import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, Name, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
@@ -43,8 +43,6 @@ object JwtDefinitionsDecoder {
 
   implicit val jwtDefNameDecoder: Decoder[Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
 
-  private implicit val claimDecoder: Decoder[Jwt.ClaimName] = jsonPathDecoder.map(Jwt.ClaimName.apply)
-
   private def jwtDefDecoder(implicit httpClientFactory: HttpClientsFactory,
                             variableCreator: RuntimeResolvableVariableCreator): Decoder[JwtDef] = {
     SyncDecoderCreator
@@ -55,16 +53,16 @@ object JwtDefinitionsDecoder {
           headerName <- c.downField("header_name").as[Option[Header.Name]]
           authTokenPrefix <- c.downField("header_prefix").as[Option[String]]
           userClaim <- c.downField("user_claim").as[Option[Jwt.ClaimName]]
-          groupsClaim <- c.downFields("roles_claim", "groups_claim").as[Option[Jwt.ClaimName]]
+          groupsConfig <- c.as[Option[GroupsConfig]]
         } yield JwtDef(
-          name,
-          AuthorizationTokenDef(
+          id = name,
+          authorizationTokenDef = AuthorizationTokenDef(
             headerName.getOrElse(Header.Name.authorization),
             authTokenPrefix.getOrElse("Bearer ")
           ),
-          checkMethod,
-          userClaim,
-          groupsClaim
+          checkMethod = checkMethod,
+          userClaim = userClaim,
+          groupsConfig = groupsConfig
         )
       }
       .mapError(DefinitionsLevelCreationError.apply)
@@ -134,5 +132,16 @@ object JwtDefinitionsDecoder {
           ))
       }
     } yield checkMethod
+  }
+
+  private implicit val claimDecoder: Decoder[Jwt.ClaimName] = jsonPathDecoder.map(Jwt.ClaimName.apply)
+
+  private implicit val groupsConfigDecoder: Decoder[GroupsConfig] = Decoder.instance { c =>
+    for {
+      groupIdsClaim
+        <- c.downFields("roles_claim", "groups_claim", "group_ids_claim").as[Jwt.ClaimName]
+      groupNamesClaim
+        <- c.downFields("group_names_claim").as[Option[Jwt.ClaimName]]
+    } yield GroupsConfig(groupIdsClaim, groupNamesClaim)
   }
 }

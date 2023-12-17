@@ -149,7 +149,7 @@ class JwtAuthSuite
 
   "rejectTokenWithWrongRolesClaim" in {
     val jwt = Jwt(algo, validKeyRole, claims = List(
-      "roles" := "role_wrong"
+      "role_ids" := "role_wrong"
     ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
@@ -163,7 +163,8 @@ class JwtAuthSuite
   "acceptValidTokenWithRolesClaim" in {
     val jwt = Jwt(algo, validKeyRole, claims = List(
       "user" := "user1",
-      "roles" := List("role_viewer", "something_lol")
+      "role_ids" := List("role_viewer", "something_lol"),
+      "role_names" := List("viewer", "lol")
     ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
