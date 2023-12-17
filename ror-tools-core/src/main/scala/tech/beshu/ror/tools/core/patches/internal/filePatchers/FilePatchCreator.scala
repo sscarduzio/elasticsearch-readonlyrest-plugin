@@ -14,19 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.patches
+package tech.beshu.ror.tools.core.patches.internal.filePatchers
 
 import just.semver.SemVer
-import tech.beshu.ror.tools.core.utils.RorToolsException.EsPatchingNotRequired
+import tech.beshu.ror.tools.core.patches.internal.{FilePatch, RorPluginDirectory}
 
-private[patches] class EsNotRequirePatch(esVersion: SemVer)
-  extends EsPatch {
+private [patches] trait FilePatchCreator[FP <: FilePatch] {
 
-  override def isPatched: Boolean = throw new EsPatchingNotRequired(esVersion)
-
-  override def backup(): Unit = throw new EsPatchingNotRequired(esVersion)
-
-  override def restore(): Unit = throw new EsPatchingNotRequired(esVersion)
-
-  override def execute(): Unit = throw new EsPatchingNotRequired(esVersion)
+  def create(rorPluginDirectory: RorPluginDirectory,
+             esVersion: SemVer): FP
 }

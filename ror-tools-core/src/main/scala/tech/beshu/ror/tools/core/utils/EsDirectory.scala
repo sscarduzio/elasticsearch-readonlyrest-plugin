@@ -17,11 +17,20 @@
 package tech.beshu.ror.tools.core.utils
 
 import os.Path
+import tech.beshu.ror.tools.core.utils.EsUtil.findTransportNetty4JarIn
 import tech.beshu.ror.tools.core.utils.RorToolsException.EsPathException
 
 import scala.util.{Failure, Success, Try}
 
-sealed case class EsDirectory private(path: os.Path)
+sealed case class EsDirectory private(path: os.Path) {
+
+  val libPath: Path = path / "lib"
+  val modulesPath: Path = path / "modules"
+
+  def findTransportNetty4Jar: Option[Path] = {
+    findTransportNetty4JarIn(path / "modules" / "transport-netty4")
+  }
+}
 object EsDirectory {
 
   def defaultPath: Path = os.root / "usr" / "share" / "elasticsearch"

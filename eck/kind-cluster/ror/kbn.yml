@@ -8,14 +8,16 @@ spec:
   count: 1
   elasticsearchRef:
     name: quickstart
+  config:
+    readonlyrest_kbn.cookiePass: "12345678901234567890123456789012345678901234567890"
+    readonlyrest_kbn.logLevel: "trace"
   podTemplate:
     spec:
+      securityContext:
+        runAsUser: 1000
       containers:
         - name: kibana
           resources:
             requests:
               memory: 2048Mi
               cpu: 2
-  config:
-    readonlyrest_kbn.cookiePass: "12345678901234567890123456789012345678901234567890"
-    readonlyrest_kbn.logLevel: info

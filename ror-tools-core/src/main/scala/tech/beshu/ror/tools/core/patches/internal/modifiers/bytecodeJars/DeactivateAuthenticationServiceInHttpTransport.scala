@@ -14,15 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.utils.asm
+package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 
 import org.objectweb.asm.Opcodes._
 import org.objectweb.asm._
+import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.{File, InputStream}
 import java.nio.file.Files
 
-object DeactivateAuthenticationServiceInHttpTransport extends BytecodeJarModifier {
+private [patches] object DeactivateAuthenticationServiceInHttpTransport extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     val originalFileOwner = Files.getOwner(jar.toPath)

@@ -38,7 +38,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.Var
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupNameAttribute, GroupSearchFilter, GroupsFromUserAttribute, UniqueMemberAttribute}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupIdAttribute, GroupSearchFilter, GroupsFromUserAttribute, UniqueMemberAttribute}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana._
@@ -48,7 +48,7 @@ import tech.beshu.ror.accesscontrol.domain.Address.Ip
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, Strategy}
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
@@ -112,8 +112,8 @@ object orders {
   implicit val userDefOrder: Order[UserDef] = Order.by(_.id.toString)
   implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
   implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)
-  implicit val groupNameOrder: Order[GroupName] = Order.by(_.value)
-  implicit val groupLikeOrder: Order[GroupLike] = Order.by(_.value)
+  implicit val groupIdOrder: Order[GroupId] = Order.by(_.value)
+  implicit val groupIdLikeOrder: Order[GroupIdLike] = Order.by(_.value)
   implicit val ruleWithVariableUsageDefinitionOrder: Order[RuleDefinition[Rule]] = Order.by(_.rule)
   implicit val patternOrder: Order[RegexPattern] = Order.by(_.pattern)
   implicit val forbiddenCauseOrder: Order[ForbiddenCause] = Order.by {
@@ -196,13 +196,14 @@ object show {
     implicit val indexPatternShow: Show[IndexPattern] = Show.show(_.value.show)
     implicit val aliasPlaceholderShow: Show[AliasPlaceholder] = Show.show(_.alias.show)
     implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value.value)
-    implicit val groupNameShow: Show[GroupName] = Show.show(_.value.value)
+    implicit val groupIdShow: Show[GroupId] = Show.show(_.value.value)
+    implicit val groupShow: Show[Group] = Show.show(_.id.show)
     implicit val tokenShow: Show[AuthorizationToken] = Show.show(_.value.value)
     implicit val jwtTokenShow: Show[Jwt.Token] = Show.show(_.value.value)
     implicit val uriPathShow: Show[UriPath] = Show.show(_.value.value)
     implicit val dnShow: Show[Dn] = Show.show(_.value.value)
     implicit val showGroupSearchFilter: Show[GroupSearchFilter] = Show.show(_.value.value)
-    implicit val showGroupNameAttribute: Show[GroupNameAttribute] = Show.show(_.value.value)
+    implicit val showGroupIdAttribute: Show[GroupIdAttribute] = Show.show(_.value.value)
     implicit val showUniqueMemberAttribute: Show[UniqueMemberAttribute] = Show.show(_.value.value)
     implicit val showGroupsFromUserAttribute: Show[GroupsFromUserAttribute] = Show.show(_.value.value)
     implicit val envNameShow: Show[EnvVarName] = Show.show(_.value.value)
@@ -217,7 +218,7 @@ object show {
     implicit def blockContextShow[B <: BlockContext](implicit showHeader: Show[Header]): Show[B] =
       Show.show { bc =>
         (showOption("user", bc.userMetadata.loggedUser) ::
-          showOption("group", bc.userMetadata.currentGroup) ::
+          showOption("group", bc.userMetadata.currentGroupId) ::
           showNamedIterable("av_groups", bc.userMetadata.availableGroups) ::
           showNamedIterable("indices", bc.indices) ::
           showOption("kibana_idx", bc.userMetadata.kibanaIndex) ::
@@ -251,7 +252,7 @@ object show {
     private implicit val userOriginShow: Show[UserOrigin] = Show.show(_.value.value)
     implicit val userMetadataShow: Show[UserMetadata] = Show.show { u =>
       (showOption("user", u.loggedUser) ::
-        showOption("curr_group", u.currentGroup) ::
+        showOption("curr_group", u.currentGroupId) ::
         showNamedIterable("av_groups", u.availableGroups) ::
         showOption("kibana_idx", u.kibanaIndex) ::
         showNamedIterable("hidden_apps", u.hiddenKibanaApps) ::
@@ -483,5 +484,5 @@ object headerValues {
     ))
   }
 
-  implicit val groupHeaderValue: ToHeaderValue[GroupName] = ToHeaderValue(_.value)
+  implicit val groupHeaderValue: ToHeaderValue[GroupId] = ToHeaderValue(_.value)
 }

@@ -35,7 +35,7 @@ class IndicesReverseWildcardSuite
 
   override def nodeDataInitializer = Some(IndicesReverseWildcardSuite.nodeDataInitializer())
 
-  private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"))
+  private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"), esVersionUsed)
 
   "A search request" should {
     "return proper data" when {

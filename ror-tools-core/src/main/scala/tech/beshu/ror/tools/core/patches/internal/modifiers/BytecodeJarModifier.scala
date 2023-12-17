@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.utils.asm
+package tech.beshu.ror.tools.core.patches.internal.modifiers
 
 import java.io.{ByteArrayInputStream, File, InputStream}
 import java.net.URI
@@ -22,9 +22,7 @@ import java.nio.file.{FileSystems, Files, Paths, StandardCopyOption}
 import java.util.jar.JarFile
 import scala.jdk.CollectionConverters._
 
-abstract class BytecodeJarModifier {
-
-  def apply(jar: File): Unit
+private [patches] abstract class BytecodeJarModifier extends FileModifier {
 
   protected def loadAndProcessFileFromJar(jar: File,
                                           classFileName: String,

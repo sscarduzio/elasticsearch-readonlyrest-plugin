@@ -28,11 +28,11 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupNameAttribute, GroupSearchFilter, NestedGroupsConfig, UniqueMemberAttribute}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupIdAttribute, GroupSearchFilter, NestedGroupsConfig, UniqueMemberAttribute}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.utils.SingletonLdapContainers
+import tech.beshu.ror.utils.TestsUtils.group
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration._
@@ -60,7 +60,7 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
         "user has groups" in {
           eventually {
             peopleAndGroupsLdapAuthorizationService.groupsOf(User.Id("morgan")).runSyncUnsafe() should be {
-              UniqueList.of(GroupName("groupAll"), GroupName("group3"), GroupName("group2"))
+              UniqueList.of(group("groupAll"), group("group3"), group("group2"))
             }
           }
         }
@@ -68,19 +68,19 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
       "resolve nested groups properly" in {
         eventually {
           usersAndRolesLdapAuthorizationService.groupsOf(User.Id("userSpeaker")).runSyncUnsafe() should be {
-            UniqueList.of(GroupName("developers"), GroupName("speakers"))
+            UniqueList.of(group("developers"), group("speakers"))
           }
         }
       }
       "returns empty set of groups" when {
         "user has no groups" in {
           eventually {
-            peopleAndGroupsLdapAuthorizationService.groupsOf(User.Id("devito")).runSyncUnsafe() should be(UniqueList.empty[GroupName])
+            peopleAndGroupsLdapAuthorizationService.groupsOf(User.Id("devito")).runSyncUnsafe() should be(UniqueList.empty[Group])
           }
         }
         "there is no user with given name" in {
           eventually {
-            peopleAndGroupsLdapAuthorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[GroupName])
+            peopleAndGroupsLdapAuthorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[Group])
           }
         }
       }
@@ -113,7 +113,7 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
           DefaultGroupSearch(
             Dn("ou=Groups,dc=example,dc=com"),
             GroupSearchFilter("(cn=*)"),
-            GroupNameAttribute("cn"),
+            GroupIdAttribute("cn"),
             UniqueMemberAttribute("uniqueMember"),
             groupAttributeIsDN = true,
           ),
@@ -150,7 +150,7 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
           DefaultGroupSearch(
             Dn("ou=Roles,dc=example,dc=com"),
             GroupSearchFilter("(cn=*)"),
-            GroupNameAttribute("cn"),
+            GroupIdAttribute("cn"),
             UniqueMemberAttribute("uniqueMember"),
             groupAttributeIsDN = true,
           ),
@@ -159,7 +159,7 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
             Dn("ou=Roles,dc=example,dc=com"),
             GroupSearchFilter("(cn=*)"),
             UniqueMemberAttribute("uniqueMember"),
-            GroupNameAttribute("cn"),
+            GroupIdAttribute("cn"),
           ))
         )
       )

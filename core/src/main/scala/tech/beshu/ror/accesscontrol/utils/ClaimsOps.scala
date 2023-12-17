@@ -22,8 +22,8 @@ import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.{Header, Jwt, User}
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.{Group, Header, Jwt, User}
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult._
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.{ClaimSearchResult, CustomClaimValue}
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -55,7 +55,7 @@ class ClaimsOps(val claims: Claims) extends Logging {
       .fold(_ => NotFound, identity)
   }
 
-  def groupsClaim(claimName: Jwt.ClaimName): ClaimSearchResult[UniqueList[GroupName]] = {
+  def groupsClaim(claimName: Jwt.ClaimName): ClaimSearchResult[UniqueList[Group]] = {
     Try(claimName.name.read[Any](claims))
       .map {
         case value: String =>
@@ -100,7 +100,7 @@ class ClaimsOps(val claims: Claims) extends Logging {
   }
 
   private def toGroup(value: String) = {
-    NonEmptyString.unapply(value).map(GroupName.apply)
+    NonEmptyString.unapply(value).map(GroupId.apply).map(Group.from)
   }
 }
 

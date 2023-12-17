@@ -14,13 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.utils.asm
+package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 
 import org.objectweb.asm._
+import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.{File, InputStream}
 
-object OpenModule extends BytecodeJarModifier {
+private [patches] object OpenModule extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     val updatedContentOfModuleInfo = loadAndProcessFileFromJar(

@@ -44,6 +44,7 @@ class MSearchTEST3Suite
   "testMgetWildcard" in {
     val searchManager = new SearchManager(
       client = basicAuthClient("justOverrideAdminCredentials", "random09310+23"),
+      esVersion = esVersionUsed,
       additionalHeaders = Map("X-Forwarded-For" -> "elastic.co")
     )
 

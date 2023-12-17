@@ -21,8 +21,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Adv
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, Mode}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
-import tech.beshu.ror.accesscontrol.domain.{GroupLike, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -37,13 +36,15 @@ final case class UserDef private(id: UserDef#Id,
   override type Id = UUID // artificial ID (won't be used)
   override implicit val show: Show[UUID] = Show.show(_.toString)
 
-  def localGroups: UniqueNonEmptyList[GroupName] = UniqueNonEmptyList.unsafeFromIterable {
+  def localGroups: UniqueNonEmptyList[Group] =
     mode match {
       case Mode.WithoutGroupsMapping(_, localGroups) => localGroups
       case Mode.WithGroupsMapping(_, GroupMappings.Simple(localGroups)) => localGroups
-      case Mode.WithGroupsMapping(_, GroupMappings.Advanced(mappings)) => mappings.unsorted.map(_.local)
+      case Mode.WithGroupsMapping(_, GroupMappings.Advanced(mappings)) =>
+        UniqueNonEmptyList.unsafeFromIterable {
+          mappings.unsorted.map(_.local)
+        }
     }
-  }
 }
 
 object UserDef {
@@ -55,7 +56,7 @@ object UserDef {
   sealed trait Mode
   object Mode {
     final case class WithoutGroupsMapping(auth: AuthenticationRule,
-                                          localGroups: UniqueNonEmptyList[GroupName])
+                                          localGroups: UniqueNonEmptyList[Group])
       extends Mode
 
     final case class WithGroupsMapping(auth: Auth,
@@ -75,11 +76,11 @@ object UserDef {
 
   sealed trait GroupMappings
   object GroupMappings {
-    final case class Simple(localGroups: UniqueNonEmptyList[GroupName]) extends GroupMappings
+    final case class Simple(localGroups: UniqueNonEmptyList[Group]) extends GroupMappings
     final case class Advanced(mappings: UniqueNonEmptyList[Mapping]) extends GroupMappings
     object Advanced {
-      final case class Mapping(local: GroupName, externalGroupPatters: UniqueNonEmptyList[GroupLike]) {
-        val externalGroupPattersMatcher: PatternsMatcher[GroupLike] = PatternsMatcher.create(externalGroupPatters.toSet)
+      final case class Mapping(local: Group, externalGroupPatterns: UniqueNonEmptyList[GroupIdLike]) {
+        val externalGroupIdPatternsMatcher: PatternsMatcher[GroupIdLike] = PatternsMatcher.create(externalGroupPatterns.toSet)
       }
     }
   }

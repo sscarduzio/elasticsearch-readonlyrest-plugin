@@ -49,7 +49,7 @@ class DataStreamApiSuite
   private lazy val adminDocumentManager = new DocumentManager(client, esVersionUsed)
   private lazy val adminDataStreamManager = new DataStreamManager(client)
   private lazy val adminIndexManager = new IndexManager(client, esVersionUsed)
-  private lazy val adminSearchManager = new SearchManager(client)
+  private lazy val adminSearchManager = new SearchManager(client, esVersionUsed)
   private lazy val adminTemplateManager = new IndexTemplateManager(client, esVersionUsed)
 
   private val adminDataStream = DataStreamNameGenerator.next("admin")
@@ -162,7 +162,7 @@ class DataStreamApiSuite
               createDocsInDataStream(dataStream, docsCount)
             }
 
-          val searchManager = new SearchManager(clients.head.basicAuthClient("user7", "pass"))
+          val searchManager = new SearchManager(clients.head.basicAuthClient("user7", "pass"), esVersionUsed)
 
           val dsAdminSearch = searchManager.searchAll("data-stream-admin")
           dsAdminSearch should have statusCode 401
@@ -187,7 +187,7 @@ class DataStreamApiSuite
               createDocsInDataStream(dataStream, docsCount)
             }
 
-          val searchManager = new SearchManager(clients.head.basicAuthClient("user7", "pass"))
+          val searchManager = new SearchManager(clients.head.basicAuthClient("user7", "pass"), esVersionUsed)
 
           List(
             ("data-stream-dev*", 2),
@@ -211,7 +211,7 @@ class DataStreamApiSuite
               createDocsInDataStream(dataStream, docsCount)
             }
 
-          val searchManager = new SearchManager(clients.head.basicAuthClient("user8", "pass"))
+          val searchManager = new SearchManager(clients.head.basicAuthClient("user8", "pass"), esVersionUsed)
 
           adminIndexManager
             .updateAliases(
@@ -234,7 +234,7 @@ class DataStreamApiSuite
               createDocsInDataStream(dataStream, docsCount)
             }
 
-          val searchManager = new SearchManager(clients.head.basicAuthClient("user8", "pass"))
+          val searchManager = new SearchManager(clients.head.basicAuthClient("user8", "pass"), esVersionUsed)
 
           adminIndexManager
             .updateAliases(
@@ -257,7 +257,7 @@ class DataStreamApiSuite
               createDocsInDataStream(dataStream, docsCount)
             }
 
-          val searchManager = new SearchManager(user3Client)
+          val searchManager = new SearchManager(user3Client, esVersionUsed)
 
           List(
             (s".ds-$devDataStream*", 2),
@@ -280,7 +280,7 @@ class DataStreamApiSuite
               createDocsInDataStream(dataStream, docsCount)
             }
 
-          val searchManager = new SearchManager(user3Client)
+          val searchManager = new SearchManager(user3Client, esVersionUsed)
           val getAllResponse = adminDataStreamManager.getAllDataStreams().force()
 
           def findIndicesForDataStream(name: String) =

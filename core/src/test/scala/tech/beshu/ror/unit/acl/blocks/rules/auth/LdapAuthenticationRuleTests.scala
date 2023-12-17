@@ -31,7 +31,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.{ImpersonationNotAllowed, ImpersonationNotSupported}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser._
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, PlainTextSecret, User}
@@ -83,7 +82,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                   impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = mocksProviderForLdapFrom(Map(
-                  LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(GroupName("g1")))
+                  LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(group("g1")))
                 ))
               ))
             )
@@ -159,7 +158,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                   impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = mocksProviderForLdapFrom(Map(
-                  LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(GroupName("g1")))
+                  LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(group("g1")))
                 ))
               ))
             )
@@ -183,7 +182,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                   impersonatedUsersIdPatterns = NonEmptyList.of("user2")
                 )),
                 mocksProvider = mocksProviderForLdapFrom(Map(
-                  LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(GroupName("g1")))
+                  LdapService.Name("ldap1") -> Map(User.Id("user1") -> Set(group("g1")))
                 ))
               ))
             )
@@ -208,7 +207,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                   impersonatedUsersIdPatterns = NonEmptyList.of("user1")
                 )),
                 mocksProvider = mocksProviderForLdapFrom(Map(
-                  LdapService.Name("ldap1") -> Map(User.Id("user2") -> Set(GroupName("g1")))
+                  LdapService.Name("ldap1") -> Map(User.Id("user2") -> Set(group("g1")))
                 ))
               ))
             )

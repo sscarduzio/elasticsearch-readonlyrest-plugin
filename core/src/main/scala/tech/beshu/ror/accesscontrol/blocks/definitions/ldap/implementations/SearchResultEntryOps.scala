@@ -20,22 +20,22 @@ import cats.implicits._
 import com.unboundid.ldap.sdk.{DN, SearchResultEntry}
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupNameAttribute, GroupsFromUserEntry}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupIdAttribute, GroupsFromUserEntry}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
-import tech.beshu.ror.accesscontrol.domain.GroupLike.GroupName
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 
 import scala.util.Try
 
 private [implementations] object SearchResultEntryOps {
 
   implicit class ToLdapGroup(val entry: SearchResultEntry) extends AnyVal {
-    def toLdapGroup(groupNameAttribute: GroupNameAttribute): Option[LdapGroup] = {
+    def toLdapGroup(groupIdAttribute: GroupIdAttribute): Option[LdapGroup] = {
       for {
-        groupName <- Option(entry.getAttributeValue(groupNameAttribute.value.value))
+        groupId <- Option(entry.getAttributeValue(groupIdAttribute.value.value))
           .flatMap(NonEmptyString.unapply)
-          .map(GroupName.apply)
+          .map(GroupId.apply)
         dn <- Option(entry.getDN).flatMap(NonEmptyString.unapply).map(Dn.apply)
-      } yield LdapGroup(groupName, dn)
+      } yield LdapGroup(groupId, dn)
     }
 
     def toLdapGroups(mode: GroupsFromUserEntry): List[LdapGroup] = {
@@ -51,11 +51,11 @@ private [implementations] object SearchResultEntryOps {
         Try {
           dn.getRDN
             .getAttributes.toList
-            .filter(_.getBaseName === mode.groupNameAttribute.value.value)
+            .filter(_.getBaseName === mode.groupIdAttribute.value.value)
             .map(_.getValue)
             .headOption
         }.toOption.flatten.flatMap(NonEmptyString.unapply)
-          .map { groupName => LdapGroup(GroupName(groupName), Dn(dnString)) }
+          .map { groupId => LdapGroup(GroupId(groupId), Dn(dnString)) }
       } else {
         None
       }

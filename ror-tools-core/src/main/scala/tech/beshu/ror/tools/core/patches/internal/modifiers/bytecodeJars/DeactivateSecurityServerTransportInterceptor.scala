@@ -14,32 +14,32 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.utils.asm
+package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 
 import org.objectweb.asm._
+import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.{File, InputStream}
 import java.nio.file.Files
-import scala.language.postfixOps
 
-object DeactivateSecurityActionFilter extends BytecodeJarModifier {
+private [patches] object DeactivateSecurityServerTransportInterceptor extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     val originalFileOwner = Files.getOwner(jar.toPath)
     val modifiedSecurityClass = loadAndProcessFileFromJar(
       jar = jar,
-      classFileName = "org/elasticsearch/xpack/security/Security",
-      processFileContent = doDeactivateXpackSecurityFilter
+      classFileName = "org/elasticsearch/xpack/security/transport/SecurityServerTransportInterceptor",
+      processFileContent = doDeactivateSecurityServerTransportInterceptor
     )
     updateFileInJar(
       jar = jar,
-      destinationPathSting = "/org/elasticsearch/xpack/security/Security.class",
+      destinationPathSting = "/org/elasticsearch/xpack/security/transport/SecurityServerTransportInterceptor.class",
       newContent = modifiedSecurityClass
     )
     Files.setOwner(jar.toPath, originalFileOwner)
   }
 
-  private def doDeactivateXpackSecurityFilter(moduleInputStream: InputStream) = {
+  private def doDeactivateSecurityServerTransportInterceptor(moduleInputStream: InputStream) = {
     val reader = new ClassReader(moduleInputStream)
     val writer = new ClassWriter(reader, 0)
     reader.accept(new EsClassVisitor(writer), 0)
@@ -55,51 +55,37 @@ object DeactivateSecurityActionFilter extends BytecodeJarModifier {
                              signature: String,
                              exceptions: Array[String]): MethodVisitor = {
       name match {
-        case "getActionFilters" =>
-          new GetActionFiltersMethodReturningEmptyList(
-            super.visitMethod(access, name, descriptor, signature, exceptions)
-          )
-        case "onIndexModule" =>
-          // removing the onIndexModule method
-          null
-        case "getRequestCacheKeyDifferentiator" =>
-          new GetRequestCacheKeyDifferentiatorReturningNull(
-            super.visitMethod(access, name, descriptor, signature, exceptions)
-          )
+        case "interceptSender" =>
+          new InterceptSenderReturningSenderFromParam(super.visitMethod(access, name, descriptor, signature, exceptions))
+        case "interceptHandler" =>
+          new InterceptHandlerReturningSenderFromParam(super.visitMethod(access, name, descriptor, signature, exceptions))
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
   }
 
-  private class GetActionFiltersMethodReturningEmptyList(underlying: MethodVisitor)
+  private class InterceptSenderReturningSenderFromParam(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
-      underlying.visitMethodInsn(
-        Opcodes.INVOKESTATIC,
-        "java/util/Collections",
-        "emptyList",
-        "()Ljava/util/List;",
-        false
-      )
+      underlying.visitVarInsn(Opcodes.ALOAD, 1)
       underlying.visitInsn(Opcodes.ARETURN)
-      underlying.visitMaxs(1, 1)
+      underlying.visitMaxs(1, 2)
       underlying.visitEnd()
     }
   }
 
-  private class GetRequestCacheKeyDifferentiatorReturningNull(underlying: MethodVisitor)
+  private class InterceptHandlerReturningSenderFromParam(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
-      underlying.visitInsn(Opcodes.ACONST_NULL)
+      underlying.visitVarInsn(Opcodes.ALOAD, 4)
       underlying.visitInsn(Opcodes.ARETURN)
-      underlying.visitMaxs(1, 1)
+      underlying.visitMaxs(1, 5)
       underlying.visitEnd()
     }
   }
-
 }

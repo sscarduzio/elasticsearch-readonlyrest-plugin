@@ -94,7 +94,7 @@ class LocalGroupsSuite
     val userMetadataManager = new RorApiManager(basicAuthClient("user", "passwd"), esVersionUsed)
 
     val correlationId = UUID.randomUUID().toString
-    val response = userMetadataManager.fetchMetadata(preferredGroup = Some("foogroup"), correlationId = Some(correlationId))
+    val response = userMetadataManager.fetchMetadata(preferredGroupId = Some("foogroup"), correlationId = Some(correlationId))
 
     response should have statusCode 200
     response.responseJson should be(ujson.read(

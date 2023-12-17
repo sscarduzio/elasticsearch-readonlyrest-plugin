@@ -42,7 +42,7 @@ class FilterRuleSuite
       "search api is used" when {
         "custom query in request body is sent" in {
           retry(times = 3) {
-            val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
+            val searchManager = new SearchManager(basicAuthClient("user1", "pass"), esVersionUsed)
             val result = searchManager.search("test1_index", ujson.read("""{ "query": { "term": { "code": 1 }}}"""))
 
             result should have statusCode 200
@@ -53,7 +53,7 @@ class FilterRuleSuite
         }
         "there is no query in request body" in {
           retry(times = 3) {
-            val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
+            val searchManager = new SearchManager(basicAuthClient("user1", "pass"), esVersionUsed)
             val result = searchManager.search("test1_index")
 
             result should have statusCode 200
@@ -66,7 +66,7 @@ class FilterRuleSuite
         }
         "wildcard in filter query is used" in {
           retry(times = 3) {
-            val searchManager = new SearchManager(basicAuthClient("user2", "pass"))
+            val searchManager = new SearchManager(basicAuthClient("user2", "pass"), esVersionUsed)
             val result = searchManager.search("test1_index")
 
             result should have statusCode 200
@@ -77,7 +77,7 @@ class FilterRuleSuite
         }
         "prefix in filter query is used" in {
           retry(times = 3) {
-            val searchManager = new SearchManager(basicAuthClient("user3", "pass"))
+            val searchManager = new SearchManager(basicAuthClient("user3", "pass"), esVersionUsed)
             val result = searchManager.search("test1_index")
 
             result should have statusCode 200
@@ -89,7 +89,7 @@ class FilterRuleSuite
       }
       "msearch api is used" in {
         retry(times = 3) {
-          val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
+          val searchManager = new SearchManager(basicAuthClient("user1", "pass"), esVersionUsed)
           val matchAllIndicesQuery = Seq(
             """{"index":"*"}""",
             """{"query" : {"match_all" : {}}}""")
@@ -295,13 +295,13 @@ class FilterRuleSuite
         result should have statusCode 401
       }
       "search request has 'profile' option" in {
-        val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
+        val searchManager = new SearchManager(basicAuthClient("user1", "pass"), esVersionUsed)
         val result = searchManager.search("test1_index", ujson.read("""{ "query": { "term": { "code": 1 }}, "profile": true}"""))
 
         result should have statusCode 401
       }
       "search request has suggestions" in {
-        val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
+        val searchManager = new SearchManager(basicAuthClient("user1", "pass"), esVersionUsed)
         val query = ujson.read(
           """|{
              |"query": { "term": { "code": 1 }},
@@ -321,7 +321,7 @@ class FilterRuleSuite
       }
       "return error" when {
         "filter query is malformed" in {
-          val searchManager = new SearchManager(basicAuthClient("user4", "pass"))
+          val searchManager = new SearchManager(basicAuthClient("user4", "pass"), esVersionUsed)
           val result = searchManager.search("test1_index", ujson.read("""{ "query": { "term": { "code": 1 }}}"""))
 
           if (Version.greaterOrEqualThan(esVersionUsed, 7, 6, 0)) {

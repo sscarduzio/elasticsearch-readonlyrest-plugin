@@ -68,7 +68,7 @@ class ResponseFieldRuleSuite
     }
 
     "filter search response in whitelist mode" in {
-      val searchManager = new SearchManager(basicAuthClient("dev1", "test"))
+      val searchManager = new SearchManager(basicAuthClient("dev1", "test"), esVersionUsed)
       val result = searchManager.search(
         ujson.read("""{"query": {"terms":{"user_id": ["alice", "bob"]}}}""")
       )
