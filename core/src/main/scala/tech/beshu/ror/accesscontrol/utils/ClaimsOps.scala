@@ -108,7 +108,9 @@ class ClaimsOps(val claims: Claims) extends Logging {
     claimName match {
       case Some(groupNamesClaimName) =>
         readStringLikeOrIterable(groupNamesClaimName)
-          .fold(_ => NotFound, identity)
+          .recover {
+            case _: Throwable => NotFound
+          }
       case None =>
         Success(ClaimSearchResult.NotFound)
     }
