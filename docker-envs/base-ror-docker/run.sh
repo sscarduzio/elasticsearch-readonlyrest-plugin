@@ -22,7 +22,7 @@ Your choice: " choice
       read_es_ror_file_path
       ;;
     3 )
-      docker build --no-cache --progress=plain -t ror-builder ../../../
+      docker buildx build --no-cache --progress=plain --load -t ror-builder ../../../
       export ES_DOCKERFILE="Dockerfile-build-for-from-sources"
       ;;
     * )
