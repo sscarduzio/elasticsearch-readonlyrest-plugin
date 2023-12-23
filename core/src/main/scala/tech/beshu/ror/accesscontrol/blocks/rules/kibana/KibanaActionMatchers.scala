@@ -36,9 +36,8 @@ object KibanaActionMatchers {
       "indices:admin/resolve/*",
       "indices:admin/aliases/get",
       "indices:admin/*/explain",
-      "indices:monitor/settings/get",
       "indices:data/read/xpack/rollup/get/*",
-      "indices:monitor/stats"
+      "indices:monitor/*"
     ).map(Action.apply)
   }
 
@@ -56,19 +55,13 @@ object KibanaActionMatchers {
         "cluster:admin/component_template/*",
         "cluster:admin/settings/*",
         "indices:admin/aliases/*",
-        "cluster:monitor/health_api",
         "cluster:admin/migration/get_system_feature",
-        "cluster:monitor/settings"
       ).map(Action.apply)
   }
 
   val clusterActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
     Set(
-      "cluster:monitor/nodes/info",
-      "cluster:monitor/main",
-      "cluster:monitor/health",
-      "cluster:monitor/state",
-      "cluster:monitor/ccr/follow_info",
+      "cluster:monitor/*",
       "cluster:*/xpack/*",
       "indices:admin/template/get*",
       "cluster:*/info",
@@ -84,7 +77,6 @@ object KibanaActionMatchers {
         "indices:admin/create",
         "indices:admin/create_index",
         "indices:admin/ilm/*",
-        "indices:monitor/*",
         "cluster:admin/ingest/pipeline/put",
         "cluster:admin/ingest/pipeline/delete",
         "indices:admin/data_stream/get",
@@ -98,7 +90,6 @@ object KibanaActionMatchers {
         "cluster:admin/component_template/get",
         "cluster:admin/component_template/delete",
         "cluster:admin/component_template/put",
-        "cluster:monitor/ccr/follow_info",
         "indices:admin/delete",
         "indices:admin/index_template/get",
         "indices:admin/index_template/delete",
