@@ -136,12 +136,12 @@ object JwtDefinitionsDecoder {
 
   private implicit val claimDecoder: Decoder[Jwt.ClaimName] = jsonPathDecoder.map(Jwt.ClaimName.apply)
 
-  private implicit val groupsConfigDecoder: Decoder[GroupsConfig] = Decoder.instance { c =>
+  private implicit val groupsConfigDecoder: Decoder[Option[GroupsConfig]] = Decoder.instance { c =>
     for {
       groupIdsClaim
-        <- c.downFields("roles_claim", "groups_claim", "group_ids_claim").as[Jwt.ClaimName]
+        <- c.downFields("roles_claim", "groups_claim", "group_ids_claim").as[Option[Jwt.ClaimName]]
       groupNamesClaim
         <- c.downFields("group_names_claim").as[Option[Jwt.ClaimName]]
-    } yield GroupsConfig(groupIdsClaim, groupNamesClaim)
+    } yield groupIdsClaim.map(GroupsConfig(_, groupNamesClaim))
   }
 }
