@@ -132,8 +132,8 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
     (settings.jwt.groupsConfig, groups) match {
       case (Some(groupsConfig), Some(g)) =>
         val claimsDescription = groupsConfig.namesClaim match {
-          case Some(namesClaim) => s"claims (id:'${groupsConfig.idsClaim.name.rawPath}',name:'${namesClaim.name.rawPath}')"
-          case None => s"claim '${groupsConfig.idsClaim.name.rawPath}'"
+          case Some(namesClaim) => s"claims (id:'${groupsConfig.idsClaim.name.show}',name:'${namesClaim.name.show}')"
+          case None => s"claim '${groupsConfig.idsClaim.name.show}'"
         }
         logger.debug(s"JWT resolved groups for $claimsDescription: ${g.show}")
       case _ =>

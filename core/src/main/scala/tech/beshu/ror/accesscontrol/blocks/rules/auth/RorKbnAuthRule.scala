@@ -107,7 +107,7 @@ final class RorKbnAuthRule(val settings: Settings,
         (
           tokenPayload,
           tokenPayload.claims.userIdClaim(RorKbnAuthRule.userClaimName),
-          tokenPayload.claims.groupsClaim(RorKbnAuthRule.groupsClaimName, None),
+          tokenPayload.claims.groupsClaim(groupIdsClaimName = RorKbnAuthRule.groupIdsClaimName, groupNamesClaimName = None),
           tokenPayload.claims.headerNameClaim(Header.Name.xUserOrigin)
         )
       }
@@ -182,5 +182,5 @@ object RorKbnAuthRule {
   }
 
   private val userClaimName = Jwt.ClaimName(JsonPath("user").get)
-  private val groupsClaimName = Jwt.ClaimName(JsonPath("groups").get)
+  private val groupIdsClaimName = Jwt.ClaimName(JsonPath("groups").get)
 }
