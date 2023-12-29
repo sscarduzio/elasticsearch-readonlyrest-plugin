@@ -26,7 +26,8 @@ data:
          type: allow
          auth_key: "user1:test"
          indices: ["kibana_sample*"]
-         kibana_access: ro
+         kibana:
+           access: ro
 
 kind: ConfigMap
 metadata:
