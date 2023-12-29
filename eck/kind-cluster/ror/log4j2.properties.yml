@@ -72,4 +72,4 @@ data:
 
 kind: ConfigMap
 metadata:
-  name: log4j2-config
+  name: config-log4j2.properties.yml

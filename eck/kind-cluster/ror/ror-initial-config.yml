@@ -30,4 +30,4 @@ data:
 
 kind: ConfigMap
 metadata:
-  name: ror-config
+  name: config-readonlyrest.yml
