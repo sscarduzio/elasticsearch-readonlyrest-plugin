@@ -24,6 +24,7 @@ import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult._
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.{ClaimSearchResult, CustomClaimValue}
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -89,7 +90,14 @@ class ClaimsOps(val claims: Claims) extends Logging {
             case Found(names) if names.size == ids.size =>
               val idsWithNames = ids.zip(names)
               createGroupsFrom(idsWithNames = idsWithNames)
-            case Found(_) | ClaimSearchResult.NotFound =>
+            case Found(names) =>
+              logger.debug(
+                s"Group names array extracted from the JWT at json path '${groupNamesClaimName.map(_.name.show).getOrElse("")}' has different size [size=${names.size}] than " +
+                  s"the group IDs array extracted from the JWT at json path '${groupIdsClaimName.name.show}' [size=${ids.size}]. " +
+                  s"Both array's size has to be equal. Only group IDs will be used for further processing.."
+              )
+              createGroupsFromIds(ids)
+            case ClaimSearchResult.NotFound =>
               createGroupsFromIds(ids)
           }
         }
@@ -141,12 +149,18 @@ class ClaimsOps(val claims: Claims) extends Logging {
         nonEmptyStringFrom(id)
           .map(GroupId.apply)
           .map { groupId =>
-            val groupName =
-              nonEmptyStringFrom(name)
-                .map(GroupName.apply)
-                .getOrElse(GroupName.from(groupId))
+            val groupName = groupNameFrom(name, groupId)
             Group(groupId, groupName)
           }
+      }
+  }
+
+  private def groupNameFrom(name: Any, groupId: GroupId) = {
+    nonEmptyStringFrom(name)
+      .map(GroupName.apply)
+      .getOrElse {
+        logger.debug(s"Unable to create a group name from '$name'. The group ID '${groupId.show}' will be used as a group name for further processing..")
+        GroupName.from(groupId)
       }
   }
 

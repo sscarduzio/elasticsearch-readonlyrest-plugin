@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration.suites
 
+import cats.data.NonEmptyList
 import io.jsonwebtoken.SignatureAlgorithm
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
@@ -23,6 +24,7 @@ import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, Sin
 import tech.beshu.ror.utils.elasticsearch.CatManager
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.JwtUtils._
+import scala.jdk.CollectionConverters._
 
 //TODO change test names. Current names are copies from old java integration tests
 class JwtAuthSuite
@@ -163,8 +165,10 @@ class JwtAuthSuite
   "acceptValidTokenWithRolesClaim" in {
     val jwt = Jwt(algo, validKeyRole, claims = List(
       "user" := "user1",
-      "role_ids" := List("role_viewer", "something_lol"),
-      "role_names" := List("viewer", "lol")
+      Claim(NonEmptyList.one(ClaimKey("roles")), List(
+        Map("id" -> "role_viewer", "name" -> "Viewer").asJava,
+        Map("id" -> "role_manager", "name" -> "Manager").asJava
+      ).asJava)
     ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,

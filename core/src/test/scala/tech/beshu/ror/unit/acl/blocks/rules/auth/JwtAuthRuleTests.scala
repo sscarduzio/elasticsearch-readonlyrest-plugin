@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
+import cats.data.NonEmptyList
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
@@ -49,6 +50,7 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import java.security.Key
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 
 class JwtAuthRuleTests
@@ -159,7 +161,7 @@ class JwtAuthRuleTests
           )(blockContext)
         }
       }
-      "groups claim name is defined and groups are passed in JWT token claim (no preferred group)" in {
+      "group IDs claim name is defined and groups are passed in JWT token claim (no preferred group)" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
@@ -181,7 +183,7 @@ class JwtAuthRuleTests
           )(blockContext)
         }
       }
-      "groups claim name is defined and groups are passed in JWT token claim (with preferred group)" in {
+      "group IDs claim name is defined and groups are passed in JWT token claim (with preferred group)" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
@@ -205,7 +207,7 @@ class JwtAuthRuleTests
           )(blockContext)
         }
       }
-      "groups claim name is defined as http address and groups are passed in JWT token claim" in {
+      "group IDs claim name is defined as http address and groups are passed in JWT token claim" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
@@ -227,7 +229,7 @@ class JwtAuthRuleTests
           )(blockContext)
         }
       }
-      "groups claim name is defined and no groups field is passed in JWT token claim" in {
+      "group IDs claim name is defined and no groups field is passed in JWT token claim" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         val jwt = Jwt(key, claims = List(
           "userId" := "user1"
@@ -245,11 +247,11 @@ class JwtAuthRuleTests
         ) {
           blockContext => assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
+            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
           )(blockContext)
         }
       }
-      "groups claim path is defined and groups are passed in JWT token claim" in {
+      "group IDs claim path is defined and groups are passed in JWT token claim" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
@@ -271,11 +273,14 @@ class JwtAuthRuleTests
           )(blockContext)
         }
       }
-      "rule groups with 'or' logic are defined and intersection between those groups and JWT ones is not empty (1)" in {
+      "group names claim is defined and group names are passed in JWT token claim" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
-          "groups" := List("group1", "group2")
+          Claim(NonEmptyList.one(ClaimKey("groups")), List(
+            Map("id" -> "group1", "name" -> "Group 1").asJava,
+            Map("id" -> "group2", "name" -> "Group 2").asJava
+          ).asJava)
         ))
         assertMatchRule(
           configuredJwtDef = JwtDef(
@@ -283,8 +288,97 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
+            groupsConfig = Some(GroupsConfig(
+              idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
+              namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
+            ))
           ),
+          tokenHeader = bearerHeader(jwt)
+        ) {
+          blockContext =>
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
+            )(blockContext)
+        }
+      }
+      "group names claim is defined and group names passed in JWT token claim are malformed" when {
+        "group names count differs from the group ID count" in {
+          val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+          val jwt = Jwt(key, claims = List(
+            "userId" := "user1",
+            Claim(NonEmptyList.one(ClaimKey("groups")), List(
+              Map("id" -> "group1", "name" -> List("Group 1", "Group A").asJava).asJava,
+              Map("id" -> "group2", "name" -> List("Group 2", "Group B").asJava).asJava
+            ).asJava)
+          ))
+          assertMatchRule(
+            configuredJwtDef = JwtDef(
+              JwtDef.Name("test"),
+              AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+              SignatureCheckMethod.Hmac(key.getEncoded),
+              userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
+              groupsConfig = Some(GroupsConfig(
+                idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
+                namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
+              ))
+            ),
+            tokenHeader = bearerHeader(jwt)
+          ) {
+            blockContext =>
+              assertBlockContext(
+                loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+                jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
+              )(blockContext)
+          }
+        }
+        "one group does not have a name" in {
+          val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+          val jwt = Jwt(key, claims = List(
+            "userId" := "user1",
+            Claim(NonEmptyList.one(ClaimKey("groups")), List(
+              Map("id" -> "group1", "name" -> "Group 1").asJava,
+              Map("id" -> "group2").asJava,
+              Map("id" -> "group3", "name" -> "Group 3").asJava
+            ).asJava)
+          ))
+          assertMatchRule(
+            configuredJwtDef = JwtDef(
+              JwtDef.Name("test"),
+              AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+              SignatureCheckMethod.Hmac(key.getEncoded),
+              userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
+              groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")), Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))))
+            ),
+            tokenHeader = bearerHeader(jwt)
+          ) {
+            blockContext =>
+              assertBlockContext(
+                loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+                jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
+              )(blockContext)
+          }
+        }
+      }
+      "rule groups with 'or' logic are defined and intersection between those groups and JWT ones is not empty (1)" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val jwt = Jwt(key, claims = List(
+          "userId" := "user1",
+          Claim(NonEmptyList.one(ClaimKey("groups")), List(
+            Map("id" -> "group1", "name" -> "Group 1").asJava,
+            Map("id" -> "group2", "name" -> "Group 2").asJava
+          ).asJava)
+        ))
+        assertMatchRule(
+          configuredJwtDef = JwtDef(
+            JwtDef.Name("test"),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
+            groupsConfig = Some(GroupsConfig(
+              idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
+              namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
+            ))          ),
           configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2"))
           ))),
@@ -294,7 +388,7 @@ class JwtAuthRuleTests
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
             jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
             currentGroup = Some(GroupId("group2")),
-            availableGroups = UniqueList.of(group("group2"))
+            availableGroups = UniqueList.of(group("group2", "Group 2"))
           )(blockContext)
         }
       }
@@ -302,7 +396,10 @@ class JwtAuthRuleTests
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
-          "groups" := List("group1", "group2")
+          Claim(NonEmptyList.one(ClaimKey("groups")), List(
+            Map("id" -> "group1", "name" -> "Group 1").asJava,
+            Map("id" -> "group2", "name" -> "Group 2").asJava
+          ).asJava)
         ))
         assertMatchRule(
           configuredJwtDef = JwtDef(
@@ -310,8 +407,10 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
-          ),
+            groupsConfig = Some(GroupsConfig(
+              idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
+              namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
+            ))          ),
           configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("*2"))
           ))),
@@ -321,7 +420,7 @@ class JwtAuthRuleTests
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
             jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
             currentGroup = Some(GroupId("group2")),
-            availableGroups = UniqueList.of(group("group2"))
+            availableGroups = UniqueList.of(group("group2", "Group 2"))
           )(blockContext)
         }
       }
@@ -329,7 +428,10 @@ class JwtAuthRuleTests
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
-          "groups" := List("group1", "group2")
+          Claim(NonEmptyList.one(ClaimKey("groups")), List(
+            Map("id" -> "group1", "name" -> "Group 1").asJava,
+            Map("id" -> "group2", "name" -> "Group 2").asJava
+          ).asJava)
         ))
         assertMatchRule(
           configuredJwtDef = JwtDef(
@@ -337,8 +439,10 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
-          ),
+            groupsConfig = Some(GroupsConfig(
+              idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
+              namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
+            ))          ),
           configuredGroups = Groups.Defined(GroupsLogic.And(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group1"), GroupId("group2"))
           ))),
@@ -348,7 +452,7 @@ class JwtAuthRuleTests
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
             jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
             currentGroup = Some(GroupId("group1")),
-            availableGroups = UniqueList.of(group("group1"), group("group2"))
+            availableGroups = UniqueList.of(group("group1", "Group 1"), group("group2", "Group 2"))
           )(blockContext)
         }
       }
@@ -356,7 +460,10 @@ class JwtAuthRuleTests
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",
-          "groups" := List("group1", "group2")
+          Claim(NonEmptyList.one(ClaimKey("groups")), List(
+            Map("id" -> "group1", "name" -> "Group 1").asJava,
+            Map("id" -> "group2", "name" -> "Group 2").asJava
+          ).asJava)
         ))
         assertMatchRule(
           configuredJwtDef = JwtDef(
@@ -364,8 +471,10 @@ class JwtAuthRuleTests
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("userId"))),
-            groupsConfig = Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
-          ),
+            groupsConfig = Some(GroupsConfig(
+              idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
+              namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
+            ))          ),
           configuredGroups = Groups.Defined(GroupsLogic.And(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupIdLike.from("*1"), GroupIdLike.from("*2"))
           ))),
@@ -375,7 +484,7 @@ class JwtAuthRuleTests
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
             jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
             currentGroup = Some(GroupId("group1")),
-            availableGroups = UniqueList.of(group("group1"), group("group2"))
+            availableGroups = UniqueList.of(group("group1", "Group 1"), group("group2", "Group 2"))
           )(blockContext)
         }
       }
@@ -477,7 +586,7 @@ class JwtAuthRuleTests
           tokenHeader = bearerHeader(jwt)
         )
       }
-      "groups claim name is defined but groups aren't passed in JWT token claim" in {
+      "group IDs claim name is defined but groups aren't passed in JWT token claim" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         val jwt = Jwt(key, claims = List.empty)
         assertNotMatchRule(
@@ -491,7 +600,7 @@ class JwtAuthRuleTests
           tokenHeader = bearerHeader(jwt)
         )
       }
-      "groups claim path is wrong" in {
+      "group IDs claim path is wrong" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         val jwt = Jwt(key, claims = List(
           "userId" := "user1",

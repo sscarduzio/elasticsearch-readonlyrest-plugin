@@ -37,8 +37,8 @@ readonlyrest:
     - name: jwt3
       signature_key: "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
       user_claim: user
-      group_ids_claim: role_ids
-      group_names_claim: role_names
+      group_ids_claim: roles[?(@.id)].id
+      group_names_claim: roles[?(@.name)].name
 
     - name: jwt4
       header_name: x-custom-header2
