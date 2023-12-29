@@ -378,7 +378,8 @@ class JwtAuthRuleTests
             groupsConfig = Some(GroupsConfig(
               idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
-            ))          ),
+            ))
+          ),
           configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupId("group2"))
           ))),
@@ -410,7 +411,8 @@ class JwtAuthRuleTests
             groupsConfig = Some(GroupsConfig(
               idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
-            ))          ),
+            ))
+          ),
           configuredGroups = Groups.Defined(GroupsLogic.Or(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupIdLike.from("*2"))
           ))),
@@ -442,7 +444,8 @@ class JwtAuthRuleTests
             groupsConfig = Some(GroupsConfig(
               idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
-            ))          ),
+            ))
+          ),
           configuredGroups = Groups.Defined(GroupsLogic.And(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupId("group1"), GroupId("group2"))
           ))),
@@ -474,7 +477,8 @@ class JwtAuthRuleTests
             groupsConfig = Some(GroupsConfig(
               idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
               namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name")))
-            ))          ),
+            ))
+          ),
           configuredGroups = Groups.Defined(GroupsLogic.And(PermittedGroupIds(
             UniqueNonEmptyList.of(GroupIdLike.from("*1"), GroupIdLike.from("*2"))
           ))),
