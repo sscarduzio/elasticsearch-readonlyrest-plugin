@@ -22,8 +22,10 @@ spec:
               mountPath: /usr/share/kibana/plugins
             - name: kibana-node-modules-kbn
               mountPath: /usr/share/kibana/node_modules/@kbn
-            - name: kibana-src-cli
-              mountPath: /usr/share/kibana/src/cli
+            - name: kibana-src
+              mountPath: /usr/share/kibana/src
+            - name: kibana-xpack-plugins
+              mountPath: /usr/share/kibana/x-pack/plugins
       initContainers:
         - name: install-ror-kbn-plugin
           securityContext:
@@ -39,7 +41,8 @@ spec:
               /usr/share/kibana/node/bin/node /usr/share/kibana/plugins/readonlyrestkbn/ror-tools.js patch
               
               cp -r /usr/share/kibana/node_modules/@kbn /target/usr/share/kibana/node_modules
-              cp -r /usr/share/kibana/src/cli /target/usr/share/kibana/src
+              cp -r /usr/share/kibana/src /target/usr/share/kibana
+              cp -r /usr/share/kibana/x-pack/plugins /target/usr/share/kibana/x-pack
           env:
             - name: KBN_VERSION
               valueFrom:
@@ -50,12 +53,16 @@ spec:
               mountPath: /usr/share/kibana/plugins
             - name: kibana-node-modules-kbn
               mountPath: /target/usr/share/kibana/node_modules/@kbn
-            - name: kibana-src-cli
-              mountPath: /target/usr/share/kibana/src/cli
+            - name: kibana-src
+              mountPath: /target/usr/share/kibana/src
+            - name: kibana-xpack-plugins
+              mountPath: /target/usr/share/kibana/x-pack/plugins
       volumes:
         - name: kibana-plugins
           emptyDir: { }
         - name: kibana-node-modules-kbn
           emptyDir: { }
-        - name: kibana-src-cli
+        - name: kibana-src
+          emptyDir: { }
+        - name: kibana-xpack-plugins
           emptyDir: { }
