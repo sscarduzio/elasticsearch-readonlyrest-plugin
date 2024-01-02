@@ -36,13 +36,13 @@ public class RorTaskFinder extends DefaultTask {
   public void runRorPluginBuilder() {
   }
 
-  public Task findRorTaskForEsVersion() {
+  public Task findRorTaskForEsVersion(String taskName) {
     Project esModule = findEsModuleForEsVersionToBuild();
     return (Task) esModule
-        .getTasksByName("ror", false)
+        .getTasksByName(taskName, false)
         .stream()
         .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException(String.format("Cannot find 'ror' task in %s module!", esModule.getName())));
+        .orElseThrow(() -> new IllegalArgumentException(String.format("Cannot find '%s' task in %s module!", taskName, esModule.getName())));
   }
 
   private Project findEsModuleForEsVersionToBuild() {

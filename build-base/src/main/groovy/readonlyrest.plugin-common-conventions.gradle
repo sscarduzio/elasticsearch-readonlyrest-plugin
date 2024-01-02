@@ -29,7 +29,6 @@ project.ext {
 
 group = 'org.elasticsearch.plugin'
 version = pluginVersion + '_es' + project.ext.esVersion
-def pluginFullName = pluginName + '-' + version
 
 repositories {
     maven {
