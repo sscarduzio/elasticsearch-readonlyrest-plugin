@@ -1,0 +1,6 @@
+FROM openjdk:21-jdk
+
+COPY ./ /ror
+WORKDIR /ror
+
+ENTRYPOINT ["/ror/docker-based-builder/ror-builder/run-ror-gradle-builder.sh"]
