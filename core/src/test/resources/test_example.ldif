@@ -18,7 +18,7 @@
 # roles and users:
 # * developers: userDev
 # * it: userDevOps
-# * speakers: userSpeaker
+# * speakers (external): userSpeaker (ext)
 #
 # additionally:
 # * speaker is developer
@@ -192,16 +192,17 @@ uid: userdev
 userPassword:: e1NNRDV9cTg2ZHlvbGRRRk5pZ04waVprMDgzYnZrVEY3bFdacFk=
 memberOf: cn=developers,ou=Roles,dc=example,dc=com
 
-dn: cn=UserSpeaker,ou=Users,dc=example,dc=com
+dn: cn=UserSpeaker (ext),ou=Users,dc=example,dc=com
 objectClass: top
 objectClass: person
 objectClass: organizationalPerson
 objectClass: inetOrgPerson
-cn: UserSpeaker
-sn: UserSpeaker
+cn: UserSpeaker (ext)
+sn: UserSpeaker (ext)
 uid: userspeaker
 userPassword:: e1NNRDV9cTg2ZHlvbGRRRk5pZ04waVprMDgzYnZrVEY3bFdacFk=
-memberOf: cn=speakers,ou=Roles,dc=example,dc=com
+memberOf: cn=speakers (external),ou=Roles,dc=example,dc=com
+
 
 dn: ou=Roles,dc=example,dc=com
 objectClass: top
@@ -220,10 +221,10 @@ objectClass: top
 objectClass: groupOfUniqueNames
 cn: developers
 uniqueMember: cn=UserDev,ou=Users,dc=example,dc=com
-uniqueMember: cn=speakers,ou=Roles,dc=example,dc=com
+uniqueMember: cn=speakers (external),ou=Roles,dc=example,dc=com
 
-dn: cn=speakers,ou=Roles,dc=example,dc=com
+dn: cn=speakers (external),ou=Roles,dc=example,dc=com
 objectClass: top
 objectClass: groupOfUniqueNames
-cn: speakers
-uniqueMember: cn=UserSpeaker,ou=Users,dc=example,dc=com
+cn: speakers (external)
+uniqueMember: cn=UserSpeaker (ext),ou=Users,dc=example,dc=com

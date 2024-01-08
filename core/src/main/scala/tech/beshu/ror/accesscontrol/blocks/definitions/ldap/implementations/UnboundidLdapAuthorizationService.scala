@@ -120,7 +120,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
     if (mode.groupAttributeIsDN)
       s"(&${mode.groupSearchFilter.value}(${mode.uniqueMemberAttribute.value}=${Filter.encodeValue(user.dn.value.value)}))"
     else
-      s"(&${mode.groupSearchFilter.value}(${mode.uniqueMemberAttribute.value}=${user.id.value}))"
+      s"(&${mode.groupSearchFilter.value}(${mode.uniqueMemberAttribute.value}=${Filter.encodeValue(user.id.value.value)}))"
   }
 
   private def searchUserGroupsLdapRequest(listener: AsyncSearchResultListener,

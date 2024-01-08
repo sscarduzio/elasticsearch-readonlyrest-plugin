@@ -78,7 +78,7 @@ private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: 
   private def searchFilterFrom(groupSearchFilter: GroupSearchFilter,
                                memberAttribute: UniqueMemberAttribute,
                                group: LdapGroup) = {
-    s"(&${groupSearchFilter.value}(${memberAttribute.value}=${group.dn.value}))"
+    s"(&${groupSearchFilter.value.value}(${Filter.encodeValue(memberAttribute.value.value)}=${Filter.encodeValue(group.dn.value.value)}))"
   }
 
 }

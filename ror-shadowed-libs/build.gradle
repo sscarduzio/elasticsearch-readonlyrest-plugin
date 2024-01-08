@@ -16,7 +16,7 @@
  */
 
 plugins {
-    id "com.github.johnrengelman.shadow" version "7.1.2"
+    id "com.github.johnrengelman.shadow" version "8.1.1"
     id "org.owasp.dependencycheck"       version "8.2.1"
     id "java"
     id "maven-publish"
@@ -65,14 +65,12 @@ shadowJar {
 }
 
 // Configure Auto Relocation
-import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-tasks.register('relocateShadowJar', ConfigureShadowRelocation) {
-    target = tasks.shadowJar
-    prefix = "tech.beshu.ror"
+tasks.named('shadowJar', ShadowJar) {
+    enableRelocation true
+    relocationPrefix "tech.beshu.ror"
 }
-
-tasks.shadowJar.dependsOn tasks.relocateShadowJar
 
 tasks.withType(AbstractArchiveTask).configureEach {
     preserveFileTimestamps = false
