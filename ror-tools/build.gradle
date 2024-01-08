@@ -101,7 +101,7 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 tasks.named('shadowJar', ShadowJar) {
     enableRelocation true
-    relocationPrefix "tech.beshu.ror"
+    relocationPrefix "tech.beshu.ror.tools"
 }
 
 tasks.withType(AbstractArchiveTask).configureEach {
