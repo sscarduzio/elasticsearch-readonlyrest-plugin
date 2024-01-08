@@ -69,7 +69,7 @@ java {
 
 dependencies {
     api project(path: ':audit', configuration: 'default')
-    implementation project(path: ':ror-shadowed-libs', configuration: 'shadow')
+    api project(path: ':ror-shadowed-libs', configuration: 'shadow')
 
     api(group: 'com.softwaremill.sttp',     name: 'async-http-client-backend-cats_2.13',    version: '1.7.2') {
         exclude group: 'io.netty', module: 'netty-tcnative-classes'
