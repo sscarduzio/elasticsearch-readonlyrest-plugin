@@ -18,11 +18,24 @@ import tech.beshu.ror.gradle.RorTaskFinder
 
 plugins {
     id 'base'
+    id 'com.bmuschko.docker-remote-api'             version '9.4.0'
     id "io.github.gradle-nexus.publish-plugin"      version "2.0.0-rc-1"
 }
 
 tasks.register("buildRorPlugin", RorTaskFinder) {
-    dependsOn it.findRorTaskForEsVersion()
+    dependsOn it.findRorTaskForEsVersion('packageRorPlugin')
+}
+
+tasks.register("publishRorPlugin", RorTaskFinder) {
+    dependsOn it.findRorTaskForEsVersion('uploadRorPluginToS3')
+}
+
+tasks.register("buildEsRorDockerImage", RorTaskFinder) {
+    dependsOn it.findRorTaskForEsVersion('buildRorDockerImage')
+}
+
+tasks.register("publishEsRorDockerImage", RorTaskFinder) {
+    dependsOn it.findRorTaskForEsVersion('pushRorDockerImage')
 }
 
 group = 'tech.beshu.ror'
@@ -43,5 +56,12 @@ nexusPublishing {
     transitionCheckOptions {
         maxRetries.set(50)
         delayBetween.set(java.time.Duration.ofMillis(10000))
+    }
+}
+
+docker {
+    registryCredentials {
+        username = System.getenv('DOCKER_REGISTRY_USER')
+        password = System.getenv('DOCKER_REGISTRY_PASSWORD')
     }
 }

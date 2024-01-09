@@ -8,7 +8,7 @@ ARG ES_VERSION
 ARG ES_CLOUD_PROXY_ADDRESS
 ARG ES_CLOUD_SERVER_NAME
 
-RUN /ror/bin/build-ror-plugin.sh $ES_VERSION &&\
+RUN /ror/docker-based-builder/ror-builder/run-ror-gradle-builder.sh $ES_VERSION &&\
     ls -h /ror/builds &&\
     mv /ror/builds/readonlyrest*es${ES_VERSION}.zip /ror/builds/ror.zip
 
