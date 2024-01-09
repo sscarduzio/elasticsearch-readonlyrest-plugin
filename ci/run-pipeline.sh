@@ -231,9 +231,11 @@ publish_ror_plugins() {
   while IFS= read -r version; do
     echo "Building and publishing ROR $ROR_VERSION for ES $version:"
 
-    tag "v$ROR_VERSION"
-    ./gradlew publishRorPlugin "-PesVersion=$version"
-    ./gradlew publishEsRorDockerImage "-PesVersion=$version"
+    if checkTagNotExist "v$ROR_VERSION"; then
+      ./gradlew publishRorPlugin "-PesVersion=$version"
+      ./gradlew publishEsRorDockerImage "-PesVersion=$version"
+      tag "v$ROR_VERSION"
+    fi
   done <"$ROR_VERSIONS_FILE"
 }
 
