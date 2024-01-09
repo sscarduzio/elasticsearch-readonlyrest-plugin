@@ -68,7 +68,7 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
       "resolve nested groups properly" in {
         eventually {
           usersAndRolesLdapAuthorizationService.groupsOf(User.Id("userSpeaker")).runSyncUnsafe() should be {
-            UniqueList.of(group("developers"), group("speakers"))
+            UniqueList.of(group("developers"), group("speakers (external)"))
           }
         }
       }
