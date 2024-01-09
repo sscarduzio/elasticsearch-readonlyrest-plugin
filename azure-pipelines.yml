@@ -278,7 +278,7 @@ stages:
             IT_es60x:
               ROR_TASK: integration_es60x
 
-  - stage: BLD_TEST
+  - stage: BUILD_ROR
     dependsOn:
       - TEST
     condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
@@ -297,7 +297,7 @@ stages:
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
               
-              echo "[BLD_TEST] executing ROR_TASK = $ROR_TASK"
+              echo "[BUILD_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Creating deliverables" && bin/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
@@ -321,7 +321,7 @@ stages:
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
               
-              echo "[BLD_TEST] executing ROR_TASK = $ROR_TASK"
+              echo "[BUILD_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Creating deliverables" && bin/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
@@ -335,7 +335,7 @@ stages:
             PKG_es6xx:
               ROR_TASK: package_es6xx
 
-  - stage: S3_UP
+  - stage: PUBLISH_ROR
     dependsOn:
       - TEST
     condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
@@ -371,9 +371,8 @@ stages:
                 export aws_access_key_id=$var_aws_access_key_id
                 export aws_secret_access_key=$var_aws_secret_access_key
                 
-                echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
-                echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/run-pipeline.sh
-                echo ">>> ($ROR_TASK) Git tag and upload to S3" && ci/ci-deploy.sh
+                echo "[PUBLISH_ROR] executing ROR_TASK = $ROR_TASK"
+                echo ">>> ($ROR_TASK) Creating and publishing deliverables" && bin/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -382,7 +381,7 @@ stages:
           maxParallel: 99
           matrix:
             PKG_es8xx:
-              ROR_TASK: package_es8xx
+              ROR_TASK: publish_es8xx
       - job:
         steps:
           - checkout: self
@@ -399,9 +398,8 @@ stages:
               echo ">> ALL VARIABLES NAMES " && export | awk -F= '{print $1}'
               echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
               
-              echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/run-pipeline.sh
-              echo ">>> ($ROR_TASK) Tag and upload to S3" && ci/ci-deploy.sh
+              echo "[PUBLISH_ROR] executing ROR_TASK = $ROR_TASK"
+              echo ">>> ($ROR_TASK) Creating and publishing deliverables" && bin/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -410,11 +408,11 @@ stages:
           maxParallel: 99
           matrix:
             PKG_es7xx:
-              ROR_TASK: package_es7xx
+              ROR_TASK: publish_es7xx
             PKG_es6xx:
-              ROR_TASK: package_es6xx
+              ROR_TASK: publish_es6xx
 
-  - stage: MVN_COMPILE
+  - stage: BUILD_MVN_ARTIFACTS
     dependsOn:
       - TEST
     condition: and(succeeded('TEST'), ne(variables.isMaster, true))
@@ -426,12 +424,12 @@ stages:
             clean: false
             persistCredentials: true
           - script: |
-              echo "[MVN_COMPILE] executing ROR_TASK = $ROR_TASK"
+              echo "[BUILD_MVN_ARTIFACTS] executing ROR_TASK = $ROR_TASK"
               bin/run-pipeline.sh
             env:
               ROR_TASK: audit_compile
 
-  - stage: MVN_PUB
+  - stage: PUBLISH_MVN_ARTIFACTS
     dependsOn:
       - TEST
     condition: and(succeeded('TEST'), eq(variables.isMaster, true))
@@ -475,7 +473,7 @@ stages:
             condition: eq(404, variables.mvn_status)
 
           - script: |
-              echo "[MVN_PUB] executing ROR_TASK=$ROR_TASK"
+              echo "[MVN_PUBLISH] executing ROR_TASK=$ROR_TASK"
               export MAVEN_REPO_PASSWORD=$VAR_MAVEN_REPO_PASSWORD
               export MAVEN_REPO_USER=$VAR_MAVEN_REPO_USER
               export MAVEN_STAGING_PROFILE_ID=$VAR_MAVEN_STAGING_PROFILE_ID
@@ -483,7 +481,7 @@ stages:
               export GPG_PASSPHRASE=$VAR_GPG_PASSPHRASE
               echo ">>> ($ROR_TASK) Publishing artifacts" && bin/run-pipeline.sh
             env:
-              ROR_TASK: publish_artifacts
+              ROR_TASK: publish_maven_artifacts
               VAR_MAVEN_REPO_PASSWORD: $(MAVEN_REPO_PASSWORD)
               VAR_MAVEN_REPO_USER: $(MAVEN_REPO_USER)
               VAR_MAVEN_STAGING_PROFILE_ID: $(MAVEN_STAGING_PROFILE_ID)
