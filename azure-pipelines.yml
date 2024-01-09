@@ -29,7 +29,7 @@ pool:
   vmImage: 'ubuntu-20.04'
 
 stages:
-  - stage: ES_S3_UP
+  - stage: TEST # todo: fixme
     dependsOn: [ ]
     jobs:
       - job:
