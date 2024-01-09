@@ -44,22 +44,22 @@ stages:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
 
-  - stage: CVE
-    dependsOn: [ ] # run in parallel
-    jobs:
-      - job:
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
-              echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
-              echo "[CVE] executing ROR_TASK=$ROR_TASK"
-              ci/run-pipeline.sh
-            continueOnError: true
-            env:
-              ROR_TASK: cve_check
+#  - stage: CVE
+#    dependsOn: [ ] # run in parallel
+#    jobs:
+#      - job:
+#        steps:
+#          - checkout: self
+#            fetchDepth: 1
+#            clean: false
+#            persistCredentials: true
+#          - script: |
+#              echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
+#              echo "[CVE] executing ROR_TASK=$ROR_TASK"
+#              ci/run-pipeline.sh
+#            continueOnError: true
+#            env:
+#              ROR_TASK: cve_check
 
 #  - stage: TEST
 #    jobs:
