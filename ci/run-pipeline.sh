@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash -e
 
 source "$(dirname "$0")/ci-lib.sh"
 
@@ -184,7 +184,7 @@ build_ror_plugins() {
   local ROR_VERSIONS_FILE=$1
 
   while IFS= read -r version || [[ -n "$version" ]]; do
-    build_ror_plugin "$version"
+    time build_ror_plugin "$version"
   done <"$ROR_VERSIONS_FILE"
 }
 
@@ -196,6 +196,7 @@ build_ror_plugin() {
 
   local ROR_VERSION=$1
 
+  echo ""
   echo "Building ROR for ES $ROR_VERSION:"
   ./gradlew buildRorPlugin "-PesVersion=$ROR_VERSION" </dev/null
 }
@@ -222,7 +223,7 @@ publish_ror_plugins() {
   local ROR_VERSION=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
 
   while IFS= read -r version; do
-    publish_ror_plugin "$ROR_VERSION" "$version"
+    time publish_ror_plugin "$ROR_VERSION" "$version"
   done <"$ROR_VERSIONS_FILE"
 }
 
@@ -235,6 +236,7 @@ publish_ror_plugin() {
   local ROR_VERSION=$1
   local ES_VERSION=$2
 
+  echo ""
   echo "Building and publishing ROR $ROR_VERSION for ES $ES_VERSION:"
 
   if checkTagNotExist "v$ROR_VERSION"; then
