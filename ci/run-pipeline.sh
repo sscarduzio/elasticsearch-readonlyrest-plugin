@@ -1,4 +1,4 @@
-#!/bin/bash -xe
+#!/bin/bash -ex
 
 source "$(dirname "$0")/ci-lib.sh"
 
@@ -183,10 +183,21 @@ build_ror_plugins() {
 
   local ROR_VERSIONS_FILE=$1
 
-  while IFS= read -r version; do
-    echo "Building ROR for ES $version:"
-    ./gradlew buildRorPlugin "-PesVersion=$version"
+  while IFS= read -r version || [[ -n "$version" ]]; do
+    build_ror_plugin "$version"
   done <"$ROR_VERSIONS_FILE"
+}
+
+build_ror_plugin() {
+  if [ "$#" -ne 1 ]; then
+    echo "What ES version should I build plugin for?"
+    return 1
+  fi
+
+  local ROR_VERSION=$1
+
+  echo "Building ROR for ES $ROR_VERSION:"
+  ./gradlew buildRorPlugin "-PesVersion=$ROR_VERSION" </dev/null
 }
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "package_es8xx" ]]; then
@@ -211,14 +222,26 @@ publish_ror_plugins() {
   local ROR_VERSION=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
 
   while IFS= read -r version; do
-    echo "Building and publishing ROR $ROR_VERSION for ES $version:"
-
-    if checkTagNotExist "v$ROR_VERSION"; then
-      ./gradlew publishRorPlugin "-PesVersion=$version"
-      ./gradlew publishEsRorDockerImage "-PesVersion=$version"
-      tag "v$ROR_VERSION"
-    fi
+    publish_ror_plugin "$ROR_VERSION" "$version"
   done <"$ROR_VERSIONS_FILE"
+}
+
+publish_ror_plugin() {
+  if [ "$#" -ne 2 ]; then
+    echo "What ES and ROR version should I build and publish plugin for?"
+    return 1
+  fi
+
+  local ROR_VERSION=$1
+  local ES_VERSION=$2
+
+  echo "Building and publishing ROR $ROR_VERSION for ES $ES_VERSION:"
+
+  if checkTagNotExist "v$ROR_VERSION"; then
+    ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null
+    ./gradlew publishEsRorDockerImage "-PesVersion=$ES_VERSION" </dev/null
+    tag "v$ROR_VERSION"
+  fi
 }
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "publish_es8xx" ]]; then
