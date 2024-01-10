@@ -372,7 +372,7 @@ stages:
                 export aws_access_key_id=$var_aws_access_key_id
                 export aws_secret_access_key=$var_aws_secret_access_key
                 
-                docker login -u $(DOCKER_REGISTRY_USER) -p $(DOCKER_REGISTRY_PASSWORD) 
+                docker login -u $DOCKER_REGISTRY_USER -p $DOCKER_REGISTRY_PASSWORD 
                 
                 echo "[PUBLISH_ROR] executing ROR_TASK = $ROR_TASK"
                 echo ">>> ($ROR_TASK) Creating and publishing deliverables" && ci/run-pipeline.sh
@@ -403,7 +403,7 @@ stages:
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
               
-              docker login -u $(DOCKER_REGISTRY_USER) -p $(DOCKER_REGISTRY_PASSWORD)
+              docker login -u $DOCKER_REGISTRY_USER -p $DOCKER_REGISTRY_PASSWORD
               
               echo "[PUBLISH_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Creating and publishing deliverables" && ci/run-pipeline.sh
