@@ -338,7 +338,8 @@ stages:
   - stage: PUBLISH_ROR
     dependsOn:
       - TEST
-    condition: and(succeeded('TEST')) #, or(eq(variables.isDevelop, true), eq(variables.isMaster, true))) todo: fixme
+    condition: succeeded('TEST')
+#    condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true))) // todo:
     jobs:
       - job:
         container:
