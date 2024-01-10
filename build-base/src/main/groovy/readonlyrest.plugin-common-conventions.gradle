@@ -16,6 +16,7 @@
  */
 
 plugins {
+    id 'com.bmuschko.docker-remote-api'
     id "readonlyrest.base-common-conventions"
 }
 
@@ -60,6 +61,13 @@ dependencyCheck {
     failBuildOnCVSS = 3
     scanConfigurations = ['distJars']
     suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
+}
+
+docker {
+    registryCredentials {
+        username = System.getenv('DOCKER_REGISTRY_USER')
+        password = System.getenv('DOCKER_REGISTRY_PASSWORD')
+    }
 }
 
 tasks.withType(ScalaCompile).configureEach {
