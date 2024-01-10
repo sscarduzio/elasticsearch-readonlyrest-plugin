@@ -15,7 +15,7 @@ function checkTagNotExist {
 function tag {
   GIT_TAG="$1"
 
-  checkTag "$GIT_TAG"
+  checkTagNotExist "$GIT_TAG"
 
   echo "Tagging as $GIT_TAG"
   if [[ "$(uname -s)" == *"Linux"* ]]; then

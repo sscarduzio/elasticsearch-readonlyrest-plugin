@@ -240,7 +240,7 @@ publish_ror_plugin() {
   echo "Building and publishing ROR $ROR_VERSION for ES $ES_VERSION:"
 
   if checkTagNotExist "v$ROR_VERSION"; then
-    ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null
+#    ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null
     ./gradlew publishEsRorDockerImage "-PesVersion=$ES_VERSION" </dev/null
     tag "v$ROR_VERSION"
   fi
