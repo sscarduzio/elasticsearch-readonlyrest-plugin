@@ -19,11 +19,11 @@ function tag {
 
   echo "Tagging as $GIT_TAG"
   if [[ "$(uname -s)" == *"Linux"* ]]; then
-    git remote set-url origin git@github.com:sscarduzio/elasticsearch-readonlyrest-plugin.git
+#    git remote set-url origin git@github.com:sscarduzio/elasticsearch-readonlyrest-plugin.git
     git config --global push.default matching
-    git config --global user.email "builds@travis-ci.com"
-    git config --global user.name "Travis CI"
-    git tag $GIT_TAG -a -m "Generated tag from TravisCI build $TRAVIS_BUILD_NUMBER"
+    git config --global user.email "support@readonlyrest.com"
+    git config --global user.name "Azure Pipeline"
+    git tag $GIT_TAG -a -m "Generated tag from Azure Pipeline build $TRAVIS_BUILD_NUMBER"
     git push origin $GIT_TAG
   fi
   return 0
