@@ -339,9 +339,6 @@ stages:
     dependsOn:
       - TEST
     condition: succeeded('TEST')
-    env:
-      var_docker_registry_user: $(DOCKER_REGISTRY_USER)
-      var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
 #    condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true))) // todo:
     jobs:
       - job:
@@ -382,6 +379,8 @@ stages:
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
+              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
+              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
 
         strategy:
           maxParallel: 99
@@ -413,6 +412,8 @@ stages:
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
+              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
+              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
 
         strategy:
           maxParallel: 99
