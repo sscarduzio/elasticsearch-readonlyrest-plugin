@@ -44,22 +44,22 @@ stages:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
 
-#  - stage: CVE
-#    dependsOn: [ ] # run in parallel
-#    jobs:
-#      - job:
-#        steps:
-#          - checkout: self
-#            fetchDepth: 1
-#            clean: false
-#            persistCredentials: true
-#          - script: |
-#              echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
-#              echo "[CVE] executing ROR_TASK=$ROR_TASK"
-#              ci/run-pipeline.sh
-#            continueOnError: true
-#            env:
-#              ROR_TASK: cve_check
+  - stage: CVE
+    dependsOn: [ ] # run in parallel
+    jobs:
+      - job:
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
+              echo "[CVE] executing ROR_TASK=$ROR_TASK"
+              ci/run-pipeline.sh
+            continueOnError: true
+            env:
+              ROR_TASK: cve_check
 
 #  - stage: TEST
 #    jobs:
@@ -423,79 +423,79 @@ stages:
             PKG_es6xx:
               ROR_TASK: publish_es6xx
 
-#  - stage: BUILD_MVN_ARTIFACTS
-#    dependsOn:
-#      - TEST
-#    condition: and(succeeded('TEST'), ne(variables.isMaster, true))
-#    jobs:
-#      - job:
-#        steps:
-#          - checkout: self
-#            fetchDepth: 1
-#            clean: false
-#            persistCredentials: true
-#          - script: |
-#              echo "[BUILD_MVN_ARTIFACTS] executing ROR_TASK = $ROR_TASK"
-#              ci/run-pipeline.sh
-#            env:
-#              ROR_TASK: audit_compile
-#
-#  - stage: PUBLISH_MVN_ARTIFACTS
-#    dependsOn:
-#      - TEST
-#    condition: and(succeeded('TEST'), eq(variables.isMaster, true))
-#    jobs:
-#      - job:
-#        steps:
-#          - checkout: self
-#            fetchDepth: 1
-#            clean: false
-#            persistCredentials: true
-#
-#          # Populate the global variable mvn_status for later
-#          - script: |
-#              PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
-#              URL="https://oss.sonatype.org/service/local/repositories/releases/content/tech/beshu/ror/audit_2.12/$PLUGIN_VER/"
-#              echo "Maven artifact URL to check: $URL"
-#              MVN_STATUS=$(curl --write-out '%{http_code}' --output /dev/null "$URL")
-#              echo "##vso[task.setvariable variable=mvn_status]$MVN_STATUS"
-#
-#          - script: |
-#              echo ">> MVN_STATUS WAS 200. Artifact already present, no need to proceed further with Maven publishing."
-#            condition: eq(200, variables.mvn_status)
-#
-#          - script: |
-#              echo ">> MVN_STATUS WAS 404. Artifact not present in Maven repository, proceeding with publishing."
-#            condition: eq(404, variables.mvn_status)
-#
-#          - task: DownloadSecureFile@1
-#            name: pgp
-#            displayName: 'Download secret.pgp secret file'
-#            inputs:
-#              secureFile: 'secret.pgp'
-#
-#          - script: |
-#              echo Installing $(pgp.secureFilePath) to directory...
-#              sudo chown root:root $(pgp.secureFilePath)
-#              sudo chmod a+r $(pgp.secureFilePath)
-#              mkdir .travis
-#              sudo ln -s -t .travis/ $(pgp.secureFilePath)
-#              echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
-#            condition: eq(404, variables.mvn_status)
-#
-#          - script: |
-#              echo "[MVN_PUBLISH] executing ROR_TASK=$ROR_TASK"
-#              export MAVEN_REPO_PASSWORD=$VAR_MAVEN_REPO_PASSWORD
-#              export MAVEN_REPO_USER=$VAR_MAVEN_REPO_USER
-#              export MAVEN_STAGING_PROFILE_ID=$VAR_MAVEN_STAGING_PROFILE_ID
-#              export GPG_KEY_ID=$VAR_GPG_KEY_ID
-#              export GPG_PASSPHRASE=$VAR_GPG_PASSPHRASE
-#              echo ">>> ($ROR_TASK) Publishing artifacts" && ci/run-pipeline.sh
-#            env:
-#              ROR_TASK: publish_maven_artifacts
-#              VAR_MAVEN_REPO_PASSWORD: $(MAVEN_REPO_PASSWORD)
-#              VAR_MAVEN_REPO_USER: $(MAVEN_REPO_USER)
-#              VAR_MAVEN_STAGING_PROFILE_ID: $(MAVEN_STAGING_PROFILE_ID)
-#              VAR_GPG_PASSPHRASE: $(GPG_PASSPHRASE)
-#              VAR_GPG_KEY_ID: $(GPG_KEY_ID)
-#            condition: eq(404, variables.mvn_status)
+  - stage: BUILD_MVN_ARTIFACTS
+    dependsOn:
+      - TEST
+    condition: and(succeeded('TEST'), ne(variables.isMaster, true))
+    jobs:
+      - job:
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              echo "[BUILD_MVN_ARTIFACTS] executing ROR_TASK = $ROR_TASK"
+              ci/run-pipeline.sh
+            env:
+              ROR_TASK: audit_compile
+
+  - stage: PUBLISH_MVN_ARTIFACTS
+    dependsOn:
+      - TEST
+    condition: and(succeeded('TEST'), eq(variables.isMaster, true))
+    jobs:
+      - job:
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+
+          # Populate the global variable mvn_status for later
+          - script: |
+              PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
+              URL="https://oss.sonatype.org/service/local/repositories/releases/content/tech/beshu/ror/audit_2.12/$PLUGIN_VER/"
+              echo "Maven artifact URL to check: $URL"
+              MVN_STATUS=$(curl --write-out '%{http_code}' --output /dev/null "$URL")
+              echo "##vso[task.setvariable variable=mvn_status]$MVN_STATUS"
+
+          - script: |
+              echo ">> MVN_STATUS WAS 200. Artifact already present, no need to proceed further with Maven publishing."
+            condition: eq(200, variables.mvn_status)
+
+          - script: |
+              echo ">> MVN_STATUS WAS 404. Artifact not present in Maven repository, proceeding with publishing."
+            condition: eq(404, variables.mvn_status)
+
+          - task: DownloadSecureFile@1
+            name: pgp
+            displayName: 'Download secret.pgp secret file'
+            inputs:
+              secureFile: 'secret.pgp'
+
+          - script: |
+              echo Installing $(pgp.secureFilePath) to directory...
+              sudo chown root:root $(pgp.secureFilePath)
+              sudo chmod a+r $(pgp.secureFilePath)
+              mkdir .travis
+              sudo ln -s -t .travis/ $(pgp.secureFilePath)
+              echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
+            condition: eq(404, variables.mvn_status)
+
+          - script: |
+              echo "[MVN_PUBLISH] executing ROR_TASK=$ROR_TASK"
+              export MAVEN_REPO_PASSWORD=$VAR_MAVEN_REPO_PASSWORD
+              export MAVEN_REPO_USER=$VAR_MAVEN_REPO_USER
+              export MAVEN_STAGING_PROFILE_ID=$VAR_MAVEN_STAGING_PROFILE_ID
+              export GPG_KEY_ID=$VAR_GPG_KEY_ID
+              export GPG_PASSPHRASE=$VAR_GPG_PASSPHRASE
+              echo ">>> ($ROR_TASK) Publishing artifacts" && ci/run-pipeline.sh
+            env:
+              ROR_TASK: publish_maven_artifacts
+              VAR_MAVEN_REPO_PASSWORD: $(MAVEN_REPO_PASSWORD)
+              VAR_MAVEN_REPO_USER: $(MAVEN_REPO_USER)
+              VAR_MAVEN_STAGING_PROFILE_ID: $(MAVEN_STAGING_PROFILE_ID)
+              VAR_GPG_PASSPHRASE: $(GPG_PASSPHRASE)
+              VAR_GPG_KEY_ID: $(GPG_KEY_ID)
+            condition: eq(404, variables.mvn_status)
