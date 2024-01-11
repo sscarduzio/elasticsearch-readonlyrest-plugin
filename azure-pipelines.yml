@@ -371,7 +371,8 @@ stages:
                 # Translate back env vars to avoid cyclical reference :/
                 export aws_access_key_id=$var_aws_access_key_id
                 export aws_secret_access_key=$var_aws_secret_access_key
-    
+
+                whereis docker
                 /usr/bin/docker login https://index.docker.io/v1/ -u $DOCKER_REGISTRY_USER  -p $DOCKER_REGISTRY_PASSWORD
                 
                 echo "[PUBLISH_ROR] executing ROR_TASK = $ROR_TASK"
@@ -403,6 +404,7 @@ stages:
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
               
+              whereis docker
               /usr/bin/docker login https://index.docker.io/v1/ -u $DOCKER_REGISTRY_USER -p $DOCKER_REGISTRY_PASSWORD
               
               echo "[PUBLISH_ROR] executing ROR_TASK = $ROR_TASK"
