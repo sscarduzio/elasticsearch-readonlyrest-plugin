@@ -110,10 +110,21 @@ tasks.register('uploadRorPluginToS3', Exec) {
             '../ci/upload-file-to-s3.sh', distributionsDir + "/" + pluginFullName + ".zip.sha1", targetS3Dir
 }
 
-tasks.register('buildRorDockerImage', DockerBuildImage) {
+tasks.register('prepareDockerImageFiles', Copy) {
     dependsOn packageRorPlugin
+    outputs.upToDateWhen { false }
 
-    inputDir = projectDir
+    from layout.projectDirectory.file("Dockerfile")
+    from layout.buildDirectory.file("distributions/" + pluginFullName + ".zip")
+    from rootProject.file("docker-image/init-readonlyrest.yml")
+
+    into layout.buildDirectory.dir("docker-image")
+}
+
+tasks.register('buildRorDockerImage', DockerBuildImage) {
+    dependsOn('packageRorPlugin', 'prepareDockerImageFiles')
+
+    inputDir = layout.buildDirectory.dir("docker-image")
     buildArgs = [
             ES_VERSION: project.properties['esVersion'],
             ROR_VERSION: project.properties['pluginVersion']
