@@ -278,62 +278,63 @@ stages:
 #            IT_es60x:
 #              ROR_TASK: integration_es60x
 #
-#  - stage: BUILD_ROR
-#    dependsOn:
-#      - TEST
-#    condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
-#    jobs:
-#      - job:
-#        timeoutInMinutes: 60
-#        container: maven:3.8.1-openjdk-17-slim
-#        steps:
-#          - checkout: self
-#            fetchDepth: 1
-#            clean: false
-#
-#          - script: |
-#              set -e
-#              # Translate back env vars to avoid cyclical reference :/
-#              export aws_access_key_id=$var_aws_access_key_id
-#              export aws_secret_access_key=$var_aws_secret_access_key
-#
-#              echo "[BUILD_ROR] executing ROR_TASK = $ROR_TASK"
-#              echo ">>> ($ROR_TASK) Creating deliverables" && ci/run-pipeline.sh
-#            env:
-#              var_aws_access_key_id: $(aws_access_key_id)
-#              var_aws_secret_access_key: $(aws_secret_access_key)
-#
-#        strategy:
-#          maxParallel: 99
-#          matrix:
-#            PKG_es8xx:
-#              ROR_TASK: package_es8xx
-#      - job:
-#        timeoutInMinutes: 60
-#        steps:
-#          - checkout: self
-#            fetchDepth: 1
-#            clean: false
-#
-#          - script: |
-#              set -e
-#              # Translate back env vars to avoid cyclical reference :/
-#              export aws_access_key_id=$var_aws_access_key_id
-#              export aws_secret_access_key=$var_aws_secret_access_key
-#
-#              echo "[BUILD_ROR] executing ROR_TASK = $ROR_TASK"
-#              echo ">>> ($ROR_TASK) Creating deliverables" && ci/run-pipeline.sh
-#            env:
-#              var_aws_access_key_id: $(aws_access_key_id)
-#              var_aws_secret_access_key: $(aws_secret_access_key)
-#
-#        strategy:
-#          maxParallel: 99
-#          matrix:
-#            PKG_es7xx:
-#              ROR_TASK: package_es7xx
-#            PKG_es6xx:
-#              ROR_TASK: package_es6xx
+  - stage: BUILD_ROR
+    dependsOn:
+      - TEST
+    condition: succeeded('TEST')
+    #    condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
+    jobs:
+      - job:
+        timeoutInMinutes: 60
+        container: maven:3.8.1-openjdk-17-slim
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+
+          - script: |
+              set -e
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+
+              echo "[BUILD_ROR] executing ROR_TASK = $ROR_TASK"
+              echo ">>> ($ROR_TASK) Creating deliverables" && ci/run-pipeline.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+
+        strategy:
+          maxParallel: 99
+          matrix:
+            PKG_es8xx:
+              ROR_TASK: package_es8xx
+      - job:
+        timeoutInMinutes: 60
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+
+          - script: |
+              set -e
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+
+              echo "[BUILD_ROR] executing ROR_TASK = $ROR_TASK"
+              echo ">>> ($ROR_TASK) Creating deliverables" && ci/run-pipeline.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+
+        strategy:
+          maxParallel: 99
+          matrix:
+            PKG_es7xx:
+              ROR_TASK: package_es7xx
+            PKG_es6xx:
+              ROR_TASK: package_es6xx
 
   - stage: PUBLISH_ROR
     dependsOn:
@@ -405,7 +406,7 @@ stages:
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
               
-              /tmp/docker login -u $var_docker_registry_user -p $var_docker_registry_password
+              docker login -u $var_docker_registry_user -p $var_docker_registry_password
               
               echo "[PUBLISH_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Creating and publishing deliverables" && ci/run-pipeline.sh

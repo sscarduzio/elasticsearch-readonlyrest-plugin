@@ -121,9 +121,16 @@ tasks.register('buildRorDockerImage', DockerBuildImage) {
     images.add(dockerImageVersion)
 }
 
+tasks.register('removeRorDockerImage', DockerRemoveImage) {
+    dependsOn buildRorDockerImage
+    force = true
+    targetImageId buildRorDockerImage.getImageId()
+}
+
 tasks.register('pushRorDockerImage', DockerPushImage) {
     dependsOn buildRorDockerImage
 
     images.add(dockerImageLatest)
     images.add(dockerImageVersion)
 }
+pushRorDockerImage.configure { finalizedBy removeRorDockerImage }

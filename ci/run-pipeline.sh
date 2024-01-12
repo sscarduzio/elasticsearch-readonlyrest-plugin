@@ -242,7 +242,7 @@ publish_ror_plugin() {
 
   if checkTagNotExist "$TAG"; then
     ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null
-    ./gradlew publishEsRorDockerImage "-PesVersion=$ES_VERSION" --info </dev/null
+    ./gradlew publishEsRorDockerImage "-PesVersion=$ES_VERSION" </dev/null
     tag "$TAG"
   fi
 }
