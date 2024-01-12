@@ -244,6 +244,7 @@ publish_ror_plugin() {
     ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null
     ./gradlew publishEsRorDockerImage "-PesVersion=$ES_VERSION" </dev/null
     tag "$TAG"
+    $DOCKER system prune -f
   fi
 }
 

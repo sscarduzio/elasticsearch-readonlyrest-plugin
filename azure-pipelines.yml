@@ -373,6 +373,7 @@ stages:
                 export aws_access_key_id=$var_aws_access_key_id
                 export aws_secret_access_key=$var_aws_secret_access_key
 
+                export DOCKER=/tmp/docker
                 /tmp/docker login -u $var_docker_registry_user -p $var_docker_registry_password
                 
                 echo "[PUBLISH_ROR] executing ROR_TASK = $ROR_TASK"
@@ -406,6 +407,7 @@ stages:
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
               
+              export DOCKER=docker
               docker login -u $var_docker_registry_user -p $var_docker_registry_password
               
               echo "[PUBLISH_ROR] executing ROR_TASK = $ROR_TASK"
