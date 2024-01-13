@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -ex
 
 source "$(dirname "$0")/ci-lib.sh"
 
@@ -244,7 +244,7 @@ publish_ror_plugin() {
     ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null
     ./gradlew publishEsRorDockerImage "-PesVersion=$ES_VERSION" </dev/null
     tag "$TAG"
-    $DOCKER system prune -f
+    $DOCKER system prune -fa
   fi
 }
 
