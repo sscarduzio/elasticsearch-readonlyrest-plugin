@@ -336,7 +336,7 @@ stages:
 #            PKG_es6xx:
 #              ROR_TASK: package_es6xx
 
-  - stage: PUBLISH_ROR
+  - stage: RELEASE_ROR
     dependsOn:
       - TEST
     condition: succeeded('TEST')
@@ -376,8 +376,8 @@ stages:
                 export DOCKER=/tmp/docker
                 /tmp/docker login -u $var_docker_registry_user -p $var_docker_registry_password
                 
-                echo "[PUBLISH_ROR] executing ROR_TASK = $ROR_TASK"
-                echo ">>> ($ROR_TASK) Creating and publishing deliverables" && ci/run-pipeline.sh
+                echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
+                echo ">>> ($ROR_TASK) Releasing ROR" && ci/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -388,7 +388,7 @@ stages:
           maxParallel: 99
           matrix:
             PKG_es8xx:
-              ROR_TASK: publish_es8xx
+              ROR_TASK: release_es8xx
 #      - job:
 #        steps:
 #          - checkout: self
@@ -410,8 +410,8 @@ stages:
 #              export DOCKER=docker
 #              docker login -u $var_docker_registry_user -p $var_docker_registry_password
 #
-#              echo "[PUBLISH_ROR] executing ROR_TASK = $ROR_TASK"
-#              echo ">>> ($ROR_TASK) Creating and publishing deliverables" && ci/run-pipeline.sh
+#              echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
+#              echo ">>> ($ROR_TASK) Realeasing ROR" && ci/run-pipeline.sh
 #            env:
 #              var_aws_access_key_id: $(aws_access_key_id)
 #              var_aws_secret_access_key: $(aws_secret_access_key)
@@ -422,9 +422,9 @@ stages:
 #          maxParallel: 99
 #          matrix:
 #            PKG_es7xx:
-#              ROR_TASK: publish_es7xx
+#              ROR_TASK: release_es7xx
 #            PKG_es6xx:
-#              ROR_TASK: publish_es6xx
+#              ROR_TASK: release_es6xx
 
 #  - stage: BUILD_MVN_ARTIFACTS
 #    dependsOn:

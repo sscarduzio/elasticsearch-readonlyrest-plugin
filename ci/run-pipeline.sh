@@ -213,7 +213,7 @@ if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "package_es6xx" ]]; then
   build_ror_plugins "ci/supported-es-versions/es6x.txt"
 fi
 
-publish_ror_plugins() {
+release_ror_plugins() {
   if [ "$#" -ne 1 ]; then
     echo "What ES versions should I build and publish plugins for?"
     return 1
@@ -223,11 +223,11 @@ publish_ror_plugins() {
   local ROR_VERSION=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
 
   while IFS= read -r version; do
-    time publish_ror_plugin "$ROR_VERSION" "$version"
+    time release_ror_plugin "$ROR_VERSION" "$version"
   done <"$ROR_VERSIONS_FILE"
 }
 
-publish_ror_plugin() {
+release_ror_plugin() {
   if [ "$#" -ne 2 ]; then
     echo "What ES and ROR version should I build and publish plugin for?"
     return 1
@@ -238,7 +238,7 @@ publish_ror_plugin() {
   local TAG="v${ROR_VERSION}_es${ES_VERSION}"
 
   echo ""
-  echo "Building and publishing ROR $ROR_VERSION for ES $ES_VERSION:"
+  echo "Releasing ROR $ROR_VERSION for ES $ES_VERSION:"
 
   if checkTagNotExist "$TAG"; then
     ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null
@@ -248,16 +248,16 @@ publish_ror_plugin() {
   fi
 }
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "publish_es8xx" ]]; then
-  publish_ror_plugins "ci/supported-es-versions/es8x.txt"
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "release_es8xx" ]]; then
+  release_ror_plugins "ci/supported-es-versions/es8x.txt"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "publish_es7xx" ]]; then
-  publish_ror_plugins "ci/supported-es-versions/es7x.txt"
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "release_es7xx" ]]; then
+  release_ror_plugins "ci/supported-es-versions/es7x.txt"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "publish_es6xx" ]]; then
-  publish_ror_plugins "ci/supported-es-versions/es6x.txt"
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "release_es6xx" ]]; then
+  release_ror_plugins "ci/supported-es-versions/es6x.txt"
 fi
 
 if [[ $ROR_TASK == "publish_maven_artifacts" ]] && [[ $TRAVIS_BRANCH == "master" ]]; then

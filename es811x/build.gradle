@@ -25,7 +25,7 @@ def pluginFullName = pluginName + '-' + version
 def projectJavaLanguageVersion = JavaLanguageVersion.of(17)
 def moduleEsVersion = project.property('esVersion') != null ? project.property('esVersion') : project.property('latestSupportedEsVersion')
 def dockerImageLatest = 'coutopl/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-latest'
-def dockerImageVersion = 'coutopl/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-' + project.properties['pluginVersion']
+def dockerImageVersion = 'coutopl/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-' + pluginVersion
 
 java {
     toolchain {
@@ -82,7 +82,7 @@ tasks.register('resolvePluginDescriptorTemplate', Copy) {
     expand([
             'descriptor': [
                     'name'         : pluginName,
-                    'pluginVersion': project.properties['pluginVersion'],
+                    'pluginVersion': pluginVersion,
                     'esVersion'    : moduleEsVersion
             ]
     ])
@@ -126,7 +126,7 @@ tasks.register('buildRorDockerImage', DockerBuildImage) {
     inputDir = layout.buildDirectory.dir("docker-image")
     buildArgs = [
             ES_VERSION: project.properties['esVersion'],
-            ROR_VERSION: project.properties['pluginVersion']
+            ROR_VERSION: pluginVersion
     ]
     images.add(dockerImageLatest)
     images.add(dockerImageVersion)
@@ -143,5 +143,11 @@ tasks.register('pushRorDockerImage', DockerPushImage) {
 
     images.add(dockerImageLatest)
     images.add(dockerImageVersion)
+
+    doFirst {
+        if (pluginVersion.contains("-pre")) {
+            throw new GradleException("Cannot publish ES docker image with ROR for the pre-build")
+        }
+    }
 }
 pushRorDockerImage.configure { finalizedBy removeRorDockerImage }
