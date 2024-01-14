@@ -6,7 +6,7 @@ function checkTagNotExist {
   GIT_TAG="$1"
 
   # Check if this tag already exists, so we don't overwrite builds
-  if git pull --tags && git tag --list | egrep -e "^${GIT_TAG}$" >/dev/null; then
+  if git pull --tags >/dev/null && git tag --list | egrep -e "^${GIT_TAG}$" >/dev/null; then
     echo "Git tag $GIT_TAG already exists, exiting."
     return 1
   fi
