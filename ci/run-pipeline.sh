@@ -201,21 +201,63 @@ build_ror_plugin() {
   ./gradlew buildRorPlugin "-PesVersion=$ROR_VERSION" </dev/null
 }
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "package_es8xx" ]]; then
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "build_es8xx" ]]; then
   build_ror_plugins "ci/supported-es-versions/es8x.txt"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "package_es7xx" ]]; then
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "build_es7xx" ]]; then
   build_ror_plugins "ci/supported-es-versions/es7x.txt"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "package_es6xx" ]]; then
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "build_es6xx" ]]; then
   build_ror_plugins "ci/supported-es-versions/es6x.txt"
+fi
+
+upload_pre_ror_plugins() {
+  if [ "$#" -ne 1 ]; then
+    echo "What ES versions should I upload pre-plugins for?"
+    return 1
+  fi
+
+  local ROR_VERSIONS_FILE=$1
+  local ROR_VERSION=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
+
+  while IFS= read -r version; do
+    time upload_pre_ror_plugin "$ROR_VERSION" "$version"
+  done <"$ROR_VERSIONS_FILE"
+}
+
+upload_pre_ror_plugin() {
+  if [ "$#" -ne 2 ]; then
+    echo "What ES and ROR version should I upload pre-plugin for?"
+    return 1
+  fi
+
+  local ROR_VERSION=$1
+  local ES_VERSION=$2
+  local TAG="v${ROR_VERSION}_es${ES_VERSION}"
+
+  echo ""
+  echo "Uploading pre-ROR $ROR_VERSION for ES $ES_VERSION:"
+
+  ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null
+}
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "upload_pre_es8xx" ]]; then
+  upload_pre_ror_plugins "ci/supported-es-versions/es8x.txt"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "upload_pre_es7xx" ]]; then
+  upload_pre_ror_plugins "ci/supported-es-versions/es7x.txt"
+fi
+
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "upload_pre_es6xx" ]]; then
+  upload_pre_ror_plugins "ci/supported-es-versions/es6x.txt"
 fi
 
 release_ror_plugins() {
   if [ "$#" -ne 1 ]; then
-    echo "What ES versions should I build and publish plugins for?"
+    echo "What ES versions should I release plugins for?"
     return 1
   fi
 
@@ -229,7 +271,7 @@ release_ror_plugins() {
 
 release_ror_plugin() {
   if [ "$#" -ne 2 ]; then
-    echo "What ES and ROR version should I build and publish plugin for?"
+    echo "What ES and ROR version should I release plugin for?"
     return 1
   fi
 
