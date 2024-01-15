@@ -41,6 +41,7 @@ stages:
               fi
               echo "##vso[task.setvariable variable=value;isOutput=true]$IS_RELEASE"
             name: IsRelease
+
   - stage: TEST # todo: fixme
     dependsOn: [ ]
     jobs:
@@ -348,6 +349,46 @@ stages:
   #            PKG_es6xx:
   #              ROR_TASK: build_es6xx
 
+  - stage: BUILD_ROR
+    dependsOn:
+      - TEST
+    condition: |
+      and(
+        succeeded('TEST'),
+        condition: and(succeeded('TEST'))
+      )
+#      condition: and(succeeded('TEST'), eq(variables.isPullRequest, true)) todo:
+    jobs:
+      - job:
+        timeoutInMinutes: 60
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+
+          - script: |
+              set -e
+              
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+              
+              echo "[BUILD_ROR] executing ROR_TASK = $ROR_TASK"
+              echo ">>> ($ROR_TASK) Building ROR plugins" && ci/run-pipeline.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+
+        strategy:
+          maxParallel: 99
+          matrix:
+            BUILD_8xx:
+              ROR_TASK: build_es8xx
+            BUILD_7xx:
+              ROR_TASK: build_es7xx
+            BUILD_6xx:
+              ROR_TASK: build_es6xx
+
   - stage: UPLOAD_PRE_ROR
     dependsOn:
       - DETERMINE_CI_TYPE
@@ -355,6 +396,7 @@ stages:
     condition: |
       and(
         succeeded('TEST'),
+        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false)
       )
     jobs:
