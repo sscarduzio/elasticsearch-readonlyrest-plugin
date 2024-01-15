@@ -34,14 +34,13 @@ stages:
     jobs:
       - job: EXTRACT_IS_RELEASE
         steps:
-          - script: |
-              IS_RELEASE=false
+          - bash: |
+              IS_RELEASE='false'
               if grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}' | grep "\-pre"; then
-                IS_RELEASE=true
+                IS_RELEASE='true'
               fi
-              echo "IS_RELEASE: $IS_RELEASE"
-              echo "##vso[task.setvariable variable=isRelease;isOutput=true]$IS_RELEASE"
-            name: MyOutputVar
+              echo "##vso[task.setvariable variable=value;isOutput=true]$IS_RELEASE"
+            name: IsRelease
   - stage: TEST # todo: fixme
     dependsOn: [ ]
     jobs:
@@ -353,7 +352,7 @@ stages:
     dependsOn:
       - DETERMINE_CI_TYPE
       - TEST
-    condition: and(succeeded('TEST'), eq(stageDependencies.DETERMINE_CI_TYPE.EXTRACT_IS_RELEASE.outputs['MyOutputVar.isRelease'], true))
+    condition: and(succeeded('TEST'), eq(stageDependencies.DETERMINE_CI_TYPE.EXTRACT_IS_RELEASE.outputs['IsRelease.value'], 'true'))
 #    condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true))) // todo:
     jobs:
       - job:
