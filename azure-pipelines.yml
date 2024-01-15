@@ -4,7 +4,7 @@ variables:
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
   isEpic: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
-  isRelease: $[dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value']]
+  isRelease: $[]
 
 trigger:
   batch: false
@@ -353,57 +353,14 @@ stages:
     dependsOn:
       - DETERMINE_CI_TYPE
       - TEST
-    condition: and(succeeded('TEST'), eq(variables.isRelease, true))
+    condition: and(succeeded('TEST'), eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true))
 #    condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true))) // todo:
     jobs:
-      - job:
-        container:
-          image: maven:3.8.1-openjdk-17-slim
-          options:  "--name ci-container -v /usr/bin/docker:/tmp/docker:ro"
-
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-
-          - script: |
-              /tmp/docker exec -t -u 0 ci-container \
-              sh -c "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confold" -y install sudo"
-            displayName: 'Install Sudo in container #HACK - See https://github.com/microsoft/azure-pipelines-agent/issues/2043'
-
-          - task: Bash@3
-            inputs:
-              targetType: 'inline'
-
-              script: |
-                set -e
-
-                echo ">>>> Installing dependencies with apt-get"
-                sudo apt-get update && sudo apt-get install -y git file
-                git status && echo ">>> Git installed correctly!"
-                
-                # Translate back env vars to avoid cyclical reference :/
-                export aws_access_key_id=$var_aws_access_key_id
-                export aws_secret_access_key=$var_aws_secret_access_key
-
-                export DOCKER=/tmp/docker
-                /tmp/docker login -u $var_docker_registry_user -p $var_docker_registry_password
-                
-                echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
-                echo ">>> ($ROR_TASK) Releasing ROR" && ci/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
-              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
-
-        strategy:
-          maxParallel: 99
-          matrix:
-            PKG_es8xx:
-              ROR_TASK: release_es8xx
 #      - job:
+#        container:
+#          image: maven:3.8.1-openjdk-17-slim
+#          options:  "--name ci-container -v /usr/bin/docker:/tmp/docker:ro"
+#
 #        steps:
 #          - checkout: self
 #            fetchDepth: 1
@@ -411,21 +368,30 @@ stages:
 #            persistCredentials: true
 #
 #          - script: |
-#              set -e
+#              /tmp/docker exec -t -u 0 ci-container \
+#              sh -c "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confold" -y install sudo"
+#            displayName: 'Install Sudo in container #HACK - See https://github.com/microsoft/azure-pipelines-agent/issues/2043'
 #
-#              echo ">>>> Installing dependencies with apt-get"
-#              sudo apt-get update && sudo apt-get install -y git file
-#              git status && echo ">>> Git installed correctly!"
+#          - task: Bash@3
+#            inputs:
+#              targetType: 'inline'
 #
-#              # Translate back env vars to avoid cyclical reference :/
-#              export aws_access_key_id=$var_aws_access_key_id
-#              export aws_secret_access_key=$var_aws_secret_access_key
+#              script: |
+#                set -e
 #
-#              export DOCKER=docker
-#              docker login -u $var_docker_registry_user -p $var_docker_registry_password
+#                echo ">>>> Installing dependencies with apt-get"
+#                sudo apt-get update && sudo apt-get install -y git file
+#                git status && echo ">>> Git installed correctly!"
 #
-#              echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
-#              echo ">>> ($ROR_TASK) Realeasing ROR" && ci/run-pipeline.sh
+#                # Translate back env vars to avoid cyclical reference :/
+#                export aws_access_key_id=$var_aws_access_key_id
+#                export aws_secret_access_key=$var_aws_secret_access_key
+#
+#                export DOCKER=/tmp/docker
+#                /tmp/docker login -u $var_docker_registry_user -p $var_docker_registry_password
+#
+#                echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
+#                echo ">>> ($ROR_TASK) Releasing ROR" && ci/run-pipeline.sh
 #            env:
 #              var_aws_access_key_id: $(aws_access_key_id)
 #              var_aws_secret_access_key: $(aws_secret_access_key)
@@ -435,10 +401,46 @@ stages:
 #        strategy:
 #          maxParallel: 99
 #          matrix:
-#            PKG_es7xx:
-#              ROR_TASK: release_es7xx
-#            PKG_es6xx:
-#              ROR_TASK: release_es6xx
+#            RELEASE_ES_8xx:
+#              ROR_TASK: release_es8xx
+      - job:
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+
+          - script: |
+              set -e
+
+              echo ">>>> Installing dependencies with apt-get"
+              sudo apt-get update && sudo apt-get install -y git file
+              git status && echo ">>> Git installed correctly!"
+
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+
+              export DOCKER=docker
+              docker login -u $var_docker_registry_user -p $var_docker_registry_password
+
+              echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
+              echo ">>> ($ROR_TASK) Releasing ROR" && ci/run-pipeline.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
+              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
+
+        strategy:
+          maxParallel: 99
+          matrix:
+            RELEASE_ES_8xx:
+              ROR_TASK: release_es8xx
+            RELEASE_ES_7xx:
+              ROR_TASK: release_es7xx
+            RELEASE_ES_6xx:
+              ROR_TASK: release_es6xx
 
 #  - stage: BUILD_MVN_ARTIFACTS
 #    dependsOn:
