@@ -41,7 +41,7 @@ stages:
                 IS_RELEASE=false
               if
               echo "IS_RELEASE: $IS_RELEASE"
-              echo "##vso[task.setvariable variable=isRelease;]$IS_RELEASE"
+#              echo "##vso[task.setvariable variable=isRelease;]$IS_RELEASE"
   - stage: TEST # todo: fixme
     dependsOn: [ ]
     jobs:
