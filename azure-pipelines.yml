@@ -353,9 +353,10 @@ stages:
     dependsOn:
       - TEST
     condition: |
-      and(
-        succeeded('TEST')
-      )
+      succeeded('TEST')
+#      and(
+#
+#      )
 #      condition: and(succeeded('TEST'), eq(variables.isPullRequest, true)) todo:
     jobs:
       - job:
