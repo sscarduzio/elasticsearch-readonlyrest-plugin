@@ -351,7 +351,7 @@ stages:
   - stage: RELEASE_ROR
     dependsOn:
       - TEST
-    condition: and(succeeded('TEST'), eq(variables.isRelease, true))
+    condition: and(succeeded('TEST'), eq($(isRelease), true))
 #    condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true))) // todo:
     jobs:
       - job:
