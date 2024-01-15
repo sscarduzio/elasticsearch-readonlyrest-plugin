@@ -35,9 +35,9 @@ stages:
       - job: EXTRACT_IS_RELEASE
         steps:
           - bash: |
-              IS_RELEASE='false'
+              IS_RELEASE=false
               if grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}' | grep "\-pre"; then
-                IS_RELEASE='true'
+                IS_RELEASE=true
               fi
               echo "##vso[task.setvariable variable=value;isOutput=true]$IS_RELEASE"
             name: IsRelease
@@ -352,7 +352,7 @@ stages:
     dependsOn:
       - DETERMINE_CI_TYPE
       - TEST
-    condition: and(succeeded('TEST'), eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], 'true'))
+    condition: and(succeeded('TEST'), eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true))
 #    condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true))) // todo:
     jobs:
       - job:
