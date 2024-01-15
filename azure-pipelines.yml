@@ -350,12 +350,10 @@ stages:
 #              ROR_TASK: package_es6xx
 
   - stage: RELEASE_ROR
-    variables:
-      isRelease: $[stageDependencies.DETERMINE_CI_TYPE.EXTRACT_IS_RELEASE.outputs['MyOutputVar.isRelease']]
     dependsOn:
       - DETERMINE_CI_TYPE
       - TEST
-    condition: and(succeeded('TEST'), eq(variables.isRelease, true))
+    condition: and(succeeded('TEST'), eq(stageDependencies.DETERMINE_CI_TYPE.EXTRACT_IS_RELEASE.outputs['MyOutputVar.isRelease'], true))
 #    condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true))) // todo:
     jobs:
       - job:
