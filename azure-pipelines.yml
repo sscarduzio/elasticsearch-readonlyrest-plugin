@@ -354,8 +354,7 @@ stages:
       - TEST
     condition: |
       and(
-        succeeded('TEST'),
-        condition: and(succeeded('TEST'))
+        succeeded('TEST')
       )
 #      condition: and(succeeded('TEST'), eq(variables.isPullRequest, true)) todo:
     jobs:
