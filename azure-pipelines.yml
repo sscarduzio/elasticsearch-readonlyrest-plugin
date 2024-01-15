@@ -4,7 +4,7 @@ variables:
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
   isEpic: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
-  isRelease: $[stageDependencies.DETERMINE_CI_TYPE.extractIsRelease.outputs['extractIsRelease.isRelease']]
+  isRelease: $[stageDependencies.DETERMINE_CI_TYPE.EXTRACT_IS_RELEASE.outputs['EXTRACT_IS_RELEASE.isRelease']]
 
 
 trigger:
@@ -34,7 +34,7 @@ stages:
   - stage: DETERMINE_CI_TYPE
     dependsOn: []
     jobs:
-      - job: extractIsRelease
+      - job: EXTRACT_IS_RELEASE
         steps:
           - script: |
               IS_RELEASE=false
