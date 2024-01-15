@@ -4,7 +4,6 @@ variables:
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
   isEpic: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
-  isRelease: $[stageDependencies.DETERMINE_CI_TYPE.EXTRACT_IS_RELEASE.outputs['MyOutputVar.isRelease']]
 
 trigger:
   batch: false
@@ -351,6 +350,8 @@ stages:
 #              ROR_TASK: package_es6xx
 
   - stage: RELEASE_ROR
+    variables:
+      isRelease: $[stageDependencies.DETERMINE_CI_TYPE.EXTRACT_IS_RELEASE.outputs['MyOutputVar.isRelease']]
     dependsOn:
       - DETERMINE_CI_TYPE
       - TEST
