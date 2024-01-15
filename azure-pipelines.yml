@@ -43,6 +43,7 @@ stages:
               fi
               echo "IS_RELEASE: $IS_RELEASE"
               echo "##vso[task.setvariable variable=isRelease;isOutput=true]$IS_RELEASE"
+            name: MyOutputVar
   - stage: TEST # todo: fixme
     dependsOn: [ ]
     jobs:
@@ -352,7 +353,7 @@ stages:
 
   - stage: RELEASE_ROR
     variables:
-      myStageAVar: $[stageDependencies.DETERMINE_CI_TYPE.EXTRACT_IS_RELEASE.outputs['EXTRACT_IS_RELEASE.isRelease']]
+      myStageAVar: $[stageDependencies.DETERMINE_CI_TYPE.EXTRACT_IS_RELEASE.outputs['MyOutputVar.isRelease']]
     dependsOn:
       - DETERMINE_CI_TYPE
       - TEST
