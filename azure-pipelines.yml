@@ -352,12 +352,7 @@ stages:
   - stage: BUILD_ROR
     dependsOn:
       - TEST
-    condition: |
-      succeeded('TEST')
-#      and(
-#
-#      )
-#      condition: and(succeeded('TEST'), eq(variables.isPullRequest, true)) todo:
+    condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
     jobs:
       - job:
         timeoutInMinutes: 60
