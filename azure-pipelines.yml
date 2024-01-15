@@ -396,7 +396,7 @@ stages:
     condition: |
       and(
         succeeded('TEST'), 
-        or(eq(variables.isDevelop, true), eq(variables.isMaster, true))
+        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true)
       )
     jobs:
