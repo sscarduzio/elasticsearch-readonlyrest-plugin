@@ -4,6 +4,7 @@ variables:
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
   isEpic: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
+  isRelease: ''
 
 trigger:
   batch: false
@@ -29,6 +30,18 @@ pool:
   vmImage: 'ubuntu-20.04'
 
 stages:
+  - stage: DETERMINE_TYPE
+    dependsOn: []
+    jobs:
+      - job:
+        steps:
+          - script: |
+              IS_RELEASE=true
+              if grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}' | grep "\-pre"; then
+                IS_RELEASE=false
+              if
+              echo "IS_RELEASE: $IS_RELEASE"
+              echo "##vso[task.setvariable variable=isRelease;]$IS_RELEASE"
   - stage: TEST # todo: fixme
     dependsOn: [ ]
     jobs:
@@ -339,7 +352,7 @@ stages:
   - stage: RELEASE_ROR
     dependsOn:
       - TEST
-    condition: succeeded('TEST')
+    condition: and(succeeded('TEST'), eq(variables.isRelease, true))
 #    condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true))) // todo:
     jobs:
       - job:
