@@ -4,6 +4,7 @@ variables:
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
   isEpic: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
+  isRelease: $[dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value']]
 
 trigger:
   batch: false
@@ -352,7 +353,7 @@ stages:
     dependsOn:
       - DETERMINE_CI_TYPE
       - TEST
-    condition: and(succeeded('TEST'), eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true))
+    condition: and(succeeded('TEST'), eq(variables.isRelease, true))
 #    condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true))) // todo:
     jobs:
       - job:
