@@ -351,6 +351,7 @@ stages:
 
   - stage: RELEASE_ROR
     dependsOn:
+      - DETERMINE_TYPE
       - TEST
     condition: and(succeeded('TEST'), eq(variables.isRelease, true))
 #    condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true))) // todo:
