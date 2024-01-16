@@ -425,8 +425,14 @@ stages:
 
   - stage: PUBLISH_MVN_ARTIFACTS
     dependsOn:
+      - DETERMINE_CI_TYPE
       - TEST
-    condition: and(succeeded('TEST'), eq(variables.isMaster, true))
+    condition: |
+      and(
+        succeeded('TEST'), 
+        eq(variables.isMaster, true),
+        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true)
+      )
     jobs:
       - job:
         steps:
