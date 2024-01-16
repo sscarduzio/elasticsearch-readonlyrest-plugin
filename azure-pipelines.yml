@@ -37,7 +37,8 @@ stages:
           - bash: |
               IS_RELEASE=true
               if grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}' | grep "\-pre"; then
-                IS_RELEASE=false
+#                IS_RELEASE=false
+                IS_RELEASE=true
               fi
               echo "##vso[task.setvariable variable=value;isOutput=true]$IS_RELEASE"
             name: IsRelease
@@ -57,22 +58,22 @@ stages:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
 
-  #  - stage: CVE
-  #    dependsOn: [ ] # run in parallel
-  #    jobs:
-  #      - job:
-  #        steps:
-  #          - checkout: self
-  #            fetchDepth: 1
-  #            clean: false
-  #            persistCredentials: true
-  #          - script: |
-  #              echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
-  #              echo "[CVE] executing ROR_TASK=$ROR_TASK"
-  #              ci/run-pipeline.sh
-  #            continueOnError: true
-  #            env:
-  #              ROR_TASK: cve_check
+  - stage: CVE
+    dependsOn: [ ]
+    jobs:
+      - job:
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - script: |
+              echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
+              echo "[CVE] executing ROR_TASK=$ROR_TASK"
+              ci/run-pipeline.sh
+            continueOnError: true
+            env:
+              ROR_TASK: cve_check
 
   #  - stage: TEST
   #    jobs:
@@ -290,64 +291,6 @@ stages:
   #              ROR_TASK: integration_es67x
   #            IT_es60x:
   #              ROR_TASK: integration_es60x
-  #
-  #  - stage: BUILD_ROR
-  #    dependsOn:
-  #      - TEST
-  #    condition: succeeded('TEST')
-  #    #    condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
-  #    jobs:
-  #      - job:
-  #        timeoutInMinutes: 60
-  #        container: maven:3.8.1-openjdk-17-slim
-  #        steps:
-  #          - checkout: self
-  #            fetchDepth: 1
-  #            clean: false
-  #
-  #          - script: |
-  #              set -e
-  #              # Translate back env vars to avoid cyclical reference :/
-  #              export aws_access_key_id=$var_aws_access_key_id
-  #              export aws_secret_access_key=$var_aws_secret_access_key
-  #
-  #              echo "[BUILD_ROR] executing ROR_TASK = $ROR_TASK"
-  #              echo ">>> ($ROR_TASK) Creating deliverables" && ci/run-pipeline.sh
-  #            env:
-  #              var_aws_access_key_id: $(aws_access_key_id)
-  #              var_aws_secret_access_key: $(aws_secret_access_key)
-  #
-  #        strategy:
-  #          maxParallel: 99
-  #          matrix:
-  #            PKG_es8xx:
-  #              ROR_TASK: build_es8xx
-  #      - job:
-  #        timeoutInMinutes: 60
-  #        steps:
-  #          - checkout: self
-  #            fetchDepth: 1
-  #            clean: false
-  #
-  #          - script: |
-  #              set -e
-  #              # Translate back env vars to avoid cyclical reference :/
-  #              export aws_access_key_id=$var_aws_access_key_id
-  #              export aws_secret_access_key=$var_aws_secret_access_key
-  #
-  #              echo "[BUILD_ROR] executing ROR_TASK = $ROR_TASK"
-  #              echo ">>> ($ROR_TASK) Creating deliverables" && ci/run-pipeline.sh
-  #            env:
-  #              var_aws_access_key_id: $(aws_access_key_id)
-  #              var_aws_secret_access_key: $(aws_secret_access_key)
-  #
-  #        strategy:
-  #          maxParallel: 99
-  #          matrix:
-  #            PKG_es7xx:
-  #              ROR_TASK: build_es7xx
-  #            PKG_es6xx:
-  #              ROR_TASK: build_es6xx
 
   - stage: BUILD_ROR
     dependsOn:
