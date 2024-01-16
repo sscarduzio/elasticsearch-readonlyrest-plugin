@@ -29,18 +29,6 @@ pool:
   vmImage: 'ubuntu-20.04'
 
 stages:
-  - stage: DETERMINE_CI_TYPE
-    dependsOn: [ ]
-    jobs:
-      - job: EXTRACT_IS_RELEASE
-        steps:
-          - bash: |
-              IS_RELEASE=true
-              if grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}' | grep "\-pre"; then
-                IS_RELEASE=false
-              fi
-              echo "##vso[task.setvariable variable=value;isOutput=true]$IS_RELEASE"
-            name: IsRelease
 
   - stage: CVE
     dependsOn: [ ]
@@ -310,6 +298,20 @@ stages:
               ROR_TASK: build_es7xx
             BUILD_6xx:
               ROR_TASK: build_es6xx
+
+  - stage: DETERMINE_CI_TYPE
+    dependsOn:
+      - TEST
+    jobs:
+      - job: EXTRACT_IS_RELEASE
+        steps:
+          - bash: |
+              IS_RELEASE=true
+              if grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}' | grep "\-pre"; then
+                IS_RELEASE=false
+              fi
+              echo "##vso[task.setvariable variable=value;isOutput=true]$IS_RELEASE"
+            name: IsRelease
 
   - stage: UPLOAD_PRE_ROR
     dependsOn:
