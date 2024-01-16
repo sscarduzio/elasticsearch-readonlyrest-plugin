@@ -143,11 +143,5 @@ tasks.register('pushRorDockerImage', DockerPushImage) {
 
     images.add(dockerImageLatest)
     images.add(dockerImageVersion)
-
-    doFirst {
-        if (pluginVersion.contains("-pre")) {
-            throw new GradleException("Cannot publish ES docker image with ROR for the pre-build")
-        }
-    }
 }
 pushRorDockerImage.configure { finalizedBy removeRorDockerImage }

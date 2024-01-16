@@ -14,19 +14,18 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+import com.bmuschko.gradle.docker.tasks.image.*
 
 plugins {
-    id 'com.bmuschko.docker-remote-api'             version '9.4.0'
+    id 'com.bmuschko.docker-remote-api'
     id "readonlyrest.plugin-common-conventions"
 }
-
-import com.bmuschko.gradle.docker.tasks.image.*
 
 def pluginFullName = pluginName + '-' + version
 def projectJavaLanguageVersion = JavaLanguageVersion.of(8)
 def moduleEsVersion = project.property('esVersion') != null ? project.property('esVersion') : project.property('latestSupportedEsVersion')
 def dockerImageLatest = 'coutopl/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-latest'
-def dockerImageVersion = 'coutopl/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-' + project.properties['pluginVersion']
+def dockerImageVersion = 'coutopl/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-' + pluginVersion
 
 java {
     toolchain {
@@ -77,7 +76,6 @@ tasks.register('jarHellCheck', JavaExec) {
 }
 
 tasks.register('resolvePluginDescriptorTemplate', Copy) {
-    
     outputs.upToDateWhen { false }
     from './plugin-metadata'
     into 'build/tmp/' + pluginFullName
@@ -128,7 +126,7 @@ tasks.register('buildRorDockerImage', DockerBuildImage) {
     inputDir = layout.buildDirectory.dir("docker-image")
     buildArgs = [
             ES_VERSION: project.properties['esVersion'],
-            ROR_VERSION: project.properties['pluginVersion']
+            ROR_VERSION: pluginVersion
     ]
     images.add(dockerImageLatest)
     images.add(dockerImageVersion)

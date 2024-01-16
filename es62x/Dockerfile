@@ -13,8 +13,3 @@ COPY readonlyrest-${ROR_VERSION}_es${ES_VERSION}.zip /tmp/readonlyrest.zip
 COPY init-readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
 
 RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch file:///tmp/readonlyrest.zip
-
-USER root
-RUN /usr/share/elasticsearch/jdk/bin/java -jar /usr/share/elasticsearch/plugins/readonlyrest/ror-tools.jar patch
-
-USER 1000:0
