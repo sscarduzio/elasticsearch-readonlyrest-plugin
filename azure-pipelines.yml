@@ -48,6 +48,7 @@ stages:
               ROR_TASK: cve_check
 
   - stage: TEST
+    dependsOn: [ ]
     jobs:
       - job:
         timeoutInMinutes: 20
