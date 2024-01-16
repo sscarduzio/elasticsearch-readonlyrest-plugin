@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash -e
 
 if [[ $# -eq 0 ]] ; then
     echo "Please pass to the script an ES version you\'d like to build ROR for"
@@ -14,9 +14,6 @@ rm -r builds/* || true
 for arg in "$@"; do
   ES_VERSION=$arg
   echo "Building ROR for ES_VERSION $ES_VERSION:"
-
-  pwd
-  ls -la
 
   ./gradlew clean --stacktrace --info buildRorPlugin '-PesVersion='"$ES_VERSION"
 

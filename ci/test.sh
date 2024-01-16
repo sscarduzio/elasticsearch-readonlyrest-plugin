@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash -e
 
 source "$(dirname "$0")/ci-lib.sh"
 
