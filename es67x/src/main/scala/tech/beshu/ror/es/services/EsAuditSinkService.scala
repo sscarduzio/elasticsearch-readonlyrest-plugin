@@ -36,10 +36,10 @@ class EsAuditSinkService(client: Client)
   @nowarn("msg=deprecated")
   private val bulkProcessor =
     BulkProcessor
-        .builder(client, new AuditSinkBulkProcessorListener) // deprecated since es 6.8.5
+      .builder(client, new AuditSinkBulkProcessorListener) // deprecated since es 6.8.5
       .setBulkActions(AUDIT_SINK_MAX_ITEMS)
-      .setBulkSize(new ByteSizeValue(AUDIT_SINK_MAX_KB.toInt, ByteSizeUnit.KB))
-      .setFlushInterval(TimeValue.timeValueSeconds(AUDIT_SINK_MAX_SECONDS.toInt))
+      .setBulkSize(new ByteSizeValue(AUDIT_SINK_MAX_KB, ByteSizeUnit.KB))
+      .setFlushInterval(TimeValue.timeValueSeconds(AUDIT_SINK_MAX_SECONDS))
       .setConcurrentRequests(1)
       .setBackoffPolicy(BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), AUDIT_SINK_MAX_RETRIES))
       .build
@@ -52,7 +52,7 @@ class EsAuditSinkService(client: Client)
   }
 
   override def close(): Unit = {
-    client.close()
+    bulkProcessor.close()
   }
 
   private class AuditSinkBulkProcessorListener extends BulkProcessor.Listener {
