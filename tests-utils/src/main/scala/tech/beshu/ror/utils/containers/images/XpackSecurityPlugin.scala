@@ -50,7 +50,7 @@ class XpackSecurityPlugin(esVersion: String,
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {
     builder
       .add("xpack.security.enabled: true")
-      .add("xpack.ml.enabled: false")
+      .add("xpack.ml.enabled: true")
       .configureRestSsl()
       .configureTransportSsl()
   }
