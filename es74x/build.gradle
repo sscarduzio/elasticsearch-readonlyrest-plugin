@@ -59,6 +59,12 @@ configurations {
     }
 }
 
+tasks.withType(ScalaCompile).configureEach {
+    scalaCompileOptions.additionalParameters = [
+            "-Wunused:-nowarn" // depending on es version, some methods are deprecated or not
+    ]
+}
+
 tasks.register('cleanOldData') {
     doLast {
         delete 'build/tmp/' + pluginFullName
