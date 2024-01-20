@@ -41,8 +41,8 @@ import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.RorClusterService._
+import tech.beshu.ror.es.utils.CallActionRequestAndHandleResponse._
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
-import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.es.{RemoteClusterAwareClient, RorClusterService}
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -106,11 +106,8 @@ class EsServerBasedRorClusterService(settings: Settings,
   override def verifyDocumentAccessibility(document: Document,
                                            filter: Filter,
                                            id: RequestContext.Id): Task[DocumentAccessibility] = {
-    val listener = new GenericResponseListener[SearchResponse]
-    createSearchRequest(filter, document).execute(listener)
-
-    listener.result
-      .map(extractAccessibilityFrom)
+    createSearchRequest(filter, document)
+      .call(extractAccessibilityFrom)
       .onErrorRecover {
         case ex =>
           logger.error(s"[${id.show}] Could not verify get request. Blocking document", ex)
@@ -121,11 +118,8 @@ class EsServerBasedRorClusterService(settings: Settings,
   override def verifyDocumentsAccessibilities(documents: NonEmptyList[Document],
                                               filter: Filter,
                                               id: RequestContext.Id): Task[DocumentsAccessibilities] = {
-    val listener = new GenericResponseListener[MultiSearchResponse]
-    createMultiSearchRequest(filter, documents).execute(listener)
-
-    listener.result
-      .map(extractResultsFromSearchResponse)
+    createMultiSearchRequest(filter, documents)
+      .call(extractResultsFromSearchResponse)
       .onErrorRecover {
         case ex =>
           logger.error(s"[${id.show}] Could not verify documents returned by multi get response. Blocking all returned documents", ex)
