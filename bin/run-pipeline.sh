@@ -40,6 +40,11 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "core_tests" ]]; then
     ./gradlew --stacktrace core:test
 fi
 
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es812x" ]]; then
+    echo ">>> es812x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es812x' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es811x" ]]; then
     echo ">>> es811x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es811x' || ( find . |grep hs_err |xargs cat && exit 1 )
@@ -198,6 +203,9 @@ fi
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es8xx" ]]; then
 
     echo ">>> ($0) additional builds of ES module for specified ES version"
+
+    #es812x
+    ./gradlew --stacktrace buildRorPlugin '-PesVersion=8.12.0'
 
     #es811x
     ./gradlew --stacktrace buildRorPlugin '-PesVersion=8.11.4'
