@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.utils
 
 import monix.eval.Task
+import monix.execution.atomic.Atomic
 import org.elasticsearch.action.{ActionListener, ActionResponse}
 
 import scala.concurrent.Promise
@@ -24,14 +25,21 @@ import scala.concurrent.Promise
 final class GenericResponseListener[RESPONSE <: ActionResponse] extends ActionListener[RESPONSE] {
 
   private val promise = Promise[RESPONSE]()
+  private val finalizer = Atomic(Task.unit)
 
-  def result: Task[RESPONSE] = Task.fromFuture(promise.future)
+  def result[T](f: RESPONSE => T): Task[T] = Task
+    .fromFuture(promise.future)
+    .map(f)
+    .guarantee(finalizer.getAndSet(Task.unit))
 
   override def onResponse(response: RESPONSE): Unit = {
+    response.mustIncRef()
+    finalizer.set(Task.delay(response.decRef()))
     promise.success(response)
   }
 
   override def onFailure(exception: Exception): Unit = {
     promise.failure(exception)
   }
+
 }

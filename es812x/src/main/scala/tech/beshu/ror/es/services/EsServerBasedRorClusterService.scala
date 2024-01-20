@@ -120,8 +120,8 @@ class EsServerBasedRorClusterService(nodeName: String,
     val listener = new GenericResponseListener[SearchResponse]
     createSearchRequest(filter, document).execute(listener)
 
-    listener.result
-      .map(extractAccessibilityFrom)
+    listener
+      .result(extractAccessibilityFrom)
       .onErrorRecover {
         case ex =>
           logger.error(s"[${id.show}] Could not verify get request. Blocking document", ex)
@@ -135,8 +135,7 @@ class EsServerBasedRorClusterService(nodeName: String,
     val listener = new GenericResponseListener[MultiSearchResponse]
     createMultiSearchRequest(filter, documents).execute(listener)
 
-    listener.result
-      .map(extractResultsFromSearchResponse)
+    listener.result(extractResultsFromSearchResponse)
       .onErrorRecover {
         case ex =>
           logger.error(s"[${id.show}] Could not verify documents returned by multi get response. Blocking all returned documents", ex)
