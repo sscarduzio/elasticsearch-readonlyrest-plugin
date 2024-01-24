@@ -1,0 +1,98 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+
+plugins {
+    id "readonlyrest.plugin-common-conventions"
+}
+
+def pluginFullName = pluginName + '-' + version
+def projectJavaLanguageVersion = JavaLanguageVersion.of(17)
+def moduleEsVersion = project.property('esVersion') != null ? project.property('esVersion') : project.property('latestSupportedEsVersion')
+
+java {
+    toolchain {
+        languageVersion = projectJavaLanguageVersion
+    }
+}
+
+dependencies {
+    implementation  project(path: ':core')
+    implementation  project(path: ':ror-tools', configuration: 'shadow')
+    implementation  project(path: ':ror-tools-core')
+    implementation  group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: moduleEsVersion
+    implementation  group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-client',              version: moduleEsVersion
+    implementation  group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.13'
+    implementation  group: 'org.apache.logging.log4j',          name: 'log4j-core',                             version: '2.11.1'
+    compileOnly     group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
+    // if you don't have this dependency in local maven, please run publishToMavenLocal task first
+    compileOnly     group: 'org.elasticsearch.plugin',          name: 'transport-netty4',                       version: moduleEsVersion
+}
+
+configurations {
+    wagon
+    distJars {
+        exclude group: 'org.elasticsearch'
+        exclude group: 'lucene-core'
+        exclude module: 'log4j-api'
+        exclude module: 'log4j-core'
+        exclude group: 'lucene-analyzers-common'
+        exclude group: 'org.apache.commons'
+        exclude group: 'org.yaml'
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
+    }
+}
+
+tasks.register('cleanOldData') {
+    doLast {
+        delete 'build/tmp/' + pluginFullName
+    }
+}
+
+tasks.register('jarHellCheck', JavaExec) {
+    outputs.upToDateWhen { false }
+    mainClass.set("org.elasticsearch.jdk.JarHell")
+    classpath = project.sourceSets.main.compileClasspath.filter { it.exists() }
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = projectJavaLanguageVersion
+    }
+}
+
+tasks.register('resolvePluginDescriptorTemplate', Copy) {
+    
+    outputs.upToDateWhen { false }
+    from './plugin-metadata'
+    into 'build/tmp/' + pluginFullName
+    expand([
+            'descriptor': [
+                    'name'         : pluginName,
+                    'pluginVersion': project.properties['pluginVersion'],
+                    'esVersion'    : moduleEsVersion
+            ]
+    ])
+}
+
+tasks.register('ror', Zip) {
+    dependsOn(cleanOldData, jarHellCheck, toJar, resolvePluginDescriptorTemplate)
+    outputs.upToDateWhen { false }
+    archivesBaseName = pluginName
+    into('.')
+            {
+                from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && !x.name.contains('jts') }
+                from 'build/libs/' + pluginFullName + '.jar'
+                from 'build/tmp/' + pluginFullName
+            }
+}
