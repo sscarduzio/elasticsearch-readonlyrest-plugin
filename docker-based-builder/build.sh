@@ -9,6 +9,6 @@ fi
 
 ES_VERSIONS=$*
 
-docker buildx build --no-cache --progress=plain --load -t ror-builder-tmp ../../
-docker run --rm -v "$(pwd)"/builds:/ror/builds ror-builder-tmp "$ES_VERSIONS"
+docker buildx build --no-cache --progress=plain --load -t ror-builder-tmp -f ror-builder/Dockerfile-ror-builder ../
+docker run --rm -v "$(pwd)"/../builds:/ror/builds ror-builder-tmp "$ES_VERSIONS"
 docker rmi -f ror-builder-tmp

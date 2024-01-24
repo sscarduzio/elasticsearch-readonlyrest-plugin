@@ -19,6 +19,8 @@ package tech.beshu.ror.tools.core.patches.internal.filePatchers
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
 import tech.beshu.ror.tools.core.patches.internal.{FilePatch, RorPluginDirectory}
+import tech.beshu.ror.tools.core.utils.EsUtil
+import tech.beshu.ror.tools.core.utils.EsUtil.es640
 
 private[patches] class XPackSecurityJarPatchCreator(patchingSteps: FileModifier*)
   extends FilePatchCreator[XPackSecurityJarPatch] {
@@ -33,6 +35,10 @@ private[patches] class XPackSecurityJarPatch(rorPluginDirectory: RorPluginDirect
                                              patchingSteps: Iterable[FileModifier])
   extends FilePatch(
     rorPluginDirectory = rorPluginDirectory,
-    fileToPatchPath = rorPluginDirectory.esDirectory.modulesPath / "x-pack-security" / s"x-pack-security-${esVersion.render}.jar",
+    fileToPatchPath =
+      if (esVersion < es640)
+        rorPluginDirectory.esDirectory.modulesPath / "x-pack" / "x-pack-security" / s"x-pack-security-${esVersion.render}.jar"
+      else
+        rorPluginDirectory.esDirectory.modulesPath / "x-pack-security" / s"x-pack-security-${esVersion.render}.jar",
     patchingSteps = patchingSteps
   )

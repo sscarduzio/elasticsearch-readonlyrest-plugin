@@ -1,0 +1,12 @@
+readonlyrest:
+  access_control_rules:
+
+    - name: "KIBANA"
+      type: allow
+      verbosity: error
+      auth_key: kibana:${env:KIBANA_USER_PASS}
+
+    - name: "ADMIN"
+      type: allow
+      verbosity: error
+      auth_key: admin:${env:ADMIN_USER_PASS}

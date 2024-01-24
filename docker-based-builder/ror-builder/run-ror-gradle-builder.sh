@@ -5,7 +5,8 @@ if [[ $# -eq 0 ]] ; then
     exit 1
 fi
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")"
+cd ../.. # now, we should be in the project dir
 
 mkdir -p builds
 rm -r builds/* || true

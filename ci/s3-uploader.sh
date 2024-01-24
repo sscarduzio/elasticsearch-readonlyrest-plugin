@@ -114,11 +114,10 @@ POLICY
     key_and_sig_args="-F X-Amz-Credential=$aws_ak/$expdate_s/$region/$service/aws4_request -F X-Amz-Algorithm=AWS4-HMAC-SHA256 -F X-Amz-Signature=$s -F X-Amz-Date=${date}"
 fi
 
-
 # Upload. Supports anonymous upload if bucket is public-writable, and keys are set to ''.
 echo "Uploading: $srcfile ($mime) to $bucket:$targfile"
 curl -vvv                       \
-    -# -k                       \
+    -# -kf                      \
     -F key=$targfile            \
     -F acl=$acl                 \
     $key_and_sig_args           \
@@ -126,4 +125,4 @@ curl -vvv                       \
     -F "Content-MD5=$md5"       \
     -F "Content-Type=$mime"     \
     -F "file=@$srcfile"         \
-    https://${bucket}.s3.amazonaws.com/ | cat # pipe through cat so curl displays upload progress bar, *and* response
+    https://${bucket}.s3.amazonaws.com/
