@@ -50,8 +50,8 @@ Currently eshome support debugging only es8x modules.
 * Gradle 8.4
 
 ### Using Docker
-* `./docker-envs/build-ror-in-docker/build.sh [ES_VERSION_1] [ES_VERSION_1] ... [ES_VERSION_N]`
-* eg. `./docker-envs/build-ror-in-docker/build.sh 8.2.0 8.2.1`
+* `./docker-based-builder/build.sh [ES_VERSION_1] [ES_VERSION_1] ... [ES_VERSION_N]`
+* eg. `./docker-based-builder/build.sh 8.2.0 8.2.1`
 * ROR plugin binaries can be found in `docker-envs/build-ror-in-docker/builds`
 
 **⚠️Required tools:**
