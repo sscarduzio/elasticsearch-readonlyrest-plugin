@@ -16,11 +16,8 @@
  */
 package tech.beshu.ror.es.services
 
-import java.security.cert.X509Certificate
 import cats.data.NonEmptyList
 import io.lemonlabs.uri.Uri
-
-import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 import monix.execution.Scheduler
 import org.apache.http.HttpHost
 import org.apache.http.auth.{AuthScope, Credentials, UsernamePasswordCredentials}
@@ -28,13 +25,16 @@ import org.apache.http.conn.ssl.NoopHostnameVerifier
 import org.apache.http.impl.client.BasicCredentialsProvider
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.client.{RequestOptions, RestClient, RestHighLevelClient}
 import org.elasticsearch.common.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.es.AuditSinkService
-import tech.beshu.ror.es.utils.GenericResponseListener
+import tech.beshu.ror.es.utils.InvokeCallerAndHandleResponse._
 
+import java.security.cert.X509Certificate
+import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 import scala.collection.parallel.CollectionConverters._
 
 class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLevelClient])
@@ -46,11 +46,10 @@ class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLeve
     clients.toList.par.foreach { client =>
       val request = new IndexRequest(indexName).id(documentId).source(jsonRecord, XContentType.JSON)
       val options = RequestOptions.DEFAULT
-      val listener = new GenericResponseListener[IndexResponse]
+      val indexAsyncCall: ActionListener[IndexResponse] => Unit = client.indexAsync(request, options, _)
 
-      client.indexAsync(request, options, listener)
-
-      listener.result
+      indexAsyncCall
+        .execute(identity)
         .runAsync {
           case Right(resp) if resp.status().getStatus / 100 == 2 =>
           case Right(resp) =>
