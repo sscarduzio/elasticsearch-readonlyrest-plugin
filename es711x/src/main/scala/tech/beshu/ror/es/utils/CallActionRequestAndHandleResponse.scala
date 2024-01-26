@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.utils
 
 import monix.eval.Task
-import monix.execution.atomic.Atomic
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionRequestBuilder, ActionResponse}
 import org.elasticsearch.client.Cancellable
 
@@ -55,16 +54,12 @@ object InvokeCallerAndHandleResponse {
 private final class GenericResponseListener[RESPONSE <: ActionResponse] extends ActionListener[RESPONSE] {
 
   private val promise = Promise[RESPONSE]()
-  private val finalizer = Atomic(Task.unit)
 
   def result[T](f: RESPONSE => T): Task[T] = Task
     .fromFuture(promise.future)
     .map(f)
-    .guarantee(finalizer.getAndSet(Task.unit))
 
   override def onResponse(response: RESPONSE): Unit = {
-    response.incRef()
-    finalizer.set(Task.delay(response.decRef()))
     promise.success(response)
   }
 

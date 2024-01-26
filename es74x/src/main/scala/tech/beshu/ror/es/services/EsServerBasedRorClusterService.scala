@@ -43,6 +43,7 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
 import tech.beshu.ror.es.utils.CallActionRequestAndHandleResponse._
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
+import tech.beshu.ror.es.utils.EsVersionAwareReflectionBasedSnapshotServiceAdapter
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
