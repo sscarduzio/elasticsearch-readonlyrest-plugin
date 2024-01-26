@@ -27,7 +27,7 @@ import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
-import org.elasticsearch.client.{Cancellable, RequestOptions, RestClient, RestHighLevelClient}
+import org.elasticsearch.client.{RequestOptions, RestClient, RestHighLevelClient}
 import org.elasticsearch.common.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.domain.AuditCluster
 import tech.beshu.ror.es.AuditSinkService
@@ -46,7 +46,7 @@ class HighLevelClientAuditSinkService private(clients: NonEmptyList[RestHighLeve
     clients.toList.par.foreach { client =>
       val request = new IndexRequest(indexName).id(documentId).source(jsonRecord, XContentType.JSON)
       val options = RequestOptions.DEFAULT
-      val indexAsyncCall: ActionListener[IndexResponse] => Cancellable = client.indexAsync(request, options, _)
+      val indexAsyncCall: ActionListener[IndexResponse] => _ = client.indexAsync(request, options, _)
 
       indexAsyncCall
         .execute(identity)

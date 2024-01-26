@@ -18,7 +18,6 @@ package tech.beshu.ror.es.utils
 
 import monix.eval.Task
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionRequestBuilder, ActionResponse}
-import org.elasticsearch.client.Cancellable
 
 import scala.concurrent.Promise
 import scala.language.implicitConversions
@@ -47,7 +46,7 @@ class InvokeCallerAndHandleResponse[RESPONSE <: ActionResponse] private(caller: 
 }
 
 object InvokeCallerAndHandleResponse {
-  implicit def toOps[RESPONSE <: ActionResponse](caller: ActionListener[RESPONSE] => Cancellable): InvokeCallerAndHandleResponse[RESPONSE] =
+  implicit def toOps[RESPONSE <: ActionResponse](caller: ActionListener[RESPONSE] => _): InvokeCallerAndHandleResponse[RESPONSE] =
     new InvokeCallerAndHandleResponse(caller)
 }
 
