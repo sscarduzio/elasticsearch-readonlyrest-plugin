@@ -376,6 +376,7 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+            timeoutInMinutes: 180
 
           - script: |
               set -e
