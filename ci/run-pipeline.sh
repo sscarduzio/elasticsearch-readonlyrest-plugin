@@ -47,8 +47,7 @@ run_integration_tests() {
   ES_MODULE=$1
 
   echo ">>> $ES_MODULE => Running testcontainers.."
-# todo: temporarily disabled tests
-#  ./gradlew integration-tests:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
+  ./gradlew integration-tests:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
 }
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es811x" ]]; then
