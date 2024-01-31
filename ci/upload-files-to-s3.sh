@@ -13,7 +13,7 @@ for ((i = 1; i < $#; i++)); do
   FILE="${!i}"
 
   echo "Uploading $FILE to $DEST ..."
-  upload "$1" "$2"
+  upload "$FILE" "$DEST"
 done
 
 echo "DONE"
