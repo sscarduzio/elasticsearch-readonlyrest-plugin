@@ -113,7 +113,7 @@ def netty4TransportArtifactName = "transport-netty4-" + esVersion + ".jar"
 def netty4TransportArtifactDestinationPath = "org/elasticsearch/plugin/transport-netty4/" + esVersion + "/" + netty4TransportArtifactName
 
 tasks.register('uploadArtifactsFromEsBinaries', Exec) {
-    commandLine '../ci/upload-file-to-s3.sh', layout.buildDirectory.get().asFile.path + "/" + netty4TransportArtifactName, "build/" + netty4TransportArtifactDestinationPath
+    commandLine '../ci/upload-files-to-s3.sh', layout.buildDirectory.get().asFile.path + "/" + netty4TransportArtifactName, "build/" + netty4TransportArtifactDestinationPath
 }
 
 tasks.register('getArtifactsFromEsBinaries') {
