@@ -104,8 +104,7 @@ tasks.register('uploadRorPluginToS3', Exec) {
     def distributionsDir = layout.buildDirectory.get().asFile.path + "/distributions"
     def targetS3Dir = "build/" + pluginVersion + "/"
 
-    commandLine '../ci/upload-file-to-s3.sh', distributionsDir + "/" + pluginFullName + ".zip", targetS3Dir, "&&",
-            '../ci/upload-file-to-s3.sh', distributionsDir + "/" + pluginFullName + ".zip.sha1", targetS3Dir
+    commandLine '../ci/upload-files-to-s3.sh', distributionsDir + "/" + pluginFullName + ".zip", distributionsDir + "/" + pluginFullName + ".zip.sha1", targetS3Dir
 }
 
 tasks.register('prepareDockerImageFiles', Copy) {
