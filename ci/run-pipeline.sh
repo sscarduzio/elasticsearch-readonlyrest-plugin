@@ -268,7 +268,7 @@ release_ror_plugins() {
   local ROR_VERSIONS_FILE=$1
   local ROR_VERSION=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
 
-  while IFS= read -r version; do
+  while IFS= read -r version || [[ -n "$version" ]]; do
     time release_ror_plugin "$ROR_VERSION" "$version"
   done <"$ROR_VERSIONS_FILE"
 }
