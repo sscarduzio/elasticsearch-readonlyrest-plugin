@@ -19,11 +19,12 @@ import tech.beshu.ror.gradle.RorTaskFinder
 plugins {
     id 'base'
     id 'com.bmuschko.docker-remote-api'             version '9.4.0'
-    id "io.github.gradle-nexus.publish-plugin"      version "2.0.0-rc-1"
+    id 'io.github.gradle-nexus.publish-plugin'      version '2.0.0-rc-1'
+    id 'org.gradle.crypto.checksum'                 version '1.4.0'
 }
 
 tasks.register("buildRorPlugin", RorTaskFinder) {
-    dependsOn it.findRorTaskForEsVersion('packageRorPlugin')
+    dependsOn it.findRorTaskForEsVersion('buildRorPluginZip')
 }
 
 tasks.register("publishRorPlugin", RorTaskFinder) {

@@ -25,8 +25,7 @@ fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "cve_check" ]]; then
   echo ">>> Running CVE checks.."
-  # todo: enable me
-#  ./gradlew dependencyCheckAnalyze
+  ./gradlew dependencyCheckAnalyze
 fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "audit_compile" ]]; then
@@ -36,8 +35,7 @@ fi
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "core_tests" ]]; then
   echo ">>> Running unit tests.."
-  # todo: enable me
-#  ./gradlew --stacktrace core:test
+  ./gradlew --stacktrace core:test
 fi
 
 run_integration_tests() {
@@ -49,8 +47,7 @@ run_integration_tests() {
   ES_MODULE=$1
 
   echo ">>> $ES_MODULE => Running testcontainers.."
-  # todo: enable me
-#  ./gradlew integration-tests:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
+  ./gradlew integration-tests:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
 }
 
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es812x" ]]; then
@@ -271,7 +268,7 @@ release_ror_plugins() {
   local ROR_VERSIONS_FILE=$1
   local ROR_VERSION=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
 
-  while IFS= read -r version; do
+  while IFS= read -r version || [[ -n "$version" ]]; do
     time release_ror_plugin "$ROR_VERSION" "$version"
   done <"$ROR_VERSIONS_FILE"
 }
