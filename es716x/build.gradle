@@ -132,7 +132,7 @@ tasks.register('prepareDockerImageFiles', Copy) {
 
     from layout.projectDirectory.file("Dockerfile")
     from layout.buildDirectory.file("distributions/" + pluginFullName + ".zip")
-    from rootProject.file("docker-image/init-readonlyrest.yml")
+    from rootProject.files("docker-image")
 
     into layout.buildDirectory.dir("docker-image")
 }
