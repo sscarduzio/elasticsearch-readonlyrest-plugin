@@ -11,9 +11,8 @@ ENV ADMIN_USER_PASS=admin
 
 USER root
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends gosu && \
-    rm -rf /var/lib/apt/lists/* && \
+RUN curl -o /usr/local/bin/gosu -SL "https://github.com/tianon/gosu/releases/download/1.17/gosu-amd64" && \
+    chmod +x /usr/local/bin/gosu && \
     gosu nobody true
 
 USER elasticsearch
@@ -26,4 +25,4 @@ RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch file:///tm
 
 USER root
 
-ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/ror-entrypoint.sh"]
+ENTRYPOINT ["/tini", "--", "/usr/local/bin/ror-entrypoint.sh"]
