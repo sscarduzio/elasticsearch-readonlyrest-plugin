@@ -8,5 +8,4 @@ readonlyrest:
 
     - name: "ADMIN"
       type: allow
-      verbosity: error
       auth_key: admin:${env:ADMIN_USER_PASS}
