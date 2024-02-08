@@ -158,25 +158,22 @@ class AccessControlList(val blocks: NonEmptyList[Block],
     }
     matchedBlocks match {
       case Some(matchedBlocksNel) =>
-        val (matchedBlocksToBeTakenIntoConsideration, _) = matchedBlocksNel.toList.foldLeft((List.empty[Matched[B]], false)) {
-          case ((acc, false), matched) =>
-            matched.block.policy match {
-              case Policy.Allow =>
-                (acc ++ (matched :: Nil), false)
-              case Policy.Forbid =>
-                (acc, true)
-            }
-          case ((acc, true), _) =>
-            (acc, true)
+        NonEmptyList.fromList {
+          findAllMatchedBlocksWithAllowPolicyFollowingFirstMatchedForbidPolicyBlock(matchedBlocksNel)
+        } match {
+          case Some(allowedPolicyMatchedBlocks) => Right(allowedPolicyMatchedBlocks)
+          case None => Left(())
         }
-        NonEmptyList.fromList(matchedBlocksToBeTakenIntoConsideration) match {
-          case Some(nel) =>
-            Right(nel)
-          case None =>
-            Left(())
-        }
-      case None =>
-        Left(())
+      case None => Left(())
+    }
+  }
+
+  private def findAllMatchedBlocksWithAllowPolicyFollowingFirstMatchedForbidPolicyBlock[B <: BlockContext](blocks: NonEmptyList[Matched[B]]) = {
+    blocks.toList.takeWhile { b =>
+      b.block.policy match {
+        case Policy.Allow => true
+        case Policy.Forbid => false
+      }
     }
   }
 
