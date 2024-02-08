@@ -12,5 +12,6 @@ elasticsearch.ssl.truststore.password: "test"
 elasticsearch.ssl.verificationMode: none
 
 readonlyrest_kbn.cookiePass: "12345678901234567890123456789012345678901234567890123456789012345678901234567890"
+readonlyrest_kbn.logLevel: trace
 
 monitoring.ui.container.elasticsearch.enabled: true

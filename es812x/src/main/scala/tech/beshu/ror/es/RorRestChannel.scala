@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es
 
+import scala.jdk.CollectionConverters._
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.rest.{AbstractRestChannel, RestChannel, RestResponse}
 import tech.beshu.ror.es.utils.ThreadRepo
@@ -27,6 +28,7 @@ class RorRestChannel(underlying: RestChannel)
 
   override def sendResponse(response: RestResponse): Unit = {
     ThreadRepo.removeRestChannel(this)
+    println(s"SEND RESPONSE: ${underlying.request().method().name()} ${underlying.request().path()} - ${response.status()} HDR: ${response.getHeaders.asScala.toList.map { case (h, v) => s"$h:${v.asScala.mkString(",")}"}.mkString(";")}")
     underlying.sendResponse(filterRestResponse(response))
   }
 }
