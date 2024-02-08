@@ -65,19 +65,22 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
 
           inside(userMetadataRequestResult) {
             case Allow(userMetadata, _) =>
-              userMetadata.availableGroups shouldBe UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk"))
+              userMetadata.availableGroups.toList should contain theSameElementsAs {
+                group("logserver") :: group("ext-onlio") :: group("admins") :: group("ext-odp") ::
+                  group("ext-enex") :: group("dohled-nd-pce") :: group("helpdesk") :: Nil
+              }
               userMetadata.currentGroupId shouldBe Some(GroupId("admins"))
           }
         }
         "FORBID policy block is matched and its position in ACL is after some ALLOW-policy matched blocks" in {
           val acl = createAcl(NonEmptyList.of(
-            mockAllowedPolicyBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockAllowedPolicyBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockForbidPolicyBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockAllowedPolicyBlock("b4", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockAllowedPolicyBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockAllowedPolicyBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockAllowedPolicyBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+            mockAllowedPolicyBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g1"), group("admins")))),
+            mockAllowedPolicyBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g2"), group("admins")))),
+            mockForbidPolicyBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g3"), group("admins")))),
+            mockAllowedPolicyBlock("b4", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g4"), group("admins")))),
+            mockAllowedPolicyBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g5"), group("admins")))),
+            mockAllowedPolicyBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g6"), group("admins")))),
+            mockAllowedPolicyBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g7"), group("admins")))),
           ))
 
           val userMetadataRequestResult = acl
@@ -87,7 +90,9 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
 
           inside(userMetadataRequestResult) {
             case Allow(userMetadata, _) =>
-              userMetadata.availableGroups shouldBe UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk"))
+              userMetadata.availableGroups.toList should contain theSameElementsAs {
+                group("g1") :: group("g2") :: group("admins") :: Nil
+              }
               userMetadata.currentGroupId shouldBe Some(GroupId("admins"))
           }
         }
@@ -95,13 +100,13 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
       "forbid request" when {
         "FORBID policy block is matched and its position in ACL is before any other ALLOW-policy matched block" in {
           val acl = createAcl(NonEmptyList.of(
-            mockForbidPolicyBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockAllowedPolicyBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockAllowedPolicyBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockAllowedPolicyBlock("b4", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockAllowedPolicyBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockAllowedPolicyBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockAllowedPolicyBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+            mockForbidPolicyBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g1"), group("admins")))),
+            mockAllowedPolicyBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g2"), group("admins")))),
+            mockAllowedPolicyBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g3"), group("admins")))),
+            mockAllowedPolicyBlock("b4", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g4"), group("admins")))),
+            mockAllowedPolicyBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g5"), group("admins")))),
+            mockAllowedPolicyBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g6"), group("admins")))),
+            mockAllowedPolicyBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g7"), group("admins")))),
           ))
 
           val userMetadataRequestResult = acl
