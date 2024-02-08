@@ -159,7 +159,7 @@ class AccessControlList(val blocks: NonEmptyList[Block],
     matchedBlocks match {
       case Some(matchedBlocksNel) =>
         NonEmptyList.fromList {
-          findAllMatchedBlocksWithAllowPolicyFollowingFirstMatchedForbidPolicyBlock(matchedBlocksNel)
+          findAllMatchedBlocksWithAllowPolicyPrecedingFirstMatchedForbidPolicyBlock(matchedBlocksNel)
         } match {
           case Some(allowedPolicyMatchedBlocks) => Right(allowedPolicyMatchedBlocks)
           case None => Left(())
@@ -168,7 +168,7 @@ class AccessControlList(val blocks: NonEmptyList[Block],
     }
   }
 
-  private def findAllMatchedBlocksWithAllowPolicyFollowingFirstMatchedForbidPolicyBlock[B <: BlockContext](blocks: NonEmptyList[Matched[B]]) = {
+  private def findAllMatchedBlocksWithAllowPolicyPrecedingFirstMatchedForbidPolicyBlock[B <: BlockContext](blocks: NonEmptyList[Matched[B]]) = {
     blocks.toList.takeWhile { b =>
       b.block.policy match {
         case Policy.Allow => true
