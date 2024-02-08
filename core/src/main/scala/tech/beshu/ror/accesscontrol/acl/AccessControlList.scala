@@ -113,7 +113,7 @@ class AccessControlList(val blocks: NonEmptyList[Block],
               .map(preferredGroup => (result, preferredGroup))
           }
           .headOption
-          .map { case (result, preferredGroup)=>
+          .map { case (result, preferredGroup) =>
             val userMetadata =
               updateUserMetadataGroups(result.blockContext, Some(preferredGroup), allAvailableGroupsFrom(matchedResults))
             (userMetadata, result.block)
@@ -153,12 +153,30 @@ class AccessControlList(val blocks: NonEmptyList[Block],
   }
 
   private def matchedAllowedBlocks[B <: BlockContext](blockResults: List[Block.ExecutionResult[B]]) = {
-    NonEmptyList
-      .fromList {
-        blockResults.collect { case r@Matched(block, _) if block.policy === Policy.Allow => r }
-      } match {
-      case Some(nel) => Right(nel)
-      case None => Left(())
+    val matchedBlocks = NonEmptyList.fromList {
+      blockResults.collect { case r@Matched(_, _) => r }
+    }
+    matchedBlocks match {
+      case Some(matchedBlocksNel) =>
+        val (matchedBlocksToBeTakenIntoConsideration, _) = matchedBlocksNel.toList.foldLeft((List.empty[Matched[B]], false)) {
+          case ((acc, false), matched) =>
+            matched.block.policy match {
+              case Policy.Allow =>
+                (acc ++ (matched :: Nil), false)
+              case Policy.Forbid =>
+                (acc, true)
+            }
+          case ((acc, true), _) =>
+            (acc, true)
+        }
+        NonEmptyList.fromList(matchedBlocksToBeTakenIntoConsideration) match {
+          case Some(nel) =>
+            Right(nel)
+          case None =>
+            Left(())
+        }
+      case None =>
+        Left(())
     }
   }
 
