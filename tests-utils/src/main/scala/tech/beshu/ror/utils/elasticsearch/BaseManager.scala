@@ -87,6 +87,12 @@ object BaseManager {
     val isBadRequest: Boolean = responseCode == 400
     val body: String = Try(stringBodyFrom(response)).getOrElse("")
 
+    headers.find(_.name.toLowerCase == "x-elastic-product") match {
+      case Some(_) =>
+      case None =>
+        throw new IllegalStateException("no x-elastic-product header in the response")
+    }
+
     def force(): this.type = {
       if (!isSuccess) throw new IllegalStateException(
         s"Expected success but got HTTP $responseCode, body: ${Try(stringBodyFrom(response)).getOrElse("")}"

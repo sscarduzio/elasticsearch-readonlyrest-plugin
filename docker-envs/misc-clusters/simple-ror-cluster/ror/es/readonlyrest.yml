@@ -39,7 +39,7 @@ readonlyrest:
 
     - name: "test_filter Kibana"
       groups: [ "test_filter" ]
-#      kibana_access: "rw"
+      kibana_access: "rw"
       indices: [ "p11001_write_test*" ]
       filter: '{"bool": { "must_not": { "match": { "user2": "eee" }}}}'
       fields: [ "~user1" ]

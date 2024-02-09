@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es
 
-import scala.jdk.CollectionConverters._
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.rest.{AbstractRestChannel, RestChannel, RestResponse}
 import tech.beshu.ror.es.utils.ThreadRepo
@@ -28,7 +27,25 @@ class RorRestChannel(underlying: RestChannel)
 
   override def sendResponse(response: RestResponse): Unit = {
     ThreadRepo.removeRestChannel(this)
-    println(s"SEND RESPONSE: ${underlying.request().method().name()} ${underlying.request().path()} - ${response.status()} HDR: ${response.getHeaders.asScala.toList.map { case (h, v) => s"$h:${v.asScala.mkString(",")}"}.mkString(";")}")
-    underlying.sendResponse(filterRestResponse(response))
+    underlying.sendResponse(
+      addXElasticProductHeaderIfMissing(filterRestResponse(response))
+    )
+  }
+
+  private def addXElasticProductHeaderIfMissing(response: RestResponse) = {
+    Option(underlying.request().header("X-elastic-product-origin")) match {
+      case Some(_) =>
+        Option(response.getHeaders.get("X-elastic-product")) match {
+          case Some(_) =>
+          case None =>
+            import scala.jdk.CollectionConverters._
+            val headers = underlying.request().getHeaders.asScala.map { case (h, v) => s"$h:${v.asScala.mkString(",")}" }.mkString(",")
+            println(s"Request headers: $headers")
+            println(s"Adding header to ${underlying.request().method().name()} ${underlying.request().path()}")
+            response.addHeader("X-elastic-product", "Elasticsearch")
+        }
+      case None =>
+    }
+    response
   }
 }
