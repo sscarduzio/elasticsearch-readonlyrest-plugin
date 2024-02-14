@@ -17,7 +17,11 @@ readonlyrest:
       hide_apps: ["timelion"]
 
   - name: R3
-    groups: ["group_extra"]
+    groups:
+      - id: "group_extra"
+        name: "Extra group"
+      - id: "group_extra_2"
+        name: "Extra group 2"
     actions: ["cluster:*"]
     uri_re: "lol don't match here pls"
 

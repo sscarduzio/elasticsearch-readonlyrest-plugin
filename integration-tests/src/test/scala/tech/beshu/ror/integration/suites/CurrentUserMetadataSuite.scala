@@ -74,16 +74,16 @@ class CurrentUserMetadataSuite
                |  "x-ror-username": "user4",
                |  "x-ror-current-group": {
                |    "id": "group6",
-               |    "name": "group6"
+               |    "name": "Group 6"
                |  },
                |  "x-ror-available-groups": [
                |    {
                |      "id": "group5",
-               |      "name": "group5"
+               |      "name": "Group 5"
                |    },
                |    {
                |      "id": "group6",
-               |      "name": "group6"
+               |      "name": "Group 6"
                |    }
                |  ],
                |  "x-ror-correlation-id": "$correlationId",

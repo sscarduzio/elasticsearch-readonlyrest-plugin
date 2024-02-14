@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
+import cats.data.NonEmptyList
 import cats.implicits._
 import io.circe.{ACursor, Decoder, HCursor, Json}
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
@@ -29,7 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationR
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.GroupsOrRule
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, GroupName, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
@@ -43,6 +44,8 @@ import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCre
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 object UsersDefinitionsDecoder {
+
+  import tech.beshu.ror.accesscontrol.factory.decoders.definitions.UsersDefinitionsDecoder.GroupsDecoder._
 
   def instance(authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
                authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
@@ -59,7 +62,7 @@ object UsersDefinitionsDecoder {
           val usernameKey = "username"
           val groupsKey = "groups"
           for {
-            usernamePatterns <- c.downField(usernameKey).as[UserIdPatterns]
+            usernamePatterns <- c.downFieldAs[UserIdPatterns](usernameKey)
             rules <- {
               val rulesDecoder = userDefRulesDecoder(
                 usernamePatterns,
@@ -87,44 +90,6 @@ object UsersDefinitionsDecoder {
 
   private implicit val userIdPatternsDecoder: Decoder[UserIdPatterns] =
     Decoder[UniqueNonEmptyList[UserIdPattern]].map(UserIdPatterns.apply)
-
-  private implicit val localGroupToExternalGroupsMappingDecoder: Decoder[GroupMappings.Advanced.Mapping] =
-    Decoder
-      .instance { c =>
-        c.keys.map(_.toList) match {
-          case Some(key :: Nil) =>
-            for {
-              localGroup <- Decoder[GroupId].tryDecode(HCursor.fromJson(Json.fromString(key))).map(Group.from)
-              externalGroups <- c.downField(key).as[UniqueNonEmptyList[GroupIdLike]]
-            } yield {
-              GroupMappings.Advanced.Mapping(localGroup, externalGroups)
-            }
-          case Some(Nil) | None =>
-            failure(Message(s"Groups mapping should have exactly one YAML key"))
-          case Some(keys) =>
-            failure(Message(s"Groups mapping should have exactly one YAML key, but several were defined: [${keys.mkString(",")}]"))
-        }
-      }
-
-  private val simpleGroupMappingsDecoder: Decoder[GroupMappings] =
-    groupIdsUniqueNonEmptyListDecoder.map(
-      groupIds => UniqueNonEmptyList.unsafeFromIterable(groupIds.toList.map(Group.from))
-    ).map(GroupMappings.Simple.apply)
-
-  private val advancedGroupMappingsDecoder: Decoder[GroupMappings] =
-    Decoder[List[GroupMappings.Advanced.Mapping]]
-      .toSyncDecoder
-      .emapE { list =>
-        UniqueNonEmptyList.fromIterable(list) match {
-          case Some(mappings) => Right(GroupMappings.Advanced(mappings))
-          case None => Left(ValueLevelCreationError(Message("Non empty list of groups or groups mappings are required")))
-        }
-      }
-      .map[GroupMappings](identity)
-      .decoder
-
-  private implicit val groupMappingsDecoder: Decoder[GroupMappings] =
-    advancedGroupMappingsDecoder or simpleGroupMappingsDecoder
 
   private def userDefRulesDecoder(usernamePatterns: UserIdPatterns,
                                   authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
@@ -202,8 +167,8 @@ object UsersDefinitionsDecoder {
     case r: AuthRule =>
       Decoder[GroupMappings].map(UserDef.Mode.WithGroupsMapping(Auth.SingleRule(r), _))
     case r: AuthenticationRule =>
-      Decoder[UniqueNonEmptyList[GroupId]]
-        .map(groupIds => UniqueNonEmptyList.unsafeFromIterable(groupIds.toList.map(Group.from)))
+      GroupsDecoder
+        .groupsDecoder
         .map(UserDef.Mode.WithoutGroupsMapping(r, _))
     case other =>
       failed(DefinitionsLevelCreationError(Message(s"Cannot use '${other.name.show}' rule in users definition section")))
@@ -220,10 +185,13 @@ object UsersDefinitionsDecoder {
       case (r1: AuthorizationRule, r2: AuthRule) =>
         errorFor(r2, r1)
       case (r1: AuthenticationRule, r2: AuthorizationRule) =>
-        groupMappingsDecoder.map(a =>
-          UserDef.Mode.WithGroupsMapping(Auth.SeparateRules(r1, r2), a))
+        Decoder[GroupMappings].map(mappings =>
+          UserDef.Mode.WithGroupsMapping(Auth.SeparateRules(r1, r2), mappings)
+        )
       case (r1: AuthorizationRule, r2: AuthenticationRule) =>
-        Decoder[GroupMappings].map(UserDef.Mode.WithGroupsMapping(Auth.SeparateRules(r2, r1), _))
+        Decoder[GroupMappings].map(mappings =>
+          UserDef.Mode.WithGroupsMapping(Auth.SeparateRules(r2, r1), mappings)
+        )
       case (r1, r2) =>
         errorFor(r1, r2)
     }
@@ -257,4 +225,135 @@ object UsersDefinitionsDecoder {
   private def failure(msg: Message) = Left(decodingFailure(msg))
 
   private def decodingFailure(msg: Message) = DecodingFailureOps.fromError(DefinitionsLevelCreationError(msg))
+
+  private object GroupsDecoder {
+
+    private object GroupMappingKeys {
+      val id: String = "id"
+      val name: String = "name"
+      val mappedGroups: String = "external_group_ids"
+
+      val simpleMappingRequiredKeys: Set[String] = Set(id)
+      val advancedMappingRequiredKeys: Set[String] = Set(id, mappedGroups)
+    }
+
+    implicit lazy val groupsDecoder: Decoder[UniqueNonEmptyList[Group]] = {
+      groupsSimpleDecoder.or(structuredGroupsDecoder)
+    }
+
+    // supported formats for 'groups' key:
+    // * array of strings (local group IDs) - simple groups mapping
+    // * array of objects (object with one key as local group ID - value is array of strings (external group IDs)) - advanced group mapping
+    // * array of objects (object with 'id' and 'name'(optional) keys) - simple groups mapping
+    // * array of objects (object with 'id', 'name'(optional), and 'external_group_ids') -> advanced group mapping
+    implicit lazy val groupMappingsDecoder: Decoder[GroupMappings] = Decoder.instance { c =>
+      for {
+        mappingsJsons <- c.values
+          .toRight("Unknown format of `groups`")
+          .flatMap(values => NonEmptyList.fromList(values.toList).toRight("Non empty list of group mappings is required"))
+          .leftMap(msg => decodingFailure(Message(msg)))
+        mappingsDecoder = mappingsJsons match {
+          case groupMappings if haveSimpleFormatWithGroupIds(groupMappings) =>
+            groupsSimpleDecoder
+              .map(GroupMappings.Simple)
+              .widen[GroupMappings]
+          case groupMappings if haveAdvancedFormatWithStructuredGroups(groupMappings) =>
+            advancedGroupMappingsDecoder(structuredLocalGroupToExternalGroupsMappingDecoder)
+              .widen[GroupMappings]
+          case groupMappings if haveSimpleFormatWithStructuredGroups(groupMappings) =>
+            structuredGroupsDecoder
+              .map(GroupMappings.Simple)
+              .widen[GroupMappings]
+          case _ =>
+            advancedGroupMappingsDecoder(localGroupToExternalGroupsMappingDecoder)
+              .widen[GroupMappings]
+        }
+        mappings <- mappingsDecoder.apply(c)
+      } yield mappings
+    }
+
+    private def haveSimpleFormatWithGroupIds(groupMappings: NonEmptyList[Json]): Boolean = {
+      groupMappings.forall(_.isString)
+    }
+
+    private def haveSimpleFormatWithStructuredGroups(groupMappings: NonEmptyList[Json]): Boolean = {
+      groupMappings.forall { mapping =>
+        objectContainsKeys(mapping, GroupMappingKeys.simpleMappingRequiredKeys)
+      }
+    }
+
+    private def haveAdvancedFormatWithStructuredGroups(groupMappings: NonEmptyList[Json]): Boolean = {
+      groupMappings.forall { mapping =>
+        objectContainsKeys(mapping, GroupMappingKeys.advancedMappingRequiredKeys)
+      }
+    }
+
+    private def objectContainsKeys(json: Json, keys: Set[String]): Boolean = {
+      json.isObject && json.hcursor.keys.forall(objectKeys => keys.subsetOf(objectKeys.toSet))
+    }
+
+    private def advancedGroupMappingsDecoder(implicit mappingDecoder: Decoder[GroupMappings.Advanced.Mapping]): Decoder[GroupMappings.Advanced] =
+      Decoder[List[GroupMappings.Advanced.Mapping]]
+        .toSyncDecoder
+        .emapE { list =>
+          UniqueNonEmptyList.fromIterable(list) match {
+            case Some(mappings) => Right(GroupMappings.Advanced(mappings))
+            case None => Left(ValueLevelCreationError(Message("Non empty list of groups mappings is required")))
+          }
+        }
+        .decoder
+
+    private val structuredLocalGroupToExternalGroupsMappingDecoder: Decoder[GroupMappings.Advanced.Mapping] =
+      Decoder
+        .instance { c =>
+          for {
+            groupId <- c.downFieldAs[GroupId](GroupMappingKeys.id)
+            groupName <- c.downFieldAs[Option[GroupName]](GroupMappingKeys.name)
+            externalGroupIds <- c.downFieldAs[UniqueNonEmptyList[GroupIdLike]](GroupMappingKeys.mappedGroups)
+          } yield {
+            val localGroup = groupName.map(name => Group(groupId, name)).getOrElse(Group.from(groupId))
+            GroupMappings.Advanced.Mapping(localGroup, externalGroupIds)
+          }
+        }
+
+    private val localGroupToExternalGroupsMappingDecoder: Decoder[GroupMappings.Advanced.Mapping] =
+      Decoder
+        .instance { c =>
+          c.keys.map(_.toList) match {
+            case Some(key :: Nil) =>
+              for {
+                localGroup <- Decoder[GroupId].tryDecode(HCursor.fromJson(Json.fromString(key))).map(Group.from)
+                externalGroups <- c.downFieldAs[UniqueNonEmptyList[GroupIdLike]](key)
+              } yield {
+                GroupMappings.Advanced.Mapping(localGroup, externalGroups)
+              }
+            case Some(Nil) | None =>
+              failure(Message(s"Groups mapping should have exactly one YAML key"))
+            case Some(keys) =>
+              failure(Message(s"Groups mapping should have exactly one YAML key, but several were defined: [${keys.mkString(",")}]"))
+          }
+        }
+
+    private val structuredGroupsDecoder: Decoder[UniqueNonEmptyList[Group]] = {
+      implicit val groupDecoder: Decoder[Group] = Decoder.instance { c =>
+        for {
+          id <- c.downFieldAs[GroupId](GroupMappingKeys.id)
+          name <- c.downFieldAs[Option[GroupName]](GroupMappingKeys.name)
+        } yield name match {
+          case Some(groupName) => Group(id, groupName)
+          case None => Group.from(id)
+        }
+      }
+
+      SyncDecoderCreator
+        .from(DecoderHelpers.decodeUniqueNonEmptyList[Group])
+        .withError(ValueLevelCreationError(Message("Non empty list of groups is required")))
+        .decoder
+    }
+
+    private val groupsSimpleDecoder: Decoder[UniqueNonEmptyList[Group]] = {
+      Decoder[UniqueNonEmptyList[GroupId]]
+        .map(groupIds => UniqueNonEmptyList.unsafeFromIterable(groupIds.toList.map(Group.from)))
+    }
+  }
 }

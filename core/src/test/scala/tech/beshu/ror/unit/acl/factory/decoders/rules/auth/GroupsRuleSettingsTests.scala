@@ -148,6 +148,41 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
               }
             )
           }
+          "structured groups format is used" in {
+            assertDecodingSuccess(
+              yaml =
+                s"""
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    ${ruleName.name.value}: group1
+                   |
+                   |  users:
+                   |  - username: cartman
+                   |    groups:
+                   |    - id: "group1"
+                   |      name: "Group 1"
+                   |    - id: "group3"
+                   |    auth_key: "cartman:pass"
+                   |
+                   |""".stripMargin,
+              assertion = rule => {
+                val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(AlreadyResolved(GroupId("group1").nel)))
+                rule.settings.permittedGroupIds should be(groups)
+                rule.settings.usersDefinitions.length should be(1)
+                inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
+                  patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")))))
+                  localGroups should be(UniqueNonEmptyList.of(group("group1", "Group 1"), group("group3", "group3")))
+                  authRule shouldBe an[AuthKeyRule]
+                  authRule.asInstanceOf[AuthKeyRule].settings should be {
+                    BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
+                  }
+                }
+              }
+            )
+          }
         }
         "several groups are defined" when {
           "no variables are used in group ids" in {
@@ -255,7 +290,10 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |      groups_or: ["group3"]
                  |
                  |  - username: morgan
-                 |    groups: ["group2", "group3"]
+                 |    groups:
+                 |    - id: group2
+                 |      name: Group 2
+                 |    - id: group3
                  |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
                  |
                  |  ldaps:
@@ -297,7 +335,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
               }
               inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(rule1, localGroups)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("morgan")))))
-                localGroups should be(UniqueNonEmptyList.of(group("group2"), group("group3")))
+                localGroups should be(UniqueNonEmptyList.of(group("group2", "Group 2"), group("group3", "group3")))
                 rule1 shouldBe an[AuthKeySha1Rule]
                 rule1.asInstanceOf[AuthKeySha1Rule].settings should be {
                   BasicAuthenticationRule.Settings(HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a"))
@@ -361,7 +399,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
             }
           )
         }
-        "non-simple groups mapping is used" in {
+        "advanced groups mapping with groups in a simple format is used" in {
           assertDecodingSuccess(
             yaml =
               s"""
@@ -411,6 +449,73 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                 groupMappings should be(GroupMappings.Advanced(UniqueNonEmptyList.of(
                   Mapping(group("group1"), UniqueNonEmptyList.of(GroupId("ldap_group3"))),
                   Mapping(group("group2"), UniqueNonEmptyList.of(GroupId("ldap_group4")))
+                )))
+
+                rule1 shouldBe an[AuthKeyRule]
+                rule1.asInstanceOf[AuthKeyRule].settings should be {
+                  BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
+                }
+                rule2 shouldBe an[ExternalAuthorizationRule]
+                rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroupsLogic should be(
+                  GroupsLogic.Or(PermittedGroupIds(UniqueNonEmptyList.of(GroupId("ldap_group3"), GroupId("ldap_group4"))))
+                )
+              }
+            }
+          )
+        }
+        "advanced groups mapping with structured groups is used" in {
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                 |readonlyrest:
+                 |
+                 |  access_control_rules:
+                 |
+                 |  - name: test_block1
+                 |    ${ruleName.name.value}: [group1, group3]
+                 |
+                 |  users:
+                 |  - username: cartman
+                 |    groups:
+                 |     - id: group1
+                 |       name: Group 1
+                 |       external_group_ids: ["ldap_group3"]
+                 |     - id: group2
+                 |       external_group_ids: ["ldap_group4"]
+                 |    auth_key: "cartman:pass"
+                 |    groups_provider_authorization:
+                 |      user_groups_provider: GroupsService1
+                 |      groups: ["ldap_group3", "ldap_group4"]
+                 |
+                 |  ldaps:
+                 |  - name: ldap1
+                 |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                 |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                 |    ssl_enabled: false
+                 |    search_user_base_DN: "ou=People,dc=example,dc=com"
+                 |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+                 |
+                 |  user_groups_providers:
+                 |  - name: GroupsService1
+                 |    groups_endpoint: "http://localhost:8080/groups"
+                 |    auth_token_name: "user"
+                 |    auth_token_passed_as: QUERY_PARAM
+                 |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
+                 |
+                 |""".stripMargin,
+            assertion = rule => {
+              val groups = ResolvablePermittedGroupIds(UniqueNonEmptyList.of(
+                AlreadyResolved(GroupId("group1").nel),
+                AlreadyResolved(GroupId("group3").nel)
+              ))
+              rule.settings.permittedGroupIds should be(groups)
+              rule.settings.usersDefinitions.length should be(1)
+              val sortedUserDefinitions = rule.settings.usersDefinitions
+              inside(sortedUserDefinitions.head) { case UserDef(_, patterns, WithGroupsMapping(Auth.SeparateRules(rule1, rule2), groupMappings)) =>
+                patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")))))
+                groupMappings should be(GroupMappings.Advanced(UniqueNonEmptyList.of(
+                  Mapping(group("group1", "Group 1"), UniqueNonEmptyList.of(GroupId("ldap_group3"))),
+                  Mapping(group("group2", "group2"), UniqueNonEmptyList.of(GroupId("ldap_group4")))
                 )))
 
                 rule1 shouldBe an[AuthKeyRule]
@@ -538,7 +643,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of user ID patterns are required")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Error for field 'username': Non empty list of user ID patterns are required")))
           }
         )
       }
@@ -561,7 +666,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of user ID patterns are required")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Error for field 'username': Non empty list of user ID patterns are required")))
           }
         )
       }
@@ -606,7 +711,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of group IDs is required")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of groups is required")))
           }
         )
       }
@@ -629,11 +734,11 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of group IDs is required")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of groups is required")))
           }
         )
       }
-      "only one authentication rule can be defined for user in users section" in {
+      "mapped group IDs array in user definition is empty" in {
         assertDecodingFailure(
           yaml =
             s"""
@@ -642,17 +747,253 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  access_control_rules:
                |
                |  - name: test_block1
-               |    ${ruleName.name.value}: ["group1"]
+               |    ${ruleName.name.value}: [group1, group3]
                |
                |  users:
                |  - username: cartman
-               |    groups: ["group1", "group3"]
+               |    groups:
+               |     - id: group1
+               |       name: Group 1
+               |       external_group_ids: ["ldap_group3"]
+               |     - id: group2
+               |       external_group_ids: []
                |    auth_key: "cartman:pass"
-               |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+               |    groups_provider_authorization:
+               |      user_groups_provider: GroupsService1
+               |      groups: ["ldap_group3", "ldap_group4"]
                |
-               |""".stripMargin,
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |
+               |  user_groups_providers:
+               |  - name: GroupsService1
+               |    groups_endpoint: "http://localhost:8080/groups"
+               |    auth_token_name: "user"
+               |    auth_token_passed_as: QUERY_PARAM
+               |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
+               |
+               |""".stripMargin
+          ,
           assertion = errors => {
             errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message(
+              "Error for field 'external_group_ids': Non empty list of group IDs or/and patterns is required"
+            )))
+          }
+        )
+      }
+      "mapped group IDs array in user definition is empty (old syntax)" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    ${ruleName.name.value}: [group1, group3]
+               |
+               |  users:
+               |  - username: cartman
+               |    groups:
+               |     - "group1": []
+               |    auth_key: "cartman:pass"
+               |    groups_provider_authorization:
+               |      user_groups_provider: GroupsService1
+               |      groups: ["ldap_group3", "ldap_group4"]
+               |
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |
+               |  user_groups_providers:
+               |  - name: GroupsService1
+               |    groups_endpoint: "http://localhost:8080/groups"
+               |    auth_token_name: "user"
+               |    auth_token_passed_as: QUERY_PARAM
+               |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
+               |
+               |""".stripMargin
+          ,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message(
+              "Error for field 'group1': Non empty list of group IDs or/and patterns is required"
+            )))
+          }
+        )
+      }
+      "group mappings in user definition contain an empty mapped group ID" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    ${ruleName.name.value}: [group1, group3]
+               |
+               |  users:
+               |  - username: cartman
+               |    groups:
+               |     - id: group1
+               |       name: Group 1
+               |       external_group_ids: [""]
+               |    auth_key: "cartman:pass"
+               |    groups_provider_authorization:
+               |      user_groups_provider: GroupsService1
+               |      groups: ["ldap_group3", "ldap_group4"]
+               |
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |
+               |  user_groups_providers:
+               |  - name: GroupsService1
+               |    groups_endpoint: "http://localhost:8080/groups"
+               |    auth_token_name: "user"
+               |    auth_token_passed_as: QUERY_PARAM
+               |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
+               |
+               |""".stripMargin
+          ,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message(
+              "Error for field 'external_group_ids': Non empty list of group IDs or/and patterns is required"
+            )))
+          }
+        )
+      }
+      "group ID in user definition is empty" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    ${ruleName.name.value}: [group1, group3]
+               |
+               |  users:
+               |  - username: cartman
+               |    groups:
+               |     - id: ""
+               |       name: Group 1
+               |       external_group_ids: ["ldap_group3"]
+               |    auth_key: "cartman:pass"
+               |    groups_provider_authorization:
+               |      user_groups_provider: GroupsService1
+               |      groups: ["ldap_group3", "ldap_group4"]
+               |
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |
+               |  user_groups_providers:
+               |  - name: GroupsService1
+               |    groups_endpoint: "http://localhost:8080/groups"
+               |    auth_token_name: "user"
+               |    auth_token_passed_as: QUERY_PARAM
+               |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
+               |
+               |""".stripMargin
+          ,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message(
+              "Error for field 'id': Group ID cannot be an empty string"
+            )))
+          }
+        )
+      }
+      "group name in user definition is empty" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    ${ruleName.name.value}: [group1, group3]
+               |
+               |  users:
+               |  - username: cartman
+               |    groups:
+               |     - id: group1
+               |       name: ""
+               |       external_group_ids: ["ldap_group3"]
+               |    auth_key: "cartman:pass"
+               |    groups_provider_authorization:
+               |      user_groups_provider: GroupsService1
+               |      groups: ["ldap_group3", "ldap_group4"]
+               |
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+               |    ssl_enabled: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |
+               |  user_groups_providers:
+               |  - name: GroupsService1
+               |    groups_endpoint: "http://localhost:8080/groups"
+               |    auth_token_name: "user"
+               |    auth_token_passed_as: QUERY_PARAM
+               |    response_group_ids_json_path: "$$..groups[?(@.id)].id"
+               |
+               |""".stripMargin
+          ,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message(
+              "Error for field 'name': Group name cannot be an empty string"
+            )))
+          }
+        )
+      }
+    }
+    "only one authentication rule can be defined for user in users section" in {
+      assertDecodingFailure(
+        yaml =
+          s"""
+             |readonlyrest:
+             |
+             |  access_control_rules:
+             |
+             |  - name: test_block1
+             |    ${ruleName.name.value}: ["group1"]
+             |
+             |  users:
+             |  - username: cartman
+             |    groups: ["group1", "group3"]
+             |    auth_key: "cartman:pass"
+             |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+             |
+             |""".stripMargin,
+        assertion = errors => {
+          errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message(
               """Users definition section external groups mapping feature allows for single rule with authentication
                 | and authorization or two rules which handle authentication and authorization separately. 'auth_key'
@@ -869,5 +1210,4 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
         )
       }
     }
-  }
 }

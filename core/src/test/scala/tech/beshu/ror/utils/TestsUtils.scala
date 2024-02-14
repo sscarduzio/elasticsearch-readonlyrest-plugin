@@ -145,13 +145,15 @@ object TestsUtils {
 
   def indexPattern(str: NonEmptyString): IndexPattern = IndexPattern(clusterIndexName(str))
 
+  def userId(str: NonEmptyString): User.Id = User.Id(str)
+
   implicit def scalaFiniteDuration2JavaDuration(duration: FiniteDuration): Duration = Duration.ofMillis(duration.toMillis)
 
   def impersonatorDefFrom(userIdPattern: NonEmptyString,
                           impersonatorCredentials: Credentials,
                           impersonatedUsersIdPatterns: NonEmptyList[NonEmptyString]): ImpersonatorDef = {
     ImpersonatorDef(
-      UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id(userIdPattern)))),
+      UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(userId(userIdPattern)))),
       new AuthKeyRule(
         BasicAuthenticationRule.Settings(impersonatorCredentials),
         CaseSensitivity.Enabled,
