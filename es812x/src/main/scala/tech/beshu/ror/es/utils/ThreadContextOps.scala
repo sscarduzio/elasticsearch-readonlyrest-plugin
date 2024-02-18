@@ -30,6 +30,7 @@ final class ThreadContextOps(val threadContext: ThreadContext) extends AnyVal {
       JavaConverters.flattenPair(threadContext.getResponseHeaders).toSet ++ esContext.threadContextResponseHeaders
     val storedContext = threadContext.stashContext()
     responseHeaders.foreach { case (k, v) => threadContext.addResponseHeader(k, v) }
+    threadContext.addResponseHeader("X-elastic-product", "Elasticsearch")
     storedContext
   }
 

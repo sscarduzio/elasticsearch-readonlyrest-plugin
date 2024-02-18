@@ -62,6 +62,10 @@ class RegularRequestHandler(engine: Engine,
   private def commitResult[B <: BlockContext : BlockContextUpdater](result: RegularRequestResult[B],
                                                                     request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
     Try {
+//      import eu.timepit.refined.auto._
+//      threadPool.getThreadContext.putHeaderIfNotPresent(
+//        Header(("X-elastic-product", "Elasticsearch"))
+//      )
       result match {
         case allow: RegularRequestResult.Allow[B] =>
           onAllow(request, allow.blockContext)

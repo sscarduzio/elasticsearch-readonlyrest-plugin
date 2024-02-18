@@ -38,11 +38,19 @@ class RorRestChannel(underlying: RestChannel)
         Option(response.getHeaders.get("X-elastic-product")) match {
           case Some(_) =>
           case None =>
+//            response.addHeader("X-elastic-product", "Elasticsearch")
+
             import scala.jdk.CollectionConverters._
-            val headers = underlying.request().getHeaders.asScala.map { case (h, v) => s"$h:${v.asScala.mkString(",")}" }.mkString(",")
-            println(s"Request headers: $headers")
-            println(s"Adding header to ${underlying.request().method().name()} ${underlying.request().path()}")
-            response.addHeader("X-elastic-product", "Elasticsearch")
+            val requestHeaders = underlying.request().getHeaders.asScala.map { case (h, v) => s"$h:${v.asScala.mkString(",")}" }.mkString(",")
+            val responseHeaders = response.getHeaders.asScala.map { case (h, v) => s"$h:${v.asScala.mkString(",")}" }.mkString(",")
+
+            println(
+              s"""
+                 |${underlying.request().method().name()} ${underlying.request().path()}
+                 |  - request headers: $requestHeaders
+                 |  - response headers: $responseHeaders
+                 |""".stripMargin
+            )
         }
       case None =>
     }
