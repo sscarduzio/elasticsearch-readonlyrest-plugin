@@ -24,15 +24,19 @@ readonlyrest:
       verbosity: error
       auth_key: admin:container
 
-    - name: "test"
+    - name: "test 1"
       kibana:
         access: rw
-#        index: ".kibana_@{user}"
-#        hide_apps: ["readonlyrest_kbn"]
       ldap_auth:
         name: "ldap"
-        groups: ["*"]
-      verbosity: error
+        groups: ["g*"]
+
+    - name: "test 2"
+      kibana:
+        access: rw
+      ldap_auth:
+        name: "ldap"
+        groups: ["t*"]
 
   ldaps:
     - name: ldap
@@ -49,3 +53,4 @@ readonlyrest:
       user_id_attribute: "uid"                                  
       unique_member_attribute: "uniqueMember"
 
+      cache_ttl_in_sec: 600 sec

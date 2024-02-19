@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
-import cats.implicits._
 import com.unboundid.ldap.sdk._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
@@ -28,7 +27,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.NestedGroupsConfig
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.utils.LoggerOps._
 
 import scala.concurrent.duration._
 
@@ -38,36 +36,44 @@ private [implementations] abstract class BaseUnboundidLdapService(connectionPool
   extends LdapUserService with Logging {
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
-    connectionPool
-      .process(searchUserLdapRequest(_, userSearchFiler, userId), serviceTimeout)
-      .flatMap {
-        case Right(Nil) =>
-          logger.debug("LDAP getting user CN returned no entries")
-          Task.now(None)
-        case Right(user :: Nil) =>
-          Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)))))
-        case Right(all@user :: _) =>
-          logger.warn(s"LDAP search user - more than one user was returned: ${all.mkString(",")}. Picking first")
-          Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)))))
-        case Left(errorResult) =>
-          logger.error(s"LDAP getting user CN returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
-          Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
+    connectionPool.toString // todo:
+    Task.delay {
+      Some{
+        LdapUser(userId, Dn(NonEmptyString.unsafeFrom(
+          s"${userSearchFiler.uidAttribute}=${Filter.encodeValue(userId.value.value)},${userSearchFiler.searchUserBaseDN.value.value}"
+        )))
       }
-      .onError { case ex =>
-        Task(logger.errorEx("LDAP getting user operation failed.", ex))
-      }
+    }
+//    connectionPool
+//      .process(searchUserLdapRequest(_, userSearchFiler, userId), serviceTimeout)
+//      .flatMap {
+//        case Right(Nil) =>
+//          logger.debug("LDAP getting user CN returned no entries")
+//          Task.now(None)
+//        case Right(user :: Nil) =>
+//          Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)))))
+//        case Right(all@user :: _) =>
+//          logger.warn(s"LDAP search user - more than one user was returned: ${all.mkString(",")}. Picking first")
+//          Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)))))
+//        case Left(errorResult) =>
+//          logger.error(s"LDAP getting user CN returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
+//          Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
+//      }
+//      .onError { case ex =>
+//        Task(logger.errorEx("LDAP getting user operation failed.", ex))
+//      }
   }
 
-  private def searchUserLdapRequest(listener: AsyncSearchResultListener,
-                                    userSearchFiler: UserSearchFilterConfig,
-                                    userId: User.Id): LDAPRequest = {
-    new SearchRequest(
-      listener,
-      userSearchFiler.searchUserBaseDN.value.value,
-      SearchScope.SUB,
-      s"${userSearchFiler.uidAttribute}=${Filter.encodeValue(userId.value.value)}"
-    )
-  }
+//  private def searchUserLdapRequest(listener: AsyncSearchResultListener,
+//                                    userSearchFiler: UserSearchFilterConfig,
+//                                    userId: User.Id): LDAPRequest = {
+//    new SearchRequest(
+//      listener,
+//      userSearchFiler.searchUserBaseDN.value.value,
+//      SearchScope.SUB,
+//      s"${userSearchFiler.uidAttribute}=${Filter.encodeValue(userId.value.value)}"
+//    )
+//  }
 }
 
 final case class LdapUnexpectedResult(code: ResultCode, cause: String)
