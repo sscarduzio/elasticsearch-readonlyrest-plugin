@@ -31,7 +31,9 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.utils.LoggerOps.toLoggerOps
 import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.utils.TaskOps._
 
+import java.time.Clock
 import scala.concurrent.duration.FiniteDuration
 
 class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
@@ -39,6 +41,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
                                                 groupsSearchFilter: UserGroupsSearchFilterConfig,
                                                 userSearchFiler: UserSearchFilterConfig,
                                                 override val serviceTimeout: FiniteDuration Refined Positive)
+                                               (implicit clock: Clock)
   extends BaseUnboundidLdapService(connectionPool, userSearchFiler, serviceTimeout)
     with LdapAuthorizationService {
 
@@ -47,6 +50,15 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
     .map(new UnboundidLdapNestedGroupsService(connectionPool, _, serviceTimeout))
 
   override def groupsOf(id: User.Id): Task[UniqueList[Group]] = {
+    Task.measure(
+      doFetchGroupsOf(id),
+      measurement => Task.delay {
+        logger.debug(s"LDAP groups fetching took $measurement")
+      }
+    )
+  }
+
+  private def doFetchGroupsOf(id: User.Id): Task[UniqueList[Group]] = {
     ldapUserBy(id)
       .flatMap {
         case Some(user) =>
@@ -151,7 +163,8 @@ object UnboundidLdapAuthorizationService {
              poolProvider: UnboundidLdapConnectionPoolProvider,
              connectionConfig: LdapConnectionConfig,
              userSearchFiler: UserSearchFilterConfig,
-             userGroupsSearchFilter: UserGroupsSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthorizationService]] = {
+             userGroupsSearchFilter: UserGroupsSearchFilterConfig)
+            (implicit clock: Clock): Task[Either[ConnectionError, UnboundidLdapAuthorizationService]] = {
     (for {
       _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
         .recoverWith {

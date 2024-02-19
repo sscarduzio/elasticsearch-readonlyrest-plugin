@@ -36,8 +36,12 @@ import scala.language.postfixOps
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupIdAttribute, GroupSearchFilter, NestedGroupsConfig, UniqueMemberAttribute}
 
+import java.time.Clock
+
 class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider)
-  extends BaseDecoderTest(LdapServicesDecoder.ldapServicesDefinitionsDecoder(ldapConnectionPoolProvider))
+  extends BaseDecoderTest(
+    LdapServicesDecoder.ldapServicesDefinitionsDecoder(ldapConnectionPoolProvider, Clock.systemUTC())
+  )
     with BeforeAndAfterAll
     with ForAllTestContainer {
 

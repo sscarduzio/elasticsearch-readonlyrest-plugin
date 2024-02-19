@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.CustomAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{CircuitBreakerLdapAuthenticationServiceDecorator, Dn, LdapAuthenticationService}
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
@@ -38,6 +39,7 @@ import tech.beshu.ror.utils.ScalaOps.repeat
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.containers.{LdapContainer, ToxiproxyContainer}
 
+import java.time.Clock
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.reflect.ClassTag
@@ -181,6 +183,7 @@ class UnboundidLdapAuthenticationServiceTests
   }
 
   private def createSimpleAuthenticationService() = {
+    implicit val clock: Clock = Clock.systemUTC()
     UnboundidLdapAuthenticationService
       .create(
         Name("my_ldap"),
@@ -197,7 +200,7 @@ class UnboundidLdapAuthenticationServiceTests
           ),
           ignoreLdapConnectivityProblems = false,
         ),
-        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), "uid")
+        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
       )
       .runSyncUnsafe()
       .getOrElse(throw new IllegalStateException("LDAP connection problem"))
@@ -213,6 +216,7 @@ class UnboundidLdapAuthenticationServiceTests
   }
 
   private def createHaAuthenticationService() = {
+    implicit val clock: Clock = Clock.systemUTC()
     UnboundidLdapAuthenticationService
       .create(
         Name("my_ldap"),
@@ -235,7 +239,7 @@ class UnboundidLdapAuthenticationServiceTests
           ),
           ignoreLdapConnectivityProblems = false
         ),
-        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), "uid")
+        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
       )
       .runSyncUnsafe()
       .getOrElse(throw new IllegalStateException("LDAP connection problem"))

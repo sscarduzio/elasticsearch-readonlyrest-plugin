@@ -29,12 +29,14 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupIdAttribute, GroupSearchFilter, GroupsFromUserAttribute, GroupsFromUserEntry, NestedGroupsConfig, UniqueMemberAttribute}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.CustomAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils.group
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
+import java.time.Clock
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -88,6 +90,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
   }
 
   private def godAndRegionsLdapAuthorizationService = {
+    implicit val clock: Clock = Clock.systemUTC()
     UnboundidLdapAuthorizationService
       .create(
         Name("ldap1"),
@@ -108,7 +111,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
           ),
           ignoreLdapConnectivityProblems = false
         ),
-        UserSearchFilterConfig(Dn("ou=Gods,dc=example,dc=com"), "uid"),
+        UserSearchFilterConfig(Dn("ou=Gods,dc=example,dc=com"), CustomAttribute("uid")),
         UserGroupsSearchFilterConfig(
           GroupsFromUserEntry(
             Dn("ou=Regions,dc=example,dc=com"),
@@ -124,6 +127,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
   }
 
   private def usersAndRolesLdapAuthorizationService = {
+    implicit val clock: Clock = Clock.systemUTC()
     UnboundidLdapAuthorizationService
       .create(
         Name("ldap1"),
@@ -144,7 +148,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
           ),
           ignoreLdapConnectivityProblems = false
         ),
-        UserSearchFilterConfig(Dn("ou=Users,dc=example,dc=com"), "uid"),
+        UserSearchFilterConfig(Dn("ou=Users,dc=example,dc=com"), CustomAttribute("uid")),
         UserGroupsSearchFilterConfig(
           GroupsFromUserEntry(
             Dn("ou=Roles,dc=example,dc=com"),
