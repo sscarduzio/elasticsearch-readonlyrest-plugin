@@ -17,11 +17,7 @@ readonlyrest:
       hide_apps: ["timelion"]
 
   - name: R3
-    groups:
-      - id: "group_extra"
-        name: "Extra group"
-      - id: "group_extra_2"
-        name: "Extra group 2"
+    groups: ["group_extra"]
     actions: ["cluster:*"]
     uri_re: "lol don't match here pls"
 
@@ -35,6 +31,10 @@ readonlyrest:
   users:
   - username: user
     auth_key: user:passwd
-    groups: ["a_testgroup", "group_extra", "foogroup"]
-
+    groups:
+      - id: "a_testgroup"
+        name: "Test group"
+      - id: "group_extra"
+        name: "Extra group"
+      - id: "foogroup"
 
