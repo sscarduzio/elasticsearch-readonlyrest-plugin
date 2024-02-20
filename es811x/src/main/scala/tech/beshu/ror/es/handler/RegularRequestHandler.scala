@@ -248,9 +248,13 @@ class RegularRequestHandler(engine: Engine,
 
   private class UpdateResponseListener(update: ActionResponse => Task[ActionResponse]) extends ActionListener[ActionResponse] {
     override def onResponse(response: ActionResponse): Unit = doPrivileged {
+      val stashedContext = threadPool.getThreadContext.stashAndMergeResponseHeaders(esContext)
       update(response) runAsync {
-        case Right(updatedResponse) => esContext.listener.onResponse(updatedResponse)
-        case Left(ex) => onFailure(new Exception(ex))
+        case Right(updatedResponse) =>
+          stashedContext.restore()
+          esContext.listener.onResponse(updatedResponse)
+        case Left(ex) =>
+          onFailure(new Exception(ex))
       }
     }
 

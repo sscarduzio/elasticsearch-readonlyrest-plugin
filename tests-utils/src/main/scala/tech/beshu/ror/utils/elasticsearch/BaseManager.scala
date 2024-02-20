@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
-import com.typesafe.scalalogging.LazyLogging
 import net.jodah.failsafe.{Failsafe, RetryPolicy}
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.HttpUriRequest
@@ -78,20 +77,16 @@ object BaseManager {
 
   final case class SimpleHeader(name: String, value: String)
 
-  class SimpleResponse private[elasticsearch](val response: HttpResponse) {
+  class SimpleResponse private[elasticsearch](val response: HttpResponse, esNativeApi: Boolean = true) {
     val headers: Set[SimpleHeader] = response.getAllHeaders.map(h => SimpleHeader(h.getName, h.getValue)).toSet
     val responseCode: Int = response.getStatusLine.getStatusCode
     val isSuccess: Boolean = responseCode / 100 == 2
-    val isForbidden: Boolean = responseCode == 401
+    val isForbidden: Boolean = responseCode == 401 || responseCode == 403
     val isNotFound: Boolean = responseCode == 404
     val isBadRequest: Boolean = responseCode == 400
     val body: String = Try(stringBodyFrom(response)).getOrElse("")
 
-    headers.find(_.name.toLowerCase == "x-elastic-product") match {
-      case Some(_) =>
-      case None =>
-        throw new IllegalStateException("no x-elastic-product header in the response")
-    }
+    assertThatEsApiResponseContainsXElasticProductHeader()
 
     def force(): this.type = {
       if (!isSuccess) throw new IllegalStateException(
@@ -101,13 +96,25 @@ object BaseManager {
     }
 
     override def toString: String = response.toString
+
+    private def assertThatEsApiResponseContainsXElasticProductHeader(): Unit = {
+      if (esNativeApi && !isForbidden) {
+        if(!response.containsHeader("x-elastic-product")) {
+          throw new IllegalStateException(s"no x-elastic-product header in the ${response.getStatusLine} response")
+        }
+      }
+    }
   }
 
-  class JsonResponse(response: HttpResponse) extends SimpleResponse(response) with LazyLogging {
+  class JsonResponse(response: HttpResponse, esNativeApi: Boolean = true)
+    extends SimpleResponse(response, esNativeApi) {
+
     lazy val responseJson: JSON = ujson.read(body)
   }
 
-  class YamlMapResponse(response: HttpResponse) extends SimpleResponse(response) with LazyLogging {
+  class YamlMapResponse(response: HttpResponse, esNativeApi: Boolean = true)
+    extends SimpleResponse(response, esNativeApi) {
+
     val responseYaml: Map[String, Any] = {
       val yamlParser = new Yaml(new SafeConstructor(new LoaderOptions()))
       yamlParser.load[util.LinkedHashMap[String, Object]](body).asScala.toMap
