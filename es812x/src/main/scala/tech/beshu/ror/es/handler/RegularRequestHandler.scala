@@ -254,6 +254,7 @@ class RegularRequestHandler(engine: Engine,
           stashedContext.restore()
           esContext.listener.onResponse(updatedResponse)
         case Left(ex) =>
+          stashedContext.close()
           onFailure(new Exception(ex))
       }
     }
