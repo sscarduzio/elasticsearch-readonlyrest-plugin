@@ -27,33 +27,6 @@ class RorRestChannel(underlying: RestChannel)
 
   override def sendResponse(response: RestResponse): Unit = {
     ThreadRepo.removeRestChannel(this)
-    underlying.sendResponse(
-      addXElasticProductHeaderIfMissing(filterRestResponse(response))
-    )
-  }
-
-  private def addXElasticProductHeaderIfMissing(response: RestResponse) = {
-    Option(underlying.request().header("X-elastic-product-origin")) match {
-      case Some(_) =>
-        Option(response.getHeaders.get("X-elastic-product")) match {
-          case Some(_) =>
-          case None =>
-//            response.addHeader("X-elastic-product", "Elasticsearch")
-
-            import scala.jdk.CollectionConverters._
-            val requestHeaders = underlying.request().getHeaders.asScala.map { case (h, v) => s"$h:${v.asScala.mkString(",")}" }.mkString(",")
-            val responseHeaders = response.getHeaders.asScala.map { case (h, v) => s"$h:${v.asScala.mkString(",")}" }.mkString(",")
-
-            println(
-              s"""
-                 |${underlying.request().method().name()} ${underlying.request().path()}
-                 |  - request headers: $requestHeaders
-                 |  - response headers: $responseHeaders
-                 |""".stripMargin
-            )
-        }
-      case None =>
-    }
-    response
+    underlying.sendResponse(filterRestResponse(response))
   }
 }
