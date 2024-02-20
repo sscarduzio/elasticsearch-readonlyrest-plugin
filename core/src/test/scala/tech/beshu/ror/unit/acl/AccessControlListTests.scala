@@ -25,7 +25,8 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult.Allow
+import tech.beshu.ror.accesscontrol.AccessControl.ForbiddenCause.OperationNotAllowed
+import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult.{Allow, Forbidden}
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.acl.AccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
@@ -45,42 +46,106 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
 
   "An AccessControlList" when {
     "metadata request is called" should {
-      "go through all blocks and collect metadata response content" in {
-        val blocks = NonEmptyList.of(
-          mockBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b4", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          mockBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-        )
-        val acl = new AccessControlList(
-          blocks,
-          new AccessControlListStaticContext(
-            blocks,
-            GlobalSettings(
-              showBasicAuthPrompt = true,
-              forbiddenRequestMessage = "Forbidden",
-              flsEngine = FlsEngine.default,
-              configurationIndex = RorConfigurationIndex(IndexName.Full(".readonlyrest")),
-              userIdCaseSensitivity = CaseSensitivity.Enabled
-            ),
-            Set.empty
-          )
-        )
-        val userMetadataRequestResult = acl
-          .handleMetadataRequest(mockMetadataRequestContext("admins"))
-          .runSyncUnsafe()
-          .result
+      "allow request" which {
+        "response will contain collected metadata from matched blocks" in {
+          val acl = createAcl(NonEmptyList.of(
+            mockAllowedPolicyBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+            mockAllowedPolicyBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+            mockAllowedPolicyBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+            mockAllowedPolicyBlock("b4", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+            mockAllowedPolicyBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+            mockAllowedPolicyBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+            mockAllowedPolicyBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+          ))
 
-        inside(userMetadataRequestResult) {
-          case Allow(userMetadata, _) =>
-            userMetadata.availableGroups shouldBe UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk"))
-            userMetadata.currentGroupId shouldBe Some(GroupId("admins"))
+          val userMetadataRequestResult = acl
+            .handleMetadataRequest(mockMetadataRequestContext("admins"))
+            .runSyncUnsafe()
+            .result
+
+          inside(userMetadataRequestResult) {
+            case Allow(userMetadata, _) =>
+              userMetadata.availableGroups.toList should contain theSameElementsAs {
+                group("logserver") :: group("ext-onlio") :: group("admins") :: group("ext-odp") ::
+                  group("ext-enex") :: group("dohled-nd-pce") :: group("helpdesk") :: Nil
+              }
+              userMetadata.currentGroupId shouldBe Some(GroupId("admins"))
+          }
+        }
+        "FORBID policy block is matched and its position in ACL is after some ALLOW-policy matched blocks" in {
+          val acl = createAcl(NonEmptyList.of(
+            mockAllowedPolicyBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g1"), group("admins")))),
+            mockAllowedPolicyBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g2"), group("admins")))),
+            mockForbidPolicyBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g3"), group("admins")))),
+            mockAllowedPolicyBlock("b4", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g4"), group("admins")))),
+            mockAllowedPolicyBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g5"), group("admins")))),
+            mockAllowedPolicyBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g6"), group("admins")))),
+            mockAllowedPolicyBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g7"), group("admins")))),
+          ))
+
+          val userMetadataRequestResult = acl
+            .handleMetadataRequest(mockMetadataRequestContext("admins"))
+            .runSyncUnsafe()
+            .result
+
+          inside(userMetadataRequestResult) {
+            case Allow(userMetadata, _) =>
+              userMetadata.availableGroups.toList should contain theSameElementsAs {
+                group("g1") :: group("g2") :: group("admins") :: Nil
+              }
+              userMetadata.currentGroupId shouldBe Some(GroupId("admins"))
+          }
+        }
+      }
+      "forbid request" when {
+        "FORBID policy block is matched and its position in ACL is before any other ALLOW-policy matched block" in {
+          val acl = createAcl(NonEmptyList.of(
+            mockForbidPolicyBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g1"), group("admins")))),
+            mockAllowedPolicyBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g2"), group("admins")))),
+            mockAllowedPolicyBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g3"), group("admins")))),
+            mockAllowedPolicyBlock("b4", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g4"), group("admins")))),
+            mockAllowedPolicyBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g5"), group("admins")))),
+            mockAllowedPolicyBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g6"), group("admins")))),
+            mockAllowedPolicyBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g7"), group("admins")))),
+          ))
+
+          val userMetadataRequestResult = acl
+            .handleMetadataRequest(mockMetadataRequestContext("admins"))
+            .runSyncUnsafe()
+            .result
+
+          inside(userMetadataRequestResult) {
+            case Forbidden(causes) =>
+              causes.toNonEmptyList should be (NonEmptyList.one(OperationNotAllowed))
+          }
         }
       }
     }
+  }
+
+  private def createAcl(blocks: NonEmptyList[Block]) = {
+    new AccessControlList(
+      blocks,
+      new AccessControlListStaticContext(
+        blocks,
+        GlobalSettings(
+          showBasicAuthPrompt = true,
+          forbiddenRequestMessage = "Forbidden",
+          flsEngine = FlsEngine.default,
+          configurationIndex = RorConfigurationIndex(IndexName.Full(".readonlyrest")),
+          userIdCaseSensitivity = CaseSensitivity.Enabled
+        ),
+        Set.empty
+      )
+    )
+  }
+
+  private def mockAllowedPolicyBlock(name: String, userMetadata: UserMetadata) = {
+    mockBlock(name, Block.Policy.Allow, userMetadata)
+  }
+
+  private def mockForbidPolicyBlock(name: String, userMetadata: UserMetadata) = {
+    mockBlock(name, Block.Policy.Forbid, userMetadata)
   }
 
   private def mockBlock(name: String, policy: Block.Policy, userMetadata: UserMetadata) = {
