@@ -21,8 +21,7 @@ import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
-import tech.beshu.ror.utils.elasticsearch.RorApiManager.{RorApiJsonResponse, RorApiResponseWithBusinessStatus}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 
 import java.util.concurrent.TimeUnit
@@ -31,9 +30,9 @@ import scala.concurrent.duration.FiniteDuration
 class RorApiManager(client: RestClient,
                     esVersion: String,
                     override val additionalHeaders: Map[String, String] = Map.empty)
-  extends BaseManager(client) {
+  extends BaseManager(client, esVersion, esNativeApi = false) {
 
-  private lazy val documentManager = new DocumentManager(client, esVersion)
+  lazy val documentManager = new DocumentManager(client, esVersion)
 
   def fetchMetadata(preferredGroupId: Option[String] = None,
                     correlationId: Option[String] = None): RorApiJsonResponse = {
@@ -107,7 +106,7 @@ class RorApiManager(client: RestClient,
     call(createConfigureImpersonationMocksRequest(payload), new RorApiResponseWithBusinessStatus(_))
   }
 
-  def insertInIndexConfigDirectlyToRorIndex(rorConfigIndex: String, config: String): JsonResponse = {
+  def insertInIndexConfigDirectlyToRorIndex(rorConfigIndex: String, config: String): documentManager.JsonResponse = {
     documentManager.createFirstDoc(
       index = rorConfigIndex,
       content = ujson.read(rorConfigIndexDocumentContentFrom(config))
@@ -211,14 +210,11 @@ class RorApiManager(client: RestClient,
     new HttpGet(client.from("/_readonlyrest/admin/config/load", additionalParams))
   }
 
-}
-object RorApiManager {
-
   final class RorApiJsonResponse(override val response: HttpResponse)
-    extends JsonResponse(response, esNativeApi = false)
+    extends JsonResponse(response)
 
   final class RorApiResponseWithBusinessStatus(override val response: HttpResponse)
-    extends JsonResponse(response, esNativeApi = false) {
+    extends JsonResponse(response) {
 
     def forceOkStatus(): this.type = {
       force()
@@ -237,7 +233,7 @@ object RorApiManager {
 
     def forceOKStatusOrConfigAlreadyLoaded(): this.type = {
       force()
-      if(businessStatus === "OK" || isConfigAlreadyLoaded) {
+      if (businessStatus === "OK" || isConfigAlreadyLoaded) {
         this
       } else {
         throw new IllegalStateException(

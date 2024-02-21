@@ -18,14 +18,14 @@ package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.client.methods.{HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.Version
 
 class ClusterManager(client: RestClient,
                      esVersion: String,
                      override val additionalHeaders: Map[String, String] = Map.empty)
-  extends BaseManager(client)  {
+  extends BaseManager(client, esVersion, esNativeApi = true)  {
 
   def allocationExplain(): JsonResponse = allocationExplain(None)
 

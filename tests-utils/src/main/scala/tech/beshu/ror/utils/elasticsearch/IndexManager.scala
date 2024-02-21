@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.IndexManager._
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Version
@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.misc.Version
 class IndexManager(client: RestClient,
                    esVersion: String,
                    override val additionalHeaders: Map[String, String] = Map.empty)
-  extends BaseManager(client) {
+  extends BaseManager(client, esVersion, esNativeApi = true) {
 
   def createIndex(index: String,
                   settings: Option[JSON] = None,
@@ -348,24 +348,6 @@ class IndexManager(client: RestClient,
   private def createCloseIndexRequest(indexName: String) = {
     new HttpPost(client.from(s"/$indexName/_close"))
   }
-}
-
-object IndexManager {
-
-  sealed trait ReindexSource {
-    def indexName: String
-    def `type`: Option[String]
-  }
-  object ReindexSource {
-    final case class Local(indexName: String, `type`: Option[String] = None) extends ReindexSource
-    final case class Remote(indexName: String, address: String, username: String, password: String, `type`: Option[String] = None) extends ReindexSource
-  }
-
-  sealed trait AliasAction
-  object AliasAction {
-    final case class Add(index: String, alias: String, filter: Option[JSON] = None) extends AliasAction
-    final case class Delete(index: String, alias: String) extends AliasAction
-  }
 
   class GetIndexResponse(response: HttpResponse) extends JsonResponse(response) {
     lazy val indicesAndAliases: Map[String, Set[String]] =
@@ -409,5 +391,23 @@ object IndexManager {
 
     sealed case class IndexDescription(name: String, aliases: List[String], attributes: List[String])
     sealed case class AliasDescription(name: String, indices: List[String])
+  }
+}
+object IndexManager {
+
+  sealed trait ReindexSource {
+    def indexName: String
+
+    def `type`: Option[String]
+  }
+  object ReindexSource {
+    final case class Local(indexName: String, `type`: Option[String] = None) extends ReindexSource
+    final case class Remote(indexName: String, address: String, username: String, password: String, `type`: Option[String] = None) extends ReindexSource
+  }
+
+  sealed trait AliasAction
+  object AliasAction {
+    final case class Add(index: String, alias: String, filter: Option[JSON] = None) extends AliasAction
+    final case class Delete(index: String, alias: String) extends AliasAction
   }
 }

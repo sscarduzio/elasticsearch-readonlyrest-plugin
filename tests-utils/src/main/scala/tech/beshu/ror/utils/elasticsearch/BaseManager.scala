@@ -21,10 +21,11 @@ import org.apache.http.HttpResponse
 import org.apache.http.client.methods.HttpUriRequest
 import org.testcontainers.shaded.org.yaml.snakeyaml.{LoaderOptions, Yaml}
 import org.testcontainers.shaded.org.yaml.snakeyaml.constructor.SafeConstructor
-import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleResponse
+import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, SimpleHeader}
 import tech.beshu.ror.utils.httpclient.HttpResponseHelper.stringBodyFrom
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils._
+import tech.beshu.ror.utils.misc.Version
 import ujson.Value
 
 import java.time.Duration
@@ -33,7 +34,9 @@ import java.util.function.BiPredicate
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-abstract class BaseManager(client: RestClient) {
+abstract class BaseManager(client: RestClient,
+                           esVersion: String,
+                           esNativeApi: Boolean) {
 
   protected def call[T <: SimpleResponse](request: HttpUriRequest, fromResponse: HttpResponse => T): T = {
     client
@@ -47,9 +50,9 @@ abstract class BaseManager(client: RestClient) {
       .bracket(fromResponse)
   }
 
-  protected def eventually[T <: SimpleResponse](action: => T)
-                                               (until: T => Boolean): T = {
-    val policy: RetryPolicy[T] = requestRepeatPolicy[T](shouldRepeat = until andThen(!_))
+  protected[elasticsearch] def eventually[T <: SimpleResponse](action: => T)
+                                                              (until: T => Boolean): T = {
+    val policy: RetryPolicy[T] = requestRepeatPolicy[T](shouldRepeat = until andThen (!_))
     Failsafe
       .`with`[T, RetryPolicy[T]](policy)
       .get(() => action)
@@ -69,15 +72,7 @@ abstract class BaseManager(client: RestClient) {
 
   protected def additionalHeaders: Map[String, String] = Map.empty
 
-}
-
-object BaseManager {
-
-  type JSON = Value
-
-  final case class SimpleHeader(name: String, value: String)
-
-  class SimpleResponse private[elasticsearch](val response: HttpResponse, esNativeApi: Boolean = true) {
+  class SimpleResponse private[elasticsearch](val response: HttpResponse) {
     val headers: Set[SimpleHeader] = response.getAllHeaders.map(h => SimpleHeader(h.getName, h.getValue)).toSet
     val responseCode: Int = response.getStatusLine.getStatusCode
     val isSuccess: Boolean = responseCode / 100 == 2
@@ -98,26 +93,34 @@ object BaseManager {
     override def toString: String = response.toString
 
     private def assertThatEsApiResponseContainsXElasticProductHeader(): Unit = {
-      if (esNativeApi && !isForbidden) {
-        if(!response.containsHeader("x-elastic-product")) {
+      if (Version.greaterOrEqualThan(esVersion, 7, 14, 0) && esNativeApi && !isForbidden) {
+        if (!response.containsHeader("x-elastic-product")) {
           throw new IllegalStateException(s"no x-elastic-product header in the ${response.getStatusLine} response")
         }
       }
     }
   }
 
-  class JsonResponse(response: HttpResponse, esNativeApi: Boolean = true)
-    extends SimpleResponse(response, esNativeApi) {
+  class JsonResponse(response: HttpResponse)
+    extends SimpleResponse(response) {
 
     lazy val responseJson: JSON = ujson.read(body)
   }
 
-  class YamlMapResponse(response: HttpResponse, esNativeApi: Boolean = true)
-    extends SimpleResponse(response, esNativeApi) {
+  class YamlMapResponse(response: HttpResponse)
+    extends SimpleResponse(response) {
 
     val responseYaml: Map[String, Any] = {
       val yamlParser = new Yaml(new SafeConstructor(new LoaderOptions()))
       yamlParser.load[util.LinkedHashMap[String, Object]](body).asScala.toMap
     }
   }
+}
+
+object BaseManager {
+
+  type JSON = Value
+
+  final case class SimpleHeader(name: String, value: String)
+
 }

@@ -20,12 +20,11 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
-import tech.beshu.ror.utils.elasticsearch.SnapshotManager.{RepositoriesResult, SnapshotsResult}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 
-class SnapshotManager(client: RestClient)
-  extends BaseManager(client)
+class SnapshotManager(client: RestClient, esVersion: String)
+  extends BaseManager(client, esVersion, esNativeApi = true)
     with LazyLogging {
 
   def getRepository(repositoryNamePattern: String,
@@ -220,9 +219,6 @@ class SnapshotManager(client: RestClient)
       case all => all.mkString(",")
     }
   }
-}
-
-object SnapshotManager {
 
   class RepositoriesResult(response: HttpResponse) extends JsonResponse(response) {
     lazy val repositories: Map[String, JSON] = responseJson.obj.toMap

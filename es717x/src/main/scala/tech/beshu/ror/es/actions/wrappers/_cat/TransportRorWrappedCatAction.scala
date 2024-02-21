@@ -20,12 +20,14 @@ import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.tasks.Task
+import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 
 import scala.annotation.nowarn
 
 class TransportRorWrappedCatAction(transportService: TransportService,
                                    actionFilters: ActionFilters,
+                                   threadPool: ThreadPool,
                                    @nowarn("cat=unused") constructorDiscriminator: Unit)
   extends HandledTransportAction[RorWrappedCatRequest, RorWrappedCatResponse](
     RorWrappedCatActionType.name, transportService, actionFilters, RorWrappedCatActionType.exceptionReader
@@ -33,11 +35,13 @@ class TransportRorWrappedCatAction(transportService: TransportService,
 
   @Inject
   def this(transportService: TransportService,
-           actionFilters: ActionFilters) =
-    this(transportService, actionFilters, ())
+           actionFilters: ActionFilters,
+           threadPool: ThreadPool) =
+    this(transportService, actionFilters, threadPool, ())
 
   override def doExecute(task: Task, request: RorWrappedCatRequest,
                          listener: ActionListener[RorWrappedCatResponse]): Unit = {
+    threadPool.getThreadContext.addResponseHeader("x-elastic-product", "elasticsearch")
     listener.onResponse(new RorWrappedCatResponse)
   }
 }

@@ -159,9 +159,9 @@ trait FieldRuleEngineSuite
     }
   }
 
-  protected def unmodifiableQueryAssertion(searchResult: SearchManager.SearchResult): Unit
+  protected def unmodifiableQueryAssertion(searchResult: SearchManager#SearchResult): Unit
 
-  protected def scrollSearchShouldProperlyHandleAllowedFields(searchResult: SearchManager.SearchResult): Unit = {
+  protected def scrollSearchShouldProperlyHandleAllowedFields(searchResult: SearchManager#SearchResult): Unit = {
     searchResult should have statusCode 200
     searchResult.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
       ujson.read(s"""{"allowedField": "allowed:1"}"""),
@@ -185,7 +185,7 @@ trait FieldRuleEngineSuite
     }
   }
 
-  protected def scrollSearchShouldProperlyHandleForbiddenFields(searchResult: SearchManager.SearchResult): Unit = {
+  protected def scrollSearchShouldProperlyHandleForbiddenFields(searchResult: SearchManager#SearchResult): Unit = {
     searchResult should have statusCode 200
     searchResult.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
       ujson.read(s"""{"allowedField": "allowed:1", "forbiddenField":1}"""),

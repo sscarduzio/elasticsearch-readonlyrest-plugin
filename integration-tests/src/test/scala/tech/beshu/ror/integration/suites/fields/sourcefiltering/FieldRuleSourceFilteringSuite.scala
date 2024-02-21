@@ -22,8 +22,8 @@ import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceF
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterProvider}
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
-import tech.beshu.ror.utils.elasticsearch.DocumentManager
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
+import tech.beshu.ror.utils.elasticsearch.{BaseManager, DocumentManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
@@ -34,7 +34,7 @@ trait FieldRuleSourceFilteringSuite
     with CustomScalaTestMatchers {
   this: EsClusterProvider =>
 
-  protected type CALL_RESULT <: JsonResponse
+  protected type CALL_RESULT <: BaseManager#JsonResponse
 
   override implicit val rorConfigFileName: String = "/field_level_security/readonlyrest.yml"
 
