@@ -43,6 +43,9 @@ trait FieldRuleEngineSuite
   protected lazy val user1SearchManager = new SearchManager(basicAuthClient("user1", "pass"), esVersionUsed)
   protected lazy val user2SearchManager = new SearchManager(basicAuthClient("user2", "pass"), esVersionUsed)
 
+  protected lazy val user3DocumentManager = new DocumentManager(basicAuthClient("user3", "pass"), esVersionUsed)
+  protected lazy val user4DocumentManager = new DocumentManager(basicAuthClient("user4", "pass"), esVersionUsed)
+
   "Search request with field rule defined" when {
     "specific FLS engine is used" should {
       "match and return filtered document source" when {
@@ -137,9 +140,28 @@ trait FieldRuleEngineSuite
     }
   }
 
-  protected def unmodifiableQueryAssertion(searchResult: SearchManager.SearchResult): Unit
+  "Get document" should {
+    "properly handle allowed fields" in {
+      val result = user3DocumentManager.get(index = "test-index", id = 3)
 
-  protected def scrollSearchShouldProperlyHandleAllowedFields(searchResult: SearchManager.SearchResult): Unit = {
+      result should have statusCode 200
+      result.responseJson("_source") should be (
+        ujson.read(s"""{"allowedField":"allowed:3"}""")
+      )
+    }
+    "properly handle forbidden fields" in {
+      val result = user4DocumentManager.get(index = "test-index", id = 3)
+
+      result should have statusCode 200
+      result.responseJson("_source") should be(
+        ujson.read(s"""{"allowedField":"allowed:3","forbiddenField":3}"""),
+      )
+    }
+  }
+
+  protected def unmodifiableQueryAssertion(searchResult: SearchManager#SearchResult): Unit
+
+  protected def scrollSearchShouldProperlyHandleAllowedFields(searchResult: SearchManager#SearchResult): Unit = {
     searchResult should have statusCode 200
     searchResult.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
       ujson.read(s"""{"allowedField": "allowed:1"}"""),
@@ -163,7 +185,7 @@ trait FieldRuleEngineSuite
     }
   }
 
-  protected def scrollSearchShouldProperlyHandleForbiddenFields(searchResult: SearchManager.SearchResult): Unit = {
+  protected def scrollSearchShouldProperlyHandleForbiddenFields(searchResult: SearchManager#SearchResult): Unit = {
     searchResult should have statusCode 200
     searchResult.searchHits.map(h => h.obj("_source")) should contain theSameElementsAs Set(
       ujson.read(s"""{"allowedField": "allowed:1", "forbiddenField":1}"""),

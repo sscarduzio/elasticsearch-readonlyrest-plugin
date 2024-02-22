@@ -19,11 +19,11 @@ package tech.beshu.ror.utils.elasticsearch
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
-import tech.beshu.ror.utils.elasticsearch.DataStreamManager._
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 
-class DataStreamManager(client: RestClient) extends BaseManager(client) {
+class DataStreamManager(client: RestClient, esVersion: String)
+  extends BaseManager(client, esVersion, esNativeApi = true) {
 
   def createDataStream(name: String): JsonResponse = {
     val request = new HttpPut(client.from(s"/_data_stream/$name"))
@@ -61,9 +61,6 @@ class DataStreamManager(client: RestClient) extends BaseManager(client) {
     request.setEntity(new StringEntity(ujson.write(body)))
     call(request, new JsonResponse(_))
   }
-}
-
-object DataStreamManager {
 
   class GetAllDataStreamsResult(response: HttpResponse) extends JsonResponse(response) {
 
@@ -90,7 +87,6 @@ object DataStreamManager {
         .toMap
   }
 
-
   class GetDataStreamResult(response: HttpResponse) extends GetAllDataStreamsResult(response) {
 
     def dataStreamName: String = allDataStreams.head
@@ -105,3 +101,4 @@ object DataStreamManager {
     def backingIndicesCount: Int = responseJson("backing_indices").num.toInt
   }
 }
+

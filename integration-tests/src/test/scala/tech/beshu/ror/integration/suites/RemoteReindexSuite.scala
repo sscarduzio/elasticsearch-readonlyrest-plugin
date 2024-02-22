@@ -83,12 +83,12 @@ class RemoteReindexSuite
     )
   }
 
-  private lazy val destEsIndexManager = new IndexManager(clients.last.basicAuthClient("dev1", "test"), esVersionUsed)
+  private lazy val destEsIndexManager = new IndexManager(clients.head.basicAuthClient("dev1", "test"), esVersionUsed)
 
   private lazy val sourceEsContainer = sourceEsCluster.nodes.head
 
-  lazy val clusterContainers: NonEmptyList[EsClusterContainer] = NonEmptyList.of(sourceEsCluster, destEsCluster)
-  lazy val esTargets: NonEmptyList[EsContainer] = NonEmptyList.of(sourceEsCluster.nodes.head, destEsCluster.nodes.head)
+  lazy val clusterContainers: NonEmptyList[EsClusterContainer] = NonEmptyList.of(destEsCluster, sourceEsCluster)
+  lazy val esTargets: NonEmptyList[EsContainer] = NonEmptyList.of(destEsCluster.nodes.head, sourceEsCluster.nodes.head)
 
   "A remote reindex request" should {
     "be able to proceed" when {
@@ -130,7 +130,12 @@ class RemoteReindexSuite
   }
 
   private def createReindexSource(sourceIndex: String, username: String): ReindexSource.Remote = {
-    ReindexSource.Remote(sourceIndex, s"http://${sourceEsContainer.getAddressInInternalNetwork}", username, "test")
+    ReindexSource.Remote(
+      indexName = sourceIndex,
+      address = s"http://${sourceEsContainer.getAddressInInternalNetwork}",
+      username = username,
+      password = "test"
+    )
   }
 }
 

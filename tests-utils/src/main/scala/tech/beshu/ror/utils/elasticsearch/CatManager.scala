@@ -18,17 +18,14 @@ package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.HttpGet
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
-import tech.beshu.ror.utils.elasticsearch.CatManager.{CatNodesResponse, CatResponse, CatShardsResponse}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Arr, Value}
 
-import scala.annotation.nowarn
-
 class CatManager(client: RestClient,
-                 override val additionalHeaders: Map[String, String] = Map.empty,
-                 @nowarn("cat=unused") esVersion: String)
-  extends BaseManager(client) {
+                 esVersion: String,
+                 override val additionalHeaders: Map[String, String] = Map.empty)
+  extends BaseManager(client, esVersion, esNativeApi = true) {
 
   def main(): JsonResponse = call(new HttpGet(client.from("/")), new JsonResponse(_))
 
@@ -69,10 +66,6 @@ class CatManager(client: RestClient,
   private def genericCatRequest(catType: String) = {
     new HttpGet(client.from(s"/_cat/$catType", Map("format" -> "json")))
   }
-
-}
-
-object CatManager {
 
   sealed class CatResponse(response: HttpResponse)
     extends JsonResponse(response) {

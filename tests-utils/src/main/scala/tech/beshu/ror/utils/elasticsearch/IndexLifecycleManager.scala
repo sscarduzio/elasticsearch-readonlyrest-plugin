@@ -20,12 +20,11 @@ import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
-import tech.beshu.ror.utils.elasticsearch.IndexLifecycleManager.{IlmExplainResponse, IlmStatusResponse, PoliciesResponse}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 
-class IndexLifecycleManager(client: RestClient)
-  extends BaseManager(client) {
+class IndexLifecycleManager(client: RestClient, esVersion: String)
+  extends BaseManager(client, esVersion, esNativeApi = true) {
 
   def getPolicy(id: String): PoliciesResponse = {
     call(createGetPolicyRequest(id), new PoliciesResponse(_))
@@ -116,9 +115,6 @@ class IndexLifecycleManager(client: RestClient)
   private def createRemovePolicyFromIndexRequest(indices: NonEmptyList[String]) = {
     new HttpPost(client.from(s"${indices.toList.mkString(",")}/_ilm/remove"))
   }
-}
-
-object IndexLifecycleManager {
 
   class PoliciesResponse(response: HttpResponse) extends JsonResponse(response) {
     lazy val policies: Map[String, JSON] =

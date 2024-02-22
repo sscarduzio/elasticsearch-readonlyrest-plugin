@@ -16,21 +16,22 @@
  */
 package tech.beshu.ror.integration.suites.fields.sourcefiltering
 
+import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
-import tech.beshu.ror.utils.elasticsearch.DocumentManager
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
+import tech.beshu.ror.utils.elasticsearch.{BaseManager, DocumentManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 class FieldRuleGetApiSourceFilteringSuite
   extends FieldRuleSourceFilteringSuite
     with SingletonPluginTestSupport {
 
-  override protected type CALL_RESULT = JsonResponse
+  override protected type CALL_RESULT = BaseManager#JsonResponse
 
   override protected def fetchDocument(client: RestClient,
                                        index: String,
-                                       clientSourceParams: Option[FieldRuleSourceFilteringSuite.ClientSourceOptions]): JsonResponse = {
+                                       clientSourceParams: Option[ClientSourceOptions]): BaseManager#JsonResponse = {
     val documentManager = new DocumentManager(client, esVersionUsed)
 
     val queryParams = clientSourceParams match {
@@ -43,7 +44,7 @@ class FieldRuleGetApiSourceFilteringSuite
     documentManager.get(index, 1, queryParams)
   }
 
-  override protected def sourceOfFirstDoc(result: JsonResponse): Option[JSON] = {
+  override protected def sourceOfFirstDoc(result: BaseManager#JsonResponse): Option[JSON] = {
     result.responseJson.obj.get("_source")
   }
 }

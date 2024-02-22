@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.integration.suites.fields.sourcefiltering
 
+import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.containers.{ComposedElasticsearchNodeDataInitializer, ElasticsearchNodeDataInitializer}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
-import tech.beshu.ror.utils.elasticsearch.SearchManager.SearchResult
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
@@ -30,7 +30,7 @@ class FieldRuleSearchApiSourceFilteringSuite
     with SingletonPluginTestSupport
     with CustomScalaTestMatchers {
 
-  override protected type CALL_RESULT = SearchResult
+  override protected type CALL_RESULT = SearchManager#SearchResult
 
   override def nodeDataInitializer: Some[ElasticsearchNodeDataInitializer] = Some {
     super.nodeDataInitializer match {
@@ -44,7 +44,7 @@ class FieldRuleSearchApiSourceFilteringSuite
 
   override protected def fetchDocument(client: RestClient,
                                        index: String,
-                                       clientSourceParams: Option[FieldRuleSourceFilteringSuite.ClientSourceOptions]): SearchResult = {
+                                       clientSourceParams: Option[ClientSourceOptions]): SearchManager#SearchResult = {
     val searchManager = new SearchManager(client, esVersionUsed)
 
     val query = clientSourceParams match {
@@ -57,7 +57,7 @@ class FieldRuleSearchApiSourceFilteringSuite
     searchManager.search(index, ujson.read(query))
   }
 
-  override protected def sourceOfFirstDoc(result: SearchResult): Option[JSON] = {
+  override protected def sourceOfFirstDoc(result: SearchManager#SearchResult): Option[JSON] = {
     result.searchHits(0).obj.get("_source")
   }
 

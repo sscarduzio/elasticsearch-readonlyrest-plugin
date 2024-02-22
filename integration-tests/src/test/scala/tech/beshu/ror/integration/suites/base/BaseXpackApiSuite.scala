@@ -946,7 +946,7 @@ object BaseXpackApiSuite {
     val indexManager = new IndexManager(adminRestClient, esVersion)
 
     createDocs(documentManager)
-    storeScriptTemplate(adminRestClient)
+    storeScriptTemplate(adminRestClient, esVersion)
     configureBookstore(documentManager, indexManager)
     configureLibrary(documentManager)
 
@@ -977,8 +977,8 @@ object BaseXpackApiSuite {
     documentManager.createDoc("test7_index", 2, ujson.read("""{"content":{ "app": "a2" }}""")).force()
   }
 
-  private def storeScriptTemplate(adminRestClient: RestClient): Unit = {
-    val scriptManager = new ScriptManager(adminRestClient)
+  private def storeScriptTemplate(adminRestClient: RestClient, esVersion: String): Unit = {
+    val scriptManager = new ScriptManager(adminRestClient, esVersion)
     val script =
       """
         |{

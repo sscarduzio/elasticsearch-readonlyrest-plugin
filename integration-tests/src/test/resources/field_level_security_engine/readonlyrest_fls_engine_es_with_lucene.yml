@@ -16,3 +16,13 @@ readonlyrest:
     - name: user2
       auth_key: "user2:pass"
       fields: ["~notAllowedField"]
+
+    - name: user3
+      auth_key: "user3:pass"
+      filter: '{"bool":{"must_not":[{"term":{"allowedField":"allowed:2"}}]}}'
+      fields: ["_source", "allowedField"]
+
+    - name: user4
+      auth_key: "user4:pass"
+      filter: '{"bool":{"must_not":[{"term":{"allowedField":"allowed:2"}}]}}'
+      fields: ["~notAllowedField"]

@@ -49,7 +49,7 @@ class ResponseFieldRuleSuite
     }
 
     "filter cluster health response in whitelist mode using yaml format" in {
-      val dev1ClusterStateManager = new ClusterManagerYaml(basicAuthClient("dev1", "test"))
+      val dev1ClusterStateManager = new ClusterManagerYaml(basicAuthClient("dev1", "test"), esVersion = esVersionUsed)
       val yamlHealthCheck = dev1ClusterStateManager.health()
 
       yamlHealthCheck.responseYaml.isDefinedAt("cluster_name") should equal(true)
