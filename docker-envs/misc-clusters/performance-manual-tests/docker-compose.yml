@@ -72,6 +72,30 @@ services:
     networks:
       - es-network
 
+  kbn:
+    build:
+      context: .
+      dockerfile: .base/kbn/${KBN_DOCKERFILE}
+      args:
+        KBN_VERSION: $KBN_VERSION
+        ROR_VERSION: $ROR_KBN_VERSION
+        ROR_FILE: $KBN_ROR_FILE
+        ROR_ACTIVATION_KEY: $ROR_ACTIVATION_KEY
+    ports:
+      - "15601:5601"
+    environment:
+      ELASTIC_USER_PASSWORD: elastic
+      ES_API_URL: https://es:9200
+    depends_on:
+      es:
+        condition: service_started
+    networks:
+      - es-network
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
 networks:
   es-network:
     driver: bridge
