@@ -71,8 +71,10 @@ readonlyrest:
 
     - username: user4
       groups:
-        - id: group5
-          name: "Group 5"
-        - id: group6
-          name: "Group 6"
+        - local_group:
+            id: group5
+            name: "Group 5"
+        - local_group:
+            id: group6
+            name: "Group 6"
       auth_key: "user4:pass"

@@ -172,9 +172,12 @@ class CurrentUserMetadataAccessControlTests
       |
       |  - username: user4
       |    groups:
-      |      - id: group5
-      |        name: "Group 5"
-      |      - id : group6
+      |      - local_group:
+      |          id: group5
+      |          name: "Group 5"
+      |      - local_group:
+      |          id : group6
+      |          name: "Group 6"
       |    auth_key: "user4:pass"
       |
       |  user_groups_providers:
@@ -258,7 +261,7 @@ class CurrentUserMetadataAccessControlTests
           inside(loginResponse.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4"))))
             userMetadata.currentGroupId should be (Some(GroupId("group6")))
-            userMetadata.availableGroups.toSet should be (Set(group("group5", "Group 5"), group("group6", "group6")))
+            userMetadata.availableGroups.toSet should be (Set(group("group5", "Group 5"), group("group6", "Group 6")))
             userMetadata.kibanaIndex should be (Some(kibanaIndexName("user4_group6_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set.empty)
             userMetadata.allowedKibanaApiPaths should be (Set.empty)
@@ -273,7 +276,7 @@ class CurrentUserMetadataAccessControlTests
           inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4"))))
             userMetadata.currentGroupId should be (Some(GroupId("group5")))
-            userMetadata.availableGroups.toSet should be (Set(group("group5", "Group 5"), group("group6", "group6")))
+            userMetadata.availableGroups.toSet should be (Set(group("group5", "Group 5"), group("group6", "Group 6")))
             userMetadata.kibanaIndex should be (Some(kibanaIndexName("user4_group5_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set.empty)
             userMetadata.allowedKibanaApiPaths should be (Set.empty)

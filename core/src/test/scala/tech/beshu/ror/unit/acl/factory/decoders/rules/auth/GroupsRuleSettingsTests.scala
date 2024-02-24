@@ -162,9 +162,12 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |  users:
                    |  - username: cartman
                    |    groups:
-                   |    - id: "group1"
-                   |      name: "Group 1"
-                   |    - id: "group3"
+                   |    - local_group:
+                   |        id: "group1"
+                   |        name: "Group 1"
+                   |    - local_group:
+                   |        id: "group3"
+                   |        name: "Group 3"
                    |    auth_key: "cartman:pass"
                    |
                    |""".stripMargin,
@@ -174,7 +177,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                 rule.settings.usersDefinitions.length should be(1)
                 inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, WithoutGroupsMapping(authRule, localGroups)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")))))
-                  localGroups should be(UniqueNonEmptyList.of(group("group1", "Group 1"), group("group3", "group3")))
+                  localGroups should be(UniqueNonEmptyList.of(group("group1", "Group 1"), group("group3", "Group 3")))
                   authRule shouldBe an[AuthKeyRule]
                   authRule.asInstanceOf[AuthKeyRule].settings should be {
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
@@ -291,9 +294,12 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |
                  |  - username: morgan
                  |    groups:
-                 |    - id: group2
-                 |      name: Group 2
-                 |    - id: group3
+                 |    - local_group:
+                 |        id: group2
+                 |        name: Group 2
+                 |    - local_group:
+                 |        id: group3
+                 |        name: Group 3
                  |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
                  |
                  |  ldaps:
@@ -335,7 +341,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
               }
               inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, WithoutGroupsMapping(rule1, localGroups)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("morgan")))))
-                localGroups should be(UniqueNonEmptyList.of(group("group2", "Group 2"), group("group3", "group3")))
+                localGroups should be(UniqueNonEmptyList.of(group("group2", "Group 2"), group("group3", "Group 3")))
                 rule1 shouldBe an[AuthKeySha1Rule]
                 rule1.asInstanceOf[AuthKeySha1Rule].settings should be {
                   BasicAuthenticationRule.Settings(HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a"))
@@ -477,10 +483,13 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |  users:
                  |  - username: cartman
                  |    groups:
-                 |     - id: group1
-                 |       name: Group 1
+                 |     - local_group:
+                 |         id: group1
+                 |         name: Group 1
                  |       external_group_ids: ["ldap_group3"]
-                 |     - id: group2
+                 |     - local_group:
+                 |         id: group2
+                 |         name: Group 2
                  |       external_group_ids: ["ldap_group4"]
                  |    auth_key: "cartman:pass"
                  |    groups_provider_authorization:
@@ -515,7 +524,7 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern(User.Id("cartman")))))
                 groupMappings should be(GroupMappings.Advanced(UniqueNonEmptyList.of(
                   Mapping(group("group1", "Group 1"), UniqueNonEmptyList.of(GroupId("ldap_group3"))),
-                  Mapping(group("group2", "group2"), UniqueNonEmptyList.of(GroupId("ldap_group4")))
+                  Mapping(group("group2", "Group 2"), UniqueNonEmptyList.of(GroupId("ldap_group4")))
                 )))
 
                 rule1 shouldBe an[AuthKeyRule]
@@ -752,10 +761,13 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  users:
                |  - username: cartman
                |    groups:
-               |     - id: group1
-               |       name: Group 1
+               |     - local_group:
+               |         id: group1
+               |         name: Group 1
                |       external_group_ids: ["ldap_group3"]
-               |     - id: group2
+               |     - local_group:
+               |         id: group2
+               |         name: Group 2
                |       external_group_ids: []
                |    auth_key: "cartman:pass"
                |    groups_provider_authorization:
@@ -846,8 +858,9 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  users:
                |  - username: cartman
                |    groups:
-               |     - id: group1
-               |       name: Group 1
+               |     - local_group:
+               |         id: group1
+               |         name: Group 1
                |       external_group_ids: [""]
                |    auth_key: "cartman:pass"
                |    groups_provider_authorization:
@@ -893,8 +906,9 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  users:
                |  - username: cartman
                |    groups:
-               |     - id: ""
-               |       name: Group 1
+               |     - local_group:
+               |         id: ""
+               |         name: Group 1
                |       external_group_ids: ["ldap_group3"]
                |    auth_key: "cartman:pass"
                |    groups_provider_authorization:
@@ -940,8 +954,9 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                |  users:
                |  - username: cartman
                |    groups:
-               |     - id: group1
-               |       name: ""
+               |     - local_group:
+               |         id: group1
+               |         name: ""
                |       external_group_ids: ["ldap_group3"]
                |    auth_key: "cartman:pass"
                |    groups_provider_authorization:

@@ -231,10 +231,11 @@ object UsersDefinitionsDecoder {
     private object GroupMappingKeys {
       val id: String = "id"
       val name: String = "name"
-      val mappedGroups: String = "external_group_ids"
+      val localGroup: String = "local_group"
+      val externalGroups: String = "external_group_ids"
 
-      val simpleMappingRequiredKeys: Set[String] = Set(id)
-      val advancedMappingRequiredKeys: Set[String] = Set(id, mappedGroups)
+      val simpleMappingRequiredKeys: Set[String] = Set(localGroup)
+      val advancedMappingRequiredKeys: Set[String] = Set(localGroup, externalGroups)
     }
 
     implicit lazy val groupsDecoder: Decoder[UniqueNonEmptyList[Group]] = {
@@ -244,8 +245,8 @@ object UsersDefinitionsDecoder {
     // supported formats for 'groups' key:
     // * array of strings (local group IDs) - simple groups mapping
     // * array of objects (object with one key as local group ID - value is array of strings (external group IDs)) - advanced group mapping
-    // * array of objects (object with 'id' and 'name'(optional) keys) - simple groups mapping
-    // * array of objects (object with 'id', 'name'(optional), and 'external_group_ids') -> advanced group mapping
+    // * array of objects (object with `local_group` key) - simple groups mapping
+    // * array of objects (object with `local_group` and 'external_group_ids' keys) -> advanced group mapping
     implicit lazy val groupMappingsDecoder: Decoder[GroupMappings] = Decoder.instance { c =>
       for {
         mappingsJsons <- c.values
@@ -307,11 +308,11 @@ object UsersDefinitionsDecoder {
       Decoder
         .instance { c =>
           for {
-            groupId <- c.downFieldAs[GroupId](GroupMappingKeys.id)
-            groupName <- c.downFieldAs[Option[GroupName]](GroupMappingKeys.name)
-            externalGroupIds <- c.downFieldAs[UniqueNonEmptyList[GroupIdLike]](GroupMappingKeys.mappedGroups)
+            id <- c.downField(GroupMappingKeys.localGroup).downFieldAs[GroupId](GroupMappingKeys.id)
+            name <- c.downField(GroupMappingKeys.localGroup).downFieldAs[GroupName](GroupMappingKeys.name)
+            externalGroupIds <- c.downFieldAs[UniqueNonEmptyList[GroupIdLike]](GroupMappingKeys.externalGroups)
           } yield {
-            val localGroup = groupName.map(name => Group(groupId, name)).getOrElse(Group.from(groupId))
+            val localGroup = Group(id, name)
             GroupMappings.Advanced.Mapping(localGroup, externalGroupIds)
           }
         }
@@ -337,12 +338,9 @@ object UsersDefinitionsDecoder {
     private val structuredGroupsDecoder: Decoder[UniqueNonEmptyList[Group]] = {
       implicit val groupDecoder: Decoder[Group] = Decoder.instance { c =>
         for {
-          id <- c.downFieldAs[GroupId](GroupMappingKeys.id)
-          name <- c.downFieldAs[Option[GroupName]](GroupMappingKeys.name)
-        } yield name match {
-          case Some(groupName) => Group(id, groupName)
-          case None => Group.from(id)
-        }
+          id <- c.downField(GroupMappingKeys.localGroup).downFieldAs[GroupId](GroupMappingKeys.id)
+          name <- c.downField(GroupMappingKeys.localGroup).downFieldAs[GroupName](GroupMappingKeys.name)
+        } yield Group(id, name)
       }
 
       SyncDecoderCreator

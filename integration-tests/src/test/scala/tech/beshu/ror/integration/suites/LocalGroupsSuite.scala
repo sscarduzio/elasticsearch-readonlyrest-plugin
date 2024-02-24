@@ -92,7 +92,7 @@ class LocalGroupsSuite
          |    },
          |    {
          |      "id": "foogroup",
-         |      "name": "foogroup"
+         |      "name": "Foo group"
          |    }
          |  ],
          |  "x-ror-correlation-id": "$correlationId",
@@ -114,7 +114,7 @@ class LocalGroupsSuite
          |  "x-ror-username": "user",
          |  "x-ror-current-group": {
          |    "id": "foogroup",
-         |    "name": "foogroup"
+         |    "name": "Foo group"
          |  },
          |  "x-ror-available-groups": [
          |    {
@@ -123,7 +123,7 @@ class LocalGroupsSuite
          |    },
          |    {
          |      "id": "foogroup",
-         |      "name": "foogroup"
+         |      "name": "Foo group"
          |    }
          |  ],
          |  "x-ror-correlation-id": "$correlationId",
