@@ -551,7 +551,7 @@ class SnapshotAndRestoreApiSuite
             val snapshotName2 = SnapshotNameGenerator.next("dev1-snap")
             adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
 
-            val result = dev2SnapshotManager.getAllSnapshotStatuses()
+            val result = dev2SnapshotManager.getAllSnapshotStatuses
 
             result should have statusCode 200
             result.snapshots.map(_("snapshot").str) should contain theSameElementsAs List.empty // only the in-progres ones
@@ -566,7 +566,7 @@ class SnapshotAndRestoreApiSuite
             val snapshotName2 = SnapshotNameGenerator.next("dev1-snap")
             adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
 
-            val result = adminSnapshotManager.getAllSnapshotStatuses()
+            val result = adminSnapshotManager.getAllSnapshotStatuses
 
             result should have statusCode 200
             result.snapshots.map(_("snapshot").str) should contain theSameElementsAs List.empty // only the in-progres ones
