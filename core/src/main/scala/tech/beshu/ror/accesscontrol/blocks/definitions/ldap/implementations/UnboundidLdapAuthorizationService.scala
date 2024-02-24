@@ -107,6 +107,9 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
           } map { allGroups =>
             UniqueList.fromIterable(allGroups.map(_.id))
           }
+        case Left(errorResult) if errorResult.getResultCode == ResultCode.NO_SUCH_OBJECT && !user.confirmed =>
+          logger.error(s"LDAP getting user groups returned error [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
+          Task.now(UniqueList.empty[GroupId])
         case Left(errorResult) =>
           logger.error(s"LDAP getting user groups returned error [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))

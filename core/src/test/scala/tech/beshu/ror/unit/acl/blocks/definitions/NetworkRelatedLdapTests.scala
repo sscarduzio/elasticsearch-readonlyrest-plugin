@@ -72,7 +72,7 @@ class NetworkRelatedLdapTests
 
   "An LdapAuthenticationService should" - {
     "allow to authenticate user" - {
-      "after connection timeout and retry" ignore {
+      "after connection timeout and retry" in {
         val authenticationService = createSimpleAuthenticationService()
         authenticationService.assertSuccessfulAuthentication
         ldap1ContainerWithToxiproxy.enableNetworkTimeout()
@@ -80,7 +80,7 @@ class NetworkRelatedLdapTests
         ldap1ContainerWithToxiproxy.disableNetworkTimeout()
         authenticationService.assertSuccessfulAuthentication
       }
-      "after connection failure and retry" ignore {
+      "after connection failure and retry" in {
         val authenticationService = createSimpleAuthenticationService()
         authenticationService.assertSuccessfulAuthentication
         ldap1ContainerWithToxiproxy.disableNetwork()
@@ -91,7 +91,7 @@ class NetworkRelatedLdapTests
     }
     "be able to work when" - {
       "Round robin HA method is configured when" - {
-        "one of servers goes down" ignore {
+        "one of servers goes down" in {
           def assertMorganCanAuthenticate(service: UnboundidLdapAuthenticationService) = {
             service
               .authenticate(User.Id("morgan"), PlainTextSecret("user1"))

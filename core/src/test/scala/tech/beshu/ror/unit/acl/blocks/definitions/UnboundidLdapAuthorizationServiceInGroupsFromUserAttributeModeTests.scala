@@ -28,8 +28,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupIdAttribute, GroupSearchFilter, GroupsFromUserAttribute, GroupsFromUserEntry, NestedGroupsConfig, UniqueMemberAttribute}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.CustomAttribute
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.utils.SingletonLdapContainers
@@ -40,7 +40,25 @@ import java.time.Clock
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
+class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeWhenUserIdAttributeIsUidTests
+  extends UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests {
+
+  override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.CustomAttribute("uid")
+  override protected val jesusUserId: User.Id = User.Id("jesus")
+  override protected val userSpeakerUserId: User.Id = User.Id("userSpeaker")
+  override protected val spaghettiUserId: User.Id = User.Id("spaghetti")
+}
+
+class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeWhenUserIdAttributeIsCnTests
+  extends UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests {
+
+  override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.Cn
+  override protected val jesusUserId: User.Id = User.Id("Jesus Christ")
+  override protected val userSpeakerUserId: User.Id = User.Id("UserSpeaker (ext)")
+  override protected val spaghettiUserId: User.Id = User.Id("Spaghetti Monster")
+}
+
+abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
   extends AnyWordSpec
     with BeforeAndAfterAll
     with Inside
@@ -61,7 +79,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
       "returns non empty set of groups" when {
         "user has groups" in {
           eventually {
-            godAndRegionsLdapAuthorizationService.groupsOf(User.Id("jesus")).runSyncUnsafe() should contain only(
+            godAndRegionsLdapAuthorizationService.groupsOf(jesusUserId).runSyncUnsafe() should contain only(
               group("europe"), group("north america"), group("south america"), group("africa")
             )
           }
@@ -69,7 +87,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
       }
       "resolve nested groups properly" in {
         eventually {
-          usersAndRolesLdapAuthorizationService.groupsOf(User.Id("userSpeaker")).runSyncUnsafe() should be {
+          usersAndRolesLdapAuthorizationService.groupsOf(userSpeakerUserId).runSyncUnsafe() should be {
             UniqueList.of(group("developers"), group("speakers (external)"))
           }
         }
@@ -77,7 +95,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
       "returns empty set of groups" when {
         "user has no groups" in {
           eventually {
-            godAndRegionsLdapAuthorizationService.groupsOf(User.Id("spaghetti")).runSyncUnsafe() should be (UniqueList.empty[Group])
+            godAndRegionsLdapAuthorizationService.groupsOf(spaghettiUserId).runSyncUnsafe() should be (UniqueList.empty[Group])
           }
         }
         "there is no user with given name" in {
@@ -111,7 +129,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
           ),
           ignoreLdapConnectivityProblems = false
         ),
-        UserSearchFilterConfig(Dn("ou=Gods,dc=example,dc=com"), CustomAttribute("uid")),
+        UserSearchFilterConfig(Dn("ou=Gods,dc=example,dc=com"), userIdAttribute),
         UserGroupsSearchFilterConfig(
           GroupsFromUserEntry(
             Dn("ou=Regions,dc=example,dc=com"),
@@ -148,7 +166,7 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
           ),
           ignoreLdapConnectivityProblems = false
         ),
-        UserSearchFilterConfig(Dn("ou=Users,dc=example,dc=com"), CustomAttribute("uid")),
+        UserSearchFilterConfig(Dn("ou=Users,dc=example,dc=com"), userIdAttribute),
         UserGroupsSearchFilterConfig(
           GroupsFromUserEntry(
             Dn("ou=Roles,dc=example,dc=com"),
@@ -168,4 +186,9 @@ class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
       .runSyncUnsafe()
       .getOrElse(throw new IllegalStateException("LDAP connection problem"))
   }
+
+  protected def userIdAttribute: UserIdAttribute
+  protected def jesusUserId: User.Id
+  protected def userSpeakerUserId: User.Id
+  protected def spaghettiUserId: User.Id
 }

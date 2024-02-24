@@ -22,13 +22,13 @@ import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.{Assertion, BeforeAndAfterAll, BeforeAndAfterEach, Inside}
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Inside}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.CustomAttribute
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapAuthenticationService}
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.containers.LdapContainer
@@ -36,9 +36,18 @@ import tech.beshu.ror.utils.containers.LdapContainer
 import java.time.Clock
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.reflect.ClassTag
 
-class UnboundidLdapAuthenticationServiceTests
+class UnboundidLdapAuthenticationServiceWhenUserIdAttributeIsUidTests extends UnboundidLdapAuthenticationServiceTests {
+  override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.CustomAttribute("uid")
+  override protected val morganUserId: User.Id = User.Id("morgan")
+}
+
+class UnboundidLdapAuthenticationServiceWhenUserIdAttributeIsCnTests extends UnboundidLdapAuthenticationServiceTests {
+  override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.Cn
+  override protected val morganUserId: User.Id = User.Id("Morgan Freeman")
+}
+
+abstract class UnboundidLdapAuthenticationServiceTests
   extends AnyWordSpec
     with BeforeAndAfterAll
     with BeforeAndAfterEach
@@ -56,12 +65,13 @@ class UnboundidLdapAuthenticationServiceTests
       .runSyncUnsafe()
   }
 
-
   "An LdapAuthenticationService" should {
     "have method to authenticate" which {
       "returns true" when {
         "user exists in LDAP and its credentials are correct" in {
-          createSimpleAuthenticationService().assertSuccessfulAuthentication
+          createSimpleAuthenticationService()
+            .authenticate(morganUserId, PlainTextSecret("user1"))
+            .runSyncUnsafe() should be(true)
         }
       }
       "returns false" when {
@@ -72,32 +82,18 @@ class UnboundidLdapAuthenticationServiceTests
         }
         "user has invalid credentials" in {
           createSimpleAuthenticationService()
-            .authenticate(User.Id("morgan"), PlainTextSecret("invalid_secret"))
+            .authenticate(morganUserId, PlainTextSecret("invalid_secret"))
             .runSyncUnsafe() should be(false)
         }
       }
     }
   }
-
-  implicit class LdapAuthenticationServiceOps(authenticationService: LdapAuthenticationService) {
-    def assertSuccessfulAuthentication: Assertion = {
-      authenticationService
-        .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
-        .runSyncUnsafe() should be(true)
-    }
-
-    def assertFailedAuthentication[T : ClassTag]: Assertion = {
-      an [T] should be thrownBy authenticationService
-        .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
-        .runSyncUnsafe()
-    }
-  }
-
+  
   private def createSimpleAuthenticationService() = {
     implicit val clock: Clock = Clock.systemUTC()
     UnboundidLdapAuthenticationService
       .create(
-        Name("LDAP3"),
+        Name("ldap"),
         ldapConnectionPoolProvider,
         LdapConnectionConfig(
           ConnectionMethod.SingleServer(
@@ -115,10 +111,13 @@ class UnboundidLdapAuthenticationServiceTests
           ),
           ignoreLdapConnectivityProblems = false,
         ),
-        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
+        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), userIdAttribute)
       )
       .runSyncUnsafe()
       .getOrElse(throw new IllegalStateException("LDAP connection problem"))
   }
+  
+  protected def userIdAttribute: UserIdAttribute
+  protected def morganUserId: User.Id
 
 }

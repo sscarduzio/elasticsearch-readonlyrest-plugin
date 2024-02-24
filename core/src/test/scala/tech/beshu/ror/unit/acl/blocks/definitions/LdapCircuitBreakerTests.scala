@@ -16,15 +16,14 @@
  */
 package tech.beshu.ror.unit.acl.blocks.definitions
 
-import cats.data._
 import com.dimafeng.testcontainers.{Container, ForAllTestContainer, MultipleContainers}
 import com.unboundid.ldap.sdk.LDAPSearchException
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.exceptions.ExecutionRejectedException
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{Assertion, BeforeAndAfterAll, BeforeAndAfterEach, Inside}
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
@@ -43,7 +42,7 @@ import scala.language.postfixOps
 import scala.reflect.ClassTag
 
 class LdapCircuitBreakerTests
-  extends AnyFreeSpec
+  extends AnyWordSpec
     with BeforeAndAfterAll
     with BeforeAndAfterEach
     with ForAllTestContainer
@@ -71,7 +70,7 @@ class LdapCircuitBreakerTests
   }
 
   "An CircuitBreaker decorated LdapAuthenticationService" should {
-    "close circuit breaker after 2 failed attempts" ignore {
+    "close circuit breaker after 2 failed attempts" in {
       val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService()
       authenticationService.assertSuccessfulAuthentication
       ldap1ContainerWithToxiproxy.disableNetwork()
@@ -81,7 +80,7 @@ class LdapCircuitBreakerTests
       ldap1ContainerWithToxiproxy.enableNetwork()
       authenticationService.assertFailedAuthentication[ExecutionRejectedException]
     }
-    "close circuit breaker after 2 failed attempts, but open it later" ignore {
+    "close circuit breaker after 2 failed attempts, but open it later" in {
       val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService()
       authenticationService.assertSuccessfulAuthentication
       ldap1ContainerWithToxiproxy.disableNetwork()
@@ -95,7 +94,7 @@ class LdapCircuitBreakerTests
       authenticationService.assertSuccessfulAuthentication
       authenticationService.assertSuccessfulAuthentication
     }
-    "close circuit breaker after 2 failed attempts and keep it closed because of network issues" ignore {
+    "close circuit breaker after 2 failed attempts and keep it closed because of network issues" in {
       val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService()
       authenticationService.assertSuccessfulAuthentication
       ldap1ContainerWithToxiproxy.disableNetwork()
@@ -153,36 +152,6 @@ class LdapCircuitBreakerTests
         maxFailures = Refined.unsafeApply(2),
         resetDuration = Refined.unsafeApply(0.5 second))
     )
-  }
-
-  private def createHaAuthenticationService() = {
-    implicit val clock: Clock = Clock.systemUTC()
-    UnboundidLdapAuthenticationService
-      .create(
-        Name("my_ldap"),
-        ldapConnectionPoolProvider,
-        LdapConnectionConfig(
-          ConnectionMethod.SeveralServers(
-            NonEmptyList.of(
-              LdapHost.from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}").get,
-              LdapHost.from(s"ldap://${ldapContainerToStop.ldapHost}:${ldapContainerToStop.ldapPort}").get,
-            ),
-            HaMethod.RoundRobin
-          ),
-          poolSize = 1,
-          connectionTimeout = Refined.unsafeApply(5 seconds),
-          requestTimeout = Refined.unsafeApply(5 seconds),
-          trustAllCerts = false,
-          BindRequestUser.CustomUser(
-            Dn("cn=admin,dc=example,dc=com"),
-            PlainTextSecret("password")
-          ),
-          ignoreLdapConnectivityProblems = false
-        ),
-        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
-      )
-      .runSyncUnsafe()
-      .getOrElse(throw new IllegalStateException("LDAP connection problem"))
   }
 
 }

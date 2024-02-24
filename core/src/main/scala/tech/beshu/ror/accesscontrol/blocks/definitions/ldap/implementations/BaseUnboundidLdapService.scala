@@ -48,9 +48,13 @@ private[implementations] abstract class BaseUnboundidLdapService(connectionPool:
   private def createLdapUser(userId: User.Id) = {
     Task.delay {
       Some {
-        LdapUser(userId, Dn(NonEmptyString.unsafeFrom(
-          s"cn=${Filter.encodeValue(userId.value.value)},${userSearchFiler.searchUserBaseDN.value.value}"
-        )))
+        LdapUser(
+          id = userId,
+          dn = Dn(NonEmptyString.unsafeFrom(
+            s"cn=${Filter.encodeValue(userId.value.value)},${userSearchFiler.searchUserBaseDN.value.value}"
+          )),
+          confirmed = false
+        )
       }
     }
   }
@@ -63,10 +67,10 @@ private[implementations] abstract class BaseUnboundidLdapService(connectionPool:
           logger.debug("LDAP getting user CN returned no entries")
           Task.now(None)
         case Right(user :: Nil) =>
-          Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)))))
+          Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)), confirmed = true)))
         case Right(all@user :: _) =>
           logger.warn(s"LDAP search user - more than one user was returned: ${all.mkString(",")}. Picking first")
-          Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)))))
+          Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)), confirmed = true)))
         case Left(errorResult) =>
           logger.error(s"LDAP getting user CN returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))

@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupIdAttribute, GroupSearchFilter, NestedGroupsConfig, UniqueMemberAttribute}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.CustomAttribute
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.utils.SingletonLdapContainers
@@ -40,7 +40,25 @@ import java.time.Clock
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
+class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeWhenUserIdAttributeIsUidTests
+  extends UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests {
+
+  override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.CustomAttribute("uid")
+  override protected val morganUserId: User.Id = User.Id("morgan")
+  override protected val userSpeakerUserId: User.Id = User.Id("userSpeaker")
+  override protected val devitoUserId: User.Id = User.Id("devito")
+}
+
+class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeWhenUserIdAttributeIsCnTests
+  extends UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests {
+
+  override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.Cn
+  override protected val morganUserId: User.Id = User.Id("Morgan Freeman")
+  override protected val userSpeakerUserId: User.Id = User.Id("UserSpeaker (ext)")
+  override protected val devitoUserId: User.Id = User.Id("Danny DeVito")
+}
+
+abstract class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
   extends AnyWordSpec
     with BeforeAndAfterAll
     with Inside
@@ -61,7 +79,7 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
       "returns non empty set of groups" when {
         "user has groups" in {
           eventually {
-            peopleAndGroupsLdapAuthorizationService.groupsOf(User.Id("morgan")).runSyncUnsafe() should be {
+            peopleAndGroupsLdapAuthorizationService.groupsOf(morganUserId).runSyncUnsafe() should be {
               UniqueList.of(group("groupAll"), group("group3"), group("group2"))
             }
           }
@@ -69,7 +87,7 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
       }
       "resolve nested groups properly" in {
         eventually {
-          usersAndRolesLdapAuthorizationService.groupsOf(User.Id("userSpeaker")).runSyncUnsafe() should be {
+          usersAndRolesLdapAuthorizationService.groupsOf(userSpeakerUserId).runSyncUnsafe() should be {
             UniqueList.of(group("developers"), group("speakers (external)"))
           }
         }
@@ -77,7 +95,7 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
       "returns empty set of groups" when {
         "user has no groups" in {
           eventually {
-            peopleAndGroupsLdapAuthorizationService.groupsOf(User.Id("devito")).runSyncUnsafe() should be(UniqueList.empty[Group])
+            peopleAndGroupsLdapAuthorizationService.groupsOf(devitoUserId).runSyncUnsafe() should be(UniqueList.empty[Group])
           }
         }
         "there is no user with given name" in {
@@ -111,7 +129,7 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
           ),
           ignoreLdapConnectivityProblems = false
         ),
-        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid")),
+        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), userIdAttribute),
         UserGroupsSearchFilterConfig(
           DefaultGroupSearch(
             Dn("ou=Groups,dc=example,dc=com"),
@@ -149,7 +167,7 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
           ),
           ignoreLdapConnectivityProblems = false
         ),
-        UserSearchFilterConfig(Dn("ou=Users,dc=example,dc=com"), CustomAttribute("uid")),
+        UserSearchFilterConfig(Dn("ou=Users,dc=example,dc=com"), userIdAttribute),
         UserGroupsSearchFilterConfig(
           DefaultGroupSearch(
             Dn("ou=Roles,dc=example,dc=com"),
@@ -170,4 +188,9 @@ class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
       .runSyncUnsafe()
       .getOrElse(throw new IllegalStateException("LDAP connection problem"))
   }
+
+  protected def userIdAttribute: UserIdAttribute
+  protected def morganUserId: User.Id
+  protected def userSpeakerUserId: User.Id
+  protected def devitoUserId: User.Id
 }
