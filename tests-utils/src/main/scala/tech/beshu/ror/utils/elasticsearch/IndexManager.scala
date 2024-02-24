@@ -150,7 +150,8 @@ class IndexManager(client: RestClient,
   }
 
   def reindex(source: ReindexSource, destIndexName: String): JsonResponse = {
-    call(createReindexRequest(source, destIndexName), new JsonResponse(_))
+    val request = createReindexRequest(source, destIndexName)
+    call(request, new JsonResponse(_, Some(request)))
   }
 
   def shrink(sourceIndex: String, targetIndex: String, aliases: List[String] = Nil): JsonResponse = {

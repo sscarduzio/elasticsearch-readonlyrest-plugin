@@ -71,12 +71,13 @@ class SnapshotManager(client: RestClient, esVersion: String)
     call(createGetSnapshotStatusesRequest(repositoryName, snapshot :: snapshots.toList), new SnapshotsResult(_))
   }
 
-  def getAllSnapshotStatuses(): SnapshotsResult = {
+  def getAllSnapshotStatuses: SnapshotsResult = {
     call(createGetAllSnapshotStatusesRequest(), new SnapshotsResult(_))
   }
 
   def putSnapshot(repositoryName: String, snapshotName: String, index: String, otherIndices: String*): JsonResponse = {
-    call(createNewSnapshotRequest(repositoryName, snapshotName, index :: otherIndices.toList), new JsonResponse(_))
+    val request = createNewSnapshotRequest(repositoryName, snapshotName, index :: otherIndices.toList)
+    call(request, new JsonResponse(_, Some(request)))
   }
 
   def deleteSnapshotsOf(repositoryName: String, snapshots: String*): JsonResponse = {
@@ -103,7 +104,8 @@ class SnapshotManager(client: RestClient, esVersion: String)
   }
 
   def restoreSnapshot(repositoryName: String, snapshotName: String, indices: String*): JsonResponse = {
-    call(createRestoreSnapshotRequest(repositoryName, snapshotName, indices.toList), new JsonResponse(_))
+    val request = createRestoreSnapshotRequest(repositoryName, snapshotName, indices.toList)
+    call(request, new JsonResponse(_, Some(request)))
   }
 
   private def createNewRepositoryRequest(name: String) = {
