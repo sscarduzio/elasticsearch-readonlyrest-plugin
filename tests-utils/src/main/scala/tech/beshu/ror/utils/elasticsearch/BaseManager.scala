@@ -98,11 +98,11 @@ abstract class BaseManager(client: RestClient,
         if (Version.greaterOrEqualThan(esVersion, 7, 14, 0) && Version.lowerThan(esVersion, 7, 16, 0)) {
           request match {
             case Some(req) if isExcludedRequest(req) =>
-              // ES [7.14.0,7.16.0) doesn't add the X-elastic-product header to create or restore snapshot response where wait_for_completion=true is set
+              // ES [7.14.0,7.16.0) doesn't add the X-elastic-product header to some responses (under some conditions)
             case Some(_) | None =>
               assertContainsXElasticProductHeader(response)
           }
-        } else if (Version.greaterOrEqualThan(esVersion, 7, 14, 0)) {
+        } else if (Version.greaterOrEqualThan(esVersion, 7, 16, 0)) {
           assertContainsXElasticProductHeader(response)
         }
       }
