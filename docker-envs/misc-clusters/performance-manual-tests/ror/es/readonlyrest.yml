@@ -53,4 +53,4 @@ readonlyrest:
       user_id_attribute: "uid"                                  
       unique_member_attribute: "uniqueMember"
 
-      cache_ttl_in_sec: 600 sec
+      cache_ttl: 60s
