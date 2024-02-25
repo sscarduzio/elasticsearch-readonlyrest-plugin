@@ -22,6 +22,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.exceptions.ExecutionRejectedException
+import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{Assertion, BeforeAndAfterAll, BeforeAndAfterEach, Inside}
@@ -46,7 +47,8 @@ class LdapCircuitBreakerTests
     with BeforeAndAfterAll
     with BeforeAndAfterEach
     with ForAllTestContainer
-    with Inside {
+    with Inside
+    with Eventually {
 
   private val ldap1ContainerWithToxiproxy = new ToxiproxyContainer(
     SingletonLdapContainers.ldap1,
@@ -72,42 +74,48 @@ class LdapCircuitBreakerTests
   "An CircuitBreaker decorated LdapAuthenticationService" should {
     "close circuit breaker after 2 failed attempts" in {
       val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService()
-      authenticationService.assertSuccessfulAuthentication
-      ldap1ContainerWithToxiproxy.disableNetwork()
-      authenticationService.assertFailedAuthentication[LDAPSearchException]
-      authenticationService.assertFailedAuthentication[LDAPSearchException]
-      authenticationService.assertFailedAuthentication[ExecutionRejectedException]
-      ldap1ContainerWithToxiproxy.enableNetwork()
-      authenticationService.assertFailedAuthentication[ExecutionRejectedException]
+      eventually {
+        authenticationService.assertSuccessfulAuthentication
+        ldap1ContainerWithToxiproxy.disableNetwork()
+        authenticationService.assertFailedAuthentication[LDAPSearchException]
+        authenticationService.assertFailedAuthentication[LDAPSearchException]
+        authenticationService.assertFailedAuthentication[ExecutionRejectedException]
+        ldap1ContainerWithToxiproxy.enableNetwork()
+        authenticationService.assertFailedAuthentication[ExecutionRejectedException]
+      }
     }
     "close circuit breaker after 2 failed attempts, but open it later" in {
       val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService()
-      authenticationService.assertSuccessfulAuthentication
-      ldap1ContainerWithToxiproxy.disableNetwork()
-      authenticationService.assertFailedAuthentication[LDAPSearchException]
-      ldap1ContainerWithToxiproxy.enableNetwork()
-      ldap1ContainerWithToxiproxy.enableNetworkTimeout()
-      authenticationService.assertFailedAuthentication[LDAPSearchException]
-      authenticationService.assertFailedAuthentication[ExecutionRejectedException]
-      ldap1ContainerWithToxiproxy.disableNetworkTimeout()
-      Thread.sleep(550)
-      authenticationService.assertSuccessfulAuthentication
-      authenticationService.assertSuccessfulAuthentication
+      eventually {
+        authenticationService.assertSuccessfulAuthentication
+        ldap1ContainerWithToxiproxy.disableNetwork()
+        authenticationService.assertFailedAuthentication[LDAPSearchException]
+        ldap1ContainerWithToxiproxy.enableNetwork()
+        ldap1ContainerWithToxiproxy.enableNetworkTimeout()
+        authenticationService.assertFailedAuthentication[LDAPSearchException]
+        authenticationService.assertFailedAuthentication[ExecutionRejectedException]
+        ldap1ContainerWithToxiproxy.disableNetworkTimeout()
+        Thread.sleep(750)
+        authenticationService.assertSuccessfulAuthentication
+        authenticationService.assertSuccessfulAuthentication
+      }
     }
     "close circuit breaker after 2 failed attempts and keep it closed because of network issues" in {
       val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService()
-      authenticationService.assertSuccessfulAuthentication
-      ldap1ContainerWithToxiproxy.disableNetwork()
-      authenticationService.assertFailedAuthentication[LDAPSearchException]
-      authenticationService.assertFailedAuthentication[LDAPSearchException]
-      authenticationService.assertFailedAuthentication[ExecutionRejectedException]
-      Thread.sleep(550)
-      authenticationService.assertFailedAuthentication[LDAPSearchException]
-      authenticationService.assertFailedAuthentication[ExecutionRejectedException]
+      eventually {
+        authenticationService.assertSuccessfulAuthentication
+        ldap1ContainerWithToxiproxy.disableNetwork()
+        authenticationService.assertFailedAuthentication[LDAPSearchException]
+        authenticationService.assertFailedAuthentication[LDAPSearchException]
+        authenticationService.assertFailedAuthentication[ExecutionRejectedException]
+        Thread.sleep(750)
+        authenticationService.assertFailedAuthentication[LDAPSearchException]
+        authenticationService.assertFailedAuthentication[ExecutionRejectedException]
+      }
     }
   }
 
-  implicit class LdapAuthenticationServiceOps(authenticationService: LdapAuthenticationService) {
+  private implicit class LdapAuthenticationServiceOps(authenticationService: LdapAuthenticationService) {
     def assertSuccessfulAuthentication: Assertion = {
       authenticationService
         .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
@@ -128,7 +136,9 @@ class LdapCircuitBreakerTests
         Name("my_ldap"),
         ldapConnectionPoolProvider,
         LdapConnectionConfig(
-          ConnectionMethod.SingleServer(LdapHost.from(s"ldap://localhost:${ldap1ContainerWithToxiproxy.innerContainerMappedPort}").get),
+          ConnectionMethod.SingleServer(
+            LdapHost.from(s"ldap://localhost:${ldap1ContainerWithToxiproxy.innerContainerMappedPort}").get
+          ),
           poolSize = 1,
           connectionTimeout = Refined.unsafeApply(5 seconds),
           requestTimeout = Refined.unsafeApply(5 seconds),
