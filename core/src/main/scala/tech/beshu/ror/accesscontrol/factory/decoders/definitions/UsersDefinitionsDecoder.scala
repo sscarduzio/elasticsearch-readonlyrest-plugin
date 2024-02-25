@@ -245,7 +245,7 @@ object UsersDefinitionsDecoder {
     // supported formats for 'groups' key:
     // * array of strings (local group IDs) - simple groups mapping
     // * array of objects (object with one key as local group ID - value is array of strings (external group IDs)) - advanced group mapping
-    // * array of objects (object with `local_group` key) - simple groups mapping
+    // * array of objects (object with 'id' and 'name' keys) - simple groups mapping
     // * array of objects (object with `local_group` and 'external_group_ids' keys) -> advanced group mapping
     implicit lazy val groupMappingsDecoder: Decoder[GroupMappings] = Decoder.instance { c =>
       for {
@@ -338,8 +338,8 @@ object UsersDefinitionsDecoder {
     private val structuredGroupsDecoder: Decoder[UniqueNonEmptyList[Group]] = {
       implicit val groupDecoder: Decoder[Group] = Decoder.instance { c =>
         for {
-          id <- c.downField(GroupMappingKeys.localGroup).downFieldAs[GroupId](GroupMappingKeys.id)
-          name <- c.downField(GroupMappingKeys.localGroup).downFieldAs[GroupName](GroupMappingKeys.name)
+          id <- c.downFieldAs[GroupId](GroupMappingKeys.id)
+          name <- c.downFieldAs[GroupName](GroupMappingKeys.name)
         } yield Group(id, name)
       }
 

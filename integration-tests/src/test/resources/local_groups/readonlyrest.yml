@@ -32,13 +32,10 @@ readonlyrest:
   - username: user
     auth_key: user:passwd
     groups:
-      - local_group:
-          id: "a_testgroup"
-          name: "Test group"
-      - local_group:
-          id: "group_extra"
-          name: "Extra group"
-      - local_group:
-          id: "foogroup"
-          name: "Foo group"
+      - id: "a_testgroup"
+        name: "Test group"
+      - id: "group_extra"
+        name: "Extra group"
+      - id: "foogroup"
+        name: "Foo group"
 

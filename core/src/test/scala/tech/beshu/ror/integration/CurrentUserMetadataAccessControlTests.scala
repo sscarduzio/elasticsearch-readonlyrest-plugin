@@ -172,12 +172,10 @@ class CurrentUserMetadataAccessControlTests
       |
       |  - username: user4
       |    groups:
-      |      - local_group:
-      |          id: group5
-      |          name: "Group 5"
-      |      - local_group:
-      |          id : group6
-      |          name: "Group 6"
+      |      - id: group5
+      |        name: "Group 5"
+      |      - id : group6
+      |        name: "Group 6"
       |    auth_key: "user4:pass"
       |
       |  user_groups_providers:

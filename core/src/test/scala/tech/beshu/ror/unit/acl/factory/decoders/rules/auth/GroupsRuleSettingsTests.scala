@@ -162,12 +162,10 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                    |  users:
                    |  - username: cartman
                    |    groups:
-                   |    - local_group:
-                   |        id: "group1"
-                   |        name: "Group 1"
-                   |    - local_group:
-                   |        id: "group3"
-                   |        name: "Group 3"
+                   |    - id: "group1"
+                   |      name: "Group 1"
+                   |    - id: "group3"
+                   |      name: "Group 3"
                    |    auth_key: "cartman:pass"
                    |
                    |""".stripMargin,
@@ -294,12 +292,10 @@ sealed abstract class GroupsRuleSettingsTests[R <: BaseGroupsRule : ClassTag](ru
                  |
                  |  - username: morgan
                  |    groups:
-                 |    - local_group:
-                 |        id: group2
-                 |        name: Group 2
-                 |    - local_group:
-                 |        id: group3
-                 |        name: Group 3
+                 |    - id: group2
+                 |      name: Group 2
+                 |    - id: group3
+                 |      name: Group 3
                  |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
                  |
                  |  ldaps:
