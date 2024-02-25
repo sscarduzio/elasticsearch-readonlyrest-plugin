@@ -32,11 +32,17 @@ services:
       -Dcom.sun.management.jmxremote.authenticate=false
       -Dcom.sun.management.jmxremote.ssl=false
       -Dcom.sun.management.jmxremote.rmi.port=9010
-      -Djava.rmi.server.hostname=127.0.0.1
-      -Dcom.unboundid.ldap.sdk.debug.enabled=true"
+      -Djava.rmi.server.hostname=127.0.0.1"
+#      -Dcom.unboundid.ldap.sdk.debug.enabled=true"
       - ES_VERSION=$ES_VERSION
       - LDAP_HOST=lagsimulator
       - LDAP_PORT=13890
+    healthcheck:
+      test: [ "CMD", "curl", "-fk", "-u", "admin:container", "https://localhost:9200/_cluster/health" ]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
     networks:
       - es-network
     ulimits:
@@ -71,30 +77,6 @@ services:
       - LLDAP_LDAP_BASE_DN=dc=example,dc=com
     networks:
       - es-network
-
-  kbn:
-    build:
-      context: .
-      dockerfile: .base/kbn/${KBN_DOCKERFILE}
-      args:
-        KBN_VERSION: $KBN_VERSION
-        ROR_VERSION: $ROR_KBN_VERSION
-        ROR_FILE: $KBN_ROR_FILE
-        ROR_ACTIVATION_KEY: $ROR_ACTIVATION_KEY
-    ports:
-      - "15601:5601"
-    environment:
-      ELASTIC_USER_PASSWORD: elastic
-      ES_API_URL: https://es:9200
-    depends_on:
-      es:
-        condition: service_started
-    networks:
-      - es-network
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
 
 networks:
   es-network:
