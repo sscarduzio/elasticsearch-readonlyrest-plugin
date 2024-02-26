@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.elasticsearch
 
 import cats.data.NonEmptySet
 import eu.timepit.refined.auto._
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
@@ -30,7 +29,7 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils._
 
-class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] with MockFactory {
+class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] {
 
   "An IndicesRule" should {
     "be able to be loaded from config" when {

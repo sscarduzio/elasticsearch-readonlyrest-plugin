@@ -19,7 +19,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.elasticsearch
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
@@ -35,7 +34,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Action, Filter, User}
 import tech.beshu.ror.mocks.MockRequestContext
 
-class FilterRuleTests extends AnyWordSpec with MockFactory {
+class FilterRuleTests extends AnyWordSpec {
 
   "A FilterRuleTests" should {
     "match and set filter" when {

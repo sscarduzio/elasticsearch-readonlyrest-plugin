@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.unit.acl.blocks.definitions
+package tech.beshu.ror.unit.utils
 
 import cats.implicits._
 import cats.{Id, Monad}
@@ -24,7 +24,7 @@ import monix.execution.schedulers.TestScheduler
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.utils.ReleseablePool
-import tech.beshu.ror.unit.acl.blocks.definitions.ReleasablePoolTest.Counter
+import tech.beshu.ror.unit.utils.ReleasablePoolTest.Counter
 
 import scala.annotation.nowarn
 import scala.concurrent.Await
@@ -58,14 +58,14 @@ private sealed abstract class ReleasablePoolTest[M[_] : Monad] extends AnyWordSp
     "resource is gotten" should {
       "create new resource" in {
         val counter = new Counter
-        val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleseablePool(counter)
+        val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleaseablePool(counter)
         val resource = await(releasablePool.get(())).toOption.get
         resource.isClosed shouldBe false
         counter.count shouldBe 1
       }
       "resource can be closed"in {
         val counter = new Counter
-        val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleseablePool(counter)
+        val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleaseablePool(counter)
         val resource = await(releasablePool.get(())).toOption.get
         resource.isClosed shouldBe false
         counter.count shouldBe 1
@@ -75,7 +75,7 @@ private sealed abstract class ReleasablePoolTest[M[_] : Monad] extends AnyWordSp
       }
       "close on pool closes resource"in {
         val counter = new Counter
-        val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleseablePool(counter)
+        val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleaseablePool(counter)
         val resource = await(releasablePool.get(())).toOption.get
         resource.isClosed shouldBe false
         counter.count shouldBe 1
@@ -85,7 +85,7 @@ private sealed abstract class ReleasablePoolTest[M[_] : Monad] extends AnyWordSp
       }
       "close on pool closes all resources"in {
         val counter = new Counter
-        val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleseablePool(counter)
+        val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleaseablePool(counter)
         val resource1 = await(releasablePool.get(())).toOption.get
         val resource2 = await(releasablePool.get(())).toOption.get
         counter.count shouldBe 2
@@ -96,7 +96,7 @@ private sealed abstract class ReleasablePoolTest[M[_] : Monad] extends AnyWordSp
       }
       "close 100 resources for 100 opened resources"in {
         val counter = new Counter
-        val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleseablePool(counter)
+        val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleaseablePool(counter)
         val resuurcesF = (0 until 100).map(_ => releasablePool.get(())).toList.sequence
         await(resuurcesF)
         counter.count shouldEqual 100
@@ -106,7 +106,7 @@ private sealed abstract class ReleasablePoolTest[M[_] : Monad] extends AnyWordSp
     }
   }
 
-  private def createReleseablePool(counter: Counter): ReleseablePool[M, counter.ReleasableResource, Unit] = {
+  private def createReleaseablePool(counter: Counter): ReleseablePool[M, counter.ReleasableResource, Unit] = {
 
     @nowarn("cat=unused")
     def acquireR(counter: Counter)(unit: Unit): M[counter.ReleasableResource] = acquire(counter)

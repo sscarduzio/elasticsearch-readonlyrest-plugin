@@ -16,12 +16,11 @@
  */
 package tech.beshu.ror.unit.acl.blocks
 
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{HasIndexPacks, HasIndices}
 
-class BlockContextContainsIndicesTest extends AnyWordSpec with MockFactory {
+class BlockContextContainsIndicesTest extends AnyWordSpec {
 
   import org.scalatest.matchers.should.Matchers._
 

@@ -19,7 +19,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.elasticsearch
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
@@ -33,7 +32,7 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class ResponseFieldsRuleTests extends AnyWordSpec with MockFactory {
+class ResponseFieldsRuleTests extends AnyWordSpec {
   "A ResponseFields rule" should {
     "add appropriate response transformation to block context" when {
       "whitelist mode is used" in {

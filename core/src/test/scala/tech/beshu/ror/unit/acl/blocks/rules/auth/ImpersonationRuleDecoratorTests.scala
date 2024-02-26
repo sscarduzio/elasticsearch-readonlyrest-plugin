@@ -19,7 +19,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
@@ -44,7 +43,8 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class ImpersonationRuleDecoratorTests
   extends AnyWordSpec
-    with MockFactory with Inside with BlockContextAssertion {
+    with Inside
+    with BlockContextAssertion {
 
   private implicit val defaultUserIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
 

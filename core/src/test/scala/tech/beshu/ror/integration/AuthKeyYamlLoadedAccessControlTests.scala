@@ -21,7 +21,6 @@ import java.util.Base64
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{Inside, Tag}
@@ -34,7 +33,7 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
 
 class AuthKeyYamlLoadedAccessControlTests
-  extends AnyWordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
+  extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
 
   protected def configYaml: String =
     """

@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.unit.acl.blocks.definitions
+package tech.beshu.ror.unit.acl.blocks.definitions.ldap.implementations
 
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
@@ -40,25 +40,25 @@ import java.time.Clock
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeWhenUserIdAttributeIsUidTests
-  extends UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests {
+class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeWhenUserIdAttributeIsUidTests
+  extends UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests {
 
   override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.CustomAttribute("uid")
-  override protected val jesusUserId: User.Id = User.Id("jesus")
+  override protected val morganUserId: User.Id = User.Id("morgan")
   override protected val userSpeakerUserId: User.Id = User.Id("userSpeaker")
-  override protected val spaghettiUserId: User.Id = User.Id("spaghetti")
+  override protected val devitoUserId: User.Id = User.Id("devito")
 }
 
-class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeWhenUserIdAttributeIsCnTests
-  extends UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests {
+class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeWhenUserIdAttributeIsCnTests
+  extends UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests {
 
   override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.Cn
-  override protected val jesusUserId: User.Id = User.Id("Jesus Christ")
+  override protected val morganUserId: User.Id = User.Id("Morgan Freeman")
   override protected val userSpeakerUserId: User.Id = User.Id("UserSpeaker (ext)")
-  override protected val spaghettiUserId: User.Id = User.Id("Spaghetti Monster")
+  override protected val devitoUserId: User.Id = User.Id("Danny DeVito")
 }
 
-abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTests
+abstract class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
   extends AnyWordSpec
     with BeforeAndAfterAll
     with Inside
@@ -79,9 +79,9 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
       "returns non empty set of groups" when {
         "user has groups" in {
           eventually {
-            godAndRegionsLdapAuthorizationService.groupsOf(jesusUserId).runSyncUnsafe() should contain only(
-              group("europe"), group("north america"), group("south america"), group("africa")
-            )
+            peopleAndGroupsLdapAuthorizationService.groupsOf(morganUserId).runSyncUnsafe() should be {
+              UniqueList.of(group("groupAll"), group("group3"), group("group2"))
+            }
           }
         }
       }
@@ -95,23 +95,23 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
       "returns empty set of groups" when {
         "user has no groups" in {
           eventually {
-            godAndRegionsLdapAuthorizationService.groupsOf(spaghettiUserId).runSyncUnsafe() should be (UniqueList.empty[Group])
+            peopleAndGroupsLdapAuthorizationService.groupsOf(devitoUserId).runSyncUnsafe() should be(UniqueList.empty[Group])
           }
         }
         "there is no user with given name" in {
           eventually {
-            godAndRegionsLdapAuthorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[Group])
+            peopleAndGroupsLdapAuthorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[Group])
           }
         }
       }
     }
   }
 
-  private def godAndRegionsLdapAuthorizationService = {
+  private def peopleAndGroupsLdapAuthorizationService = {
     implicit val clock: Clock = Clock.systemUTC()
     UnboundidLdapAuthorizationService
       .create(
-        Name("ldap1"),
+        Name("LDAP1"),
         ldapConnectionPoolProvider,
         LdapConnectionConfig(
           ConnectionMethod.SingleServer(
@@ -129,13 +129,14 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
           ),
           ignoreLdapConnectivityProblems = false
         ),
-        UserSearchFilterConfig(Dn("ou=Gods,dc=example,dc=com"), userIdAttribute),
+        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), userIdAttribute),
         UserGroupsSearchFilterConfig(
-          GroupsFromUserEntry(
-            Dn("ou=Regions,dc=example,dc=com"),
-            GroupSearchFilter("(objectClass=*)"),
+          DefaultGroupSearch(
+            Dn("ou=Groups,dc=example,dc=com"),
+            GroupSearchFilter("(cn=*)"),
             GroupIdAttribute("cn"),
-            GroupsFromUserAttribute("title"),
+            UniqueMemberAttribute("uniqueMember"),
+            groupAttributeIsDN = true,
           ),
           nestedGroupsConfig = None
         )
@@ -148,7 +149,7 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
     implicit val clock: Clock = Clock.systemUTC()
     UnboundidLdapAuthorizationService
       .create(
-        Name("ldap1"),
+        Name("LDAP1"),
         ldapConnectionPoolProvider,
         LdapConnectionConfig(
           ConnectionMethod.SingleServer(
@@ -168,16 +169,17 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
         ),
         UserSearchFilterConfig(Dn("ou=Users,dc=example,dc=com"), userIdAttribute),
         UserGroupsSearchFilterConfig(
-          GroupsFromUserEntry(
+          DefaultGroupSearch(
             Dn("ou=Roles,dc=example,dc=com"),
-            GroupSearchFilter("(objectClass=*)"),
+            GroupSearchFilter("(cn=*)"),
             GroupIdAttribute("cn"),
-            GroupsFromUserAttribute("memberOf"),
+            UniqueMemberAttribute("uniqueMember"),
+            groupAttributeIsDN = true,
           ),
           Some(NestedGroupsConfig(
             nestedLevels = 1,
             Dn("ou=Roles,dc=example,dc=com"),
-            GroupSearchFilter("(objectClass=*)"),
+            GroupSearchFilter("(cn=*)"),
             UniqueMemberAttribute("uniqueMember"),
             GroupIdAttribute("cn"),
           ))
@@ -188,7 +190,7 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
   }
 
   protected def userIdAttribute: UserIdAttribute
-  protected def jesusUserId: User.Id
+  protected def morganUserId: User.Id
   protected def userSpeakerUserId: User.Id
-  protected def spaghettiUserId: User.Id
+  protected def devitoUserId: User.Id
 }

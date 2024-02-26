@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.unit.acl.blocks.definitions
+package tech.beshu.ror.unit.acl.blocks.definitions.ldap.implementations
 
 import com.dimafeng.testcontainers.{Container, ForAllTestContainer, MultipleContainers}
 import eu.timepit.refined.api.Refined
