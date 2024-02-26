@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolv
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain.{Address, ClusterIndexName, GroupIdLike, GroupsLogic, Header, KibanaAccess, KibanaApp, KibanaIndexName, PermittedGroupIds, User}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.Message
@@ -128,7 +128,18 @@ object common extends Logging {
     DecoderHelpers.decodeStringLikeNonEmpty.map(GroupIdLike.from)
 
   implicit val groupIdDecoder: Decoder[GroupId] =
-    DecoderHelpers.decodeStringLikeNonEmpty.map(GroupId.apply)
+    DecoderHelpers.decodeStringLikeNonEmpty
+      .map(GroupId.apply)
+      .toSyncDecoder
+      .withError(ValueLevelCreationError(Message(s"Group ID cannot be an empty string")))
+      .decoder
+
+  implicit val groupNameDecoder: Decoder[GroupName] =
+    DecoderHelpers.decodeStringLikeNonEmpty
+      .map(GroupName.apply)
+      .toSyncDecoder
+      .withError(ValueLevelCreationError(Message(s"Group name cannot be an empty string")))
+      .decoder
 
   implicit val userIdDecoder: Decoder[User.Id] =
     DecoderHelpers.decodeStringLikeNonEmpty.map(User.Id.apply)
@@ -145,7 +156,7 @@ object common extends Logging {
   implicit val groupIdLikesUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[GroupIdLike]] =
     SyncDecoderCreator
       .from(DecoderHelpers.decoderStringLikeOrUniqueNonEmptyList[GroupIdLike])
-      .withError(ValueLevelCreationError(Message("Non empty list of group IDs or/and patters is required")))
+      .withError(ValueLevelCreationError(Message("Non empty list of group IDs or/and patterns is required")))
       .decoder
 
   implicit val permittedGroupIdsDecoder: Decoder[PermittedGroupIds] =

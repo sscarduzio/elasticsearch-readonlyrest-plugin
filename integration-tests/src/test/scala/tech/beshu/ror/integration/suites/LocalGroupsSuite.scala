@@ -83,16 +83,16 @@ class LocalGroupsSuite
          |  "x-ror-username": "user",
          |  "x-ror-current-group": {
          |    "id": "a_testgroup",
-         |    "name": "a_testgroup"
+         |    "name": "Test group"
          |  },
          |  "x-ror-available-groups": [
          |    {
          |      "id": "a_testgroup",
-         |      "name": "a_testgroup"
+         |      "name": "Test group"
          |    },
          |    {
          |      "id": "foogroup",
-         |      "name": "foogroup"
+         |      "name": "Foo group"
          |    }
          |  ],
          |  "x-ror-correlation-id": "$correlationId",
@@ -114,16 +114,16 @@ class LocalGroupsSuite
          |  "x-ror-username": "user",
          |  "x-ror-current-group": {
          |    "id": "foogroup",
-         |    "name": "foogroup"
+         |    "name": "Foo group"
          |  },
          |  "x-ror-available-groups": [
          |    {
          |      "id": "a_testgroup",
-         |      "name": "a_testgroup"
+         |      "name": "Test group"
          |    },
          |    {
          |      "id": "foogroup",
-         |      "name": "foogroup"
+         |      "name": "Foo group"
          |    }
          |  ],
          |  "x-ror-correlation-id": "$correlationId",
