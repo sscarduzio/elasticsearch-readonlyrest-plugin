@@ -45,8 +45,7 @@ class CircuitBreakerLdapAuthenticationServiceDecoratorTests
         val service = mock[LdapAuthenticationService]
         (() => service.id).expects().returning(Name("ldap-mock")).anyNumberOfTimes()
         (service.authenticate _).expects(*, *).returning(authenticated).once()
-        (service.authenticate _).expects(*, *).returning(timeoutLDAPException).once()
-        (service.authenticate _).expects(*, *).returning(timeoutLDAPException).once()
+        (service.authenticate _).expects(*, *).returning(timeoutLDAPException).twice()
         service
       }
 
@@ -61,10 +60,8 @@ class CircuitBreakerLdapAuthenticationServiceDecoratorTests
         val service = mock[LdapAuthenticationService]
         (() => service.id).expects().returning(LdapService.Name("ldap-mock")).anyNumberOfTimes()
         (service.authenticate _).expects(*, *).returning(authenticated).once()
-        (service.authenticate _).expects(*, *).returning(timeoutLDAPException).once()
-        (service.authenticate _).expects(*, *).returning(timeoutLDAPException).once()
-        (service.authenticate _).expects(*, *).returning(authenticated).once()
-        (service.authenticate _).expects(*, *).returning(authenticated).once()
+        (service.authenticate _).expects(*, *).returning(timeoutLDAPException).twice()
+        (service.authenticate _).expects(*, *).returning(authenticated).twice()
         service
       }
 
@@ -81,9 +78,7 @@ class CircuitBreakerLdapAuthenticationServiceDecoratorTests
         val service = mock[LdapAuthenticationService]
         (() => service.id).expects().returning(LdapService.Name("ldap-mock")).anyNumberOfTimes()
         (service.authenticate _).expects(*, *).returning(authenticated).once()
-        (service.authenticate _).expects(*, *).returning(timeoutLDAPException).once()
-        (service.authenticate _).expects(*, *).returning(timeoutLDAPException).once()
-        (service.authenticate _).expects(*, *).returning(timeoutLDAPException).once()
+        (service.authenticate _).expects(*, *).returning(timeoutLDAPException).repeat(3)
         service
       }
 
