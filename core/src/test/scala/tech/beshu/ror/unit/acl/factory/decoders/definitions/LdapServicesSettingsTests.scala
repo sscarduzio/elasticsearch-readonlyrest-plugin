@@ -37,7 +37,7 @@ import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.{Cn, CustomAttribute}
-
+import monix.execution.Scheduler.Implicits.global
 import java.time.Clock
 import scala.annotation.tailrec
 import scala.reflect.ClassTag
@@ -55,7 +55,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    ldapConnectionPoolProvider.close()
+    ldapConnectionPoolProvider.close().runSyncUnsafe()
   }
 
   private val ldapWithDnsContainer = new LdapWithDnsContainer("LDAP3", "test_example.ldif")

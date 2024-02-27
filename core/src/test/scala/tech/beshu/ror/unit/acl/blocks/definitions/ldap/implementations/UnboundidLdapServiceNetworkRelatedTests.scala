@@ -60,8 +60,7 @@ class UnboundidLdapServiceNetworkRelatedTests
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    ldapConnectionPoolProvider.close()
-      .runSyncUnsafe()
+    ldapConnectionPoolProvider.close().runSyncUnsafe()
   }
 
   override protected def beforeEach(): Unit = {

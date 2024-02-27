@@ -62,7 +62,7 @@ class CurrentUserMetadataAccessControlTests
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    ldapConnectionPoolProvider.close()
+    ldapConnectionPoolProvider.close().runSyncUnsafe()
     httpClientsFactory.shutdown()
   }
 

@@ -62,12 +62,12 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
        |
        |""".stripMargin
 
+  override protected val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
+
   override protected def afterAll(): Unit = {
     super.afterAll()
-    ldapConnectionPoolProvider.close()
+    ldapConnectionPoolProvider.close().runSyncUnsafe()
   }
-
-  override protected val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
   "An LDAP connectivity check" should {
     "allow core to start" when {

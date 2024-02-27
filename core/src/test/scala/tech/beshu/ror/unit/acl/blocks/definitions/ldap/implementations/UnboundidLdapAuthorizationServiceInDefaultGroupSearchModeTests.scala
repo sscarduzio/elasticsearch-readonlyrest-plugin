@@ -71,7 +71,7 @@ abstract class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    ldapConnectionPoolProvider.close()
+    ldapConnectionPoolProvider.close().runSyncUnsafe()
   }
 
   "An LdapAuthorizationService" should {

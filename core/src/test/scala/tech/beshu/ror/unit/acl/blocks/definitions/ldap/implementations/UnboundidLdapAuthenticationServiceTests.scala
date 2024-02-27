@@ -61,8 +61,7 @@ abstract class UnboundidLdapAuthenticationServiceTests
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    ldapConnectionPoolProvider.close()
-      .runSyncUnsafe()
+    ldapConnectionPoolProvider.close().runSyncUnsafe()
   }
 
   "An LdapAuthenticationService" should {
