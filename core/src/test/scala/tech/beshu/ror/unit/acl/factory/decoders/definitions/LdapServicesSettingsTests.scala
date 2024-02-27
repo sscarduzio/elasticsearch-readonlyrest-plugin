@@ -22,7 +22,7 @@ import eu.timepit.refined.auto._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.{UnboundidLdapAuthorizationService, UnboundidLdapConnectionPoolProvider, UserGroupsSearchFilterConfig}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.{UserGroupsSearchFilterConfig, _}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
@@ -34,10 +34,18 @@ import tech.beshu.ror.utils.containers.LdapWithDnsContainer
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import org.joor.Reflect.on
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupIdAttribute, GroupSearchFilter, NestedGroupsConfig, UniqueMemberAttribute}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.{Cn, CustomAttribute}
+import monix.execution.Scheduler.Implicits.global
+import java.time.Clock
+import scala.annotation.tailrec
+import scala.reflect.ClassTag
 
 class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider)
-  extends BaseDecoderTest(LdapServicesDecoder.ldapServicesDefinitionsDecoder(ldapConnectionPoolProvider))
+  extends BaseDecoderTest(
+    LdapServicesDecoder.ldapServicesDefinitionsDecoder(ldapConnectionPoolProvider, Clock.systemUTC())
+  )
     with BeforeAndAfterAll
     with ForAllTestContainer {
 
@@ -47,7 +55,7 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    ldapConnectionPoolProvider.close()
+    ldapConnectionPoolProvider.close().runSyncUnsafe()
   }
 
   private val ldapWithDnsContainer = new LdapWithDnsContainer("LDAP3", "test_example.ldif")
@@ -159,12 +167,10 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
             val ldap1Service = definitions.items.head
             ldap1Service.id should be(LdapService.Name("ldap1"))
             ldap1Service shouldBe a[LdapAuthService]
-            getLdapAuthorizationGroupsSearchFilterConfig(ldap1Service) should be(None)
 
             val ldap2Service = definitions.items(1)
             ldap2Service.id should be(LdapService.Name("ldap2"))
             ldap2Service shouldBe a[LdapAuthService]
-            getLdapAuthorizationGroupsSearchFilterConfig(ldap2Service) should be(None)
           }
         )
       }
@@ -183,7 +189,10 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
             definitions.items should have size 1
             val ldapService = definitions.items.head
             ldapService.id should be(LdapService.Name("ldap1"))
-            ldapService shouldBe a[LdapAuthenticationService]
+            val userSearchFilterConfig = getUserSearchFilterConfigFrom(
+              extractUnderlyingAuthNLdapServiceImplementation[UnboundidLdapAuthenticationService](ldapService)
+            )
+            userSearchFilterConfig should be(UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid")))
           }
         )
       }
@@ -203,7 +212,23 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
             definitions.items should have size 1
             val ldapService = definitions.items.head
             ldapService.id should be(LdapService.Name("ldap1"))
-            ldapService shouldBe a[LdapAuthenticationService]
+            val userSearchFilterConfig = getUserSearchFilterConfigFrom(
+              extractUnderlyingAuthNLdapServiceImplementation[UnboundidLdapAuthenticationService](ldapService)
+            )
+            userSearchFilterConfig should be(UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid")))
+            val groupsSearchFilterConfig = getGroupsSearchFilterConfigFrom(
+                extractUnderlyingAuthZLdapServiceImplementation[UnboundidLdapAuthorizationService](ldapService)
+            )
+            groupsSearchFilterConfig should be (UserGroupsSearchFilterConfig(
+              UserGroupsSearchMode.DefaultGroupSearch(
+                Dn("ou=People,dc=example,dc=com"),
+                GroupSearchFilter("(objectClass=*)"),
+                GroupIdAttribute("cn"),
+                UniqueMemberAttribute("uniqueMember"),
+                groupAttributeIsDN = true
+              ),
+              nestedGroupsConfig = None
+            ))
           }
         )
       }
@@ -393,6 +418,22 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
             val ldapService = definitions.items.head
             ldapService shouldBe a[LdapAuthService]
             ldapService.id should be(LdapService.Name("ldap1"))
+            val userSearchFilterConfig = getUserSearchFilterConfigFrom(
+              extractUnderlyingAuthNLdapServiceImplementation[UnboundidLdapAuthenticationService](ldapService)
+            )
+            userSearchFilterConfig should be(UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid")))
+            val groupsSearchFilterConfig = getGroupsSearchFilterConfigFrom(
+              extractUnderlyingAuthZLdapServiceImplementation[UnboundidLdapAuthorizationService](ldapService)
+            )
+            groupsSearchFilterConfig should be(UserGroupsSearchFilterConfig(
+              UserGroupsSearchMode.GroupsFromUserEntry(
+                Dn("ou=Groups,dc=example,dc=com"),
+                GroupSearchFilter("(objectClass=*)"),
+                GroupIdAttribute("cn"),
+                GroupsFromUserAttribute("memberOf")
+              ),
+              nestedGroupsConfig = None
+            ))
           }
         )
       }
@@ -422,13 +463,18 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
               ldapService.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
               ldapService.id should be(LdapService.Name("ldap1"))
 
-              getLdapAuthorizationGroupsSearchFilterConfig(ldapService) should be(Some(NestedGroupsConfig(
-                nestedLevels = 5,
-                Dn("ou=Groups,dc=example,dc=com"),
-                GroupSearchFilter("(objectClass=*)"),
-                UniqueMemberAttribute("uniqueMember"),
-                GroupIdAttribute("cn")
-              )))
+              val groupsSearchFilterConfig = getGroupsSearchFilterConfigFrom(
+                extractUnderlyingAuthZLdapServiceImplementation[UnboundidLdapAuthorizationService](ldapService)
+              )
+              groupsSearchFilterConfig.nestedGroupsConfig should be(
+                Some(NestedGroupsConfig(
+                  nestedLevels = 5,
+                  Dn("ou=Groups,dc=example,dc=com"),
+                  GroupSearchFilter("(objectClass=*)"),
+                  UniqueMemberAttribute("uniqueMember"),
+                  GroupIdAttribute("cn")
+                ))
+              )
             }
           )
         }
@@ -458,7 +504,10 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
               ldapService.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
               ldapService.id should be(LdapService.Name("ldap1"))
 
-              getLdapAuthorizationGroupsSearchFilterConfig(ldapService) should be(Some(NestedGroupsConfig(
+              val groupsSearchFilterConfig = getGroupsSearchFilterConfigFrom(
+                extractUnderlyingAuthZLdapServiceImplementation[UnboundidLdapAuthorizationService](ldapService)
+              )
+              groupsSearchFilterConfig.nestedGroupsConfig should be(Some(NestedGroupsConfig(
                 nestedLevels = 5,
                 Dn("ou=Groups,dc=example,dc=com"),
                 GroupSearchFilter("(objectClass=*)"),
@@ -468,6 +517,55 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
             }
           )
         }
+      }
+      "User ID attribute is configured to be CN" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: 192.168.123.123
+               |    port: 234
+               |    ignore_ldap_connectivity_problems: true
+               |    connection_timeout: 500 ms
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    user_id_attribute: "cn"
+           """.stripMargin,
+          assertion = { definitions =>
+            definitions.items should have size 1
+            val ldapService = definitions.items.head
+            ldapService.id should be(LdapService.Name("ldap1"))
+            val userSearchFilterConfig = getUserSearchFilterConfigFrom(
+              extractUnderlyingAuthNLdapServiceImplementation[UnboundidLdapAuthenticationService](ldapService)
+            )
+            userSearchFilterConfig should be(UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), Cn))
+          }
+        )
+      }
+      "User ID attribute is configured to be CN, but the optimization is disabled" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: 192.168.123.123
+               |    port: 234
+               |    ignore_ldap_connectivity_problems: true
+               |    connection_timeout: 500 ms
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    user_id_attribute: "cn"
+               |    disable_user_authentication_optimization: true
+           """.stripMargin,
+          assertion = { definitions =>
+            definitions.items should have size 1
+            val ldapService = definitions.items.head
+            ldapService.id should be(LdapService.Name("ldap1"))
+            val userSearchFilterConfig = getUserSearchFilterConfigFrom(
+              extractUnderlyingAuthNLdapServiceImplementation[UnboundidLdapAuthenticationService](ldapService)
+            )
+            userSearchFilterConfig should be(UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("cn")))
+          }
+        )
       }
     }
     "not be able to be loaded from config" when {
@@ -841,10 +939,33 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
     on(cacheableLdapServiceDecorator).get[LdapService]("underlying")
   }
 
-  private def getLdapAuthorizationGroupsSearchFilterConfig(ldapService: LdapService) = {
-    val composedLdapAuthService = on(ldapService).get[ComposedLdapAuthService]("underlying")
-    val ldapAuthorizationService = on(composedLdapAuthService).get[UnboundidLdapAuthorizationService]("ldapAuthorizationService")
-    val groupsSearchFilterConfig = on(ldapAuthorizationService).get[UserGroupsSearchFilterConfig]("groupsSearchFilter")
-    groupsSearchFilterConfig.nestedGroupsConfig
+  private def extractUnderlyingAuthNLdapServiceImplementation[T <: LdapService : ClassTag](ldapService: LdapService): T = {
+    extractUnderlyingAuthLdapServiceImplementation[T](ldapService, "ldapAuthenticationService")
+  }
+
+  private def extractUnderlyingAuthZLdapServiceImplementation[T <: LdapService : ClassTag](ldapService: LdapService): T = {
+    extractUnderlyingAuthLdapServiceImplementation[T](ldapService, "ldapAuthorizationService")
+  }
+
+  @tailrec
+  private def extractUnderlyingAuthLdapServiceImplementation[T <: LdapService : ClassTag](ldapService: LdapService,
+                                                                                          composedServiceFieldName: String): T = {
+    if (implicitly[ClassTag[T]].runtimeClass == ldapService.getClass) {
+      ldapService.asInstanceOf[T]
+    } else if (classOf[ComposedLdapAuthService] == ldapService.getClass) {
+      val underlying = on(ldapService).get[LdapService](composedServiceFieldName)
+      extractUnderlyingAuthLdapServiceImplementation[T](underlying, composedServiceFieldName)
+    } else {
+      val underlying = on(ldapService).get[LdapService]("underlying")
+      extractUnderlyingAuthLdapServiceImplementation[T](underlying, composedServiceFieldName)
+    }
+  }
+
+  private def getUserSearchFilterConfigFrom(service: LdapService) = {
+    on(service).get[UserSearchFilterConfig]("userSearchFiler")
+  }
+
+  private def getGroupsSearchFilterConfigFrom(service: LdapService) = {
+    on(service).get[UserGroupsSearchFilterConfig]("groupsSearchFilter")
   }
 }

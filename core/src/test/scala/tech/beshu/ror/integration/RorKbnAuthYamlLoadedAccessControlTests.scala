@@ -21,7 +21,6 @@ import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.impl.DefaultClaims
 import io.jsonwebtoken.security.Keys
 import monix.execution.Scheduler.Implicits.global
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.Inside
@@ -36,7 +35,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 import scala.jdk.CollectionConverters._
 
 class RorKbnAuthYamlLoadedAccessControlTests
-  extends AnyWordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
+  extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
 
   override protected def configYaml: String =
     """http.bind_host: _eth0:ipv4_

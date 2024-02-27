@@ -81,6 +81,6 @@ class ComposedLdapAuthService(override val id: LdapService#Id,
 }
 
 
-final case class LdapUser(id: User.Id, dn: Dn)
+final case class LdapUser(id: User.Id, dn: Dn, confirmed: Boolean)
 final case class Dn(value: NonEmptyString)
 

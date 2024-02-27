@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.kibana
 
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -31,8 +30,7 @@ import tech.beshu.ror.unit.acl.blocks.rules.utils.KibanaIndexNameRuntimeResolvab
 import tech.beshu.ror.utils.TestsUtils._
 
 class KibanaTemplateIndexRuleTests
-  extends AnyWordSpec
-    with MockFactory {
+  extends AnyWordSpec {
 
   import org.scalatest.matchers.should.Matchers._
 

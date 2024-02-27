@@ -21,7 +21,6 @@ import cats.data.NonEmptySet
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
@@ -36,7 +35,7 @@ import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.mocks.MockRequestContext
 
-class UsersRuleTests extends AnyWordSpec with MockFactory {
+class UsersRuleTests extends AnyWordSpec {
 
   private implicit val defaultUserIdOrder: Order[Id] = Order.by(_.value.value)
 

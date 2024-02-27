@@ -37,6 +37,12 @@ services:
       - ES_VERSION=$ES_VERSION
       - LDAP_HOST=lagsimulator
       - LDAP_PORT=13890
+    healthcheck:
+      test: [ "CMD", "curl", "-fk", "-u", "admin:container", "https://localhost:9200/_cluster/health" ]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
     networks:
       - es-network
     ulimits:

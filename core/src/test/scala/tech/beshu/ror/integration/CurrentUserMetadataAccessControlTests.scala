@@ -20,7 +20,6 @@ import cats.data.NonEmptySet
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside}
@@ -46,7 +45,6 @@ class CurrentUserMetadataAccessControlTests
     with BaseYamlLoadedAccessControlTest
     with BeforeAndAfterAll
     with ForAllTestContainer
-    with MockFactory
     with Inside {
 
   private val wiremock = new WireMockScalaAdapter(WireMockContainer.create(
@@ -64,7 +62,7 @@ class CurrentUserMetadataAccessControlTests
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    ldapConnectionPoolProvider.close()
+    ldapConnectionPoolProvider.close().runSyncUnsafe()
     httpClientsFactory.shutdown()
   }
 

@@ -27,17 +27,29 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationS
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.LoggerOps.toLoggerOps
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.TaskOps._
 
+import java.time.Clock
 import scala.concurrent.duration.FiniteDuration
 
 class UnboundidLdapAuthenticationService private(override val id: LdapService#Id,
                                                  connectionPool: UnboundidLdapConnectionPool,
                                                  userSearchFiler: UserSearchFilterConfig,
                                                  override val serviceTimeout: FiniteDuration Refined Positive)
+                                                (implicit clock: Clock)
   extends BaseUnboundidLdapService(connectionPool, userSearchFiler, serviceTimeout)
     with LdapAuthenticationService {
 
   override def authenticate(user: User.Id, secret: PlainTextSecret): Task[Boolean] = {
+    Task.measure(
+      doAuthenticate(user, secret),
+      measurement => Task.delay {
+        logger.debug(s"LDAP authentication took $measurement")
+      }
+    )
+  }
+
+  private def doAuthenticate(user: User.Id, secret: PlainTextSecret) = {
     ldapUserBy(user)
       .flatMap {
         case Some(ldapUser) =>
@@ -64,7 +76,8 @@ object UnboundidLdapAuthenticationService {
   def create(id: LdapService#Id,
              poolProvider: UnboundidLdapConnectionPoolProvider,
              connectionConfig: LdapConnectionConfig,
-             userSearchFiler: UserSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthenticationService]] = {
+             userSearchFiler: UserSearchFilterConfig)
+            (implicit clock: Clock): Task[Either[ConnectionError, UnboundidLdapAuthenticationService]] = {
     (for {
       _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
         .recoverWith {

@@ -95,7 +95,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    ldapConnectionPoolProvider.close()
+    ldapConnectionPoolProvider.close().runSyncUnsafe()
   }
 
   override protected val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider

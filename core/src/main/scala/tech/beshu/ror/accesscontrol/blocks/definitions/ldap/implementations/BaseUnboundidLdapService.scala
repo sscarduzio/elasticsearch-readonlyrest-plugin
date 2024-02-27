@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
-import cats.implicits._
+import cats.implicits.catsSyntaxApplicativeError
 import com.unboundid.ldap.sdk._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
@@ -27,28 +27,50 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.NestedGroupsConfig
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.utils.LoggerOps._
+import tech.beshu.ror.utils.LoggerOps.toLoggerOps
 
 import scala.concurrent.duration._
 
-private [implementations] abstract class BaseUnboundidLdapService(connectionPool: UnboundidLdapConnectionPool,
-                                                                  userSearchFiler: UserSearchFilterConfig,
-                                                                  override val serviceTimeout: FiniteDuration Refined Positive)
+private[implementations] abstract class BaseUnboundidLdapService(connectionPool: UnboundidLdapConnectionPool,
+                                                                 userSearchFiler: UserSearchFilterConfig,
+                                                                 override val serviceTimeout: FiniteDuration Refined Positive)
   extends LdapUserService with Logging {
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
+    userSearchFiler.userIdAttribute match {
+      case UserIdAttribute.Cn => createLdapUser(userId)
+      case attribute@UserIdAttribute.CustomAttribute(_) => fetchLdapUser(userId, attribute)
+    }
+  }
+
+  private def createLdapUser(userId: User.Id) = {
+    Task.delay {
+      Some {
+        LdapUser(
+          id = userId,
+          dn = Dn(NonEmptyString.unsafeFrom(
+            s"cn=${Filter.encodeValue(userId.value.value)},${userSearchFiler.searchUserBaseDN.value.value}"
+          )),
+          confirmed = false
+        )
+      }
+    }
+  }
+
+  private def fetchLdapUser(userId: User.Id, uidAttribute: UserIdAttribute.CustomAttribute) = {
     connectionPool
-      .process(searchUserLdapRequest(_, userSearchFiler, userId), serviceTimeout)
+      .process(searchUserLdapRequest(_, userSearchFiler.searchUserBaseDN, uidAttribute, userId), serviceTimeout)
       .flatMap {
         case Right(Nil) =>
           logger.debug("LDAP getting user CN returned no entries")
           Task.now(None)
         case Right(user :: Nil) =>
-          Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)))))
+          Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)), confirmed = true)))
         case Right(all@user :: _) =>
           logger.warn(s"LDAP search user - more than one user was returned: ${all.mkString(",")}. Picking first")
-          Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)))))
+          Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)), confirmed = true)))
         case Left(errorResult) =>
           logger.error(s"LDAP getting user CN returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
@@ -59,13 +81,14 @@ private [implementations] abstract class BaseUnboundidLdapService(connectionPool
   }
 
   private def searchUserLdapRequest(listener: AsyncSearchResultListener,
-                                    userSearchFiler: UserSearchFilterConfig,
+                                    searchUserBaseDN: Dn,
+                                    uidAttribute: UserIdAttribute.CustomAttribute,
                                     userId: User.Id): LDAPRequest = {
     new SearchRequest(
       listener,
-      userSearchFiler.searchUserBaseDN.value.value,
+      searchUserBaseDN.value.value,
       SearchScope.SUB,
-      s"${userSearchFiler.uidAttribute}=${Filter.encodeValue(userId.value.value)}"
+      s"${uidAttribute.name.value}=${Filter.encodeValue(userId.value.value)}"
     )
   }
 }
@@ -73,7 +96,15 @@ private [implementations] abstract class BaseUnboundidLdapService(connectionPool
 final case class LdapUnexpectedResult(code: ResultCode, cause: String)
   extends Throwable(s"LDAP returned code: ${code.getName} [${code.intValue()}], cause: $cause")
 
-final case class UserSearchFilterConfig(searchUserBaseDN: Dn, uidAttribute: NonEmptyString)
+final case class UserSearchFilterConfig(searchUserBaseDN: Dn, userIdAttribute: UserIdAttribute)
+object UserSearchFilterConfig {
+
+  sealed trait UserIdAttribute
+  object UserIdAttribute {
+    case object Cn extends UserIdAttribute
+    final case class CustomAttribute(name: NonEmptyString) extends UserIdAttribute
+  }
+}
 
 final case class UserGroupsSearchFilterConfig(mode: UserGroupsSearchMode,
                                               nestedGroupsConfig: Option[NestedGroupsConfig])

@@ -19,7 +19,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 import cats.data.NonEmptyList
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
@@ -42,7 +41,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-class ProxyAuthRuleTests extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion {
+class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssertion {
 
   "A ProxyAuthRule" should {
     "match" when {
