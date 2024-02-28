@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration.suites
 
+import better.files.FileExtensions
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
@@ -117,8 +118,8 @@ class DocumentApiSuite
     }
     "_bulk API is used" should {
       "allow to create all requests indices" when {
-        "user has access to all of them" in {
-          val result = dev1documentManager.bulkUnsafe(
+        "user has access to all of them (application/json mode)" in {
+          val result = dev1documentManager.bulk(
             BulkAction.Insert("index1_2020-01-01", 1, ujson.read("""{ "message" : "hello" }""")),
             BulkAction.Insert("index1_2020-01-02", 1, ujson.read("""{ "message" : "hello" }"""))
           )
@@ -130,10 +131,22 @@ class DocumentApiSuite
           items(1)("create")("status").num should be(201)
           items(1)("create")("_index").str should be("index1_2020-01-02")
         }
+        "user has access to all of them (application/nd-json mode)" in {
+          val result = dev1documentManager.bulk(
+            ContainerUtils.getResourceFile(s"/document_api/bulk_inserts.ndjson").toScala
+          )
+
+          result should have statusCode 200
+          val items = result.responseJson("items").arr.toVector
+          items(0)("index")("status").num should be(201)
+          items(0)("index")("_index").str should be("index1_2020-02-01")
+          items(1)("index")("status").num should be(201)
+          items(1)("index")("_index").str should be("index1_2020-02-02")
+        }
       }
       "not allow to create indices" when {
         "even one index is forbidden" in {
-          val result = dev1documentManager.bulkUnsafe(
+          val result = dev1documentManager.bulk(
             BulkAction.Insert("index1_2020-01-01", 1, ujson.read("""{ "message" : "hello" }""")),
             BulkAction.Insert("index2_2020-01-01", 1, ujson.read("""{ "message" : "hello" }"""))
           )

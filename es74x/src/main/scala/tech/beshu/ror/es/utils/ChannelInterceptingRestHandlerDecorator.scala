@@ -41,6 +41,12 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
     wrapped.handleRequest(request, rorRestChannel, client)
   }
 
+  override def canTripCircuitBreaker: Boolean = underlying.canTripCircuitBreaker
+
+  override def supportsContentStream(): Boolean = underlying.supportsContentStream()
+
+  override def allowsUnsafeBuffers(): Boolean = underlying.allowsUnsafeBuffers()
+
   private def wrapSomeActions(ofHandler: RestHandler) = {
     unwrapWithSecurityRestFilterIfNeeded(ofHandler) match {
       case action: RestCatAction => new RorWrappedRestCatAction(action)
