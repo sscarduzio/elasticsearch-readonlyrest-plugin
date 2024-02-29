@@ -24,7 +24,7 @@ import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.elasticsearch.DocumentManager.BulkAction
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, EsModule}
 
 class DocumentApiSuite
   extends AnyWordSpec
@@ -133,7 +133,12 @@ class DocumentApiSuite
         }
         "user has access to all of them (application/nd-json mode)" in {
           val result = dev1documentManager.bulk(
-            ContainerUtils.getResourceFile(s"/document_api/bulk_inserts.ndjson").toScala
+            ContainerUtils
+              .getResourceFile(
+                if(EsModule.doesCurrentModuleMatch(allEs6x)) s"/document_api/bulk_inserts_es6x.ndjson"
+                else s"/document_api/bulk_inserts.ndjson"
+              )
+              .toScala
           )
 
           result should have statusCode 200
