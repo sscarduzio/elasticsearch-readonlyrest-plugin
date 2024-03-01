@@ -118,7 +118,7 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
     documentManager.createDoc("user2_index", 1, ujson.read("""{ "data1": 1, "data2": 2 }""")).force()
 
     eventually {
-      val searchManager = new SearchManager(basicAuthClient("user2", "test"))
+      val searchManager = new SearchManager(basicAuthClient("user2", "test"), esVersionUsed)
       val result = searchManager.fieldCaps(indices = "user2_index" :: Nil, fields = "data1" :: Nil)
 
       result should have statusCode 200

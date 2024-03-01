@@ -19,7 +19,6 @@ package tech.beshu.ror.integration
 import com.dimafeng.testcontainers.ForAllTestContainer
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
@@ -48,7 +47,7 @@ import java.util.Base64
 class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
   with BaseYamlLoadedAccessControlTest
   with ForAllTestContainer
-  with MockFactory with Inside {
+  with Inside {
 
   override val container: NonStoppableLdapContainer = SingletonLdapContainers.ldap1
 

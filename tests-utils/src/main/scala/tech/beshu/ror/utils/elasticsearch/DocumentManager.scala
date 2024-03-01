@@ -20,14 +20,14 @@ import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods._
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
-import tech.beshu.ror.utils.elasticsearch.DocumentManager.{BulkAction, MGetResult}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
+import tech.beshu.ror.utils.elasticsearch.DocumentManager.BulkAction
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.Version
 import ujson.Value
 
 class DocumentManager(restClient: RestClient, esVersion: String)
-  extends BaseManager(restClient) {
+  extends BaseManager(restClient, esVersion, esNativeApi = true) {
 
   def mGet(query: JSON): MGetResult = {
     call(createMGetRequest(query), new MGetResult(_))
@@ -176,12 +176,12 @@ class DocumentManager(restClient: RestClient, esVersion: String)
       )
     }
   }
-}
 
-object DocumentManager {
   class MGetResult(response: HttpResponse) extends JsonResponse(response) {
     lazy val docs: List[Value] = responseJson("docs").arr.toList
   }
+}
+object DocumentManager {
 
   sealed trait BulkAction
   object BulkAction {

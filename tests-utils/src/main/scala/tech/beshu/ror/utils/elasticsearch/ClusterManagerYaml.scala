@@ -17,11 +17,10 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.client.methods.HttpGet
-import tech.beshu.ror.utils.elasticsearch.BaseManager.YamlMapResponse
 import tech.beshu.ror.utils.httpclient.RestClient
 
-class ClusterManagerYaml(client: RestClient)
-  extends BaseManager(client)  {
+class ClusterManagerYaml(client: RestClient, esVersion: String)
+  extends BaseManager(client, esVersion, esNativeApi = true)  {
 
   def health(): YamlMapResponse = health(None)
 

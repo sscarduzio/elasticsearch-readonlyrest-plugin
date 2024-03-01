@@ -25,7 +25,7 @@ class FieldRuleLuceneEngineSuite
 
   override implicit val rorConfigFileName: String = "/field_level_security_engine/readonlyrest_fls_engine_lucene.yml"
 
-  override protected def unmodifiableQueryAssertion(result: SearchManager.SearchResult): Unit = {
+  override protected def unmodifiableQueryAssertion(result: SearchManager#SearchResult): Unit = {
     result should have statusCode 200
     result.searchHits.isEmpty shouldBe true
   }

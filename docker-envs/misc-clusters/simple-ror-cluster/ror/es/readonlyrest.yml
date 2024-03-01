@@ -34,15 +34,23 @@ readonlyrest:
     - name: "User 1"
       type: allow
       auth_key: "user1:test"
-      indices: ["test*"]
-
-    - name: "::RW_USER (filter read requests)::"
-      auth_key: user3:pass
-      indices: ["r*"]  # <-- DO NOT FILTER THE .kibana INDEX!
-      filter: '{"query_string":{"query":"DestCountry:FR"}}'
-
-    - name: "::RW_USER (allow remaining requests)::"
-      auth_key: user3:pass
       kibana:
         access: rw
-      indices: ["r*"]
+
+    - name: "test_filter Kibana"
+      groups: [ "test_filter" ]
+      kibana_access: "rw"
+      indices: [ "p11001_write_test*" ]
+      filter: '{"bool": { "must_not": { "match": { "user2": "eee" }}}}'
+      fields: [ "~user1" ]
+
+    - name: "test_filter Kibana 1"
+      groups: [ "test_filter" ]
+      kibana_access: "rw"
+      kibana_index: ".kibana_p11001_write"
+      indices: [ ".kibana_p11001_write", "p11001_write_test*" ]
+
+  users:
+    - username: "user1"
+      groups: ["test_filter"]
+      auth_key: user1:dev

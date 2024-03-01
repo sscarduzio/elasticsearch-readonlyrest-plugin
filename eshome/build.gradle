@@ -57,7 +57,7 @@ dependencies {
 
 tasks.register('buildRor', GradleBuild) {
     startParameter.projectProperties = ['esVersion': esVersion]
-    tasks = [':' + esModule + ':ror']
+    tasks = [':' + esModule + ':packageRorPlugin']
 }
 
 tasks.register('downloadEsBinaries', GradleBuild) {

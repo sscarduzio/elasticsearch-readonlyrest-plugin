@@ -17,6 +17,9 @@
 package tech.beshu.ror.utils
 
 import monix.eval.Task
+
+import java.time.{Clock, Duration, Instant}
+import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
 
@@ -35,8 +38,27 @@ class TaskOps[T](val task: Task[T]) extends AnyVal {
         throw e
       }
   }
+
 }
 
 object TaskOps {
   implicit def from[T](task: Task[T]): TaskOps[T] = new TaskOps[T](task)
+
+  implicit class Measure(val task: Task.type) extends AnyVal {
+
+    def measure[T](task: Task[T], logTimeMeasurement: FiniteDuration => Task[Unit])
+                  (implicit clock: Clock): Task[T] =
+      Task.defer {
+        val startMeasurement = Instant.now(clock)
+        val stopMeasurement = Task.suspend {
+          val end = Instant.now(clock)
+          val measurement = new FiniteDuration(Duration.between(startMeasurement, end).toMillis, MILLISECONDS)
+          logTimeMeasurement(measurement)
+        }
+        task.redeemWith(
+          ex => stopMeasurement.flatMap(_ => Task.raiseError(ex)),
+          result => stopMeasurement.map(_ => result),
+        )
+      }
+  }
 }

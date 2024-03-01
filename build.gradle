@@ -1,9 +1,68 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
 import tech.beshu.ror.gradle.RorTaskFinder
 
-plugins { id 'base' }
-
-tasks.register("buildRorPlugin", RorTaskFinder) {
-    dependsOn it.findRorTaskForEsVersion()
+plugins {
+    id 'base'
+    id 'com.bmuschko.docker-remote-api'             version '9.4.0'
+    id 'io.github.gradle-nexus.publish-plugin'      version '2.0.0-rc-1'
+    id 'org.gradle.crypto.checksum'                 version '1.4.0'
 }
 
+tasks.register("buildRorPlugin", RorTaskFinder) {
+    dependsOn it.findRorTaskForEsVersion('buildRorPluginZip')
+}
 
+tasks.register("publishRorPlugin", RorTaskFinder) {
+    dependsOn it.findRorTaskForEsVersion('uploadRorPluginToS3')
+}
+
+tasks.register("buildEsRorDockerImage", RorTaskFinder) {
+    dependsOn it.findRorTaskForEsVersion('buildRorDockerImage')
+}
+
+tasks.register("publishEsRorDockerImage", RorTaskFinder) {
+    dependsOn it.findRorTaskForEsVersion('pushRorDockerImage')
+}
+
+group = 'tech.beshu.ror'
+version = pluginVersion
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            stagingProfileId = System.getenv('MAVEN_STAGING_PROFILE_ID')
+            username = System.getenv('MAVEN_REPO_USER')
+            password = System.getenv('MAVEN_REPO_PASSWORD')
+        }
+    }
+
+    clientTimeout = Duration.ofSeconds(120)
+    connectTimeout = Duration.ofSeconds(60)
+
+    transitionCheckOptions {
+        maxRetries.set(50)
+        delayBetween.set(java.time.Duration.ofMillis(10000))
+    }
+}
+
+docker {
+    registryCredentials {
+        username = System.getenv('DOCKER_REGISTRY_USER')
+        password = System.getenv('DOCKER_REGISTRY_PASSWORD')
+    }
+}

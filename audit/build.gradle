@@ -18,16 +18,12 @@
 plugins {
     id "readonlyrest.base-common-conventions"
 
-    id "de.marcphilipp.nexus-publish"           version "0.4.0"
-    id "io.codearte.nexus-staging"              version "0.22.0"
-    id "com.github.prokod.gradle-crossbuild"    version "0.14.1"
+    id "com.github.prokod.gradle-crossbuild" version "0.16.0"
     id "java"
     id "java-library"
+    id "maven-publish"
     id "signing"
 }
-
-group = 'org.elasticsearch.plugin'
-version = pluginVersion
 
 dependencyCheck {
     /*
@@ -131,7 +127,8 @@ tasks.register('javadocJar', Jar) {
 }
 
 group = 'tech.beshu.ror'
-archivesBaseName = 'audit'
+version = pluginVersion
+
 publishing {
     publications {
         crossBuildV211(MavenPublication) {
@@ -153,39 +150,15 @@ publishing {
             pom ror_pom
         }
     }
-    repositories {
-        maven {
-            name 'deploy'
-            url 'https://oss.sonatype.org/service/local/staging/deploy/maven2/'
-            credentials {
-                username = System.getenv('MAVEN_REPO_USER')
-                password = System.getenv('MAVEN_REPO_PASSWORD')
-            }
-        }
-    }
 }
 
 signing {
-    sign publishing.publications
+    sign(publishing.publications)
 }
 
-nexusPublishing {
-    repositories {
-        sonatype {
-            packageGroup = 'tech.beshu'
-            stagingProfileId = System.getenv('MAVEN_STAGING_PROFILE_ID')
-            username = System.getenv('MAVEN_REPO_USER')
-            password = System.getenv('MAVEN_REPO_PASSWORD')
-        }
-    }
-    clientTimeout = java.time.Duration.ofSeconds(120)
-}
-
-nexusStaging {
-    packageGroup = 'tech.beshu'
-    stagingProfileId = System.getenv('MAVEN_STAGING_PROFILE_ID')
-    username = System.getenv('MAVEN_REPO_USER')
-    password = System.getenv('MAVEN_REPO_PASSWORD')
-    numberOfRetries = 50
-    delayBetweenRetriesInMillis = 10000
+// Fix Gradle warning about signing tasks using publishing task outputs without explicit dependencies
+// https://github.com/gradle/gradle/issues/26091
+tasks.withType(AbstractPublishToMaven.class).configureEach {
+    def signingTasks = tasks.withType(Sign.class)
+    mustRunAfter(signingTasks)
 }

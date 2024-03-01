@@ -19,7 +19,7 @@ package tech.beshu.ror.utils.misc
 import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.matchers.{MatchResult, Matcher}
-import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleResponse
+import tech.beshu.ror.utils.elasticsearch.BaseManager
 import ujson._
 
 import scala.language.implicitConversions
@@ -81,9 +81,9 @@ trait CustomScalaTestMatchers extends Matchers {
 
   def notContainElementsFrom(elements: Set[Regex]) = new SetMayNotContainsElementsMatcher(elements)
 
-  class StatusCodeEquals(statusCode: Int) extends Matcher[SimpleResponse] {
+  class StatusCodeEquals(statusCode: Int) extends Matcher[BaseManager#SimpleResponse] {
 
-    override def apply(response: SimpleResponse): MatchResult = {
+    override def apply(response: BaseManager#SimpleResponse): MatchResult = {
       MatchResult(
         response.responseCode == statusCode,
         s"Expected status code was [$statusCode], but the response has [${response.responseCode}]; Moreover, body of the response was:\n${response.body}",
@@ -94,7 +94,7 @@ trait CustomScalaTestMatchers extends Matchers {
 
   def haveStatusCode(statusCode: Int) = new StatusCodeEquals(statusCode)
 
-  class HaveStatusCode[T <: SimpleResponse](val haveWord: ResultOfHaveWordForExtent[T])
+  class HaveStatusCode[T <: BaseManager#SimpleResponse](val haveWord: ResultOfHaveWordForExtent[T])
     extends CustomScalaTestMatchers {
     import org.joor.Reflect._
 
@@ -105,7 +105,7 @@ trait CustomScalaTestMatchers extends Matchers {
     }
   }
 
-  implicit def toHaveWordStatusCode[T <: SimpleResponse](haveWord: ResultOfHaveWordForExtent[T]): HaveStatusCode[T] = {
+  implicit def toHaveWordStatusCode[T <: BaseManager#SimpleResponse](haveWord: ResultOfHaveWordForExtent[T]): HaveStatusCode[T] = {
     new HaveStatusCode(haveWord)
   }
 }

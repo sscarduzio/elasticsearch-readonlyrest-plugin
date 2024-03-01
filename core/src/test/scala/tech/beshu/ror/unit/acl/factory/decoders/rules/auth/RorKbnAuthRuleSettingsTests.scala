@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 
 import eu.timepit.refined.auto._
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
@@ -36,7 +35,7 @@ import java.security.KeyPairGenerator
 import java.util.Base64
 
 class RorKbnAuthRuleSettingsTests
-  extends BaseRuleSettingsDecoderTest[RorKbnAuthRule] with MockFactory {
+  extends BaseRuleSettingsDecoderTest[RorKbnAuthRule] {
 
   "A RorKbnAuthRule" should {
     "be able to be loaded from config" when {

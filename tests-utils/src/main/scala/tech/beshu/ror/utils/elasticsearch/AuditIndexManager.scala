@@ -18,34 +18,31 @@ package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.AuditIndexManager.AuditEntriesResult
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, SimpleResponse}
-import tech.beshu.ror.utils.elasticsearch.SearchManager.SearchResult
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 
 class AuditIndexManager(restClient: RestClient,
                         esVersion: String,
                         indexName: String)
-  extends BaseManager(restClient) {
+  extends BaseManager(restClient, esVersion, esNativeApi = true) {
 
-  private lazy val searchManager = new SearchManager(restClient)
-  private lazy val indexManager = new IndexManager(restClient, esVersion)
+  lazy val searchManager = new SearchManager(restClient, esVersion)
+  lazy val indexManager = new IndexManager(restClient, esVersion)
 
-  def getEntries: AuditEntriesResult =
-    eventually(new AuditEntriesResult(searchManager.search(indexName)))(
-      until = _.jsons.nonEmpty
+  def getEntries: AuditEntriesResult = {
+    val result = searchManager.eventually(searchManager.search(indexName))(
+      until = r => new AuditEntriesResult(r).jsons.nonEmpty
     )
+    new AuditEntriesResult(result)
+  }
 
-  def truncate: SimpleResponse =
+  def truncate: indexManager.SimpleResponse =
     indexManager.removeIndex(indexName)
 
-}
+  class AuditEntriesResult(response: HttpResponse)
+    extends searchManager.SearchResult(response) {
 
-object AuditIndexManager {
-
-  class AuditEntriesResult(response: HttpResponse) extends SearchResult(response) {
-
-    def this(searchResult: SearchResult) = {
+    def this(searchResult: searchManager.SearchResult) = {
       this(AuditEntriesResult.refreshEntity(searchResult))
     }
 
@@ -56,7 +53,7 @@ object AuditIndexManager {
 
   }
   object AuditEntriesResult {
-    private def refreshEntity(simpleResponse: SimpleResponse) = {
+    private def refreshEntity(simpleResponse: searchManager.SimpleResponse) = {
       simpleResponse.response.setEntity(new StringEntity(simpleResponse.body))
       simpleResponse.response
     }

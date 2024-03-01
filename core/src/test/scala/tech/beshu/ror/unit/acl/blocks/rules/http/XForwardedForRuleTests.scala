@@ -19,7 +19,6 @@ package tech.beshu.ror.unit.acl.blocks.rules.http
 import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
@@ -38,7 +37,7 @@ import tech.beshu.ror.mocks.{MockHostnameResolver, MockRequestContext}
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.TestsUtils._
 
-class XForwardedForRuleTests extends AnyWordSpec with MockFactory {
+class XForwardedForRuleTests extends AnyWordSpec {
 
   "A XForwardedForRule" should {
     "match" when {

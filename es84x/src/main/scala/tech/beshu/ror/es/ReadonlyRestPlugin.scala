@@ -39,20 +39,19 @@ import org.elasticsearch.index.mapper.IgnoredFieldMapper
 import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.plugins._
-import org.elasticsearch.repositories.{RepositoriesService, VerifyNodeRepositoryAction}
+import org.elasticsearch.repositories.RepositoriesService
 import org.elasticsearch.rest.{RestController, RestHandler}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.tracing.Tracer
 import org.elasticsearch.transport.netty4.{Netty4Utils, SharedGroupFactory}
-import org.elasticsearch.transport.{Transport, TransportInterceptor, TransportService}
+import org.elasticsearch.transport.{Transport, TransportInterceptor}
 import org.elasticsearch.watcher.ResourceWatcherService
 import org.elasticsearch.xcontent.NamedXContentRegistry
-import org.joor.Reflect.on
-import tech.beshu.ror.constants
 import tech.beshu.ror.boot.{EsInitListener, SecurityProviderConfiguratorForFips}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.configuration.EnvironmentConfig
+import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
@@ -69,7 +68,7 @@ import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, Transpo
 import tech.beshu.ror.es.actions.wrappers._upgrade.{RorWrappedUpgradeActionType, TransportRorWrappedUpgradeAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
-import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsPatchVerifier}
+import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsPatchVerifier, RemoteClusterServiceSupplier}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SetOnce
 
@@ -134,14 +133,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         client.asInstanceOf[NodeClient],
         threadPool,
         environment,
-        () => {
-          Option(repositoriesServiceSupplier.get())
-            .flatMap { res =>
-              val va = on(res).get[VerifyNodeRepositoryAction]("verifyAction")
-              val ts = on(va).get[TransportService]("transportService")
-              Option(ts.getRemoteClusterService)
-            }
-        },
+        new RemoteClusterServiceSupplier(repositoriesServiceSupplier),
         () => Some(repositoriesServiceSupplier.get()),
         esInitListener,
         rorEsConfig

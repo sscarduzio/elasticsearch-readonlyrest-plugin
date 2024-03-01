@@ -113,11 +113,11 @@ class CrossClusterCallsSuite
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
 
-  private lazy val user1SearchManager = new SearchManager(basicAuthClient("dev1", "test"))
-  private lazy val user2SearchManager = new SearchManager(basicAuthClient("dev2", "test"))
-  private lazy val user3SearchManager = new SearchManager(basicAuthClient("dev3", "test"))
-  private lazy val user4SearchManager = new SearchManager(basicAuthClient("dev4", "test"))
-  private lazy val user5SearchManager = new SearchManager(basicAuthClient("dev5", "test"))
+  private lazy val user1SearchManager = new SearchManager(basicAuthClient("dev1", "test"), esVersionUsed)
+  private lazy val user2SearchManager = new SearchManager(basicAuthClient("dev2", "test"), esVersionUsed)
+  private lazy val user3SearchManager = new SearchManager(basicAuthClient("dev3", "test"), esVersionUsed)
+  private lazy val user4SearchManager = new SearchManager(basicAuthClient("dev4", "test"), esVersionUsed)
+  private lazy val user5SearchManager = new SearchManager(basicAuthClient("dev5", "test"), esVersionUsed)
 
   "A cluster _search for given index" should {
     "return 200 and allow user to its content" when {

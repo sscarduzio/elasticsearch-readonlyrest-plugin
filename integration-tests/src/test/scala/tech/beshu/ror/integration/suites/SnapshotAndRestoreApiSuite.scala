@@ -42,12 +42,12 @@ class SnapshotAndRestoreApiSuite
 
   override def nodeDataInitializer = Some(SnapshotAndRestoreApiSuite.nodeDataInitializer())
 
-  private lazy val adminSnapshotManager = new SnapshotManager(basicAuthClient("admin", "container"))
+  private lazy val adminSnapshotManager = new SnapshotManager(basicAuthClient("admin", "container"), esVersionUsed)
   private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"), esVersionUsed)
-  private lazy val dev1SnapshotManager = new SnapshotManager(basicAuthClient("dev1", "test"))
-  private lazy val dev2SnapshotManager = new SnapshotManager(basicAuthClient("dev2", "test"))
-  private lazy val dev3SnapshotManager = new SnapshotManager(basicAuthClient("dev3", "test"))
-  private lazy val dev4SnapshotManager = new SnapshotManager(basicAuthClient("dev4", "test"))
+  private lazy val dev1SnapshotManager = new SnapshotManager(basicAuthClient("dev1", "test"), esVersionUsed)
+  private lazy val dev2SnapshotManager = new SnapshotManager(basicAuthClient("dev2", "test"), esVersionUsed)
+  private lazy val dev3SnapshotManager = new SnapshotManager(basicAuthClient("dev3", "test"), esVersionUsed)
+  private lazy val dev4SnapshotManager = new SnapshotManager(basicAuthClient("dev4", "test"), esVersionUsed)
 
   "Snapshot repository management API" when {
     "user creates a repository" should {
@@ -551,7 +551,7 @@ class SnapshotAndRestoreApiSuite
             val snapshotName2 = SnapshotNameGenerator.next("dev1-snap")
             adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
 
-            val result = dev2SnapshotManager.getAllSnapshotStatuses()
+            val result = dev2SnapshotManager.getAllSnapshotStatuses
 
             result should have statusCode 200
             result.snapshots.map(_("snapshot").str) should contain theSameElementsAs List.empty // only the in-progres ones
@@ -566,7 +566,7 @@ class SnapshotAndRestoreApiSuite
             val snapshotName2 = SnapshotNameGenerator.next("dev1-snap")
             adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
 
-            val result = adminSnapshotManager.getAllSnapshotStatuses()
+            val result = adminSnapshotManager.getAllSnapshotStatuses
 
             result should have statusCode 200
             result.snapshots.map(_("snapshot").str) should contain theSameElementsAs List.empty // only the in-progres ones

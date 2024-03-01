@@ -17,14 +17,13 @@
 package tech.beshu.ror.unit.acl.factory
 
 import io.circe.Json
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.Inside
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.yaml
 
-class YamlParserTests extends AnyWordSpec with Inside with MockFactory {
+class YamlParserTests extends AnyWordSpec with Inside {
 
   "Yaml parser" should {
     "return parsing failure error" when {

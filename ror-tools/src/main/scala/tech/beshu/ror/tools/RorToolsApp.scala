@@ -18,13 +18,16 @@ package tech.beshu.ror.tools
 
 import scopt.OParser
 import tech.beshu.ror.tools.core.actions._
-import tech.beshu.ror.tools.core.patches.EsPatch
+import tech.beshu.ror.tools.core.patches.base.EsPatch
 import tech.beshu.ror.tools.core.utils.{EsDirectory, RorToolsException}
 
 import scala.util.Try
 
 object RorToolsApp {
 
+  // todo:
+  // 1. option: return success when already patched/unpatched
+  // 2. restore backup when fails to patch
   def main(args: Array[String]): Unit = {
     OParser
       .parse(parser, args, Config(Command.Verify(None)))

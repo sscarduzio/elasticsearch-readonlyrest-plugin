@@ -20,7 +20,6 @@ import net.jodah.failsafe.{Failsafe, RetryPolicy}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
-import tech.beshu.ror.utils.elasticsearch.SearchManager.MSearchResult
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, SearchManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
@@ -44,9 +43,9 @@ class MSearchWithFilterSuite
     """{"query" : {"match_all" : {}}}"""
   )
 
-  private lazy val adminSearchManager = new SearchManager(adminClient)
-  private lazy val user1SearchManager = new SearchManager(basicAuthClient("test1", "dev"))
-  private lazy val user2SearchManager = new SearchManager(basicAuthClient("test2", "dev"))
+  private lazy val adminSearchManager = new SearchManager(adminClient, esVersionUsed)
+  private lazy val user1SearchManager = new SearchManager(basicAuthClient("test1", "dev"), esVersionUsed)
+  private lazy val user2SearchManager = new SearchManager(basicAuthClient("test2", "dev"), esVersionUsed)
 
   "userShouldOnlySeeFacebookPostsFilterTest" in {
     waitUntilAllIndexed()
@@ -64,7 +63,7 @@ class MSearchWithFilterSuite
     assertSearchResult("facebook", searchResult5)
   }
 
-  private def assertSearchResult(expectedIndex: String, searchResult: MSearchResult): Unit = {
+  private def assertSearchResult(expectedIndex: String, searchResult: SearchManager#MSearchResult): Unit = {
     searchResult should have statusCode 200
     searchResult.responses.size shouldBe 1
 
@@ -76,17 +75,17 @@ class MSearchWithFilterSuite
   }
 
   private def waitUntilAllIndexed(): Unit = {
-    val retryPolicy: RetryPolicy[MSearchResult] = new RetryPolicy[MSearchResult]()
+    val retryPolicy: RetryPolicy[SearchManager#MSearchResult] = new RetryPolicy[SearchManager#MSearchResult]()
       .handleIf(resultsContainsLessElementsThan())
       .withMaxRetries(20)
       .withDelay(Duration.ofMillis(500))
       .withMaxDuration(Duration.ofSeconds(10))
     Failsafe
-      .`with`[MSearchResult, RetryPolicy[MSearchResult]](retryPolicy)
+      .`with`[SearchManager#MSearchResult, RetryPolicy[SearchManager#MSearchResult]](retryPolicy)
       .get(() => adminSearchManager.mSearchUnsafe(matchAllIndicesQuery: _*))
   }
 
-  private def resultsContainsLessElementsThan(): BiPredicate[MSearchResult, Throwable] =
-    (searchResult: MSearchResult, throwable: Throwable) =>
+  private def resultsContainsLessElementsThan(): BiPredicate[SearchManager#MSearchResult, Throwable] =
+    (searchResult: SearchManager#MSearchResult, throwable: Throwable) =>
       throwable != null || searchResult == null || searchResult.totalHitsForResponse(0) < 4
 }

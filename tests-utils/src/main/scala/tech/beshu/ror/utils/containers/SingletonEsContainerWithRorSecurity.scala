@@ -45,7 +45,7 @@ object SingletonEsContainerWithRorSecurity
 
   private lazy val indexManager = new IndexManager(adminClient, singleton.esVersion)
   private lazy val templateManager = new LegacyTemplateManager(adminClient, singleton.esVersion)
-  private lazy val snapshotManager = new SnapshotManager(adminClient)
+  private lazy val snapshotManager = new SnapshotManager(adminClient, singleton.esVersion)
   private lazy val rorApiManager = new RorApiManager(adminClient, singleton.esVersion)
 
   logger.info("Starting singleton es container...")

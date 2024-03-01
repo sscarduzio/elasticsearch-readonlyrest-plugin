@@ -22,7 +22,7 @@ import org.scalatest.freespec.AnyFreeSpec
 import tech.beshu.ror.integration.suites.DataStreamApiSuite.{DataStreamNameGenerator, IndexTemplateNameGenerator}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyFreeSpecLike, SingletonPluginTestSupport}
-import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
+import tech.beshu.ror.utils.elasticsearch.IndexManager._
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
@@ -47,9 +47,9 @@ class DataStreamApiSuite
   private lazy val user5Client = clients.head.basicAuthClient("user5", "pass")
   private lazy val user11Client = clients.head.basicAuthClient("user11", "pass")
   private lazy val adminDocumentManager = new DocumentManager(client, esVersionUsed)
-  private lazy val adminDataStreamManager = new DataStreamManager(client)
+  private lazy val adminDataStreamManager = new DataStreamManager(client, esVersionUsed)
   private lazy val adminIndexManager = new IndexManager(client, esVersionUsed)
-  private lazy val adminSearchManager = new SearchManager(client)
+  private lazy val adminSearchManager = new SearchManager(client, esVersionUsed)
   private lazy val adminTemplateManager = new IndexTemplateManager(client, esVersionUsed)
 
   private val adminDataStream = DataStreamNameGenerator.next("admin")
@@ -162,7 +162,7 @@ class DataStreamApiSuite
               createDocsInDataStream(dataStream, docsCount)
             }
 
-          val searchManager = new SearchManager(clients.head.basicAuthClient("user7", "pass"))
+          val searchManager = new SearchManager(clients.head.basicAuthClient("user7", "pass"), esVersionUsed)
 
           val dsAdminSearch = searchManager.searchAll("data-stream-admin")
           dsAdminSearch should have statusCode 401
@@ -187,7 +187,7 @@ class DataStreamApiSuite
               createDocsInDataStream(dataStream, docsCount)
             }
 
-          val searchManager = new SearchManager(clients.head.basicAuthClient("user7", "pass"))
+          val searchManager = new SearchManager(clients.head.basicAuthClient("user7", "pass"), esVersionUsed)
 
           List(
             ("data-stream-dev*", 2),
@@ -211,7 +211,7 @@ class DataStreamApiSuite
               createDocsInDataStream(dataStream, docsCount)
             }
 
-          val searchManager = new SearchManager(clients.head.basicAuthClient("user8", "pass"))
+          val searchManager = new SearchManager(clients.head.basicAuthClient("user8", "pass"), esVersionUsed)
 
           adminIndexManager
             .updateAliases(
@@ -234,7 +234,7 @@ class DataStreamApiSuite
               createDocsInDataStream(dataStream, docsCount)
             }
 
-          val searchManager = new SearchManager(clients.head.basicAuthClient("user8", "pass"))
+          val searchManager = new SearchManager(clients.head.basicAuthClient("user8", "pass"), esVersionUsed)
 
           adminIndexManager
             .updateAliases(
@@ -257,7 +257,7 @@ class DataStreamApiSuite
               createDocsInDataStream(dataStream, docsCount)
             }
 
-          val searchManager = new SearchManager(user3Client)
+          val searchManager = new SearchManager(user3Client, esVersionUsed)
 
           List(
             (s".ds-$devDataStream*", 2),
@@ -280,7 +280,7 @@ class DataStreamApiSuite
               createDocsInDataStream(dataStream, docsCount)
             }
 
-          val searchManager = new SearchManager(user3Client)
+          val searchManager = new SearchManager(user3Client, esVersionUsed)
           val getAllResponse = adminDataStreamManager.getAllDataStreams().force()
 
           def findIndicesForDataStream(name: String) =
@@ -397,7 +397,7 @@ class DataStreamApiSuite
               val dataStream = "data-stream-prod"
               adminTemplateManager.createTemplate(IndexTemplateNameGenerator.next, indexTemplate(dataStream)).force()
 
-              val dsm = new DataStreamManager(user2Client)
+              val dsm = new DataStreamManager(user2Client, esVersionUsed)
               val response = dsm.createDataStream(dataStream)
               response should have statusCode 200
             }
@@ -405,7 +405,7 @@ class DataStreamApiSuite
               val dataStream = DataStreamNameGenerator.next("test")
               adminTemplateManager.createTemplate(IndexTemplateNameGenerator.next, indexTemplate(dataStream)).force()
 
-              val dsm = new DataStreamManager(user1Client)
+              val dsm = new DataStreamManager(user1Client, esVersionUsed)
               val response = dsm.createDataStream(dataStream)
               response should have statusCode 200
             }
@@ -416,7 +416,7 @@ class DataStreamApiSuite
             val dataStream = DataStreamNameGenerator.next("admin")
             adminTemplateManager.createTemplate(IndexTemplateNameGenerator.next, indexTemplate(dataStream)).force()
 
-            val dsm = new DataStreamManager(user2Client)
+            val dsm = new DataStreamManager(user2Client, esVersionUsed)
             val response = dsm.createDataStream(dataStream)
             response should have statusCode 401
           }
@@ -445,7 +445,7 @@ class DataStreamApiSuite
               createDataStream(dataStream, IndexTemplateNameGenerator.next)
               createDataStream(DataStreamNameGenerator.next("dev"), IndexTemplateNameGenerator.next)
 
-              val dsm = new DataStreamManager(user2Client)
+              val dsm = new DataStreamManager(user2Client, esVersionUsed)
               val response = dsm.getAllDataStreams()
               response should have statusCode 200
               response.allDataStreams.toSet should be(Set(dataStream))
@@ -458,7 +458,7 @@ class DataStreamApiSuite
               createDataStream("data-stream-prod", IndexTemplateNameGenerator.next)
               createDataStream(DataStreamNameGenerator.next("dev"), IndexTemplateNameGenerator.next)
 
-              val dsm = new DataStreamManager(user1Client)
+              val dsm = new DataStreamManager(user1Client, esVersionUsed)
               val response = dsm.getAllDataStreams()
               response should have statusCode 200
               response.allDataStreams.toSet should be(Set(dataStream1, dataStream2))
@@ -474,7 +474,7 @@ class DataStreamApiSuite
               createDataStream(dataStream1, IndexTemplateNameGenerator.next)
               createDataStream(dataStream2, IndexTemplateNameGenerator.next)
 
-              val dsm = new DataStreamManager(user4Client)
+              val dsm = new DataStreamManager(user4Client, esVersionUsed)
               val response = dsm.getAllDataStreams()
               response should have statusCode 200
               response.allDataStreams.toSet should be(Set(dataStream1, dataStream2))
@@ -486,7 +486,7 @@ class DataStreamApiSuite
               createDataStream(dataStream1, IndexTemplateNameGenerator.next)
               createDataStream(dataStream2, IndexTemplateNameGenerator.next)
 
-              val dsm = new DataStreamManager(user4Client)
+              val dsm = new DataStreamManager(user4Client, esVersionUsed)
               val response = dsm.getAllDataStreams()
               response should have statusCode 200
               response.allDataStreams.toSet should be(Set(dataStream1, dataStream2))
@@ -500,7 +500,7 @@ class DataStreamApiSuite
               createDataStream(dataStream2, IndexTemplateNameGenerator.next)
               createDataStream(dataStream3, IndexTemplateNameGenerator.next)
 
-              val dsm = new DataStreamManager(user3Client)
+              val dsm = new DataStreamManager(user3Client, esVersionUsed)
               val response = dsm.getAllDataStreams()
               response should have statusCode 200
               response.allDataStreams.toSet should be(Set(dataStream1, dataStream2))
@@ -510,7 +510,7 @@ class DataStreamApiSuite
               createDataStream("user11_index200", IndexTemplateNameGenerator.next)
               createDataStream("user11_index300", IndexTemplateNameGenerator.next)
 
-              val dsm = new DataStreamManager(user11Client)
+              val dsm = new DataStreamManager(user11Client, esVersionUsed)
               val response = dsm.getAllDataStreams()
 
               response should have statusCode 200
@@ -522,7 +522,7 @@ class DataStreamApiSuite
               val dataStream = DataStreamNameGenerator.next("admin")
               createDataStream(dataStream, IndexTemplateNameGenerator.next)
 
-              val dsm = new DataStreamManager(user1Client)
+              val dsm = new DataStreamManager(user1Client, esVersionUsed)
               val response = dsm.getAllDataStreams()
               response should have statusCode 200
               response.allDataStreams.toSet should be(Set.empty)
@@ -550,7 +550,7 @@ class DataStreamApiSuite
             createDataStream(dataStream, IndexTemplateNameGenerator.next)
             createDataStream(DataStreamNameGenerator.next("dev"), IndexTemplateNameGenerator.next)
 
-            val dsm = new DataStreamManager(user2Client)
+            val dsm = new DataStreamManager(user2Client, esVersionUsed)
             val response = dsm.getDataStream(dataStream)
             response should have statusCode 200
             response.dataStreamName should be(dataStream)
@@ -563,7 +563,7 @@ class DataStreamApiSuite
             createDataStream("data-stream-prod", IndexTemplateNameGenerator.next)
             createDataStream(DataStreamNameGenerator.next("dev"), IndexTemplateNameGenerator.next)
 
-            val dsm = new DataStreamManager(user1Client)
+            val dsm = new DataStreamManager(user1Client, esVersionUsed)
             val response = dsm.getDataStream(dataStream1)
             response should have statusCode 200
             response.dataStreamName should be(dataStream1)
@@ -575,7 +575,7 @@ class DataStreamApiSuite
               val dataStream = DataStreamNameGenerator.next("test")
               createDataStream(dataStream, IndexTemplateNameGenerator.next)
 
-              val dsm = new DataStreamManager(user3Client)
+              val dsm = new DataStreamManager(user3Client, esVersionUsed)
               val response = dsm.getDataStream(dataStream)
               response should have statusCode 200
               response.dataStreamName should be(dataStream)
@@ -586,7 +586,7 @@ class DataStreamApiSuite
               val dataStream = DataStreamNameGenerator.next("admin")
               createDataStream(dataStream, IndexTemplateNameGenerator.next)
 
-              val dsm = new DataStreamManager(user3Client)
+              val dsm = new DataStreamManager(user3Client, esVersionUsed)
               val response = dsm.getDataStream(dataStream)
               response should have statusCode 200
               response.allDataStreams.toSet should be(Set.empty)
@@ -616,7 +616,7 @@ class DataStreamApiSuite
             val dataStream = DataStreamNameGenerator.next("test")
             createDataStream(dataStream, IndexTemplateNameGenerator.next)
 
-            val dsm = new DataStreamManager(user1Client)
+            val dsm = new DataStreamManager(user1Client, esVersionUsed)
             val response = dsm.getDataStreamStats(dataStream)
             response should have statusCode 200
             response.dataStreamsCount should be(1)
@@ -628,7 +628,7 @@ class DataStreamApiSuite
             val dataStream = DataStreamNameGenerator.next("admin")
             createDataStream(dataStream, IndexTemplateNameGenerator.next)
 
-            val dsm = new DataStreamManager(user1Client)
+            val dsm = new DataStreamManager(user1Client, esVersionUsed)
             val response = dsm.getDataStreamStats(dataStream)
             response should have statusCode 401
           }
@@ -651,7 +651,7 @@ class DataStreamApiSuite
             createDataStream(dataStream, IndexTemplateNameGenerator.next)
             createDataStream(DataStreamNameGenerator.next("dev"), IndexTemplateNameGenerator.next)
 
-            val dsm = new DataStreamManager(user2Client)
+            val dsm = new DataStreamManager(user2Client, esVersionUsed)
             val response = dsm.deleteDataStream(dataStream)
             response should have statusCode 200
           }
@@ -663,7 +663,7 @@ class DataStreamApiSuite
             createDataStream("data-stream-prod", IndexTemplateNameGenerator.next)
             createDataStream(DataStreamNameGenerator.next("dev"), IndexTemplateNameGenerator.next)
 
-            val dsm = new DataStreamManager(user1Client)
+            val dsm = new DataStreamManager(user1Client, esVersionUsed)
             val response = dsm.deleteDataStream(dataStream1)
             response should have statusCode 200
           }
@@ -673,7 +673,7 @@ class DataStreamApiSuite
             val dataStream = DataStreamNameGenerator.next("admin")
             adminTemplateManager.createTemplate(IndexTemplateNameGenerator.next, indexTemplate(dataStream)).force()
 
-            val dsm = new DataStreamManager(user2Client)
+            val dsm = new DataStreamManager(user2Client, esVersionUsed)
             val response = dsm.deleteDataStream(dataStream)
             response should have statusCode 401
           }
@@ -711,7 +711,7 @@ class DataStreamApiSuite
 
             adminTemplateManager.createTemplate(IndexTemplateNameGenerator.next, indexTemplate(dataStream)).force()
 
-            val dsm = new DataStreamManager(user5Client)
+            val dsm = new DataStreamManager(user5Client, esVersionUsed)
             val migrateToDataStreamResponse = dsm.migrateToDataStream(dataStream)
             migrateToDataStreamResponse should have statusCode 200
 
@@ -731,7 +731,7 @@ class DataStreamApiSuite
 
             adminTemplateManager.createTemplate(IndexTemplateNameGenerator.next, indexTemplate(dataStream)).force()
 
-            val dsm = new DataStreamManager(user5Client)
+            val dsm = new DataStreamManager(user5Client, esVersionUsed)
             val migrateToDataStreamResponse = dsm.migrateToDataStream(dataStream)
             migrateToDataStreamResponse should have statusCode 401
           }
@@ -781,7 +781,7 @@ class DataStreamApiSuite
             val dsIndices = dataStreamBackingIndices(dataStream)
             dsIndices.length should be(3)
 
-            val dsm = new DataStreamManager(user2Client)
+            val dsm = new DataStreamManager(user2Client, esVersionUsed)
             val modifyResponse = dsm.modifyDataStreams(ujson.read(
               s"""
                  |{
@@ -808,7 +808,7 @@ class DataStreamApiSuite
             val dsIndices = dataStreamBackingIndices(dataStream)
             dsIndices.length should be(3)
 
-            val dsm = new DataStreamManager(user1Client)
+            val dsm = new DataStreamManager(user1Client, esVersionUsed)
             val modifyResponse = dsm.modifyDataStreams(ujson.read(
               s"""
                  |{
@@ -837,7 +837,7 @@ class DataStreamApiSuite
             dsIndices.length should be(3)
 
 
-            val dsm = new DataStreamManager(user1Client)
+            val dsm = new DataStreamManager(user1Client, esVersionUsed)
             val modifyResponse = dsm.modifyDataStreams(ujson.read(
               s"""
                  |{
@@ -863,7 +863,7 @@ class DataStreamApiSuite
             val forbiddenDsIndices = dataStreamBackingIndices(forbiddenDataStream)
             forbiddenDsIndices.length should be(1)
 
-            val dsm = new DataStreamManager(user1Client)
+            val dsm = new DataStreamManager(user1Client, esVersionUsed)
             val modifyResponse = dsm.modifyDataStreams(ujson.read(
               s"""
                  |{
@@ -900,7 +900,7 @@ class DataStreamApiSuite
             val dsIndices = dataStreamBackingIndices(dataStream)
             dsIndices.length should be(3)
 
-            val dsm = new DataStreamManager(user3Client)
+            val dsm = new DataStreamManager(user3Client, esVersionUsed)
             val modifyResponse = dsm.modifyDataStreams(ujson.read(
               s"""
                  |{
@@ -929,7 +929,7 @@ class DataStreamApiSuite
             val dsIndices = dataStreamBackingIndices(dataStream)
             dsIndices.length should be(3)
 
-            val dsm = new DataStreamManager(user3Client)
+            val dsm = new DataStreamManager(user3Client, esVersionUsed)
             val modifyResponse = dsm.modifyDataStreams(ujson.read(
               s"""
                  |{

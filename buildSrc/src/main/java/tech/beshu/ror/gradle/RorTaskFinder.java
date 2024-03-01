@@ -36,13 +36,13 @@ public class RorTaskFinder extends DefaultTask {
   public void runRorPluginBuilder() {
   }
 
-  public Task findRorTaskForEsVersion() {
+  public Task findRorTaskForEsVersion(String taskName) {
     Project esModule = findEsModuleForEsVersionToBuild();
     return (Task) esModule
-        .getTasksByName("ror", false)
+        .getTasksByName(taskName, false)
         .stream()
         .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException(String.format("Cannot find 'ror' task in %s module!", esModule.getName())));
+        .orElseThrow(() -> new IllegalArgumentException(String.format("Cannot find '%s' task in %s module!", taskName, esModule.getName())));
   }
 
   private Project findEsModuleForEsVersionToBuild() {
@@ -57,15 +57,29 @@ public class RorTaskFinder extends DefaultTask {
   }
 
   private VersionNumber getEsVersionToBuild() {
-    String esVersion = (String) Optional
-        .ofNullable(getProject().findProperty("esVersion"))
-        .orElseThrow(() -> new IllegalArgumentException("No 'esVersion' property set. Cannot continue!"));
-    return versionNumberFrom(esVersion);
+    Optional<String> esVersionStr = Optional.ofNullable((String) getProject().findProperty("esVersion"));
+    if (esVersionStr.isPresent()) {
+      return versionNumberFrom(esVersionStr.get());
+    } else {
+      Optional<VersionNumber> theNewestSupportedEsVersion = findTheNewestSupportedEsVersion();
+      if (theNewestSupportedEsVersion.isPresent()) {
+        getLogger().warn("NO 'esVersion' was explicitly set!!! Using the newest found one: {}", theNewestSupportedEsVersion.get());
+        return theNewestSupportedEsVersion.get();
+      } else {
+        throw new IllegalArgumentException("No 'esVersion' property set. Cannot continue!");
+      }
+    }
+  }
+
+  private Optional<VersionNumber> findTheNewestSupportedEsVersion() {
+    return getAllSortedEsModules(new NewestEsVersionComparator().reversed())
+        .stream()
+        .map(this::newestEsVersionFor)
+        .findFirst();
   }
 
   private Optional<Project> findEsModuleFor(VersionNumber esVersion) {
-    List<Project> esModules = getAllEsModules();
-    esModules.sort(new NewestEsVersionComparator());
+    List<Project> esModules = getAllSortedEsModules(new NewestEsVersionComparator());
 
     for (int i = 0; i < esModules.size(); i++) {
       VersionNumber newestEsVersionForCurrentEsModule = newestEsVersionFor(esModules.get(i));
@@ -78,6 +92,12 @@ public class RorTaskFinder extends DefaultTask {
     }
 
     return Optional.empty();
+  }
+
+  private List<Project> getAllSortedEsModules(Comparator<Project> comparator) {
+    List<Project> esModules = getAllEsModules();
+    esModules.sort(comparator);
+    return esModules;
   }
 
   private List<Project> getAllEsModules() {

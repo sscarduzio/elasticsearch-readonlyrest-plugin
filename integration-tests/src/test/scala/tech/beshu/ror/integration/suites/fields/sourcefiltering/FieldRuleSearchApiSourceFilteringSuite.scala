@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.integration.suites.fields.sourcefiltering
 
+import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.containers.{ComposedElasticsearchNodeDataInitializer, ElasticsearchNodeDataInitializer}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
-import tech.beshu.ror.utils.elasticsearch.SearchManager.SearchResult
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
@@ -30,7 +30,7 @@ class FieldRuleSearchApiSourceFilteringSuite
     with SingletonPluginTestSupport
     with CustomScalaTestMatchers {
 
-  override protected type CALL_RESULT = SearchResult
+  override protected type CALL_RESULT = SearchManager#SearchResult
 
   override def nodeDataInitializer: Some[ElasticsearchNodeDataInitializer] = Some {
     super.nodeDataInitializer match {
@@ -44,8 +44,8 @@ class FieldRuleSearchApiSourceFilteringSuite
 
   override protected def fetchDocument(client: RestClient,
                                        index: String,
-                                       clientSourceParams: Option[FieldRuleSourceFilteringSuite.ClientSourceOptions]): SearchResult = {
-    val searchManager = new SearchManager(client)
+                                       clientSourceParams: Option[ClientSourceOptions]): SearchManager#SearchResult = {
+    val searchManager = new SearchManager(client, esVersionUsed)
 
     val query = clientSourceParams match {
       case Some(DoNotFetchSource) => """{ "_source": false }"""
@@ -57,12 +57,12 @@ class FieldRuleSearchApiSourceFilteringSuite
     searchManager.search(index, ujson.read(query))
   }
 
-  override protected def sourceOfFirstDoc(result: SearchResult): Option[JSON] = {
+  override protected def sourceOfFirstDoc(result: SearchManager#SearchResult): Option[JSON] = {
     result.searchHits(0).obj.get("_source")
   }
 
   "docvalue with not-allowed field in search request is used" in {
-    val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
+    val searchManager = new SearchManager(basicAuthClient("user1", "pass"), esVersionUsed)
 
     val query = ujson.read(
       """
@@ -87,7 +87,7 @@ class FieldRuleSearchApiSourceFilteringSuite
 
   "Fields rule should work in case of many docs" when {
     "blacklist mode is used" in {
-      val searchManager = new SearchManager(basicAuthClient("user5", "pass"))
+      val searchManager = new SearchManager(basicAuthClient("user5", "pass"), esVersionUsed)
 
       val result = searchManager.search("manydocs", ujson.read("""{"query": {"match_all": {}}}"""))
 
@@ -96,7 +96,7 @@ class FieldRuleSearchApiSourceFilteringSuite
       distinctDocs should be(Set(ujson.read("""{"user2":"b"}""")))
     }
     "whitelist mode is used" in {
-      val searchManager = new SearchManager(basicAuthClient("user6", "pass"))
+      val searchManager = new SearchManager(basicAuthClient("user6", "pass"), esVersionUsed)
 
       val result = searchManager.search("manydocs", ujson.read("""{"query": {"match_all": {}}}"""))
 

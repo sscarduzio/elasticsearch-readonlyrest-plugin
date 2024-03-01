@@ -130,6 +130,7 @@ object RequestContext extends Logging {
         userMetadata.loggedUser match {
           case Some(DirectlyLoggedUser(user)) => s"${user.show}"
           case Some(ImpersonatedUser(user, impersonatedBy)) => s"${impersonatedBy.show} (as ${user.show})"
+          // todo: better implementation needed
           case None => r.basicAuth.map(_.credentials.user.value).map(name => s"${name.value} (attempted)").getOrElse("[no info about user]")
         }
       }

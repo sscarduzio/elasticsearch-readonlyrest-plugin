@@ -654,7 +654,7 @@ class ImpersonationSuite
   private def impersonatingSearchManagers(user: String, pass: String, impersonatedUser: String) = {
     impersonatingManager(
       user, pass, impersonatedUser,
-      (client, _, additionalHeaders) => new SearchManager(client, additionalHeaders)
+      (client, _, additionalHeaders) => new SearchManager(client, esVersionUsed, additionalHeaders)
     )
   }
 

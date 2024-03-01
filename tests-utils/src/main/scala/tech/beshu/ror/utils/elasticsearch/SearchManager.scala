@@ -19,18 +19,20 @@ package tech.beshu.ror.utils.elasticsearch
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
-import tech.beshu.ror.utils.elasticsearch.SearchManager.{AsyncSearchResult, FieldCapsResult, MSearchResult, SearchResult}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
+import tech.beshu.ror.utils.misc.Version
 import ujson.Value
 
 import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
+import SearchManager._
 
 class SearchManager(client: RestClient,
+                    esVersion: String,
                     override val additionalHeaders: Map[String, String] = Map.empty)
-  extends BaseManager(client) {
+  extends BaseManager(client, esVersion, esNativeApi = true) {
 
   def search(indexName: String, query: JSON): SearchResult =
     call(createSearchRequest(Some(indexName), query), new SearchResult(_))
@@ -111,19 +113,31 @@ class SearchManager(client: RestClient,
   private def createSearchRequest(@nowarn("cat=unused") indexNames: List[String] = Nil,
                                   customSize: Option[Int] = None,
                                   scroll: Option[FiniteDuration] = None) = {
-    new HttpPost(client.from(
-      indexNames match {
-        case Nil => "/_search"
-        case names => s"/${names.mkString(",")}/_search"
-      },
-      Map(
-        "size" -> (customSize match {
-          case Some(value) => s"$value"
-          case None => "100"
-        })
-      ) ++
-        scroll.map { d => "scroll" -> s"${d.toMillis}ms" }.toMap
-    ))
+    val queryParams = Map(
+      "size" -> (customSize match {
+        case Some(value) => s"$value"
+        case None => "100"
+      })
+    ) ++ scroll.map { d => "scroll" -> s"${d.toMillis}ms" }.toMap
+    val path = indexNames match {
+      case Nil => "/_search"
+      case names => s"/${names.mkString(",")}/_search"
+    }
+    val request = new HttpPost(client.from(path, queryParams))
+
+    scroll match {
+      case Some(_) if Version.lowerThan(esVersion, 7, 0, 0) =>
+        request.addHeader("Content-Type", "application/json")
+        request.setEntity(new StringEntity(
+          s"""
+             |{
+             |  "sort": ["_id"]
+             |}
+             |""".stripMargin))
+      case Some(_) | None =>
+    }
+
+    request
   }
 
   private def createScrollRequest(scrollId: String) = {
@@ -179,25 +193,18 @@ class SearchManager(client: RestClient,
   private def createFieldCapsRequest(indicesStr: String, fieldsStr: String) = {
     new HttpGet(client.from(s"/$indicesStr/_field_caps", Map("fields" -> fieldsStr)))
   }
-}
-
-object SearchManager {
-
-  implicit class SearchResultOps(val hits: Iterable[Value]) extends AnyVal {
-    def removeRorSettings(): Vector[Value] = hits.filter(hit => hit("_index").str != ".readonlyrest").toVector
-  }
 
   abstract class BaseSearchResult(response: HttpResponse) extends JsonResponse(response) {
     protected def searchHitsWithSettings: Value
 
     lazy val searchHits: List[Value] = searchHitsWithSettings.arr.removeRorSettings().toList
-    lazy val docIds: List[String] = searchHits.map(_ ("_id").str)
+    lazy val docIds: List[String] = searchHits.map(_("_id").str)
 
     def hit(idx: Int) = searchHits(idx)("_source")
 
     def head = hit(0)
 
-    def id(docId: String) = searchHits.find(_ ("_id").str == docId).get("_source")
+    def id(docId: String) = searchHits.find(_("_id").str == docId).get("_source")
   }
 
   class SearchResult(response: HttpResponse) extends BaseSearchResult(response) {
@@ -207,6 +214,7 @@ object SearchManager {
     lazy val totalHits: Int = force().responseJson("hits")("total")("value").num.toInt
     lazy val scrollId: String = responseJson("_scroll_id").str
   }
+
 
   class AsyncSearchResult(response: HttpResponse) extends BaseSearchResult(response) {
     override lazy val searchHitsWithSettings: Value = force().responseJson("response")("hits")("hits")
@@ -230,4 +238,12 @@ object SearchManager {
     lazy val indices: Vector[String] = responseJson("indices").arr.map(_.str).toVector
     lazy val fields: Map[String, Value] = responseJson("fields").obj.toMap
   }
+}
+
+object SearchManager {
+
+  implicit class SearchResultOps(val hits: Iterable[Value]) extends AnyVal {
+    def removeRorSettings(): Vector[Value] = hits.filter(hit => hit("_index").str != ".readonlyrest").toVector
+  }
+
 }

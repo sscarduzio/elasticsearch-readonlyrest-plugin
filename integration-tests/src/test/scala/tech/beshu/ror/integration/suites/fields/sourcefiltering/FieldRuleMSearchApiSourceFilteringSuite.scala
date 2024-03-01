@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.integration.suites.fields.sourcefiltering
 
+import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.SearchManager
-import tech.beshu.ror.utils.elasticsearch.SearchManager.MSearchResult
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
@@ -29,12 +29,12 @@ class FieldRuleMSearchApiSourceFilteringSuite
     with SingletonPluginTestSupport
     with CustomScalaTestMatchers {
 
-  override protected type CALL_RESULT = MSearchResult
+  override protected type CALL_RESULT = SearchManager#MSearchResult
 
   override protected def fetchDocument(client: RestClient,
                                        index: String,
-                                       clientSourceParams: Option[FieldRuleSourceFilteringSuite.ClientSourceOptions]): MSearchResult = {
-    val searchManager = new SearchManager(client)
+                                       clientSourceParams: Option[ClientSourceOptions]): SearchManager#MSearchResult = {
+    val searchManager = new SearchManager(client, esVersionUsed)
 
     val query = clientSourceParams match {
       case Some(DoNotFetchSource) => """{ "_source": false }"""
@@ -46,13 +46,13 @@ class FieldRuleMSearchApiSourceFilteringSuite
     searchManager.mSearch(s"""{"index":"$index"}""", query)
   }
 
-  override protected def sourceOfFirstDoc(result: MSearchResult): Option[JSON] = {
+  override protected def sourceOfFirstDoc(result: SearchManager#MSearchResult): Option[JSON] = {
     val hits = result.searchHitsForResponse(0)
     hits(0).obj.get("_source")
   }
 
   "docvalue with not-allowed field in search request is used" in {
-    val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
+    val searchManager = new SearchManager(basicAuthClient("user1", "pass"), esVersionUsed)
 
     val query = """{"docvalue_fields": ["counter"]}"""
 

@@ -18,40 +18,25 @@ readonlyrest:
   audit_collector: false
   access_control_rules:
 
-    - name: "::MONITORING::"
-      auth_key: monitoring_account:password
-      methods: [GET]
+    # ES containter initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
+      type: allow
       verbosity: error
+      auth_key: admin:container
 
-    - name: "::KIBANA-SRV::"
-      auth_key: kibana_account:password
-      verbosity: error
-
-    - name: "::DATA-IMPORTER::"
-      auth_key: data_importer_account:password
-      methods: [GET, POST]
-      verbosity: error
-
-    - name: "for admin"
-      users: ["admin1"]
-      ldap_authentication: "ldap"
-      verbosity: error
-
-    - name: "for kibana admin"
+    - name: "test 1"
       kibana:
-        access: admin
-      users: ["admin1"]
-      ldap_authentication: "ldap"
-      verbosity: error
+        access: rw
+      ldap_auth:
+        name: "ldap"
+        groups: ["g*"]
 
-    - name: "for kibana read-only users"
-      users: ["*"]
+    - name: "test 2"
       kibana:
-        access: admin
-        index: ".kibana_@{user}"
-        hide_apps: ["readonlyrest_kbn"]
-      ldap_authentication: "ldap"
-      verbosity: error
+        access: rw
+      ldap_auth:
+        name: "ldap"
+        groups: ["t*"]
 
   ldaps:
     - name: ldap
@@ -68,4 +53,4 @@ readonlyrest:
       user_id_attribute: "uid"                                  
       unique_member_attribute: "uniqueMember"
 
-      cache_ttl: 600s
+      cache_ttl: 60s

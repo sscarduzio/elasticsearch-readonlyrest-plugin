@@ -25,7 +25,15 @@ class FieldRuleEsEngineSuite
 
   override implicit val rorConfigFileName: String = "/field_level_security_engine/readonlyrest_fls_engine_es.yml"
 
-  override protected def unmodifiableQueryAssertion(result: SearchManager.SearchResult): Unit = {
+  override protected def unmodifiableQueryAssertion(result: SearchManager#SearchResult): Unit = {
+    result should have statusCode 401
+  }
+
+  override protected def scrollSearchShouldProperlyHandleAllowedFields(result: SearchManager#SearchResult): Unit = {
+    result should have statusCode 401
+  }
+
+  override protected def scrollSearchShouldProperlyHandleForbiddenFields(result: SearchManager#SearchResult): Unit = {
     result should have statusCode 401
   }
 }

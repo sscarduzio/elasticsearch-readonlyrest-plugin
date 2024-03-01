@@ -21,8 +21,7 @@ import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
-import tech.beshu.ror.utils.elasticsearch.RorApiManager.RorApiResponse
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 
 import java.util.concurrent.TimeUnit
@@ -31,72 +30,72 @@ import scala.concurrent.duration.FiniteDuration
 class RorApiManager(client: RestClient,
                     esVersion: String,
                     override val additionalHeaders: Map[String, String] = Map.empty)
-  extends BaseManager(client) {
+  extends BaseManager(client, esVersion, esNativeApi = false) {
 
-  private lazy val documentManager = new DocumentManager(client, esVersion)
+  lazy val documentManager = new DocumentManager(client, esVersion)
 
   def fetchMetadata(preferredGroupId: Option[String] = None,
-                    correlationId: Option[String] = None): JsonResponse = {
-    call(createUserMetadataRequest(preferredGroupId, correlationId), new JsonResponse(_))
+                    correlationId: Option[String] = None): RorApiJsonResponse = {
+    call(createUserMetadataRequest(preferredGroupId, correlationId), new RorApiJsonResponse(_))
   }
 
-  def sendAuditEvent(payload: JSON): JsonResponse = {
-    call(createSendAuditEventRequest(payload), new JsonResponse(_))
+  def sendAuditEvent(payload: JSON): RorApiJsonResponse = {
+    call(createSendAuditEventRequest(payload), new RorApiJsonResponse(_))
   }
 
-  def getRorFileConfig: JsonResponse = {
-    call(createGetRorFileConfigRequest(), new JsonResponse(_))
+  def getRorFileConfig: RorApiJsonResponse = {
+    call(createGetRorFileConfigRequest(), new RorApiJsonResponse(_))
   }
 
-  def getRorInIndexConfig: JsonResponse = {
-    call(createGetRorInIndexConfigRequest(), new JsonResponse(_))
+  def getRorInIndexConfig: RorApiJsonResponse = {
+    call(createGetRorInIndexConfigRequest(), new RorApiJsonResponse(_))
   }
 
-  def loadRorCurrentConfig(additionalParams: Map[String, String] = Map.empty): JsonResponse = {
-    call(createLoadRorCurrentConfigRequest(additionalParams), new JsonResponse(_))
+  def loadRorCurrentConfig(additionalParams: Map[String, String] = Map.empty): RorApiJsonResponse = {
+    call(createLoadRorCurrentConfigRequest(additionalParams), new RorApiJsonResponse(_))
   }
 
-  def updateRorInIndexConfig(config: String): RorApiResponse = {
-    call(createUpdateRorInIndexConfigRequest(config), new RorApiResponse(_))
+  def updateRorInIndexConfig(config: String): RorApiResponseWithBusinessStatus = {
+    call(createUpdateRorInIndexConfigRequest(config), new RorApiResponseWithBusinessStatus(_))
   }
 
-  def updateRorInIndexConfigRaw(rawRequestBody: String): RorApiResponse = {
-    call(createUpdateRorInIndexConfigRequestFromRaw(rawRequestBody), new RorApiResponse(_))
+  def updateRorInIndexConfigRaw(rawRequestBody: String): RorApiResponseWithBusinessStatus = {
+    call(createUpdateRorInIndexConfigRequestFromRaw(rawRequestBody), new RorApiResponseWithBusinessStatus(_))
   }
 
-  def currentRorTestConfig: JsonResponse = {
-    call(createGetTestConfigRequest, new JsonResponse(_))
+  def currentRorTestConfig: RorApiJsonResponse = {
+    call(createGetTestConfigRequest, new RorApiJsonResponse(_))
   }
 
-  def updateRorTestConfig(config: String, ttl: FiniteDuration = FiniteDuration(30, TimeUnit.MINUTES)): RorApiResponse = {
-    call(createUpdateRorTestConfigRequest(config, ttl), new RorApiResponse(_))
+  def updateRorTestConfig(config: String, ttl: FiniteDuration = FiniteDuration(30, TimeUnit.MINUTES)): RorApiResponseWithBusinessStatus = {
+    call(createUpdateRorTestConfigRequest(config, ttl), new RorApiResponseWithBusinessStatus(_))
   }
 
-  def updateRorTestConfigRaw(rawRequestBody: String): RorApiResponse = {
-    call(createUpdateRorTestConfigRequest(rawRequestBody), new RorApiResponse(_))
+  def updateRorTestConfigRaw(rawRequestBody: String): RorApiResponseWithBusinessStatus = {
+    call(createUpdateRorTestConfigRequest(rawRequestBody), new RorApiResponseWithBusinessStatus(_))
   }
 
-  def invalidateRorTestConfig(): RorApiResponse = {
-    call(createInvalidateRorTestConfigRequest(), new RorApiResponse(_))
+  def invalidateRorTestConfig(): RorApiResponseWithBusinessStatus = {
+    call(createInvalidateRorTestConfigRequest(), new RorApiResponseWithBusinessStatus(_))
   }
 
-  def currentRorLocalUsers: JsonResponse = {
-    call(createProvideLocalUsersRequest(), new JsonResponse(_))
+  def currentRorLocalUsers: RorApiJsonResponse = {
+    call(createProvideLocalUsersRequest(), new RorApiJsonResponse(_))
   }
 
-  def reloadRorConfig(): JsonResponse = {
-    call(createReloadRorConfigRequest(), new JsonResponse(_))
+  def reloadRorConfig(): RorApiJsonResponse = {
+    call(createReloadRorConfigRequest(), new RorApiJsonResponse(_))
   }
 
-  def configureImpersonationMocks(payload: JSON): RorApiResponse = {
-    call(createConfigureImpersonationMocksRequest(payload), new RorApiResponse(_))
+  def configureImpersonationMocks(payload: JSON): RorApiResponseWithBusinessStatus = {
+    call(createConfigureImpersonationMocksRequest(payload), new RorApiResponseWithBusinessStatus(_))
   }
 
-  def currentMockedServices(): RorApiResponse = {
-    call(provideAuthMocksRequest(), new RorApiResponse(_))
+  def currentMockedServices(): RorApiResponseWithBusinessStatus = {
+    call(provideAuthMocksRequest(), new RorApiResponseWithBusinessStatus(_))
   }
 
-  def invalidateImpersonationMocks(): RorApiResponse = {
+  def invalidateImpersonationMocks(): RorApiResponseWithBusinessStatus = {
     val payload = ujson.read(
       s"""
          | {
@@ -104,11 +103,10 @@ class RorApiManager(client: RestClient,
          | }
          |""".stripMargin
     )
-    call(createConfigureImpersonationMocksRequest(payload), new RorApiResponse(_))
+    call(createConfigureImpersonationMocksRequest(payload), new RorApiResponseWithBusinessStatus(_))
   }
 
-  def insertInIndexConfigDirectlyToRorIndex(rorConfigIndex: String,
-                                            config: String): JsonResponse = {
+  def insertInIndexConfigDirectlyToRorIndex(rorConfigIndex: String, config: String): documentManager.JsonResponse = {
     documentManager.createFirstDoc(
       index = rorConfigIndex,
       content = ujson.read(rorConfigIndexDocumentContentFrom(config))
@@ -212,10 +210,11 @@ class RorApiManager(client: RestClient,
     new HttpGet(client.from("/_readonlyrest/admin/config/load", additionalParams))
   }
 
-}
-object RorApiManager {
+  final class RorApiJsonResponse(override val response: HttpResponse)
+    extends JsonResponse(response)
 
-  final class RorApiResponse(override val response: HttpResponse) extends JsonResponse(response) {
+  final class RorApiResponseWithBusinessStatus(override val response: HttpResponse)
+    extends JsonResponse(response) {
 
     def forceOkStatus(): this.type = {
       force()
@@ -234,7 +233,7 @@ object RorApiManager {
 
     def forceOKStatusOrConfigAlreadyLoaded(): this.type = {
       force()
-      if(businessStatus === "OK" || isConfigAlreadyLoaded) {
+      if (businessStatus === "OK" || isConfigAlreadyLoaded) {
         this
       } else {
         throw new IllegalStateException(

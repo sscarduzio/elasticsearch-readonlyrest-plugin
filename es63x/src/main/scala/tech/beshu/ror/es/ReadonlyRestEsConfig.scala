@@ -19,7 +19,6 @@ package tech.beshu.ror.es
 import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.configuration.{EnvironmentConfig, MalformedSettings, RorBootConfiguration, RorSsl}
-import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.ScalaOps._
 
 import java.nio.file.Path

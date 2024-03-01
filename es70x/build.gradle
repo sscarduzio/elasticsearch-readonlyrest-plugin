@@ -14,14 +14,20 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+import com.bmuschko.gradle.docker.tasks.image.*
+import org.gradle.crypto.checksum.Checksum
 
 plugins {
+    id 'com.bmuschko.docker-remote-api'
+    id 'org.gradle.crypto.checksum'
     id "readonlyrest.plugin-common-conventions"
 }
 
 def pluginFullName = pluginName + '-' + version
 def projectJavaLanguageVersion = JavaLanguageVersion.of(8)
 def moduleEsVersion = project.property('esVersion') != null ? project.property('esVersion') : project.property('latestSupportedEsVersion')
+def dockerImageLatest = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-latest'
+def dockerImageVersion = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-' + pluginVersion
 
 java {
     toolchain {
@@ -64,30 +70,94 @@ tasks.register('jarHellCheck', JavaExec) {
     outputs.upToDateWhen { false }
     mainClass.set("org.elasticsearch.bootstrap.JarHell")
     classpath = project.sourceSets.main.compileClasspath.filter { it.exists() }
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = projectJavaLanguageVersion
+    }
 }
 
 tasks.register('resolvePluginDescriptorTemplate', Copy) {
-    
     outputs.upToDateWhen { false }
     from './plugin-metadata'
     into 'build/tmp/' + pluginFullName
     expand([
             'descriptor': [
                     'name'         : pluginName,
-                    'pluginVersion': project.properties['pluginVersion'],
+                    'pluginVersion': pluginVersion,
                     'esVersion'    : moduleEsVersion
             ]
     ])
 }
 
-tasks.register('ror', Zip) {
+tasks.register('buildRorPluginZip') {
+    dependsOn(packageRorPlugin, createRorPluginChecksums)
+}
+
+tasks.register('packageRorPlugin', Zip) {
     dependsOn(cleanOldData, jarHellCheck, toJar, resolvePluginDescriptorTemplate)
     outputs.upToDateWhen { false }
     archivesBaseName = pluginName
-    into('.')
-            {
-                from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && !x.name.contains('jts') }
-                from 'build/libs/' + pluginFullName + '.jar'
-                from 'build/tmp/' + pluginFullName
-            }
+    into('.') {
+        from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && !x.name.contains('jts') }
+        from 'build/libs/' + pluginFullName + '.jar'
+        from 'build/tmp/' + pluginFullName
+    }
 }
+
+tasks.register('createRorPluginChecksums', Checksum) {
+    dependsOn(packageRorPlugin)
+    def distributionsDir = layout.buildDirectory.dir("distributions")
+
+    outputs.upToDateWhen { false }
+    inputFiles.setFrom(packageRorPlugin.archiveFile)
+    outputDirectory.set(distributionsDir)
+    checksumAlgorithm.set(Checksum.Algorithm.SHA512)
+}
+
+tasks.register('uploadRorPluginToS3', Exec) {
+    dependsOn(packageRorPlugin, createRorPluginChecksums)
+
+    def distributionsDir = layout.buildDirectory.get().asFile.path + "/distributions"
+    def pluginFileZip = distributionsDir + "/" + pluginFullName + ".zip"
+    def pluginSha1 = distributionsDir + "/" + pluginFullName + ".zip.sha1"
+    def pluginSha512 = distributionsDir + "/" + pluginFullName + ".zip.sha512"
+    def targetS3Dir = "build/" + pluginVersion + "/"
+
+    commandLine '../ci/upload-files-to-s3.sh', pluginFileZip, pluginSha512, pluginSha1, targetS3Dir
+}
+
+tasks.register('prepareDockerImageFiles', Copy) {
+    dependsOn packageRorPlugin
+    outputs.upToDateWhen { false }
+
+    from layout.projectDirectory.file("Dockerfile")
+    from layout.buildDirectory.file("distributions/" + pluginFullName + ".zip")
+    from rootProject.files("docker-image")
+
+    into layout.buildDirectory.dir("docker-image")
+}
+
+tasks.register('buildRorDockerImage', DockerBuildImage) {
+    dependsOn('packageRorPlugin', 'prepareDockerImageFiles')
+
+    inputDir = layout.buildDirectory.dir("docker-image")
+    buildArgs = [
+            ES_VERSION: project.properties['esVersion'],
+            ROR_VERSION: pluginVersion
+    ]
+    images.add(dockerImageLatest)
+    images.add(dockerImageVersion)
+}
+
+tasks.register('removeRorDockerImage', DockerRemoveImage) {
+    dependsOn buildRorDockerImage
+    force = true
+    targetImageId buildRorDockerImage.getImageId()
+}
+
+tasks.register('pushRorDockerImage', DockerPushImage) {
+    dependsOn buildRorDockerImage
+
+    images.add(dockerImageLatest)
+    images.add(dockerImageVersion)
+}
+pushRorDockerImage.configure { finalizedBy removeRorDockerImage }

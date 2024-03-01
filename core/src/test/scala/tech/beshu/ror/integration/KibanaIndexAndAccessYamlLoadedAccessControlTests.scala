@@ -19,7 +19,6 @@ package tech.beshu.ror.integration
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
@@ -36,7 +35,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
   with BaseYamlLoadedAccessControlTest
-  with MockFactory with Inside {
+  with Inside {
 
   override protected def configYaml: String =
     """

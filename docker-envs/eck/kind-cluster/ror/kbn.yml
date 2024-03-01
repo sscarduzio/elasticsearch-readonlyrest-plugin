@@ -1,0 +1,68 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: quickstart
+spec:
+  version: 8.11.3
+  count: 2
+  elasticsearchRef:
+    name: quickstart
+  config:
+    readonlyrest_kbn.store_sessions_in_index: true
+    readonlyrest_kbn.cookiePass: "12345678901234567890123456789012345678901234567890"
+    readonlyrest_kbn.logLevel: "info"
+  podTemplate:
+    spec:
+      securityContext:
+        runAsUser: 1000
+      containers:
+        - name: kibana
+          volumeMounts:
+            - name: kibana-plugins
+              mountPath: /usr/share/kibana/plugins
+            - name: kibana-node-modules-kbn
+              mountPath: /usr/share/kibana/node_modules/@kbn
+            - name: kibana-src
+              mountPath: /usr/share/kibana/src
+            - name: kibana-xpack-plugins
+              mountPath: /usr/share/kibana/x-pack/plugins
+      initContainers:
+        - name: install-ror-kbn-plugin
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsUser: 0
+          command:
+            - "/bin/bash"
+            - "-c"
+            - |
+              set -e
+              
+              /usr/share/kibana/bin/kibana-plugin install "https://api.beshu.tech/download/kbn?esVersion=$KBN_VERSION&edition=kbn_universal&email=eck-example%40readonlyrest.com"
+              /usr/share/kibana/node/bin/node /usr/share/kibana/plugins/readonlyrestkbn/ror-tools.js patch
+              
+              cp -r /usr/share/kibana/node_modules/@kbn /target/usr/share/kibana/node_modules
+              cp -r /usr/share/kibana/src /target/usr/share/kibana
+              cp -r /usr/share/kibana/x-pack/plugins /target/usr/share/kibana/x-pack
+          env:
+            - name: KBN_VERSION
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['kibana.k8s.elastic.co/version']
+          volumeMounts:
+            - name: kibana-plugins
+              mountPath: /usr/share/kibana/plugins
+            - name: kibana-node-modules-kbn
+              mountPath: /target/usr/share/kibana/node_modules/@kbn
+            - name: kibana-src
+              mountPath: /target/usr/share/kibana/src
+            - name: kibana-xpack-plugins
+              mountPath: /target/usr/share/kibana/x-pack/plugins
+      volumes:
+        - name: kibana-plugins
+          emptyDir: { }
+        - name: kibana-node-modules-kbn
+          emptyDir: { }
+        - name: kibana-src
+          emptyDir: { }
+        - name: kibana-xpack-plugins
+          emptyDir: { }

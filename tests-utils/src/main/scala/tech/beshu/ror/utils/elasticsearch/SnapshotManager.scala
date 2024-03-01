@@ -20,12 +20,11 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
-import tech.beshu.ror.utils.elasticsearch.SnapshotManager.{RepositoriesResult, SnapshotsResult}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 
-class SnapshotManager(client: RestClient)
-  extends BaseManager(client)
+class SnapshotManager(client: RestClient, esVersion: String)
+  extends BaseManager(client, esVersion, esNativeApi = true)
     with LazyLogging {
 
   def getRepository(repositoryNamePattern: String,
@@ -72,12 +71,13 @@ class SnapshotManager(client: RestClient)
     call(createGetSnapshotStatusesRequest(repositoryName, snapshot :: snapshots.toList), new SnapshotsResult(_))
   }
 
-  def getAllSnapshotStatuses(): SnapshotsResult = {
+  def getAllSnapshotStatuses: SnapshotsResult = {
     call(createGetAllSnapshotStatusesRequest(), new SnapshotsResult(_))
   }
 
   def putSnapshot(repositoryName: String, snapshotName: String, index: String, otherIndices: String*): JsonResponse = {
-    call(createNewSnapshotRequest(repositoryName, snapshotName, index :: otherIndices.toList), new JsonResponse(_))
+    val request = createNewSnapshotRequest(repositoryName, snapshotName, index :: otherIndices.toList)
+    call(request, new JsonResponse(_, Some(request)))
   }
 
   def deleteSnapshotsOf(repositoryName: String, snapshots: String*): JsonResponse = {
@@ -104,7 +104,8 @@ class SnapshotManager(client: RestClient)
   }
 
   def restoreSnapshot(repositoryName: String, snapshotName: String, indices: String*): JsonResponse = {
-    call(createRestoreSnapshotRequest(repositoryName, snapshotName, indices.toList), new JsonResponse(_))
+    val request = createRestoreSnapshotRequest(repositoryName, snapshotName, indices.toList)
+    call(request, new JsonResponse(_, Some(request)))
   }
 
   private def createNewRepositoryRequest(name: String) = {
@@ -220,9 +221,6 @@ class SnapshotManager(client: RestClient)
       case all => all.mkString(",")
     }
   }
-}
-
-object SnapshotManager {
 
   class RepositoriesResult(response: HttpResponse) extends JsonResponse(response) {
     lazy val repositories: Map[String, JSON] = responseJson.obj.toMap

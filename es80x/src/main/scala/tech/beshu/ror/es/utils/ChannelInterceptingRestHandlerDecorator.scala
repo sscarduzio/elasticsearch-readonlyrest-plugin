@@ -27,7 +27,7 @@ import tech.beshu.ror.es.actions.wrappers._upgrade.rest.RorWrappedRestUpgradeAct
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandler)
   extends RestHandler {
@@ -54,15 +54,16 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
   private def unwrapWithSecurityRestFilterIfNeeded(restHandler: RestHandler) = {
     restHandler match {
       case action if action.getClass.getName.contains("SecurityRestFilter") =>
-        Try(on(action).get[RestHandler]("restHandler")) match {
-          case Success(underlyingHandler) =>
-            underlyingHandler
-          case Failure(_) =>
-            action
-        }
+        tryToGetUnderlyingRestHandler(action, "restHandler")
+          .getOrElse(action)
       case _ =>
         restHandler
     }
+  }
+
+  private def tryToGetUnderlyingRestHandler(restHandler: RestHandler,
+                                            fieldName: String) = {
+    Try(on(restHandler).get[RestHandler](fieldName))
   }
 
   private def addRorUserAuthenticationHeaderForInCaseOfSecurityRequest(request: RestRequest,

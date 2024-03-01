@@ -43,7 +43,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWord
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    ldapConnectionPoolProvider.close()
+    ldapConnectionPoolProvider.close().runSyncUnsafe()
   }
 
   protected implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider

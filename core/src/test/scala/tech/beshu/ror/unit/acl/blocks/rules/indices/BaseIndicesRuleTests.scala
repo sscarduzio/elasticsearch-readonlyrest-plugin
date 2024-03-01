@@ -23,7 +23,6 @@ import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{Assertion, Succeeded}
@@ -46,7 +45,7 @@ import tech.beshu.ror.mocks.{MockFilterableMultiRequestContext, MockGeneralIndex
 import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, fullDataStreamName, fullIndexName, fullLocalIndexWithAliases, indexPattern}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers with MockFactory {
+abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
 
   protected def assertMatchRuleForIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                                                requestIndices: Set[ClusterIndexName],

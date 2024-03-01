@@ -19,15 +19,14 @@ package tech.beshu.ror.utils.elasticsearch
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPut}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
-import tech.beshu.ror.utils.elasticsearch.XpackApiManager.{RollupCapabilitiesResult, RollupJobsResult}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 import tech.beshu.ror.utils.misc.Version
 
 class XpackApiManager(client: RestClient,
                       esVersion: String)
-  extends BaseManager(client) {
+  extends BaseManager(client, esVersion, esNativeApi = true) {
 
   def rollup(jobId: String,
              indexPattern: String,
@@ -79,6 +78,11 @@ class XpackApiManager(client: RestClient,
     call(createRollupSearchRequest(rollupIndex), new JsonResponse(_))
   }
 
+  def hasPrivileges(clusterPrivileges: Iterable[String] = List.empty,
+                    indexPrivileges: Iterable[JSON] = List.empty,
+                    applicationPrivileges: Iterable[JSON] = List.empty): JsonResponse = {
+    call(createHasPrivilegesRequest(clusterPrivileges, indexPrivileges, applicationPrivileges), new JsonResponse(_))
+  }
 
   private def createRollupRequest(jobId: String,
                                   indexPattern: String,
@@ -201,9 +205,22 @@ class XpackApiManager(client: RestClient,
        """.stripMargin))
     request
   }
-}
 
-object XpackApiManager {
+  private def createHasPrivilegesRequest(clusterPrivileges: Iterable[String],
+                                         indexPrivileges: Iterable[JSON],
+                                         applicationPrivileges: Iterable[JSON]) = {
+    val request = new HttpGetWithEntity(client.from("/_security/user/_has_privileges"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""
+         |{
+         |  "cluster": [ ${clusterPrivileges.map(p => s"\"$p\"").mkString(",")} ],
+         |  "index": [ ${indexPrivileges.map(ujson.write(_)).mkString(",")} ],
+         |  "application": [ ${applicationPrivileges.map(ujson.write(_)).mkString(",")} ]
+         |}
+       """.stripMargin))
+    request
+  }
 
   class RollupJobsResult(response: HttpResponse) extends JsonResponse(response) {
     lazy val jobs: List[JSON] = responseJson("jobs").arr.toList

@@ -20,17 +20,17 @@ import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager._
-import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplatesResponse
-import tech.beshu.ror.utils.elasticsearch.IndexTemplateManager.SimulateResponse
+import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplate
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 import tech.beshu.ror.utils.misc.Version
 
 abstract class BaseTemplateManager(client: RestClient,
+                                   esVersion: String,
                                    parseTemplates: JSON => List[Template])
-  extends BaseManager(client) {
+  extends BaseManager(client, esVersion, esNativeApi = true) {
 
   def getTemplate(name: String): TemplateResponse =
     call(createGetTemplateRequest(name), new TemplateResponse(_, parseTemplates))
@@ -74,9 +74,7 @@ abstract class BaseTemplateManager(client: RestClient,
   protected def putTemplateBodyJson(indexPatterns: NonEmptyList[String],
                                     aliases: Set[String],
                                     priority: Int): JSON
-}
 
-object BaseTemplateManager {
   class TemplateResponse(response: HttpResponse,
                          parseTemplates: JSON => List[Template])
     extends TemplatesResponse(response, parseTemplates) {
@@ -90,15 +88,20 @@ object BaseTemplateManager {
 
     lazy val templates: List[Template] = parseTemplates(responseJson)
   }
+}
+
+object BaseTemplateManager {
 
   final case class Template(name: String, patterns: Set[String], aliases: Set[String])
 }
 
 class LegacyTemplateManager(client: RestClient, esVersion: String)
   extends BaseTemplateManager(
-    client,
-    if(Version.greaterOrEqualThan(esVersion, 6, 0, 0)) LegacyTemplateManager.parseTemplates
-    else LegacyTemplateManager.parseTemplatesEs5x
+    client = client,
+    esVersion = esVersion,
+    parseTemplates =
+      if (Version.greaterOrEqualThan(esVersion, 6, 0, 0)) LegacyTemplateManager.parseTemplates
+      else LegacyTemplateManager.parseTemplatesEs5x
   ) {
 
   override protected def createGetTemplateRequest(name: String): HttpGet = {
@@ -209,7 +212,7 @@ object LegacyTemplateManager {
 }
 
 class IndexTemplateManager(client: RestClient, esVersion: String)
-  extends BaseTemplateManager(client, IndexTemplateManager.parseTemplates) {
+  extends BaseTemplateManager(client, esVersion, IndexTemplateManager.parseTemplates) {
 
   require(
     Version.greaterOrEqualThan(esVersion, 7, 8, 0),
@@ -305,6 +308,21 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
     request.setHeader("timeout", "50s")
     request
   }
+
+  class SimulateResponse(response: HttpResponse)
+    extends JsonResponse(response) {
+
+    lazy val templateAliases: Set[String] = (for {
+      template <- responseJson.obj.get("template")
+      aliasesMap <- template.obj.get("aliases")
+      aliases = aliasesMap.obj.keys.toSet
+    } yield aliases).getOrElse(Set.empty)
+
+    lazy val overlappingTemplates: List[Template] =
+      responseJson
+        .obj.get("overlapping").map(_.arr.toList).getOrElse(List.empty)
+        .map(t => Template(t("name").str, t("index_patterns").arr.map(_.str).toSet, Set.empty))
+  }
 }
 
 object IndexTemplateManager {
@@ -323,25 +341,10 @@ object IndexTemplateManager {
       }
       .toList
   }
-
-  class SimulateResponse(response: HttpResponse)
-    extends JsonResponse(response) {
-
-    lazy val templateAliases: Set[String] = (for {
-      template <- responseJson.obj.get("template")
-      aliasesMap <- template.obj.get("aliases")
-      aliases = aliasesMap.obj.keys.toSet
-    } yield aliases).getOrElse(Set.empty)
-
-    lazy val overlappingTemplates: List[Template] =
-      responseJson
-        .obj.get("overlapping").map(_.arr.toList).getOrElse(List.empty)
-        .map(t => Template(t("name").str, t("index_patterns").arr.map(_.str).toSet, Set.empty))
-  }
 }
 
 class ComponentTemplateManager(client: RestClient, esVersion: String)
-  extends BaseManager(client) {
+  extends BaseManager(client, esVersion, esNativeApi = true) {
 
   require(
     Version.greaterOrEqualThan(esVersion, 7, 8, 0),
@@ -367,7 +370,6 @@ class ComponentTemplateManager(client: RestClient, esVersion: String)
       getTemplate(templateName).responseCode == 200
     }
   }
-
 
   def deleteTemplate(templateName: String): SimpleResponse = {
     call(createDeleteComponentTemplateRequest(templateName), new SimpleResponse(_))
@@ -405,9 +407,6 @@ class ComponentTemplateManager(client: RestClient, esVersion: String)
        |  }
        |}""".stripMargin
   }
-}
-
-object ComponentTemplateManager {
 
   class ComponentTemplatesResponse(response: HttpResponse)
     extends JsonResponse(response) {
@@ -427,6 +426,9 @@ object ComponentTemplateManager {
         .toList
     }
   }
+}
+
+object ComponentTemplateManager {
 
   final case class ComponentTemplate(name: String, aliases: Set[String])
 }

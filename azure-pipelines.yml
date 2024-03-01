@@ -29,23 +29,9 @@ pool:
   vmImage: 'ubuntu-20.04'
 
 stages:
-  - stage: ES_S3_UP
-    dependsOn: [ ]
-    jobs:
-      - job:
-        steps:
-          - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key 
-              bin/upload_es_artifacts.sh
-            continueOnError: true
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
 
   - stage: CVE
-    dependsOn: [ ] # run in parallel
+    dependsOn: [ ]
     jobs:
       - job:
         steps:
@@ -56,12 +42,13 @@ stages:
           - script: |
               echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
               echo "[CVE] executing ROR_TASK=$ROR_TASK"
-              bin/run-pipeline.sh
+              ci/run-pipeline.sh
             continueOnError: true
             env:
               ROR_TASK: cve_check
 
   - stage: TEST
+    dependsOn: [ ]
     jobs:
       - job:
         timeoutInMinutes: 20
@@ -73,10 +60,10 @@ stages:
           - script: |
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key 
-              
+              export aws_secret_access_key=$var_aws_secret_access_key
+
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              bin/run-pipeline.sh
+              ci/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -105,10 +92,10 @@ stages:
           - script: |
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key 
-              
+              export aws_secret_access_key=$var_aws_secret_access_key
+
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              bin/run-pipeline.sh
+              ci/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -121,6 +108,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            IT_es812x:
+              ROR_TASK: integration_es812x
             IT_es811x:
               ROR_TASK: integration_es811x
             IT_es810x:
@@ -155,10 +144,10 @@ stages:
           - script: |
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key 
-              
+              export aws_secret_access_key=$var_aws_secret_access_key
+
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              bin/run-pipeline.sh
+              ci/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -171,8 +160,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            IT_es811x:
-              ROR_TASK: integration_es811x
+            IT_es812x:
+              ROR_TASK: integration_es812x
             IT_es80x:
               ROR_TASK: integration_es80x
       - job:
@@ -186,10 +175,10 @@ stages:
           - script: |
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key 
-              
+              export aws_secret_access_key=$var_aws_secret_access_key
+
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              bin/run-pipeline.sh
+              ci/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -251,10 +240,10 @@ stages:
           - script: |
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key 
-              
+              export aws_secret_access_key=$var_aws_secret_access_key
+
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              bin/run-pipeline.sh
+              ci/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -278,14 +267,13 @@ stages:
             IT_es60x:
               ROR_TASK: integration_es60x
 
-  - stage: BLD_TEST
+  - stage: BUILD_ROR
     dependsOn:
       - TEST
     condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
     jobs:
       - job:
         timeoutInMinutes: 60
-        container: maven:3.8.1-openjdk-17-slim
         steps:
           - checkout: self
             fetchDepth: 1
@@ -293,12 +281,13 @@ stages:
 
           - script: |
               set -e
+              
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
               
-              echo "[BLD_TEST] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Creating deliverables" && bin/run-pipeline.sh
+              echo "[BUILD_ROR] executing ROR_TASK = $ROR_TASK"
+              echo ">>> ($ROR_TASK) Building ROR plugins" && ci/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -306,84 +295,40 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            PKG_es8xx:
-              ROR_TASK: package_es8xx
-      - job:
-        timeoutInMinutes: 60
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
+            BUILD_8xx:
+              ROR_TASK: build_es8xx
+            BUILD_7xx:
+              ROR_TASK: build_es7xx
+            BUILD_6xx:
+              ROR_TASK: build_es6xx
 
-          - script: |
-              set -e
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-              
-              echo "[BLD_TEST] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Creating deliverables" && bin/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-
-        strategy:
-          maxParallel: 99
-          matrix:
-            PKG_es7xx:
-              ROR_TASK: package_es7xx
-            PKG_es6xx:
-              ROR_TASK: package_es6xx
-
-  - stage: S3_UP
+  - stage: DETERMINE_CI_TYPE
     dependsOn:
       - TEST
-    condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
+    jobs:
+      - job: EXTRACT_IS_RELEASE
+        steps:
+          - bash: |
+              IS_RELEASE=true
+              if grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}' | grep "\-pre"; then
+                IS_RELEASE=false
+              fi
+              echo "##vso[task.setvariable variable=value;isOutput=true]$IS_RELEASE"
+            name: IsRelease
+
+  - stage: UPLOAD_PRE_ROR
+    dependsOn:
+      - DETERMINE_CI_TYPE
+      - TEST
+    condition: |
+      and(
+        succeeded('TEST'),
+        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
+        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false)
+      )
     jobs:
       - job:
-        container:
-          image: maven:3.8.1-openjdk-17-slim
-          options:  "--name ci-container -v /usr/bin/docker:/tmp/docker:ro"
-
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-
-          - script: |
-              /tmp/docker exec -t -u 0 ci-container \
-              sh -c "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confold" -y install sudo"
-            displayName: 'Install Sudo in container #HACK - See https://github.com/microsoft/azure-pipelines-agent/issues/2043'
-
-          - task: Bash@3
-            inputs:
-              targetType: 'inline'
-
-              script: |
-                set -e
-
-                echo ">>>> Installing dependencies with apt-get"
-                sudo apt-get update && sudo apt-get install -y git file
-                git status && echo ">>> Git installed correctly!"
-                
-                # Translate back env vars to avoid cyclical reference :/
-                export aws_access_key_id=$var_aws_access_key_id
-                export aws_secret_access_key=$var_aws_secret_access_key
-                
-                echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
-                echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/run-pipeline.sh
-                echo ">>> ($ROR_TASK) Git tag and upload to S3" && ci/ci-deploy.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-
-        strategy:
-          maxParallel: 99
-          matrix:
-            PKG_es8xx:
-              ROR_TASK: package_es8xx
-      - job:
+        timeoutInMinutes: 180
         steps:
           - checkout: self
             fetchDepth: 1
@@ -392,16 +337,13 @@ stages:
 
           - script: |
               set -e
+
               # Translate back env vars to avoid cyclical reference :/
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
-              
-              echo ">> ALL VARIABLES NAMES " && export | awk -F= '{print $1}'
-              echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
-              
-              echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/run-pipeline.sh
-              echo ">>> ($ROR_TASK) Tag and upload to S3" && ci/ci-deploy.sh
+
+              echo "[UPLOAD_PRE_ROR] executing ROR_TASK = $ROR_TASK"
+              echo ">>> ($ROR_TASK) Uploading pre-ROR" && ci/run-pipeline.sh
             env:
               var_aws_access_key_id: $(aws_access_key_id)
               var_aws_secret_access_key: $(aws_secret_access_key)
@@ -409,12 +351,66 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            PKG_es7xx:
-              ROR_TASK: package_es7xx
-            PKG_es6xx:
-              ROR_TASK: package_es6xx
+            UPLOAD_PRE_8xx:
+              ROR_TASK: upload_pre_es8xx
+            UPLOAD_PRE_7xx:
+              ROR_TASK: upload_pre_es7xx
+            UPLOAD_PRE_6xx:
+              ROR_TASK: upload_pre_es6xx
 
-  - stage: MVN_COMPILE
+  - stage: RELEASE_ROR
+    dependsOn:
+      - DETERMINE_CI_TYPE
+      - TEST
+    condition: |
+      and(
+        succeeded('TEST'), 
+        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
+        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true)
+      )
+    jobs:
+      - job:
+        timeoutInMinutes: 180
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+            timeoutInMinutes: 180
+
+          - script: |
+              set -e
+
+              echo ">>>> Installing dependencies with apt-get"
+              sudo apt-get update && sudo apt-get install -y git file
+              git status && echo ">>> Git installed correctly!"
+
+              # Translate back env vars to avoid cyclical reference :/
+              export aws_access_key_id=$var_aws_access_key_id
+              export aws_secret_access_key=$var_aws_secret_access_key
+
+              export DOCKER=docker
+              docker login -u $var_docker_registry_user -p $var_docker_registry_password
+
+              echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
+              echo ">>> ($ROR_TASK) Releasing ROR" && ci/run-pipeline.sh
+            env:
+              var_aws_access_key_id: $(aws_access_key_id)
+              var_aws_secret_access_key: $(aws_secret_access_key)
+              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
+              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
+
+        strategy:
+          maxParallel: 99
+          matrix:
+            RELEASE_ES_8xx:
+              ROR_TASK: release_es8xx
+            RELEASE_ES_7xx:
+              ROR_TASK: release_es7xx
+            RELEASE_ES_6xx:
+              ROR_TASK: release_es6xx
+
+  - stage: BUILD_MVN_ARTIFACTS
     dependsOn:
       - TEST
     condition: and(succeeded('TEST'), ne(variables.isMaster, true))
@@ -426,15 +422,21 @@ stages:
             clean: false
             persistCredentials: true
           - script: |
-              echo "[MVN_COMPILE] executing ROR_TASK = $ROR_TASK"
-              bin/run-pipeline.sh
+              echo "[BUILD_MVN_ARTIFACTS] executing ROR_TASK = $ROR_TASK"
+              ci/run-pipeline.sh
             env:
               ROR_TASK: audit_compile
 
-  - stage: MVN_PUB
+  - stage: PUBLISH_MVN_ARTIFACTS
     dependsOn:
+      - DETERMINE_CI_TYPE
       - TEST
-    condition: and(succeeded('TEST'), eq(variables.isMaster, true))
+    condition: |
+      and(
+        succeeded('TEST'), 
+        eq(variables.isMaster, true),
+        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true)
+      )
     jobs:
       - job:
         steps:
@@ -475,15 +477,15 @@ stages:
             condition: eq(404, variables.mvn_status)
 
           - script: |
-              echo "[MVN_PUB] executing ROR_TASK=$ROR_TASK"
+              echo "[MVN_PUBLISH] executing ROR_TASK=$ROR_TASK"
               export MAVEN_REPO_PASSWORD=$VAR_MAVEN_REPO_PASSWORD
               export MAVEN_REPO_USER=$VAR_MAVEN_REPO_USER
               export MAVEN_STAGING_PROFILE_ID=$VAR_MAVEN_STAGING_PROFILE_ID
               export GPG_KEY_ID=$VAR_GPG_KEY_ID
               export GPG_PASSPHRASE=$VAR_GPG_PASSPHRASE
-              echo ">>> ($ROR_TASK) Publishing artifacts" && bin/run-pipeline.sh
+              echo ">>> ($ROR_TASK) Publishing MVN artifacts" && ci/run-pipeline.sh
             env:
-              ROR_TASK: publish_artifacts
+              ROR_TASK: publish_maven_artifacts
               VAR_MAVEN_REPO_PASSWORD: $(MAVEN_REPO_PASSWORD)
               VAR_MAVEN_REPO_USER: $(MAVEN_REPO_USER)
               VAR_MAVEN_STAGING_PROFILE_ID: $(MAVEN_STAGING_PROFILE_ID)

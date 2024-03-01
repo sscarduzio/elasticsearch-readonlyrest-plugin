@@ -20,7 +20,6 @@ import eu.timepit.refined.auto._
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
 import monix.execution.Scheduler.Implicits.global
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
@@ -47,7 +46,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class RorKbnAuthRuleTests
-  extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion {
+  extends AnyWordSpec with Inside with BlockContextAssertion {
 
   "A RorKbnAuthRule" should {
     "match" when {

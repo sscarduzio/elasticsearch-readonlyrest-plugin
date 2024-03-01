@@ -35,7 +35,7 @@ trait FieldRuleQueryDSLSuite
 
   protected def assertNoSearchHitsReturnedFor(index: String, query: String): Unit
 
-  protected val searchManager = new SearchManager(basicAuthClient("user", "pass"))
+  protected val searchManager = new SearchManager(basicAuthClient("user", "pass"), esVersionUsed)
 
   "Search action with field rule defined" should {
     "not return any document" when {

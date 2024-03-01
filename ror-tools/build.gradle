@@ -23,7 +23,7 @@ buildscript {
 plugins {
     id "readonlyrest.base-common-conventions"
 
-    id "com.github.johnrengelman.shadow"        version "7.1.2"
+    id "com.github.johnrengelman.shadow"        version "8.1.1"
     id "com.github.maiflai.scalatest"           version "0.32"
 }
 
@@ -97,14 +97,12 @@ shadowJar {
 }
 
 // Configure Auto Relocation
-import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-tasks.register('relocateShadowJar', ConfigureShadowRelocation) {
-    target = tasks.shadowJar
-    prefix = "tech.beshu.ror.tools"
+tasks.named('shadowJar', ShadowJar) {
+    enableRelocation true
+    relocationPrefix "tech.beshu.ror.tools"
 }
-
-tasks.shadowJar.dependsOn tasks.relocateShadowJar
 
 tasks.withType(AbstractArchiveTask).configureEach {
     preserveFileTimestamps = false
@@ -115,7 +113,7 @@ def netty4TransportArtifactName = "transport-netty4-" + esVersion + ".jar"
 def netty4TransportArtifactDestinationPath = "org/elasticsearch/plugin/transport-netty4/" + esVersion + "/" + netty4TransportArtifactName
 
 tasks.register('uploadArtifactsFromEsBinaries', Exec) {
-    commandLine '../ci/upload-file-to-s3.sh', layout.buildDirectory.get().asFile.path + "/" + netty4TransportArtifactName, "build/" + netty4TransportArtifactDestinationPath
+    commandLine '../ci/upload-files-to-s3.sh', layout.buildDirectory.get().asFile.path + "/" + netty4TransportArtifactName, "build/" + netty4TransportArtifactDestinationPath
 }
 
 tasks.register('getArtifactsFromEsBinaries') {
