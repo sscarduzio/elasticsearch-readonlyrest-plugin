@@ -24,14 +24,36 @@ import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.actions.wrappers._cat.rest.RorWrappedRestCatAction
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-
+import java.lang.reflect.{Proxy => JProxy}
+import java.lang.reflect.{InvocationHandler, Method}
 import scala.util.Try
 
 class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandler)
-  extends RestHandler {
+  extends RestHandler with InvocationHandler {
 
   private val wrapped = doPrivileged {
     wrapSomeActions(underlying)
+  }
+
+  // This is a hack because in ES 7.4.x there is no `allowsUnsafeBuffers` method. In the next ES version the method is
+  // present. So, we need some kind of dynamic decorator. It's done by InvocationHandler#invoke method. This solution
+  // is only done in this module.
+  override def invoke(proxy: Any, method: Method, args: Array[AnyRef]): AnyRef = {
+    method.getName match {
+      case "handleRequest" =>
+        args.toList match {
+          case request :: channel :: client :: Nil =>
+            handleRequest(
+              request.asInstanceOf[RestRequest],
+              channel.asInstanceOf[RestChannel],
+              client.asInstanceOf[NodeClient]
+            ).asInstanceOf[AnyRef]
+          case _ =>
+            throw new IllegalStateException("Unexpected arguments list in 'handleRequest' invocation")
+        }
+      case _ =>
+        method.invoke(underlying, args)
+    }
   }
 
   override def handleRequest(request: RestRequest, channel: RestChannel, client: NodeClient): Unit = {
@@ -41,11 +63,11 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
     wrapped.handleRequest(request, rorRestChannel, client)
   }
 
-  override def canTripCircuitBreaker: Boolean = underlying.canTripCircuitBreaker
-
-  override def supportsContentStream(): Boolean = underlying.supportsContentStream()
-
-  override def allowsUnsafeBuffers(): Boolean = underlying.allowsUnsafeBuffers()
+  //  override def canTripCircuitBreaker: Boolean = underlying.canTripCircuitBreaker
+  //
+  //  override def supportsContentStream(): Boolean = underlying.supportsContentStream()
+  //
+  //  override def allowsUnsafeBuffers(): Boolean = underlying.allowsUnsafeBuffers()
 
   private def wrapSomeActions(ofHandler: RestHandler) = {
     unwrapWithSecurityRestFilterIfNeeded(ofHandler) match {
@@ -77,12 +99,21 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
         .addRorUserAuthenticationHeader(client.getLocalNodeId)
     }
   }
-
 }
 
 object ChannelInterceptingRestHandlerDecorator {
   def create(restHandler: RestHandler): ChannelInterceptingRestHandlerDecorator = restHandler match {
     case alreadyDecoratedHandler: ChannelInterceptingRestHandlerDecorator => alreadyDecoratedHandler
-    case handler => new ChannelInterceptingRestHandlerDecorator(handler)
+    case handler => createChannelInterceptingRestHandlerDecorator(handler)
+  }
+
+  private def createChannelInterceptingRestHandlerDecorator(handler: RestHandler) = {
+    JProxy
+      .newProxyInstance(
+        handler.getClass.getClassLoader,
+        Array(classOf[RestHandler]),
+        new ChannelInterceptingRestHandlerDecorator(handler)
+      )
+      .asInstanceOf[ChannelInterceptingRestHandlerDecorator]
   }
 }
