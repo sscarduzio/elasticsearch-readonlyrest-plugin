@@ -35,9 +35,10 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
     wrapSomeActions(underlying)
   }
 
-  // This is a hack because in ES 7.4.x there is no `allowsUnsafeBuffers` method. In the next ES version the method is
-  // present. So, we need some kind of dynamic decorator. It's done by InvocationHandler#invoke method. This solution
-  // is only done in this module.
+  // This is a hack because in ES 7.4.x there is no `allowsUnsafeBuffers` method. In the next minor ES version
+  // (in the same ROR es module) the method is present. We could create a new module, but maybe there is no sense
+  // in this case. So, we need some kind of dynamic decorator. It can be achieved using Java Dynamic Proxy.
+  // The solution is used only in this module (in other modules, there is no such issue).
   override def invoke(proxy: Any, method: Method, args: Array[AnyRef]): AnyRef = {
     method.getName match {
       case "handleRequest" =>
@@ -52,7 +53,7 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
             throw new IllegalStateException("Unexpected arguments list in 'handleRequest' invocation")
         }
       case _ =>
-        method.invoke(underlying, args)
+        method.invoke(underlying, args: _*)
     }
   }
 
@@ -62,12 +63,6 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
     addRorUserAuthenticationHeaderForInCaseOfSecurityRequest(request, client)
     wrapped.handleRequest(request, rorRestChannel, client)
   }
-
-  //  override def canTripCircuitBreaker: Boolean = underlying.canTripCircuitBreaker
-  //
-  //  override def supportsContentStream(): Boolean = underlying.supportsContentStream()
-  //
-  //  override def allowsUnsafeBuffers(): Boolean = underlying.allowsUnsafeBuffers()
 
   private def wrapSomeActions(ofHandler: RestHandler) = {
     unwrapWithSecurityRestFilterIfNeeded(ofHandler) match {
@@ -102,18 +97,20 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
 }
 
 object ChannelInterceptingRestHandlerDecorator {
-  def create(restHandler: RestHandler): ChannelInterceptingRestHandlerDecorator = restHandler match {
-    case alreadyDecoratedHandler: ChannelInterceptingRestHandlerDecorator => alreadyDecoratedHandler
-    case handler => createChannelInterceptingRestHandlerDecorator(handler)
+  def create(restHandler: RestHandler): RestHandler = restHandler match {
+    case alreadyDecoratedHandler if JProxy.isProxyClass(alreadyDecoratedHandler.getClass) =>
+      alreadyDecoratedHandler
+    case handler =>
+      createChannelInterceptingRestHandlerDecorator(handler)
   }
 
   private def createChannelInterceptingRestHandlerDecorator(handler: RestHandler) = {
-    JProxy
-      .newProxyInstance(
-        handler.getClass.getClassLoader,
-        Array(classOf[RestHandler]),
-        new ChannelInterceptingRestHandlerDecorator(handler)
-      )
-      .asInstanceOf[ChannelInterceptingRestHandlerDecorator]
+      JProxy
+        .newProxyInstance(
+          this.getClass.getClassLoader,
+          Array(classOf[RestHandler]),
+          new ChannelInterceptingRestHandlerDecorator(handler)
+        )
+        .asInstanceOf[RestHandler]
   }
 }
