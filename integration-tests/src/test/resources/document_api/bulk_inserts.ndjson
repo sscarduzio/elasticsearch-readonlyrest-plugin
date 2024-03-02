@@ -1,0 +1,4 @@
+{ "index" : { "_index" : "index1_2020-02-01", "_id" : "1" } }
+{ "message" : "hello" }
+{ "index" : { "_index" : "index1_2020-02-02", "_id" : "1" } }
+{ "message" : "hello" }

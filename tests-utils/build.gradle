@@ -65,7 +65,7 @@ dependencies {
     api group: 'io.monix',                       name: 'monix_2.13',                        version: '3.4.1'
     api group: 'com.lihaoyi',                    name: 'os-lib_2.13',                       version: '0.9.0'
     api group: 'eu.timepit',                     name: 'refined_2.13',                      version: '0.10.1'
-    api group: 'org.scala-lang',                 name: 'scala-library',                     version: '2.13.11'
+    api group: 'org.scala-lang',                 name: 'scala-library',                     version: '2.13.13'
     api group: 'org.scala-lang.modules'  ,       name: 'scala-parallel-collections_2.13',   version: '1.0.4'
     api group: 'com.typesafe.scala-logging',     name: 'scala-logging_2.13',                version: '3.9.2'
     api group: 'org.scalatest',                  name: 'scalatest_2.13',                    version: '3.2.9'
