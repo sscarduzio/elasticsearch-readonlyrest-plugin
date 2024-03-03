@@ -60,6 +60,7 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
   }
 
   private def ldapAuthenticate(user: LdapUser, password: PlainTextSecret) = {
+    logger.debug(s"LDAP simple bind [user DN: ${user.dn.value.value}]")
     connectionPool
       .asyncBind(new SimpleBindRequest(user.dn.value.value, password.value.value))
       .map(_.getResultCode == ResultCode.SUCCESS)
