@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleA
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings, SimpleAuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, LoggedUser, PermittedGroupIds}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, GroupIdLike, LoggedUser, PermittedGroupIds}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.annotation.nowarn
@@ -42,7 +42,9 @@ private[auth] trait BaseAuthorizationRule
 
   protected def groupsPermittedByRule: PermittedGroupIds
 
-  protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser): Task[UniqueList[Group]]
+  protected def userGroups[B <: BlockContext](blockContext: B,
+                                              user: LoggedUser,
+                                              permittedGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]]
 
   protected def loggedUserPreconditionCheck(@nowarn("cat=unused") user: LoggedUser): Either[Unit, Unit] = Right(())
 
@@ -96,9 +98,9 @@ private[auth] trait BaseAuthorizationRule
 
   private def authorizeLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                            user: LoggedUser,
-                                                                           userGroupsProvider: (B, LoggedUser) => Task[UniqueList[Group]]): Task[RuleResult[B]] = {
+                                                                           userGroupsProvider: (B, LoggedUser, Set[GroupIdLike]) => Task[UniqueList[Group]]): Task[RuleResult[B]] = {
     if (blockContext.isCurrentGroupEligible(groupsPermittedByRule)) {
-      userGroupsProvider(blockContext, user)
+      userGroupsProvider(blockContext, user, groupsPermittedByRule.groupIds.toSet)
         .map(uniqueList => UniqueNonEmptyList.fromIterable(uniqueList.toSet))
         .map {
           case Some(fetchedUserGroups) =>
