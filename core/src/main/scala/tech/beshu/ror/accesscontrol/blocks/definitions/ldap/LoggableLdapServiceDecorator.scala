@@ -22,10 +22,10 @@ import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.{Group, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, User}
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.TaskOps._
-import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
@@ -36,7 +36,7 @@ class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticat
 
   private val loggableLdapUserService = new LoggableLdapUserServiceDecorator(underlying)
 
-  override val id: LdapService.Name = underlying.id
+  override def id: LdapService.Name = underlying.id
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
     loggableLdapUserService.ldapUserBy(userId)
@@ -62,15 +62,15 @@ class LoggableLdapAuthorizationServiceDecorator(val underlying: LdapAuthorizatio
 
   private val loggableLdapUserService = new LoggableLdapUserServiceDecorator(underlying)
 
-  override val id: LdapService.Name = underlying.id
+  override def id: LdapService.Name = underlying.id
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
     loggableLdapUserService.ldapUserBy(userId)
 
-  override def groupsOf(userId: User.Id): Task[UniqueList[Group]] = {
-    logger.debug(s"Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}]")
+  override def groupsOf(userId: User.Id, allowedGroupIds: UniqueNonEmptyList[GroupIdLike]): Task[UniqueList[Group]] = {
+    logger.debug(s"Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}] (assuming that allowed group IDs are [${allowedGroupIds.map(_.show).mkString(",")}])")
     underlying
-      .groupsOf(userId)
+      .groupsOf(userId, allowedGroupIds)
       .andThen {
         case Success(groups) =>
           logger.debug(s"LDAP [${id.show}] returned for user [${userId.show}] following groups: [${groups.map(_.show).mkString(",")}]")
@@ -88,7 +88,7 @@ class LoggableLdapServiceDecorator(val underlying: LdapAuthService)
   private val loggableLdapAuthenticationService = new LoggableLdapAuthenticationServiceDecorator(underlying)
   private val loggableLdapAuthorizationService = new LoggableLdapAuthorizationServiceDecorator(underlying)
 
-  override val id: LdapService.Name = underlying.id
+  override def id: LdapService.Name = underlying.id
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
     loggableLdapAuthenticationService.ldapUserBy(userId)
@@ -96,8 +96,8 @@ class LoggableLdapServiceDecorator(val underlying: LdapAuthService)
   override def authenticate(userId: User.Id, secret: domain.PlainTextSecret): Task[Boolean] =
     loggableLdapAuthenticationService.authenticate(userId, secret)
 
-  override def groupsOf(userId: User.Id): Task[UniqueList[Group]] =
-    loggableLdapAuthorizationService.groupsOf(userId)
+  override def groupsOf(userId: User.Id, allowedGroupIds: UniqueNonEmptyList[GroupIdLike]): Task[UniqueList[Group]] =
+    loggableLdapAuthorizationService.groupsOf(userId, allowedGroupIds)
 
   override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
 }
@@ -106,7 +106,7 @@ private class LoggableLdapUserServiceDecorator(underlying: LdapUserService)
   extends LdapUserService
     with Logging {
 
-  override val id: LdapService.Name = underlying.id
+  override def id: LdapService.Name = underlying.id
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
     logger.debug(s"Trying to fetch user with identifier [${userId.show}] from LDAP [${id.show}]")
