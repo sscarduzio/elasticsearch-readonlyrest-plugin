@@ -23,11 +23,12 @@ import scala.util.matching.Regex
 final case class EsModule(name: String)
 object EsModule {
 
+  def doesCurrentModuleMatch(esModuleRegex: Regex): Boolean = {
+    doesEsModuleMatchRegex(currentEsModule, esModuleRegex :: Nil)
+  }
+
   def isCurrentModuleExcluded(excludedEsModulePatterns: Regex, otherExcludedEsModulePatterns: Regex*): Boolean = {
-    isEsModuleExcluded(
-      EsModule(RorPluginGradleProject.fromSystemProperty.moduleName),
-      excludedEsModulePatterns, otherExcludedEsModulePatterns: _*
-    )
+    doesEsModuleMatchRegex(currentEsModule, excludedEsModulePatterns :: otherExcludedEsModulePatterns.toList)
   }
 
   def isCurrentModuleNotExcluded(excludedEsModulePatterns: Regex, otherExcludedEsModulePatterns: Regex*): Boolean = {
@@ -39,15 +40,15 @@ object EsModule {
       .availableEsModules
       .map(EsModule.apply)
       .filter { esModule =>
-        isEsModuleExcluded(esModule, excludedEsModulePatterns, otherExcludedEsModulePatterns: _*)
+        doesEsModuleMatchRegex(esModule, excludedEsModulePatterns :: otherExcludedEsModulePatterns.toList)
       }
   }
 
-  private def isEsModuleExcluded(esModule: EsModule,
-                                 excludedEsModulePatterns: Regex,
-                                 otherExcludedEsModulePatterns: Regex*): Boolean = {
-    (excludedEsModulePatterns :: otherExcludedEsModulePatterns.toList).exists(_.findFirstIn(esModule.name).isDefined)
+  private def doesEsModuleMatchRegex(esModule: EsModule, regexes: Iterable[Regex]): Boolean = {
+    regexes.toList.exists(_.findFirstIn(esModule.name).isDefined)
   }
+
+  private def currentEsModule = EsModule(RorPluginGradleProject.fromSystemProperty.moduleName)
 }
 
 trait EsModulePatterns {

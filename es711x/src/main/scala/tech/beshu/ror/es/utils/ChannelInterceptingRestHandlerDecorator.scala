@@ -25,6 +25,7 @@ import tech.beshu.ror.es.actions.wrappers._cat.rest.RorWrappedRestCatAction
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
+import java.util
 import scala.util.Try
 
 class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandler)
@@ -40,6 +41,16 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
     addRorUserAuthenticationHeaderForInCaseOfSecurityRequest(request, client)
     wrapped.handleRequest(request, rorRestChannel, client)
   }
+
+  override def canTripCircuitBreaker: Boolean = underlying.canTripCircuitBreaker
+
+  override def supportsContentStream(): Boolean = underlying.supportsContentStream()
+
+  override def allowsUnsafeBuffers(): Boolean = underlying.allowsUnsafeBuffers()
+
+  override def routes(): util.List[RestHandler.Route] = underlying.routes()
+
+  override def allowSystemIndexAccessByDefault(): Boolean = underlying.allowSystemIndexAccessByDefault()
 
   private def wrapSomeActions(ofHandler: RestHandler) = {
     unwrapWithSecurityRestFilterIfNeeded(ofHandler) match {
