@@ -80,7 +80,7 @@ private[auth] trait BaseAuthorizationRule
         authorizeLoggedUser(
           blockContext,
           user,
-          userGroupsProvider = (_, _) => Task.now(mockedGroups)
+          userGroupsProvider = (_, _, _) => Task.now(mockedGroups)
         )
       case Groups.CannotCheck =>
         Task.now(Rejected(Cause.ImpersonationNotSupported))

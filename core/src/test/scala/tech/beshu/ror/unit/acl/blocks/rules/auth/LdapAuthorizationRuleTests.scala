@@ -397,7 +397,7 @@ class LdapAuthorizationRuleTests
     new LdapAuthorizationService {
       override def id: LdapService.Name = LdapService.Name(name)
 
-      override def groupsOf(id: User.Id, allowedGroupIds: UniqueNonEmptyList[GroupIdLike]): Task[UniqueList[Group]] = Task.delay {
+      override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = Task.delay {
         groups.get(id) match {
           case Some(g) => UniqueList.fromIterable(g) // todo: filtering
           case None => UniqueList.empty
@@ -415,7 +415,7 @@ class LdapAuthorizationRuleTests
     new LdapAuthorizationService {
       override def id: LdapService.Name = LdapService.Name(name)
 
-      override def groupsOf(id: User.Id, allowedGroupIds: UniqueNonEmptyList[GroupIdLike]): Task[UniqueList[Group]] =
+      override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] =
         Task.raiseError(failure)
 
       override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =

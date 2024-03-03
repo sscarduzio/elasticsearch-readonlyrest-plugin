@@ -25,7 +25,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, User}
-import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -57,9 +57,9 @@ class CircuitBreakerLdapAuthorizationServiceDecorator(underlying: LdapAuthorizat
   extends LdapAuthorizationService
     with LdapCircuitBreaker {
 
-  override def groupsOf(id: User.Id, allowedGroupIds: UniqueNonEmptyList[GroupIdLike]): Task[UniqueList[Group]] = {
+  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = {
     protect(
-      underlying.groupsOf(id, allowedGroupIds)
+      underlying.groupsOf(id, filteringGroupIds)
     )
   }
 
@@ -85,9 +85,9 @@ class CircuitBreakerLdapServiceDecorator(underlying: LdapAuthService,
     )
   }
 
-  override def groupsOf(id: User.Id, allowedGroupIds: UniqueNonEmptyList[GroupIdLike]): Task[UniqueList[Group]] = {
+  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = {
     protect(
-      underlying.groupsOf(id, allowedGroupIds)
+      underlying.groupsOf(id, filteringGroupIds)
     )
   }
 
