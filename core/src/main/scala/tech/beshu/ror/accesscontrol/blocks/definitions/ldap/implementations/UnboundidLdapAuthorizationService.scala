@@ -30,8 +30,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationSe
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, User}
 import tech.beshu.ror.utils.LoggerOps.toLoggerOps
-import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 import tech.beshu.ror.utils.TaskOps._
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.time.Clock
 import scala.concurrent.duration.FiniteDuration
@@ -49,16 +49,16 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
     .nestedGroupsConfig
     .map(new UnboundidLdapNestedGroupsService(connectionPool, _, serviceTimeout))
 
-  override def groupsOf(id: User.Id, allowedGroupIds: UniqueNonEmptyList[GroupIdLike]): Task[UniqueList[Group]] = {
+  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = {
     Task.measure(
-      doFetchGroupsOf(id),
+      doFetchGroupsOf(id, filteringGroupIds),
       measurement => Task.delay {
         logger.debug(s"LDAP groups fetching took $measurement")
       }
     )
   }
 
-  private def doFetchGroupsOf(id: User.Id): Task[UniqueList[Group]] = {
+  private def doFetchGroupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = {
     ldapUserBy(id)
       .flatMap {
         case Some(user) =>

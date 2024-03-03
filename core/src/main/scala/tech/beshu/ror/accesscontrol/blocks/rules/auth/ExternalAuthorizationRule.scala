@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, GroupsLogic, LoggedUser, PermittedGroupIds, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, GroupIdLike, GroupsLogic, LoggedUser, PermittedGroupIds, User}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -47,8 +47,9 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
   }
 
   override protected def userGroups[B <: BlockContext](blockContext: B,
-                                                       user: LoggedUser): Task[UniqueList[Group]] =
-    settings.service.grantsFor(user.id)
+                                                       user: LoggedUser,
+                                                       permittedGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] =
+    settings.service.grantsFor(user.id) // todo: filtering?
 
   override protected def mockedGroupsOf(user: User.Id, mocksProvider: MocksProvider)
                                        (implicit requestId: RequestId): Groups = {
