@@ -77,7 +77,7 @@ object EsConfig {
       .subflatMap { fipsConfiguration =>
         fipsConfiguration.fipsMode match {
           case FipsMode.SslOnly if xpackSettings.securityEnabled =>
-            Left(RorSettingsInactiveWhenXpackSecurityIsEnabled(SettingsType.Fibs))
+            Left(RorSettingsInactiveWhenXpackSecurityIsEnabled(SettingsType.Fips))
           case FipsMode.NonFips | FipsMode.SslOnly =>
             Right(fipsConfiguration)
         }
@@ -98,7 +98,7 @@ object EsConfig {
       sealed trait SettingsType
       object SettingsType {
         case object Ssl extends SettingsType
-        case object Fibs extends SettingsType
+        case object Fips extends SettingsType
       }
     }
   }
