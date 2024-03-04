@@ -116,7 +116,8 @@ object UserGroupsSearchFilterConfig {
                                         groupSearchFilter: GroupSearchFilter,
                                         groupIdAttribute: GroupIdAttribute,
                                         uniqueMemberAttribute: UniqueMemberAttribute,
-                                        groupAttributeIsDN: Boolean)
+                                        groupAttributeIsDN: Boolean,
+                                        serverSideFiltering: Boolean = true) // todo: remove the default
       extends UserGroupsSearchMode
 
     final case class GroupsFromUserEntry(searchGroupBaseDN: Dn,

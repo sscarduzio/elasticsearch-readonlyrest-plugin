@@ -208,7 +208,8 @@ object LdapServicesDecoder {
         groupSearchFilter.getOrElse(GroupSearchFilter.default),
         groupIdAttribute.getOrElse(GroupIdAttribute.default),
         uniqueMemberAttribute.getOrElse(UniqueMemberAttribute.default),
-        groupAttributeIsDN.getOrElse(true)
+        groupAttributeIsDN.getOrElse(true),
+        serverSideFiltering = true // todo:
       )
     }
 
@@ -402,7 +403,7 @@ object LdapServicesDecoder {
 
   private def nestedGroupsConfigDecoder(searchMode: UserGroupsSearchMode) = {
     searchMode match {
-      case DefaultGroupSearch(searchGroupBaseDN, groupSearchFilter, groupIdAttribute, uniqueMemberAttribute, _) =>
+      case DefaultGroupSearch(searchGroupBaseDN, groupSearchFilter, groupIdAttribute, uniqueMemberAttribute, _, _) =>
         Decoder.instance { c =>
           for {
             nestedGroupsDepthOpt <- c.downField("nested_groups_depth").as[Option[Int Refined Positive]]

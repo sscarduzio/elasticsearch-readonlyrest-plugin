@@ -64,7 +64,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
         case Some(user) =>
           groupsSearchFilter.mode match {
             case defaultSearchGroupMode: DefaultGroupSearch =>
-              groupsFrom(defaultSearchGroupMode, user)
+              groupsFrom(defaultSearchGroupMode, user, filteringGroupIds)
             case groupsFromUserAttribute: GroupsFromUserEntry =>
               groupsFrom(groupsFromUserAttribute, user)
           }
@@ -73,9 +73,11 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
       }
   }
 
-  private def groupsFrom(mode: DefaultGroupSearch, user: LdapUser): Task[UniqueList[Group]] = {
+  private def groupsFrom(mode: DefaultGroupSearch,
+                         user: LdapUser,
+                         filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = {
     connectionPool
-      .process(searchUserGroupsLdapRequest(_, mode, user), serviceTimeout)
+      .process(searchUserGroupsLdapRequest(_, mode, user, filteringGroupIds), serviceTimeout)
       .flatMap {
         case Right(results) =>
           Task {
@@ -122,20 +124,35 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
 
   private def searchUserGroupsLdapRequest(listener: AsyncSearchResultListener,
                                           mode: DefaultGroupSearch,
-                                          user: LdapUser): LDAPRequest = {
+                                          user: LdapUser,
+                                          filteringGroupIds: Set[GroupIdLike]): LDAPRequest = {
     val baseDn = mode.searchGroupBaseDN.value.value
     val scope = SearchScope.SUB
-    val searchFilter = searchUserGroupsLdapFilerFrom(mode, user)
+    val searchFilter = searchUserGroupsLdapFilerFrom(mode, user, filteringGroupIds)
     val attribute = mode.groupIdAttribute.value.value
     logger.debug(s"LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: $attribute]")
     new SearchRequest(listener, baseDn, scope, searchFilter, attribute)
   }
 
-  private def searchUserGroupsLdapFilerFrom(mode: DefaultGroupSearch, user: LdapUser) = {
-    if (mode.groupAttributeIsDN)
-      s"(&${mode.groupSearchFilter.value}(${mode.uniqueMemberAttribute.value}=${Filter.encodeValue(user.dn.value.value)}))"
-    else
-      s"(&${mode.groupSearchFilter.value}(${mode.uniqueMemberAttribute.value}=${Filter.encodeValue(user.id.value.value)}))"
+  private def searchUserGroupsLdapFilerFrom(mode: DefaultGroupSearch,
+                                            user: LdapUser,
+                                            filteringGroupIds: Set[GroupIdLike]) = {
+    val userAttributeValue = if (mode.groupAttributeIsDN) user.dn.value else user.id.value
+    val serverSideGroupsFiltering = filteringGroupIds.toList match {
+      case _ if !mode.serverSideFiltering => ""
+      case Nil => ""
+      case oneGroup :: Nil => s"(${filterPartGroupId(mode.groupIdAttribute, oneGroup)})"
+      case manyGroups => manyGroups.map(filterPartGroupId(mode.groupIdAttribute, _)).map(g => s"($g)").sorted.mkString("(|", "", ")")
+    }
+    s"(&${mode.groupSearchFilter.value}$serverSideGroupsFiltering(${mode.uniqueMemberAttribute.value}=${Filter.encodeValue(userAttributeValue.value)}))"
+  }
+
+  private def filterPartGroupId(groupIdAttribute: GroupIdAttribute, groupId: GroupIdLike) = {
+    val groupIdString = groupId match {
+      case GroupId(value) => value.value
+      case GroupIdLike.GroupIdPattern(value) => value.value
+    }
+    s"${groupIdAttribute.value.value}=$groupIdString"
   }
 
   private def searchUserGroupsLdapRequest(listener: AsyncSearchResultListener,

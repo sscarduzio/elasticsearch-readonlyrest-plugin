@@ -487,7 +487,7 @@ class LdapAuthRuleTests
 
   private def mockLdapAuthorizationService(user: User.Id, result: Task[UniqueList[Group]]) = {
     val service = mock[LdapAuthorizationService]
-    ((id: User.Id) => service.groupsOf(id)).expects(user).returning(result)
+    ((id: User.Id) => service.groupsOf(id, Set.empty)).expects(user).returning(result) // todo: set.empy
     service
   }
 
