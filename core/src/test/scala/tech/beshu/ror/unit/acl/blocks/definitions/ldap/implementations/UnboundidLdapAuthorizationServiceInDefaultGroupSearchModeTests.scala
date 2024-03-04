@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
-import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, PlainTextSecret, User}
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils.group
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -79,7 +79,10 @@ abstract class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
       "returns non empty set of groups" when {
         "user has groups" in {
           eventually {
-            peopleAndGroupsLdapAuthorizationService.groupsOf(morganUserId).runSyncUnsafe() should be {
+            peopleAndGroupsLdapAuthorizationService.groupsOf(
+              morganUserId,
+              Set(GroupIdLike.from("groupA*"), GroupIdLike.from("group2"), GroupIdLike.from("group3"))
+            ).runSyncUnsafe() should be { // todo:
               UniqueList.of(group("groupAll"), group("group3"), group("group2"))
             }
           }
@@ -87,7 +90,7 @@ abstract class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
       }
       "resolve nested groups properly" in {
         eventually {
-          usersAndRolesLdapAuthorizationService.groupsOf(userSpeakerUserId).runSyncUnsafe() should be {
+          usersAndRolesLdapAuthorizationService.groupsOf(userSpeakerUserId, Set.empty).runSyncUnsafe() should be { // todo:
             UniqueList.of(group("developers"), group("speakers (external)"))
           }
         }
@@ -95,12 +98,12 @@ abstract class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
       "returns empty set of groups" when {
         "user has no groups" in {
           eventually {
-            peopleAndGroupsLdapAuthorizationService.groupsOf(devitoUserId).runSyncUnsafe() should be(UniqueList.empty[Group])
+            peopleAndGroupsLdapAuthorizationService.groupsOf(devitoUserId, Set.empty).runSyncUnsafe() should be(UniqueList.empty[Group]) // todo:
           }
         }
         "there is no user with given name" in {
           eventually {
-            peopleAndGroupsLdapAuthorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[Group])
+            peopleAndGroupsLdapAuthorizationService.groupsOf(User.Id("unknown"), Set.empty).runSyncUnsafe() should be(UniqueList.empty[Group]) // todo:
           }
         }
       }

@@ -79,7 +79,7 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
       "returns non empty set of groups" when {
         "user has groups" in {
           eventually {
-            godAndRegionsLdapAuthorizationService.groupsOf(jesusUserId).runSyncUnsafe() should contain only(
+            godAndRegionsLdapAuthorizationService.groupsOf(jesusUserId, Set.empty).runSyncUnsafe() should contain only( // todo:
               group("europe"), group("north america"), group("south america"), group("africa")
             )
           }
@@ -87,7 +87,7 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
       }
       "resolve nested groups properly" in {
         eventually {
-          usersAndRolesLdapAuthorizationService.groupsOf(userSpeakerUserId).runSyncUnsafe() should be {
+          usersAndRolesLdapAuthorizationService.groupsOf(userSpeakerUserId, Set.empty).runSyncUnsafe() should be { // todo:
             UniqueList.of(group("developers"), group("speakers (external)"))
           }
         }
@@ -95,12 +95,12 @@ abstract class UnboundidLdapAuthorizationServiceInGroupsFromUserAttributeModeTes
       "returns empty set of groups" when {
         "user has no groups" in {
           eventually {
-            godAndRegionsLdapAuthorizationService.groupsOf(spaghettiUserId).runSyncUnsafe() should be (UniqueList.empty[Group])
+            godAndRegionsLdapAuthorizationService.groupsOf(spaghettiUserId, Set.empty).runSyncUnsafe() should be (UniqueList.empty[Group]) // todo:
           }
         }
         "there is no user with given name" in {
           eventually {
-            godAndRegionsLdapAuthorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[Group])
+            godAndRegionsLdapAuthorizationService.groupsOf(User.Id("unknown"), Set.empty).runSyncUnsafe() should be(UniqueList.empty[Group]) // todo:
           }
         }
       }
