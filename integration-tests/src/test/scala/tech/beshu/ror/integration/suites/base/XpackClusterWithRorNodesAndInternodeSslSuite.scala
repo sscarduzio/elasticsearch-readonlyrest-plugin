@@ -24,9 +24,9 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
-import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
+import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, XPackSecurity}
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin
+import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{InternodeSsl, RestSsl}
 import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
 import tech.beshu.ror.utils.elasticsearch._
@@ -77,15 +77,15 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
               restSsl = Enabled.Yes(RestSsl.Ror(SourceFile.RorFile)),
               internodeSsl = Enabled.Yes(InternodeSsl.Ror(SourceFile.RorFile))
             )),
-            numberOfInstances = 3
+            numberOfInstances = 1
           ),
-//          NodeType(
-//            securityType = XPackSecurity(XpackSecurityPlugin.Config.Attributes.default.copy(
-//              restSslEnabled = true,
-//              internodeSslEnabled = true
-//            )),
-//            numberOfInstances = 2
-//          )
+          NodeType(
+            securityType = XPackSecurity(XpackSecurityPlugin.Config.Attributes.default.copy(
+              restSslEnabled = true,
+              internodeSslEnabled = true
+            )),
+            numberOfInstances = 2
+          )
         )
       )
     }

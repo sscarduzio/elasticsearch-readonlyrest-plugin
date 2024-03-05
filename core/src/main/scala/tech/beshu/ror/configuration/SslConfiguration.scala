@@ -123,7 +123,8 @@ object SslConfiguration {
                                              allowedProtocols: Set[SslConfiguration.Protocol],
                                              allowedCiphers: Set[SslConfiguration.Cipher],
                                              clientAuthenticationEnabled: Boolean,
-                                             certificateVerificationEnabled: Boolean)
+                                             certificateVerificationEnabled: Boolean,
+                                             hostnameVerificationEnabled: Boolean)
     extends SslConfiguration
 }
 
@@ -143,6 +144,7 @@ private object SslDecoders extends Logging {
     val allowedCiphers = "allowed_ciphers"
     val allowedProtocols = "allowed_protocols"
     val certificateVerification = "certificate_verification"
+    val hostnameVerification = "hostname_verification"
     val clientAuthentication = "client_authentication"
     val verification = "verification"
     val enable = "enable"
@@ -248,6 +250,7 @@ private object SslDecoders extends Logging {
     whenEnabled(c) {
       for {
         certificateVerification <- c.downField(consts.certificateVerification).as[Option[Boolean]]
+        hostnameVerification <- c.downField(consts.hostnameVerification).as[Option[Boolean]]
         verification <- c.downField(consts.verification).as[Option[Boolean]]
         sslCommonProperties <- sslCommonPropertiesDecoder(basePath, c)
       } yield
@@ -257,7 +260,8 @@ private object SslDecoders extends Logging {
           allowedProtocols = sslCommonProperties.allowedProtocols,
           allowedCiphers = sslCommonProperties.allowedCiphers,
           clientAuthenticationEnabled = sslCommonProperties.clientAuthentication.getOrElse(false),
-          certificateVerificationEnabled = certificateVerification.orElse(verification).getOrElse(false)
+          certificateVerificationEnabled = certificateVerification.orElse(verification).getOrElse(false),
+          hostnameVerificationEnabled = hostnameVerification.getOrElse(false)
         )
     }
   }

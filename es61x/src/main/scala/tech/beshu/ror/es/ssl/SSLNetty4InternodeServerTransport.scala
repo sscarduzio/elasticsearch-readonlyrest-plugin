@@ -40,7 +40,7 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
                                         fipsCompliant: Boolean)
   extends Netty4Transport(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService) {
 
-  private val clientSslCtx = SSLCertHelper.prepareClientSSLContext(ssl, fipsCompliant, ssl.certificateVerificationEnabled)
+  private val clientSslContext = SSLCertHelper.prepareClientSSLContext(ssl, fipsCompliant, ssl.certificateVerificationEnabled)
   private val serverSslContext = SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, clientAuthenticationEnabled = false)
 
   override def getClientChannelInitializer: ChannelHandler = new ClientChannelInitializer {
@@ -53,7 +53,7 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
                              localAddress: SocketAddress,
                              promise: ChannelPromise): Unit = {
           val sslEngine = SSLCertHelper.prepareSSLEngine(
-            sslContext = clientSslCtx,
+            sslContext = clientSslContext,
             channelHandlerContext = ctx,
             serverName = None,
             fipsCompliant = fipsCompliant

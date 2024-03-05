@@ -10,6 +10,7 @@ readonlyrest:
     server_certificate_key_file: elastic-certificates-pkey.pem
     server_certificate_file: elastic-certificates-cert.pem
     client_trusted_certificate_file: elastic-certificates-cert.pem
+    certificate_verification: true
 
   access_control_rules:
 

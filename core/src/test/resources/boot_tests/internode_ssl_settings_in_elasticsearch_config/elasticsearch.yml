@@ -9,3 +9,4 @@ readonlyrest:
     keystore_pass: readonlyrest1
     key_pass: readonlyrest2
     verification: true
+    hostname_verification: true
