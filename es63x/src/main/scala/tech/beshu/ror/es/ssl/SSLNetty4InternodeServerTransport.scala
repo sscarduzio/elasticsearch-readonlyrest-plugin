@@ -27,8 +27,9 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.netty4.Netty4Transport
 import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration
 import tech.beshu.ror.utils.SSLCertHelper
+import tech.beshu.ror.utils.SSLCertHelper.HostAndPort
 
-import java.net.SocketAddress
+import java.net.{InetSocketAddress, SocketAddress}
 
 class SSLNetty4InternodeServerTransport(settings: Settings,
                                         threadPool: ThreadPool,
@@ -52,10 +53,13 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
                              remoteAddress: SocketAddress,
                              localAddress: SocketAddress,
                              promise: ChannelPromise): Unit = {
+          val inet = remoteAddress.asInstanceOf[InetSocketAddress]
           val sslEngine = SSLCertHelper.prepareSSLEngine(
             sslContext = clientSslContext,
+            hostAndPort = HostAndPort(inet.getHostString, inet.getPort),
             channelHandlerContext = ctx,
             serverName = None,
+            enableHostnameVerification = ssl.hostnameVerificationEnabled,
             fipsCompliant = fipsCompliant
           )
           ctx.pipeline().replace(this, "internode_ssl_client", new SslHandler(sslEngine))
