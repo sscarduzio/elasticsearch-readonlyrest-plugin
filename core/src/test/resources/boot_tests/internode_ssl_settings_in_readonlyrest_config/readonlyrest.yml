@@ -8,6 +8,7 @@ readonlyrest:
     truststore_file:  "ror-truststore.jks"
     truststore_pass: readonlyrest3
     certificate_verification: true
+    hostname_verification: true
 
   access_control_rules:
 
