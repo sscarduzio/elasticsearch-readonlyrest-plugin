@@ -53,7 +53,7 @@ object ConfigLoadingInterpreter extends Logging {
               CannotUseRorConfigurationWhenXpackSecurityIsEnabled(
                 aType match {
                   case SettingsType.Ssl => "SSL configuration"
-                  case SettingsType.Fibs => "FIBS configuration"
+                  case SettingsType.Fips => "FIBS configuration"
                 }
               )
           })

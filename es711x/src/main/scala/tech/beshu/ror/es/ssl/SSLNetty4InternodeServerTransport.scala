@@ -31,8 +31,9 @@ import org.elasticsearch.transport.SharedGroupFactory
 import org.elasticsearch.transport.netty4.Netty4Transport
 import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration
 import tech.beshu.ror.utils.SSLCertHelper
+import tech.beshu.ror.utils.SSLCertHelper.HostAndPort
 
-import java.net.SocketAddress
+import java.net.{InetSocketAddress, SocketAddress}
 import javax.net.ssl.SNIHostName
 
 class SSLNetty4InternodeServerTransport(settings: Settings,
@@ -47,7 +48,7 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
   extends Netty4Transport(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService, sharedGroupFactory)
     with Logging {
 
-  private val clientSslCtx = SSLCertHelper.prepareClientSSLContext(ssl, fipsCompliant, ssl.certificateVerificationEnabled)
+  private val clientSslContext = SSLCertHelper.prepareClientSSLContext(ssl, fipsCompliant, ssl.certificateVerificationEnabled)
   private val serverSslContext = SSLCertHelper.prepareServerSSLContext(ssl, fipsCompliant, clientAuthenticationEnabled = false)
 
   override def getClientChannelInitializer(node: DiscoveryNode): ChannelHandler = new ClientChannelInitializer {
@@ -59,10 +60,13 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
                              remoteAddress: SocketAddress,
                              localAddress: SocketAddress,
                              promise: ChannelPromise): Unit = {
+          val inet = remoteAddress.asInstanceOf[InetSocketAddress]
           val sslEngine = SSLCertHelper.prepareSSLEngine(
-            sslContext = clientSslCtx,
+            sslContext = clientSslContext,
+            hostAndPort = HostAndPort(inet.getHostString, inet.getPort),
             channelHandlerContext = ctx,
             serverName = Option(node.getAttributes.get("server_name")).map(new SNIHostName(_)),
+            enableHostnameVerification = ssl.hostnameVerificationEnabled,
             fipsCompliant = fipsCompliant
           )
           ctx.pipeline().replace(this, "internode_ssl_client", new SslHandler(sslEngine))
