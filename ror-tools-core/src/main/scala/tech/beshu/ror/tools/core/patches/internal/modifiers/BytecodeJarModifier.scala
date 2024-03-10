@@ -22,7 +22,8 @@ import java.nio.file.{FileSystems, Files, Paths, StandardCopyOption}
 import java.util.jar.JarFile
 import scala.jdk.CollectionConverters._
 
-private [patches] abstract class BytecodeJarModifier extends FileModifier {
+private [patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = false)
+  extends FileModifier with AsmDebug {
 
   protected def loadAndProcessFileFromJar(jar: File,
                                           classFileName: String,
@@ -44,6 +45,7 @@ private [patches] abstract class BytecodeJarModifier extends FileModifier {
   protected def updateFileInJar(jar: File,
                                 destinationPathSting: String,
                                 newContent: Array[Byte]): Unit = {
+    if (debugEnabled) debug(newContent)
     Option(FileSystems.newFileSystem(
       URI.create("jar:" + jar.toURI),
       Map("create" -> "true").asJava
