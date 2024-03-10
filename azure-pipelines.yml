@@ -260,8 +260,6 @@ stages:
               ROR_TASK: integration_es717x
             IT_es710x:
               ROR_TASK: integration_es710x
-            IT_es74x:
-              ROR_TASK: integration_es74x
             IT_es70x:
               ROR_TASK: integration_es70x
             IT_es67x:

@@ -14,6 +14,7 @@ readonlyrest:
     key_pass: readonlyrest
     truststore_file: "elastic-certificates.p12"
     truststore_pass: readonlyrest
+    certificate_verification: true
 
   access_control_rules:
 

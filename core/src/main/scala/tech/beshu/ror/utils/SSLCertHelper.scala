@@ -42,15 +42,17 @@ import scala.util.Try
 object SSLCertHelper extends Logging {
 
   def prepareSSLEngine(sslContext: SslContext,
+                       hostAndPort: HostAndPort,
                        channelHandlerContext: ChannelHandlerContext,
                        serverName: Option[SNIServerName],
+                       enableHostnameVerification: Boolean,
                        fipsCompliant: Boolean): SSLEngine = {
-    val sslEngine = if(fipsCompliant) {
+    val sslEngine = if (fipsCompliant || !enableHostnameVerification) {
       sslContext
-        .newEngine(channelHandlerContext.alloc())
+        .newEngine(channelHandlerContext.alloc(), hostAndPort.host, hostAndPort.port)
     } else {
       sslContext
-        .newEngine(channelHandlerContext.alloc())
+        .newEngine(channelHandlerContext.alloc(), hostAndPort.host, hostAndPort.port)
         .enableHostnameVerification
     }
     serverName.foreach { name =>
@@ -64,19 +66,20 @@ object SSLCertHelper extends Logging {
   def prepareClientSSLContext(sslConfiguration: SslConfiguration,
                               fipsCompliant: Boolean,
                               certificateVerificationEnabled: Boolean): SslContext = {
-    val builder = if (certificateVerificationEnabled) {
-      sslConfiguration.clientCertificateConfiguration match {
-        case Some(truststoreBasedConfiguration: TruststoreBasedConfiguration) =>
-          SslContextBuilder.forClient.trustManager(getTrustManagerFactory(truststoreBasedConfiguration, fipsCompliant))
-        case Some(fileBasedConfiguration: ClientCertificateConfiguration.FileBasedConfiguration) =>
-          SslContextBuilder.forClient.trustManager(getTrustedCertificatesFromPemFile(fileBasedConfiguration).toList.asJava)
-        case None =>
-          throw new Exception("Client Authentication could not be enabled because trust certificates has not been configured")
+    val builder =
+      if (certificateVerificationEnabled) {
+        sslConfiguration.clientCertificateConfiguration match {
+          case Some(truststoreBasedConfiguration: TruststoreBasedConfiguration) =>
+            SslContextBuilder.forClient.trustManager(getTrustManagerFactory(truststoreBasedConfiguration, fipsCompliant))
+          case Some(fileBasedConfiguration: ClientCertificateConfiguration.FileBasedConfiguration) =>
+            SslContextBuilder.forClient.trustManager(getTrustedCertificatesFromPemFile(fileBasedConfiguration).toList.asJava)
+          case None =>
+            throw new Exception("Client Authentication could not be enabled because trust certificates has not been configured")
+        }
+      } else {
+        SslContextBuilder.forClient.trustManager(InsecureTrustManagerFactory.INSTANCE)
       }
-    } else {
-      SslContextBuilder.forClient.trustManager(InsecureTrustManagerFactory.INSTANCE)
-    }
-    val result = if(fipsCompliant) {
+    val result = if (fipsCompliant) {
       val keystoreBasedConfiguration = sslConfiguration.serverCertificateConfiguration match {
         case keystoreBasedConfiguration: KeystoreBasedConfiguration => keystoreBasedConfiguration
         case _ => throw new Exception("KeyStore based configuration is required in FIPS compliant mode")
@@ -107,7 +110,7 @@ object SSLCertHelper extends Logging {
       .attempt
       .map {
         case Right(sslCtxBuilder) =>
-          areProtocolAndCiphersValid(sslCtxBuilder, sslConfiguration, fipsCompliant)
+          areProtocolAndCiphersValid(sslCtxBuilder, sslConfiguration)
           if (sslConfiguration.allowedCiphers.nonEmpty) {
             sslCtxBuilder.ciphers(sslConfiguration.allowedCiphers.map(_.value).asJava)
           }
@@ -169,9 +172,8 @@ object SSLCertHelper extends Logging {
   }
 
   private def areProtocolAndCiphersValid(sslContextBuilder: SslContextBuilder,
-                                         config: SslConfiguration,
-                                         fipsCompliant: Boolean): Boolean =
-    trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder, config, fipsCompliant)
+                                         config: SslConfiguration): Boolean =
+    trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder, config)
       .fold(
         ex => {
           logger.error("ROR SSL: cannot validate SSL protocols and ciphers! " + ex.getClass.getSimpleName + ": " + ex.getMessage, ex)
@@ -181,7 +183,7 @@ object SSLCertHelper extends Logging {
       )
 
   private def getKeyManagerFactoryInstance(fipsCompliant: Boolean) = {
-    if(fipsCompliant) {
+    if (fipsCompliant) {
       KeyManagerFactory.getInstance("X509", BouncyCastleJsseProvider.PROVIDER_NAME)
     } else {
       KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm)
@@ -189,7 +191,7 @@ object SSLCertHelper extends Logging {
   }
 
   private def getTrustManagerFactoryInstance(fipsCompliant: Boolean) = {
-    if(fipsCompliant) {
+    if (fipsCompliant) {
       TrustManagerFactory.getInstance("X509", BouncyCastleJsseProvider.PROVIDER_NAME)
     } else {
       TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
@@ -199,17 +201,18 @@ object SSLCertHelper extends Logging {
   private def loadKeystoreFromFile(keystoreFile: File, password: Array[Char], fipsCompliant: Boolean): IO[KeyStore] = {
     Resource
       .fromAutoCloseable(IO(new FileInputStream(keystoreFile)))
-      .use { keystoreFile => IO {
-        val keystore = if (fipsCompliant) {
-          logger.info("Trying to load data in FIPS compliant BCFKS format...")
-          java.security.KeyStore.getInstance("BCFKS", "BCFIPS")
-        } else {
-          logger.info("Trying to load data in JKS or PKCS#12 format...")
-          java.security.KeyStore.getInstance("JKS")
+      .use { keystoreFile =>
+        IO {
+          val keystore = if (fipsCompliant) {
+            logger.info("Trying to load data in FIPS compliant BCFKS format...")
+            java.security.KeyStore.getInstance("BCFKS", "BCFIPS")
+          } else {
+            logger.info("Trying to load data in JKS or PKCS#12 format...")
+            java.security.KeyStore.getInstance("JKS")
+          }
+          keystore.load(keystoreFile, password)
+          keystore
         }
-        keystore.load(keystoreFile, password)
-        keystore
-      }
       }
   }
 
@@ -267,24 +270,28 @@ object SSLCertHelper extends Logging {
   private def loadPrivateKey(file: File): IO[PrivateKey] = {
     Resource
       .fromAutoCloseable(IO(new FileReader(file)))
-      .use { privateKeyFileReader => IO {
-        val pemParser = new PEMParser(privateKeyFileReader)
-        val privateKeyInfo = PrivateKeyInfo.getInstance(pemParser.readObject())
-        val converter = new JcaPEMKeyConverter()
-        converter.getPrivateKey(privateKeyInfo)
-      }}
+      .use { privateKeyFileReader =>
+        IO {
+          val pemParser = new PEMParser(privateKeyFileReader)
+          val privateKeyInfo = PrivateKeyInfo.getInstance(pemParser.readObject())
+          val converter = new JcaPEMKeyConverter()
+          converter.getPrivateKey(privateKeyInfo)
+        }
+      }
   }
 
   private def loadCertificateChain(file: File): IO[Array[X509Certificate]] = {
     Resource
       .fromAutoCloseable(IO(new FileInputStream(file)))
-      .use { certificateChainFile => IO {
-        val certFactory = CertificateFactory.getInstance("X.509")
-        certFactory.generateCertificates(certificateChainFile).asScala.toArray.map {
-          case cc: X509Certificate => cc
-          case _ => throw MalformedSslSettings(s"Certificate chain in $file contains invalid X509 certificate")
+      .use { certificateChainFile =>
+        IO {
+          val certFactory = CertificateFactory.getInstance("X.509")
+          certFactory.generateCertificates(certificateChainFile).asScala.toArray.map {
+            case cc: X509Certificate => cc
+            case _ => throw MalformedSslSettings(s"Certificate chain in $file contains invalid X509 certificate")
+          }
         }
-      }}
+      }
   }
 
   private def getPrivateKeyAndCertificateChainFromKeystore(keystoreBasedConfiguration: KeystoreBasedConfiguration): IO[(PrivateKey, Array[X509Certificate])] = {
@@ -304,16 +311,8 @@ object SSLCertHelper extends Logging {
   }
 
   private def trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder,
-                                                       config: SslConfiguration,
-                                                       fipsCompliant: Boolean) = Try {
-    val sslEngine = if(fipsCompliant) {
-      sslContextBuilder.build()
-        .newEngine(ByteBufAllocator.DEFAULT)
-    } else {
-      sslContextBuilder.build()
-        .newEngine(ByteBufAllocator.DEFAULT)
-        .enableHostnameVerification
-    }
+                                                       config: SslConfiguration) = Try {
+    val sslEngine = sslContextBuilder.build().newEngine(ByteBufAllocator.DEFAULT)
     logger.info("ROR SSL: Available ciphers: " + sslEngine.getEnabledCipherSuites.mkString(","))
     if (config.allowedCiphers.nonEmpty) {
       sslEngine.setEnabledCipherSuites(config.allowedCiphers.map(_.value).toArray)
@@ -327,7 +326,7 @@ object SSLCertHelper extends Logging {
   }
 
   private def prepareSslContextBuilder(sslConfiguration: SslConfiguration, fipsCompliant: Boolean): IO[SslContextBuilder] = {
-    if(fipsCompliant) {
+    if (fipsCompliant) {
       val keystoreBasedConfiguration = sslConfiguration.serverCertificateConfiguration match {
         case keystoreBasedConfiguration: KeystoreBasedConfiguration => keystoreBasedConfiguration
         case _ => throw new Exception("KeyStore based configuration is required in FIPS compliant mode")
@@ -349,6 +348,8 @@ object SSLCertHelper extends Logging {
       }
     }
   }
+
+  final case class HostAndPort(host: String, port: Int)
 
   private implicit class EnableHostnameVerification(val sslEngine: SSLEngine) extends AnyVal {
 
