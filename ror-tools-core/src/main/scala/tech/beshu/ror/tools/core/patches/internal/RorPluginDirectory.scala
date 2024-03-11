@@ -24,6 +24,8 @@ private [patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
   private val path: Path = readonlyrestPluginPath(esDirectory.path)
   private val backupFolderPath: Path = path / "patch_backup"
+  private val patchedByFilePath: Path = backupFolderPath / "patched_by"
+  private val pluginPropertiesFilePath = path / "plugin-descriptor.properties"
 
   val securityPolicyPath: Path = path / "plugin-security.policy"
 
@@ -57,5 +59,28 @@ private [patches] class RorPluginDirectory(val esDirectory: EsDirectory) {
 
   def findTransportNetty4Jar: Option[Path] = {
     findTransportNetty4JarIn(path)
+  }
+
+  def readPatchedByRorVersion(): Option[String] = {
+    Option.when(os.exists(patchedByFilePath)) {
+      os.read(patchedByFilePath)
+    }
+  }
+
+  def updatePatchedByRorVersion(): Unit = {
+    os.remove(patchedByFilePath, checkExists = false)
+    os.write(patchedByFilePath, readCurrentRorVersion())
+  }
+
+  def readCurrentRorVersion(): String = {
+    val versionPattern = """^version=(.+)$""".r
+    os.read
+      .lines(pluginPropertiesFilePath).toList
+      .flatMap {
+        case versionPattern(version) => Some(version)
+        case _ => None
+      }
+      .headOption
+      .getOrElse(throw new IllegalStateException(s"Cannot read ROR version from ${pluginPropertiesFilePath}"))
   }
 }

@@ -28,7 +28,7 @@ import java.nio.file.Files
   which was responsible of disabling cluster events update on RepositoriesService instance.
  */
 private [patches] object RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode
-  extends BytecodeJarModifier(true) {
+  extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     val originalFileOwner = Files.getOwner(jar.toPath)

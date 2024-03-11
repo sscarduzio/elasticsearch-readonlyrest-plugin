@@ -18,20 +18,55 @@ package tech.beshu.ror.tools.core.patches.base
 
 import tech.beshu.ror.tools.core.patches.internal.{EsNotRequirePatch, EsPatchLoggingDecorator, RorPluginDirectory}
 import tech.beshu.ror.tools.core.patches._
+import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
+import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.No.Cause
+import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.{No, Yes}
 import tech.beshu.ror.tools.core.utils.EsDirectory
 import tech.beshu.ror.tools.core.utils.EsUtil._
 
 trait EsPatch {
 
-  def isPatched: Boolean
+  def isPatched: IsPatched
 
   def backup(): Unit
 
   def restore(): Unit
 
   def execute(): Unit
+
+  protected def checkWithPatchedByFile(rorPluginDirectory: RorPluginDirectory): IsPatched = {
+    val currentRorVersion = rorPluginDirectory.readCurrentRorVersion()
+    rorPluginDirectory.readPatchedByRorVersion() match {
+      case None =>
+        Yes // previous version doesn't have "patched_by" version written, so, we assume it's patched
+      case Some(patchedByRorVersion) if patchedByRorVersion == currentRorVersion =>
+        Yes
+      case Some(patchedByRorVersion) =>
+        No(Cause.PatchedWithDifferentVersion(currentRorVersion, patchedByRorVersion))
+    }
+  }
 }
 object EsPatch {
+
+  sealed trait IsPatched
+  object IsPatched {
+    case object Yes extends IsPatched
+    final case class No(cause: Cause) extends IsPatched
+    object No {
+      sealed trait Cause
+      object Cause {
+        final case class PatchedWithDifferentVersion(expectedRorVersion: String, patchedByRorVersion: String) extends Cause
+        case object NotPatchedAtAll extends Cause
+      }
+    }
+
+    implicit class ToBoolean(val isPatched: IsPatched) extends AnyVal {
+      def toBoolean: Boolean = isPatched match {
+        case Yes => true
+        case No(_) => false
+      }
+    }
+  }
 
   def create(esPath: os.Path): EsPatch = {
     create(EsDirectory.from(esPath))

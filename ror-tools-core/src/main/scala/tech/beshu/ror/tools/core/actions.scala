@@ -26,7 +26,7 @@ object actions {
   class PatchAction(patch: EsPatch) {
 
     def execute(): Unit = {
-      if (patch.isPatched) throw EsAlreadyPatchedException
+      if (patch.isPatched.toBoolean) throw EsAlreadyPatchedException
       patch.backup()
       patch.execute()
     }
@@ -34,14 +34,14 @@ object actions {
 
   class UnpatchAction(patch: EsPatch) {
     def execute(): Unit = {
-      if (!patch.isPatched) throw EsNotPatchedException
+      if (!patch.isPatched.toBoolean) throw EsNotPatchedException
       patch.restore()
     }
   }
 
   class VerifyAction(patch: EsPatch) {
     def execute(): Unit = {
-      if (patch.isPatched) {
+      if (patch.isPatched.toBoolean) {
         println("Elasticsearch is patched! ReadonlyREST can be used")
       } else {
         println(
