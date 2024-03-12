@@ -30,7 +30,7 @@ private[patches] class Es83xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     new ElasticsearchJarPatchCreator(
       OpenModule,
       ModifyPolicyUtilClass,
-      RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode
+      new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
     new RorSecurityPolicyPatchCreator(
       AddCreateClassLoaderPermission
