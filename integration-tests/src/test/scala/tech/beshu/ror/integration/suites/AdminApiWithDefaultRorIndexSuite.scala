@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.integration.suites
 
-import eu.timepit.refined.auto._
 import tech.beshu.ror.integration.suites.base.BaseAdminApiSuite
 import tech.beshu.ror.integration.utils.PluginTestSupport
+import tech.beshu.ror.utils.containers.EsClusterSettings.positiveInt
 import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, RorWithXpackSecurity}
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
@@ -35,7 +35,7 @@ class AdminApiWithDefaultRorIndexSuite
     def esClusterSettingsCreator(securityType: SecurityType) =
       EsClusterSettings.create(
         clusterName = "ROR1",
-        numberOfInstances = 2,
+        numberOfInstances = positiveInt(2),
         securityType = securityType,
         nodeDataInitializer = nodeDataInitializer()
       )

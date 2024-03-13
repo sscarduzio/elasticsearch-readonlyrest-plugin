@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration.suites
 
-import eu.timepit.refined.auto._
 import monix.execution.atomic.Atomic
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.Eventually
@@ -25,8 +24,9 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.IndexLifecycleManagementApiSuite.{ExamplePolicies, PolicyGenerator}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
+import tech.beshu.ror.utils.containers.*
+import tech.beshu.ror.utils.containers.EsClusterSettings.positiveInt
 import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, RorWithXpackSecurity}
-import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.{ClusterManager, DocumentManager, IndexLifecycleManager, IndexManager}
@@ -54,9 +54,10 @@ class IndexLifecycleManagementApiSuite
     def esClusterSettingsCreator(securityType: SecurityType) = EsClusterSettings.create(
       clusterName = "ROR1",
       securityType = securityType,
-      numberOfInstances = 2,
+      numberOfInstances = positiveInt(2),
       nodeDataInitializer = IndexLifecycleManagementApiSuite.nodeDataInitializer()
     )
+
     createLocalClusterContainer(
       esNewerOrEqual63ClusterSettings = esClusterSettingsCreator(
         RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(

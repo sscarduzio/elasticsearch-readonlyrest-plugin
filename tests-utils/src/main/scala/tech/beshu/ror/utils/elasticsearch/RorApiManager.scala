@@ -32,7 +32,7 @@ class RorApiManager(client: RestClient,
                     override val additionalHeaders: Map[String, String] = Map.empty)
   extends BaseManager(client, esVersion, esNativeApi = false) {
 
-  lazy val documentManager = new DocumentManager(client, esVersion)
+  final lazy val documentManager = new DocumentManager(client, esVersion)
 
   def fetchMetadata(preferredGroupId: Option[String] = None,
                     correlationId: Option[String] = None): RorApiJsonResponse = {
