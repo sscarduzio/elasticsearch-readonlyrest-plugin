@@ -68,7 +68,7 @@ private [patches] class SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNo
             case v if v < es780 =>
               new ConstructorWithAlwaysAddingLogPriorityApplier(super.visitMethod(access, name, descriptor, signature, exceptions))
             case _ =>
-              // nothing to do
+              super.visitMethod(access, name, descriptor, signature, exceptions)
           }
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)

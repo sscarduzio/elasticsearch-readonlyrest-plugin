@@ -1,8 +1,0 @@
-cluster.name: "es-cluster"
-network.host: 0.0.0.0
-xpack.security.enabled: false
-readonlyrest.force_load_from_file: true
-http.type: ssl_netty4
-transport.type: ror_ssl_internode
-
-path.repo: /tmp/data
