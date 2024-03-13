@@ -16,32 +16,21 @@
  */
 package tech.beshu.ror.es.utils
 
-import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.settings.Settings
 import tech.beshu.ror.tools.core.patches.base.EsPatch
+import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import scala.util.Try
 
 object EsPatchVerifier extends Logging {
 
-  private val determinedPatchState: Atomic[Option[Boolean]] = Atomic(Option.empty[Boolean])
-
-  def isPatched: Boolean = determinedPatchState.get() match {
-    case Some(isPatched) => isPatched
-    case None => throw new IllegalStateException("There was no verification before checking the patching state")
-  }
-
   def verify(settings: Settings): Unit = {
-    determinedPatchState.set {
-      Some {
-        if (isXpackSecurityEnabled(settings)) {
-          verifyAndThrowWhenNotPatched(settings)
-        } else {
-          doVerify(settings).getOrElse(false)
-        }
-      }
+    if (isXpackSecurityEnabled(settings)) {
+      verifyAndThrowWhenNotPatched(settings)
+    } else {
+      doVerify(settings).getOrElse(false)
     }
   }
 
@@ -61,7 +50,10 @@ object EsPatchVerifier extends Logging {
     for {
       esHome <- pathHomeFrom(settings)
       esPatch <- createPatcher(esHome)
-    } yield esPatch.isPatched
+    } yield esPatch.isPatched match {
+      case IsPatched.Yes => true
+      case IsPatched.No(_) => false
+    }
   }
 
   private def createPatcher(esHome: String) = {
