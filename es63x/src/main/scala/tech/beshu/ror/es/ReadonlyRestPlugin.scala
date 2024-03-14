@@ -66,7 +66,7 @@ import tech.beshu.ror.es.actions.rrtestconfig.{RRTestConfigActionType, Transport
 import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, TransportRorWrappedCatAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
-import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsPatchVerifier}
+import tech.beshu.ror.es.utils.ChannelInterceptingRestHandlerDecorator
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import java.nio.file.Path
@@ -86,7 +86,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     with ClusterPlugin {
 
   LogPluginBuildInfoMessage()
-  EsPatchVerifier.verify(s)
 
   constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toSet)
   // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor

@@ -17,6 +17,7 @@
 package tech.beshu.ror.tools.core
 
 import tech.beshu.ror.tools.core.patches.base.EsPatch
+import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched
 import tech.beshu.ror.tools.core.utils.RorToolsException.{EsAlreadyPatchedException, EsNotPatchedException}
 
 import scala.language.postfixOps
@@ -41,13 +42,11 @@ object actions {
 
   class VerifyAction(patch: EsPatch) {
     def execute(): Unit = {
-      if (patch.isPatched.toBoolean) {
-        println("Elasticsearch is patched! ReadonlyREST can be used")
-      } else {
-        println(
-          "Elasticsearch is NOT patched! ReadonlyREST cannot be used yet. " +
-            "For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#3.-patch-elasticsearch"
-        )
+      patch.isPatched match {
+        case IsPatched.Yes =>
+          println("Elasticsearch is patched! ReadonlyREST can be used")
+        case IsPatched.No(cause) =>
+          println(cause.message)
       }
     }
   }

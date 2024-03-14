@@ -19,7 +19,6 @@ package tech.beshu.ror.es.utils
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.settings.Settings
 import tech.beshu.ror.tools.core.patches.base.EsPatch
-import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.No.Cause
 import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.{No, Yes}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
@@ -34,10 +33,7 @@ object EsPatchVerifier extends Logging {
     } yield {
       esPatch.isPatched match {
         case Yes =>
-        case No(Cause.PatchedWithDifferentVersion(expectedRorVersion, patchedByRorVersion)) =>
-          throw new IllegalStateException(s"Elasticsearch was patched using ROR $patchedByRorVersion patcher. It should be unpatched and patched again with current ROR patcher ($expectedRorVersion). ReadonlyREST cannot be started. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#3.-patch-elasticsearch")
-        case No(Cause.NotPatchedAtAll) =>
-          throw new IllegalStateException("Elasticsearch is not patched. ReadonlyREST cannot be started. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#3.-patch-elasticsearch")
+        case No(cause) => throw new IllegalStateException(cause.message)
       }
     }
     result match {

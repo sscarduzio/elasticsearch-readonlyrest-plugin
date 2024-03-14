@@ -42,7 +42,12 @@ trait EsPatch {
       case Some(patchedByRorVersion) if patchedByRorVersion == currentRorVersion =>
         Yes
       case Some(patchedByRorVersion) =>
-        No(Cause.PatchedWithDifferentVersion(currentRorVersion, patchedByRorVersion))
+        No(
+          Cause.PatchedWithDifferentVersion(
+            expectedRorVersion = currentRorVersion,
+            patchedByRorVersion = patchedByRorVersion
+          )
+        )
     }
   }
 }
@@ -53,10 +58,18 @@ object EsPatch {
     case object Yes extends IsPatched
     final case class No(cause: Cause) extends IsPatched
     object No {
-      sealed trait Cause
+      sealed trait Cause {
+        def message: String
+      }
       object Cause {
-        final case class PatchedWithDifferentVersion(expectedRorVersion: String, patchedByRorVersion: String) extends Cause
-        case object NotPatchedAtAll extends Cause
+        private val patchingDocumentationUrl = "https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch"
+
+        final case class PatchedWithDifferentVersion(expectedRorVersion: String, patchedByRorVersion: String) extends Cause {
+          override val message: String = s"Elasticsearch was patched using ROR $patchedByRorVersion patcher. It should be unpatched and patched again with current ROR patcher ($expectedRorVersion). ReadonlyREST cannot be started. For patching instructions see our docs: $patchingDocumentationUrl"
+        }
+        case object NotPatchedAtAll extends Cause {
+          override val message: String = s"Elasticsearch is not patched. ReadonlyREST cannot be used yet. For patching instructions see our docs: $patchingDocumentationUrl"
+        }
       }
     }
 
@@ -82,7 +95,6 @@ object EsPatch {
         case esVersion if esVersion >= es71713 => new Es717xPatch(rorPluginDirectory, esVersion)
         case esVersion if esVersion >= es700 => new Es70xPatch(rorPluginDirectory, esVersion)
         case esVersion if esVersion >= es650 => new Es65xPatch(rorPluginDirectory, esVersion)
-        case esVersion if esVersion >= es630 => new Es63xPatch(rorPluginDirectory, esVersion)
         case esVersion => new EsNotRequirePatch(esVersion)
       }
     )
