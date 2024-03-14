@@ -18,41 +18,26 @@ package tech.beshu.ror.es.utils
 
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.settings.Settings
-import tech.beshu.ror.tools.core.patches.base.EsPatch
-import tech.beshu.ror.tools.core.patches.base.EsPatch.IsPatched.{No, Yes}
+import tech.beshu.ror.tools.core.patches.PatchingVerifier
+import tech.beshu.ror.tools.core.patches.PatchingVerifier.Error.{CannotVerifyIfPatched, EsNotPatched}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-
-import scala.util.Try
 
 object EsPatchVerifier extends Logging {
 
   def verify(settings: Settings): Unit = doPrivileged {
-    val result = for {
-      esHome <- pathHomeFrom(settings)
-      esPatch <- createPatcher(esHome)
-    } yield {
-      esPatch.isPatched match {
-        case Yes =>
-        case No(cause) => throw new IllegalStateException(cause.message)
-      }
-    }
-    result match {
+    pathHomeFrom(settings).flatMap(PatchingVerifier.verify) match {
       case Right(_) =>
-      case Left(errorCause) =>
-        logger.warn(s"Cannot verify if the ES was patched. $errorCause")
+      case Left(e@EsNotPatched(_)) =>
+        throw new IllegalStateException(e.message)
+      case Left(e@CannotVerifyIfPatched(_)) =>
+        logger.warn(e.message)
     }
-  }
-
-  private def createPatcher(esHome: String) = {
-    Try(EsPatch.create(os.Path(esHome)))
-      .toEither
-      .left.map(_.getMessage)
   }
 
   private def pathHomeFrom(settings: Settings) =
     Option(settings.get("path.home")) match {
       case Some(esPath) => Right(esPath)
-      case None => Left("No 'path.home' setting.")
+      case None => Left(CannotVerifyIfPatched("No 'path.home' setting."))
     }
 }
 
