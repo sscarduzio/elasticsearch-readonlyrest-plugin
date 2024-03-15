@@ -64,7 +64,7 @@ class RemoteReindexSuite
       securityType = securityType
     )
     createLocalClusterContainer(
-      esNewerOrEqual63ClusterSettings = clusterSettingsCreator {
+      esNewerOrEqual65ClusterSettings = clusterSettingsCreator {
         SecurityType.RorWithXpackSecurity(
           ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
             rorConfigFileName = RemoteReindexSuite.this.rorConfigFileName,

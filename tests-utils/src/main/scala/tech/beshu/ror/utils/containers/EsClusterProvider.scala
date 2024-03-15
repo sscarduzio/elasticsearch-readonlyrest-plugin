@@ -26,10 +26,10 @@ import scala.collection.parallel.CollectionConverters._
 
 trait EsClusterProvider extends EsContainerCreator with EsModulePatterns {
 
-  def createLocalClusterContainer(esNewerOrEqual63ClusterSettings: EsClusterSettings,
+  def createLocalClusterContainer(esNewerOrEqual65ClusterSettings: EsClusterSettings,
                                   esOlderThan63ClusterSettings: EsClusterSettings): EsClusterContainer = {
-    if (isCurrentModuleNotExcluded(allEs6xBelowEs63x)) {
-      createLocalClusterContainer(esNewerOrEqual63ClusterSettings)
+    if (isCurrentModuleNotExcluded(allEs6xBelowEs65x)) {
+      createLocalClusterContainer(esNewerOrEqual65ClusterSettings)
     } else {
       createLocalClusterContainer(esOlderThan63ClusterSettings)
     }

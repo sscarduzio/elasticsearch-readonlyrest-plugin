@@ -66,7 +66,7 @@ class AdminApiAuthMockSuite
       )
 
     createLocalClusterContainer(
-      esNewerOrEqual63ClusterSettings = esClusterSettingsCreator(
+      esNewerOrEqual65ClusterSettings = esClusterSettingsCreator(
         RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
           rorConfigReloading = Enabled.Yes(2 seconds),
           rorCustomSettingsIndex = Some(readonlyrestIndexName),

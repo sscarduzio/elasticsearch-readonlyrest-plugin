@@ -41,7 +41,7 @@ class AdminApiWithDefaultRorIndexSuite
       )
 
     createLocalClusterContainer(
-      esNewerOrEqual63ClusterSettings = esClusterSettingsCreator(
+      esNewerOrEqual65ClusterSettings = esClusterSettingsCreator(
         RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
           rorConfigFileName = rorConfigFileName,
           rorConfigReloading = Enabled.Yes(settingsReloadInterval)
@@ -64,7 +64,7 @@ class AdminApiWithDefaultRorIndexSuite
       )
 
     createLocalClusterContainer(
-      esNewerOrEqual63ClusterSettings = esClusterSettingsCreator(
+      esNewerOrEqual65ClusterSettings = esClusterSettingsCreator(
         RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
           rorConfigFileName = rorConfigFileName
         ))

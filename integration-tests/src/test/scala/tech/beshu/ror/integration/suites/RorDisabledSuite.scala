@@ -38,7 +38,7 @@ class RorDisabledSuite
   override lazy val targetEs = container.nodes.head
 
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    esNewerOrEqual63ClusterSettings = EsClusterSettings.create(
+    esNewerOrEqual65ClusterSettings = EsClusterSettings.create(
       clusterName = "ROR1",
       securityType = RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
         rorConfigFileName = rorConfigFileName,
