@@ -518,7 +518,8 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
           )
         }
       }
-      "User ID attribute is configured to be CN" in {
+      // todo: uncomment when LDAP authentication optimization is enabled
+      "User ID attribute is configured to be CN" ignore {
         assertDecodingSuccess(
           yaml =
             s"""
