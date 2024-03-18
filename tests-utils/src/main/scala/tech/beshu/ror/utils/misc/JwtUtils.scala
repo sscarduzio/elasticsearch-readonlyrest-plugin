@@ -23,7 +23,7 @@ import io.jsonwebtoken.security.Keys
 import io.jsonwebtoken.{Jwts, SignatureAlgorithm}
 import tech.beshu.ror.utils.misc.JwtUtils.Jwt.Secret
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 
 object JwtUtils {
@@ -105,4 +105,6 @@ object JwtUtils {
   }
 
   implicit def string2ClaimKey(value: String): ClaimKey = ClaimKey(value)
+
+  private implicit def a2B[A, B](value: A)(implicit f: A => B): B = f(value)
 }

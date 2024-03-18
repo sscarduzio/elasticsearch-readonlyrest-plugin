@@ -19,7 +19,6 @@ package tech.beshu.ror.utils.containers
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.{Container, SingleContainer}
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler.Implicits.global
@@ -27,6 +26,8 @@ import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.ClusterManager
+
+import scala.compiletime.error
 
 class EsClusterContainer private[containers](val esClusterSettings: EsClusterSettings,
                                              val nodeCreators: NonEmptyList[StartedClusterDependencies => EsContainer],
@@ -130,7 +131,7 @@ object EsClusterSettings {
 
   def create(clusterName: String,
              securityType: SecurityType,
-             numberOfInstances: Int Refined Positive = 1,
+             numberOfInstances: Int Refined Positive = positiveInt(1),
              nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
              containerSpecification: ContainerSpecification = ContainerSpecification.empty,
              dependentServicesContainers: List[DependencyDef] = Nil,
@@ -162,7 +163,11 @@ object EsClusterSettings {
   }
 
   final case class NodeType(securityType: SecurityType,
-                            numberOfInstances: Int Refined Positive = 1)
+                            numberOfInstances: Int Refined Positive = positiveInt(1))
+
+  inline def positiveInt(inline i: Int): Refined[Int, Positive] = {
+    inline if (i > 0) Refined.unsafeApply(i) else error(s"$i is not positive")
+  }
 
 }
 

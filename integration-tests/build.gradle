@@ -31,13 +31,15 @@ tasks.withType(ScalaCompile).configureEach {
 
     // Add whatever flags you typically add
     parameters += [
-            "-unchecked",
-            "-Ywarn-macros:after",
             "-feature",
-            "-Ymacro-annotations",
             "-Xfatal-warnings",
-            "-Ywarn-unused",
-            "-Wunused:nowarn"
+            "-Wunused:implicits",
+            "-Wunused:explicits",
+            "-Wunused:imports",
+            "-Wunused:locals",
+            "-Wunused:params",
+            "-Wunused:privates",
+            "-Wunused:nowarn",
     ]
 
     // Finally set the additionalParameters
@@ -68,8 +70,8 @@ dependencies {
     testImplementation  group: 'org.glassfish.jaxb',            name: 'jaxb-runtime',               version: '2.3.2'
     testImplementation  group: 'ch.qos.logback',                name: 'logback-classic',            version: '1.2.3'
     testRuntimeOnly     group: 'org.pegdown',                   name: 'pegdown',                    version: '1.4.2'
-    testImplementation  group: 'org.scala-lang',                name: 'scala-library',              version: '2.13.13'
-    testImplementation  group: 'org.scalatest',                 name: 'scalatest_2.13',             version: '3.2.15'
+    testImplementation  group: 'org.scala-lang',                name: 'scala3-library_3',           version: '3.3.3'
+    testImplementation  group: 'org.scalatest',                 name: 'scalatest_3',                version: '3.2.18'
 }
 
 tasks.register('ldapserver', JavaExec) {

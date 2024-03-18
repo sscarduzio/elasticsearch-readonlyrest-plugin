@@ -16,13 +16,13 @@
  */
 package tech.beshu.ror.integration.suites
 
-import eu.timepit.refined.auto._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
+import tech.beshu.ror.utils.containers.*
+import tech.beshu.ror.utils.containers.EsClusterSettings.positiveInt
 import tech.beshu.ror.utils.containers.SecurityType.RorSecurity
-import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{Attributes, InternodeSsl, RestSsl}
 import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
 import tech.beshu.ror.utils.elasticsearch.CatManager
@@ -47,7 +47,7 @@ class FipsSslSuite
   lazy val generalClusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings.create(
       clusterName = "fips_cluster",
-      numberOfInstances = 2,
+      numberOfInstances = positiveInt(2),
       securityType = RorSecurity(Attributes.default.copy(
         rorConfigFileName = rorConfigFileName,
         restSsl = Enabled.Yes(RestSsl.RorFips(SourceFile.RorFile)),
@@ -58,7 +58,7 @@ class FipsSslSuite
 
   private lazy val rorClusterAdminStateManager = new CatManager(clients.last.adminClient, esVersion = esVersionUsed)
 
-  if(isCurrentModuleNotExcluded(allEs6xBelowEs65x)) {
+  if (isCurrentModuleNotExcluded(allEs6xBelowEs65x)) {
     "Health check" should {
       "be successful" when {
         "internode ssl is enabled" in {

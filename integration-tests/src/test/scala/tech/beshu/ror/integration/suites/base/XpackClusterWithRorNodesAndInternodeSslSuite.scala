@@ -17,19 +17,18 @@
 package tech.beshu.ror.integration.suites.base
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
+import tech.beshu.ror.utils.containers.*
+import tech.beshu.ror.utils.containers.EsClusterSettings.{NodeType, positiveInt}
 import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, XPackSecurity}
-import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{InternodeSsl, RestSsl}
 import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
-import tech.beshu.ror.utils.elasticsearch._
+import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, XpackSecurityPlugin}
+import tech.beshu.ror.utils.elasticsearch.*
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
@@ -60,7 +59,7 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
     if (executedOn(allEs6xExceptEs67x)) {
       EsClusterSettings.create(
         clusterName = "ror_cluster",
-        numberOfInstances = 3,
+        numberOfInstances = positiveInt(3),
         securityType = RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
           rorConfigFileName = rorConfigFileName,
           restSsl = Enabled.Yes(RestSsl.Ror(SourceFile.RorFile)),
@@ -77,14 +76,14 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
               restSsl = Enabled.Yes(RestSsl.Ror(SourceFile.RorFile)),
               internodeSsl = Enabled.Yes(InternodeSsl.Ror(SourceFile.RorFile))
             )),
-            numberOfInstances = 1
+            numberOfInstances = positiveInt(1)
           ),
           NodeType(
             securityType = XPackSecurity(XpackSecurityPlugin.Config.Attributes.default.copy(
               restSslEnabled = true,
               internodeSslEnabled = true
             )),
-            numberOfInstances = 2
+            numberOfInstances = positiveInt(2)
           )
         )
       )

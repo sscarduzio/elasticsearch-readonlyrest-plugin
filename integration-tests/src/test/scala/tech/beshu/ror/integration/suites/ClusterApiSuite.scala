@@ -16,10 +16,11 @@
  */
 package tech.beshu.ror.integration.suites
 
-import eu.timepit.refined.auto._
+import eu.timepit.refined.auto.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
+import tech.beshu.ror.utils.containers.EsClusterSettings.positiveInt
 import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, RorWithXpackSecurity}
 import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, SecurityType}
@@ -42,7 +43,7 @@ class ClusterApiSuite
   override lazy val clusterContainer: EsClusterContainer = {
     def esClusterSettingsCreator(securityType: SecurityType) = EsClusterSettings.create(
       clusterName = "ROR1",
-      numberOfInstances = 2,
+      numberOfInstances = positiveInt(2),
       securityType = securityType,
       nodeDataInitializer = ClusterApiSuite.nodeDataInitializer()
     )

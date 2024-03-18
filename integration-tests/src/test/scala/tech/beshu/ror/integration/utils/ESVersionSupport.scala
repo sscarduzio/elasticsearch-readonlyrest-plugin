@@ -34,8 +34,7 @@ trait ESVersionSupportForAnyWordSpecLike extends ESVersionSupport {
     string.taggedAs(firstTestTag, otherTestTags: _*)
 }
 
-trait ESVersionSupportForAnyFreeSpecLike extends ESVersionSupport {
-  this: AnyFreeSpecLike =>
+trait ESVersionSupportForAnyFreeSpecLike extends ESVersionSupport with AnyFreeSpecLike {
 
   override type T = ResultOfTaggedAsInvocationOnString
 

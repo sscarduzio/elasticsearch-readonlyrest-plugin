@@ -26,8 +26,8 @@ class AuditIndexManager(restClient: RestClient,
                         indexName: String)
   extends BaseManager(restClient, esVersion, esNativeApi = true) {
 
-  lazy val searchManager = new SearchManager(restClient, esVersion)
-  lazy val indexManager = new IndexManager(restClient, esVersion)
+  final lazy val searchManager = new SearchManager(restClient, esVersion)
+  final lazy val indexManager = new IndexManager(restClient, esVersion)
 
   def getEntries: AuditEntriesResult = {
     val result = searchManager.eventually(searchManager.search(indexName))(
