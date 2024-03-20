@@ -19,7 +19,6 @@ package tech.beshu.ror.utils.containers
 import cats.data.NonEmptyList
 import tech.beshu.ror.utils.containers.EsClusterSettings.NodeType
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
-import tech.beshu.ror.utils.misc.EsModule.isCurrentModuleNotExcluded
 import tech.beshu.ror.utils.misc.EsModulePatterns
 
 import scala.collection.parallel.CollectionConverters._
