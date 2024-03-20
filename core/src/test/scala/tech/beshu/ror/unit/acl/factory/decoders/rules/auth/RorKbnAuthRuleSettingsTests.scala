@@ -130,7 +130,6 @@ class RorKbnAuthRuleSettingsTests
             yaml =
               s"""
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
