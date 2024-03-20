@@ -180,16 +180,11 @@ private object RorStartingSuite extends EsModulePatterns {
         nodeSettings = EsNodeSettings(
           nodeName = nodeName,
           clusterName = clusterName,
-          securityType =
-            if (isCurrentModuleNotExcluded(allEs6xBelowEs63x)) {
-              SecurityType.RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-                rorConfigFileName = rorConfigFile
-              ))
-            } else {
-              SecurityType.RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
-                rorConfigFileName = rorConfigFile
-              ))
-            },
+          securityType = SecurityType.RorWithXpackSecurity(
+            ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+              rorConfigFileName = rorConfigFile
+            )
+          ),
           containerSpecification = ContainerSpecification.empty.copy(
             additionalElasticsearchYamlEntries = additionalEsYamlEntries
           ),

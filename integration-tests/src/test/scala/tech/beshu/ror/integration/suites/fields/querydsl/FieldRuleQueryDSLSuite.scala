@@ -135,7 +135,7 @@ trait FieldRuleQueryDSLSuite
 
               assertNoSearchHitsReturnedFor("test-index", query)
             }
-            "is 'terms set' query" excludeES ("es60x") in {
+            "is 'terms set' query" in {
               val query =
                 """
                   |{

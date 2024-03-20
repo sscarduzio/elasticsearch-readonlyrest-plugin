@@ -23,14 +23,13 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, RorWithXpackSecurity, XPackSecurity}
+import tech.beshu.ror.utils.containers.SecurityType.{RorWithXpackSecurity, XPackSecurity}
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
-import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
+import tech.beshu.ror.utils.containers.images.domain.Enabled
+import tech.beshu.ror.utils.containers.images.{ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
-import tech.beshu.ror.utils.misc.EsModule.isCurrentModuleNotExcluded
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -53,32 +52,17 @@ class CrossClusterCallsSuite
   override val remoteClusterContainer: EsRemoteClustersContainer = createRemoteClustersContainer(
     esClusterSettings = EsClusterSettings.create(
       clusterName = "ROR_L1",
-      securityType =
-        if (isCurrentModuleNotExcluded(allEs6xBelowEs63x)) {
-          RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-            rorConfigFileName = rorConfigFileName,
-            internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
-          ))
-        } else {
-          RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
-            rorConfigFileName = rorConfigFileName,
-            internodeSsl = Enabled.Yes(ReadonlyRestPlugin.Config.InternodeSsl.Ror(SourceFile.EsFile))
-          ))
-        },
+      securityType = RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+        rorConfigFileName = rorConfigFileName,
+        internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
+      )),
       nodeDataInitializer = localClusterNodeDataInitializer(),
     ),
-    remoteClustersSettings = if (executedOn(allEs6xExceptEs67x)) {
-      NonEmptyList.of(
-        rorClusterSettings("ROR_R1", privateRemoteClusterNodeDataInitializer()),
-        rorClusterSettings("ROR_R2", publicRemoteClusterNodeDataInitializer())
-      )
-    } else {
-      NonEmptyList.of(
-        xpackClusterSettings(),
-        rorClusterSettings("ROR_R1", privateRemoteClusterNodeDataInitializer()),
-        rorClusterSettings("ROR_R2", publicRemoteClusterNodeDataInitializer())
-      )
-    },
+    remoteClustersSettings = NonEmptyList.of(
+      xpackClusterSettings(),
+      rorClusterSettings("ROR_R1", privateRemoteClusterNodeDataInitializer()),
+      rorClusterSettings("ROR_R2", publicRemoteClusterNodeDataInitializer())
+    ),
     remoteClusterSetup()
   )
 
@@ -94,18 +78,10 @@ class CrossClusterCallsSuite
                                  nodeDataInitializer: ElasticsearchNodeDataInitializer) = {
     EsClusterSettings.create(
       clusterName = name,
-      securityType =
-        if (isCurrentModuleNotExcluded(allEs6xBelowEs63x)) {
-          RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-            rorConfigFileName = rorConfigFileName,
-            internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
-          ))
-        } else {
-          RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
-            rorConfigFileName = rorConfigFileName,
-            internodeSsl = Enabled.Yes(ReadonlyRestPlugin.Config.InternodeSsl.Ror(SourceFile.EsFile))
-          ))
-        },
+      securityType = RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+        rorConfigFileName = rorConfigFileName,
+        internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
+      )),
       nodeDataInitializer = nodeDataInitializer
     )
   }
@@ -134,7 +110,7 @@ class CrossClusterCallsSuite
           result should have statusCode 200
           result.searchHits.arr.size should be(2)
         }
-        "he queries remote xpack cluster indices" excludeES (allEs6xExceptEs67x) in {
+        "he queries remote xpack cluster indices" excludeES (allEs6x) in {
           val result = user5SearchManager.search("xpack:xpack*")
           result should have statusCode 200
           result.searchHits.arr.size should be(2)

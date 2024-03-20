@@ -27,7 +27,6 @@ import tech.beshu.ror.utils.containers.images.ReadonlyRestPlugin.Config.{Attribu
 import tech.beshu.ror.utils.containers.images.domain.{Enabled, SourceFile}
 import tech.beshu.ror.utils.elasticsearch.CatManager
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
-import tech.beshu.ror.utils.misc.EsModule.isCurrentModuleNotExcluded
 
 class FipsSslSuite
   extends AnyWordSpec
@@ -58,14 +57,12 @@ class FipsSslSuite
 
   private lazy val rorClusterAdminStateManager = new CatManager(clients.last.adminClient, esVersion = esVersionUsed)
 
-  if(isCurrentModuleNotExcluded(allEs6xBelowEs65x)) {
-    "Health check" should {
-      "be successful" when {
-        "internode ssl is enabled" in {
-          val response = rorClusterAdminStateManager.healthCheck()
+  "Health check" should {
+    "be successful" when {
+      "internode ssl is enabled" in {
+        val response = rorClusterAdminStateManager.healthCheck()
 
-          response should have statusCode 200
-        }
+        response should have statusCode 200
       }
     }
   }

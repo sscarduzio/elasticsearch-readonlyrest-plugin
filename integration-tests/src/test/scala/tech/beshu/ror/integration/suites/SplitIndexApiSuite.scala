@@ -41,7 +41,7 @@ class SplitIndexApiSuite
   "A Split API request" should {
     "be able to proceed" when {
       "user has permission to source index and dest index" when {
-        "wildcard is used" excludeES (es60x) in {
+        "wildcard is used" in {
           val result = user2IndexManager.split(sourceIndex = "test2_index", targetIndex = "test2_index_split", numOfShards = 2)
 
           result should have statusCode 200
@@ -49,22 +49,22 @@ class SplitIndexApiSuite
       }
     }
     "not be able to proceed" when {
-      "user has no permission to source index and dest index which are present on ES" excludeES (es60x) in {
+      "user has no permission to source index and dest index which are present on ES" in {
         val result = user1IndexManager.split(sourceIndex = "test2_index", targetIndex = "test2_index_split", numOfShards = 2)
 
         result should have statusCode 401
       }
-      "user has no permission to source index and dest index which are absent on ES" excludeES (es60x) in {
+      "user has no permission to source index and dest index which are absent on ES" in {
         val result = user1IndexManager.split(sourceIndex = "not_allowed_index", targetIndex = "not_allowed_index_split", numOfShards = 2)
 
         result should have statusCode 401
       }
-      "user has permission to source index but no permission to dest index" excludeES (es60x) in {
+      "user has permission to source index but no permission to dest index" in {
         val result = user1IndexManager.split(sourceIndex = "test1_index", targetIndex = "not_allowed_index_split", numOfShards = 2)
 
         result should have statusCode 401
       }
-      "user has permission to dest index and but no permission to source index" excludeES (es60x) in {
+      "user has permission to dest index and but no permission to source index" in {
         val result = user1IndexManager.split(sourceIndex = "not_allowed_index", targetIndex = "test1_index_split", numOfShards = 2)
 
         result should have statusCode 401

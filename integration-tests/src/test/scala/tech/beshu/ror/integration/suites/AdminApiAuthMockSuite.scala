@@ -66,20 +66,13 @@ class AdminApiAuthMockSuite
       )
 
     createLocalClusterContainer(
-      esNewerOrEqual65ClusterSettings = esClusterSettingsCreator(
+      esClusterSettingsCreator(
         RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
           rorConfigReloading = Enabled.Yes(2 seconds),
           rorCustomSettingsIndex = Some(readonlyrestIndexName),
           rorConfigFileName = rorConfigFileName
         ))
       ),
-      esOlderThan63ClusterSettings = esClusterSettingsCreator(
-        RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
-          rorConfigReloading = Enabled.Yes(2 seconds),
-          rorCustomSettingsIndex = Some(readonlyrestIndexName),
-          rorConfigFileName = rorConfigFileName
-        ))
-      )
     )
   }
 
