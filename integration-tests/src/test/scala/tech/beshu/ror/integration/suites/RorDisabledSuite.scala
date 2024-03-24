@@ -19,8 +19,8 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.containers.SecurityType.{RorSecurity, RorWithXpackSecurity}
-import tech.beshu.ror.utils.containers.images.{ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin}
+import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
+import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, RorApiManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
@@ -38,15 +38,9 @@ class RorDisabledSuite
   override lazy val targetEs = container.nodes.head
 
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    esNewerOrEqual65ClusterSettings = EsClusterSettings.create(
+    EsClusterSettings.create(
       clusterName = "ROR1",
       securityType = RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-        rorConfigFileName = rorConfigFileName,
-      )),
-    ),
-    esOlderThan63ClusterSettings =  EsClusterSettings.create(
-      clusterName = "ROR1",
-      securityType = RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
         rorConfigFileName = rorConfigFileName,
       )),
     )

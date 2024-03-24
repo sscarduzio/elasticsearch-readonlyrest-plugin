@@ -23,5 +23,5 @@ class XpackClusterWithRorNodesAndInternodeSslKeystoreSuite
   extends XpackClusterWithRorNodesAndInternodeSslSuite
     with PluginTestSupport {
 
-  override def rorConfigPath: String = "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_keystore.yml"
+  override implicit val rorConfigFileName: String = "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_keystore.yml"
 }
