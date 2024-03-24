@@ -110,7 +110,7 @@ class CrossClusterCallsSuite
           result should have statusCode 200
           result.searchHits.arr.size should be(2)
         }
-        "he queries remote xpack cluster indices" excludeES (allEs6x) in {
+        "he queries remote xpack cluster indices" in {
           val result = user5SearchManager.search("xpack:xpack*")
           result should have statusCode 200
           result.searchHits.arr.size should be(2)

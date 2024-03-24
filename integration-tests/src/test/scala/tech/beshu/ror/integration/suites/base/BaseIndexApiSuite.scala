@@ -222,7 +222,7 @@ trait BaseIndexApiSuite
           }
         }
         "the alias name with wildcard is used" when {
-          "there is no matching alias" excludeES (allEs6x) in {
+          "there is no matching alias" in {
             val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent*")
 
             aliasResponse should have statusCode 200
