@@ -27,6 +27,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthorizationServiceWithGroupsFiltering.NoOpLdapAuthorizationServiceAdapter
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{HostConnectionError, ServerDiscoveryConnectionError}
@@ -84,7 +85,7 @@ object LdapServicesDecoder {
                                 clock: Clock): Task[Either[DecodingFailure, LdapUserService]] = {
     for {
       authenticationService <- (authenticationServiceDecoder: AsyncDecoder[LdapAuthenticationService])(cursor)
-      authorizationService <- (authorizationServiceDecoder: AsyncDecoder[LdapAuthorizationService])(cursor)
+      authorizationService <- (authorizationServiceDecoder: AsyncDecoder[LdapAuthorizationServiceWithGroupsFiltering])(cursor)
       circuitBreakerSettings <- AsyncDecoderCreator.from(circuitBreakerDecoder)(cursor)
     } yield (authenticationService, authorizationService, circuitBreakerSettings) match {
       case (Right(authn), Right(authz), Right(circuitBreakerConfig)) => Right {
@@ -95,7 +96,7 @@ object LdapServicesDecoder {
       case (Right(authn), _, Right(circuitBreakerConfig)) =>
         Right(new CircuitBreakerLdapAuthenticationServiceDecorator(authn, circuitBreakerConfig))
       case (_, Right(authz), Right(circuitBreakerConfig)) =>
-        Right(new CircuitBreakerLdapAuthorizationServiceDecorator(authz, circuitBreakerConfig))
+        Right(new CircuitBreakerLdapAuthorizationServiceWithGroupsFilteringDecorator(authz, circuitBreakerConfig))
       case (error@Left(_), _, _) => error
       case (_, _, Left(error)) => Left(error)
     }
@@ -129,21 +130,23 @@ object LdapServicesDecoder {
       }.mapError(DefinitionsLevelCreationError.apply)
 
   private def authorizationServiceDecoder(implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                                          clock: Clock): AsyncDecoder[LdapAuthorizationService] =
+                                          clock: Clock): AsyncDecoder[LdapAuthorizationServiceWithGroupsFiltering] =
     AsyncDecoderCreator
-      .instance[LdapAuthorizationService] { c =>
+      .instance[LdapAuthorizationServiceWithGroupsFiltering] { c =>
         val ldapServiceDecodingResult = for {
           name <- c.downField("name").as[LdapService.Name]
           connectionConfig <- connectionConfigDecoder(c)
           userSearchFiler <- userSearchFilerConfigDecoder(c)
           userGroupsSearchFilter <- userGroupsSearchFilterConfigDecoder(c)
-        } yield UnboundidLdapAuthorizationService.create(
-          name,
-          ldapConnectionPoolProvider,
-          connectionConfig,
-          userSearchFiler,
-          userGroupsSearchFilter
-        )
+        } yield UnboundidLdapAuthorizationService
+          .create(
+            name,
+            ldapConnectionPoolProvider,
+            connectionConfig,
+            userSearchFiler,
+            userGroupsSearchFilter
+          )
+          .map(_.map(new NoOpLdapAuthorizationServiceAdapter(_)))
         ldapServiceDecodingResult match {
           case Left(error) => Task.now(Left(error))
           case Right(task) => task.map {
@@ -208,8 +211,7 @@ object LdapServicesDecoder {
         groupSearchFilter.getOrElse(GroupSearchFilter.default),
         groupIdAttribute.getOrElse(GroupIdAttribute.default),
         uniqueMemberAttribute.getOrElse(UniqueMemberAttribute.default),
-        groupAttributeIsDN.getOrElse(true),
-        serverSideFiltering = true // todo:
+        groupAttributeIsDN.getOrElse(true)
       )
     }
 
@@ -403,7 +405,7 @@ object LdapServicesDecoder {
 
   private def nestedGroupsConfigDecoder(searchMode: UserGroupsSearchMode) = {
     searchMode match {
-      case DefaultGroupSearch(searchGroupBaseDN, groupSearchFilter, groupIdAttribute, uniqueMemberAttribute, _, _) =>
+      case DefaultGroupSearch(searchGroupBaseDN, groupSearchFilter, groupIdAttribute, uniqueMemberAttribute, _) =>
         Decoder.instance { c =>
           for {
             nestedGroupsDepthOpt <- c.downField("nested_groups_depth").as[Option[Int Refined Positive]]

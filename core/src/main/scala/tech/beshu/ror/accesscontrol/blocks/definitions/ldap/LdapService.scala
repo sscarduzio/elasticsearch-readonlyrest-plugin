@@ -53,14 +53,32 @@ trait LdapAuthenticationService extends LdapUserService {
 }
 
 trait LdapAuthorizationService extends LdapUserService {
-  def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]]
+  def groupsOf(id: User.Id): Task[UniqueList[Group]]
 }
 
-trait LdapAuthService extends LdapAuthenticationService with LdapAuthorizationService
+trait LdapAuthorizationServiceWithGroupsFiltering extends LdapUserService {
+  def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]]
+}
+object LdapAuthorizationServiceWithGroupsFiltering {
+
+  final class NoOpLdapAuthorizationServiceAdapter(service: LdapAuthorizationService)
+    extends LdapAuthorizationServiceWithGroupsFiltering {
+    override def id: Name = service.id
+
+    override def serviceTimeout: Refined[FiniteDuration, Positive] = service.serviceTimeout
+
+    override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = service.ldapUserBy(userId)
+
+    override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] =
+      service.groupsOf(id)
+  }
+}
+
+trait LdapAuthService extends LdapAuthenticationService with LdapAuthorizationServiceWithGroupsFiltering
 
 class ComposedLdapAuthService(override val id: LdapService#Id,
                               ldapAuthenticationService: LdapAuthenticationService,
-                              ldapAuthorizationService: LdapAuthorizationService)
+                              ldapAuthorizationService: LdapAuthorizationServiceWithGroupsFiltering)
   extends LdapAuthService {
 
   def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =

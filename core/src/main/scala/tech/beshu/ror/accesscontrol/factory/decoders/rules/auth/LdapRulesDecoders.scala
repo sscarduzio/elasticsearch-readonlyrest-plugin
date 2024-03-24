@@ -139,14 +139,14 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                           ttl: Option[Refined[FiniteDuration, Positive]],
                                           groupsLogic: GroupsLogic,
                                           ldapDefinitions: Definitions[LdapService]): Either[CoreCreationError, LdapAuthorizationRule.Settings] = {
-    findLdapService[LdapAuthorizationService, LdapAuthorizationRule](ldapDefinitions.items, name)
+    findLdapService[LdapAuthorizationServiceWithGroupsFiltering, LdapAuthorizationRule](ldapDefinitions.items, name)
       .map(svc => {
         ttl match {
-          case Some(ttlValue) => new CacheableLdapAuthorizationServiceDecorator(svc, ttlValue)
+          case Some(ttlValue) => new CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator(svc, ttlValue)
           case _ => svc
         }
       })
-      .map(service => new LoggableLdapAuthorizationServiceDecorator(service))
+      .map(service => new LoggableLdapAuthorizationServiceWithGroupsFilteringDecorator(service))
       .map(LdapAuthorizationRule.Settings(_, groupsLogic))
   }
 }

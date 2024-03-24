@@ -71,9 +71,32 @@ class CacheableLdapAuthorizationServiceDecorator(underlying: LdapAuthorizationSe
                                                  ttl: FiniteDuration Refined Positive)
   extends LdapAuthorizationService {
 
+  private val cacheableGroupsOf = new CacheableAction[User.Id, UniqueList[Group]](
+    ttl = ttl,
+    action = underlying.groupsOf
+  )
+  private val cacheableLdapUserService = new CacheableLdapUserServiceDecorator(underlying, ttl)
+
+  override def id: LdapService.Name = underlying.id
+
+  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
+    cacheableLdapUserService.ldapUserBy(userId)
+
+  override def groupsOf(id: User.Id): Task[UniqueList[Group]] =
+    cacheableGroupsOf.call(id, serviceTimeout)
+
+  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+}
+
+class CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator(underlying: LdapAuthorizationServiceWithGroupsFiltering,
+                                                                    ttl: FiniteDuration Refined Positive)
+  extends LdapAuthorizationServiceWithGroupsFiltering{
+
   private val cacheableGroupsOf = new CacheableAction[(User.Id, Set[GroupIdLike]), UniqueList[Group]](
     ttl = ttl,
-    action = { case (id, groupIds) => underlying.groupsOf(id, groupIds) }
+    action = {
+      case (id, groupIds) => underlying.groupsOf(id, groupIds)
+    }
   )
   private val cacheableLdapUserService = new CacheableLdapUserServiceDecorator(underlying, ttl)
 
@@ -93,7 +116,7 @@ class CacheableLdapServiceDecorator(val underlying: LdapAuthService,
   extends LdapAuthService {
 
   private val cacheableLdapAuthenticationService = new CacheableLdapAuthenticationServiceDecorator(underlying, ttl)
-  private val cacheableLdapAuthorizationService = new CacheableLdapAuthorizationServiceDecorator(underlying, ttl)
+  private val cacheableLdapAuthorizationService = new CacheableLdapAuthorizationServiceWithGroupsFilteringDecorator(underlying, ttl)
 
   override def id: LdapService.Name = underlying.id
 

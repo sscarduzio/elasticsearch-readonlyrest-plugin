@@ -26,9 +26,9 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Sear
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationService, LdapService, LdapUser}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationServiceWithGroupsFiltering, LdapService, LdapUser}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.{Group, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, User}
 import tech.beshu.ror.utils.LoggerOps.toLoggerOps
 import tech.beshu.ror.utils.TaskOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -36,47 +36,44 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 import java.time.Clock
 import scala.concurrent.duration.FiniteDuration
 
-class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
-                                                connectionPool: UnboundidLdapConnectionPool,
-                                                groupsSearchFilter: UserGroupsSearchFilterConfig,
-                                                userSearchFiler: UserSearchFilterConfig,
-                                                override val serviceTimeout: FiniteDuration Refined Positive)
-                                               (implicit clock: Clock)
+// todo: DRY
+class UnboundidLdapAuthorizationServiceWithGroupsFiltering private(override val id: LdapService#Id,
+                                                                   connectionPool: UnboundidLdapConnectionPool,
+                                                                   groupsSearchFilter: DefaultGroupSearch,
+                                                                   userSearchFiler: UserSearchFilterConfig,
+                                                                   nestedGroupsConfig: Option[NestedGroupsConfig],
+                                                                   override val serviceTimeout: FiniteDuration Refined Positive)
+                                                                  (implicit clock: Clock)
   extends BaseUnboundidLdapService(connectionPool, userSearchFiler, serviceTimeout)
-    with LdapAuthorizationService {
+    with LdapAuthorizationServiceWithGroupsFiltering {
 
-  private val nestedGroupsService = groupsSearchFilter
-    .nestedGroupsConfig
+  private val nestedGroupsService = nestedGroupsConfig
     .map(new UnboundidLdapNestedGroupsService(connectionPool, _, serviceTimeout))
 
-  override def groupsOf(id: User.Id): Task[UniqueList[Group]] = {
+  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = {
     Task.measure(
-      doFetchGroupsOf(id),
+      doFetchGroupsOf(id, filteringGroupIds),
       measurement => Task.delay {
         logger.debug(s"LDAP groups fetching took $measurement")
       }
     )
   }
 
-  private def doFetchGroupsOf(id: User.Id): Task[UniqueList[Group]] = {
+  private def doFetchGroupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = {
     ldapUserBy(id)
       .flatMap {
         case Some(user) =>
-          groupsSearchFilter.mode match {
-            case defaultSearchGroupMode: DefaultGroupSearch =>
-              groupsFrom(defaultSearchGroupMode, user)
-            case groupsFromUserAttribute: GroupsFromUserEntry =>
-              groupsFrom(groupsFromUserAttribute, user)
-          }
+          groupsFrom(groupsSearchFilter, user, filteringGroupIds)
         case None =>
           Task.now(UniqueList.empty)
       }
   }
 
   private def groupsFrom(mode: DefaultGroupSearch,
-                         user: LdapUser): Task[UniqueList[Group]] = {
+                         user: LdapUser,
+                         filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = {
     connectionPool
-      .process(searchUserGroupsLdapRequest(_, mode, user), serviceTimeout)
+      .process(searchUserGroupsLdapRequest(_, mode, user, filteringGroupIds), serviceTimeout)
       .flatMap {
         case Right(results) =>
           Task {
@@ -96,57 +93,36 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
       }
   }
 
-  private def groupsFrom(mode: GroupsFromUserEntry, user: LdapUser): Task[UniqueList[Group]] = {
-    connectionPool
-      .process(searchUserGroupsLdapRequest(_, mode, user), serviceTimeout)
-      .flatMap {
-        case Right(results) =>
-          Task {
-            results.flatMap(_.toLdapGroups(mode)).toSet
-          } flatMap { mainGroups =>
-            enrichWithNestedGroupsIfNecessary(mainGroups)
-          } map { allGroups =>
-            UniqueList.fromIterable(allGroups.map(_.id))
-          }
-        case Left(errorResult) if errorResult.getResultCode == ResultCode.NO_SUCH_OBJECT && !user.confirmed =>
-          logger.error(s"LDAP getting user groups returned error [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
-          Task.now(UniqueList.empty[GroupId])
-        case Left(errorResult) =>
-          logger.error(s"LDAP getting user groups returned error [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
-          Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
-      }
-      .map(asGroups)
-      .onError { case ex =>
-        Task(logger.errorEx(s"LDAP getting user groups returned error", ex))
-      }
-  }
-
   private def searchUserGroupsLdapRequest(listener: AsyncSearchResultListener,
                                           mode: DefaultGroupSearch,
-                                          user: LdapUser): LDAPRequest = {
+                                          user: LdapUser,
+                                          filteringGroupIds: Set[GroupIdLike]): LDAPRequest = {
     val baseDn = mode.searchGroupBaseDN.value.value
     val scope = SearchScope.SUB
-    val searchFilter = searchUserGroupsLdapFilerFrom(mode, user)
+    val searchFilter = searchUserGroupsLdapFilerFrom(mode, user, filteringGroupIds)
     val attribute = mode.groupIdAttribute.value.value
     logger.debug(s"LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: $attribute]")
     new SearchRequest(listener, baseDn, scope, searchFilter, attribute)
   }
 
   private def searchUserGroupsLdapFilerFrom(mode: DefaultGroupSearch,
-                                            user: LdapUser) = {
+                                            user: LdapUser,
+                                            filteringGroupIds: Set[GroupIdLike]) = {
     val userAttributeValue = if (mode.groupAttributeIsDN) user.dn.value else user.id.value
-    s"(&${mode.groupSearchFilter.value}(${mode.uniqueMemberAttribute.value}=${Filter.encodeValue(userAttributeValue.value)}))"
+    val serverSideGroupsFiltering = filteringGroupIds.toList match {
+      case Nil => ""
+      case oneGroup :: Nil => s"(${filterPartGroupId(mode.groupIdAttribute, oneGroup)})"
+      case manyGroups => manyGroups.map(filterPartGroupId(mode.groupIdAttribute, _)).map(g => s"($g)").sorted.mkString("(|", "", ")")
+    }
+    s"(&${mode.groupSearchFilter.value}$serverSideGroupsFiltering(${mode.uniqueMemberAttribute.value}=${Filter.encodeValue(userAttributeValue.value)}))"
   }
 
-  private def searchUserGroupsLdapRequest(listener: AsyncSearchResultListener,
-                                          mode: GroupsFromUserEntry,
-                                          user: LdapUser): LDAPRequest = {
-    val baseDn = user.dn.value.value
-    val scope = SearchScope.BASE
-    val searchFilter = mode.groupSearchFilter.value.value
-    val attribute = mode.groupsFromUserAttribute.value.value
-    logger.debug(s"LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: $attribute]")
-    new SearchRequest(listener, baseDn, scope, searchFilter, attribute)
+  private def filterPartGroupId(groupIdAttribute: GroupIdAttribute, groupId: GroupIdLike) = {
+    val groupIdString = groupId match {
+      case GroupId(value) => value.value
+      case GroupIdLike.GroupIdPattern(value) => value.value
+    }
+    s"${groupIdAttribute.value.value}=$groupIdString"
   }
 
   private def enrichWithNestedGroupsIfNecessary(mainGroups: Set[LdapGroup]) = {
@@ -161,13 +137,14 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
   }
 }
 
-object UnboundidLdapAuthorizationService {
+object UnboundidLdapAuthorizationServiceWithGroupsFiltering {
   def create(id: LdapService#Id,
              poolProvider: UnboundidLdapConnectionPoolProvider,
              connectionConfig: LdapConnectionConfig,
+             groupsSearchFilter: DefaultGroupSearch,
              userSearchFiler: UserSearchFilterConfig,
-             userGroupsSearchFilter: UserGroupsSearchFilterConfig)
-            (implicit clock: Clock): Task[Either[ConnectionError, UnboundidLdapAuthorizationService]] = {
+             nestedGroupsConfig: Option[NestedGroupsConfig])
+            (implicit clock: Clock): Task[Either[ConnectionError, UnboundidLdapAuthorizationServiceWithGroupsFiltering]] = {
     (for {
       _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
         .recoverWith {
@@ -178,6 +155,6 @@ object UnboundidLdapAuthorizationService {
               EitherT.leftT(error)
         }
       connectionPool <- EitherT.right[ConnectionError](poolProvider.connect(connectionConfig))
-    } yield new UnboundidLdapAuthorizationService(id, connectionPool, userGroupsSearchFilter, userSearchFiler, connectionConfig.requestTimeout)).value
+    } yield new UnboundidLdapAuthorizationServiceWithGroupsFiltering(id, connectionPool, groupsSearchFilter, userSearchFiler, nestedGroupsConfig, connectionConfig.requestTimeout)).value
   }
 }

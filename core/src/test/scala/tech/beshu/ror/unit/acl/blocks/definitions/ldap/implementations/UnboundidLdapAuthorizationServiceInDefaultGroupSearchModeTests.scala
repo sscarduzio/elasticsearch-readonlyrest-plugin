@@ -112,7 +112,7 @@ abstract class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
 
   private def peopleAndGroupsLdapAuthorizationService = {
     implicit val clock: Clock = Clock.systemUTC()
-    UnboundidLdapAuthorizationService
+    UnboundidLdapAuthorizationServiceWithGroupsFiltering
       .create(
         Name("LDAP1"),
         ldapConnectionPoolProvider,
@@ -150,7 +150,7 @@ abstract class UnboundidLdapAuthorizationServiceInDefaultGroupSearchModeTests
 
   private def usersAndRolesLdapAuthorizationService = {
     implicit val clock: Clock = Clock.systemUTC()
-    UnboundidLdapAuthorizationService
+    UnboundidLdapAuthorizationServiceWithGroupsFiltering
       .create(
         Name("LDAP1"),
         ldapConnectionPoolProvider,

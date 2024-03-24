@@ -67,6 +67,32 @@ class LoggableLdapAuthorizationServiceDecorator(val underlying: LdapAuthorizatio
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
     loggableLdapUserService.ldapUserBy(userId)
 
+  override def groupsOf(userId: User.Id): Task[UniqueList[Group]] = {
+    logger.debug(s"Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}]")
+    underlying
+      .groupsOf(userId)
+      .andThen {
+        case Success(groups) =>
+          logger.debug(s"LDAP [${id.show}] returned for user [${userId.show}] following groups: [${groups.map(_.show).mkString(",")}]")
+        case Failure(ex) =>
+          logger.debug(s"Fetching LDAP user's groups failed:", ex)
+      }
+  }
+
+  override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
+}
+
+class LoggableLdapAuthorizationServiceWithGroupsFilteringDecorator(val underlying: LdapAuthorizationServiceWithGroupsFiltering)
+  extends LdapAuthorizationServiceWithGroupsFiltering
+    with Logging {
+
+  private val loggableLdapUserService = new LoggableLdapUserServiceDecorator(underlying)
+
+  override def id: LdapService.Name = underlying.id
+
+  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
+    loggableLdapUserService.ldapUserBy(userId)
+
   override def groupsOf(userId: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = {
     logger.debug(s"Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}] (assuming that filtered group IDs are [${filteringGroupIds.map(_.show).mkString(",")}])")
     underlying
@@ -86,7 +112,7 @@ class LoggableLdapServiceDecorator(val underlying: LdapAuthService)
   extends LdapAuthService {
 
   private val loggableLdapAuthenticationService = new LoggableLdapAuthenticationServiceDecorator(underlying)
-  private val loggableLdapAuthorizationService = new LoggableLdapAuthorizationServiceDecorator(underlying)
+  private val loggableLdapAuthorizationService = new LoggableLdapAuthorizationServiceWithGroupsFilteringDecorator(underlying)
 
   override def id: LdapService.Name = underlying.id
 
