@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName
 
 class KibanaIndexRule(val settings: Settings)
-  extends MatchingAlwaysRule {
+  extends MatchingAlwaysRule with KibanaRelatedRule {
 
   override val name: Rule.Name = KibanaIndexRule.Name.name
 

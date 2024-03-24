@@ -43,52 +43,31 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
     with Eventually
     with CustomScalaTestMatchers {
 
-  def rorConfigPath: String
-
-  override implicit val rorConfigFileName: String =
-    if (executedOn(allEs6xBelowEs65x)) {
-      "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_es60x-es65x.yml"
-    } else {
-      rorConfigPath
-    }
-
   override def clusterContainer: EsClusterContainer = generalClusterContainer
 
   override def targetEs: EsContainer = generalClusterContainer.nodes.head
 
   lazy val generalClusterContainer: EsClusterContainer = createLocalClusterContainer {
-    if (executedOn(allEs6xExceptEs67x)) {
-      EsClusterSettings.create(
-        clusterName = "ror_cluster",
-        numberOfInstances = 3,
-        securityType = RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
-          rorConfigFileName = rorConfigFileName,
-          restSsl = Enabled.Yes(RestSsl.Ror(SourceFile.RorFile)),
-          internodeSsl = Enabled.Yes(InternodeSsl.Ror(SourceFile.RorFile))
-        ))
-      )
-    } else {
-      EsClusterSettings.createMixedCluster(
-        clusterName = "ror_xpack_cluster",
-        nodeTypes = NonEmptyList.of(
-          NodeType(
-            securityType = RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
-              rorConfigFileName = rorConfigFileName,
-              restSsl = Enabled.Yes(RestSsl.Ror(SourceFile.RorFile)),
-              internodeSsl = Enabled.Yes(InternodeSsl.Ror(SourceFile.RorFile))
-            )),
-            numberOfInstances = 1
-          ),
-          NodeType(
-            securityType = XPackSecurity(XpackSecurityPlugin.Config.Attributes.default.copy(
-              restSslEnabled = true,
-              internodeSslEnabled = true
-            )),
-            numberOfInstances = 2
-          )
+    EsClusterSettings.createMixedCluster(
+      clusterName = "ror_xpack_cluster",
+      nodeTypes = NonEmptyList.of(
+        NodeType(
+          securityType = RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
+            rorConfigFileName = rorConfigFileName,
+            restSsl = Enabled.Yes(RestSsl.Ror(SourceFile.RorFile)),
+            internodeSsl = Enabled.Yes(InternodeSsl.Ror(SourceFile.RorFile))
+          )),
+          numberOfInstances = 1
+        ),
+        NodeType(
+          securityType = XPackSecurity(XpackSecurityPlugin.Config.Attributes.default.copy(
+            restSslEnabled = true,
+            internodeSslEnabled = true
+          )),
+          numberOfInstances = 2
         )
       )
-    }
+    )
   }
 
   "Health check works" in {
