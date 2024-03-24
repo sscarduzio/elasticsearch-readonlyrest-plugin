@@ -109,7 +109,6 @@ class JwtAuthRuleSettingsTests
             yaml =
               s"""
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -143,7 +142,6 @@ class JwtAuthRuleSettingsTests
             yaml =
               s"""
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1

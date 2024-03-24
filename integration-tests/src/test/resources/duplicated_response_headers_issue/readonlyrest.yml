@@ -38,10 +38,6 @@ readonlyrest:
         groups: ["011"]
       indices: ["negotiation-*", "trade-*", "transation-*"]
       filter: '{"bool": { "must": { "match": { "firmid": "011" }}}}'
-      kibana:
-        access: rw
-        index: ".kibana_@{user}"
-        hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "/^(?!(Analytic\\|Management).*$).*$/"]
 
     - name: "011"
       external_authentication: "ExternalAuthService"
@@ -60,10 +56,6 @@ readonlyrest:
         groups: ["013"]
       indices: ["negotiation-*", "trade-*", "transation-*"]
       filter: '{"bool": { "must": { "match": { "firmid": "013" }}}}'
-      kibana:
-        access: rw
-        index: ".kibana_@{user}"
-        hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "/^(?!(Analytics\\|Management).*$).*$/"]
 
     - name: "013"
       external_authentication: "ExternalAuthService"

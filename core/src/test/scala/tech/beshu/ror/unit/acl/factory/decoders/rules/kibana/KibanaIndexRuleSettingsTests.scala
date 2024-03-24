@@ -20,8 +20,8 @@ import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaIndexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.MalformedValue
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{BlocksLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -85,6 +85,88 @@ class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaInd
                 |""".stripMargin)))
           }
         )
+      }
+      "it's defined with other rule in the block" when {
+        "the rule is 'actions' rule" in {
+          assertDecodingFailure(
+            yaml =
+              """
+                |readonlyrest:
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    kibana_index: some_kibana_index
+                |    actions: ["indices:data/write/*"]
+                |
+                |""".stripMargin,
+            assertion = errors => {
+              errors should have size 1
+              errors.head should be(BlocksLevelCreationError(Message(
+                "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'actions' rule. These two cannot be used together in one block."
+              )))
+            }
+          )
+        }
+        "the rule is 'filter' rule" in {
+          assertDecodingFailure(
+            yaml =
+              """
+                |readonlyrest:
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    kibana_index: some_kibana_index
+                |    filter: "{\"bool\": {\"must\": [{\"term\": {\"title\": {\"value\": \"a1\"}}}]}}"
+                |
+                |""".stripMargin,
+            assertion = errors => {
+              errors should have size 1
+              errors.head should be(BlocksLevelCreationError(Message(
+                "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'filter' rule. These two cannot be used together in one block."
+              )))
+            }
+          )
+        }
+        "the rule is 'fields' rule" in {
+          assertDecodingFailure(
+            yaml =
+              """
+                |readonlyrest:
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    kibana_index: some_kibana_index
+                |    fields: ["_source","user1"]
+                |
+                |""".stripMargin,
+            assertion = errors => {
+              errors should have size 1
+              errors.head should be(BlocksLevelCreationError(Message(
+                "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'fields' rule. These two cannot be used together in one block."
+              )))
+            }
+          )
+        }
+        "the rule is 'response_fields' rule" in {
+          assertDecodingFailure(
+            yaml =
+              """
+                |readonlyrest:
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    kibana_index: some_kibana_index
+                |    response_fields: ["hits.hits"]
+                |
+                |""".stripMargin,
+            assertion = errors => {
+              errors should have size 1
+              errors.head should be(BlocksLevelCreationError(Message(
+                "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'response_fields' rule. These two cannot be used together in one block."
+              )))
+            }
+          )
+        }
       }
     }
   }
