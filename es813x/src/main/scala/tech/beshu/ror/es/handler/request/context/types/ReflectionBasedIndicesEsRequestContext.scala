@@ -16,9 +16,10 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-import cats.implicits._
 import cats.data.NonEmptyList
+import cats.implicits._
 import com.google.common.collect.Sets
+import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.AccessControlStaticContext
@@ -28,10 +29,10 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.utils.ReflecUtils
-import tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod
-import tech.beshu.ror.utils.ScalaOps._
 
+import java.util.{List => JList}
 import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionRequest,
                                                      indices: Set[ClusterIndexName],
@@ -63,7 +64,7 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
   }
 }
 
-object ReflectionBasedIndicesEsRequestContext {
+object ReflectionBasedIndicesEsRequestContext extends Logging {
 
   def unapply(arg: ReflectionBasedActionRequest): Option[ReflectionBasedIndicesEsRequestContext] = {
     indicesFrom(arg.esContext.actionRequest)
@@ -71,15 +72,52 @@ object ReflectionBasedIndicesEsRequestContext {
   }
 
   private def indicesFrom(request: ActionRequest) = {
-    getIndicesUsingReflection(request, methodName = "indices")
-      .orElse(getIndicesUsingReflection(request, methodName = "getIndices"))
-      .orElse(getIndicesUsingReflection(request, methodName = "index"))
-      .orElse(getIndicesUsingReflection(request, methodName = "getIndex"))
+    getIndicesUsingMethod(request, methodName = "getIndices")
+      .orElse(getIndicesUsingField(request, fieldName = "indices"))
+      .orElse(getIndexUsingMethod(request, methodName = "getIndex"))
+      .orElse(getIndexUsingField(request, fieldName = "index"))
       .map(indices => indices.toList.toSet.flatMap(ClusterIndexName.fromString))
   }
 
-  private def getIndicesUsingReflection(request: ActionRequest, methodName: String) = {
-    NonEmptyList.fromList(extractStringArrayFromPrivateMethod(methodName, request).asSafeList)
+  private def getIndicesUsingMethod(request: ActionRequest, methodName: String) = {
+    callMethod[JList[String]](request, methodName)
+      .map { indices =>
+        NonEmptyList.fromFoldable {
+          Option(indices).toList.flatMap(_.asScala)
+        }
+      }
+      .getOrElse(None)
   }
 
+  private def getIndicesUsingField(request: ActionRequest, fieldName: String) = {
+    getFieldValue[JList[String]](request, fieldName)
+      .map { indices =>
+        NonEmptyList.fromFoldable {
+          Option(indices).toList.flatMap(_.asScala)
+        }
+      }
+      .getOrElse(None)
+  }
+
+  private def getIndexUsingField(request: ActionRequest, fieldName: String) = {
+    getFieldValue[String](request, fieldName)
+      .map(index => NonEmptyList.fromFoldable(Option(index)))
+      .getOrElse(None)
+  }
+
+  private def getIndexUsingMethod(request: ActionRequest, methodName: String) =  {
+    callMethod[String](request, methodName)
+      .map(index => NonEmptyList.fromFoldable(Option(index)))
+      .getOrElse(None)
+  }
+
+  private def callMethod[RESULT](obj: AnyRef, methodName: String) = {
+    import org.joor.Reflect._
+    Try(on(obj).call(methodName).get[RESULT])
+  }
+
+  private def getFieldValue[RESULT](obj: AnyRef, fieldName: String) = {
+    import org.joor.Reflect._
+    Try(on(obj).get[RESULT](fieldName))
+  }
 }
