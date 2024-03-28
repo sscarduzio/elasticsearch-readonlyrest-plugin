@@ -21,7 +21,7 @@ import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ProxyAuthRule
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -207,6 +207,107 @@ class ProxyAuthRuleSettingsTests
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message("Cannot find proxy auth with name: proxy1")))
+          }
+        )
+      }
+      "the 'proxy_auth_configs' section exists, but not contain any element" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block
+              |    type: allow
+              |    auth_key: admin:container
+              |
+              |  proxy_auth_configs:
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message("proxy_auth_configs declared, but no definition found")))
+          }
+        )
+      }
+      "the 'proxy_auth_configs' section contains proxies with the same names" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block
+              |    type: allow
+              |    auth_key: admin:container
+              |
+              |  proxy_auth_configs:
+              |
+              |  - name: "proxy1"
+              |    user_id_header: "X-Auth-Token2"
+              |
+              |  - name: "proxy1"
+              |    user_id_header: "X-Auth-Token1"
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message("proxy_auth_configs definitions must have unique identifiers. Duplicates: proxy1")))
+          }
+        )
+      }
+      "proxy definition has no name" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block
+              |    type: allow
+              |    auth_key: admin:container
+              |
+              |  proxy_auth_configs:
+              |
+              |  - desc: "proxy1"
+              |    user_id_header: "X-Auth-Token2"
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(
+              MalformedValue(
+                """desc: "proxy1"
+                  |user_id_header: "X-Auth-Token2"
+                  |""".stripMargin
+              )
+            ))
+          }
+        )
+      }
+      "proxy definition has no user id" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block
+              |    type: allow
+              |    auth_key: admin:container
+              |
+              |  proxy_auth_configs:
+              |
+              |  - name: "proxy1"
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue("name: \"proxy1\"\n")))
           }
         )
       }

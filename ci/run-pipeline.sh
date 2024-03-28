@@ -50,6 +50,10 @@ run_integration_tests() {
   ./gradlew integration-tests:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
 }
 
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es813x" ]]; then
+  run_integration_tests "es813x"
+fi
+
 if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es812x" ]]; then
   run_integration_tests "es812x"
 fi
@@ -146,32 +150,8 @@ if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es70x" ]]; then
   run_integration_tests "es70x"
 fi
 
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es67x" ]]; then
-  run_integration_tests "es67x"
-fi
-
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es66x" ]]; then
-  run_integration_tests "es66x"
-fi
-
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es65x" ]]; then
-  run_integration_tests "es65x"
-fi
-
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es63x" ]]; then
-  run_integration_tests "es63x"
-fi
-
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es62x" ]]; then
-  run_integration_tests "es62x"
-fi
-
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es61x" ]]; then
-  run_integration_tests "es61x"
-fi
-
-if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es60x" ]]; then
-  run_integration_tests "es60x"
+if [[ -z $TRAVIS ]] || [[ $ROR_TASK == "integration_es68x" ]]; then
+  run_integration_tests "es68x"
 fi
 
 if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; then

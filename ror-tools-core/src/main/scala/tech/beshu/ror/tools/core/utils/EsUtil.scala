@@ -24,6 +24,7 @@ object EsUtil {
   private val elasticsearchJar = """^elasticsearch-(\d+\.\d+\.\d+)\.jar$""".r
   private val transportNetty4JarNameRegex = """^transport-netty4-\d+\.\d+\.\d+\.jar$""".r
 
+  val es8130: SemVer = SemVer.unsafeParse("8.13.0")
   val es890: SemVer = SemVer.unsafeParse("8.9.0")
   val es830: SemVer = SemVer.unsafeParse("8.3.0")
   val es820: SemVer = SemVer.unsafeParse("8.2.0")
@@ -33,8 +34,7 @@ object EsUtil {
   val es790: SemVer = SemVer.unsafeParse("7.9.0")
   val es780: SemVer = SemVer.unsafeParse("7.8.0")
   val es700: SemVer = SemVer.unsafeParse("7.0.0")
-  val es640: SemVer = SemVer.unsafeParse("6.4.0")
-  val es650: SemVer = SemVer.unsafeParse("6.5.0")
+  val es680: SemVer = SemVer.unsafeParse("6.8.0")
 
   def readEsVersion(esDirectory: EsDirectory): SemVer = {
     os

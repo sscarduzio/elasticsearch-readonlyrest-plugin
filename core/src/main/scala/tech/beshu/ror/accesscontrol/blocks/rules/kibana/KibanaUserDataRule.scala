@@ -21,18 +21,18 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
-import tech.beshu.ror.accesscontrol.domain.{KibanaAccess, KibanaAllowedApiPath, KibanaApp, KibanaIndexName, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class KibanaUserDataRule(override val settings: Settings)
-  extends BaseKibanaRule(settings) with RegularRule {
+  extends BaseKibanaRule(settings)  {
 
   override val name: Rule.Name = KibanaUserDataRule.Name.name
 

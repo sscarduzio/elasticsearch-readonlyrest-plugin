@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMetho
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{BlocksLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -46,7 +46,6 @@ class KibanaUserDataRuleSettingsTests
           yaml =
             """
               |readonlyrest:
-              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -70,7 +69,6 @@ class KibanaUserDataRuleSettingsTests
           yaml =
             """
               |readonlyrest:
-              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -101,7 +99,6 @@ class KibanaUserDataRuleSettingsTests
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -125,7 +122,6 @@ class KibanaUserDataRuleSettingsTests
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -149,7 +145,6 @@ class KibanaUserDataRuleSettingsTests
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -173,7 +168,6 @@ class KibanaUserDataRuleSettingsTests
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -197,7 +191,6 @@ class KibanaUserDataRuleSettingsTests
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -220,7 +213,6 @@ class KibanaUserDataRuleSettingsTests
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -246,7 +238,6 @@ class KibanaUserDataRuleSettingsTests
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -271,7 +262,6 @@ class KibanaUserDataRuleSettingsTests
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -299,7 +289,6 @@ class KibanaUserDataRuleSettingsTests
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -326,7 +315,6 @@ class KibanaUserDataRuleSettingsTests
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -353,7 +341,6 @@ class KibanaUserDataRuleSettingsTests
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -383,7 +370,6 @@ class KibanaUserDataRuleSettingsTests
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -415,7 +401,6 @@ class KibanaUserDataRuleSettingsTests
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -452,7 +437,6 @@ class KibanaUserDataRuleSettingsTests
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -547,7 +531,6 @@ class KibanaUserDataRuleSettingsTests
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -579,7 +562,6 @@ class KibanaUserDataRuleSettingsTests
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -673,9 +655,189 @@ class KibanaUserDataRuleSettingsTests
           }
         )
       }
+      "old style kibana rules are mixed with new style kibana rule" when {
+        "kibana_access and kibana rules are mixed" in {
+          assertDecodingFailure(
+            yaml =
+              """
+                |readonlyrest:
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    kibana_access: ro
+                |    kibana:
+                |      access: ro
+                |      index: .kibana_custom
+                |
+                |""".stripMargin,
+            assertion = errors => {
+              errors should have size 1
+              errors.head should be(BlocksLevelCreationError(Message(
+                """The 'test_block' block contains 'kibana' rule and 'kibana_access' rule. The second one is deprecated. The first one offers all the second one is able to provide."""
+              )))
+            }
+          )
+        }
+        "kibana_index and kibana rules are mixed" in {
+          assertDecodingFailure(
+            yaml =
+              """
+                |readonlyrest:
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    kibana_index: .kibana_custom
+                |    kibana:
+                |      access: ro
+                |      index: .kibana_custom
+                |
+                |""".stripMargin,
+            assertion = errors => {
+              errors should have size 1
+              errors.head should be(BlocksLevelCreationError(Message(
+                """The 'test_block' block contains 'kibana' rule and 'kibana_index' rule. The second one is deprecated. The first one offers all the second one is able to provide."""
+              )))
+            }
+          )
+        }
+        "kibana_hide_apps and kibana rules are mixed" in {
+          assertDecodingFailure(
+            yaml =
+              """
+                |readonlyrest:
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    kibana_hide_apps: ["app1"]
+                |    kibana:
+                |      access: ro
+                |      index: .kibana_custom
+                |
+                |""".stripMargin,
+            assertion = errors => {
+              errors should have size 1
+              errors.head should be(BlocksLevelCreationError(Message(
+                """The 'test_block' block contains 'kibana' rule and 'kibana_hide_apps' rule. The second one is deprecated. The first one offers all the second one is able to provide."""
+              )))
+            }
+          )
+        }
+        "kibana_template_index and kibana rules are mixed" in {
+          assertDecodingFailure(
+            yaml =
+              """
+                |readonlyrest:
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    kibana_template_index: ".kibana_template_index"
+                |    kibana:
+                |      access: ro
+                |      index: .kibana_custom
+                |
+                |""".stripMargin,
+            assertion = errors => {
+              errors should have size 1
+              errors.head should be(BlocksLevelCreationError(Message(
+                """The 'test_block' block contains 'kibana' rule and 'kibana_template_index' rule. The second one is deprecated. The first one offers all the second one is able to provide."""
+              )))
+            }
+          )
+        }
+      }
+      "it's defined with other rule in the block" when {
+        "the rule is 'actions' rule" in {
+          assertDecodingFailure(
+            yaml =
+              """
+                |readonlyrest:
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    kibana:
+                |      access: ro
+                |      index: .kibana_custom
+                |    actions: ["indices:data/write/*"]
+                |
+                |""".stripMargin,
+            assertion = errors => {
+              errors should have size 1
+              errors.head should be(BlocksLevelCreationError(Message(
+                "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'actions' rule. These two cannot be used together in one block."
+              )))
+            }
+          )
+        }
+        "the rule is 'filter' rule" in {
+          assertDecodingFailure(
+            yaml =
+              """
+                |readonlyrest:
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    kibana:
+                |      access: ro
+                |      index: .kibana_custom
+                |    filter: "{\"bool\": {\"must\": [{\"term\": {\"title\": {\"value\": \"a1\"}}}]}}"
+                |
+                |""".stripMargin,
+            assertion = errors => {
+              errors should have size 1
+              errors.head should be(BlocksLevelCreationError(Message(
+                "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'filter' rule. These two cannot be used together in one block."
+              )))
+            }
+          )
+        }
+        "the rule is 'fields' rule" in {
+          assertDecodingFailure(
+            yaml =
+              """
+                |readonlyrest:
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    kibana:
+                |      access: ro
+                |      index: .kibana_custom
+                |    fields: ["_source","user1"]
+                |
+                |""".stripMargin,
+            assertion = errors => {
+              errors should have size 1
+              errors.head should be(BlocksLevelCreationError(Message(
+                "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'fields' rule. These two cannot be used together in one block."
+              )))
+            }
+          )
+        }
+        "the rule is 'response_fields' rule" in {
+          assertDecodingFailure(
+            yaml =
+              """
+                |readonlyrest:
+                |  access_control_rules:
+                |
+                |  - name: test_block
+                |    kibana:
+                |      access: ro
+                |      index: .kibana_custom
+                |    response_fields: ["hits.hits"]
+                |
+                |""".stripMargin,
+            assertion = errors => {
+              errors should have size 1
+              errors.head should be(BlocksLevelCreationError(Message(
+                "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'response_fields' rule. These two cannot be used together in one block."
+              )))
+            }
+          )
+        }
+      }
     }
   }
 
-  private val variableCreator: RuntimeResolvableVariableCreator =
+  private lazy val variableCreator: RuntimeResolvableVariableCreator =
     new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
 }

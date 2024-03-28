@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{MatchingAlwaysRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaHideAppsRule.Settings
@@ -26,7 +25,7 @@ import tech.beshu.ror.accesscontrol.domain.KibanaApp
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class KibanaHideAppsRule(val settings: Settings)
-  extends MatchingAlwaysRule with Logging {
+  extends MatchingAlwaysRule with KibanaRelatedRule {
 
   override val name: Rule.Name = KibanaHideAppsRule.Name.name
 

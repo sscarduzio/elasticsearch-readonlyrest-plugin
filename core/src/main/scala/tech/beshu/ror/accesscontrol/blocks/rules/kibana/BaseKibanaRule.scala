@@ -21,6 +21,7 @@ import cats.data.ReaderT
 import cats.implicits._
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.BaseKibanaRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers._
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local.devNullKibana
@@ -32,8 +33,12 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import java.util.regex.Pattern
 import scala.util.Try
 
-abstract class BaseKibanaRule(val settings: Settings) extends Logging {
+trait KibanaRelatedRule {
   this: Rule =>
+}
+
+abstract class BaseKibanaRule(val settings: Settings)
+  extends RegularRule with KibanaRelatedRule with Logging {
 
   import BaseKibanaRule._
 
