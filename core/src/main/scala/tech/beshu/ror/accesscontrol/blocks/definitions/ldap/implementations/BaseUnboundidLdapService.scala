@@ -87,7 +87,7 @@ private[implementations] abstract class BaseUnboundidLdapService(connectionPool:
     val baseDn = searchUserBaseDN.value.value
     val scope = SearchScope.SUB
     val searchFilter = s"${uidAttribute.name.value}=${Filter.encodeValue(userId.value.value)}"
-    logger.debug(s"LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter")
+    logger.debug(s"LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter]")
     new SearchRequest(listener, baseDn, scope, searchFilter)
   }
 }
