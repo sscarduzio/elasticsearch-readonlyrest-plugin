@@ -23,7 +23,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapService, LdapUser}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Corr, LdapAuthenticationService, LdapService, LdapUser}
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.LoggerOps.toLoggerOps
 import tech.beshu.ror.utils.ScalaOps._
@@ -40,7 +40,7 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
   extends BaseUnboundidLdapService(connectionPool, userSearchFiler, serviceTimeout)
     with LdapAuthenticationService {
 
-  override def authenticate(user: User.Id, secret: PlainTextSecret): Task[Boolean] = {
+  override def authenticate(user: User.Id, secret: PlainTextSecret)(implicit corr: Corr): Task[Boolean] = {
     Task.measure(
       doAuthenticate(user, secret),
       measurement => Task.delay {
@@ -49,7 +49,7 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
     )
   }
 
-  private def doAuthenticate(user: User.Id, secret: PlainTextSecret) = {
+  private def doAuthenticate(user: User.Id, secret: PlainTextSecret)(implicit corr: Corr) = {
     ldapUserBy(user)
       .flatMap {
         case Some(ldapUser) =>
@@ -59,7 +59,7 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
       }
   }
 
-  private def ldapAuthenticate(user: LdapUser, password: PlainTextSecret) = {
+  private def ldapAuthenticate(user: LdapUser, password: PlainTextSecret)(implicit corr: Corr) = {
     logger.debug(s"LDAP simple bind [user DN: ${user.dn.value.value}]")
     connectionPool
       .asyncBind(new SimpleBindRequest(user.dn.value.value, password.value.value))

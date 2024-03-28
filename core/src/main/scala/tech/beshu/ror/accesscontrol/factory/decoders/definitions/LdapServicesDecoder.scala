@@ -245,6 +245,7 @@ object LdapServicesDecoder {
       .instance { c =>
         for {
           connectionMethod <- connectionMethodDecoder.tryDecode(c)
+          poolName <- c.downField("name").as[String]
           poolSize <- c.downField("connection_pool_size").as[Option[Int Refined Positive]]
           connectionTimeout <- c.downFields("connection_timeout_in_sec", "connection_timeout").as[Option[FiniteDuration Refined Positive]]
           requestTimeout <- c.downFields("request_timeout_in_sec", "request_timeout").as[Option[FiniteDuration Refined Positive]]
@@ -252,6 +253,7 @@ object LdapServicesDecoder {
           ignoreLdapConnectivityProblems <- c.downField("ignore_ldap_connectivity_problems").as[Option[Boolean]]
           bindRequestUser <- bindRequestUserDecoder.tryDecode(c)
         } yield LdapConnectionConfig(
+          poolName,
           connectionMethod,
           poolSize.getOrElse(refineV[Positive].unsafeFrom(30)),
           connectionTimeout.getOrElse(refineV[Positive].unsafeFrom(10 second)),

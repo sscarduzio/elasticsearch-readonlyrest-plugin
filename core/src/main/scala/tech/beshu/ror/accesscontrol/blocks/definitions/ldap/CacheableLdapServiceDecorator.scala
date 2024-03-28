@@ -30,23 +30,30 @@ import java.nio.charset.Charset
 import scala.concurrent.duration.FiniteDuration
 
 class CacheableLdapAuthenticationServiceDecorator(underlying: LdapAuthenticationService,
+                                                  cacheableLdapUserService: CacheableLdapUserServiceDecorator,
                                                   ttl: FiniteDuration Refined Positive)
   extends LdapAuthenticationService {
+
+  def this(underlying: LdapAuthenticationService,
+           ttl: FiniteDuration Refined Positive) = {
+    this(underlying, new CacheableLdapUserServiceDecorator(underlying, ttl), ttl)
+  }
 
   private val cacheableAuthentication =
     new CacheableActionWithKeyMapping[(User.Id, domain.PlainTextSecret), HashedUserCredentials, Boolean](
       ttl = ttl,
-      action = authenticateAction,
+      action = {
+        case ((u, p), c) => authenticateAction((u, p))(c)
+      },
       keyMap = hashCredential
     )
-  private val cacheableLdapUserService = new CacheableLdapUserServiceDecorator(underlying, ttl)
 
   override def id: LdapService.Name = underlying.id
 
-  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
+  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] =
     cacheableLdapUserService.ldapUserBy(userId)
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret): Task[Boolean] =
+  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit corr: Corr): Task[Boolean] =
     cacheableAuthentication.call((user, secret), serviceTimeout)
 
   private def hashCredential(value: (User.Id, domain.PlainTextSecret)) = {
@@ -54,7 +61,7 @@ class CacheableLdapAuthenticationServiceDecorator(underlying: LdapAuthentication
     HashedUserCredentials(user, Hashing.sha256.hashString(secret.value.value, Charset.defaultCharset).toString)
   }
 
-  private def authenticateAction(value: (User.Id, domain.PlainTextSecret)) = {
+  private def authenticateAction(value: (User.Id, domain.PlainTextSecret))(implicit corr: Corr) = {
     val (userId, secret) = value
     underlying.authenticate(userId, secret)
   }
@@ -68,21 +75,28 @@ object CacheableLdapAuthenticationServiceDecorator {
 }
 
 class CacheableLdapAuthorizationServiceDecorator(underlying: LdapAuthorizationService,
+                                                 cacheableLdapUserService: CacheableLdapUserServiceDecorator,
                                                  ttl: FiniteDuration Refined Positive)
   extends LdapAuthorizationService {
 
+  def this(underlying: LdapAuthorizationService,
+           ttl: FiniteDuration Refined Positive) = {
+    this(underlying, new CacheableLdapUserServiceDecorator(underlying, ttl), ttl)
+  }
+
   private val cacheableGroupsOf = new CacheableAction[(User.Id, Set[GroupIdLike]), UniqueList[Group]](
     ttl = ttl,
-    action = { case (id, groupIds) => underlying.groupsOf(id, groupIds) }
+    action = {
+      case ((id, groupIds), corr) => underlying.groupsOf(id, groupIds)(corr)
+    }
   )
-  private val cacheableLdapUserService = new CacheableLdapUserServiceDecorator(underlying, ttl)
 
   override def id: LdapService.Name = underlying.id
 
-  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
+  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] =
     cacheableLdapUserService.ldapUserBy(userId)
 
-  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] =
+  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]] =
     cacheableGroupsOf.call((id, filteringGroupIds), serviceTimeout)
 
   override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
@@ -92,18 +106,23 @@ class CacheableLdapServiceDecorator(val underlying: LdapAuthService,
                                     ttl: FiniteDuration Refined Positive)
   extends LdapAuthService {
 
-  private val cacheableLdapAuthenticationService = new CacheableLdapAuthenticationServiceDecorator(underlying, ttl)
-  private val cacheableLdapAuthorizationService = new CacheableLdapAuthorizationServiceDecorator(underlying, ttl)
+  private val cacheableLdapUserService = new CacheableLdapUserServiceDecorator(underlying, ttl)
+  private val cacheableLdapAuthenticationService = new CacheableLdapAuthenticationServiceDecorator(
+    underlying, cacheableLdapUserService, ttl
+  )
+  private val cacheableLdapAuthorizationService = new CacheableLdapAuthorizationServiceDecorator(
+    underlying, cacheableLdapUserService, ttl
+  )
 
   override def id: LdapService.Name = underlying.id
 
-  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
+  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] =
     cacheableLdapAuthenticationService.ldapUserBy(userId)
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret): Task[Boolean] =
+  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit corr: Corr): Task[Boolean] =
     cacheableLdapAuthenticationService.authenticate(user, secret)
 
-  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] =
+  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]] =
     cacheableLdapAuthorizationService.groupsOf(id, filteringGroupIds)
 
   override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
@@ -113,11 +132,11 @@ private class CacheableLdapUserServiceDecorator(underlying: LdapUserService,
                                                 ttl: FiniteDuration Refined Positive)
   extends LdapUserService {
 
-  private val cacheableLdapUserById = new CacheableAction[User.Id, Option[LdapUser]](ttl, underlying.ldapUserBy)
+  private val cacheableLdapUserById = new CacheableAction[User.Id, Option[LdapUser]](ttl, (u, c) => underlying.ldapUserBy(u)(c))
 
   override def id: LdapService.Name = underlying.id
 
-  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
+  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] =
     cacheableLdapUserById.call(userId, serviceTimeout)
 
   override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout

@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 
 function verlte() {
   [ "$1" = "`echo -e "$1\n$2" | sort -V | head -n1`" ]
@@ -16,7 +16,7 @@ fi
 
 echo "Installing ES ROR $ROR_VERSION..."
 /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch "https://api.beshu.tech/download/es?esVersion=$ES_VERSION&pluginVersion=$ROR_VERSION&email=ror-sandbox%40readonlyrest.com"
-if verlte "8.0.0" "$ES_VERSION"; then
+if verlte "6.5.0" "$ES_VERSION"; then
   echo "Patching ES ROR $ROR_VERSION..."
   /usr/share/elasticsearch/jdk/bin/java -jar /usr/share/elasticsearch/plugins/readonlyrest/ror-tools.jar patch
 fi

@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Sear
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationService, LdapService, LdapUser}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Corr, LdapAuthorizationService, LdapService, LdapUser}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, User}
 import tech.beshu.ror.utils.LoggerOps.toLoggerOps
@@ -49,7 +49,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
     .nestedGroupsConfig
     .map(new UnboundidLdapNestedGroupsService(connectionPool, _, serviceTimeout))
 
-  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = {
+  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]] = {
     Task.measure(
       doFetchGroupsOf(id, filteringGroupIds),
       measurement => Task.delay {
@@ -58,7 +58,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
     )
   }
 
-  private def doFetchGroupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = {
+  private def doFetchGroupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]] = {
     ldapUserBy(id)
       .flatMap {
         case Some(user) =>
@@ -75,7 +75,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
 
   private def groupsFrom(mode: DefaultGroupSearch,
                          user: LdapUser,
-                         filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = {
+                         filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]] = {
     connectionPool
       .process(searchUserGroupsLdapRequest(_, mode, user, filteringGroupIds), serviceTimeout)
       .flatMap {
@@ -97,7 +97,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
       }
   }
 
-  private def groupsFrom(mode: GroupsFromUserEntry, user: LdapUser): Task[UniqueList[Group]] = {
+  private def groupsFrom(mode: GroupsFromUserEntry, user: LdapUser)(implicit corr: Corr): Task[UniqueList[Group]] = {
     connectionPool
       .process(searchUserGroupsLdapRequest(_, mode, user), serviceTimeout)
       .flatMap {
@@ -166,7 +166,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
     new SearchRequest(listener, baseDn, scope, searchFilter, attribute)
   }
 
-  private def enrichWithNestedGroupsIfNecessary(mainGroups: Set[LdapGroup]) = {
+  private def enrichWithNestedGroupsIfNecessary(mainGroups: Set[LdapGroup])(implicit corr: Corr) = {
     nestedGroupsService match {
       case Some(service) => service.fetchNestedGroupsOf(mainGroups).map(_ ++ mainGroups)
       case None => Task.delay(mainGroups)

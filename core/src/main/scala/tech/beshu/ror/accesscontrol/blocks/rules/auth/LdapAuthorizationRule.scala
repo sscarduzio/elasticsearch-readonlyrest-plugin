@@ -20,7 +20,7 @@ import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthorizationService
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Corr, LdapAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
@@ -43,7 +43,7 @@ class LdapAuthorizationRule(val settings: Settings,
   override protected def userGroups[B <: BlockContext](blockContext: B,
                                                        user: LoggedUser,
                                                        permittedGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] =
-    settings.ldap.groupsOf(user.id, permittedGroupIds)
+    settings.ldap.groupsOf(user.id, permittedGroupIds)(Corr(this.hashCode().toString))
 
   override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] =
     settings.permittedGroupsLogic.availableGroupsFrom(usersGroups)

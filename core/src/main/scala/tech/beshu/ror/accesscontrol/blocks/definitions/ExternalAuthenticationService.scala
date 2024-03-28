@@ -26,6 +26,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.CacheableExternalAuthenticationServiceDecorator.HashedUserCredentials
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.Name
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Corr
 import tech.beshu.ror.accesscontrol.domain.{BasicAuth, Credentials, Header, User}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
@@ -85,12 +86,16 @@ class CacheableExternalAuthenticationServiceDecorator(underlying: ExternalAuthen
   extends ExternalAuthenticationService {
 
   private val cacheableAuthentication =
-    new CacheableActionWithKeyMapping[Credentials, HashedUserCredentials, Boolean](ttl, authenticateAction, hashCredential)
+    new CacheableActionWithKeyMapping[Credentials, HashedUserCredentials, Boolean](
+      ttl,
+      (c, _) => authenticateAction(c),
+      hashCredential
+    )
 
   override val id: ExternalAuthenticationService#Id = underlying.id
 
   override def authenticate(credentials: Credentials): Task[Boolean] = {
-    cacheableAuthentication.call(credentials, serviceTimeout)
+    cacheableAuthentication.call(credentials, serviceTimeout)(Corr(""))
   }
 
   private def hashCredential(credentials: Credentials) = {

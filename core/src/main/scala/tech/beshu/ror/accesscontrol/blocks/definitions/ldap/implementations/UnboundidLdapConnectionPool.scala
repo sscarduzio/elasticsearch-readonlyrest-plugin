@@ -22,6 +22,7 @@ import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Corr
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
 
 import java.util.concurrent.atomic.AtomicReference
@@ -29,22 +30,41 @@ import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
-class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool,
+class UnboundidLdapConnectionPool(poolName: String,
+                                  connectionPool: LDAPConnectionPool,
                                   bindRequestUser: BindRequestUser)
                                  (implicit blockingScheduler: Scheduler)
   extends Logging {
 
-  def asyncBind(request: BindRequest): Task[BindResult] = {
-    bind(request)
-      .executeOn(blockingScheduler)
-      .asyncBoundary
+  def asyncBind(request: BindRequest)(implicit corr: Corr): Task[BindResult] = {
+    Task.delay(
+      logger.trace(s"[$corr] Starting bind request")
+    )
+      .flatMap { _ =>
+        bind(request)
+          .executeOn(blockingScheduler)
+          .asyncBoundary
+      }
+      .map { r =>
+        logger.trace(s"[$corr] Bind response: $r")
+        r
+      }
   }
 
   def process(requestCreator: AsyncSearchResultListener => LDAPRequest,
-              timeout: FiniteDuration Refined Positive): Task[Either[SearchResult, List[SearchResultEntry]]] = {
+              timeout: FiniteDuration Refined Positive)
+             (implicit corr: Corr): Task[Either[SearchResult, List[SearchResultEntry]]] = {
     val searchResultListener = new UnboundidLdapConnectionPool.UnboundidSearchResultListener
     Task(requestCreator(searchResultListener))
+      .map { r =>
+        logger.trace(s"[$corr] UNBOUNDID [${Thread.currentThread().toString()}] ${this.hashCode()} [$poolName]: calling ${r.toString()}")
+        r
+      }
       .map(request => connectionPool.processRequestsAsync((request :: Nil).asJava, timeout.value.toMillis))
+      .map { r =>
+        logger.trace(s"[$corr] UNBOUNDID [${Thread.currentThread().toString()}] ${this.hashCode()} [$poolName]: result ${r.toString}")
+        r
+      }
       .executeOn(blockingScheduler)
       .flatMap { results =>
         results.asScala.toList match {

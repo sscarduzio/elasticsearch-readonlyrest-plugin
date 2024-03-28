@@ -22,6 +22,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Corr
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.SearchResultEntryOps._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupSearchFilter, NestedGroupsConfig, UniqueMemberAttribute}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
@@ -38,14 +39,14 @@ private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: 
 
   private val ldapGroupsExplorer = new GraphNodeAncestorsExplorer[LdapGroup](
     kinshipLevel = config.nestedLevels,
-    doFetchParentNodesOf = doFetchGroupsOf
+    doFetchParentNodesOf = { case (l, c) => doFetchGroupsOf(l)(c) }
   )
 
-  def fetchNestedGroupsOf(mainGroups: Iterable[LdapGroup]): Task[Set[LdapGroup]] = {
+  def fetchNestedGroupsOf(mainGroups: Iterable[LdapGroup])(implicit corr: Corr): Task[Set[LdapGroup]] = {
     ldapGroupsExplorer.findAllAncestorsOf(mainGroups)
   }
 
-  private def doFetchGroupsOf(group: LdapGroup) = {
+  private def doFetchGroupsOf(group: LdapGroup)(implicit corr: Corr) = {
     connectionPool
       .process(
         requestCreator = searchGroupsOfGroupLdapRequest(_, group),

@@ -28,6 +28,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.AuthTokenSendMethod.{UsingHeader, UsingQueryParam}
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Corr
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
@@ -157,12 +158,13 @@ class CacheableExternalAuthorizationServiceDecorator(underlying: ExternalAuthori
                                                      ttl: FiniteDuration Refined Positive)
   extends ExternalAuthorizationService {
 
-  private val cacheableGrantsFor = new CacheableAction[User.Id, UniqueList[Group]](ttl, underlying.grantsFor)
+  private val cacheableGrantsFor = new CacheableAction[User.Id, UniqueList[Group]](ttl,
+    (c, _) => underlying.grantsFor(c))
 
   override val id: ExternalAuthorizationService#Id = underlying.id
 
   override def grantsFor(userId: User.Id): Task[UniqueList[Group]] =
-    cacheableGrantsFor.call(userId, serviceTimeout)
+    cacheableGrantsFor.call(userId, serviceTimeout)(Corr(""))
 
   override def serviceTimeout: Refined[FiniteDuration, Positive] =
     underlying.serviceTimeout

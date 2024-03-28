@@ -34,13 +34,13 @@ class CircuitBreakerLdapAuthenticationServiceDecorator(underlying: LdapAuthentic
   extends LdapAuthenticationService
     with LdapCircuitBreaker {
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret): Task[Boolean] = {
+  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit corr: Corr): Task[Boolean] = {
     protect(
       underlying.authenticate(user, secret)
     )
   }
 
-  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
+  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] = {
     protect(
       underlying.ldapUserBy(userId)
     )
@@ -57,13 +57,13 @@ class CircuitBreakerLdapAuthorizationServiceDecorator(underlying: LdapAuthorizat
   extends LdapAuthorizationService
     with LdapCircuitBreaker {
 
-  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = {
+  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]] = {
     protect(
       underlying.groupsOf(id, filteringGroupIds)
     )
   }
 
-  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
+  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] = {
     protect(
       underlying.ldapUserBy(userId)
     )
@@ -79,19 +79,19 @@ class CircuitBreakerLdapServiceDecorator(underlying: LdapAuthService,
   extends LdapAuthService
     with LdapCircuitBreaker {
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret): Task[Boolean] = {
+  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit corr: Corr): Task[Boolean] = {
     protect(
       underlying.authenticate(user, secret)
     )
   }
 
-  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = {
+  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]] = {
     protect(
       underlying.groupsOf(id, filteringGroupIds)
     )
   }
 
-  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
+  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] = {
     protect(
       underlying.ldapUserBy(userId)
     )

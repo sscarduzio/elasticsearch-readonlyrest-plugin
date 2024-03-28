@@ -38,7 +38,7 @@ private[implementations] abstract class BaseUnboundidLdapService(connectionPool:
                                                                  override val serviceTimeout: FiniteDuration Refined Positive)
   extends LdapUserService with Logging {
 
-  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
+  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] = {
     userSearchFiler.userIdAttribute match {
       case UserIdAttribute.Cn => createLdapUser(userId)
       case attribute@UserIdAttribute.CustomAttribute(_) => fetchLdapUser(userId, attribute)
@@ -59,12 +59,12 @@ private[implementations] abstract class BaseUnboundidLdapService(connectionPool:
     }
   }
 
-  private def fetchLdapUser(userId: User.Id, uidAttribute: UserIdAttribute.CustomAttribute) = {
+  private def fetchLdapUser(userId: User.Id, uidAttribute: UserIdAttribute.CustomAttribute)(implicit corr: Corr) = {
     connectionPool
       .process(searchUserLdapRequest(_, userSearchFiler.searchUserBaseDN, uidAttribute, userId), serviceTimeout)
       .flatMap {
         case Right(Nil) =>
-          logger.debug("LDAP getting user CN returned no entries")
+          logger.debug(s"LDAP getting user CN returned no entries")
           Task.now(None)
         case Right(user :: Nil) =>
           Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)), confirmed = true)))
@@ -76,14 +76,14 @@ private[implementations] abstract class BaseUnboundidLdapService(connectionPool:
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .onError { case ex =>
-        Task(logger.errorEx("LDAP getting user operation failed.", ex))
+        Task(logger.errorEx(s"LDAP getting user operation failed.", ex))
       }
   }
 
   private def searchUserLdapRequest(listener: AsyncSearchResultListener,
                                     searchUserBaseDN: Dn,
                                     uidAttribute: UserIdAttribute.CustomAttribute,
-                                    userId: User.Id): LDAPRequest = {
+                                    userId: User.Id)(implicit corr: Corr): LDAPRequest = {
     val baseDn = searchUserBaseDN.value.value
     val scope = SearchScope.SUB
     val searchFilter = s"${uidAttribute.name.value}=${Filter.encodeValue(userId.value.value)}"

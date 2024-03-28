@@ -38,10 +38,10 @@ class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticat
 
   override def id: LdapService.Name = underlying.id
 
-  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
+  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] =
     loggableLdapUserService.ldapUserBy(userId)
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret): Task[Boolean] = {
+  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit corr: Corr): Task[Boolean] = {
     logger.debug(s"Trying to authenticate user [${user.show}] with LDAP [${id.show}]")
     underlying
       .authenticate(user, secret)
@@ -64,10 +64,10 @@ class LoggableLdapAuthorizationServiceDecorator(val underlying: LdapAuthorizatio
 
   override def id: LdapService.Name = underlying.id
 
-  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
+  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] =
     loggableLdapUserService.ldapUserBy(userId)
 
-  override def groupsOf(userId: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = {
+  override def groupsOf(userId: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]] = {
     logger.debug(s"Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}] (assuming that filtered group IDs are [${filteringGroupIds.map(_.show).mkString(",")}])")
     underlying
       .groupsOf(userId, filteringGroupIds)
@@ -90,13 +90,13 @@ class LoggableLdapServiceDecorator(val underlying: LdapAuthService)
 
   override def id: LdapService.Name = underlying.id
 
-  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
+  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] =
     loggableLdapAuthenticationService.ldapUserBy(userId)
 
-  override def authenticate(userId: User.Id, secret: domain.PlainTextSecret): Task[Boolean] =
+  override def authenticate(userId: User.Id, secret: domain.PlainTextSecret)(implicit corr: Corr): Task[Boolean] =
     loggableLdapAuthenticationService.authenticate(userId, secret)
 
-  override def groupsOf(userId: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] =
+  override def groupsOf(userId: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]] =
     loggableLdapAuthorizationService.groupsOf(userId, filteringGroupIds)
 
   override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
@@ -108,7 +108,7 @@ private class LoggableLdapUserServiceDecorator(underlying: LdapUserService)
 
   override def id: LdapService.Name = underlying.id
 
-  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
+  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] = {
     logger.debug(s"Trying to fetch user with identifier [${userId.show}] from LDAP [${id.show}]")
     underlying
       .ldapUserBy(userId)
