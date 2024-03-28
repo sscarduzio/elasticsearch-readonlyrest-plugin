@@ -83,7 +83,7 @@ private[implementations] abstract class BaseUnboundidLdapService(connectionPool:
   private def searchUserLdapRequest(listener: AsyncSearchResultListener,
                                     searchUserBaseDN: Dn,
                                     uidAttribute: UserIdAttribute.CustomAttribute,
-                                    userId: User.Id)(implicit corr: Corr): LDAPRequest = {
+                                    userId: User.Id): LDAPRequest = {
     val baseDn = searchUserBaseDN.value.value
     val scope = SearchScope.SUB
     val searchFilter = s"${uidAttribute.name.value}=${Filter.encodeValue(userId.value.value)}"
