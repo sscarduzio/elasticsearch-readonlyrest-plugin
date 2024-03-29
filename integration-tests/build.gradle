@@ -68,7 +68,7 @@ dependencies {
     testImplementation  group: 'org.glassfish.jaxb',            name: 'jaxb-runtime',               version: '2.3.2'
     testImplementation  group: 'ch.qos.logback',                name: 'logback-classic',            version: '1.2.3'
     testRuntimeOnly     group: 'org.pegdown',                   name: 'pegdown',                    version: '1.4.2'
-    testImplementation  group: 'org.scala-lang',                name: 'scala-library',              version: '2.13.11'
+    testImplementation  group: 'org.scala-lang',                name: 'scala-library',              version: '2.13.13'
     testImplementation  group: 'org.scalatest',                 name: 'scalatest_2.13',             version: '3.2.15'
 }
 

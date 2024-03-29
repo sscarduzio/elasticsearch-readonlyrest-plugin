@@ -30,6 +30,7 @@ private[patches] class Es89xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     new ElasticsearchJarPatchCreator(
       OpenModule,
       ModifyPolicyUtilClass,
+      new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
     ),
     new RorSecurityPolicyPatchCreator(
       AddCreateClassLoaderPermission
@@ -42,4 +43,5 @@ private[patches] class Es89xPatch(rorPluginDirectory: RorPluginDirectory, esVers
       DeactivateSecurityActionFilter,
       DeactivateAuthenticationServiceInHttpTransport
     )
+
   )

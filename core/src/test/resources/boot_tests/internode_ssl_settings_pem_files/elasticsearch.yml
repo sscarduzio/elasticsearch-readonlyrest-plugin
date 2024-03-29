@@ -9,3 +9,4 @@ readonlyrest:
     server_certificate_key_file: "server_certificate_key.pem"
     client_trusted_certificate_file: "client_certificate.pem"
     verification: true
+    hostname_verification: false

@@ -79,7 +79,7 @@ class XpackSecurityPlugin(esVersion: String,
       if (config.attributes.internodeSslEnabled) {
         builder
           .add("xpack.security.transport.ssl.enabled: true")
-          .add("xpack.security.transport.ssl.verification_mode: none")
+          .add("xpack.security.transport.ssl.verification_mode: certificate")
           .add("xpack.security.transport.ssl.client_authentication: none")
           .add("xpack.security.transport.ssl.keystore.path: elastic-certificates.p12")
           .add("xpack.security.transport.ssl.truststore.path: elastic-certificates.p12")

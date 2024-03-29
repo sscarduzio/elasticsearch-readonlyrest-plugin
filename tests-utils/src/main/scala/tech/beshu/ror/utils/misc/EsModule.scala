@@ -23,11 +23,12 @@ import scala.util.matching.Regex
 final case class EsModule(name: String)
 object EsModule {
 
+  def doesCurrentModuleMatch(esModuleRegex: Regex): Boolean = {
+    doesEsModuleMatchRegex(currentEsModule, esModuleRegex :: Nil)
+  }
+
   def isCurrentModuleExcluded(excludedEsModulePatterns: Regex, otherExcludedEsModulePatterns: Regex*): Boolean = {
-    isEsModuleExcluded(
-      EsModule(RorPluginGradleProject.fromSystemProperty.moduleName),
-      excludedEsModulePatterns, otherExcludedEsModulePatterns: _*
-    )
+    doesEsModuleMatchRegex(currentEsModule, excludedEsModulePatterns :: otherExcludedEsModulePatterns.toList)
   }
 
   def isCurrentModuleNotExcluded(excludedEsModulePatterns: Regex, otherExcludedEsModulePatterns: Regex*): Boolean = {
@@ -39,26 +40,20 @@ object EsModule {
       .availableEsModules
       .map(EsModule.apply)
       .filter { esModule =>
-        isEsModuleExcluded(esModule, excludedEsModulePatterns, otherExcludedEsModulePatterns: _*)
+        doesEsModuleMatchRegex(esModule, excludedEsModulePatterns :: otherExcludedEsModulePatterns.toList)
       }
   }
 
-  private def isEsModuleExcluded(esModule: EsModule,
-                                 excludedEsModulePatterns: Regex,
-                                 otherExcludedEsModulePatterns: Regex*): Boolean = {
-    (excludedEsModulePatterns :: otherExcludedEsModulePatterns.toList).exists(_.findFirstIn(esModule.name).isDefined)
+  private def doesEsModuleMatchRegex(esModule: EsModule, regexes: Iterable[Regex]): Boolean = {
+    regexes.toList.exists(_.findFirstIn(esModule.name).isDefined)
   }
+
+  private def currentEsModule = EsModule(RorPluginGradleProject.fromSystemProperty.moduleName)
 }
 
 trait EsModulePatterns {
-  val es60x = "^es60x$".r
   val allEs6x = "^es6\\dx$".r
-  val allEs6xBelowEs63x = "^es6[0-2]x$".r
-  val allEs6xBelowEs65x = "^es6[0-4]x$".r
-  val allEs6xBelowEs66x = "^es6[0-5]x$".r
-  val allEs6xExceptEs67x = "^es6(?!(?:7x)$)\\dx$".r
   val allEs7x = "^es7\\d+x$".r
-  val allEs7xExceptEs70x = "^es(?!(?:70x)$)7\\d+x$".r
   val allEs7xBelowEs74x = "^es7[0-3]x$".r
   val allEs7xBelowEs77x = "^es7[0-6]x$".r
   val allEs7xBelowEs78x = "^es7[0-7]x$".r

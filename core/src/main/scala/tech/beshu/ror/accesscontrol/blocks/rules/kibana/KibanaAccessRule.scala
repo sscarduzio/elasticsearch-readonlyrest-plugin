@@ -19,13 +19,13 @@ package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain._
 
 class KibanaAccessRule(override val settings: Settings)
-  extends BaseKibanaRule(settings) with RegularRule {
+  extends BaseKibanaRule(settings) {
 
   override val name: Rule.Name = KibanaAccessRule.Name.name
 

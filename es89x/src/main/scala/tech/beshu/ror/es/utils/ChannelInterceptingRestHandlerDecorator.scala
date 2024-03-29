@@ -19,7 +19,7 @@ package tech.beshu.ror.es.utils
 import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.rest.action.admin.indices.RestUpgradeActionDeprecated
 import org.elasticsearch.rest.action.cat.RestCatAction
-import org.elasticsearch.rest.{RestChannel, RestHandler, RestRequest}
+import org.elasticsearch.rest.{RestChannel, RestHandler, RestRequest, Scope}
 import org.joor.Reflect.on
 import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.actions.wrappers._cat.rest.RorWrappedRestCatAction
@@ -27,6 +27,7 @@ import tech.beshu.ror.es.actions.wrappers._upgrade.rest.RorWrappedRestUpgradeAct
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
+import java.util
 import scala.util.Try
 
 class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandler)
@@ -42,6 +43,22 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
     addRorUserAuthenticationHeaderForInCaseOfSecurityRequest(request, client)
     wrapped.handleRequest(request, rorRestChannel, client)
   }
+
+  override def canTripCircuitBreaker: Boolean = underlying.canTripCircuitBreaker
+
+  override def supportsContentStream(): Boolean = underlying.supportsContentStream()
+
+  override def getConcreteRestHandler: RestHandler = underlying.getConcreteRestHandler
+
+  override def getServerlessScope: Scope = underlying.getServerlessScope
+
+  override def allowsUnsafeBuffers(): Boolean = underlying.allowsUnsafeBuffers()
+
+  override def routes(): util.List[RestHandler.Route] = underlying.routes()
+
+  override def allowSystemIndexAccessByDefault(): Boolean = underlying.allowSystemIndexAccessByDefault()
+
+  override def mediaTypesValid(request: RestRequest): Boolean = underlying.mediaTypesValid(request)
 
   private def wrapSomeActions(ofHandler: RestHandler) = {
     unwrapWithSecurityRestFilterIfNeeded(ofHandler) match {

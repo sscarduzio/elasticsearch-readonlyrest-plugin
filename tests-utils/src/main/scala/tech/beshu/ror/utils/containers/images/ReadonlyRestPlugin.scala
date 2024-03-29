@@ -110,7 +110,7 @@ class ReadonlyRestPlugin(esVersion: String,
         .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
           command = s"${esDir.toString()}/jdk/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch"
         )
-        .runWhen(Version.greaterOrEqualThan(esVersion, 6, 3, 0) && Version.lowerThan(esVersion, 7, 0, 0),
+        .runWhen(Version.greaterOrEqualThan(esVersion, 6, 5, 0) && Version.lowerThan(esVersion, 7, 0, 0),
           command = s"$$JAVA_HOME/bin/java -jar ${esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch"
         )
         .user("elasticsearch")
@@ -214,6 +214,9 @@ class ReadonlyRestPlugin(esVersion: String,
             .add("readonlyrest.ssl_internode.keystore_file: ror-keystore.jks")
             .add("readonlyrest.ssl_internode.keystore_pass: readonlyrest")
             .add("readonlyrest.ssl_internode.key_pass: readonlyrest")
+            .add("readonlyrest.truststore_file: ror-keystore.jks")
+            .add("readonlyrest.truststore_pass: readonlyrest")
+            .add("readonlyrest.certificate_verification: true")
         case Enabled.Yes(InternodeSsl.RorFips(SourceFile.EsFile)) =>
           builder
             .add("transport.type: ror_ssl_internode")
@@ -221,7 +224,7 @@ class ReadonlyRestPlugin(esVersion: String,
             .add("readonlyrest.ssl_internode.keystore_file: ror-keystore.bcfks")
             .add("readonlyrest.ssl_internode.keystore_pass: readonlyrest")
             .add("readonlyrest.ssl_internode.key_pass: readonlyrest")
-            .add("truststore_file: ror-truststore.bcfks")
+            .add("truststore_file: ror-truststore.bcfks") // todo:
             .add("truststore_pass: readonlyrest")
             .add("certificate_verification: true")
         case Enabled.Yes(InternodeSsl.Ror(SourceFile.RorFile)) =>

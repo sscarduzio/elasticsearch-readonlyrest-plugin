@@ -144,7 +144,7 @@ class SslConfigurationTest
     "be loaded from elasticsearch config file" in {
       val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().toOption.get
       inside(ssl.interNodeSsl) {
-        case Some(InternodeSslConfiguration(KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), truststoreConfiguration, allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled)) =>
+        case Some(InternodeSslConfiguration(KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), truststoreConfiguration, allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled, hostnameVerificationEnabled)) =>
           keystoreFile.value.getName should be("ror-keystore.jks")
           keystorePassword should be(KeystorePassword("readonlyrest1"))
           keyPass should be(KeyPass("readonlyrest2"))
@@ -153,13 +153,14 @@ class SslConfigurationTest
           allowedCiphers should be(Set.empty)
           clientAuthenticationEnabled should be(false)
           certificateVerificationEnabled should be(true)
+          hostnameVerificationEnabled should be (true)
       }
       ssl.externalSsl should be(None)
     }
     "be loaded from elasticsearch config file when pem files are used" in {
       val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_pem_files/")).runSyncUnsafe().toOption.get
       inside(ssl.interNodeSsl) {
-        case Some(InternodeSslConfiguration(FileBasedConfiguration(serverCertificateKeyFile, serverCertificateFile), Some(ClientCertificateConfiguration.FileBasedConfiguration(clientTrustedCertificateFile)), allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled)) =>
+        case Some(InternodeSslConfiguration(FileBasedConfiguration(serverCertificateKeyFile, serverCertificateFile), Some(ClientCertificateConfiguration.FileBasedConfiguration(clientTrustedCertificateFile)), allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled, hostnameVerificationEnabled)) =>
           serverCertificateKeyFile.value.getName should be("server_certificate_key.pem")
           serverCertificateFile.value.getName should be("server_certificate.pem")
           clientTrustedCertificateFile.value.getName should be("client_certificate.pem")
@@ -167,13 +168,14 @@ class SslConfigurationTest
           allowedCiphers should be(Set.empty)
           clientAuthenticationEnabled should be(false)
           certificateVerificationEnabled should be(true)
+          hostnameVerificationEnabled should be (false)
       }
     }
     "be loaded from readonlyrest config file" when {
       "elasticsearch config file doesn't contain ROR ssl section" in {
         val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_readonlyrest_config/")).runSyncUnsafe().toOption.get
         inside(ssl.interNodeSsl) {
-          case Some(InternodeSslConfiguration(KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateConfiguration.TruststoreBasedConfiguration(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled)) =>
+          case Some(InternodeSslConfiguration(KeystoreBasedConfiguration(keystoreFile, Some(keystorePassword), None, Some(keyPass)), Some(ClientCertificateConfiguration.TruststoreBasedConfiguration(truststoreFile, Some(truststorePassword))), allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled, hostnameVerificationEnabled)) =>
             keystoreFile.value.getName should be("ror-keystore.jks")
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
@@ -183,6 +185,7 @@ class SslConfigurationTest
             allowedCiphers should be(Set.empty)
             clientAuthenticationEnabled should be(false)
             certificateVerificationEnabled should be(true)
+            hostnameVerificationEnabled should be (true)
         }
         ssl.externalSsl should be(None)
       }

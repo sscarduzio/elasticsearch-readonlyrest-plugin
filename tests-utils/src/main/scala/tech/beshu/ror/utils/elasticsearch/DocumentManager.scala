@@ -16,10 +16,11 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
+import better.files.File
 import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods._
-import org.apache.http.entity.StringEntity
+import org.apache.http.entity.{FileEntity, StringEntity}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.DocumentManager.BulkAction
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
@@ -82,11 +83,8 @@ class DocumentManager(restClient: RestClient, esVersion: String)
     call(createBulkRequest(NonEmptyList.of(action, actions: _*)), new JsonResponse(_))
   }
 
-  def bulkUnsafe(actions: BulkAction*): JsonResponse = {
-    actions.toList match {
-      case Nil => throw new IllegalArgumentException("At least one line should be passed to _bulk query")
-      case head :: rest => bulk(head, rest: _*)
-    }
+  def bulk(actionsFile: File): JsonResponse = {
+    call(createBulkRequest(actionsFile), new JsonResponse(_))
   }
 
   private def createDocPath(index: String, `type`: String, id: String) = {
@@ -160,6 +158,13 @@ class DocumentManager(restClient: RestClient, esVersion: String)
 
     val payload = (lines :+ "\n").foldLeft("") { case (acc, elem) => s"$acc\n$elem" }
     request.setEntity(new StringEntity(payload))
+    request
+  }
+
+  private def createBulkRequest(ndJsonfile: File): HttpUriRequest = {
+    val request = new HttpPost(restClient.from("_bulk"))
+    request.addHeader("Content-Type", "application/x-ndjson")
+    request.setEntity(new FileEntity(ndJsonfile.toJava))
     request
   }
 

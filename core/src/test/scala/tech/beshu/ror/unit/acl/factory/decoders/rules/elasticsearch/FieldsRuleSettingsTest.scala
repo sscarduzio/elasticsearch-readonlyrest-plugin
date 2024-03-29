@@ -37,7 +37,6 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -56,7 +55,6 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -77,7 +75,6 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -96,7 +93,6 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -117,7 +113,6 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -204,7 +199,6 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -224,7 +218,6 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1
@@ -244,7 +237,6 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
             yaml =
               """
                 |readonlyrest:
-                |
                 |  access_control_rules:
                 |
                 |  - name: test_block1

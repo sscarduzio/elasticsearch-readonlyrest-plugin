@@ -40,7 +40,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVa
 import tech.beshu.ror.accesscontrol.blocks._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupIdAttribute, GroupSearchFilter, GroupsFromUserAttribute, UniqueMemberAttribute}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.{ActionsRule, FieldsRule, FilterRule, ResponseFieldsRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
@@ -56,7 +56,7 @@ import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{B
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
-import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.KibanaUserDataRuleTogetherWith
+import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith}
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
@@ -374,10 +374,16 @@ object show {
         s"The '${block.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule."
       case BlockValidationError.OnlyOneAuthenticationRuleAllowed(authRules) =>
         s"The '${block.show}' block should contain only one authentication rule, but contains: [${authRules.map(_.name.show).mkString_(",")}]"
-      case BlockValidationError.KibanaRuleTogetherWithActionsRule =>
-        s"The '${block.show}' block contains '${KibanaUserDataRule.Name.name.show}' rule (or deprecated '${KibanaAccessRule.Name.name.show}' rule) and '${ActionsRule.Name.name.show}' rule. These two cannot be used together in one block."
       case BlockValidationError.RuleDoesNotMeetRequirement(complianceResult) =>
         s"The '${block.show}' block doesn't meet requirements for defined variables. ${complianceResult.show}"
+      case error: BlockValidationError.KibanaRuleTogetherWith =>
+        val conflictingRule = error match {
+          case KibanaRuleTogetherWith.ActionsRule => ActionsRule.Name.name
+          case KibanaRuleTogetherWith.FilterRule => FilterRule.Name.name
+          case KibanaRuleTogetherWith.FieldsRule => FieldsRule.Name.name
+          case KibanaRuleTogetherWith.ResponseFieldsRule => ResponseFieldsRule.Name.name
+        }
+        s"The '${block.show}' block contains '${KibanaUserDataRule.Name.name.show}' rule (or any deprecated kibana-related rule) and '${conflictingRule.show}' rule. These two cannot be used together in one block."
       case error: BlockValidationError.KibanaUserDataRuleTogetherWith =>
         val conflictingRule = error match {
           case KibanaUserDataRuleTogetherWith.KibanaAccessRule => KibanaAccessRule.Name.name
