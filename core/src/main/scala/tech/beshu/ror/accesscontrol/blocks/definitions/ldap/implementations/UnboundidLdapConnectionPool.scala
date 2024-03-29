@@ -20,7 +20,6 @@ import com.unboundid.ldap.sdk._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
-import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Corr
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
@@ -33,7 +32,6 @@ import scala.jdk.CollectionConverters._
 class UnboundidLdapConnectionPool(poolName: String,
                                   connectionPool: LDAPConnectionPool,
                                   bindRequestUser: BindRequestUser)
-                                 (implicit blockingScheduler: Scheduler)
   extends Logging {
 
   def asyncBind(request: BindRequest)(implicit corr: Corr): Task[BindResult] = {
@@ -42,8 +40,8 @@ class UnboundidLdapConnectionPool(poolName: String,
     )
       .flatMap { _ =>
         bind(request)
-          .executeOn(blockingScheduler)
-          .asyncBoundary
+//          .executeOn(blockingScheduler)
+//          .asyncBoundary
       }
       .map { r =>
         logger.trace(s"[$corr] Bind response: $r")
@@ -65,7 +63,7 @@ class UnboundidLdapConnectionPool(poolName: String,
         logger.trace(s"[$corr] UNBOUNDID [${Thread.currentThread().toString()}] ${this.hashCode()} [$poolName]: result ${r.toString}")
         r
       }
-      .executeOn(blockingScheduler)
+//      .executeOn(blockingScheduler)
       .flatMap { results =>
         results.asScala.toList match {
           case Nil => throw new IllegalStateException("LDAP - expected at least one result")
@@ -74,7 +72,7 @@ class UnboundidLdapConnectionPool(poolName: String,
             else searchResultListener.result
         }
       }
-      .asyncBoundary
+//      .asyncBoundary
   }
 
   def close(): Task[Unit] = {

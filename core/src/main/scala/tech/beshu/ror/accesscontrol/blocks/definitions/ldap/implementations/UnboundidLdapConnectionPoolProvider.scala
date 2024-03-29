@@ -27,7 +27,6 @@ import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import io.lemonlabs.uri.UrlWithAuthority
 import monix.eval.Task
-import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
@@ -36,7 +35,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostnameResolver
 import tech.beshu.ror.accesscontrol.domain.{Address, PlainTextSecret}
 import tech.beshu.ror.accesscontrol.utils.ReleseablePool
-import tech.beshu.ror.boot.RorSchedulers.ldapUnboundIdBlockingScheduler
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.ScalaOps._
 
@@ -46,8 +44,6 @@ import scala.util.Try
 import scala.util.control.NonFatal
 
 class UnboundidLdapConnectionPoolProvider {
-
-  implicit val ldapUnboundIdBlockingSchedulerImplicit: Scheduler = ldapUnboundIdBlockingScheduler
 
   import UnboundidLdapConnectionPoolProvider._
 
@@ -66,8 +62,8 @@ class UnboundidLdapConnectionPoolProvider {
     Task
       .delay(createLdapConnectionPoolFrom(connectionConfig))
       .map(new UnboundidLdapConnectionPool(connectionConfig.poolName, _, connectionConfig.bindRequestUser))
-      .executeOn(ldapUnboundIdBlockingSchedulerImplicit)
-      .asyncBoundary
+//      .executeOn(ldapUnboundIdBlockingSchedulerImplicit)
+//      .asyncBoundary
   }
 
   private def createLdapConnectionPoolFrom(connectionConfig: LdapConnectionConfig) = {
@@ -79,7 +75,9 @@ class UnboundidLdapConnectionPoolProvider {
       connectionConfig.poolSize.value,
       null
     )
-    pool.setConnectionPoolName("ROR-unboundid-connection-pool")
+    pool.setConnectionPoolName(s"ROR-unboundid-connection-pool-${connectionConfig.poolName}")
+    pool.setRetryFailedOperationsDueToInvalidConnections(true)
+    pool.setCreateIfNecessary(true)
     pool
   }
 
@@ -169,8 +167,8 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
         logger.error("LDAP binding exception", ex)
         Left(toConnectionError(connectionConfig))
       }
-      .executeOn(ldapUnboundIdBlockingScheduler)
-      .asyncBoundary
+//      .executeOn(ldapUnboundIdBlockingScheduler)
+//      .asyncBoundary
   }
 
   private def resolveHostnames(connectionConfig: LdapConnectionConfig): EitherT[Task, ConnectionError, Unit] = {

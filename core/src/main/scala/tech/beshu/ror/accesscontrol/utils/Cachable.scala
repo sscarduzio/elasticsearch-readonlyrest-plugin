@@ -62,7 +62,7 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: FiniteDuration Refined Positi
         logger.trace(s"[$corr] CACHEABLE ${this.hashCode()}: call key: $mappedKey - semaphore acquired")
       }
       cachedValue <- semaphore.withPermit {
-        getFromCacheOrRunAction(key, mappedKey).uncancelable
+        getFromCacheOrRunAction(key, mappedKey).uncancelable.asyncBoundary
       }
     } yield cachedValue
   }
