@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 import eu.timepit.refined.auto._
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
-import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod
+import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, JwtDef}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthRule.Groups
@@ -29,7 +29,6 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
-import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -69,7 +68,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(None)
+            rule.settings.jwt.groupsConfig should be(None)
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -97,7 +96,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(None)
+            rule.settings.jwt.groupsConfig should be(None)
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -127,7 +126,7 @@ class JwtAuthRuleSettingsTests
               rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
               rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
               rule.settings.jwt.userClaim should be(None)
-              rule.settings.jwt.groupsClaim should be(None)
+              rule.settings.jwt.groupsConfig should be(None)
               rule.settings.permittedGroups should be(Groups.Defined(GroupsLogic.Or(PermittedGroupIds(
                 UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
               ))))
@@ -160,7 +159,7 @@ class JwtAuthRuleSettingsTests
               rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
               rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
               rule.settings.jwt.userClaim should be(None)
-              rule.settings.jwt.groupsClaim should be(None)
+              rule.settings.jwt.groupsConfig should be(None)
               rule.settings.permittedGroups should be(Groups.Defined(GroupsLogic.And(PermittedGroupIds(
                 UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
               ))))
@@ -192,7 +191,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(headerNameFrom("X-JWT-Custom-Header"), "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(None)
+            rule.settings.jwt.groupsConfig should be(None)
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -221,7 +220,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(headerNameFrom("X-JWT-Custom-Header"), "MyPrefix "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(None)
+            rule.settings.jwt.groupsConfig should be(None)
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -249,7 +248,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "MyPrefix "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(None)
+            rule.settings.jwt.groupsConfig should be(None)
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -278,7 +277,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(headerNameFrom("X-JWT-Custom-Header"), ""))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(None)
+            rule.settings.jwt.groupsConfig should be(None)
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -305,13 +304,76 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-            rule.settings.jwt.userClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("user"))))
-            rule.settings.jwt.groupsClaim should be(None)
+            rule.settings.jwt.userClaim should be(Some(domain.Jwt.ClaimName(jsonPathFrom("user"))))
+            rule.settings.jwt.groupsConfig should be(None)
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
       }
-      "roles claim can be enabled in JWT definition" in {
+      "group IDs claim can be enabled in JWT definition" in {
+        val claimKeys = List("roles_claim", "groups_claim", "group_ids_claim")
+        claimKeys.foreach { claimKey =>
+          assertDecodingSuccess(
+            yaml =
+              s"""
+                |readonlyrest:
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    jwt_auth: jwt1
+                |
+                |  jwt:
+                |
+                |  - name: jwt1
+                |    $claimKey: groups
+                |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                |
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
+              rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+              rule.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
+              rule.settings.jwt.userClaim should be(None)
+              rule.settings.jwt.groupsConfig should be(Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)))
+              rule.settings.permittedGroups should be(Groups.NotDefined)
+            }
+          )
+        }
+      }
+      "group names claim can be enabled in JWT definition" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    jwt_auth: jwt1
+               |
+               |  jwt:
+               |
+               |  - name: jwt1
+               |    group_ids_claim: groups
+               |    group_names_claim: group_names
+               |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+               |
+               |""".stripMargin,
+          assertion = rule => {
+            rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
+            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+            rule.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
+            rule.settings.jwt.userClaim should be(None)
+            rule.settings.jwt.groupsConfig should be(Some(GroupsConfig(
+              idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups")),
+              namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("group_names")))
+            )))
+            rule.settings.permittedGroups should be(Groups.NotDefined)
+          }
+        )
+      }
+      "groups claim can be enabled in JWT definition and is a http address" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -325,7 +387,7 @@ class JwtAuthRuleSettingsTests
               |  jwt:
               |
               |  - name: jwt1
-              |    roles_claim: groups
+              |    group_ids_claim: "https://{domain}/claims/roles"
               |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
               |
               |""".stripMargin,
@@ -334,35 +396,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("groups"))))
-            rule.settings.permittedGroups should be(Groups.NotDefined)
-          }
-        )
-      }
-      "roles claim can be enabled in JWT definition and is a http address" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_auth: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    roles_claim: "https://{domain}/claims/roles"
-              |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
-            rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-            rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("https://{domain}/claims/roles"))))
+            rule.settings.jwt.groupsConfig should be(Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("https://{domain}/claims/roles")), None)))
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -382,7 +416,7 @@ class JwtAuthRuleSettingsTests
               |  jwt:
               |
               |  - name: jwt1
-              |    roles_claim: groups
+              |    group_ids_claim: groups
               |    signature_algo: "RSA"
               |    signature_key: "${Base64.getEncoder.encodeToString(pkey.getEncoded)}"
               |
@@ -392,7 +426,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("groups"))))
+            rule.settings.jwt.groupsConfig should be(Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)))
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -411,7 +445,7 @@ class JwtAuthRuleSettingsTests
                |  jwt:
                |
                |  - name: jwt1
-               |    roles_claim: groups
+               |    group_ids_claim: groups
                |    signature_algo: "RSA"
                |    signature_key: "env:SECRET_RSA"
                |
@@ -421,7 +455,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("groups"))))
+            rule.settings.jwt.groupsConfig should be(Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)))
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -442,7 +476,7 @@ class JwtAuthRuleSettingsTests
                |  jwt:
                |
                |  - name: jwt1
-               |    roles_claim: groups
+               |    group_ids_claim: groups
                |    signature_algo: "RSA"
                |    signature_key: "@{env:SECRET_RSA}"
                |
@@ -452,7 +486,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("groups"))))
+            rule.settings.jwt.groupsConfig should be(Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)))
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -472,7 +506,7 @@ class JwtAuthRuleSettingsTests
                |  jwt:
                |
                |  - name: jwt1
-               |    roles_claim: groups
+               |    group_ids_claim: groups
                |    signature_algo: "EC"
                |    signature_key: "text: ${Base64.getEncoder.encodeToString(pkey.getEncoded)}"
                |
@@ -482,7 +516,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Ec]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("groups"))))
+            rule.settings.jwt.groupsConfig should be(Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)))
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -501,7 +535,7 @@ class JwtAuthRuleSettingsTests
                |  jwt:
                |
                |  - name: jwt1
-               |    roles_claim: groups
+               |    group_ids_claim: groups
                |    signature_algo: "NONE"
                |    external_validator:
                |      url: "http://192.168.0.1:8080/jwt"
@@ -517,7 +551,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.NoCheck]
             rule.settings.jwt.checkMethod.asInstanceOf[SignatureCheckMethod.NoCheck].service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("groups"))))
+            rule.settings.jwt.groupsConfig should be(Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")),None)))
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -536,7 +570,7 @@ class JwtAuthRuleSettingsTests
                |  jwt:
                |
                |  - name: jwt1
-               |    roles_claim: groups
+               |    group_ids_claim: groups
                |    signature_algo: "NONE"
                |    external_validator:
                |      url: "http://192.168.0.1:8080/jwt"
@@ -555,7 +589,7 @@ class JwtAuthRuleSettingsTests
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.NoCheck]
             rule.settings.jwt.checkMethod.asInstanceOf[SignatureCheckMethod.NoCheck].service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
             rule.settings.jwt.userClaim should be(None)
-            rule.settings.jwt.groupsClaim should be(Some(domain.Jwt.ClaimName(JsonPath.compile("groups"))))
+            rule.settings.jwt.groupsConfig should be(Some(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")),None)))
             rule.settings.permittedGroups should be(Groups.NotDefined)
           }
         )
@@ -1072,6 +1106,60 @@ class JwtAuthRuleSettingsTests
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10")))
+          }
+        )
+      }
+      "group IDs claim json path is malformed" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    jwt_auth: jwt1
+               |
+               |  jwt:
+               |
+               |  - name: jwt1
+               |    group_ids_claim: "$$..groups[?.id)].id_malformed"
+               |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+               |
+               |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message(
+              """Cannot compile '$..groups[?.id)].id_malformed' to JSON path""".stripMargin
+            )))
+          }
+        )
+
+      }
+      "group names claim json path is malformed" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    jwt_auth: jwt1
+               |
+               |  jwt:
+               |
+               |  - name: jwt1
+               |    group_ids_claim: groups
+               |    group_names_claim: "$$..groups[?.id)].name_malformed"
+               |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+               |
+               |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message(
+              """Cannot compile '$..groups[?.id)].name_malformed' to JSON path""".stripMargin
+            )))
           }
         )
       }

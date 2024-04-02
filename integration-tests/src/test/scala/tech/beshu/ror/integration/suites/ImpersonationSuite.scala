@@ -128,7 +128,16 @@ class ImpersonationSuite
                  |        "users" : [
                  |          {
                  |            "name": "ldap_user_2",
-                 |            "groups": ["group1", "group3"]
+                 |            "groups": [
+                 |              {
+                 |                "id": "group1",
+                 |                "name": "group1"
+                 |              },
+                 |              {
+                 |                "id": "group3",
+                 |                "name": "group3"
+                 |              }
+                 |            ]
                  |          }
                  |        ]
                  |      }
@@ -161,7 +170,16 @@ class ImpersonationSuite
                  |        "users" : [
                  |          {
                  |            "name": "ldap_user_1",
-                 |            "groups": ["group1", "group2"]
+                 |            "groups": [
+                 |              {
+                 |                "id": "group1",
+                 |                "name": "group1"
+                 |              },
+                 |              {
+                 |                "id": "group2",
+                 |                "name": "group2"
+                 |              }
+                 |            ]
                  |          }
                  |        ]
                  |      }
@@ -272,8 +290,32 @@ class ImpersonationSuite
                  |      "name": "grp2",
                  |      "mock": {
                  |        "users" : [
-                 |          { "name": "gpa_user_1",  "groups": ["group4", "group5"]},
-                 |          { "name": "gpa_user_1a", "groups": ["group4a", "group5a"] }
+                 |          {
+                 |            "name": "gpa_user_1",
+                 |            "groups": [
+                 |              {
+                 |                "id": "group4",
+                 |                "name": "group4"
+                 |              },
+                 |              {
+                 |                "id": "group5",
+                 |                "name": "group5"
+                 |              }
+                 |            ]
+                 |          },
+                 |          {
+                 |            "name": "gpa_user_1a",
+                 |            "groups": [
+                 |              {
+                 |                "id": "group4a",
+                 |                "name": "group4a"
+                 |              },
+                 |              {
+                 |                "id": "group5a",
+                 |                "name": "group5a"
+                 |              }
+                 |            ]
+                 |          }
                  |        ]
                  |      }
                  |    }
@@ -303,8 +345,32 @@ class ImpersonationSuite
                  |      "name": "grp1",
                  |      "mock": {
                  |        "users" : [
-                 |          { "name": "gpa_user_1",  "groups": ["group4", "group5"]},
-                 |          { "name": "gpa_user_1a", "groups": ["group4a", "group5a"] }
+                 |          {
+                 |            "name": "gpa_user_1",
+                 |            "groups": [
+                 |              {
+                 |                "id": "group4",
+                 |                "name": "group4"
+                 |              },
+                 |              {
+                 |                "id": "group5",
+                 |                "name": "group5"
+                 |              }
+                 |            ]
+                 |          },
+                 |          {
+                 |            "name": "gpa_user_1a",
+                 |            "groups": [
+                 |              {
+                 |                "id": "group4a",
+                 |                "name": "group4a"
+                 |              },
+                 |              {
+                 |                "id": "group5a",
+                 |                "name": "group5a"
+                 |              }
+                 |            ]
+                 |          }
                  |        ]
                  |      }
                  |    }
@@ -337,7 +403,16 @@ class ImpersonationSuite
                  |        "users" : [
                  |          {
                  |            "name": "ldap_user_2",
-                 |            "groups": ["group1", "group3"]
+                 |            "groups": [
+                 |              {
+                 |                "id": "group1",
+                 |                "name": "group1"
+                 |              },
+                 |              {
+                 |                "id": "group3",
+                 |                "name": "group3"
+                 |              }
+                 |            ]
                  |          }
                  |        ]
                  |      }
@@ -377,7 +452,16 @@ class ImpersonationSuite
                  |        "users" : [
                  |          {
                  |            "name": "ldap_user_1",
-                 |            "groups": ["group1", "group2"]
+                 |            "groups": [
+                 |              {
+                 |                "id": "group1",
+                 |                "name": "group1"
+                 |              },
+                 |              {
+                 |                "id": "group2",
+                 |                "name": "group2"
+                 |              }
+                 |            ]
                  |          }
                  |        ]
                  |      }
@@ -440,7 +524,16 @@ class ImpersonationSuite
                |        "users" : [
                |          {
                |            "name": "ldap_user_1",
-               |            "groups": ["group1", "group2"]
+               |            "groups": [
+               |              {
+               |                "id": "group1",
+               |                "name": "group1"
+               |              },
+               |              {
+               |                "id": "group2",
+               |                "name": "group2"
+               |              }
+               |            ]
                |          }
                |        ]
                |      }
@@ -480,7 +573,16 @@ class ImpersonationSuite
                |        "users" : [
                |          {
                |            "name": "ldap_user_1",
-               |            "groups": ["group1", "group2"]
+               |            "groups": [
+               |              {
+               |                "id": "group1",
+               |                "name": "group1"
+               |              },
+               |              {
+               |                "id": "group2",
+               |                "name": "group2"
+               |              }
+               |            ]
                |          }
                |        ]
                |      }
@@ -617,7 +719,16 @@ class ImpersonationSuite
            |        "users" : [
            |          {
            |            "name": "ldap_user_1",
-           |            "groups": ["group1", "group2"]
+           |            "groups": [
+           |              {
+           |                "id": "group1",
+           |                "name": "group1"
+           |              },
+           |              {
+           |                "id": "group2",
+           |                "name": "group2"
+           |              }
+           |            ]
            |          }
            |        ]
            |      }
@@ -629,7 +740,16 @@ class ImpersonationSuite
            |        "users" : [
            |          {
            |            "name": "ldap_user_2",
-           |            "groups": ["group1", "group2"]
+           |            "groups": [
+           |              {
+           |                "id": "group1",
+           |                "name": "group1"
+           |              },
+           |              {
+           |                "id": "group2",
+           |                "name": "group2"
+           |              }
+           |            ]
            |          }
            |        ]
            |      }
@@ -657,8 +777,32 @@ class ImpersonationSuite
            |      "name": "grp1",
            |      "mock": {
            |        "users" : [
-           |          { "name": "gpa_user_1",  "groups": ["group4", "group5"]},
-           |          { "name": "gpa_user_1a", "groups": ["group4a", "group5a"] }
+           |          {
+           |            "name": "gpa_user_1",
+           |            "groups": [
+           |              {
+           |                "id": "group4",
+           |                "name": "group4"
+           |              },
+           |              {
+           |                "id": "group5",
+           |                "name": "group5"
+           |              }
+           |            ]
+           |          },
+           |          {
+           |            "name": "gpa_user_1a",
+           |            "groups": [
+           |              {
+           |                "id": "group4a",
+           |                "name": "group4a"
+           |              },
+           |              {
+           |                "id": "group5a",
+           |                "name": "group5a"
+           |              }
+           |            ]
+           |          }
            |        ]
            |      }
            |    },
@@ -667,8 +811,32 @@ class ImpersonationSuite
            |      "name": "grp2",
            |      "mock": {
            |        "users" : [
-           |          { "name": "gpa_user_2",  "groups": ["group4", "group5"]},
-           |          { "name": "gpa_user_2a", "groups": ["group4a", "group5a"] }
+           |          {
+           |            "name": "gpa_user_2",
+           |            "groups": [
+           |              {
+           |                "id": "group4",
+           |                "name": "group4"
+           |              },
+           |              {
+           |                "id": "group5",
+           |                "name": "group5"
+           |              }
+           |            ]
+           |          },
+           |          {
+           |            "name": "gpa_user_2a",
+           |            "groups": [
+           |              {
+           |                "id": "group4a",
+           |                "name": "group4a"
+           |              },
+           |              {
+           |                "id": "group5a",
+           |                "name": "group5a"
+           |              }
+           |            ]
+           |          }
            |        ]
            |      }
            |    }

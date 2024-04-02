@@ -252,6 +252,27 @@ object CirceOps {
     def aclCreationError: Option[CoreCreationError] =
       parse(decodingFailure.message).flatMap(Decoder[CoreCreationError].decodeJson).toOption
 
+
+    def modifyError(updateErrorMessage: String => String): DecodingFailure = {
+      aclCreationError
+        .map { error =>
+          val updatedReason = error.reason match {
+            case Message(value) => Message(updateErrorMessage(value))
+            case MalformedValue(value) => MalformedValue(updateErrorMessage(value))
+          }
+          val updatedError = error match {
+            case e: CoreCreationError.GeneralReadonlyrestSettingsError => e.copy(updatedReason)
+            case e: CoreCreationError.DefinitionsLevelCreationError => e.copy(updatedReason)
+            case e: CoreCreationError.BlocksLevelCreationError => e.copy(updatedReason)
+            case e: CoreCreationError.RulesLevelCreationError => e.copy(updatedReason)
+            case e: ValueLevelCreationError => e.copy(updatedReason)
+            case e: CoreCreationError.AuditingSettingsCreationError => e.copy(updatedReason)
+          }
+          decodingFailure.withMessage(stringify(updatedError))
+        }
+        .getOrElse(decodingFailure.withMessage(updateErrorMessage(decodingFailure.message)))
+    }
+
   }
 
   object DecodingFailureOps {
@@ -302,6 +323,12 @@ object CirceOps {
     def downNonEmptyOptionalField(name: String): Decoder.Result[Option[NonEmptyString]] = {
       import tech.beshu.ror.accesscontrol.factory.decoders.common.nonEmptyStringDecoder
       downFields(name).asWithError[Option[NonEmptyString]](s"Field $name cannot be empty")
+    }
+
+    def downFieldAs[T: Decoder](name: String): Decoder.Result[T] = {
+      value.downField(name).as[T].adaptError {
+        case error: DecodingFailure => error.modifyError(errorMessage => s"Error for field '$name': $errorMessage")
+      }
     }
 
     def withoutKeys(keys: Set[String]): ACursor = {

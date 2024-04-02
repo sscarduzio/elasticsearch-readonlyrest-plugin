@@ -32,6 +32,13 @@ dependencies {
     implementation group: 'org.scala-lang',     name: 'scala-library',      version: '2.13.13'
 }
 
+tasks.withType(ScalaCompile).configureEach {
+    scalaCompileOptions.forkOptions.with {
+        memoryMaximumSize = '1g'
+        jvmArgs = ['-XX:MaxMetaspaceSize=512m']
+    }
+}
+
 test {
     reports {
         junitXml.getRequired().set(true)

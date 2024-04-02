@@ -152,7 +152,7 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
             |    groups_endpoint: "http://localhost:8080/groups"
             |    auth_token_name: "user"
             |    auth_token_passed_as: QUERY_PARAM
-            |    response_groups_json_path: "$..groups[?(@.name)].name"
+            |    response_group_ids_json_path: "$..groups[?(@.id)].id"
             |
             |""".stripMargin
 
@@ -264,7 +264,7 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
             |    groups_endpoint: "http://localhost:8080/groups"
             |    auth_token_name: "user"
             |    auth_token_passed_as: QUERY_PARAM
-            |    response_groups_json_path: "$..groups[?(@.name)].name"
+            |    response_group_ids_json_path: "$..groups[?(@.id)].id"
             |
             |""".stripMargin
 

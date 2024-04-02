@@ -19,11 +19,16 @@ package tech.beshu.ror.unit.acl.factory.decoders.definitions
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
+import monix.execution.Scheduler.Implicits.global
+import org.joor.Reflect.on
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.{UserGroupsSearchFilterConfig, _}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.{Cn, CustomAttribute}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder
@@ -31,15 +36,10 @@ import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
 import tech.beshu.ror.utils.containers.LdapWithDnsContainer
 
-import scala.concurrent.duration._
-import scala.language.postfixOps
-import org.joor.Reflect.on
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.{Cn, CustomAttribute}
-import monix.execution.Scheduler.Implicits.global
 import java.time.Clock
 import scala.annotation.tailrec
+import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.reflect.ClassTag
 
 class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider)
@@ -460,7 +460,8 @@ class LdapServicesSettingsTests private(ldapConnectionPoolProvider: UnboundidLda
               definitions.items should have size 1
               val ldapService = definitions.items.head
               ldapService shouldBe a[CircuitBreakerLdapServiceDecorator]
-              ldapService.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
+              ldapService.asInstanceOf[CircuitBreakerLdapServiceDecorator].circuitBreakerConfig shouldBe
+                CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
               ldapService.id should be(LdapService.Name("ldap1"))
 
               val groupsSearchFilterConfig = getGroupsSearchFilterConfigFrom(

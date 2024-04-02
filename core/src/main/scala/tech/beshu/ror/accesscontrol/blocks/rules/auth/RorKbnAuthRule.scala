@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps._
-import tech.beshu.ror.com.jayway.jsonpath.JsonPath
+import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.util.Try
@@ -107,7 +107,7 @@ final class RorKbnAuthRule(val settings: Settings,
         (
           tokenPayload,
           tokenPayload.claims.userIdClaim(RorKbnAuthRule.userClaimName),
-          tokenPayload.claims.groupsClaim(RorKbnAuthRule.groupsClaimName),
+          tokenPayload.claims.groupsClaim(groupIdsClaimName = RorKbnAuthRule.groupIdsClaimName, groupNamesClaimName = None),
           tokenPayload.claims.headerNameClaim(Header.Name.xUserOrigin)
         )
       }
@@ -181,6 +181,6 @@ object RorKbnAuthRule {
     final case class Defined(groupsLogic: GroupsLogic) extends Groups
   }
 
-  private val userClaimName = Jwt.ClaimName(JsonPath.compile("user"))
-  private val groupsClaimName = Jwt.ClaimName(JsonPath.compile("groups"))
+  private val userClaimName = Jwt.ClaimName(JsonPath("user").get)
+  private val groupIdsClaimName = Jwt.ClaimName(JsonPath("groups").get)
 }
