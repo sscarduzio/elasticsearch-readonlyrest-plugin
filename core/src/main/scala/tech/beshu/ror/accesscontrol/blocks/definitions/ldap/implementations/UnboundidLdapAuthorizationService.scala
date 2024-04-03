@@ -22,14 +22,14 @@ import com.unboundid.ldap.sdk._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.SearchResultEntryOps._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Corr, LdapAuthorizationService, LdapService, LdapUser}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationService, LdapService, LdapUser}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, User}
-import tech.beshu.ror.utils.LoggerOps.toLoggerOps
 import tech.beshu.ror.utils.TaskOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -49,16 +49,16 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
     .nestedGroupsConfig
     .map(new UnboundidLdapNestedGroupsService(connectionPool, _, serviceTimeout))
 
-  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]] = {
+  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit requestId: RequestId): Task[UniqueList[Group]] = {
     Task.measure(
       doFetchGroupsOf(id, filteringGroupIds),
       measurement => Task.delay {
-        logger.debug(s"LDAP groups fetching took $measurement")
+        logger.debug(s"[${requestId.show}] LDAP groups fetching took $measurement")
       }
     )
   }
 
-  private def doFetchGroupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]] = {
+  private def doFetchGroupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit requestId: RequestId): Task[UniqueList[Group]] = {
     ldapUserBy(id)
       .flatMap {
         case Some(user) =>
@@ -75,7 +75,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
 
   private def groupsFrom(mode: DefaultGroupSearch,
                          user: LdapUser,
-                         filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]] = {
+                         filteringGroupIds: Set[GroupIdLike])(implicit requestId: RequestId): Task[UniqueList[Group]] = {
     connectionPool
       .process(searchUserGroupsLdapRequest(_, mode, user, filteringGroupIds), serviceTimeout)
       .flatMap {
@@ -88,16 +88,13 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
             UniqueList.fromIterable(allGroups.map(_.id))
           }
         case Left(errorResult) =>
-          logger.error(s"LDAP getting user groups returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
+          logger.error(s"[${requestId.show}] LDAP getting user groups returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .map(asGroups)
-      .onError { case ex =>
-        Task(logger.errorEx(s"LDAP getting user groups returned error", ex))
-      }
   }
 
-  private def groupsFrom(mode: GroupsFromUserEntry, user: LdapUser)(implicit corr: Corr): Task[UniqueList[Group]] = {
+  private def groupsFrom(mode: GroupsFromUserEntry, user: LdapUser)(implicit requestId: RequestId): Task[UniqueList[Group]] = {
     connectionPool
       .process(searchUserGroupsLdapRequest(_, mode, user), serviceTimeout)
       .flatMap {
@@ -110,27 +107,28 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
             UniqueList.fromIterable(allGroups.map(_.id))
           }
         case Left(errorResult) if errorResult.getResultCode == ResultCode.NO_SUCH_OBJECT && !user.confirmed =>
-          logger.error(s"LDAP getting user groups returned error [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
+          logger.error(s"[${requestId.show}] LDAP getting user groups returned error [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.now(UniqueList.empty[GroupId])
         case Left(errorResult) =>
-          logger.error(s"LDAP getting user groups returned error [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
+          logger.error(s"[${requestId.show}] LDAP getting user groups returned error [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .map(asGroups)
       .onError { case ex =>
-        Task(logger.errorEx(s"LDAP getting user groups returned error", ex))
+        Task(logger.error(s"[${requestId.show}] LDAP getting user groups returned error", ex))
       }
   }
 
   private def searchUserGroupsLdapRequest(listener: AsyncSearchResultListener,
                                           mode: DefaultGroupSearch,
                                           user: LdapUser,
-                                          filteringGroupIds: Set[GroupIdLike]): LDAPRequest = {
+                                          filteringGroupIds: Set[GroupIdLike])
+                                         (implicit requestId: RequestId): LDAPRequest = {
     val baseDn = mode.searchGroupBaseDN.value.value
     val scope = SearchScope.SUB
     val searchFilter = searchUserGroupsLdapFilerFrom(mode, user, filteringGroupIds)
     val attribute = mode.groupIdAttribute.value.value
-    logger.debug(s"LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: $attribute]")
+    logger.debug(s"[${requestId.show}] LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: $attribute]")
     new SearchRequest(listener, baseDn, scope, searchFilter, attribute)
   }
 
@@ -157,16 +155,17 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
 
   private def searchUserGroupsLdapRequest(listener: AsyncSearchResultListener,
                                           mode: GroupsFromUserEntry,
-                                          user: LdapUser): LDAPRequest = {
+                                          user: LdapUser)
+                                         (implicit requestId: RequestId): LDAPRequest = {
     val baseDn = user.dn.value.value
     val scope = SearchScope.BASE
     val searchFilter = mode.groupSearchFilter.value.value
     val attribute = mode.groupsFromUserAttribute.value.value
-    logger.debug(s"LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: $attribute]")
+    logger.debug(s"[${requestId.show}] LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: $attribute]")
     new SearchRequest(listener, baseDn, scope, searchFilter, attribute)
   }
 
-  private def enrichWithNestedGroupsIfNecessary(mainGroups: Set[LdapGroup])(implicit corr: Corr) = {
+  private def enrichWithNestedGroupsIfNecessary(mainGroups: Set[LdapGroup])(implicit requestId: RequestId) = {
     nestedGroupsService match {
       case Some(service) => service.fetchNestedGroupsOf(mainGroups).map(_ ++ mainGroups)
       case None => Task.delay(mainGroups)

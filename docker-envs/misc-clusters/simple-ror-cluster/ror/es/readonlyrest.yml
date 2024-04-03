@@ -38,6 +38,7 @@ readonlyrest:
       connection_timeout: 1s
       request_timeout: 3s
       disable_user_authentication_optimization: true
+      connection_pool_size: 100
 
   users:
     # AP_LOG_ADMIN - docasne, nez se rozdeli AP_LOG_ADMIN skupina

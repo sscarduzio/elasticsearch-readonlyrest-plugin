@@ -22,7 +22,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Corr
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.SearchResultEntryOps._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{GroupSearchFilter, NestedGroupsConfig, UniqueMemberAttribute}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
@@ -39,14 +39,14 @@ private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: 
 
   private val ldapGroupsExplorer = new GraphNodeAncestorsExplorer[LdapGroup](
     kinshipLevel = config.nestedLevels,
-    doFetchParentNodesOf = { case (l, c) => doFetchGroupsOf(l)(c) }
+    doFetchParentNodesOf = { case (ldapGroup, requestId) => doFetchGroupsOf(ldapGroup)(requestId) }
   )
 
-  def fetchNestedGroupsOf(mainGroups: Iterable[LdapGroup])(implicit corr: Corr): Task[Set[LdapGroup]] = {
+  def fetchNestedGroupsOf(mainGroups: Iterable[LdapGroup])(implicit requestId: RequestId): Task[Set[LdapGroup]] = {
     ldapGroupsExplorer.findAllAncestorsOf(mainGroups)
   }
 
-  private def doFetchGroupsOf(group: LdapGroup)(implicit corr: Corr) = {
+  private def doFetchGroupsOf(group: LdapGroup)(implicit requestId: RequestId) = {
     connectionPool
       .process(
         requestCreator = searchGroupsOfGroupLdapRequest(_, group),
@@ -58,21 +58,22 @@ private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: 
             results.flatMap(_.toLdapGroup(config.groupIdAttribute)).toSet
           }
         case Left(errorResult) =>
-          logger.error(s"LDAP getting groups of [${group.id.show}] group returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
+          logger.error(s"[${requestId.show}] LDAP getting groups of [${group.id.show}] group returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .onError { case ex =>
-        Task(logger.errorEx(s"LDAP getting groups of [${group.id.show}] group returned error", ex))
+        Task(logger.errorEx(s"[${requestId.show}] LDAP getting groups of [${group.id.show}] group returned error", ex))
       }
   }
 
   private def searchGroupsOfGroupLdapRequest(listener: AsyncSearchResultListener,
-                                             ldapGroup: LdapGroup): LDAPRequest = {
+                                             ldapGroup: LdapGroup)
+                                            (implicit requestId: RequestId): LDAPRequest = {
     val baseDn = config.searchGroupBaseDN.value.value
     val scope = SearchScope.SUB
     val searchFilter = searchFilterFrom(config.groupSearchFilter, config.memberAttribute, ldapGroup)
     val attribute = config.groupIdAttribute.value.value
-    logger.debug(s"LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: $attribute]")
+    logger.debug(s"[${requestId.show}] LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter, attributes: $attribute]")
     new SearchRequest(listener, baseDn, scope, searchFilter, attribute)
   }
 

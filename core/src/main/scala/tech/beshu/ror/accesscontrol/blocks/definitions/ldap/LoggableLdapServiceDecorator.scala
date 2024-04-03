@@ -21,6 +21,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, User}
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -38,18 +39,18 @@ class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticat
 
   override def id: LdapService.Name = underlying.id
 
-  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] =
+  override def ldapUserBy(userId: User.Id)(implicit requestId: RequestId): Task[Option[LdapUser]] =
     loggableLdapUserService.ldapUserBy(userId)
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit corr: Corr): Task[Boolean] = {
-    logger.debug(s"Trying to authenticate user [${user.show}] with LDAP [${id.show}]")
+  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] = {
+    logger.debug(s"[${requestId.show}] Trying to authenticate user [${user.show}] with LDAP [${id.show}]")
     underlying
       .authenticate(user, secret)
       .andThen {
         case Success(authenticationResult) =>
-          logger.debug(s"User [${user.show}]${if (authenticationResult) "" else " not"} authenticated by LDAP [${id.show}]")
+          logger.debug(s"[${requestId.show}] User [${user.show}]${if (authenticationResult) "" else " not"} authenticated by LDAP [${id.show}]")
         case Failure(ex) =>
-          logger.debug(s"LDAP authentication failed:", ex)
+          logger.debug(s"[${requestId.show}] LDAP authentication failed:", ex)
       }
   }
 
@@ -64,18 +65,18 @@ class LoggableLdapAuthorizationServiceDecorator(val underlying: LdapAuthorizatio
 
   override def id: LdapService.Name = underlying.id
 
-  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] =
+  override def ldapUserBy(userId: User.Id)(implicit requestId: RequestId): Task[Option[LdapUser]] =
     loggableLdapUserService.ldapUserBy(userId)
 
-  override def groupsOf(userId: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]] = {
-    logger.debug(s"Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}] (assuming that filtered group IDs are [${filteringGroupIds.map(_.show).mkString(",")}])")
+  override def groupsOf(userId: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit requestId: RequestId): Task[UniqueList[Group]] = {
+    logger.debug(s"[${requestId.show}] Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}] (assuming that filtered group IDs are [${filteringGroupIds.map(_.show).mkString(",")}])")
     underlying
       .groupsOf(userId, filteringGroupIds)
       .andThen {
         case Success(groups) =>
-          logger.debug(s"LDAP [${id.show}] returned for user [${userId.show}] following groups: [${groups.map(_.show).mkString(",")}]")
+          logger.debug(s"[${requestId.show}] LDAP [${id.show}] returned for user [${userId.show}] following groups: [${groups.map(_.show).mkString(",")}]")
         case Failure(ex) =>
-          logger.debug(s"Fetching LDAP user's groups failed:", ex)
+          logger.debug(s"[${requestId.show}] Fetching LDAP user's groups failed:", ex)
       }
   }
 
@@ -90,13 +91,13 @@ class LoggableLdapServiceDecorator(val underlying: LdapAuthService)
 
   override def id: LdapService.Name = underlying.id
 
-  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] =
+  override def ldapUserBy(userId: User.Id)(implicit requestId: RequestId): Task[Option[LdapUser]] =
     loggableLdapAuthenticationService.ldapUserBy(userId)
 
-  override def authenticate(userId: User.Id, secret: domain.PlainTextSecret)(implicit corr: Corr): Task[Boolean] =
+  override def authenticate(userId: User.Id, secret: domain.PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] =
     loggableLdapAuthenticationService.authenticate(userId, secret)
 
-  override def groupsOf(userId: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]] =
+  override def groupsOf(userId: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit requestId: RequestId): Task[UniqueList[Group]] =
     loggableLdapAuthorizationService.groupsOf(userId, filteringGroupIds)
 
   override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
@@ -108,18 +109,18 @@ private class LoggableLdapUserServiceDecorator(underlying: LdapUserService)
 
   override def id: LdapService.Name = underlying.id
 
-  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] = {
-    logger.debug(s"Trying to fetch user with identifier [${userId.show}] from LDAP [${id.show}]")
+  override def ldapUserBy(userId: User.Id)(implicit requestId: RequestId): Task[Option[LdapUser]] = {
+    logger.debug(s"[${requestId.show}] Trying to fetch user with identifier [${userId.show}] from LDAP [${id.show}]")
     underlying
       .ldapUserBy(userId)
       .andThen {
         case Success(ldapUser) =>
           ldapUser match {
-            case Some(user) => logger.debug(s"User with identifier [${userId.show}] found [dn = ${user.dn.show}]")
-            case None => logger.debug(s"User with identifier [${userId.show}] not found")
+            case Some(user) => logger.debug(s"[${requestId.show}] User with identifier [${userId.show}] found [dn = ${user.dn.show}]")
+            case None => logger.debug(s"[${requestId.show}] User with identifier [${userId.show}] not found")
           }
         case Failure(ex) =>
-          logger.debug(s"Fetching LDAP user failed:", ex)
+          logger.debug(s"[${requestId.show}] Fetching LDAP user failed:", ex)
       }
   }
 

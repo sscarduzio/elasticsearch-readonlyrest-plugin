@@ -62,8 +62,6 @@ class UnboundidLdapConnectionPoolProvider {
     Task
       .delay(createLdapConnectionPoolFrom(connectionConfig))
       .map(new UnboundidLdapConnectionPool(connectionConfig.poolName, _, connectionConfig.bindRequestUser))
-//      .executeOn(ldapUnboundIdBlockingSchedulerImplicit)
-//      .asyncBoundary
   }
 
   private def createLdapConnectionPoolFrom(connectionConfig: LdapConnectionConfig) = {

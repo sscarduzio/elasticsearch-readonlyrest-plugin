@@ -21,6 +21,7 @@ import eu.timepit.refined.auto._
 import io.jsonwebtoken.Jwts
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -112,6 +113,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
           case Right(modifiedBlockContext) =>
             settings.jwt.checkMethod match {
               case NoCheck(service) =>
+                implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
                 service
                   .authenticate(Credentials(User.Id("jwt"), PlainTextSecret(token.value)))
                   .map(RuleResult.resultBasedOnCondition(modifiedBlockContext)(_))

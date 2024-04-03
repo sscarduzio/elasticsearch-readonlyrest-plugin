@@ -20,6 +20,7 @@ import com.google.common.hash.Hashing
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.CacheableLdapAuthenticationServiceDecorator.HashedUserCredentials
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, User}
@@ -50,10 +51,10 @@ class CacheableLdapAuthenticationServiceDecorator(underlying: LdapAuthentication
 
   override def id: LdapService.Name = underlying.id
 
-  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] =
+  override def ldapUserBy(userId: User.Id)(implicit requestId: RequestId): Task[Option[LdapUser]] =
     cacheableLdapUserService.ldapUserBy(userId)
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit corr: Corr): Task[Boolean] =
+  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] =
     cacheableAuthentication.call((user, secret), serviceTimeout)
 
   private def hashCredential(value: (User.Id, domain.PlainTextSecret)) = {
@@ -61,7 +62,7 @@ class CacheableLdapAuthenticationServiceDecorator(underlying: LdapAuthentication
     HashedUserCredentials(user, Hashing.sha256.hashString(secret.value.value, Charset.defaultCharset).toString)
   }
 
-  private def authenticateAction(value: (User.Id, domain.PlainTextSecret))(implicit corr: Corr) = {
+  private def authenticateAction(value: (User.Id, domain.PlainTextSecret))(implicit requestId: RequestId) = {
     val (userId, secret) = value
     underlying.authenticate(userId, secret)
   }
@@ -93,10 +94,10 @@ class CacheableLdapAuthorizationServiceDecorator(underlying: LdapAuthorizationSe
 
   override def id: LdapService.Name = underlying.id
 
-  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] =
+  override def ldapUserBy(userId: User.Id)(implicit requestId: RequestId): Task[Option[LdapUser]] =
     cacheableLdapUserService.ldapUserBy(userId)
 
-  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]] =
+  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit requestId: RequestId): Task[UniqueList[Group]] =
     cacheableGroupsOf.call((id, filteringGroupIds), serviceTimeout)
 
   override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
@@ -116,13 +117,13 @@ class CacheableLdapServiceDecorator(val underlying: LdapAuthService,
 
   override def id: LdapService.Name = underlying.id
 
-  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] =
+  override def ldapUserBy(userId: User.Id)(implicit requestId: RequestId): Task[Option[LdapUser]] =
     cacheableLdapAuthenticationService.ldapUserBy(userId)
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit corr: Corr): Task[Boolean] =
+  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] =
     cacheableLdapAuthenticationService.authenticate(user, secret)
 
-  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]] =
+  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit requestId: RequestId): Task[UniqueList[Group]] =
     cacheableLdapAuthorizationService.groupsOf(id, filteringGroupIds)
 
   override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout
@@ -136,7 +137,7 @@ private class CacheableLdapUserServiceDecorator(underlying: LdapUserService,
 
   override def id: LdapService.Name = underlying.id
 
-  override def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] =
+  override def ldapUserBy(userId: User.Id)(implicit requestId: RequestId): Task[Option[LdapUser]] =
     cacheableLdapUserById.call(userId, serviceTimeout)
 
   override def serviceTimeout: Refined[FiniteDuration, Positive] = underlying.serviceTimeout

@@ -21,6 +21,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
@@ -44,18 +45,16 @@ object LdapService {
   }
 }
 
-final case class Corr(value: String)
-
 trait LdapUserService extends LdapService {
-  def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]]
+  def ldapUserBy(userId: User.Id)(implicit requestId: RequestId): Task[Option[LdapUser]]
 }
 
 trait LdapAuthenticationService extends LdapUserService {
-  def authenticate(user: User.Id, secret: PlainTextSecret)(implicit corr: Corr): Task[Boolean]
+  def authenticate(user: User.Id, secret: PlainTextSecret)(implicit requestId: RequestId): Task[Boolean]
 }
 
 trait LdapAuthorizationService extends LdapUserService {
-  def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]]
+  def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit requestId: RequestId): Task[UniqueList[Group]]
 }
 
 trait LdapAuthService extends LdapAuthenticationService with LdapAuthorizationService
@@ -65,13 +64,13 @@ class ComposedLdapAuthService(override val id: LdapService#Id,
                               ldapAuthorizationService: LdapAuthorizationService)
   extends LdapAuthService {
 
-  def ldapUserBy(userId: User.Id)(implicit corr: Corr): Task[Option[LdapUser]] =
+  def ldapUserBy(userId: User.Id)(implicit requestId: RequestId): Task[Option[LdapUser]] =
     ldapAuthenticationService.ldapUserBy(userId)
 
-  override def authenticate(user: User.Id, secret: PlainTextSecret)(implicit corr: Corr): Task[Boolean] =
+  override def authenticate(user: User.Id, secret: PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] =
     ldapAuthenticationService.authenticate(user, secret)
 
-  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit corr: Corr): Task[UniqueList[Group]] =
+  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit requestId: RequestId): Task[UniqueList[Group]] =
     ldapAuthorizationService.groupsOf(id, filteringGroupIds)
 
   override val serviceTimeout: Refined[FiniteDuration, Positive] = {

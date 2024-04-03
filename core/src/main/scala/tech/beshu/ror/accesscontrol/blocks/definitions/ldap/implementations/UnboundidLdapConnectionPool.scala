@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
+import cats.implicits.toShow
 import com.unboundid.ldap.sdk._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Corr
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
 
 import java.util.concurrent.atomic.AtomicReference
@@ -34,45 +35,42 @@ class UnboundidLdapConnectionPool(poolName: String,
                                   bindRequestUser: BindRequestUser)
   extends Logging {
 
-  def asyncBind(request: BindRequest)(implicit corr: Corr): Task[BindResult] = {
-    Task.delay(
-      logger.trace(s"[$corr] Starting bind request")
-    )
+  def asyncBind(request: BindRequest)(implicit requestId: RequestId): Task[BindResult] = {
+    Task
+      .delay(
+        logger.trace(s"[${requestId.show}] Starting bind request")
+      )
       .flatMap { _ =>
         bind(request)
-//          .executeOn(blockingScheduler)
-//          .asyncBoundary
       }
       .map { r =>
-        logger.trace(s"[$corr] Bind response: $r")
+        logger.trace(s"[${requestId.show}] Bind response: $r")
         r
       }
   }
 
   def process(requestCreator: AsyncSearchResultListener => LDAPRequest,
               timeout: FiniteDuration Refined Positive)
-             (implicit corr: Corr): Task[Either[SearchResult, List[SearchResultEntry]]] = {
+             (implicit requestId: RequestId): Task[Either[SearchResult, List[SearchResultEntry]]] = {
     val searchResultListener = new UnboundidLdapConnectionPool.UnboundidSearchResultListener
     Task(requestCreator(searchResultListener))
       .map { r =>
-        logger.trace(s"[$corr] UNBOUNDID [${Thread.currentThread().toString()}] ${this.hashCode()} [$poolName]: calling ${r.toString()}")
+        logger.trace(s"[${requestId.show}] UNBOUNDID [${Thread.currentThread().toString()}] ${this.hashCode()} [$poolName]: calling ${r.toString()}")
         r
       }
       .map(request => connectionPool.processRequestsAsync((request :: Nil).asJava, timeout.value.toMillis))
       .map { r =>
-        logger.trace(s"[$corr] UNBOUNDID [${Thread.currentThread().toString()}] ${this.hashCode()} [$poolName]: result ${r.toString}")
+        logger.trace(s"[${requestId.show}] UNBOUNDID [${Thread.currentThread().toString()}] ${this.hashCode()} [$poolName]: result ${r.toString}")
         r
       }
-//      .executeOn(blockingScheduler)
       .flatMap { results =>
         results.asScala.toList match {
           case Nil => throw new IllegalStateException("LDAP - expected at least one result")
           case requestId :: _ =>
-            if(requestId.isCancelled) Task.now(Left(new SearchResult(requestId.get())))
+            if (requestId.isCancelled) Task.now(Left(new SearchResult(requestId.get())))
             else searchResultListener.result
         }
       }
-//      .asyncBoundary
   }
 
   def close(): Task[Unit] = {

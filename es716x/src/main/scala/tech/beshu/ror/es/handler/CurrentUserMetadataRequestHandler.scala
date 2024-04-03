@@ -36,6 +36,7 @@ import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.Cause.fromMismatchedCause
 import tech.beshu.ror.utils.LoggerOps._
 
+import java.time.{Duration, Instant}
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
@@ -69,10 +70,12 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   }
 
   private def onAllow(requestContext: RequestContext, userMetadata: UserMetadata): Unit = {
+    logRequestProcessingTime()
     esContext.listener.onResponse(new RRMetadataResponse(userMetadata, requestContext.correlationId))
   }
 
   private def onForbidden(causes: NonEmptySet[ForbiddenCause]): Unit = {
+    logRequestProcessingTime()
     esContext.listener.onFailure(ForbiddenResponse.create(
       causes = causes.toList.map(fromMismatchedCause),
       aclStaticContext = engine.core.accessControl.staticContext
@@ -83,6 +86,11 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
     logger.warn(s"[${esContext.requestContextId}] Cannot handle the ${esContext.channel.request().path()} request because ReadonlyREST plugin was disabled in settings")
     esContext.listener.onFailure(createRorNotEnabledResponse())
   }
+
+  private def logRequestProcessingTime(): Unit = {
+    logger.debug(s"[${esContext.requestContextId}] Request processing time: ${Duration.between(esContext.timestamp, Instant.now()).toMillis}ms")
+  }
+
 }
 
 private class RRMetadataResponse(userMetadata: UserMetadata,
