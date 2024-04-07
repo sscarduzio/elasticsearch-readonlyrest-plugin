@@ -22,6 +22,7 @@ import eu.timepit.refined.numeric.Positive
 import monix.catnap._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, User}
@@ -34,15 +35,9 @@ class CircuitBreakerLdapAuthenticationServiceDecorator(underlying: LdapAuthentic
   extends LdapAuthenticationService
     with LdapCircuitBreaker {
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret): Task[Boolean] = {
+  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] = {
     protect(
       underlying.authenticate(user, secret)
-    )
-  }
-
-  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
-    protect(
-      underlying.ldapUserBy(userId)
     )
   }
 
@@ -57,15 +52,10 @@ class CircuitBreakerLdapAuthorizationServiceDecorator(underlying: LdapAuthorizat
   extends LdapAuthorizationService
     with LdapCircuitBreaker {
 
-  override def groupsOf(id: User.Id): Task[UniqueList[Group]] = {
+  override def groupsOf(id: User.Id)
+                       (implicit requestId: RequestId): Task[UniqueList[Group]] = {
     protect(
       underlying.groupsOf(id)
-    )
-  }
-
-  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
-    protect(
-      underlying.ldapUserBy(userId)
     )
   }
 
@@ -79,15 +69,10 @@ class CircuitBreakerLdapAuthorizationServiceWithGroupsFilteringDecorator(underly
   extends LdapAuthorizationServiceWithGroupsFiltering
     with LdapCircuitBreaker {
 
-  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = {
+  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])
+                       (implicit requestId: RequestId): Task[UniqueList[Group]] = {
     protect(
       underlying.groupsOf(id, filteringGroupIds)
-    )
-  }
-
-  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
-    protect(
-      underlying.ldapUserBy(userId)
     )
   }
 
@@ -101,21 +86,15 @@ class CircuitBreakerLdapServiceDecorator(underlying: LdapAuthService,
   extends LdapAuthService
     with LdapCircuitBreaker {
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret): Task[Boolean] = {
+  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] = {
     protect(
       underlying.authenticate(user, secret)
     )
   }
 
-  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] = {
+  override def groupsOf(id: User.Id, filteringGroupIds: Set[GroupIdLike])(implicit requestId: RequestId): Task[UniqueList[Group]] = {
     protect(
       underlying.groupsOf(id, filteringGroupIds)
-    )
-  }
-
-  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
-    protect(
-      underlying.ldapUserBy(userId)
     )
   }
 

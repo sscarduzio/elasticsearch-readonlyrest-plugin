@@ -13,19 +13,34 @@ services:
       - "19200:9200"
       - "19300:9300"
       - "5000:58672"
+      - "9010:9010"
     environment:
       - cluster.name=es-cluster
       - node.name=es
       - discovery.type=single-node
       - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672"
+      - "ES_JAVA_OPTS=-Xms1512m -Xmx1512m 
+         -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:58672
+         -Dcom.sun.management.jmxremote
+         -Dcom.sun.management.jmxremote.port=9010
+         -Dcom.sun.management.jmxremote.local.only=false
+         -Dcom.sun.management.jmxremote.authenticate=false
+         -Dcom.sun.management.jmxremote.ssl=false
+         -Dcom.sun.management.jmxremote.rmi.port=9010
+         -Djava.rmi.server.hostname=127.0.0.1"
       - ES_VERSION=$ES_VERSION
+      - LDAP_HOST=ldap
+      - LDAP_PORT=3890
+    depends_on:
+      ldap:
+        condition: service_started
     healthcheck:
       test: [ "CMD", "curl", "-fk", "-u", "admin:container", "https://localhost:9200/_cluster/health" ]
       interval: 10s
       timeout: 10s
       retries: 30
       start_period: 60s
+
     networks:
       - es-network
     ulimits:
@@ -68,6 +83,23 @@ services:
       memlock:
         soft: -1
         hard: -1
+
+  ldap:
+    image: nitnelave/lldap:v0.3.0
+    user: "33:33"
+    hostname: ldap
+    container_name: ldap
+    ports:
+      - "3890:3890" # ldap port
+      - "17170:17170" # ldap frontend
+    volumes:
+      - "./ldap/data/:/data"
+    environment:
+      - LLDAP_JWT_SECRET=secret
+      - LLDAP_LDAP_USER_PASS=password
+      - LLDAP_LDAP_BASE_DN=dc=example,dc=com
+    networks:
+      - es-network
 
 networks:
   es-network:

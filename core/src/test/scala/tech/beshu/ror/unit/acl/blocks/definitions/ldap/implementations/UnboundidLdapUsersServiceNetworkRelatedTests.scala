@@ -42,7 +42,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 
-class UnboundidLdapServiceNetworkRelatedTests
+class UnboundidLdapUsersServiceNetworkRelatedTests
   extends AnyFreeSpec
     with BeforeAndAfterAll
     with BeforeAndAfterEach

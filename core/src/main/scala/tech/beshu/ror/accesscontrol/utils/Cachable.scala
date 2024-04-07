@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.utils
 
+import cats.implicits.toShow
 import com.github.benmanes.caffeine.cache.RemovalCause
 import com.github.blemale.scaffeine.Scaffeine
 import eu.timepit.refined.api.Refined
@@ -23,20 +24,19 @@ import eu.timepit.refined.numeric.Positive
 import monix.catnap.Semaphore
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.utils.TaskOps._
+import tech.beshu.ror.RequestId
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.annotation.nowarn
 import scala.concurrent.ExecutionContext._
 import scala.concurrent.duration.FiniteDuration
-import scala.util.Success
 
 class CacheableAction[K, V](ttl: FiniteDuration Refined Positive,
-                            action: K => Task[V])
+                            action: (K, RequestId) => Task[V])
   extends CacheableActionWithKeyMapping[K, K, V](ttl, action, identity)
 
 class CacheableActionWithKeyMapping[K, K1, V](ttl: FiniteDuration Refined Positive,
-                                              action: K => Task[V],
+                                              action: (K, RequestId) => Task[V],
                                               keyMap: K => K1) extends Logging {
 
   private val keySemaphoresMap = new ConcurrentHashMap[K1, Semaphore[Task]]()
@@ -48,38 +48,59 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: FiniteDuration Refined Positi
     .build[K1, V]()
 
   def call(key: K,
-           requestTimeout: FiniteDuration Refined Positive): Task[V] = {
+           requestTimeout: FiniteDuration Refined Positive)(implicit requestId: RequestId): Task[V] = {
     call(key).timeout(requestTimeout.value)
   }
 
-  def call(key: K): Task[V] = {
+  def call(key: K)(implicit requestId: RequestId): Task[V] = {
     val mappedKey = keyMap(key)
     for {
+      _ <- Task.delay {
+        logger.trace(s"[${requestId.show}] CACHEABLE ${this.hashCode()}: call key: $mappedKey - started")
+      }
       semaphore <- semaphoreOf(mappedKey)
+      _ <- Task.delay {
+        logger.trace(s"[${requestId.show}]  CACHEABLE ${this.hashCode()}: call key: $mappedKey - semaphore acquired")
+      }
       cachedValue <- semaphore.withPermit {
         getFromCacheOrRunAction(key, mappedKey).uncancelable.asyncBoundary
       }
     } yield cachedValue
   }
 
-  private def getFromCacheOrRunAction(key: K, mappedKey: K1): Task[V] = {
+  private def getFromCacheOrRunAction(key: K, mappedKey: K1)(implicit requestId: RequestId): Task[V] = {
     for {
+      _ <- Task.delay {
+        logger.trace(s"[${requestId.show}] CACHEABLE ${this.hashCode()}: call key: $mappedKey - permit acquired")
+      }
       cachedValue <- Task.delay(cache.getIfPresent(mappedKey))
       result <- cachedValue match {
-        case Some(value) => Task.now(value)
+        case Some(value) =>
+          logger.trace(s"[${requestId.show}] CACHEABLE ${this.hashCode()}: call key: $mappedKey - use cached value")
+          Task.now(value)
         case None =>
-          action(key)
-            .andThen {
-              case Success(value) => cache.put(mappedKey, value)
+          logger.trace(s"[${requestId.show}] CACHEABLE ${this.hashCode()}: call key: $mappedKey - call action")
+          action(key, requestId)
+            .flatMap { value =>
+              Task
+                .delay {
+                  logger.trace(s"[${requestId.show}] CACHEABLE ${this.hashCode()}: call key: $mappedKey - cache value: $value")
+                  cache.put(mappedKey, value)
+                }
+                .map(_ => value)
             }
+      }
+      _ <- Task.delay {
+        logger.trace(s"[${requestId.show}] CACHEABLE ${this.hashCode()}: call key: $mappedKey - done: value: $result")
       }
     } yield result
   }
 
-  private def onRemoveHook(mappedKay: K1,
+  private def onRemoveHook(mappedKey: K1,
                            @nowarn("cat=unused") value: V,
                            @nowarn("cat=unused") cause: RemovalCause): Unit = {
-    keySemaphoresMap.remove(mappedKay)
+    logger.trace(s"CACHEABLE ${this.hashCode()}: call key: $mappedKey - remove $cause")
+    keySemaphoresMap.remove(mappedKey)
   }
 
   private def semaphoreOf(key: K1) = for {

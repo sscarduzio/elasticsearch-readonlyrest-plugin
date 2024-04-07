@@ -44,7 +44,8 @@ private[auth] trait BaseAuthorizationRule
 
   protected def userGroups[B <: BlockContext](blockContext: B,
                                               user: LoggedUser,
-                                              permittedGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]]
+                                              permittedGroupIds: Set[GroupIdLike])
+                                             (implicit requestId: RequestId): Task[UniqueList[Group]]
 
   protected def loggedUserPreconditionCheck(@nowarn("cat=unused") user: LoggedUser): Either[Unit, Unit] = Right(())
 
@@ -62,6 +63,7 @@ private[auth] trait BaseAuthorizationRule
       case (Some(ImpersonatedUser(_, _)), Impersonation.Disabled) =>
         Task.now(Rejected(ImpersonationNotSupported))
       case (Some(user@DirectlyLoggedUser(_)), _) =>
+        implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
         loggedUserPreconditionCheck(user) match {
           case Left(_) => Task.now(Rejected())
           case Right(_) => authorizeLoggedUser(blockContext, user)
@@ -88,7 +90,8 @@ private[auth] trait BaseAuthorizationRule
   }
 
   private def authorizeLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                           user: LoggedUser): Task[RuleResult[B]] = {
+                                                                           user: LoggedUser)
+                                                                          (implicit requestId: RequestId): Task[RuleResult[B]] = {
     authorizeLoggedUser(
       blockContext,
       user,

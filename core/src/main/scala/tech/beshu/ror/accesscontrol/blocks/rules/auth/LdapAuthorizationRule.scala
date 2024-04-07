@@ -42,7 +42,8 @@ class LdapAuthorizationRule(val settings: Settings,
 
   override protected def userGroups[B <: BlockContext](blockContext: B,
                                                        user: LoggedUser,
-                                                       permittedGroupIds: Set[GroupIdLike]): Task[UniqueList[Group]] =
+                                                       permittedGroupIds: Set[GroupIdLike])
+                                                      (implicit requestId: RequestId): Task[UniqueList[Group]] =
     settings.ldap.groupsOf(user.id, permittedGroupIds)
 
   override protected def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] =

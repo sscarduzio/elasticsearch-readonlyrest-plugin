@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
-import cats.implicits.catsSyntaxApplicativeError
+import cats.data.EitherT
+import cats.implicits.toShow
 import com.unboundid.ldap.sdk._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
@@ -24,21 +25,23 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.RequestId
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.NestedGroupsConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.utils.LoggerOps.toLoggerOps
 
 import scala.concurrent.duration._
 
-private[implementations] abstract class BaseUnboundidLdapService(connectionPool: UnboundidLdapConnectionPool,
-                                                                 userSearchFiler: UserSearchFilterConfig,
-                                                                 override val serviceTimeout: FiniteDuration Refined Positive)
-  extends LdapUserService with Logging {
+class UnboundidLdapUsersService private(override val id: LdapService#Id,
+                                        connectionPool: UnboundidLdapConnectionPool,
+                                        userSearchFiler: UserSearchFilterConfig,
+                                        override val serviceTimeout: FiniteDuration Refined Positive)
+  extends LdapUsersService with Logging {
 
-  override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
+  override def ldapUserBy(userId: User.Id)(implicit requestId: RequestId): Task[Option[LdapUser]] = {
     userSearchFiler.userIdAttribute match {
       case UserIdAttribute.Cn => createLdapUser(userId)
       case attribute@UserIdAttribute.CustomAttribute(_) => fetchLdapUser(userId, attribute)
@@ -59,36 +62,53 @@ private[implementations] abstract class BaseUnboundidLdapService(connectionPool:
     }
   }
 
-  private def fetchLdapUser(userId: User.Id, uidAttribute: UserIdAttribute.CustomAttribute) = {
+  private def fetchLdapUser(userId: User.Id, uidAttribute: UserIdAttribute.CustomAttribute)(implicit requestId: RequestId) = {
     connectionPool
       .process(searchUserLdapRequest(_, userSearchFiler.searchUserBaseDN, uidAttribute, userId), serviceTimeout)
       .flatMap {
         case Right(Nil) =>
-          logger.debug("LDAP getting user CN returned no entries")
+          logger.debug(s"[${requestId.show}] LDAP search user - no entries returned")
           Task.now(None)
         case Right(user :: Nil) =>
           Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)), confirmed = true)))
         case Right(all@user :: _) =>
-          logger.warn(s"LDAP search user - more than one user was returned: ${all.mkString(",")}. Picking first")
+          logger.warn(s"[${requestId.show}] LDAP search user - more than one user was returned: ${all.mkString(",")}. Picking first")
           Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)), confirmed = true)))
         case Left(errorResult) =>
-          logger.error(s"LDAP getting user CN returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
+          logger.error(s"[${requestId.show}] LDAP search user - returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
-      }
-      .onError { case ex =>
-        Task(logger.errorEx("LDAP getting user operation failed.", ex))
       }
   }
 
   private def searchUserLdapRequest(listener: AsyncSearchResultListener,
                                     searchUserBaseDN: Dn,
                                     uidAttribute: UserIdAttribute.CustomAttribute,
-                                    userId: User.Id): LDAPRequest = {
+                                    userId: User.Id)
+                                   (implicit requestId: RequestId): LDAPRequest = {
     val baseDn = searchUserBaseDN.value.value
     val scope = SearchScope.SUB
     val searchFilter = s"${uidAttribute.name.value}=${Filter.encodeValue(userId.value.value)}"
-    logger.debug(s"LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter]")
+    logger.debug(s"[${requestId.show}] LDAP search [base DN: $baseDn, scope: $scope, search filter: $searchFilter]")
     new SearchRequest(listener, baseDn, scope, searchFilter)
+  }
+}
+
+object UnboundidLdapUsersService {
+  def create(id: LdapService#Id,
+             poolProvider: UnboundidLdapConnectionPoolProvider,
+             connectionConfig: LdapConnectionConfig,
+             userSearchFiler: UserSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapUsersService]] = {
+    (for {
+      _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
+        .recoverWith {
+          case error: ConnectionError =>
+            if (connectionConfig.ignoreLdapConnectivityProblems)
+              EitherT.rightT(())
+            else
+              EitherT.leftT(error)
+        }
+      connectionPool <- EitherT.right[ConnectionError](poolProvider.connect(connectionConfig))
+    } yield new UnboundidLdapUsersService(id, connectionPool, userSearchFiler, connectionConfig.requestTimeout)).value
   }
 }
 
